@@ -17,6 +17,7 @@
   "type": "commonjs",
   "dependencies": {
     "@langchain/community": "^1.1.29",
+    "@prisma/adapter-mariadb": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -24,6 +25,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "langchain": "^1.4.4",
+    "mariadb": "^3.5.2",
     "multer": "^2.1.1",
     "mysql2": "^3.22.4",
     "prisma": "^7.8.0",

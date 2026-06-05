@@ -2,11 +2,13 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL as string)
+const prisma = new PrismaClient({ adapter });
 const PORT = process.env.PORT || 5000;
 
 // Middleware
