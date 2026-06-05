@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student   Student?
+  faculty   Faculty?
+
+  @@map("users")
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+
+// Student model
+model Student {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  studentId       String   @unique
+  firstName       String
+  lastName        String
+  middleName      String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+  contactNumber   String?
+  address         String?
+  program         String
+  enrollmentDate  DateTime @default(now())
+  status          StudentStatus @default(ACTIVE)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id])
+  admissions      Admission[]
+  theses          Thesis[]
+  enrollments     Enrollment[]
+
+  @@map("students")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  ON_LEAVE
+}
+
+// Faculty model
+model Faculty {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  facultyId   String   @unique
+  firstName   String
+  lastName    String
+  middleName  String?
+  department  String
+  position    String
+  contactNumber String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  theses      Thesis[]
+
+  @@map("faculties")
+}
+
+// Admission model
+model Admission {
+  id              String   @id @default(cuid())
+  studentId       String
+  applicationDate DateTime @default(now())
+  program         String
+  status          AdmissionStatus @default(PENDING)
+  documents       Json?
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  student         Student  @relation(fields: [studentId], references: [id])
+
+  @@map("admissions")
+}
+
+enum AdmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+// Thesis model
+model Thesis {
+  id              String   @id @default(cuid())
+  studentId       String
+  adviserId       String?
+  title           String
+  abstract        String?
+  status          ThesisStatus @default(DRAFT)
+  submissionDate  DateTime?
+  defenseDate     DateTime?
+  approvalDate    DateTime?
+  fileUrl         String?
+  keywords        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  student         Student  @relation(fields: [studentId], references: [id])
+  adviser         Faculty? @relation(fields: [adviserId], references: [id])
+
+  @@map("theses")
+}
+
+enum ThesisStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DEFENDED
+}
+
+// Enrollment model
+model Enrollment {
+  id          String   @id @default(cuid())
+  studentId   String
+  semester    String
+  academicYear String
+  status      EnrollmentStatus @default(ENROLLED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  student     Student  @relation(fields: [studentId], references: [id])
+
+  @@map("enrollments")
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  COMPLETED
+}
+
+// Chat History model for AI chatbot
+model ChatHistory {
+  id          String   @id @default(cuid())
+  userId      String?
+  sessionId   String
+  message     String
+  response    String
+  createdAt   DateTime @default(now())
+
+  @@map("chat_histories")
+}
+
+// Document model for OCR processed documents
+model Document {
+  id          String   @id @default(cuid())
+  studentId   String?
+  fileName    String
+  fileType    String
+  fileUrl     String
+  extractedText String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("documents")
+}
