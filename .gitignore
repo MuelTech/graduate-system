@@ -9,3 +9,6 @@ references/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.agents
+prisma
+schema.prisma
