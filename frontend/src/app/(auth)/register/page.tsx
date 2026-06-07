@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   CheckCircle,
   Info,
+  AlertCircle,
 } from "lucide-react";
 
 const programs = [
@@ -58,6 +59,8 @@ export default function RegisterPage() {
   const [step, setStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     applicantId: "",
     firstName: "",
@@ -74,11 +77,43 @@ export default function RegisterPage() {
 
   const updateForm = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear any previous errors when the user starts typing again
+    if (error) setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    setError("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Registration failed. Please try again.");
+        return;
+      }
+
+      setIsSubmitted(true);
+    } catch (err) {
+      setError("A network error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -121,7 +156,7 @@ export default function RegisterPage() {
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--earist-primary)] text-xs font-bold text-white">
                           {i + 1}
                         </div>
-                        <p className="text-sm text-[var(--earist-body-text)]">
+                        <p className="text-sm text-[var(--earist-body-text)] text-left">
                           {item}
                         </p>
                       </div>
@@ -207,6 +242,14 @@ export default function RegisterPage() {
                 {stepTitles[step]}
               </p>
             </div>
+
+            {/* Error Message Display */}
+            {error && (
+              <Alert variant="destructive" className="mb-5">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
             <form onSubmit={handleSubmit}>
               {/* Step 0: Applicant ID */}
@@ -442,7 +485,10 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => {
+                      setStep(step - 1);
+                      setError(""); // Clear error on back navigation
+                    }}
                     className="text-[var(--earist-secondary)]"
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
@@ -454,7 +500,10 @@ export default function RegisterPage() {
                 {step < 3 ? (
                   <Button
                     type="button"
-                    onClick={() => setStep(step + 1)}
+                    onClick={() => {
+                      setStep(step + 1);
+                      setError(""); // Clear error on forward navigation
+                    }}
                     className="bg-[var(--earist-primary)] hover:bg-[var(--earist-primary)]/90"
                   >
                     Continue
@@ -463,9 +512,10 @@ export default function RegisterPage() {
                 ) : (
                   <Button
                     type="submit"
-                    className="bg-[var(--earist-accent)] text-[var(--earist-primary)] hover:bg-[var(--earist-accent)]/90"
+                    disabled={isSubmitting}
+                    className="bg-[var(--earist-accent)] text-[var(--earist-primary)] hover:bg-[var(--earist-accent)]/90 disabled:opacity-70"
                   >
-                    Submit Registration
+                    {isSubmitting ? "Submitting..." : "Submit Registration"}
                   </Button>
                 )}
               </div>
@@ -473,9 +523,7 @@ export default function RegisterPage() {
 
             <div className="mt-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
-              <span className="text-xs text-[var(--earist-body-text)]">
-                or
-              </span>
+              <span className="text-xs text-[var(--earist-body-text)]">or</span>
               <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
             </div>
 
