@@ -1,5 +1,6 @@
 "use client";
-
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -25,6 +26,7 @@ const roles: { value: UserRole; label: string }[] = [
 ];
 
 export default function LoginPage() {
+  const router = useRouter();
   const [role, setRole] = useState<UserRole>("applicant");
   const [showPassword, setShowPassword] = useState(false);
   const [applicantId, setApplicantId] = useState("");
@@ -58,50 +60,41 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
+    // --- Validation Logic ---
     if (role === "applicant") {
-      if (!applicantId) {
-        setError("Applicant ID is required.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!applicantId) return setError("Applicant ID is required.");
+      if (!password) return setError("Password is required.");
     } else if (role === "student") {
-      if (!studentId) {
-        setError("Student ID is required.");
-        return;
-      }
-      if (!birthdate) {
-        setError("Date of Birth is required.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!studentId) return setError("Student ID is required.");
+      if (!birthdate) return setError("Date of Birth is required.");
+      if (!password) return setError("Password is required.");
     } else {
-      if (!email) {
-        setError("Email address is required.");
-        return;
-      }
-      if (!validateEmail(email)) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!email) return setError("Email address is required.");
+      if (!validateEmail(email)) return setError("Please enter a valid email address.");
+      if (!password) return setError("Password is required.");
     }
 
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setError("Invalid credentials. Please try again.");
-    } catch {
-      setError("An error occurred. Please try again.");
+      // --- NextAuth Sign-In Logic ---
+      const res = await signIn("credentials", {
+        redirect: false,
+        role: role,
+        email: email,
+        password: password,
+        applicantId: applicantId,
+        studentId: studentId,
+        birthdate: birthdate,
+      });
+
+      if (res?.error) {
+        setError(res.error);
+      } else {
+        router.push("/"); // Successfully logged in! Redirect to dashboard/home.
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
