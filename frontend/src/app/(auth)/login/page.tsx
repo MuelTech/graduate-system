@@ -70,7 +70,8 @@ export default function LoginPage() {
       if (!password) return setError("Password is required.");
     } else {
       if (!email) return setError("Email address is required.");
-      if (!validateEmail(email)) return setError("Please enter a valid email address.");
+      if (!validateEmail(email))
+        return setError("Please enter a valid email address.");
       if (!password) return setError("Password is required.");
     }
 
@@ -91,7 +92,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError(res.error);
       } else {
-        router.push("/"); // Successfully logged in! Redirect to dashboard/home.
+        router.push("/applicant/dashboard"); // Successfully logged in! Redirect to dashboard/home.
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -145,9 +146,7 @@ export default function LoginPage() {
                 </label>
                 <select
                   value={role}
-                  onChange={(e) =>
-                    handleRoleChange(e.target.value as UserRole)
-                  }
+                  onChange={(e) => handleRoleChange(e.target.value as UserRole)}
                   className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
                 >
                   {roles.map((r) => (
@@ -285,9 +284,7 @@ export default function LoginPage() {
 
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
-              <span className="text-xs text-[var(--earist-body-text)]">
-                or
-              </span>
+              <span className="text-xs text-[var(--earist-body-text)]">or</span>
               <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
             </div>
 
@@ -344,11 +341,7 @@ function PasswordInput({
           onClick={toggleShow}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--earist-body-text)] transition-colors hover:text-[var(--earist-primary)]"
         >
-          {show ? (
-            <EyeOff className="h-4 w-4" />
-          ) : (
-            <Eye className="h-4 w-4" />
-          )}
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
     </div>
