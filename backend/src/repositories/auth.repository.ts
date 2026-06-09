@@ -50,4 +50,11 @@ export class AuthRepository {
             return newUser;
         });
     }
+
+    //Find the intended program by its ID
+    async findProgramById(id: string): Promise<Program | null> {
+        return prisma.program.findUnique({
+            where: { id }
+        });
+    }
 }
