@@ -92,7 +92,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError(res.error);
       } else {
-        router.push("/applicant/dashboard"); // Successfully logged in! Redirect to dashboard/home.
+        router.push(`/${role}/dashboard`); // Successfully logged in! Redirect to dashboard/home.
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -138,7 +138,7 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Role Selector */}
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">

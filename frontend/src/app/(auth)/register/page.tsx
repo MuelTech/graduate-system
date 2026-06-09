@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -23,31 +23,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const programs = [
-  "Master of Arts in Education",
-  "Doctor of Education",
-  "Master of Science in Computer Science",
-  "Master in Public Administration",
-  "Doctor of Public Administration",
-  "Master of Arts in Nursing",
-  "Master of Science in Industrial Engineering",
-  "Master of Arts in Mathematics",
-  "Doctor of Philosophy in Education",
-];
-
-const undergraduateCourses = [
-  "Bachelor of Elementary Education",
-  "Bachelor of Secondary Education",
-  "Bachelor of Science in Computer Science",
-  "Bachelor of Science in Information Technology",
-  "Bachelor of Science in Public Administration",
-  "Bachelor of Science in Nursing",
-  "Bachelor of Science in Industrial Engineering",
-  "Bachelor of Science in Mathematics",
-  "Bachelor of Arts in Political Science",
-  "Bachelor of Science in Business Administration",
-];
-
 const stepTitles = [
   "Verify Your Applicant ID",
   "Personal Information",
@@ -68,12 +43,38 @@ export default function RegisterPage() {
     email: "",
     cellphone: "",
     dateOfBirth: "",
-    program: "",
+    programId: "",
     programType: "Masters",
-    undergraduateCourse: "",
+    undergraduateProgramId: "",
     password: "",
     confirmPassword: "",
   });
+
+  const [graduateProgramsList, setGraduateProgramsList] = useState<
+    { id: string; programName: string; programType: string }[]
+  >([]);
+
+  const [undergraduateProgramsList, setUndergraduateProgramsList] = useState<
+    { id: string; programName: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const apiUrl =
+          process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+        const res = await fetch(`${apiUrl}/api/programs`);
+        if (res.ok) {
+          const data = await res.json();
+          setGraduateProgramsList(data.graduatePrograms);
+          setUndergraduateProgramsList(data.undergraduatePrograms);
+        }
+      } catch (err) {
+        console.error("Failed to fetch programs", err);
+      }
+    };
+    fetchPrograms();
+  }, []);
 
   const updateForm = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -81,12 +82,70 @@ export default function RegisterPage() {
     if (error) setError("");
   };
 
+  const validateStep = (currentStep: number) => {
+    switch (currentStep) {
+      case 0:
+        if (!formData.applicantId.trim()) {
+          setError("Applicant ID is required.");
+          return false;
+        }
+        break;
+      case 1:
+        if (!formData.firstName.trim()) {
+          setError("First Name is required.");
+          return false;
+        }
+        if (!formData.lastName.trim()) {
+          setError("Last Name is required.");
+          return false;
+        }
+        if (!formData.email.trim()) {
+          setError("Email Address is required.");
+          return false;
+        }
+        // Optional: Simple email format validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          setError("Please enter a valid email address.");
+          return false;
+        }
+        if (!formData.cellphone.trim()) {
+          setError("Cellphone Number is required.");
+          return false;
+        }
+        if (!formData.dateOfBirth.trim()) {
+          setError("Date of Birth is required.");
+          return false;
+        }
+        break;
+      case 2:
+        if (!formData.programId) {
+          setError("Intended Program is required.");
+          return false;
+        }
+        if (!formData.undergraduateProgramId) {
+          setError("Prerequisite Program is required.");
+          return false;
+        }
+        break;
+      case 3:
+        if (!formData.password) {
+          setError("Password is required.");
+          return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setError("Passwords do not match.");
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+    if (!validateStep(3)) {
       return;
     }
 
@@ -305,9 +364,7 @@ export default function RegisterPage() {
                       <Input
                         type="text"
                         value={formData.lastName}
-                        onChange={(e) =>
-                          updateForm("lastName", e.target.value)
-                        }
+                        onChange={(e) => updateForm("lastName", e.target.value)}
                         placeholder="Last Name"
                         required
                       />
@@ -373,7 +430,11 @@ export default function RegisterPage() {
                               ? "default"
                               : "outline"
                           }
-                          onClick={() => updateForm("programType", type)}
+                          onClick={() => {
+                            updateForm("programType", type);
+                            updateForm("programId", "");
+                            updateForm("undergraduateProgramId", "");
+                          }}
                           className={
                             formData.programType === type
                               ? "bg-[var(--earist-primary)] hover:bg-[var(--earist-primary)]/90"
@@ -385,49 +446,90 @@ export default function RegisterPage() {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
-                      Intended Graduate Program{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.program}
-                      onChange={(e) => updateForm("program", e.target.value)}
-                      required
-                      className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
-                    >
-                      <option value="">Select a program</option>
-                      {programs.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
-                      Undergraduate Program{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.undergraduateCourse}
-                      onChange={(e) =>
-                        updateForm("undergraduateCourse", e.target.value)
-                      }
-                      required
-                      className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
-                    >
-                      <option value="">Select your undergraduate course</option>
-                      {undergraduateCourses.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1.5 text-xs text-[var(--earist-body-text)]">
-                      Used for Program Alignment Check
-                    </p>
-                  </div>
+
+                  {(() => {
+                    // Separate the graduate programs into their respective lists
+                    const mastersPrograms = graduateProgramsList.filter(
+                      (p) => p.programType === "MASTERS",
+                    );
+                    const doctoralPrograms = graduateProgramsList.filter(
+                      (p) => p.programType === "DOCTORAL",
+                    );
+
+                    // Establish logic variables based on selected type
+                    const isDoctoral = formData.programType === "Doctoral";
+                    const intendedProgramList = isDoctoral
+                      ? doctoralPrograms
+                      : mastersPrograms;
+                    const prerequisiteProgramList = isDoctoral
+                      ? mastersPrograms
+                      : undergraduateProgramsList;
+
+                    const intendedProgramLabel = isDoctoral
+                      ? "Intended Doctorate Program"
+                      : "Intended Masters Program";
+                    const prerequisiteProgramLabel = isDoctoral
+                      ? "Masters Program"
+                      : "Undergraduate Program";
+                    const prerequisitePlaceholder = isDoctoral
+                      ? "Select your masters course (or closest equivalent)"
+                      : "Select your undergraduate course";
+
+                    return (
+                      <>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                            {intendedProgramLabel}{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.programId}
+                            onChange={(e) =>
+                              updateForm("programId", e.target.value)
+                            }
+                            required
+                            className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                          >
+                            <option value="">Select a program</option>
+                            {intendedProgramList.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.programName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                            {prerequisiteProgramLabel}{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.undergraduateProgramId}
+                            onChange={(e) =>
+                              updateForm(
+                                "undergraduateProgramId",
+                                e.target.value,
+                              )
+                            }
+                            required
+                            className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                          >
+                            <option value="">{prerequisitePlaceholder}</option>
+                            {prerequisiteProgramList.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.programName}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1.5 text-xs text-[var(--earist-body-text)]">
+                            Used for Program Alignment Check.{" "}
+                            {isDoctoral &&
+                              "If you graduated from another school, select the closest equivalent program."}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -442,9 +544,7 @@ export default function RegisterPage() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
-                        onChange={(e) =>
-                          updateForm("password", e.target.value)
-                        }
+                        onChange={(e) => updateForm("password", e.target.value)}
                         placeholder="Create a password"
                         required
                         className="pr-10"
@@ -501,8 +601,10 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     onClick={() => {
-                      setStep(step + 1);
-                      setError(""); // Clear error on forward navigation
+                      if (validateStep(step)) {
+                        setStep(step + 1);
+                        setError(""); // Clear error on forward navigation
+                      }
                     }}
                     className="bg-[var(--earist-primary)] hover:bg-[var(--earist-primary)]/90"
                   >
