@@ -113,10 +113,13 @@ model Student {
   curriculumType          CurriculumType?  @map("curriculum_type")
   // v8 ── Pinnacle-first registration & alignment check
   pinnacleApplicantId     String?          @map("pinnacle_applicant_id")
-  undergraduateCourse     String?          @map("undergraduate_course")
+  undergraduateProgramId     String?          @map("undergraduate_program_id")
   dateOfBirth             DateTime?        @db.Date @map("date_of_birth")
   isProgramAligned        Boolean?         @map("is_program_aligned")
   alignmentStatus         AlignmentStatus? @map("alignment_status")
+  // ── Pre-requisites ──
+  previousMastersProgramId   String?          @map("previous_masters_program_id")
+  previousMastersProgram     Program?         @relation("PreviousMastersProgram", fields: [previousMastersProgramId], references: [id])
   // COR OCR sync
   corExtractedYearLevel   String?          @map("cor_extracted_year_level")
   corExtractedScholarship String?          @map("cor_extracted_scholarship")
@@ -126,6 +129,7 @@ model Student {
   // ── Relations ──
   user                    User                       @relation(fields: [userId], references: [id])
   program                 Program                    @relation(fields: [programId], references: [id])
+  undergraduateProgram    UndergraduateProgram?      @relation(fields: [undergraduateProgramId], references: [id])
   residencyTracking       ResidencyTracking?
   curriculumWaivers       CurriculumWaiver[]
   bridgingWaiver          ApplicantBridgingWaiver?
@@ -140,6 +144,7 @@ model Student {
   acknowledgementReceipts AcknowledgementReceipt[]
   studentFiles            StudentFile[]
   studentCalendars        StudentCalendar[]
+  
 
   @@map("students")
 }
@@ -201,6 +206,8 @@ model Program {
   requirementsChecklist RequirementsChecklist[]
   memos                 Memo[]
 
+  studentsAsPreviousMasters  Student[]        @relation("PreviousMastersProgram")
+
   @@map("programs")
 }
 
@@ -209,6 +216,23 @@ enum ProgramType {
   DOCTORAL
 
   @@map("program_type")
+}
+
+// ── undergraduate_programs ────────────────────────────────────────────────
+model UndergraduateProgram {
+  id          String   @id @default(uuid()) @map("ug_program_id")
+  programName String   @unique @map("program_name")
+  acronym     String?
+  college     String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ──
+  students        Student[]
+  bridgingWaivers ApplicantBridgingWaiver[] @relation("BridgingUndergradProgram")
+
+  @@map("undergraduate_programs")
 }
 
 // ── custom_roles ─────────────────────────────────────────────────────────
@@ -313,7 +337,7 @@ model ExamSlot {
 model ApplicantBridgingWaiver {
   id                     String               @id @default(uuid()) @map("waiver_id")
   studentId              String               @unique @map("student_id")
-  undergraduateCourse    String?              @map("undergraduate_course")
+  undergraduateProgramId    String?              @map("undergraduate_program_id")
   intendedProgramId      String               @map("intended_program_id")
   waiverFormDownloadedAt DateTime?            @map("waiver_form_downloaded_at")
   status                 BridgingWaiverStatus @default(PENDING)
@@ -326,6 +350,7 @@ model ApplicantBridgingWaiver {
   student         Student  @relation(fields: [studentId], references: [id])
   intendedProgram Program  @relation("BridgingIntendedProgram", fields: [intendedProgramId], references: [id])
   validatedBy     User?    @relation("BridgingWaiverValidatedBy", fields: [validatedById], references: [id])
+  undergraduateProgram UndergraduateProgram?  @relation("BridgingUndergradProgram", fields: [undergraduateProgramId], references: [id])
 
   @@map("applicant_bridging_waivers")
 }

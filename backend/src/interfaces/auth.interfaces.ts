@@ -7,7 +7,7 @@ export interface RegisterInput {
   email: string;
   cellphone: string;
   dateOfBirth: string;
-  program: string;
+  programId: string;
   programType: string;
   undergraduateProgramId: string;
   password: string;

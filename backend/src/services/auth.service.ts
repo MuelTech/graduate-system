@@ -29,16 +29,16 @@ export class AuthService {
             throw new Error("Applicant ID is already registered!");
         }
 
-        //Find target by program name
-        const program = await this.authRepository.findProgramByName(data.program);
+        // Find target by program ID instead of program name
+        const program = await this.authRepository.findProgramById(data.programId);
         if (!program) {
             throw new Error("Selected program could not be found in the database!");
         }
 
-        //Hash password
+        // Hash password
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
-        //Construct payloads & Save
+        // Construct payloads & Save
         const userData = {
             email: data.email,
             passwordHash: hashedPassword,
@@ -47,19 +47,26 @@ export class AuthService {
             role: UserRole.APPLICANT
         };
 
-        //Normalize the date to exact Midnight UTC to prevent local JS shifting
+        // Normalize the date to exact Midnight UTC to prevent local JS shifting
         const parseDob = new Date(`${data.dateOfBirth}T00:00:00.000Z`);
 
-        const studentData = {
+        const studentData: any = {
             cellphone: data.cellphone,
             dateOfBirth: parseDob,
             pinnacleApplicantId: data.applicantId,
-            undergraduateCourse: data.undergraduateCourse,
             programId: program.id,
             admissionStatus: AdmissionStatus.APPLICANT,
         };
 
+        // Dynamically assign the prerequisite field based on the applicant's target level
+        if (data.programType === "Doctoral") {
+            studentData.previousMastersProgramId = data.undergraduateProgramId;
+        } else {
+            studentData.undergraduateProgramId = data.undergraduateProgramId;
+        }
+
         const newUser = await this.authRepository.registerApplicant(userData, studentData);
+
 
         return { id: newUser.id, email: newUser.email, role: newUser.role }
     }
