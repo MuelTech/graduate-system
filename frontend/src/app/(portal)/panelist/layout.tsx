@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   User,
@@ -62,10 +63,7 @@ export default function PanelistLayout({
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
-          <Link
-            href="/panelist/dashboard"
-            className="flex items-center gap-2"
-          >
+          <Link href="/panelist/dashboard" className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-[var(--earist-accent)]" />
             {!collapsed && (
               <div className="flex flex-col">
@@ -128,13 +126,13 @@ export default function PanelistLayout({
 
         {/* Logout */}
         <div className="border-t border-white/10 p-2">
-          <Link
-            href="/login"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 hover:text-[var(--earist-accent)]"
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 hover:text-[var(--earist-accent)]"
           >
             <LogOut className="h-5 w-5 shrink-0" />
             {!collapsed && <span>Sign Out</span>}
-          </Link>
+          </button>
         </div>
       </aside>
 

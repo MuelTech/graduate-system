@@ -6,41 +6,52 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
+    // Print to your VSCode terminal to prove the middleware is running
+    console.log(
+      `[Middleware] Path: ${path} | Has Token: ${!!token} | Role: ${token?.role}`,
+    );
+
     // If the user somehow bypassed the authorized callback without a token
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
     // Role-based Protection Checks
-    // If a user tries to access a path that doesn't match their role, 
-    // we redirect them to their actual dashboard.
-    
     if (path.startsWith("/applicant") && token.role !== "applicant") {
-      return NextResponse.redirect(new URL(`/${token.role}/dashboard`, req.url));
+      return NextResponse.redirect(
+        new URL(`/${token.role}/dashboard`, req.url),
+      );
     }
-    
+
     if (path.startsWith("/student") && token.role !== "student") {
-      return NextResponse.redirect(new URL(`/${token.role}/dashboard`, req.url));
+      return NextResponse.redirect(
+        new URL(`/${token.role}/dashboard`, req.url),
+      );
     }
-    
+
     if (path.startsWith("/admin") && token.role !== "admin") {
-      return NextResponse.redirect(new URL(`/${token.role}/dashboard`, req.url));
+      return NextResponse.redirect(
+        new URL(`/${token.role}/dashboard`, req.url),
+      );
     }
-    
+
     if (path.startsWith("/panelist") && token.role !== "panelist") {
-      return NextResponse.redirect(new URL(`/${token.role}/dashboard`, req.url));
+      return NextResponse.redirect(
+        new URL(`/${token.role}/dashboard`, req.url),
+      );
     }
   },
   {
     callbacks: {
-      // This ensures the middleware function above only runs if the user is authenticated.
-      // If they are NOT authenticated, NextAuth will automatically redirect them to the /login page.
       authorized: ({ token }) => !!token,
     },
-  }
+    // Tell NextAuth where our custom login page is!
+    pages: {
+      signIn: "/login",
+    },
+  },
 );
 
-// We define exactly which paths the middleware should protect
 export const config = {
   matcher: [
     "/applicant/:path*",
