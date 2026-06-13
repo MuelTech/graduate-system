@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { Prisma, User, Student, Program } from '@prisma/client';
+import { Prisma, User, Student, Program, UndergraduateProgram } from '@prisma/client';
 
 export class AuthRepository {
     async findUserByEmail(email: string): Promise <User | null> {
@@ -33,28 +33,43 @@ export class AuthRepository {
         });
     }
 
-    //Create both User and Student atomically for a new applicant
-    async registerApplicant(userData: any, studentData: any): Promise <User> {
+    async findProgramById(id: string): Promise<Program | null> {
+        return prisma.program.findUnique({
+            where: { id }
+        });
+    }
+
+    async findUndergraduateProgramById(id: string): Promise<UndergraduateProgram | null> {
+        return prisma.undergraduateProgram.findUnique({
+            where: { id }
+        });
+    }
+
+    // Creates User, Student, and optionally BridgingWaiver atomically
+    async registerApplicant(userData: any, studentData: any, waiverData: any = null): Promise <User> {
         return prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: userData
             });
 
-            await tx.student.create({
+            const newStudent = await tx.student.create({
                 data: {
                     ...studentData,
                     userId: newUser.id,
                 }
             });
 
-            return newUser;
-        });
-    }
+            // If waiverData is provided, they are misaligned. Generate the waiver immediately!
+            if (waiverData) {
+                await tx.applicantBridgingWaiver.create({
+                    data: {
+                        ...waiverData,
+                        studentId: newStudent.id
+                    }
+                });
+            }
 
-    //Find the intended program by its ID
-    async findProgramById(id: string): Promise<Program | null> {
-        return prisma.program.findUnique({
-            where: { id }
+            return newUser;
         });
     }
 }
