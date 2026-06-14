@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import {
   Card,
   CardContent,
@@ -20,18 +22,25 @@ import {
   FileText,
   Download,
 } from "lucide-react";
-
-export default function ApplicantDashboard() {
-  const applicant = {
-    firstName: "Juan",
-    program: "Master of Science in Computer Science",
-    applicantId: "APP-2026-00123",
-    alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-    currentStep: 1,
-    examDate: "June 15, 2026",
-    examTime: "9:00 AM — 12:00 PM",
-    strikeCount: 0,
-  };
+export default async function ApplicantDashboard() {
+  // 1. Grab the secure session
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.accessToken) {
+    return <div>Please log in to view your dashboard.</div>;
+  }
+  // 2. Fetch the real data from our new secure backend API
+  const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+  const res = await fetch(`${apiUrl}/api/applicant/profile`, {
+    headers: {
+      Authorization: `Bearer ${session.user.accessToken}`,
+    },
+    cache: "no-store", // Ensure we always get the freshest status
+  });
+  if (!res.ok) {
+    return <div>Error loading profile data.</div>;
+  }
+  // 3. This dynamically replaces the hardcoded data!
+  const applicant = await res.json();
 
   return (
     <div className="space-y-4">
