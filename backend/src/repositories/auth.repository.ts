@@ -16,7 +16,7 @@ export class AuthRepository {
     }
 
     async findStudentByStudentNumber(studentNumber: string, dob?: Date): Promise <(Student & { user: User}) | null> {
-         const whereClause: any = { studentNumber };
+         const whereClause: Prisma.StudentWhereInput = { studentNumber };
          if (dob) {
             whereClause.dateOfBirth = dob;
          }
@@ -46,7 +46,11 @@ export class AuthRepository {
     }
 
     // Creates User, Student, and optionally BridgingWaiver atomically
-    async registerApplicant(userData: any, studentData: any, waiverData: any = null): Promise <User> {
+    async registerApplicant(
+        userData: Prisma.UserCreateInput, 
+        studentData: Prisma.StudentCreateWithoutUserInput, 
+        waiverData: { intendedProgramId: string; undergraduateProgramId?: string } | null = null
+    ): Promise<User> {
         return prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: userData
@@ -55,7 +59,7 @@ export class AuthRepository {
             const newStudent = await tx.student.create({
                 data: {
                     ...studentData,
-                    userId: newUser.id,
+                    user: { connect: { id: newUser.id } },
                 }
             });
 
@@ -63,8 +67,11 @@ export class AuthRepository {
             if (waiverData) {
                 await tx.applicantBridgingWaiver.create({
                     data: {
-                        ...waiverData,
-                        studentId: newStudent.id
+                        student: { connect: { id: newStudent.id } },
+                        intendedProgram: { connect: { id: waiverData.intendedProgramId } },
+                        ...(waiverData.undergraduateProgramId && {
+                            undergraduateProgram: { connect: { id: waiverData.undergraduateProgramId } }
+                        })
                     }
                 });
             }

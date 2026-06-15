@@ -6,7 +6,7 @@ const router = Router();
 const applicantController = new ApplicantController();
 
 //GET api/applicant/profile
-//authenticatJWT checks if they are logged in
+//authenticateJWT checks if they are logged in
 //requireRole makes sure they are an AAPLICANT
 router.get(
   "/profile",

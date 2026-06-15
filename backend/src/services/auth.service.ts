@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthRepository } from '../repositories/auth.repository';
 import { RegisterInput, LoginInput, UserResponse, LoginResponse } from '../interfaces/auth.interfaces';
-import { UserRole, AdmissionStatus, AlignmentStatus } from '@prisma/client';
+import { Prisma, UserRole, AdmissionStatus, AlignmentStatus } from '@prisma/client';
+import { AppError } from '../utils/AppError';
 
 export class AuthService {
     private authRepository = new AuthRepository();
@@ -10,7 +11,7 @@ export class AuthService {
     private getJwtSecret(): string {
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-            throw new Error("JWT_SECRET environment variable is missing!");
+            throw new AppError("JWT_SECRET environment variable is missing!", 500);
         }
         return secret;
     }
@@ -72,18 +73,18 @@ export class AuthService {
         // 1. Check existing records
         const existingUser = await this.authRepository.findUserByEmail(data.email);
         if (existingUser) {
-            throw new Error("Email is already registered!");
+            throw new AppError("Email is already registered!", 409);
         }
 
         const existingApplicant = await this.authRepository.findStudentByApplicantId(data.applicantId);
         if (existingApplicant) {
-            throw new Error("Applicant ID is already registered!");
+            throw new AppError("Applicant ID is already registered!", 409);
         }
 
         // 2. Fetch intended and prerequisite programs
         const intendedProgram = await this.authRepository.findProgramById(data.programId);
         if (!intendedProgram) {
-            throw new Error("Selected intended program could not be found!");
+            throw new AppError("Selected intended program could not be found!", 404);
         }
 
         let prereqName = "";
@@ -91,11 +92,11 @@ export class AuthService {
 
         if (data.programType === "Doctoral") {
             const masters = await this.authRepository.findProgramById(prereqId);
-            if (!masters) throw new Error("Prerequisite Masters program not found!");
+            if (!masters) throw new AppError("Prerequisite Masters program not found!", 404);
             prereqName = masters.programName;
         } else {
             const undergrad = await this.authRepository.findUndergraduateProgramById(prereqId);
-            if (!undergrad) throw new Error("Prerequisite Undergraduate program not found!");
+            if (!undergrad) throw new AppError("Prerequisite Undergraduate program not found!", 404);
             prereqName = undergrad.programName;
         }
 
@@ -107,7 +108,7 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
         // 5. Construct payloads
-        const userData = {
+        const userData: Prisma.UserCreateInput = {
             email: data.email,
             passwordHash: hashedPassword,
             firstName: data.firstName,
@@ -117,25 +118,27 @@ export class AuthService {
 
         const parseDob = new Date(`${data.dateOfBirth}T00:00:00.000Z`);
 
-        const studentData: any = {
+        const studentData: Prisma.StudentCreateWithoutUserInput = {
             cellphone: data.cellphone,
             dateOfBirth: parseDob,
             pinnacleApplicantId: data.applicantId,
-            programId: intendedProgram.id,
+            program: { connect: { id: intendedProgram.id } },
             admissionStatus: AdmissionStatus.APPLICANT,
             isProgramAligned: isAligned,
             alignmentStatus: alignmentStatus
         };
 
-        let bridgingWaiverData: any = null;
+        let bridgingWaiverData: { intendedProgramId: string; undergraduateProgramId?: string } | null = null;
 
         if (data.programType === "Doctoral") {
-            studentData.previousMastersProgramId = prereqId;
+            // For doctoral, connect previous masters program
+            (studentData as any).previousMastersProgram = { connect: { id: prereqId } };
             if (!isAligned) {
                 bridgingWaiverData = { intendedProgramId: intendedProgram.id };
             }
         } else {
-            studentData.undergraduateProgramId = prereqId;
+            // For masters, connect undergraduate program
+            (studentData as any).undergraduateProgram = { connect: { id: prereqId } };
             if (!isAligned) {
                 bridgingWaiverData = {
                     intendedProgramId: intendedProgram.id,
@@ -154,29 +157,29 @@ export class AuthService {
         let user = null;
 
         if (data.role === 'applicant') {
-            if (!data.applicantId) throw new Error("Applicant ID is required!");
+            if (!data.applicantId) throw new AppError("Applicant ID is required!", 400);
             const student = await this.authRepository.findStudentByApplicantId(data.applicantId);
             user = student?.user || null;
         }
         else if (data.role === 'student') {
-            if (!data.studentId) throw new Error("Student ID is required!");
+            if (!data.studentId) throw new AppError("Student ID is required!", 400);
             const dob = data.birthdate ? new Date(`${data.birthdate}T00:00:00.000Z`) : undefined;
 
             const student = await this.authRepository.findStudentByStudentNumber(data.studentId, dob);
             user = student?.user || null;
         }
         else {
-            if (!data.email) throw new Error("Email is required!");
+            if (!data.email) throw new AppError("Email is required!", 400);
             user = await this.authRepository.findUserByEmail(data.email);
         }
 
         if (!user) {
-            throw new Error("Invalid credentials!");
+            throw new AppError("Invalid credentials!", 401);
         }
 
         const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
         if (!isPasswordValid) {
-            throw new Error("Invalid login credentials!");
+            throw new AppError("Invalid login credentials!", 401);
         }
 
         const token = jwt.sign(

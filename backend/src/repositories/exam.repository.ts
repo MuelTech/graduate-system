@@ -1,7 +1,11 @@
 import prisma from '../config/database';
+import { Prisma, PrismaClient } from '@prisma/client';
+
+// Type for the transaction client that Prisma provides inside $transaction
+type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 export class ExamRepository {
-    async createSlot(data: any) {
+    async createSlot(data: Prisma.ExamSlotUncheckedCreateInput) {
         return prisma.examSlot.create({ data });
     }
 
@@ -17,29 +21,29 @@ export class ExamRepository {
     }
 
     // --- TRANSACTIONAL QUERIES ---
-    async runInTransaction(callback: (tx: any) => Promise<any>) {
+    async runInTransaction<T>(callback: (tx: TransactionClient) => Promise<T>): Promise<T> {
         return prisma.$transaction(callback);
     }
 
-    async getStudentWithExamApps(userId: string, tx: any) {
+    async getStudentWithExamApps(userId: string, tx: TransactionClient) {
         return tx.student.findUnique({
             where: { userId },
             include: { examApplications: true }
         });
     }
 
-    async getSlotById(slotId: string, tx: any) {
+    async getSlotById(slotId: string, tx: TransactionClient) {
         return tx.examSlot.findUnique({ where: { id: slotId }});
     }
 
-    async incrementSlotTaken(slotId: string, tx: any) {
+    async incrementSlotTaken(slotId: string, tx: TransactionClient) {
         return tx.examSlot.update({
             where: { id: slotId },
             data: { slotsTaken: { increment: 1 } }
         });
     }
 
-    async createApplication(data: any, tx: any) {
+    async createApplication(data: Prisma.EntranceExamApplicationUncheckedCreateInput, tx: TransactionClient) {
         return tx.entranceExamApplication.create({ data });
     }
 }
