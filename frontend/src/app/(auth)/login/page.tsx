@@ -90,7 +90,11 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError(res.error);
+        if (res.error === "CredentialsSignin") {
+          setError("Invalid credentials. Please check your details and try again.");
+        } else {
+          setError("An error occurred during sign in.");
+        }
       } else {
         router.push(`/${role}/dashboard`); // Successfully logged in! Redirect to dashboard/home.
       }

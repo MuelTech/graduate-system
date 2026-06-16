@@ -1,9 +1,8 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
 export const apiServerRequest = async (url: string, options: RequestInit = {}) => {
-  const session = await getServerSession(authOptions);
+ const session = await auth();
   const token = session?.user?.accessToken;
 
   const headers = new Headers(options.headers);

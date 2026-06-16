@@ -12,4 +12,16 @@ router.post('/slots', authenticateJWT, requireRole(['ADMIN']), examController.cr
 router.get('/slots/available', authenticateJWT, requireRole(['APPLICANT']), examController.getAvailableSlots);
 router.post('/schedule', authenticateJWT, requireRole(['APPLICANT']), examController.scheduleExam);
 
+// 🔒 ADMIN ONLY: View all slots
+router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.getAllSlots);
+
+// 🔒 APPLICANT ONLY: Get applicant status
+router.get('/status', authenticateJWT, requireRole(['APPLICANT']), examController.getApplicantStatus);
+
+// 🔒 ADMIN ONLY: Update a slot
+router.put('/slots/:id', authenticateJWT, requireRole(['ADMIN']), examController.updateSlot);
+
+// 🔒 ADMIN ONLY: Toggle slot active status
+router.patch('/slots/:id/status', authenticateJWT, requireRole(['ADMIN']), examController.toggleSlotStatus);
+
 export default router;

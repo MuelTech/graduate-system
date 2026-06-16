@@ -1,88 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CalendarClock,
-  Clock,
   AlertTriangle,
   CheckCircle2,
   Lock,
   ArrowLeft,
   Mail,
-  Info,
   X,
   LayoutGrid,
   List,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
+
+interface ApplicantStatus {
+  alignmentStatus: string;
+  strikeCount: number;
+  programId: string;
+  confirmedSlot?: {
+    id: string;
+    examDate: string;
+    examTime: string;
+    programName: string;
+  };
+}
+
+interface AvailableSlot {
+  id: string;
+  examDate: string;
+  examTime: string;
+  maxSlots: number;
+  slotsTaken: number;
+}
 
 export default function ApplicantSchedulePage() {
-  const applicant = {
-    alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-    strikeCount: 0,
-    confirmedSlot: null as null | {
-      date: string;
-      time: string;
-      program: string;
-    },
-  };
+  const [applicant, setApplicant] = useState<ApplicantStatus | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
-  const [confirmSlot, setConfirmSlot] = useState<null | {
-    date: string;
-    time: string;
-    program: string;
-  }>(null);
+  const [confirmSlot, setConfirmSlot] = useState<AvailableSlot | null>(null);
 
-  const availableSlots = [
-    {
-      date: "June 15, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 8,
-      status: "active",
-    },
-    {
-      date: "June 15, 2026",
-      time: "1:00 PM — 4:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 3,
-      status: "active",
-    },
-    {
-      date: "June 18, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "PhD / DIT",
-      slotsAvailable: 12,
-      status: "active",
-    },
-    {
-      date: "June 20, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "All Programs",
-      slotsAvailable: 0,
-      status: "full",
-    },
-    {
-      date: "June 22, 2026",
-      time: "1:00 PM — 4:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 15,
-      status: "active",
-    },
-  ];
+  useEffect(() => {
+    fetchStatus();
+  }, []);
 
-  const isLocked = applicant.alignmentStatus === "pending_waiver";
-  const isScheduled = applicant.confirmedSlot !== null;
+  async function fetchStatus() {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const statusData = await apiClientRequest("/exam/status", {
+        method: "GET",
+      });
+      setApplicant(statusData);
+
+      if (
+        statusData.alignmentStatus === "ALIGNED" &&
+        !statusData.confirmedSlot
+      ) {
+        const slotsData = await apiClientRequest(
+          `/exam/slots/available?programId=${statusData.programId}`,
+          { method: "GET" },
+        );
+        setAvailableSlots(slotsData);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to load schedule data.");
+      } else {
+        setError("Failed to load schedule data.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSchedule = async () => {
+    try {
+      if (!confirmSlot) return;
+      await apiClientRequest("/exam/schedule", {
+        method: "POST",
+        body: JSON.stringify({ slotId: confirmSlot.id }),
+      });
+      setConfirmSlot(null);
+      await fetchStatus(); // Refresh data
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(err.message || "Failed to schedule exam.");
+      } else {
+        alert("Failed to schedule exam.");
+      }
+    }
+  };
+
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatDate = (isoString: string) => {
+    return new Date(isoString).toLocaleDateString([], {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  if (isLoading)
+    return <div className="p-4 text-center">Loading your schedule...</div>;
+  if (error)
+    return <div className="p-4 text-center text-red-500">Error: {error}</div>;
+
+  const isLocked = applicant?.alignmentStatus === "PENDING_WAIVER";
+  const isScheduled = !!applicant?.confirmedSlot;
 
   return (
     <div className="space-y-4">
@@ -121,7 +161,8 @@ export default function ApplicantSchedulePage() {
                 href="/applicant/alignment"
                 className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
               >
-                View Alignment Details <ArrowLeft className="h-3 w-3 rotate-180" />
+                View Alignment Details{" "}
+                <ArrowLeft className="h-3 w-3 rotate-180" />
               </Link>
             </div>
           </CardContent>
@@ -129,11 +170,11 @@ export default function ApplicantSchedulePage() {
       )}
 
       {/* Two-Strike Warning */}
-      {!isLocked && applicant.strikeCount > 0 && (
+      {!isLocked && (applicant?.strikeCount ?? 0) > 0 && (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-700">
-            Warning: You have {applicant.strikeCount} missed attempt(s). Two
+            Warning: You have {applicant?.strikeCount} missed attempt(s). Two
             missed attempts result in disqualification.
           </AlertDescription>
         </Alert>
@@ -159,13 +200,13 @@ export default function ApplicantSchedulePage() {
                 <div>
                   <p className="text-xs text-[var(--earist-body-text)]">Date</p>
                   <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.date}
+                    {formatDate(applicant?.confirmedSlot?.examDate || "")}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--earist-body-text)]">Time</p>
                   <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.time}
+                    {formatTime(applicant?.confirmedSlot?.examTime || "")}
                   </p>
                 </div>
                 <div>
@@ -173,7 +214,7 @@ export default function ApplicantSchedulePage() {
                     Program
                   </p>
                   <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.program}
+                    {applicant?.confirmedSlot?.programName}
                   </p>
                 </div>
               </div>
@@ -213,8 +254,7 @@ export default function ApplicantSchedulePage() {
               </button>
             </div>
             <p className="text-xs text-[var(--earist-body-text)]">
-              {availableSlots.filter((s) => s.status === "active").length} slots
-              available
+              {availableSlots.length} slots available
             </p>
           </div>
 
@@ -232,11 +272,8 @@ export default function ApplicantSchedulePage() {
                         <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
                           Exam Time
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
-                          Program
-                        </th>
                         <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
-                          Slots
+                          Slots Left
                         </th>
                         <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
                           Action
@@ -244,35 +281,43 @@ export default function ApplicantSchedulePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {availableSlots.map((slot, i) => {
-                        const isFull = slot.status === "full";
+                      {availableSlots.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-4 text-center text-gray-500"
+                          >
+                            No available slots found.
+                          </td>
+                        </tr>
+                      )}
+                      {availableSlots.map((slot) => {
+                        const slotsLeft = slot.maxSlots - slot.slotsTaken;
+                        const isFull = slotsLeft <= 0;
                         return (
                           <tr
-                            key={i}
+                            key={slot.id}
                             className={`border-b border-[var(--earist-border-gray)] last:border-0 ${
                               isFull ? "opacity-50" : ""
                             }`}
                           >
                             <td className="px-4 py-3 font-medium text-[var(--earist-primary)]">
-                              {slot.date}
+                              {formatDate(slot.examDate)}
                             </td>
                             <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                              {slot.time}
-                            </td>
-                            <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                              {slot.program}
+                              {formatTime(slot.examTime)}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <Badge
                                 className={
                                   isFull
                                     ? "bg-red-100 text-red-700"
-                                    : slot.slotsAvailable <= 5
+                                    : slotsLeft <= 5
                                       ? "bg-amber-100 text-amber-700"
                                       : "bg-green-100 text-green-700"
                                 }
                               >
-                                {isFull ? "Full" : `${slot.slotsAvailable} left`}
+                                {isFull ? "Full" : `${slotsLeft} left`}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -302,13 +347,11 @@ export default function ApplicantSchedulePage() {
           {/* Calendar View */}
           {viewMode === "calendar" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {availableSlots.map((slot, i) => {
-                const isFull = slot.status === "full";
+              {availableSlots.map((slot) => {
+                const slotsLeft = slot.maxSlots - slot.slotsTaken;
+                const isFull = slotsLeft <= 0;
                 return (
-                  <Card
-                    key={i}
-                    className={isFull ? "opacity-50" : ""}
-                  >
+                  <Card key={slot.id} className={isFull ? "opacity-50" : ""}>
                     <CardContent className="p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--earist-surface-light-red)]">
@@ -318,22 +361,19 @@ export default function ApplicantSchedulePage() {
                           className={
                             isFull
                               ? "bg-red-100 text-red-700"
-                              : slot.slotsAvailable <= 5
+                              : slotsLeft <= 5
                                 ? "bg-amber-100 text-amber-700"
                                 : "bg-green-100 text-green-700"
                           }
                         >
-                          {isFull ? "Full" : `${slot.slotsAvailable} slots`}
+                          {isFull ? "Full" : `${slotsLeft} slots`}
                         </Badge>
                       </div>
                       <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                        {slot.date}
-                      </p>
-                      <p className="text-xs text-[var(--earist-body-text)]">
-                        {slot.time}
+                        {formatDate(slot.examDate)}
                       </p>
                       <p className="mb-3 text-xs text-[var(--earist-body-text)]">
-                        {slot.program}
+                        {formatTime(slot.examTime)}
                       </p>
                       <Button
                         size="sm"
@@ -356,13 +396,6 @@ export default function ApplicantSchedulePage() {
 
           {/* Info Notes */}
           <div className="space-y-2">
-            {/* <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
-              <p className="text-xs text-[var(--earist-body-text)]">
-                Exam application fee is collected through Registrar. No payment
-                is required in this portal.
-              </p>
-            </div> */}
             <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
               <p className="text-xs text-[var(--earist-body-text)]">
@@ -394,23 +427,15 @@ export default function ApplicantSchedulePage() {
                 <div>
                   <p className="text-xs text-[var(--earist-body-text)]">Date</p>
                   <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {confirmSlot.date}
+                    {formatDate(confirmSlot.examDate)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-[var(--earist-body-text)]">Time</p>
                   <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {confirmSlot.time}
+                    {formatTime(confirmSlot.examTime)}
                   </p>
                 </div>
-              </div>
-              <div className="mt-2">
-                <p className="text-xs text-[var(--earist-body-text)]">
-                  Program
-                </p>
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                  {confirmSlot.program}
-                </p>
               </div>
             </div>
             <Alert className="mb-4 border-amber-200 bg-amber-50">
@@ -428,9 +453,7 @@ export default function ApplicantSchedulePage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setConfirmSlot(null);
-                }}
+                onClick={handleSchedule}
                 className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
               >
                 Confirm Schedule

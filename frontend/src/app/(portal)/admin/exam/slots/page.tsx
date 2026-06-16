@@ -1,98 +1,168 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  CalendarClock,
-  Edit,
-  Trash2,
-  X,
-  Users,
-} from "lucide-react";
+import { Plus, CalendarClock, Edit, Trash2, X, Users } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
+
+interface Slot {
+  id: string;
+  programId: string;
+  examDate: string;
+  examTime: string;
+  maxSlots: number;
+  slotsTaken: number;
+  isActive: boolean;
+  program?: { programName: string };
+}
+
+interface Program {
+  id: string;
+  programName: string;
+}
 
 export default function AdminExamSlotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const slots = [
-    {
-      id: 1,
-      program: "MSCS / MIT",
-      examDate: "June 15, 2026",
-      examTime: "9:00 AM — 12:00 PM",
-      maxSlots: 30,
-      slotsTaken: 22,
-      status: "active" as "active" | "full" | "inactive",
-    },
-    {
-      id: 2,
-      program: "MSCS / MIT",
-      examDate: "June 15, 2026",
-      examTime: "1:00 PM — 4:00 PM",
-      maxSlots: 30,
-      slotsTaken: 30,
-      status: "full" as "active" | "full" | "inactive",
-    },
-    {
-      id: 3,
-      program: "PhD / DIT",
-      examDate: "June 18, 2026",
-      examTime: "9:00 AM — 12:00 PM",
-      maxSlots: 20,
-      slotsTaken: 8,
-      status: "active" as "active" | "full" | "inactive",
-    },
-    {
-      id: 4,
-      program: "All Programs",
-      examDate: "June 20, 2026",
-      examTime: "9:00 AM — 12:00 PM",
-      maxSlots: 50,
-      slotsTaken: 45,
-      status: "active" as "active" | "full" | "inactive",
-    },
-    {
-      id: 5,
-      program: "MAED",
-      examDate: "June 22, 2026",
-      examTime: "1:00 PM — 4:00 PM",
-      maxSlots: 25,
-      slotsTaken: 0,
-      status: "inactive" as "active" | "full" | "inactive",
-    },
-    {
-      id: 6,
-      program: "MSCS / MIT",
-      examDate: "May 25, 2026",
-      examTime: "9:00 AM — 12:00 PM",
-      maxSlots: 30,
-      slotsTaken: 28,
-      status: "inactive" as "active" | "full" | "inactive",
-    },
-  ];
+  // Form State
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [programId, setProgramId] = useState("");
+  const [examDate, setExamDate] = useState("");
+  const [examTime, setExamTime] = useState("");
+  const [maxSlots, setMaxSlots] = useState("");
 
-  const activeSlots = slots.filter((s) => s.status === "active").length;
-  const fullSlots = slots.filter((s) => s.status === "full").length;
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    try {
+      setIsLoading(true);
+      const [slotsData, programsData] = await Promise.all([
+        apiClientRequest("/exam/slots", { method: "GET" }),
+        apiClientRequest("/programs", { method: "GET" }),
+      ]);
+      setSlots(slotsData);
+      
+      const allPrograms = [
+        ...(programsData.graduatePrograms || [])
+      ];
+      setPrograms(allPrograms);
+    } catch (error) {
+      console.error("Failed to load data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateSlot = async () => {
+    try {
+      const localDateTime = new Date(`${examDate}T${examTime}`);
+      const dateTimeString = localDateTime.toISOString();
+
+      if (editingSlotId) {
+        await apiClientRequest(`/exam/slots/${editingSlotId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            programId,
+            examDate,
+            examTime: dateTimeString,
+            maxSlots: parseInt(maxSlots),
+          }),
+        });
+      } else {
+        await apiClientRequest("/exam/slots", {
+          method: "POST",
+          body: JSON.stringify({
+            programId,
+            examDate,
+            examTime: dateTimeString,
+            maxSlots: parseInt(maxSlots),
+          }),
+        });
+      }
+
+      setShowCreateModal(false);
+      setEditingSlotId(null);
+      fetchData(); // Refresh slots
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(err.message || "Failed to save slot.");
+      } else {
+        alert("Failed to save slot.");
+      }
+    }
+  };
+
+  const handleEditClick = (slot: Slot) => {
+    setEditingSlotId(slot.id);
+    setProgramId(slot.programId || "");
+    
+    // Format date for <input type="date">
+    const dateObj = new Date(slot.examDate);
+    const dateString = dateObj.toISOString().split("T")[0];
+    setExamDate(dateString);
+    
+    // Format time for <input type="time"> (HH:mm)
+    const timeObj = new Date(slot.examTime);
+    const timeString = timeObj.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" });
+    setExamTime(timeString);
+    
+    setMaxSlots(slot.maxSlots.toString());
+    setShowCreateModal(true);
+  };
+
+  const handleToggleStatus = async (slotId: string, currentStatus: boolean) => {
+    try {
+      await apiClientRequest(`/exam/slots/${slotId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: !currentStatus }),
+      });
+      fetchData();
+    } catch (err: unknown) {
+      alert("Failed to update slot status.");
+      console.log("Error:", err);
+    }
+  };
+
+  const activeSlots = slots.filter(
+    (s) => s.isActive && s.slotsTaken < s.maxSlots,
+  ).length;
+  const fullSlots = slots.filter(
+    (s) => s.isActive && s.slotsTaken >= s.maxSlots,
+  ).length;
   const totalApplicants = slots.reduce((sum, s) => sum + s.slotsTaken, 0);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-green-100 text-green-700">Active</Badge>;
-      case "full":
-        return <Badge className="bg-red-100 text-red-700">Full</Badge>;
-      case "inactive":
-        return <Badge className="bg-gray-100 text-gray-500">Inactive</Badge>;
-      default:
-        return null;
-    }
+  const getStatusBadge = (
+    isActive: boolean,
+    slotsTaken: number,
+    maxSlots: number,
+  ) => {
+    if (!isActive)
+      return <Badge className="bg-gray-100 text-gray-500">Inactive</Badge>;
+    if (slotsTaken >= maxSlots)
+      return <Badge className="bg-red-100 text-red-700">Full</Badge>;
+    return <Badge className="bg-green-100 text-green-700">Active</Badge>;
+  };
+
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatDate = (isoString: string) => {
+    return new Date(isoString).toLocaleDateString([], {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   return (
@@ -111,7 +181,14 @@ export default function AdminExamSlotsPage() {
           </p>
         </div>
         <Button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setEditingSlotId(null);
+            setProgramId("");
+            setExamDate("");
+            setExamTime("");
+            setMaxSlots("");
+            setShowCreateModal(true);
+          }}
           className="bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
         >
           <Plus className="mr-1 h-4 w-4" />
@@ -123,29 +200,37 @@ export default function AdminExamSlotsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Total Slots</p>
+            <p className="text-xs text-[var(--earist-body-text)]">
+              Total Slots
+            </p>
             <p className="text-lg font-bold text-[var(--earist-primary)]">
-              {slots.length}
+              {isLoading ? "..." : slots.length}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-[var(--earist-body-text)]">Active</p>
-            <p className="text-lg font-bold text-green-600">{activeSlots}</p>
+            <p className="text-lg font-bold text-green-600">
+              {isLoading ? "..." : activeSlots}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-[var(--earist-body-text)]">Full</p>
-            <p className="text-lg font-bold text-red-600">{fullSlots}</p>
+            <p className="text-lg font-bold text-red-600">
+              {isLoading ? "..." : fullSlots}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Total Applicants</p>
+            <p className="text-xs text-[var(--earist-body-text)]">
+              Total Applicants
+            </p>
             <p className="text-lg font-bold text-[var(--earist-primary)]">
-              {totalApplicants}
+              {isLoading ? "..." : totalApplicants}
             </p>
           </CardContent>
         </Card>
@@ -179,9 +264,16 @@ export default function AdminExamSlotsPage() {
                 </tr>
               </thead>
               <tbody>
+                {slots.length === 0 && !isLoading && (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-center text-gray-500">
+                      No exam slots found.
+                    </td>
+                  </tr>
+                )}
                 {slots.map((slot) => {
                   const percentage = Math.round(
-                    (slot.slotsTaken / slot.maxSlots) * 100
+                    (slot.slotsTaken / slot.maxSlots) * 100,
                   );
                   return (
                     <tr
@@ -192,15 +284,15 @@ export default function AdminExamSlotsPage() {
                         <div className="flex items-center gap-2">
                           <CalendarClock className="h-4 w-4 text-[var(--earist-accent)]" />
                           <span className="font-medium text-[var(--earist-primary)]">
-                            {slot.program}
+                            {slot.program?.programName || "All Programs"}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                        {slot.examDate}
+                        {formatDate(slot.examDate)}
                       </td>
                       <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                        {slot.examTime}
+                        {formatTime(slot.examTime)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-center gap-1">
@@ -219,32 +311,39 @@ export default function AdminExamSlotsPage() {
                                     ? "bg-amber-500"
                                     : "bg-green-500"
                               }`}
-                              style={{ width: `${percentage}%` }}
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
                             />
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {getStatusBadge(slot.status)}
+                        {getStatusBadge(
+                          slot.isActive,
+                          slot.slotsTaken,
+                          slot.maxSlots,
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
                           <button
+                            onClick={() => handleEditClick(slot)}
                             className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
                             title="Edit Slot"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          {slot.status === "active" && (
+                          {slot.isActive && (
                             <button
+                              onClick={() => handleToggleStatus(slot.id, slot.isActive)}
                               className="rounded p-1.5 text-red-600 hover:bg-red-50"
                               title="Deactivate Slot"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           )}
-                          {slot.status === "inactive" && (
+                          {!slot.isActive && (
                             <button
+                              onClick={() => handleToggleStatus(slot.id, slot.isActive)}
                               className="rounded p-1.5 text-green-600 hover:bg-green-50"
                               title="Activate Slot"
                             >
@@ -268,7 +367,7 @@ export default function AdminExamSlotsPage() {
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-[var(--earist-primary)]">
-                Create Exam Slot
+                {editingSlotId ? "Edit Exam Slot" : "Create Exam Slot"}
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -282,12 +381,17 @@ export default function AdminExamSlotsPage() {
                 <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
                   Program
                 </label>
-                <select className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none">
+                <select
+                  value={programId}
+                  onChange={(e) => setProgramId(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                >
                   <option value="">Select program...</option>
-                  <option value="mscs_mit">MSCS / MIT</option>
-                  <option value="phd_dit">PhD / DIT</option>
-                  <option value="maed">MAED</option>
-                  <option value="all">All Programs</option>
+                  {programs.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.programName}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -296,33 +400,21 @@ export default function AdminExamSlotsPage() {
                 </label>
                 <input
                   type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
                   className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
-                  Exam Time
+                  Exam Time (Start)
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-[11px] text-[var(--earist-body-text)]">
-                      Start
-                    </label>
-                    <input
-                      type="time"
-                      className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] text-[var(--earist-body-text)]">
-                      End
-                    </label>
-                    <input
-                      type="time"
-                      className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
-                    />
-                  </div>
-                </div>
+                <input
+                  type="time"
+                  value={examTime}
+                  onChange={(e) => setExamTime(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
@@ -331,14 +423,12 @@ export default function AdminExamSlotsPage() {
                 <input
                   type="number"
                   min={1}
+                  value={maxSlots}
+                  onChange={(e) => setMaxSlots(e.target.value)}
                   placeholder="e.g., 30"
                   className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
                 />
               </div>
-              {/* <p className="text-xs text-[var(--earist-body-text)]">
-                Note: Exam application fee is collected through Pinnacle. No
-                payment fields required.
-              </p> */}
             </div>
             <div className="mt-4 flex gap-3">
               <Button
@@ -349,10 +439,11 @@ export default function AdminExamSlotsPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                onClick={handleCreateSlot}
+                disabled={!programId || !examDate || !examTime || !maxSlots}
+                className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90 disabled:bg-gray-400"
               >
-                Create Slot
+                {editingSlotId ? "Update Slot" : "Create Slot"}
               </Button>
             </div>
           </div>

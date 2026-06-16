@@ -56,4 +56,60 @@ export class ExamService {
             return application;
         });
     }
+
+        async getAllSlots() {
+        return this.examRepo.getAllSlots();
+    }
+
+    async getApplicantStatus(userId: string) {
+        const student = await this.examRepo.getApplicantStatus(userId);
+        if (!student) throw new Error("Student not found");
+
+        const applications = student.examApplications || [];
+        const totalStrikes = applications.reduce((sum: number, app: any) => sum + app.strikeCount, 0);
+
+        // Find the active confirmed slot if it exists
+        const activeApp = applications.find((app: any) => 
+            ['PENDING', 'APPROVED', 'TAKEN', 'PASSED', 'FAILED'].includes(app.status)
+        );
+
+        let confirmedSlot = null;
+        if (activeApp && activeApp.slot) {
+            confirmedSlot = {
+                id: activeApp.slot.id,
+                examDate: activeApp.slot.examDate,
+                examTime: activeApp.slot.examTime,
+                programName: activeApp.slot.program?.programName || 'Unknown Program'
+            };
+        }
+
+        return {
+            alignmentStatus: student.alignmentStatus,
+            strikeCount: totalStrikes,
+            programId: student.programId,
+            confirmedSlot
+        };
+    }
+
+        async updateSlot(slotId: string, data: { programId: string, examDate: string, examTime: string, maxSlots: number }) {
+        const updatedSlot = await this.examRepo.updateSlot(slotId, {
+            programId: data.programId,
+            examDate: new Date(data.examDate),
+            examTime: new Date(data.examTime),
+            maxSlots: data.maxSlots
+        });
+
+        // Email Notification Placeholder
+        const applications = await this.examRepo.getApplicantsForSlot(slotId);
+        if (applications.length > 0) {
+            console.log(`[EMAIL QUEUE] Sending schedule change notification to ${applications.length} applicants for slot ${slotId}`);
+            // TODO: Implement actual Nodemailer logic here later
+        }
+
+        return updatedSlot;
+    }
+
+    async toggleSlotStatus(slotId: string, isActive: boolean) {
+        return this.examRepo.updateSlot(slotId, { isActive });
+    }
 }

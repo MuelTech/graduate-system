@@ -24,6 +24,39 @@ export class ExamController {
     }
   };
 
+  getAllSlots = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const slots = await this.examService.getAllSlots();
+      res.status(200).json(slots);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
+
+  getApplicantStatus = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const status = await this.examService.getApplicantStatus(userId);
+      res.status(200).json(status);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
+
   getAvailableSlots = async (
     req: AuthenticatedRequest,
     res: Response,
@@ -74,6 +107,37 @@ export class ExamController {
       } else {
         res.status(500).json({ error: "An unexpected error occurred." });
       }
+    }
+  };
+
+  updateSlot = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const slot = await this.examService.updateSlot(id, req.body);
+      res.status(200).json(slot);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
+
+  toggleSlotStatus = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const { isActive } = req.body;
+      const slot = await this.examService.toggleSlotStatus(id, isActive);
+      res.status(200).json(slot);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
     }
   };
 }

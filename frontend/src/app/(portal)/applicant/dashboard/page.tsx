@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/auth";
 import {
   Card,
   CardContent,
@@ -24,7 +23,7 @@ import {
 } from "lucide-react";
 export default async function ApplicantDashboard() {
   // 1. Grab the secure session
-  const session = await getServerSession(authOptions);
+ const session = await auth();
   if (!session?.user?.accessToken) {
     return <div>Please log in to view your dashboard.</div>;
   }

@@ -46,4 +46,40 @@ export class ExamRepository {
     async createApplication(data: Prisma.EntranceExamApplicationUncheckedCreateInput, tx: TransactionClient) {
         return tx.entranceExamApplication.create({ data });
     }
+
+        async getAllSlots() {
+        return prisma.examSlot.findMany({
+            include: { program: true },
+            orderBy: { examDate: 'asc' }
+        });
+    }
+
+    async getApplicantStatus(userId: string) {
+        return prisma.student.findUnique({
+            where: { userId },
+            include: {
+                examApplications: {
+                    include: {
+                        slot: {
+                            include: { program: true }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+        async updateSlot(slotId: string, data: Prisma.ExamSlotUncheckedUpdateInput) {
+        return prisma.examSlot.update({
+            where: { id: slotId },
+            data
+        });
+    }
+
+    async getApplicantsForSlot(slotId: string) {
+        return prisma.entranceExamApplication.findMany({
+            where: { slotId },
+            include: { student: { include: { user: true } } }
+        });
+    }
 }
