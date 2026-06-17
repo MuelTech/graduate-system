@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   User,
@@ -42,8 +42,17 @@ export default function ApplicantLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  
+  // State for dynamic notifications
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // Generate User Avatar Initial from Session
+  const userInitial = session?.user?.email 
+    ? session.user.email.charAt(0).toUpperCase() 
+    : "U";
 
   return (
     <div className="flex min-h-screen bg-[var(--earist-surface-gray)]">
@@ -146,7 +155,7 @@ export default function ApplicantLayout({
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--earist-border-gray)] bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setSidebarOpen(true)}
+               onClick={() => setSidebarOpen(true)}
               className="text-[var(--earist-body-text)] lg:hidden"
             >
               <Menu className="h-6 w-6" />
@@ -164,12 +173,16 @@ export default function ApplicantLayout({
               className="relative rounded-full p-2 text-[var(--earist-body-text)] transition-colors hover:bg-[var(--earist-surface-light-red)] hover:text-[var(--earist-primary)]"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--earist-accent)] text-[10px] font-bold text-[var(--earist-primary)]">
-                3
-              </span>
+              {/* Only show badge if there are unread notifications */}
+              {unreadNotifications > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--earist-accent)] text-[10px] font-bold text-[var(--earist-primary)]">
+                  {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                </span>
+              )}
             </Link>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--earist-primary)] text-sm font-bold text-white">
-              J
+            {/* Dynamic Avatar using Session */}
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--earist-primary)] text-sm font-bold text-white uppercase" title={session?.user?.email || "User"}>
+              {userInitial}
             </div>
           </div>
         </header>

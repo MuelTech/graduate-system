@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
 import prisma from "./config/database";
 import masterRouter from "./routes";
 
@@ -26,6 +27,9 @@ app.get("/api/health", (req: Request, res: Response) => {
 
 // Connect to master router
 app.use("/api", masterRouter);
+
+// Serve uploads directory statically
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

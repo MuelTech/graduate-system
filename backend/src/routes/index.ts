@@ -3,6 +3,7 @@ import authRoutes from './auth.routes';
 import programRoutes from './program.routes';
 import applicantRoutes from './applicant.routes';
 import examRoutes from './exam.routes';
+import corRoutes from './cor.routes'
 
 const router = Router();
 
@@ -10,5 +11,6 @@ router.use('/auth', authRoutes);
 router.use('/programs', programRoutes);
 router.use('/applicant', applicantRoutes);
 router.use('/exam', examRoutes);
+router.use('/cor', corRoutes);
 
 export default router;

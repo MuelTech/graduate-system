@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClientRequest } from "@/lib/api.client";
 import {
   Card,
   CardContent,
@@ -20,78 +21,81 @@ import {
   GraduationCap,
   AlertTriangle,
   Shield,
+  Loader2
 } from "lucide-react";
 
+interface PendingUpload {
+  id: string;
+  originalFilename: string;
+  filePath: string;
+  createdAt: string;
+  student: {
+    programId: string;
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  };
+}
+
 export default function AdminCORValidationPage() {
-  const [selectedCor, setSelectedCor] = useState<number | null>(null);
+  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCor, setSelectedCor] = useState<string | null>(null);
+  
   const [showVerifyConfirm, setShowVerifyConfirm] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  
+  const [formData, setFormData] = useState({
+    studentNumber: "",
+    academicYear: "2026-2027",
+    semester: "First Semester",
+  });
 
-  const corQueue = [
-    {
-      id: 1,
-      name: "Maria Santos",
-      email: "maria.santos@gmail.com",
-      pinnacleId: "PIN-2026-002",
-      studentNumber: "2026-GS-00456",
-      program: "MSCS",
-      uploadDate: "June 1, 2026",
-      ocrStatus: "completed" as "pending" | "processing" | "completed",
-      extractedData: {
-        registrationNumber: "2026-1-00456",
-        academicYear: "2025-2026",
-        semester: "Second Semester",
-        program: "Master of Science in Computer Science",
-        yearLevel: "1st Year",
-        studentNumber: "2026-GS-00456",
-        totalUnits: 12,
-        tuitionFee: "₱18,500.00",
-        miscellaneousFee: "₱3,200.00",
-        totalAssessment: "₱21,700.00",
-      },
-    },
-    {
-      id: 2,
-      name: "Roberto Lim",
-      email: "roberto.lim@gmail.com",
-      pinnacleId: "PIN-2026-007",
-      studentNumber: "2026-GS-00461",
-      program: "DIT",
-      uploadDate: "June 2, 2026",
-      ocrStatus: "completed" as "pending" | "processing" | "completed",
-      extractedData: {
-        registrationNumber: "2026-1-00461",
-        academicYear: "2025-2026",
-        semester: "Second Semester",
-        program: "Doctor of Information Technology",
-        yearLevel: "1st Year",
-        studentNumber: "2026-GS-00461",
-        totalUnits: 9,
-        tuitionFee: "₱22,000.00",
-        miscellaneousFee: "₱3,500.00",
-        totalAssessment: "₱25,500.00",
-      },
-    },
-    {
-      id: 3,
-      name: "Juan Dela Cruz",
-      email: "juan.delacruz@gmail.com",
-      pinnacleId: "PIN-2026-001",
-      studentNumber: "2026-GS-00455",
-      program: "MSCS",
-      uploadDate: "June 3, 2026",
-      ocrStatus: "processing" as "pending" | "processing" | "completed",
-      extractedData: null,
-    },
-  ];
+  const fetchPending = async () => {
+    try {
+      const data = await apiClientRequest("/cor/pending");
+      setPendingUploads(data || []);
+    } catch (error) {
+      console.error("Failed to fetch pending CORs", error);
+    }
+  };
+
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const data = await apiClientRequest("/cor/pending");
+        setPendingUploads(data || []);
+      } catch (error) {
+        console.error("Failed to fetch pending CORs", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initData();
+  }, []);
+
+  const corQueue = pendingUploads.map((u) => ({
+    id: u.id,
+    name: `${u.student.user.firstName} ${u.student.user.lastName}`,
+    email: u.student.user.email,
+    program: u.student.programId || "N/A",
+    uploadDate: new Date(u.createdAt).toLocaleDateString(),
+    ocrStatus: "pending" as const, // Currently manual verification
+    extractedData: null,
+    originalFilename: u.originalFilename,
+    filePath: u.filePath,
+  }));
 
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);
 
   const getOcrBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <Badge className="bg-gray-100 text-gray-500">Pending</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700">Manual Review</Badge>;
       case "processing":
         return (
           <Badge className="bg-amber-100 text-amber-700">
@@ -111,6 +115,31 @@ export default function AdminCORValidationPage() {
     }
   };
 
+  const handleVerify = async () => {
+    if (!selectedCorData || !formData.studentNumber) {
+      alert("Student Number is required");
+      return;
+    }
+    
+    try {
+      setIsVerifying(true);
+      await apiClientRequest(`/cor/verify/${selectedCorData.id}`, {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
+
+      alert("Verification successful! The applicant has been promoted to a student and credentials were sent.");
+      setShowVerifyConfirm(false);
+      setSelectedCor(null);
+      fetchPending();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert("Verification failed: " + errorMessage);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Page Header */}
@@ -122,8 +151,7 @@ export default function AdminCORValidationPage() {
           COR Validation
         </h2>
         <p className="text-sm text-[var(--earist-body-text)]">
-          Verify uploaded Certificates of Registration and promote applicants to
-          students
+          Verify uploaded Certificates of Registration and promote applicants to students
         </p>
       </div>
 
@@ -132,41 +160,51 @@ export default function AdminCORValidationPage() {
         <Badge className="bg-amber-100 text-amber-700">
           {corQueue.length} Pending
         </Badge>
-        <Badge className="bg-green-100 text-green-700">
-          {corQueue.filter((c) => c.ocrStatus === "completed").length} Ready to
-          Verify
-        </Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* COR Pending Queue */}
         <div className="space-y-2 lg:col-span-1">
-          {corQueue.map((cor) => (
-            <button
-              key={cor.id}
-              onClick={() => setSelectedCor(cor.id)}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                selectedCor === cor.id
-                  ? "border-[var(--earist-primary)] bg-[var(--earist-surface-light-red)]"
-                  : "border-[var(--earist-border-gray)] hover:bg-[var(--earist-surface-gray)]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {cor.name}
-                  </p>
-                  <p className="text-xs text-[var(--earist-body-text)]">
-                    {cor.studentNumber} &middot; {cor.program}
-                  </p>
+          {loading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--earist-primary)]" />
+            </div>
+          ) : corQueue.length === 0 ? (
+            <div className="text-center p-8 border rounded-lg bg-[var(--earist-surface-gray)] border-[var(--earist-border-gray)]">
+              <CheckCircle2 className="mx-auto h-8 w-8 text-green-500 mb-2" />
+              <p className="text-sm text-[var(--earist-body-text)]">All caught up! No pending CORs.</p>
+            </div>
+          ) : (
+            corQueue.map((cor) => (
+              <button
+                key={cor.id}
+                onClick={() => setSelectedCor(cor.id)}
+                className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                  selectedCor === cor.id
+                    ? "border-[var(--earist-primary)] bg-[var(--earist-surface-light-red)]"
+                    : "border-[var(--earist-border-gray)] hover:bg-[var(--earist-surface-gray)]"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="truncate pr-2">
+                    <p className="text-sm font-semibold text-[var(--earist-primary)] truncate">
+                      {cor.name}
+                    </p>
+                    <p className="text-xs text-[var(--earist-body-text)] truncate">
+                      {cor.program}
+                    </p>
+                  </div>
+                  {getOcrBadge(cor.ocrStatus)}
                 </div>
-                {getOcrBadge(cor.ocrStatus)}
-              </div>
-              <p className="mt-2 text-xs text-[var(--earist-body-text)]">
-                Uploaded: {cor.uploadDate}
-              </p>
-            </button>
-          ))}
+                <p className="mt-2 text-xs text-[var(--earist-body-text)] truncate">
+                  File: {cor.originalFilename}
+                </p>
+                <p className="mt-1 text-[10px] text-[var(--earist-body-text)]">
+                  Uploaded: {cor.uploadDate}
+                </p>
+              </button>
+            ))
+          )}
         </div>
 
         {/* COR Detail View */}
@@ -184,87 +222,22 @@ export default function AdminCORValidationPage() {
                   <div className="text-center">
                     <FileText className="mx-auto mb-2 h-10 w-10 text-[var(--earist-body-text)]/40" />
                     <p className="text-sm text-[var(--earist-body-text)]">
-                      Certificate of Registration
+                      {selectedCorData.originalFilename}
                     </p>
                     <p className="text-xs text-[var(--earist-body-text)]">
-                      {selectedCorData.name} — {selectedCorData.studentNumber}
+                      {selectedCorData.name}
                     </p>
+                    <Button 
+                      variant="link" 
+                      className="mt-2"
+                      onClick={() => window.open(`${process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000'}/${selectedCorData.filePath.replace(/\\/g, '/')}`, '_blank')}
+                    >
+                      <Eye className="h-4 w-4 mr-2" /> View Document
+                    </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Extracted Data Fields */}
-            {selectedCorData.extractedData && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
-                      Extracted Data (OCR)
-                    </CardTitle>
-                    {getOcrBadge(selectedCorData.ocrStatus)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {[
-                      {
-                        label: "Student Number",
-                        value: selectedCorData.extractedData.studentNumber,
-                      },
-                      {
-                        label: "Registration Number",
-                        value: selectedCorData.extractedData.registrationNumber,
-                      },
-                      {
-                        label: "Program",
-                        value: selectedCorData.extractedData.program,
-                      },
-                      {
-                        label: "Year Level",
-                        value: selectedCorData.extractedData.yearLevel,
-                      },
-                      {
-                        label: "Academic Year",
-                        value: selectedCorData.extractedData.academicYear,
-                      },
-                      {
-                        label: "Semester",
-                        value: selectedCorData.extractedData.semester,
-                      },
-                      {
-                        label: "Total Units",
-                        value: selectedCorData.extractedData.totalUnits,
-                      },
-                      {
-                        label: "Tuition Fee",
-                        value: selectedCorData.extractedData.tuitionFee,
-                      },
-                      {
-                        label: "Miscellaneous Fee",
-                        value: selectedCorData.extractedData.miscellaneousFee,
-                      },
-                      {
-                        label: "Total Assessment",
-                        value: selectedCorData.extractedData.totalAssessment,
-                      },
-                    ].map((field) => (
-                      <div
-                        key={field.label}
-                        className="rounded-lg bg-[var(--earist-surface-gray)] p-3"
-                      >
-                        <p className="text-[11px] text-[var(--earist-body-text)]">
-                          {field.label}
-                        </p>
-                        <p className="text-sm font-medium text-[var(--earist-primary)]">
-                          {field.value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3">
@@ -298,7 +271,7 @@ export default function AdminCORValidationPage() {
                   </h3>
                   <p className="text-sm text-[var(--earist-body-text)]">
                     Click an applicant from the queue to view their uploaded COR
-                    and extracted data.
+                    and assign credentials.
                   </p>
                 </div>
               </CardContent>
@@ -322,6 +295,7 @@ export default function AdminCORValidationPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            
             <div className="mb-4 space-y-3">
               <div className="rounded-lg bg-green-50 p-4">
                 <div className="flex items-center gap-2">
@@ -334,15 +308,45 @@ export default function AdminCORValidationPage() {
                   This will verify the COR and grant full Student portal access.
                 </p>
               </div>
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                  {selectedCorData.name}
-                </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
-                  {selectedCorData.studentNumber} &middot;{" "}
-                  {selectedCorData.program}
-                </p>
+
+              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3 space-y-3 border border-[var(--earist-border-gray)]">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                    Assign Student Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.studentNumber}
+                    onChange={(e) => setFormData({ ...formData, studentNumber: e.target.value })}
+                    placeholder="e.g. 2026-GS-00123"
+                    className="w-full rounded-md border border-[var(--earist-border-gray)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">Academic Year</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.academicYear}
+                      onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                      className="w-full rounded-md border border-[var(--earist-border-gray)] px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">Semester</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.semester}
+                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                      className="w-full rounded-md border border-[var(--earist-border-gray)] px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
+
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-blue-600" />
@@ -351,37 +355,35 @@ export default function AdminCORValidationPage() {
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-blue-600">
-                  Portal credentials will be automatically sent to the
-                  applicant&apos;s email:
+                  Portal credentials will be automatically sent to: <span className="font-semibold">{selectedCorData.email}</span>
                 </p>
                 <div className="mt-2 space-y-1 text-xs text-blue-700">
                   <p>
                     <span className="font-medium">Username:</span>{" "}
-                    {selectedCorData.studentNumber}
+                    {formData.studentNumber || "[Pending]"}
                   </p>
                   <p>
-                    <span className="font-medium">Password:</span> Date of Birth
-                    (MM/DD/YYYY)
+                    <span className="font-medium">Password:</span> Date of Birth (MM/DD/YYYY)
                   </p>
                 </div>
               </div>
-              <p className="text-xs font-medium text-red-600">
-                This action cannot be undone.
-              </p>
             </div>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowVerifyConfirm(false)}
                 className="flex-1"
+                disabled={isVerifying}
               >
                 Cancel
               </Button>
               <Button
-                onClick={() => setShowVerifyConfirm(false)}
+                onClick={handleVerify}
+                disabled={isVerifying || !formData.studentNumber.trim()}
                 className="flex-1 bg-green-600 text-white hover:bg-green-700"
               >
-                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Confirm & Dispatch
               </Button>
             </div>
@@ -424,7 +426,6 @@ export default function AdminCORValidationPage() {
                   {selectedCorData.name}
                 </p>
                 <p className="text-xs text-[var(--earist-body-text)]">
-                  {selectedCorData.studentNumber} &middot;{" "}
                   {selectedCorData.program}
                 </p>
               </div>
@@ -457,6 +458,7 @@ export default function AdminCORValidationPage() {
                 onClick={() => {
                   setShowRejectModal(false);
                   setRejectReason("");
+                  // Handle reject logic here later
                 }}
                 className={`flex-1 ${
                   rejectReason.trim()
