@@ -12,10 +12,10 @@ export class EvaluationController {
       
       if (!req.file) throw new Error('Instrument file is required');
 
-      // UPDATED: Grab the path of the file Multer just saved
+      // Grab the path of the file Multer just saved
       const filePath = req.file.path; 
 
-      // UPDATED: Pass it to the service
+      //  Pass it to the service
       const result = await this.evalService.submitEvaluationRequest(
         req.user.userId, 
         req.body, 
