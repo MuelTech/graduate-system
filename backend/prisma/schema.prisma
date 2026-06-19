@@ -1147,12 +1147,12 @@ model ExpertEvaluationRequest {
   instrumentType        String?       @map("instrument_type")
   instrumentDescription String?       @db.Text @map("instrument_description")
   status                EvalReqStatus @default(PENDING)
-  assignedById          String        @map("assigned_by")
+  assignedById          String?        @map("assigned_by")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @updatedAt @map("updated_at")
 
   thesis       ThesisRecord       @relation(fields: [thesisId], references: [id])
-  assignedBy   User               @relation("EvalRequestAssignedBy", fields: [assignedById], references: [id])
+  assignedBy   User?               @relation("EvalRequestAssignedBy", fields: [assignedById], references: [id])
   evaluations  ExpertEvaluation[]
 
   @@map("expert_evaluation_requests")

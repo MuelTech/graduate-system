@@ -5,6 +5,7 @@ import applicantRoutes from './applicant.routes';
 import examRoutes from './exam.routes';
 import corRoutes from './cor.routes'
 import studentRoutes from './student.routes';
+import evaluationRoutes from './evaluation.routes';
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use('/applicant', applicantRoutes);
 router.use('/exam', examRoutes);
 router.use('/cor', corRoutes);
 router.use('/student', studentRoutes);
+router.use('/evaluation', evaluationRoutes);
 
 export default router;
