@@ -33,4 +33,36 @@ router.post(
   thesisController.applyFinal
 );
 
+// 🔒 STUDENT: Request an adviser
+router.post(
+  '/adviser/request', 
+  authenticateJWT, 
+  requireRole(['STUDENT']), 
+  thesisController.requestAdviser
+);
+
+// 🔒 ADMIN: Approve and Assign the adviser
+router.post(
+  '/adviser/assign', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.assignAdviser
+);
+
+// 🔒 ADMIN: Approve or reject a defense application (Update Status)
+router.put(
+  '/defense/:id/status', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.updateStatus
+);
+
+// 🔒 ADMIN: Schedule a defense (Requires venueOrLink string)
+router.post(
+  '/defense/:id/schedule', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.scheduleDefense
+);
+
 export default router;

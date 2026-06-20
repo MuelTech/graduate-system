@@ -53,4 +53,35 @@ export class ThesisService {
 
     return this.thesisRepo.updateThesisToFinal(thesis.id, filePath);
   }
+
+  async requestAdviser(userId: string, data: any) {
+    const student = await this.thesisRepo.getStudentByUserId(userId);
+    if (!student) throw new Error("Student profile not found.");
+    return this.thesisRepo.createAdviserRequest(student.id, data.requestedAdviserId, data.reason);
+  }
+
+  async assignAdviser(adminId: string, data: any) {
+    return this.thesisRepo.approveAdviserRequest(data.requestId, adminId);
+  }
+
+  async updateDefenseStatus(thesisId: string, data: any) {
+    return this.thesisRepo.updateThesisStatus(thesisId, data.status);
+  }
+
+  async scheduleDefense(thesisId: string, adminId: string, data: any) {
+    const schedule = await this.thesisRepo.scheduleDefense(thesisId, adminId, data);
+    
+    // MOCK EMAIL NOTIFICATION SYSTEM
+    console.log(`\n=========================================`);
+    console.log(`[EMAIL SYSTEM] Generating Panel Invitations`);
+    console.log(`=========================================`);
+    console.log(`To: Panelist IDs ${data.panelistIds.join(', ')}`);
+    console.log(`Subject: New Defense Schedule Assignment`);
+    console.log(`Message: You have been assigned to a ${data.defenseType}.`);
+    console.log(`Date: ${new Date(data.defenseDate).toDateString()}`);
+    console.log(`Location/Link: ${data.venueOrLink}`);
+    console.log(`=========================================\n`);
+
+    return schedule;
+  }
 }

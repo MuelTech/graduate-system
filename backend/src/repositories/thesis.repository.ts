@@ -92,4 +92,72 @@ export class ThesisRepository {
       return thesis;
     });
   }
+
+  async createAdviserRequest(studentId: string, requestedAdviserId: string, reason?: string) {
+    return prisma.adviserRequest.create({
+      data: {
+        studentId,
+        requestedAdviserId,
+        reason,
+        status: 'PENDING',
+        requestDate: new Date(),
+        // Temporary placeholder until admin approves
+        approvedById: requestedAdviserId 
+      }
+    });
+  }
+
+  async approveAdviserRequest(requestId: string, adminId: string) {
+    return prisma.$transaction(async (tx) => {
+      const request = await tx.adviserRequest.update({
+        where: { id: requestId },
+        data: { status: 'APPROVED', approvedById: adminId }
+      });
+
+      const assignment = await tx.adviserAssignment.create({
+        data: {
+          studentId: request.studentId,
+          adviserId: request.requestedAdviserId,
+          assignedDate: new Date()
+        }
+      });
+      return assignment;
+    });
+  }
+
+  async updateThesisStatus(thesisId: string, status: any) {
+    return prisma.thesisRecord.update({
+      where: { id: thesisId },
+      data: { status }
+    });
+  }
+
+  async scheduleDefense(thesisId: string, adminId: string, data: any) {
+    return prisma.$transaction(async (tx) => {
+      // 1. Create the schedule record
+      const schedule = await tx.defenseSchedule.create({
+        data: {
+          thesisId,
+          defenseDate: new Date(data.defenseDate),
+          defenseTime: new Date(data.defenseTime),
+          venueOrLink: data.venueOrLink,
+          defenseType: data.defenseType,
+          setById: adminId
+        }
+      });
+
+      // 2. Assign the panelists
+      for (const panelistId of data.panelistIds) {
+        await tx.panelAssignment.create({
+          data: {
+            scheduleId: schedule.id,
+            userId: panelistId,
+            role: 'PANELIST'
+          }
+        });
+      }
+      
+      return schedule;
+    });
+  }
 }

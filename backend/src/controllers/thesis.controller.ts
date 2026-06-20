@@ -40,4 +40,45 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   };
+
+  requestAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.requestAdviser(req.user.userId, req.body);
+      res.status(201).json({ message: 'Adviser request submitted', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  assignAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.assignAdviser(req.user.userId, req.body);
+      res.status(200).json({ message: 'Adviser officially assigned', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  updateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string; // thesisId
+      const result = await this.thesisService.updateDefenseStatus(id, req.body);
+      res.status(200).json({ message: 'Thesis status updated', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  scheduleDefense = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const id = req.params.id as string; // thesisId
+      const result = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);
+      res.status(201).json({ message: 'Defense scheduled and panelists notified', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
 }
