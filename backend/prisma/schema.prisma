@@ -709,6 +709,7 @@ enum ThesisStage {
 
 enum ThesisStatus {
   PENDING
+  APPROVED
   SCHEDULED
   PASSED
   FAILED

@@ -104,7 +104,8 @@ export default function ApplicantCORUploadPage() {
       setFile(null);
       setPreview(null);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Upload failed";
+      const errorMessage =
+        error instanceof Error ? error.message : "Upload failed";
       alert(errorMessage);
       setUploadState("idle");
     }
@@ -115,12 +116,12 @@ export default function ApplicantCORUploadPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Certificate of Registration (COR)
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Upload your COR for Admin verification
         </p>
       </div>
@@ -149,7 +150,7 @@ export default function ApplicantCORUploadPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 How to Upload Your COR
               </CardTitle>
             </CardHeader>
@@ -170,10 +171,10 @@ export default function ApplicantCORUploadPage() {
                   },
                 ].map((item) => (
                   <div key={item.step} className="flex items-start gap-3">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--earist-primary)] text-xs font-bold text-white">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-(--earist-primary) text-xs font-bold text-white">
                       {item.step}
                     </div>
-                    <p className="text-sm text-[var(--earist-body-text)]">
+                    <p className="text-sm text-(--earist-body-text)">
                       {item.text}
                     </p>
                   </div>
@@ -184,7 +185,7 @@ export default function ApplicantCORUploadPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Upload COR
               </CardTitle>
             </CardHeader>
@@ -200,18 +201,18 @@ export default function ApplicantCORUploadPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
                     isDragging
-                      ? "border-[var(--earist-primary)] bg-[var(--earist-surface-light-red)]"
-                      : "border-[var(--earist-border-gray)] hover:border-[var(--earist-primary)] hover:bg-[var(--earist-surface-gray)]"
+                      ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
+                      : "border-(--earist-border-gray) hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)"
                   }`}
                 >
-                  <Upload className="mb-3 h-10 w-10 text-[var(--earist-body-text)]/40" />
-                  <p className="mb-1 text-sm font-medium text-[var(--earist-primary)]">
+                  <Upload className="mb-3 h-10 w-10 text-(--earist-body-text)/40" />
+                  <p className="mb-1 text-sm font-medium text-(--earist-primary)">
                     Drag and drop your COR file here
                   </p>
-                  <p className="mb-3 text-xs text-[var(--earist-body-text)]">
+                  <p className="mb-3 text-xs text-(--earist-body-text)">
                     or click to browse files
                   </p>
-                  <p className="text-[11px] text-[var(--earist-body-text)]">
+                  <p className="text-[11px] text-(--earist-body-text)">
                     Accepted formats: PDF, JPG, PNG &middot; Max 5MB
                   </p>
                   <input
@@ -227,33 +228,33 @@ export default function ApplicantCORUploadPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3 rounded-lg border border-[var(--earist-border-gray)] p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded bg-[var(--earist-surface-gray)]">
+                  <div className="flex items-start gap-3 rounded-lg border border-(--earist-border-gray) p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded bg-(--earist-surface-gray)">
                       {file.type === "application/pdf" ? (
-                        <FileText className="h-5 w-5 text-[var(--earist-primary)]" />
+                        <FileText className="h-5 w-5 text-(--earist-primary)" />
                       ) : (
-                        <ImageIcon className="h-5 w-5 text-[var(--earist-primary)]" />
+                        <ImageIcon className="h-5 w-5 text-(--earist-primary)" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--earist-primary)] truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-(--earist-primary)">
                         {file.name}
                       </p>
-                      <p className="text-xs text-[var(--earist-body-text)]">
+                      <p className="text-xs text-(--earist-body-text)">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                     <button
                       onClick={removeFile}
                       disabled={uploadState === "uploading"}
-                      className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                      className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   {preview && (
-                    <div className="overflow-hidden rounded-lg border border-[var(--earist-border-gray)]">
+                    <div className="overflow-hidden rounded-lg border border-(--earist-border-gray)">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={preview}
@@ -266,7 +267,7 @@ export default function ApplicantCORUploadPage() {
                   <Button
                     onClick={handleUpload}
                     disabled={uploadState === "uploading"}
-                    className="w-full bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                    className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                   >
                     {uploadState === "uploading" ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -284,9 +285,9 @@ export default function ApplicantCORUploadPage() {
         </>
       )}
 
-      <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
-        <p className="text-xs text-[var(--earist-body-text)]">
+      <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
+        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
+        <p className="text-xs text-(--earist-body-text)">
           {uploadState === "verified"
             ? "Your portal credentials have been sent to your registered email address."
             : "You will receive an email notification once your COR has been verified by the Administrator."}

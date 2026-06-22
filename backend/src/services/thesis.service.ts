@@ -4,6 +4,26 @@ import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
 
+  async getPendingDefenses() {
+    return this.thesisRepo.getPendingDefenses();
+  }
+
+  async getApprovedDefenses() {
+    return this.thesisRepo.getApprovedDefenses();
+  }
+
+  async getAllAdviserRequests() {
+    return this.thesisRepo.getAllAdviserRequests();
+  }
+
+  async getAllActiveAssignments() {
+    return this.thesisRepo.getAllActiveAssignments();
+  }
+
+  async getAvailableAdvisers() {
+    return this.thesisRepo.getAvailableAdvisers();
+  }
+
   async applyTitleDefense(userId: string, data: ApplyTitleDefenseInput, conceptPaperPath: string, corPath: string, receiptPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new Error("Student profile not found.");
@@ -61,11 +81,11 @@ export class ThesisService {
   }
 
   async assignAdviser(adminId: string, data: any) {
-    return this.thesisRepo.approveAdviserRequest(data.requestId, adminId);
+    return this.thesisRepo.approveAdviserRequest(data.requestId, data.adviserId, adminId);
   }
 
   async updateDefenseStatus(thesisId: string, data: any) {
-    return this.thesisRepo.updateThesisStatus(thesisId, data.status);
+    return this.thesisRepo.updateThesisStatus(thesisId, data.status, data.approvedTitleId);
   }
 
   async scheduleDefense(thesisId: string, adminId: string, data: any) {

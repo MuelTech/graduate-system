@@ -6,6 +6,7 @@ export class StudentRepository {
     return prisma.student.findUnique({
       where: { userId },
       include: {
+        user: true,
         program: true,
         undergraduateProgram: true,
         previousMastersProgram: true,

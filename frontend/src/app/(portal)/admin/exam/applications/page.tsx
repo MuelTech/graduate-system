@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +34,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 5, 2026",
       alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 0,
-      status: "confirmed" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "confirmed" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 2,
@@ -49,7 +50,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 6, 2026",
       alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 0,
-      status: "completed" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "completed" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 3,
@@ -59,9 +64,16 @@ export default function AdminExamApplicationsPage() {
       program: "MIT",
       scheduledSlot: "June 15, 2026 — 1:00 PM",
       applicationDate: "May 8, 2026",
-      alignmentStatus: "pending_waiver" as "aligned" | "pending_waiver" | "cleared",
+      alignmentStatus: "pending_waiver" as
+        | "aligned"
+        | "pending_waiver"
+        | "cleared",
       strikeCount: 0,
-      status: "pending" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "pending" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 4,
@@ -73,7 +85,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 10, 2026",
       alignmentStatus: "cleared" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 1,
-      status: "confirmed" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "confirmed" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 5,
@@ -85,7 +101,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 12, 2026",
       alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 2,
-      status: "disqualified" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "disqualified" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 6,
@@ -97,7 +117,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 15, 2026",
       alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 0,
-      status: "pending" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "pending" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
     {
       id: 7,
@@ -109,7 +133,11 @@ export default function AdminExamApplicationsPage() {
       applicationDate: "May 18, 2026",
       alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
       strikeCount: 0,
-      status: "confirmed" as "pending" | "confirmed" | "completed" | "disqualified",
+      status: "confirmed" as
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "disqualified",
     },
   ];
 
@@ -128,10 +156,18 @@ export default function AdminExamApplicationsPage() {
 
   const selectedApplication = applications.find((a) => a.id === selectedApp);
 
-  const pendingCount = applications.filter((a) => a.status === "pending").length;
-  const confirmedCount = applications.filter((a) => a.status === "confirmed").length;
-  const completedCount = applications.filter((a) => a.status === "completed").length;
-  const disqualifiedCount = applications.filter((a) => a.status === "disqualified").length;
+  const pendingCount = applications.filter(
+    (a) => a.status === "pending",
+  ).length;
+  const confirmedCount = applications.filter(
+    (a) => a.status === "confirmed",
+  ).length;
+  const completedCount = applications.filter(
+    (a) => a.status === "completed",
+  ).length;
+  const disqualifiedCount = applications.filter(
+    (a) => a.status === "disqualified",
+  ).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -153,7 +189,9 @@ export default function AdminExamApplicationsPage() {
       case "aligned":
         return <Badge className="bg-green-100 text-green-700">Aligned</Badge>;
       case "pending_waiver":
-        return <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>;
+        return (
+          <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>
+        );
       case "cleared":
         return <Badge className="bg-blue-100 text-blue-700">Cleared</Badge>;
       default:
@@ -166,12 +204,12 @@ export default function AdminExamApplicationsPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Exam Application Review
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Review and manage entrance exam applications
         </p>
       </div>
@@ -180,26 +218,30 @@ export default function AdminExamApplicationsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Pending</p>
+            <p className="text-xs text-(--earist-body-text)">Pending</p>
             <p className="text-lg font-bold text-amber-600">{pendingCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Confirmed</p>
+            <p className="text-xs text-(--earist-body-text)">Confirmed</p>
             <p className="text-lg font-bold text-blue-600">{confirmedCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Completed</p>
+            <p className="text-xs text-(--earist-body-text)">Completed</p>
             <p className="text-lg font-bold text-green-600">{completedCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Disqualified</p>
-            <p className="text-lg font-bold text-red-600">{disqualifiedCount}</p>
+            <p className="text-xs text-(--earist-body-text)">
+              Disqualified
+            </p>
+            <p className="text-lg font-bold text-red-600">
+              {disqualifiedCount}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -209,21 +251,21 @@ export default function AdminExamApplicationsPage() {
         <CardContent className="py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, email, or Pinnacle ID..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] py-2 pl-10 pr-3 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
             </div>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[var(--earist-body-text)]" />
+              <Filter className="h-4 w-4 text-(--earist-body-text)" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none"
+                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -242,29 +284,29 @@ export default function AdminExamApplicationsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Applicant
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Pinnacle ID
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Program
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Scheduled Slot
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Alignment
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Strikes
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                     Actions
                   </th>
                 </tr>
@@ -273,26 +315,26 @@ export default function AdminExamApplicationsPage() {
                 {filteredApplications.map((app) => (
                   <tr
                     key={app.id}
-                    className="border-b border-[var(--earist-border-gray)] last:border-0"
+                    className="border-b border-(--earist-border-gray) last:border-0"
                   >
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-[var(--earist-primary)]">
+                        <p className="font-medium text-(--earist-primary)">
                           {app.name}
                         </p>
-                        <p className="text-xs text-[var(--earist-body-text)]">
+                        <p className="text-xs text-(--earist-body-text)">
                           {app.email}
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                       {app.pinnacleId}
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                       {app.program}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 text-xs text-[var(--earist-body-text)]">
+                      <div className="flex items-center gap-1 text-xs text-(--earist-body-text)">
                         <CalendarClock className="h-3 w-3" />
                         {app.scheduledSlot}
                       </div>
@@ -312,7 +354,7 @@ export default function AdminExamApplicationsPage() {
                           {app.strikeCount}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-[var(--earist-body-text)]">
+                        <span className="text-xs text-(--earist-body-text)">
                           0
                         </span>
                       )}
@@ -323,7 +365,7 @@ export default function AdminExamApplicationsPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button
-                          className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Details"
                           onClick={() => setSelectedApp(app.id)}
                         >
@@ -331,7 +373,7 @@ export default function AdminExamApplicationsPage() {
                         </button>
                         {app.strikeCount > 0 && (
                           <button
-                            className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                             title="Reset Strike Count"
                           >
                             <RotateCcw className="h-4 w-4" />
@@ -345,19 +387,19 @@ export default function AdminExamApplicationsPage() {
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-[var(--earist-border-gray)] px-4 py-3">
-            <p className="text-xs text-[var(--earist-body-text)]">
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
               Showing {filteredApplications.length} of {applications.length}{" "}
               applications
             </p>
             <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button className="rounded bg-[var(--earist-primary)] px-2 py-1 text-xs text-white">
+              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
                 1
               </button>
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -370,59 +412,71 @@ export default function AdminExamApplicationsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 Application Details
               </h3>
               <button
                 onClick={() => setSelectedApp(null)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-3">
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
+              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                <p className="text-sm font-semibold text-(--earist-primary)">
                   {selectedApplication.name}
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
+                <p className="text-xs text-(--earist-body-text)">
                   {selectedApplication.email}
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
+                <p className="text-xs text-(--earist-body-text)">
                   {selectedApplication.pinnacleId}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Program</p>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Program
+                  </p>
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     {selectedApplication.program}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Alignment</p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Alignment
+                  </p>
                   {getAlignmentBadge(selectedApplication.alignmentStatus)}
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Scheduled Slot</p>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Scheduled Slot
+                  </p>
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     {selectedApplication.scheduledSlot}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Application Date</p>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Application Date
+                  </p>
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     {selectedApplication.applicationDate}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Strike Count</p>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Strike Count
+                  </p>
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     {selectedApplication.strikeCount}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Status</p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Status
+                  </p>
                   {getStatusBadge(selectedApplication.status)}
                 </div>
               </div>

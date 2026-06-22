@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   FileCheck2,
@@ -92,15 +87,15 @@ export default function PanelistDashboard() {
       {/* Welcome Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           {getGreeting()}, {panelist.firstName}
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           {panelist.qualification}
         </p>
-        <p className="text-xs text-[var(--earist-body-text)]">
+        <p className="text-xs text-(--earist-body-text)">
           {panelist.affiliation}
         </p>
       </div>
@@ -111,10 +106,10 @@ export default function PanelistDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Upcoming Defenses
               </CardTitle>
-              <Calendar className="h-5 w-5 text-[var(--earist-accent)]" />
+              <Calendar className="h-5 w-5 text-(--earist-accent)" />
             </div>
           </CardHeader>
           <CardContent>
@@ -122,19 +117,19 @@ export default function PanelistDashboard() {
               {upcomingDefenses.map((defense, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-lg bg-[var(--earist-surface-gray)] p-3"
+                  className="flex items-center gap-3 rounded-lg bg-(--earist-surface-gray) p-3"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--earist-surface-light-red)]">
-                    <FileCheck2 className="h-5 w-5 text-[var(--earist-primary)]" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--earist-surface-light-red)">
+                    <FileCheck2 className="h-5 w-5 text-(--earist-primary)" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-(--earist-primary)">
                       {defense.stage}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {defense.researcher} &middot; {defense.program}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {defense.date} at {defense.time}
                     </p>
                   </div>
@@ -142,7 +137,7 @@ export default function PanelistDashboard() {
                     href={defense.teamsLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[var(--earist-primary)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-(--earist-primary) px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
                   >
                     Join Meeting <ExternalLink className="h-3 w-3" />
                   </a>
@@ -155,7 +150,7 @@ export default function PanelistDashboard() {
         {/* Pending E-Signatures — compact */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               E-Signatures
             </CardTitle>
           </CardHeader>
@@ -165,17 +160,17 @@ export default function PanelistDashboard() {
                 <PenTool className="h-6 w-6 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--earist-primary)]">
+                <p className="text-2xl font-bold text-(--earist-primary)">
                   {pendingSignatures}
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
+                <p className="text-xs text-(--earist-body-text)">
                   awaiting signature
                 </p>
               </div>
             </div>
             <Link
               href="/panelist/signatures"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
             >
               Sign Now <ArrowRight className="h-3 w-3" />
             </Link>
@@ -185,35 +180,31 @@ export default function PanelistDashboard() {
         {/* Adviser Availability — compact */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Adviser Availability
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between rounded-lg bg-[var(--earist-surface-gray)] p-3">
+            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-gray) p-3">
               <div className="flex items-center gap-2">
-                <User className="h-5 w-5 text-[var(--earist-body-text)]" />
-                <span className="text-sm text-[var(--earist-body-text)]">
+                <User className="h-5 w-5 text-(--earist-body-text)" />
+                <span className="text-sm text-(--earist-body-text)">
                   Thesis Adviser
                 </span>
               </div>
               {panelist.isAvailableAsAdviser ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-green-600">
-                    ON
-                  </span>
+                  <span className="text-xs font-medium text-green-600">ON</span>
                   <ToggleRight className="h-6 w-6 text-green-600" />
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-gray-400">
-                    OFF
-                  </span>
+                  <span className="text-xs font-medium text-gray-400">OFF</span>
                   <ToggleLeft className="h-6 w-6 text-gray-400" />
                 </div>
               )}
             </div>
-            <p className="mt-2 text-xs text-[var(--earist-body-text)]">
+            <p className="mt-2 text-xs text-(--earist-body-text)">
               {panelist.isAvailableAsAdviser
                 ? "You are visible to students seeking an adviser."
                 : "Toggle ON to appear in the adviser request list."}
@@ -224,7 +215,7 @@ export default function PanelistDashboard() {
         {/* Recent Assignments — 1 col */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Recent Assignments
             </CardTitle>
           </CardHeader>
@@ -233,20 +224,20 @@ export default function PanelistDashboard() {
               {recentAssignments.map((assignment, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-lg bg-[var(--earist-surface-gray)] p-2.5"
+                  className="flex items-center gap-3 rounded-lg bg-(--earist-surface-gray) p-2.5"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded bg-green-50">
                     <FileCheck2 className="h-4 w-4 text-green-600" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-(--earist-primary)">
                       {assignment.stage}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {assignment.researcher}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[11px] text-[var(--earist-body-text)]">
+                  <span className="shrink-0 text-[11px] text-(--earist-body-text)">
                     {assignment.date}
                   </span>
                 </div>
@@ -258,19 +249,19 @@ export default function PanelistDashboard() {
         {/* Repository Quick Access — compact */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Repository
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center rounded-lg bg-[var(--earist-surface-gray)] py-6">
-              <Library className="mb-2 h-8 w-8 text-[var(--earist-body-text)]/40" />
-              <p className="mb-3 text-xs text-[var(--earist-body-text)]">
+            <div className="flex flex-col items-center justify-center rounded-lg bg-(--earist-surface-gray) py-6">
+              <Library className="mb-2 h-8 w-8 text-(--earist-body-text)/40" />
+              <p className="mb-3 text-xs text-(--earist-body-text)">
                 Browse published research
               </p>
               <Link
                 href="/panelist/repository"
-                className="inline-flex items-center gap-1 rounded-lg bg-[var(--earist-primary)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90"
+                className="inline-flex items-center gap-1 rounded-lg bg-(--earist-primary) px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
               >
                 Browse Repository
               </Link>
@@ -282,12 +273,12 @@ export default function PanelistDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Recent Notifications
               </CardTitle>
               <Link
                 href="/panelist/notifications"
-                className="text-xs font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                className="text-xs font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
               >
                 View All
               </Link>
@@ -331,26 +322,26 @@ export default function PanelistDashboard() {
                   key={i}
                   className={`flex items-start gap-3 rounded-lg p-2.5 ${
                     notif.unread
-                      ? "bg-[var(--earist-surface-light-red)]"
-                      : "bg-[var(--earist-surface-gray)]"
+                      ? "bg-(--earist-surface-light-red)"
+                      : "bg-(--earist-surface-gray)"
                   }`}
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
                       notif.unread
-                        ? "bg-[var(--earist-accent)]"
+                        ? "bg-(--earist-accent)"
                         : "bg-transparent"
                     }`}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-(--earist-primary)">
                       {notif.title}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)] truncate">
+                    <p className="truncate text-xs text-(--earist-body-text)">
                       {notif.desc}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-[var(--earist-body-text)]">
+                  <span className="shrink-0 text-xs text-(--earist-body-text)">
                     {notif.time}
                   </span>
                 </div>

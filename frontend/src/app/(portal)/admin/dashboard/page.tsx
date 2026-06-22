@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Users,
@@ -48,8 +43,8 @@ export default function AdminDashboard() {
       value: "5",
       trend: "Oldest: 2 days ago",
       icon: Upload,
-      color: "text-[var(--earist-primary)]",
-      bg: "bg-[var(--earist-surface-light-red)]",
+      color: "text-(--earist-primary)",
+      bg: "bg-(--earist-surface-light-red)",
     },
     {
       label: "Repository Entries",
@@ -65,7 +60,7 @@ export default function AdminDashboard() {
     { label: "Title Defense", count: 24, color: "bg-blue-500" },
     { label: "Proposal Defense", count: 31, color: "bg-amber-500" },
     { label: "Final Defense", count: 18, color: "bg-green-500" },
-    { label: "Repository", count: 87, color: "bg-[var(--earist-primary)]" },
+    { label: "Repository", count: 87, color: "bg-(--earist-primary)" },
   ];
 
   const maxCount = Math.max(...pipelineStages.map((s) => s.count));
@@ -152,12 +147,12 @@ export default function AdminDashboard() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Administrator Dashboard
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Graduate School Information System
         </p>
       </div>
@@ -169,13 +164,13 @@ export default function AdminDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     {kpi.label}
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-[var(--earist-primary)]">
+                  <p className="mt-1 text-2xl font-bold text-(--earist-primary)">
                     {kpi.value}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-[var(--earist-body-text)]">
+                  <p className="mt-0.5 text-[11px] text-(--earist-body-text)">
                     {kpi.trend}
                   </p>
                 </div>
@@ -196,21 +191,21 @@ export default function AdminDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Thesis Pipeline Summary
               </CardTitle>
-              <BarChart3 className="h-5 w-5 text-[var(--earist-accent)]" />
+              <BarChart3 className="h-5 w-5 text-(--earist-accent)" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {pipelineStages.map((stage) => (
                 <div key={stage.label} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 text-xs text-[var(--earist-body-text)]">
+                  <span className="w-28 shrink-0 text-xs text-(--earist-body-text)">
                     {stage.label}
                   </span>
                   <div className="flex-1">
-                    <div className="h-6 w-full overflow-hidden rounded bg-[var(--earist-surface-gray)]">
+                    <div className="h-6 w-full overflow-hidden rounded bg-(--earist-surface-gray)">
                       <div
                         className={`flex h-full items-center justify-end rounded px-2 ${stage.color}`}
                         style={{
@@ -233,10 +228,10 @@ export default function AdminDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Exam Pipeline Status
               </CardTitle>
-              <FileCheck2 className="h-5 w-5 text-[var(--earist-accent)]" />
+              <FileCheck2 className="h-5 w-5 text-(--earist-accent)" />
             </div>
           </CardHeader>
           <CardContent>
@@ -267,13 +262,13 @@ export default function AdminDashboard() {
                   label: "Pending COR",
                   value: "5",
                   icon: Upload,
-                  color: "text-[var(--earist-primary)]",
-                  bg: "bg-[var(--earist-surface-light-red)]",
+                  color: "text-(--earist-primary)",
+                  bg: "bg-(--earist-surface-light-red)",
                 },
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-center gap-3 rounded-lg bg-[var(--earist-surface-gray)] p-3"
+                  className="flex items-center gap-3 rounded-lg bg-(--earist-surface-gray) p-3"
                 >
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded ${item.bg}`}
@@ -281,10 +276,10 @@ export default function AdminDashboard() {
                     <item.icon className={`h-4 w-4 ${item.color}`} />
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-[var(--earist-primary)]">
+                    <p className="text-lg font-bold text-(--earist-primary)">
                       {item.value}
                     </p>
-                    <p className="text-[11px] text-[var(--earist-body-text)]">
+                    <p className="text-[11px] text-(--earist-body-text)">
                       {item.label}
                     </p>
                   </div>
@@ -298,10 +293,10 @@ export default function AdminDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Pending Actions
               </CardTitle>
-              <Badge className="bg-[var(--earist-surface-light-red)] text-[var(--earist-primary)]">
+              <Badge className="bg-(--earist-surface-light-red) text-(--earist-primary)">
                 {pendingActions.length} items
               </Badge>
             </div>
@@ -312,7 +307,7 @@ export default function AdminDashboard() {
                 <Link
                   key={i}
                   href={item.href}
-                  className="flex items-center gap-3 rounded-lg bg-[var(--earist-surface-gray)] p-2.5 transition-colors hover:bg-[var(--earist-surface-light-red)]"
+                  className="flex items-center gap-3 rounded-lg bg-(--earist-surface-gray) p-2.5 transition-colors hover:bg-(--earist-surface-light-red)"
                 >
                   <div
                     className={`h-2 w-2 shrink-0 rounded-full ${
@@ -323,15 +318,15 @@ export default function AdminDashboard() {
                           : "bg-gray-400"
                     }`}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-(--earist-primary)">
                       {item.action}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)] truncate">
+                    <p className="truncate text-xs text-(--earist-body-text)">
                       {item.detail}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[11px] text-[var(--earist-body-text)]">
+                  <span className="shrink-0 text-[11px] text-(--earist-body-text)">
                     {item.time}
                   </span>
                 </Link>
@@ -343,7 +338,7 @@ export default function AdminDashboard() {
         {/* Recent Activity — spans 2 cols */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Recent Activity
             </CardTitle>
           </CardHeader>
@@ -354,17 +349,17 @@ export default function AdminDashboard() {
                   key={i}
                   className="flex items-start gap-3 rounded-lg p-2.5"
                 >
-                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--earist-accent)]" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[var(--earist-primary)]">
+                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-(--earist-accent)" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-(--earist-primary)">
                       <span className="font-medium">{item.actor}</span>{" "}
                       {item.action}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {item.target}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[11px] text-[var(--earist-body-text)]">
+                  <span className="shrink-0 text-[11px] text-(--earist-body-text)">
                     {item.time}
                   </span>
                 </div>
@@ -376,7 +371,7 @@ export default function AdminDashboard() {
         {/* Quick Actions — full width */}
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Quick Actions
             </CardTitle>
           </CardHeader>
@@ -412,7 +407,7 @@ export default function AdminDashboard() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3 text-xs font-medium text-[var(--earist-body-text)] transition-colors hover:bg-[var(--earist-surface-light-red)] hover:text-[var(--earist-primary)]"
+                  className="flex items-center gap-2 rounded-lg bg-(--earist-surface-gray) p-3 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
                 >
                   <link.icon className="h-4 w-4 shrink-0" />
                   {link.label}

@@ -179,10 +179,10 @@ export default function RegisterPage() {
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center blur-sm scale-105"
+          className="absolute inset-0 scale-105 bg-cover bg-center blur-sm"
           style={{ backgroundImage: "url('/images/campus-hero.jpg')" }}
         />
-        <div className="absolute inset-0 bg-[var(--earist-primary)]/60 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
         <div className="relative z-10 w-full max-w-[480px] px-4 py-12">
           <Card className="shadow-2xl">
@@ -190,17 +190,17 @@ export default function RegisterPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
-              <h2 className="mb-2 text-2xl font-bold text-[var(--earist-primary)]">
+              <h2 className="mb-2 text-2xl font-bold text-(--earist-primary)">
                 Registration Complete
               </h2>
-              <p className="mb-6 text-sm text-[var(--earist-body-text)]">
+              <p className="mb-6 text-sm text-(--earist-body-text)">
                 Your applicant account has been created successfully.
               </p>
 
-              <Alert className="mb-6 border-[var(--earist-accent)]/30 bg-[var(--earist-surface-cream)]">
-                <Info className="h-4 w-4 text-[var(--earist-warning)]" />
+              <Alert className="mb-6 border-(--earist-accent)/30 bg-(--earist-surface-cream)">
+                <Info className="h-4 w-4 text-(--earist-warning)" />
                 <AlertDescription>
-                  <p className="mb-3 text-sm font-bold text-[var(--earist-primary)]">
+                  <p className="mb-3 text-sm font-bold text-(--earist-primary)">
                     What happens next:
                   </p>
                   <div className="space-y-3">
@@ -212,10 +212,10 @@ export default function RegisterPage() {
                       "Once verified, you will receive your Student credentials via email.",
                     ].map((item, i) => (
                       <div key={i} className="flex gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--earist-primary)] text-xs font-bold text-white">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-(--earist-primary) text-xs font-bold text-white">
                           {i + 1}
                         </div>
-                        <p className="text-sm text-[var(--earist-body-text)] text-left">
+                        <p className="text-left text-sm text-(--earist-body-text)">
                           {item}
                         </p>
                       </div>
@@ -226,7 +226,7 @@ export default function RegisterPage() {
 
               <Link
                 href="/login"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--earist-accent)] py-2.5 text-sm font-bold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-accent)]/90"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-(--earist-accent) py-2.5 text-sm font-bold text-(--earist-primary) transition-colors hover:bg-(--earist-accent)/90"
               >
                 Sign In to Your Portal
               </Link>
@@ -249,19 +249,19 @@ export default function RegisterPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
       <div
-        className="absolute inset-0 bg-cover bg-center blur-sm scale-105"
+        className="absolute inset-0 scale-105 bg-cover bg-center blur-sm"
         style={{ backgroundImage: "url('/images/campus-hero.jpg')" }}
       />
-      <div className="absolute inset-0 bg-[var(--earist-primary)]/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
       <div className="relative z-10 w-full max-w-[480px] px-4 py-12">
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--earist-surface-light-red)]">
-              <GraduationCap className="h-9 w-9 text-[var(--earist-primary)]" />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
+              <GraduationCap className="h-9 w-9 text-(--earist-primary)" />
             </div>
             <CardTitle
-              className="text-lg text-[var(--earist-primary)]"
+              className="text-lg text-(--earist-primary)"
               style={{ fontFamily: '"Calibri", sans-serif' }}
             >
               EARIST Graduate School
@@ -277,27 +277,27 @@ export default function RegisterPage() {
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
                         s === step
-                          ? "bg-[var(--earist-accent)] text-[var(--earist-primary)] ring-2 ring-[var(--earist-accent)]/30"
+                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/30"
                           : s < step
-                            ? "bg-[var(--earist-primary)] text-white"
-                            : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)]"
+                            ? "bg-(--earist-primary) text-white"
+                            : "bg-(--earist-surface-gray) text-(--earist-body-text)"
                       }`}
                     >
                       {s < step ? "✓" : s + 1}
                     </div>
                     {s < 3 && (
                       <div
-                        className={`h-1 w-12 sm:w-20 transition-colors ${
+                        className={`h-1 w-12 transition-colors sm:w-20 ${
                           s < step
-                            ? "bg-[var(--earist-primary)]"
-                            : "bg-[var(--earist-border-gray)]"
+                            ? "bg-(--earist-primary)"
+                            : "bg-(--earist-border-gray)"
                         }`}
                       />
                     )}
                   </div>
                 ))}
               </div>
-              <p className="text-center text-sm font-semibold text-[var(--earist-primary)]">
+              <p className="text-center text-sm font-semibold text-(--earist-primary)">
                 {stepTitles[step]}
               </p>
             </div>
@@ -314,16 +314,16 @@ export default function RegisterPage() {
               {/* Step 0: Applicant ID */}
               {step === 0 && (
                 <div className="space-y-5">
-                  <Alert className="border-[var(--earist-accent)]/30 bg-[var(--earist-surface-cream)]">
-                    <Info className="h-4 w-4 text-[var(--earist-warning)]" />
-                    <AlertDescription className="text-[var(--earist-warning)]">
+                  <Alert className="border-(--earist-accent)/30 bg-(--earist-surface-cream)">
+                    <Info className="h-4 w-4 text-(--earist-warning)" />
+                    <AlertDescription className="text-(--earist-warning)">
                       You must have an <strong>Applicant ID</strong> to
                       register. This is issued after your initial application is
                       processed.
                     </AlertDescription>
                   </Alert>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Applicant ID <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -344,7 +344,7 @@ export default function RegisterPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                      <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                         First Name <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -358,7 +358,7 @@ export default function RegisterPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                      <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                         Last Name <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -371,7 +371,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Email Address <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -381,12 +381,12 @@ export default function RegisterPage() {
                       placeholder="your.email@gmail.com"
                       required
                     />
-                    <p className="mt-1.5 text-xs text-[var(--earist-body-text)]">
+                    <p className="mt-1.5 text-xs text-(--earist-body-text)">
                       Gmail only
                     </p>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Cellphone Number <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -398,7 +398,7 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Date of Birth <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -417,7 +417,7 @@ export default function RegisterPage() {
               {step === 2 && (
                 <div className="space-y-5">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-2 block text-sm font-semibold text-(--earist-secondary)">
                       Program Type <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-2 gap-3">
@@ -437,8 +437,8 @@ export default function RegisterPage() {
                           }}
                           className={
                             formData.programType === type
-                              ? "bg-[var(--earist-primary)] hover:bg-[var(--earist-primary)]/90"
-                              : "border-[var(--earist-border-gray)]"
+                              ? "bg-(--earist-primary) hover:bg-(--earist-primary)/90"
+                              : "border-(--earist-border-gray)"
                           }
                         >
                           {type}
@@ -478,7 +478,7 @@ export default function RegisterPage() {
                     return (
                       <>
                         <div>
-                          <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                          <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                             {intendedProgramLabel}{" "}
                             <span className="text-red-500">*</span>
                           </label>
@@ -488,7 +488,7 @@ export default function RegisterPage() {
                               updateForm("programId", e.target.value)
                             }
                             required
-                            className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                            className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
                           >
                             <option value="">Select a program</option>
                             {intendedProgramList.map((p) => (
@@ -499,7 +499,7 @@ export default function RegisterPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                          <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                             {prerequisiteProgramLabel}{" "}
                             <span className="text-red-500">*</span>
                           </label>
@@ -512,7 +512,7 @@ export default function RegisterPage() {
                               )
                             }
                             required
-                            className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                            className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
                           >
                             <option value="">{prerequisitePlaceholder}</option>
                             {prerequisiteProgramList.map((c) => (
@@ -521,7 +521,7 @@ export default function RegisterPage() {
                               </option>
                             ))}
                           </select>
-                          <p className="mt-1.5 text-xs text-[var(--earist-body-text)]">
+                          <p className="mt-1.5 text-xs text-(--earist-body-text)">
                             Used for Program Alignment Check.{" "}
                             {isDoctoral &&
                               "If you graduated from another school, select the closest equivalent program."}
@@ -537,7 +537,7 @@ export default function RegisterPage() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -552,7 +552,7 @@ export default function RegisterPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--earist-body-text)] transition-colors hover:text-[var(--earist-primary)]"
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-(--earist-body-text) transition-colors hover:text-(--earist-primary)"
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -563,7 +563,7 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Confirm Password <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -589,7 +589,7 @@ export default function RegisterPage() {
                       setStep(step - 1);
                       setError(""); // Clear error on back navigation
                     }}
-                    className="text-[var(--earist-secondary)]"
+                    className="text-(--earist-secondary)"
                   >
                     <ChevronLeft className="mr-1 h-4 w-4" />
                     Back
@@ -606,7 +606,7 @@ export default function RegisterPage() {
                         setError(""); // Clear error on forward navigation
                       }
                     }}
-                    className="bg-[var(--earist-primary)] hover:bg-[var(--earist-primary)]/90"
+                    className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
                   >
                     Continue
                     <ChevronRight className="ml-1 h-4 w-4" />
@@ -615,7 +615,7 @@ export default function RegisterPage() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-[var(--earist-accent)] text-[var(--earist-primary)] hover:bg-[var(--earist-accent)]/90 disabled:opacity-70"
+                    className="bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)/90 disabled:opacity-70"
                   >
                     {isSubmitting ? "Submitting..." : "Submit Registration"}
                   </Button>
@@ -624,14 +624,14 @@ export default function RegisterPage() {
             </form>
 
             <div className="mt-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
-              <span className="text-xs text-[var(--earist-body-text)]">or</span>
-              <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
+              <div className="h-px flex-1 bg-(--earist-border-gray)" />
+              <span className="text-xs text-(--earist-body-text)">or</span>
+              <div className="h-px flex-1 bg-(--earist-border-gray)" />
             </div>
 
             <Link
               href="/login"
-              className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-[var(--earist-primary)] py-2.5 text-sm font-semibold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-surface-light-red)]"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-(--earist-primary) py-2.5 text-sm font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)"
             >
               Already registered? Sign in
             </Link>

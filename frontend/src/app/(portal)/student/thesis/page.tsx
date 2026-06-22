@@ -29,7 +29,7 @@ export default async function ThesisPipelinePage() {
 
   if (!data) {
     return (
-      <div className="text-red-500 p-4">
+      <div className="p-4 text-red-500">
         Failed to load thesis data. Is the backend running?
       </div>
     );
@@ -75,7 +75,11 @@ export default async function ThesisPipelinePage() {
       key: "title_defense",
       label: "Title Defense",
       href: "/student/thesis/title-defense",
-      status: getStageStatus("TITLE", !!isTitleCompleted, !hasAdviser || !passedCompExam), // Locked if no adviser OR failed Comp Exam
+      status: getStageStatus(
+        "TITLE",
+        !!isTitleCompleted,
+        !hasAdviser || !passedCompExam,
+      ), // Locked if no adviser OR failed Comp Exam
       requirements: [
         { name: "Passed Comprehensive Exam", met: passedCompExam },
         { name: "Must have an Assigned Adviser", met: hasAdviser },
@@ -174,12 +178,12 @@ export default async function ThesisPipelinePage() {
     <div className="space-y-4">
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Thesis Pipeline
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Overview of your defense stages — Title, Proposal, and Final Defense
         </p>
       </div>
@@ -193,7 +197,7 @@ export default async function ThesisPipelinePage() {
             <Card key={stage.key} className={isLocked ? "opacity-60" : ""}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     {stage.label}
                   </CardTitle>
                   {getStatusBadge(stage.status)}
@@ -202,7 +206,7 @@ export default async function ThesisPipelinePage() {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <p className="mb-2 text-xs font-semibold text-[var(--earist-secondary)]">
+                    <p className="mb-2 text-xs font-semibold text-(--earist-secondary)">
                       Requirements
                     </p>
                     <div className="space-y-1.5">
@@ -214,7 +218,7 @@ export default async function ThesisPipelinePage() {
                             <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                           )}
                           <span
-                            className={`text-xs ${req.met ? "text-[var(--earist-body-text)]" : "text-gray-400"}`}
+                            className={`text-xs ${req.met ? "text-(--earist-body-text)" : "text-gray-400"}`}
                           >
                             {req.name}
                           </span>
@@ -223,20 +227,21 @@ export default async function ThesisPipelinePage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-[var(--earist-border-gray)] pt-3">
-                    <div className="border-t border-[var(--earist-border-gray)] pt-3">
-                      {stage.key === "title_defense" && (!hasAdviser || !passedCompExam) ? (
+                  <div className="border-t border-(--earist-border-gray) pt-3">
+                    <div className="border-t border-(--earist-border-gray) pt-3">
+                      {stage.key === "title_defense" &&
+                      (!hasAdviser || !passedCompExam) ? (
                         <div className="flex flex-col gap-2">
                           {!passedCompExam && (
-                            <p className="text-xs text-red-500 font-medium">
-                              <Lock className="inline h-3 w-3 mr-1" />
+                            <p className="text-xs font-medium text-red-500">
+                              <Lock className="mr-1 inline h-3 w-3" />
                               You must pass the Comprehensive Exam first.
                             </p>
                           )}
                           {!hasAdviser && passedCompExam && (
                             <Link
                               href="/student/thesis/adviser-request"
-                              className="inline-flex items-center gap-1 text-sm font-bold text-[var(--earist-primary)] hover:text-[var(--earist-accent)]"
+                              className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) hover:text-(--earist-accent)"
                             >
                               <Users className="h-3 w-3" /> Request Adviser{" "}
                               <ArrowRight className="h-3 w-3" />
@@ -248,8 +253,8 @@ export default async function ThesisPipelinePage() {
                           href={stage.href}
                           className={`inline-flex items-center gap-1 text-sm font-semibold transition-colors ${
                             isLocked
-                              ? "cursor-not-allowed text-gray-400 pointer-events-none"
-                              : "text-[var(--earist-secondary)] hover:text-[var(--earist-primary)]"
+                              ? "pointer-events-none cursor-not-allowed text-gray-400"
+                              : "text-(--earist-secondary) hover:text-(--earist-primary)"
                           }`}
                         >
                           {isLocked ? (

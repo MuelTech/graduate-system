@@ -30,10 +30,10 @@ export function HowItWorksSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
         <div className="mb-12 text-center">
-          <h2 className="mb-4 text-3xl font-bold text-[var(--earist-primary)] sm:text-4xl">
+          <h2 className="mb-4 text-3xl font-bold text-(--earist-primary) sm:text-4xl">
             How It Works
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-[var(--earist-body-text)]">
+          <p className="mx-auto max-w-2xl text-lg text-(--earist-body-text)">
             Your journey from applicant to graduate in three simple steps.
           </p>
         </div>
@@ -46,22 +46,22 @@ export function HowItWorksSection() {
               className="relative flex flex-col items-center rounded-lg bg-white p-8 text-center shadow-sm"
             >
               {/* Number Badge */}
-              <div className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--earist-accent)] text-sm font-bold text-[var(--earist-primary)]">
+              <div className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-(--earist-accent) text-sm font-bold text-(--earist-primary)">
                 {step.number}
               </div>
 
               {/* Icon */}
-              <div className="mb-4 mt-4 rounded-full bg-[var(--earist-primary)] p-4 text-white">
+              <div className="mt-4 mb-4 rounded-full bg-(--earist-primary) p-4 text-white">
                 <step.icon className="h-8 w-8" />
               </div>
 
               {/* Title */}
-              <h3 className="mb-2 text-xl font-bold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-xl font-bold text-(--earist-primary)">
                 {step.title}
               </h3>
 
               {/* Description */}
-              <p className="text-sm text-[var(--earist-body-text)]">
+              <p className="text-sm text-(--earist-body-text)">
                 {step.description}
               </p>
             </div>

@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   FileCheck2,
@@ -103,19 +98,21 @@ export default function PanelistDefensesPage() {
   ];
 
   const upcomingCount = defenses.filter((d) => d.status === "upcoming").length;
-  const completedCount = defenses.filter((d) => d.status === "completed").length;
+  const completedCount = defenses.filter(
+    (d) => d.status === "completed",
+  ).length;
 
   return (
     <div className="space-y-4">
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           My Defenses
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           View your assigned defense schedules and details
         </p>
       </div>
@@ -160,7 +157,7 @@ export default function PanelistDefensesPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                        <p className="text-sm font-semibold text-(--earist-primary)">
                           {defense.stage}
                         </p>
                         <Badge
@@ -179,22 +176,22 @@ export default function PanelistDefensesPage() {
                               : "Completed"}
                         </Badge>
                       </div>
-                      <p className="text-xs text-[var(--earist-body-text)]">
+                      <p className="text-xs text-(--earist-body-text)">
                         {defense.role}
                       </p>
                     </div>
                   </div>
 
                   <div className="mb-3">
-                    <p className="text-sm font-medium text-[var(--earist-primary)]">
+                    <p className="text-sm font-medium text-(--earist-primary)">
                       {defense.researcher}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {defense.program}
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-4 text-xs text-[var(--earist-body-text)]">
+                  <div className="flex flex-wrap gap-4 text-xs text-(--earist-body-text)">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
                       {defense.date}
@@ -207,7 +204,7 @@ export default function PanelistDefensesPage() {
 
                   {/* Panel Members */}
                   <div className="mt-3">
-                    <p className="mb-1 text-xs font-semibold text-[var(--earist-secondary)]">
+                    <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
                       Panel Members
                     </p>
                     <div className="flex flex-wrap gap-1">
@@ -226,13 +223,13 @@ export default function PanelistDefensesPage() {
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-2 border-t border-[var(--earist-border-gray)] p-4 lg:flex-col lg:border-t-0 lg:border-l lg:px-4">
+                <div className="flex items-center gap-2 border-t border-(--earist-border-gray) p-4 lg:flex-col lg:border-t-0 lg:border-l lg:px-4">
                   {defense.status === "upcoming" && defense.teamsLink && (
                     <a
                       href={defense.teamsLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 rounded-lg bg-[var(--earist-primary)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90"
+                      className="flex items-center gap-1 rounded-lg bg-(--earist-primary) px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
                     >
                       <ExternalLink className="h-3 w-3" />
                       Join Meeting
@@ -240,7 +237,7 @@ export default function PanelistDefensesPage() {
                   )}
                   <Link
                     href="/panelist/materials"
-                    className="flex items-center gap-1 rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-xs font-semibold text-[var(--earist-body-text)] transition-colors hover:bg-[var(--earist-surface-gray)]"
+                    className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)"
                   >
                     <FolderOpen className="h-3 w-3" />
                     Materials
@@ -248,7 +245,7 @@ export default function PanelistDefensesPage() {
                   {defense.status === "upcoming" && (
                     <Link
                       href="/panelist/scoring"
-                      className="flex items-center gap-1 rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-xs font-semibold text-[var(--earist-body-text)] transition-colors hover:bg-[var(--earist-surface-gray)]"
+                      className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)"
                     >
                       <PenLine className="h-3 w-3" />
                       Score

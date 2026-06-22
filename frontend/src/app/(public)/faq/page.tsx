@@ -101,34 +101,28 @@ const faqCategories = [
   },
 ];
 
-function FAQItem({
-  question,
-  answer,
-}: {
-  question: string;
-  answer: string;
-}) {
+function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-b border-[var(--earist-border-gray)]">
+    <div className="border-b border-(--earist-border-gray)">
       <button
         className="flex w-full items-center justify-between py-4 text-left"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
       >
-        <span className="pr-4 text-sm font-medium text-[var(--earist-primary)]">
+        <span className="pr-4 text-sm font-medium text-(--earist-primary)">
           {question}
         </span>
         {isOpen ? (
-          <ChevronUp className="h-5 w-5 shrink-0 text-[var(--earist-secondary)]" />
+          <ChevronUp className="h-5 w-5 shrink-0 text-(--earist-secondary)" />
         ) : (
-          <ChevronDown className="h-5 w-5 shrink-0 text-[var(--earist-body-text)]" />
+          <ChevronDown className="h-5 w-5 shrink-0 text-(--earist-body-text)" />
         )}
       </button>
       {isOpen && (
-        <div className="pb-4 pl-0 pr-8">
-          <p className="text-sm text-[var(--earist-body-text)]">{answer}</p>
+        <div className="pr-8 pb-4 pl-0">
+          <p className="text-sm text-(--earist-body-text)">{answer}</p>
         </div>
       )}
     </div>
@@ -139,7 +133,7 @@ export default function FAQPage() {
   return (
     <>
       {/* Page Header */}
-      <section className="bg-[var(--earist-primary)] py-16">
+      <section className="bg-(--earist-primary) py-16">
         <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
           <h1 className="mb-4 text-4xl font-bold text-white">
             FAQ / Help Center
@@ -152,15 +146,15 @@ export default function FAQPage() {
       </section>
 
       {/* Search */}
-      <section className="bg-[var(--earist-surface-gray)] py-8">
+      <section className="bg-(--earist-surface-gray) py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-xl">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 placeholder="Search frequently asked questions..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] bg-white py-3 pl-10 pr-4 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--earist-primary)]"
+                className="w-full rounded-lg border border-(--earist-border-gray) bg-white py-3 pr-4 pl-10 text-sm transition-colors focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) focus:outline-none"
               />
             </div>
           </div>
@@ -174,12 +168,12 @@ export default function FAQPage() {
             {faqCategories.map((category) => (
               <div key={category.title}>
                 <div className="mb-4 flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-[var(--earist-accent)]" />
-                  <h2 className="text-xl font-bold text-[var(--earist-primary)]">
+                  <HelpCircle className="h-5 w-5 text-(--earist-accent)" />
+                  <h2 className="text-xl font-bold text-(--earist-primary)">
                     {category.title}
                   </h2>
                 </div>
-                <div className="rounded-lg border border-[var(--earist-border-gray)] bg-white px-6">
+                <div className="rounded-lg border border-(--earist-border-gray) bg-white px-6">
                   {category.faqs.map((faq) => (
                     <FAQItem
                       key={faq.question}
@@ -195,24 +189,24 @@ export default function FAQPage() {
       </section>
 
       {/* Contact Support */}
-      <section className="bg-[var(--earist-surface-light-red)] py-12">
+      <section className="bg-(--earist-surface-light-red) py-12">
         <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-2xl font-bold text-[var(--earist-primary)]">
+          <h2 className="mb-4 text-2xl font-bold text-(--earist-primary)">
             Still Have Questions?
           </h2>
-          <p className="mb-6 text-[var(--earist-body-text)]">
+          <p className="mb-6 text-(--earist-body-text)">
             Contact the Graduate School Office for further assistance.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
               href="mailto:gs@earist.edu.ph"
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--earist-primary)] px-6 text-sm font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-(--earist-primary) px-6 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
             >
               Email Support
             </a>
             <a
               href="tel:+63285348267"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-[var(--earist-primary)] px-6 text-sm font-semibold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-surface-light-red)]"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-(--earist-primary) px-6 text-sm font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)"
             >
               Call Us
             </a>

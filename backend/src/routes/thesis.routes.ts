@@ -45,6 +45,30 @@ router.post(
   thesisController.requestAdviser
 );
 
+// 🔒 ADMIN: Get all adviser requests
+router.get(
+  '/adviser/requests',
+  authenticateJWT,
+  requireRole(['ADMIN']),
+  thesisController.getAdviserRequests
+);
+
+// 🔒 ADMIN: Get all active assignments
+router.get(
+  '/adviser/assignments',
+  authenticateJWT,
+  requireRole(['ADMIN']),
+  thesisController.getActiveAssignments
+);
+
+// 🔒 ADMIN: Get available advisers (panelists)
+router.get(
+  '/adviser/available',
+  authenticateJWT,
+  requireRole(['ADMIN']),
+  thesisController.getAvailableAdvisers
+);
+
 // 🔒 ADMIN: Approve and Assign the adviser
 router.post(
   '/adviser/assign', 
@@ -62,6 +86,21 @@ router.put(
 );
 
 // 🔒 ADMIN: Schedule a defense (Requires venueOrLink string)
+router.get(
+  '/defense/pending', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.getPendingDefenses
+);
+
+// 🔒 ADMIN: Get approved applications ready for scheduling
+router.get(
+  '/defense/approved', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.getApprovedDefenses
+);
+
 router.post(
   '/defense/:id/schedule', 
   authenticateJWT, 

@@ -160,6 +160,10 @@ export class AuthService {
             if (!data.applicantId) throw new AppError("Applicant ID is required!", 400);
             const student = await this.authRepository.findStudentByApplicantId(data.applicantId);
             user = student?.user || null;
+            
+            if (user && user.role !== 'APPLICANT') {
+                throw new AppError("This applicant has already been promoted. Please log in using the Student portal with your Student ID.", 403);
+            }
         }
         else if (data.role === 'student') {
             if (!data.studentId) throw new AppError("Student ID is required!", 400);
@@ -167,6 +171,10 @@ export class AuthService {
 
             const student = await this.authRepository.findStudentByStudentNumber(data.studentId, dob);
             user = student?.user || null;
+
+            if (user && user.role !== 'STUDENT') {
+                throw new AppError("This user is not registered as a Student.", 403);
+            }
         }
         else {
             if (!data.email) throw new AppError("Email is required!", 400);

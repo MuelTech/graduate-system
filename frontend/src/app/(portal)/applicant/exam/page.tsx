@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -46,8 +41,7 @@ export default function ApplicantExamPage() {
     },
     {
       id: 2,
-      question:
-        "In research methodology, what does 'validity' refer to?",
+      question: "In research methodology, what does 'validity' refer to?",
       options: [
         "The consistency of a measurement instrument",
         "The extent to which a test measures what it claims to measure",
@@ -79,8 +73,7 @@ export default function ApplicantExamPage() {
     },
     {
       id: 5,
-      question:
-        "Which of the following is an example of a null hypothesis?",
+      question: "Which of the following is an example of a null hypothesis?",
       options: [
         "There is a significant relationship between study hours and exam scores",
         "There is no significant difference between group A and group B",
@@ -101,8 +94,7 @@ export default function ApplicantExamPage() {
     },
     {
       id: 7,
-      question:
-        "In qualitative research, what is 'triangulation'?",
+      question: "In qualitative research, what is 'triangulation'?",
       options: [
         "Using three different statistical tests",
         "Collecting data from three different countries",
@@ -123,8 +115,7 @@ export default function ApplicantExamPage() {
     },
     {
       id: 9,
-      question:
-        "What is the purpose of a pilot study in research?",
+      question: "What is the purpose of a pilot study in research?",
       options: [
         "To replace the main study",
         "To test the research instruments and procedures before full implementation",
@@ -134,8 +125,7 @@ export default function ApplicantExamPage() {
     },
     {
       id: 10,
-      question:
-        "Which of the following best describes 'academic integrity'?",
+      question: "Which of the following best describes 'academic integrity'?",
       options: [
         "Writing papers as quickly as possible",
         "Maintaining honesty, trust, fairness, and responsibility in academic work",
@@ -145,8 +135,7 @@ export default function ApplicantExamPage() {
     },
   ];
 
-  const allMcqAnswered =
-    Object.keys(answers).length === mcqQuestions.length;
+  const allMcqAnswered = Object.keys(answers).length === mcqQuestions.length;
 
   useEffect(() => {
     if (examState !== "in_progress") return;
@@ -179,16 +168,14 @@ export default function ApplicantExamPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                 Examination Submitted Successfully
               </h3>
-              <p className="mb-4 max-w-md text-sm text-[var(--earist-body-text)]">
+              <p className="mb-4 max-w-md text-sm text-(--earist-body-text)">
                 Your entrance examination has been submitted. Results will be
                 sent to your registered email address.
               </p>
-              <Badge className="bg-green-100 text-green-700">
-                Submitted
-              </Badge>
+              <Badge className="bg-green-100 text-green-700">Submitted</Badge>
             </div>
           </CardContent>
         </Card>
@@ -202,20 +189,20 @@ export default function ApplicantExamPage() {
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--earist-surface-light-red)]">
-                <Timer className="h-8 w-8 text-[var(--earist-primary)]" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
+                <Timer className="h-8 w-8 text-(--earist-primary)" />
               </div>
-              <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                 Exam Not Yet Available
               </h3>
-              <p className="mb-4 text-sm text-[var(--earist-body-text)]">
+              <p className="mb-4 text-sm text-(--earist-body-text)">
                 Your exam is scheduled for June 15, 2026 at 9:00 AM.
               </p>
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-4">
-                <p className="text-xs text-[var(--earist-body-text)]">
+              <div className="rounded-lg bg-(--earist-surface-gray) p-4">
+                <p className="text-xs text-(--earist-body-text)">
                   Time until exam
                 </p>
-                <p className="font-mono text-2xl font-bold text-[var(--earist-primary)]">
+                <p className="font-mono text-2xl font-bold text-(--earist-primary)">
                   23:45:30
                 </p>
               </div>
@@ -229,14 +216,14 @@ export default function ApplicantExamPage() {
   return (
     <div className="space-y-4">
       {/* Exam Header Bar */}
-      <div className="sticky top-16 z-20 flex items-center justify-between rounded-xl border border-[var(--earist-border-gray)] bg-white px-4 py-3">
+      <div className="sticky top-16 z-20 flex items-center justify-between rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3">
         <div className="flex items-center gap-3">
-          <FileText className="h-5 w-5 text-[var(--earist-primary)]" />
+          <FileText className="h-5 w-5 text-(--earist-primary)" />
           <div>
-            <p className="text-sm font-semibold text-[var(--earist-primary)]">
+            <p className="text-sm font-semibold text-(--earist-primary)">
               Graduate School Examination
             </p>
-            <p className="text-xs text-[var(--earist-body-text)]">
+            <p className="text-xs text-(--earist-body-text)">
               {showEssay
                 ? "Essay Section"
                 : `Question ${currentQuestion + 1} of ${mcqQuestions.length}`}
@@ -248,7 +235,7 @@ export default function ApplicantExamPage() {
             className={
               timeLeft < 600
                 ? "bg-red-100 text-red-700"
-                : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)]"
+                : "bg-(--earist-surface-gray) text-(--earist-body-text)"
             }
           >
             <Clock className="mr-1 h-3 w-3" />
@@ -265,7 +252,7 @@ export default function ApplicantExamPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     Multiple Choice — Question {currentQuestion + 1}
                   </CardTitle>
                   <Badge variant="outline">
@@ -276,51 +263,49 @@ export default function ApplicantExamPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     {mcqQuestions[currentQuestion].question}
                   </p>
                   <div className="space-y-2">
-                    {mcqQuestions[currentQuestion].options.map(
-                      (option, i) => {
-                        const optionLabel = String.fromCharCode(65 + i);
-                        const isSelected =
-                          answers[currentQuestion] === optionLabel;
-                        return (
-                          <label
-                            key={i}
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                              isSelected
-                                ? "border-[var(--earist-primary)] bg-[var(--earist-surface-light-red)]"
-                                : "border-[var(--earist-border-gray)] hover:bg-[var(--earist-surface-gray)]"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name={`q-${currentQuestion}`}
-                              value={optionLabel}
-                              checked={isSelected}
-                              onChange={() =>
-                                setAnswers((prev) => ({
-                                  ...prev,
-                                  [currentQuestion]: optionLabel,
-                                }))
-                              }
-                              className="mt-0.5"
-                            />
-                            <span className="text-sm text-[var(--earist-body-text)]">
-                              <span className="mr-2 font-semibold text-[var(--earist-primary)]">
-                                {optionLabel}.
-                              </span>
-                              {option}
+                    {mcqQuestions[currentQuestion].options.map((option, i) => {
+                      const optionLabel = String.fromCharCode(65 + i);
+                      const isSelected =
+                        answers[currentQuestion] === optionLabel;
+                      return (
+                        <label
+                          key={i}
+                          className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                            isSelected
+                              ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
+                              : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`q-${currentQuestion}`}
+                            value={optionLabel}
+                            checked={isSelected}
+                            onChange={() =>
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [currentQuestion]: optionLabel,
+                              }))
+                            }
+                            className="mt-0.5"
+                          />
+                          <span className="text-sm text-(--earist-body-text)">
+                            <span className="mr-2 font-semibold text-(--earist-primary)">
+                              {optionLabel}.
                             </span>
-                          </label>
-                        );
-                      }
-                    )}
+                            {option}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
 
                   {/* Navigation */}
-                  <div className="flex items-center justify-between border-t border-[var(--earist-border-gray)] pt-4">
+                  <div className="flex items-center justify-between border-t border-(--earist-border-gray) pt-4">
                     <Button
                       variant="outline"
                       size="sm"
@@ -336,7 +321,7 @@ export default function ApplicantExamPage() {
                       <Button
                         size="sm"
                         onClick={() => setShowEssay(true)}
-                        className="bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                        className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                       >
                         Proceed to Essay
                         <ChevronRight className="ml-1 h-4 w-4" />
@@ -346,10 +331,10 @@ export default function ApplicantExamPage() {
                         size="sm"
                         onClick={() =>
                           setCurrentQuestion((prev) =>
-                            Math.min(mcqQuestions.length - 1, prev + 1)
+                            Math.min(mcqQuestions.length - 1, prev + 1),
                           )
                         }
-                        className="bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                        className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                       >
                         Next
                         <ChevronRight className="ml-1 h-4 w-4" />
@@ -366,7 +351,7 @@ export default function ApplicantExamPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     Essay Section
                   </CardTitle>
                   <Badge variant="outline">{essayWordCount} words</Badge>
@@ -374,23 +359,22 @@ export default function ApplicantExamPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-[var(--earist-surface-gray)] p-4">
-                    <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <div className="rounded-lg bg-(--earist-surface-gray) p-4">
+                    <p className="text-sm font-medium text-(--earist-primary)">
                       Essay Question:
                     </p>
-                    <p className="mt-1 text-sm text-[var(--earist-body-text)]">
+                    <p className="mt-1 text-sm text-(--earist-body-text)">
                       Discuss the importance of research ethics in graduate
                       studies. How does maintaining academic integrity
-                      contribute to the advancement of knowledge in your
-                      chosen field? Provide specific examples to support your
-                      answer.
+                      contribute to the advancement of knowledge in your chosen
+                      field? Provide specific examples to support your answer.
                     </p>
                   </div>
                   <textarea
                     value={essayText}
                     onChange={(e) => setEssayText(e.target.value)}
                     placeholder="Type your essay response here..."
-                    className="min-h-[300px] w-full rounded-lg border border-[var(--earist-border-gray)] p-4 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                    className="min-h-[300px] w-full rounded-lg border border-(--earist-border-gray) p-4 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
                   />
                   <div className="flex items-center justify-between">
                     <Button
@@ -401,7 +385,7 @@ export default function ApplicantExamPage() {
                       <ChevronLeft className="mr-1 h-4 w-4" />
                       Back to MCQ
                     </Button>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       Auto-saved every 60 seconds
                     </p>
                   </div>
@@ -415,7 +399,7 @@ export default function ApplicantExamPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-32">
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Question Palette
               </CardTitle>
             </CardHeader>
@@ -433,10 +417,10 @@ export default function ApplicantExamPage() {
                       }}
                       className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
                         isCurrent
-                          ? "bg-[var(--earist-primary)] text-white"
+                          ? "bg-(--earist-primary) text-white"
                           : isAnswered
                             ? "bg-green-100 text-green-700"
-                            : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+                            : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
                       }`}
                     >
                       {i + 1}
@@ -444,36 +428,36 @@ export default function ApplicantExamPage() {
                   );
                 })}
               </div>
-              <div className="mt-4 space-y-2 border-t border-[var(--earist-border-gray)] pt-4">
+              <div className="mt-4 space-y-2 border-t border-(--earist-border-gray) pt-4">
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded bg-green-100" />
-                  <span className="text-xs text-[var(--earist-body-text)]">
+                  <span className="text-xs text-(--earist-body-text)">
                     Answered ({Object.keys(answers).length})
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded bg-[var(--earist-surface-gray)]" />
-                  <span className="text-xs text-[var(--earist-body-text)]">
+                  <div className="h-3 w-3 rounded bg-(--earist-surface-gray)" />
+                  <span className="text-xs text-(--earist-body-text)">
                     Not answered (
                     {mcqQuestions.length - Object.keys(answers).length})
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded bg-[var(--earist-primary)]" />
-                  <span className="text-xs text-[var(--earist-body-text)]">
+                  <div className="h-3 w-3 rounded bg-(--earist-primary)" />
+                  <span className="text-xs text-(--earist-body-text)">
                     Current
                   </span>
                 </div>
               </div>
 
               {/* Submit Button */}
-              <div className="mt-4 border-t border-[var(--earist-border-gray)] pt-4">
+              <div className="mt-4 border-t border-(--earist-border-gray) pt-4">
                 <Button
                   onClick={() => setShowSubmitConfirm(true)}
                   disabled={!allMcqAnswered}
                   className={`w-full ${
                     allMcqAnswered
-                      ? "bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                      ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                       : "cursor-not-allowed bg-gray-200 text-gray-400"
                   }`}
                 >
@@ -481,7 +465,7 @@ export default function ApplicantExamPage() {
                   Submit Examination
                 </Button>
                 {!allMcqAnswered && (
-                  <p className="mt-2 text-center text-[11px] text-[var(--earist-body-text)]">
+                  <p className="mt-2 text-center text-[11px] text-(--earist-body-text)">
                     Answer all MCQ questions to submit
                   </p>
                 )}
@@ -496,26 +480,26 @@ export default function ApplicantExamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 Submit Examination
               </h3>
               <button
                 onClick={() => setShowSubmitConfirm(false)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="mb-4 space-y-2">
-              <p className="text-sm text-[var(--earist-body-text)]">
+              <p className="text-sm text-(--earist-body-text)">
                 Are you sure you want to submit your examination?
               </p>
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3 text-xs">
-                <p className="text-[var(--earist-body-text)]">
+              <div className="rounded-lg bg-(--earist-surface-gray) p-3 text-xs">
+                <p className="text-(--earist-body-text)">
                   MCQ: {Object.keys(answers).length} / {mcqQuestions.length}{" "}
                   answered
                 </p>
-                <p className="text-[var(--earist-body-text)]">
+                <p className="text-(--earist-body-text)">
                   Essay: {essayWordCount} words
                 </p>
               </div>
@@ -536,7 +520,7 @@ export default function ApplicantExamPage() {
               </Button>
               <Button
                 onClick={() => setShowSubmitConfirm(false)}
-                className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 Confirm Submit
               </Button>

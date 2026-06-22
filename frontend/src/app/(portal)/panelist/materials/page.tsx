@@ -1,16 +1,6 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Download,
-  Calendar,
-  FolderOpen,
-} from "lucide-react";
+import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
 
 export default function PanelistMaterialsPage() {
   const defenseMaterials = [
@@ -77,12 +67,12 @@ export default function PanelistMaterialsPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Defense Materials
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Access research documents for your assigned defenses
         </p>
       </div>
@@ -110,10 +100,10 @@ export default function PanelistMaterialsPage() {
                     />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                    <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                       {defense.stage}
                     </CardTitle>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {defense.researcher} &middot; {defense.program}
                     </p>
                   </div>
@@ -128,7 +118,7 @@ export default function PanelistMaterialsPage() {
                   >
                     {defense.status === "upcoming" ? "Upcoming" : "Completed"}
                   </Badge>
-                  <div className="flex items-center gap-1 text-xs text-[var(--earist-body-text)]">
+                  <div className="flex items-center gap-1 text-xs text-(--earist-body-text)">
                     <Calendar className="h-3 w-3" />
                     {defense.date}
                   </div>
@@ -136,22 +126,22 @@ export default function PanelistMaterialsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3 rounded-lg border border-[var(--earist-border-gray)] p-3 transition-colors hover:bg-[var(--earist-surface-gray)]">
+              <div className="flex items-center gap-3 rounded-lg border border-(--earist-border-gray) p-3 transition-colors hover:bg-(--earist-surface-gray)">
                 <div className="flex h-9 w-9 items-center justify-center rounded bg-red-50">
                   <FileText className="h-4 w-4 text-red-600" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--earist-primary)] truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-(--earist-primary)">
                     {defense.material.name}
                   </p>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     {defense.material.size} &middot; Uploaded{" "}
                     {defense.material.uploadDate}
                   </p>
                 </div>
                 <a
                   href="#"
-                  className="flex items-center gap-1 rounded-lg border border-[var(--earist-border-gray)] px-3 py-1.5 text-xs font-semibold text-[var(--earist-body-text)] transition-colors hover:bg-white hover:text-[var(--earist-primary)]"
+                  className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-white hover:text-(--earist-primary)"
                 >
                   <Download className="h-3 w-3" />
                   View
@@ -167,13 +157,13 @@ export default function PanelistMaterialsPage() {
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--earist-surface-gray)]">
-                <FolderOpen className="h-8 w-8 text-[var(--earist-body-text)]/40" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
+                <FolderOpen className="h-8 w-8 text-(--earist-body-text)/40" />
               </div>
-              <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                 No Materials Available
               </h3>
-              <p className="text-sm text-[var(--earist-body-text)]">
+              <p className="text-sm text-(--earist-body-text)">
                 Defense materials will appear here once uploaded by the
                 researcher.
               </p>

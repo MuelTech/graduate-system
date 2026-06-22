@@ -31,16 +31,16 @@ const announcements = [
 
 export function AnnouncementsSection() {
   return (
-    <section className="bg-[var(--earist-surface-gray)] py-12 sm:py-16">
+    <section className="bg-(--earist-surface-gray) py-12 sm:py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
         <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-[var(--earist-primary)] sm:text-3xl">
+          <h2 className="text-2xl font-bold text-(--earist-primary) sm:text-3xl">
             News & Announcements
           </h2>
           <Link
             href="/faq"
-            className="hidden items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)] sm:flex"
+            className="hidden items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary) sm:flex"
           >
             View All
             <ArrowRight className="h-4 w-4" />
@@ -48,28 +48,28 @@ export function AnnouncementsSection() {
         </div>
 
         {/* Horizontal Scrollable Strip */}
-        <div className="scrollbar-thin scrollbar-thumb-[var(--earist-border-gray)] flex gap-4 overflow-x-auto pb-4">
+        <div className="flex scrollbar-thin scrollbar-thumb-(--earist-border-gray) gap-4 overflow-x-auto pb-4">
           {announcements.map((item) => (
             <Link
               key={item.title}
               href={item.href}
-              className="flex min-w-[300px] flex-col rounded-lg border border-[var(--earist-border-gray)] bg-white p-4 transition-all hover:shadow-md sm:min-w-[350px]"
+              className="flex min-w-[300px] flex-col rounded-lg border border-(--earist-border-gray) bg-white p-4 transition-all hover:shadow-md sm:min-w-[350px]"
             >
               {/* Date Badge */}
               <div className="mb-2 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-[var(--earist-accent)]" />
-                <span className="text-xs font-medium text-[var(--earist-body-text)]">
+                <Calendar className="h-4 w-4 text-(--earist-accent)" />
+                <span className="text-xs font-medium text-(--earist-body-text)">
                   {item.date}
                 </span>
               </div>
 
               {/* Title */}
-              <h3 className="mb-2 flex-1 text-sm font-semibold text-[var(--earist-primary)]">
+              <h3 className="mb-2 flex-1 text-sm font-semibold text-(--earist-primary)">
                 {item.title}
               </h3>
 
               {/* Read More */}
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--earist-secondary)]">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
                 Read More
                 <ArrowRight className="h-3 w-3" />
               </span>
@@ -81,7 +81,7 @@ export function AnnouncementsSection() {
         <div className="mt-4 text-center sm:hidden">
           <Link
             href="/faq"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)]"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary)"
           >
             View All Announcements
             <ArrowRight className="h-4 w-4" />

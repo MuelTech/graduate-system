@@ -5,6 +5,51 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 export class ThesisController {
   private thesisService = new ThesisService();
 
+  getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getPendingDefenses();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getApprovedDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getApprovedDefenses();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAllAdviserRequests();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getActiveAssignments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAllActiveAssignments();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getAvailableAdvisers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAvailableAdvisers();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   applyTitle = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');

@@ -1,6 +1,9 @@
 import { getSession, signOut } from "next-auth/react";
 
-export const apiClientRequest = async (url: string, options: RequestInit = {}) => {
+export const apiClientRequest = async (
+  url: string,
+  options: RequestInit = {},
+) => {
   const session = await getSession();
   const token = session?.user?.accessToken;
 
@@ -11,7 +14,8 @@ export const apiClientRequest = async (url: string, options: RequestInit = {}) =
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+  const apiUrl =
+    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
   const response = await fetch(`${apiUrl}/api${url}`, {
     ...options,
     headers,

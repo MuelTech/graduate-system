@@ -60,12 +60,12 @@ export default function AdviserRequestPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Request Thesis Adviser
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           You must secure an approved faculty adviser before you can apply for
           your Title Defense.
         </p>
@@ -73,7 +73,7 @@ export default function AdviserRequestPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-[var(--earist-secondary)]">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
             <UserPlus className="h-5 w-5" />
             Adviser Selection
           </CardTitle>
@@ -83,7 +83,7 @@ export default function AdviserRequestPage() {
             {status === "error" && (
               <Alert
                 variant="destructive"
-                className="bg-red-50 text-red-600 border-red-200"
+                className="border-red-200 bg-red-50 text-red-600"
               >
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errorMessage}</AlertDescription>
@@ -91,7 +91,7 @@ export default function AdviserRequestPage() {
             )}
 
             {status === "success" && (
-              <Alert className="bg-green-50 text-green-700 border-green-200">
+              <Alert className="border-green-200 bg-green-50 text-green-700">
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
                   Request submitted successfully! The admin must now approve it.
@@ -101,7 +101,7 @@ export default function AdviserRequestPage() {
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+              <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                 Faculty User ID <span className="text-red-500">*</span>
               </label>
               <input
@@ -111,16 +111,16 @@ export default function AdviserRequestPage() {
                 value={facultyId}
                 onChange={(e) => setFacultyId(e.target.value)}
                 placeholder="Paste the Faculty UUID here (e.g. 550e8400-e29b-...)"
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="mt-1 text-[10px] text-gray-400">
                 *We will replace this with a beautiful searchable dropdown once
                 the Users API is built in Phase 5.
               </p>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+              <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                 Request Remarks (Optional)
               </label>
               <textarea
@@ -129,7 +129,7 @@ export default function AdviserRequestPage() {
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Briefly explain your research interest..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
             </div>
 
@@ -138,7 +138,7 @@ export default function AdviserRequestPage() {
               disabled={
                 status === "loading" || status === "success" || !facultyId
               }
-              className="w-full bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+              className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
             >
               <Send className="mr-2 h-4 w-4" />
               {status === "loading" ? "Submitting..." : "Send Request"}

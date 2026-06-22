@@ -35,7 +35,9 @@ export default function AdminExamSlotsPage() {
     },
   });
 
-  const { data: programsData, isLoading: isProgramsLoading } = useQuery<{ graduatePrograms: Program[] }>({
+  const { data: programsData, isLoading: isProgramsLoading } = useQuery<{
+    graduatePrograms: Program[];
+  }>({
     queryKey: ["programs"],
     queryFn: async () => {
       return apiClientRequest("/programs", { method: "GET" });
@@ -94,17 +96,21 @@ export default function AdminExamSlotsPage() {
   const handleEditClick = (slot: Slot) => {
     setEditingSlotId(slot.id);
     setProgramId(slot.programId || "");
-    
+
     // Format date for <input type="date">
     const dateObj = new Date(slot.examDate);
     const dateString = dateObj.toISOString().split("T")[0];
     setExamDate(dateString);
-    
+
     // Format time for <input type="time"> (HH:mm)
     const timeObj = new Date(slot.examTime);
-    const timeString = timeObj.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" });
+    const timeString = timeObj.toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     setExamTime(timeString);
-    
+
     setMaxSlots(slot.maxSlots.toString());
     setShowCreateModal(true);
   };
@@ -163,12 +169,12 @@ export default function AdminExamSlotsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2
-            className="text-2xl font-bold text-[var(--earist-primary)]"
+            className="text-2xl font-bold text-(--earist-primary)"
             style={{ fontFamily: '"Calibri", sans-serif' }}
           >
             Exam Slot Management
           </h2>
-          <p className="text-sm text-[var(--earist-body-text)]">
+          <p className="text-sm text-(--earist-body-text)">
             Create and manage examination slots
           </p>
         </div>
@@ -181,7 +187,7 @@ export default function AdminExamSlotsPage() {
             setMaxSlots("");
             setShowCreateModal(true);
           }}
-          className="bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+          className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
         >
           <Plus className="mr-1 h-4 w-4" />
           Create Exam Slot
@@ -192,17 +198,17 @@ export default function AdminExamSlotsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">
+            <p className="text-xs text-(--earist-body-text)">
               Total Slots
             </p>
-            <p className="text-lg font-bold text-[var(--earist-primary)]">
+            <p className="text-lg font-bold text-(--earist-primary)">
               {isLoading ? "..." : slots.length}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Active</p>
+            <p className="text-xs text-(--earist-body-text)">Active</p>
             <p className="text-lg font-bold text-green-600">
               {isLoading ? "..." : activeSlots}
             </p>
@@ -210,7 +216,7 @@ export default function AdminExamSlotsPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Full</p>
+            <p className="text-xs text-(--earist-body-text)">Full</p>
             <p className="text-lg font-bold text-red-600">
               {isLoading ? "..." : fullSlots}
             </p>
@@ -218,10 +224,10 @@ export default function AdminExamSlotsPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">
+            <p className="text-xs text-(--earist-body-text)">
               Total Applicants
             </p>
-            <p className="text-lg font-bold text-[var(--earist-primary)]">
+            <p className="text-lg font-bold text-(--earist-primary)">
               {isLoading ? "..." : totalApplicants}
             </p>
           </CardContent>
@@ -234,23 +240,23 @@ export default function AdminExamSlotsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Program
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Exam Date
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Exam Time
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Slots
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                     Actions
                   </th>
                 </tr>
@@ -270,31 +276,31 @@ export default function AdminExamSlotsPage() {
                   return (
                     <tr
                       key={slot.id}
-                      className="border-b border-[var(--earist-border-gray)] last:border-0"
+                      className="border-b border-(--earist-border-gray) last:border-0"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <CalendarClock className="h-4 w-4 text-[var(--earist-accent)]" />
-                          <span className="font-medium text-[var(--earist-primary)]">
+                          <CalendarClock className="h-4 w-4 text-(--earist-accent)" />
+                          <span className="font-medium text-(--earist-primary)">
                             {slot.program?.programName || "All Programs"}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[var(--earist-body-text)]">
+                      <td className="px-4 py-3 text-(--earist-body-text)">
                         {formatDate(slot.examDate)}
                       </td>
-                      <td className="px-4 py-3 text-[var(--earist-body-text)]">
+                      <td className="px-4 py-3 text-(--earist-body-text)">
                         {formatTime(slot.examTime)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-center gap-1">
                           <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3 text-[var(--earist-body-text)]" />
-                            <span className="text-xs font-medium text-[var(--earist-primary)]">
+                            <Users className="h-3 w-3 text-(--earist-body-text)" />
+                            <span className="text-xs font-medium text-(--earist-primary)">
                               {slot.slotsTaken} / {slot.maxSlots}
                             </span>
                           </div>
-                          <div className="h-2 w-20 overflow-hidden rounded-full bg-[var(--earist-border-gray)]">
+                          <div className="h-2 w-20 overflow-hidden rounded-full bg-(--earist-border-gray)">
                             <div
                               className={`h-full rounded-full ${
                                 percentage >= 100
@@ -319,14 +325,16 @@ export default function AdminExamSlotsPage() {
                         <div className="flex justify-end gap-1">
                           <button
                             onClick={() => handleEditClick(slot)}
-                            className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                             title="Edit Slot"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           {slot.isActive && (
                             <button
-                              onClick={() => handleToggleStatus(slot.id, slot.isActive)}
+                              onClick={() =>
+                                handleToggleStatus(slot.id, slot.isActive)
+                              }
                               className="rounded p-1.5 text-red-600 hover:bg-red-50"
                               title="Deactivate Slot"
                             >
@@ -335,7 +343,9 @@ export default function AdminExamSlotsPage() {
                           )}
                           {!slot.isActive && (
                             <button
-                              onClick={() => handleToggleStatus(slot.id, slot.isActive)}
+                              onClick={() =>
+                                handleToggleStatus(slot.id, slot.isActive)
+                              }
                               className="rounded p-1.5 text-green-600 hover:bg-green-50"
                               title="Activate Slot"
                             >
@@ -358,25 +368,25 @@ export default function AdminExamSlotsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 {editingSlotId ? "Edit Exam Slot" : "Create Exam Slot"}
               </h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                   Program
                 </label>
                 <select
                   value={programId}
                   onChange={(e) => setProgramId(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                 >
                   <option value="">Select program...</option>
                   {programs.map((p) => (
@@ -387,29 +397,29 @@ export default function AdminExamSlotsPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                   Exam Date
                 </label>
                 <input
                   type="date"
                   value={examDate}
                   onChange={(e) => setExamDate(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                   Exam Time (Start)
                 </label>
                 <input
                   type="time"
                   value={examTime}
                   onChange={(e) => setExamTime(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                   Max Slots
                 </label>
                 <input
@@ -418,7 +428,7 @@ export default function AdminExamSlotsPage() {
                   value={maxSlots}
                   onChange={(e) => setMaxSlots(e.target.value)}
                   placeholder="e.g., 30"
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                 />
               </div>
             </div>
@@ -433,7 +443,7 @@ export default function AdminExamSlotsPage() {
               <Button
                 onClick={handleCreateSlot}
                 disabled={!programId || !examDate || !examTime || !maxSlots}
-                className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90 disabled:bg-gray-400"
+                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90 disabled:bg-gray-400"
               >
                 {editingSlotId ? "Update Slot" : "Create Slot"}
               </Button>
