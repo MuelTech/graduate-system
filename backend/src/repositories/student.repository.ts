@@ -41,6 +41,10 @@ export class StudentRepository {
             requirement: true,
           },
         },
+        adviserAssignments: {
+          where: { isActive: true },
+          include: { adviser: true },
+        },
       },
     });
   }

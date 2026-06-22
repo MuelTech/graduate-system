@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,66 +41,64 @@ interface AvailableSlot {
 }
 
 export default function ApplicantSchedulePage() {
-  const [applicant, setApplicant] = useState<ApplicantStatus | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [confirmSlot, setConfirmSlot] = useState<AvailableSlot | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchStatus();
-  }, []);
+  const {
+    data: applicant,
+    isLoading: isApplicantLoading,
+    error: applicantError,
+  } = useQuery<ApplicantStatus>({
+    queryKey: ["examStatus"],
+    queryFn: async () => {
+      return apiClientRequest("/exam/status", { method: "GET" });
+    },
+  });
 
-  async function fetchStatus() {
-    try {
-      setIsLoading(true);
-      setError("");
+  const {
+    data: availableSlots = [],
+    isLoading: isSlotsLoading,
+    error: slotsError,
+  } = useQuery<AvailableSlot[]>({
+    queryKey: ["examSlots", applicant?.programId],
+    queryFn: async () => {
+      return apiClientRequest(
+        `/exam/slots/available?programId=${applicant?.programId}`,
+        { method: "GET" },
+      );
+    },
+    enabled: !!applicant && applicant.alignmentStatus === "ALIGNED" && !applicant.confirmedSlot,
+  });
 
-      const statusData = await apiClientRequest("/exam/status", {
-        method: "GET",
-      });
-      setApplicant(statusData);
-
-      if (
-        statusData.alignmentStatus === "ALIGNED" &&
-        !statusData.confirmedSlot
-      ) {
-        const slotsData = await apiClientRequest(
-          `/exam/slots/available?programId=${statusData.programId}`,
-          { method: "GET" },
-        );
-        setAvailableSlots(slotsData);
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || "Failed to load schedule data.");
-      } else {
-        setError("Failed to load schedule data.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSchedule = async () => {
-    try {
-      if (!confirmSlot) return;
-      await apiClientRequest("/exam/schedule", {
+  const scheduleMutation = useMutation({
+    mutationFn: async (slotId: string) => {
+      return apiClientRequest("/exam/schedule", {
         method: "POST",
-        body: JSON.stringify({ slotId: confirmSlot.id }),
+        body: JSON.stringify({ slotId }),
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["examStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
       setConfirmSlot(null);
-      await fetchStatus(); // Refresh data
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       if (err instanceof Error) {
         alert(err.message || "Failed to schedule exam.");
       } else {
         alert("Failed to schedule exam.");
       }
-    }
+    },
+  });
+
+  const handleSchedule = () => {
+    if (!confirmSlot) return;
+    scheduleMutation.mutate(confirmSlot.id);
   };
+
+  const isLoading = isApplicantLoading || isSlotsLoading || scheduleMutation.isPending;
+  const error = applicantError?.message || slotsError?.message;
 
   const formatTime = (isoString: string) => {
     return new Date(isoString).toLocaleTimeString([], {

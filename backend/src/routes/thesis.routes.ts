@@ -6,12 +6,16 @@ import { upload } from '../middlewares/upload.middleware';
 const router = Router();
 const thesisController = new ThesisController();
 
-// 🔒 STUDENT ONLY: Title Defense (Expects file 'document' and fields 'title1', 'title2', 'title3')
+// 🔒 STUDENT ONLY: Title Defense
 router.post(
   '/defense/title', 
   authenticateJWT, 
   requireRole(['STUDENT']), 
-  upload.single('document'), 
+  upload.fields([
+    { name: 'conceptPaper', maxCount: 1 },
+    { name: 'cor', maxCount: 1 },
+    { name: 'receipt', maxCount: 1 }
+  ]), 
   thesisController.applyTitle
 );
 

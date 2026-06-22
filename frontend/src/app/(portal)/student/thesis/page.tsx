@@ -1,109 +1,126 @@
+// frontend/src/app/(portal)/student/thesis/page.tsx
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { auth } from "@/auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
   Lock,
   Clock,
   ArrowRight,
-  FileText,
-  Users,
   ExternalLink,
   Download,
   AlertCircle,
+  Users,
 } from "lucide-react";
 
-export default function ThesisPipelinePage() {
+async function getJourneyData(token: string) {
+  const res = await fetch("http://localhost:5000/api/student/journey", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export default async function ThesisPipelinePage() {
+  const session = await auth();
+  const data = await getJourneyData(session?.user?.accessToken || "");
+
+  if (!data) {
+    return (
+      <div className="text-red-500 p-4">
+        Failed to load thesis data. Is the backend running?
+      </div>
+    );
+  }
+
+  const hasAdviser =
+    data.adviserAssignments && data.adviserAssignments.length > 0;
+  const passedCompExam =
+    data.compExamRecords &&
+    data.compExamRecords.length > 0 &&
+    data.compExamRecords[0].status === "PASSED";
+  const currentThesis = data.thesisRecords?.[0] || null;
+
+  // Define the master states based on real database data
+  const isTitleCompleted =
+    currentThesis &&
+    (currentThesis.stage === "PROPOSAL" ||
+      currentThesis.stage === "FINAL" ||
+      (currentThesis.stage === "TITLE" && currentThesis.status === "PASSED"));
+  const isProposalCompleted =
+    currentThesis &&
+    (currentThesis.stage === "FINAL" ||
+      (currentThesis.stage === "PROPOSAL" &&
+        currentThesis.status === "PASSED"));
+
+  const getStageStatus = (
+    stageName: string,
+    isCompleted: boolean,
+    isLocked: boolean,
+  ) => {
+    if (isLocked) return "locked";
+    if (isCompleted) return "completed";
+    if (currentThesis && currentThesis.stage === stageName) {
+      if (currentThesis.status === "PENDING") return "pending";
+      if (currentThesis.status === "SCHEDULED") return "approved";
+      if (currentThesis.status === "FAILED") return "failed";
+    }
+    return "ready";
+  };
+
   const stages = [
     {
       key: "title_defense",
       label: "Title Defense",
       href: "/student/thesis/title-defense",
-      status: "completed" as
-        | "locked"
-        | "ready"
-        | "pending"
-        | "approved"
-        | "completed"
-        | "rap_signed",
-      lastAction: "May 28, 2026",
+      status: getStageStatus("TITLE", !!isTitleCompleted, !hasAdviser || !passedCompExam), // Locked if no adviser OR failed Comp Exam
       requirements: [
-        { name: "Certificate of Comprehensive Exam", met: true },
-        { name: "COR (Current Semester)", met: true },
-        { name: "Application for Defense", met: true },
-        { name: "Three Proposed Titles", met: true },
+        { name: "Passed Comprehensive Exam", met: passedCompExam },
+        { name: "Must have an Assigned Adviser", met: hasAdviser },
+        {
+          name: "Three Proposed Titles",
+          met: currentThesis?.stage === "TITLE" || isTitleCompleted,
+        },
       ],
-      appliedTitles: [
-        "Machine Learning Approaches for Early Detection of Student Academic Risk",
-        "Deep Learning Framework for Automated Thesis Document Analysis",
-        "NLP-Based Chatbot System for Graduate School Student Support",
-      ],
-      selectedTitle:
-        "Machine Learning Approaches for Early Detection of Student Academic Risk",
-      panel: [
-        { name: "Dr. Roberto Reyes", role: "Chairperson" },
-        { name: "Dr. Maria Santos", role: "Member" },
-        { name: "Dr. Juan Dela Cruz", role: "Member" },
-      ],
-      rapStatus: "signed" as "pending" | "distributed" | "signed",
+      panel: null, // Will be populated in Phase 4 Scheduling
     },
     {
       key: "proposal_defense",
       label: "Proposal Defense",
       href: "/student/thesis/proposal-defense",
-      status: "pending" as
-        | "locked"
-        | "ready"
-        | "pending"
-        | "approved"
-        | "completed"
-        | "rap_signed",
-      lastAction: "May 30, 2026",
+      status: getStageStatus(
+        "PROPOSAL",
+        !!isProposalCompleted,
+        !isTitleCompleted,
+      ), // Locked until Title is Passed
       requirements: [
-        { name: "COR (Current Semester)", met: true },
-        { name: "Application + Payment", met: true },
-        { name: "Adviser Certification", met: true },
-        { name: "Approved RAP from Title Defense", met: true },
-        { name: "Approved Research Variables", met: true },
+        { name: "Passed Title Defense", met: !!isTitleCompleted },
+        {
+          name: "Chapters 1-3 Uploaded",
+          met: currentThesis?.stage === "PROPOSAL" || isProposalCompleted,
+        },
       ],
-      appliedTitles: null,
-      selectedTitle: null,
       panel: null,
-      teamsLink: null,
-      rapStatus: null,
     },
     {
       key: "final_defense",
       label: "Final Defense",
       href: "/student/thesis/final-defense",
-      status: "locked" as
-        | "locked"
-        | "ready"
-        | "pending"
-        | "approved"
-        | "completed"
-        | "rap_signed",
-      lastAction: null,
+      status: getStageStatus(
+        "FINAL",
+        currentThesis?.stage === "FINAL" && currentThesis?.status === "PASSED",
+        !isProposalCompleted,
+      ), // Locked until Proposal Passed
       requirements: [
-        { name: "COR (Current Semester)", met: false },
-        { name: "Application + Payment", met: false },
-        { name: "Adviser Certification", met: false },
-        { name: "Approved Proposal RAP", met: false },
-        { name: "Research Instruments", met: false },
-        { name: "Statistician Certification", met: false },
-        { name: "7 Manuscript Copies", met: false },
-        { name: "STRIKE Report (< 20%)", met: false },
+        { name: "Passed Proposal Defense", met: !!isProposalCompleted },
+        {
+          name: "Final Manuscript Uploaded",
+          met: currentThesis?.stage === "FINAL",
+        },
       ],
-      appliedTitles: null,
-      selectedTitle: null,
       panel: null,
-      teamsLink: null,
-      rapStatus: null,
     },
   ];
 
@@ -118,9 +135,7 @@ export default function ThesisPipelinePage() {
         );
       case "ready":
         return (
-          <Badge className="bg-blue-100 text-blue-700">
-            Ready to Apply
-          </Badge>
+          <Badge className="bg-blue-100 text-blue-700">Ready to Apply</Badge>
         );
       case "pending":
         return (
@@ -133,48 +148,21 @@ export default function ThesisPipelinePage() {
         return (
           <Badge className="bg-blue-100 text-blue-700">
             <CheckCircle2 className="mr-1 h-3 w-3" />
-            Approved / Scheduled
+            Scheduled
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            <Lock className="mr-1 h-3 w-3" />
+            Failed / Revise
           </Badge>
         );
       case "completed":
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle2 className="mr-1 h-3 w-3" />
-            Defense Completed
-          </Badge>
-        );
-      case "rap_signed":
-        return (
-          <Badge className="bg-green-100 text-green-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            RAP Signed
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const getRapBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-amber-100 text-amber-700">
-            <Clock className="mr-1 h-3 w-3" />
-            RAP Pending
-          </Badge>
-        );
-      case "distributed":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">
-            RAP Distributed
-          </Badge>
-        );
-      case "signed":
-        return (
-          <Badge className="bg-green-100 text-green-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            RAP Signed
+            Passed
           </Badge>
         );
       default:
@@ -184,7 +172,6 @@ export default function ThesisPipelinePage() {
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
         <h2
           className="text-2xl font-bold text-[var(--earist-primary)]"
@@ -197,17 +184,13 @@ export default function ThesisPipelinePage() {
         </p>
       </div>
 
-      {/* Pipeline Stage Cards */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {stages.map((stage) => {
           const isLocked = stage.status === "locked";
           const requirementsMet = stage.requirements.every((r) => r.met);
 
           return (
-            <Card
-              key={stage.key}
-              className={isLocked ? "opacity-60" : ""}
-            >
+            <Card key={stage.key} className={isLocked ? "opacity-60" : ""}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
@@ -218,153 +201,78 @@ export default function ThesisPipelinePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Last Action */}
-                  {stage.lastAction && (
-                    <p className="text-xs text-[var(--earist-body-text)]">
-                      Last action: {stage.lastAction}
-                    </p>
-                  )}
-
-                  {/* Requirements Gate */}
                   <div>
                     <p className="mb-2 text-xs font-semibold text-[var(--earist-secondary)]">
                       Requirements
                     </p>
                     <div className="space-y-1.5">
                       {stage.requirements.map((req, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2"
-                        >
+                        <div key={i} className="flex items-center gap-2">
                           {req.met ? (
                             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
                           ) : (
                             <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                           )}
                           <span
-                            className={`text-xs ${
-                              req.met
-                                ? "text-[var(--earist-body-text)]"
-                                : "text-gray-400"
-                            }`}
+                            className={`text-xs ${req.met ? "text-[var(--earist-body-text)]" : "text-gray-400"}`}
                           >
                             {req.name}
                           </span>
                         </div>
                       ))}
                     </div>
-                    {!isLocked && !requirementsMet && (
-                      <div className="mt-2 flex items-start gap-1.5 rounded bg-amber-50 p-2">
-                        <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
-                        <p className="text-[11px] text-amber-700">
-                          Complete all requirements to proceed.
-                        </p>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Applied Titles Display */}
-                  {stage.appliedTitles && (
-                    <div>
-                      <p className="mb-2 text-xs font-semibold text-[var(--earist-secondary)]">
-                        Proposed Titles
-                      </p>
-                      <div className="space-y-1">
-                        {stage.appliedTitles.map((title, i) => (
-                          <p
-                            key={i}
-                            className={`text-xs ${
-                              title === stage.selectedTitle
-                                ? "font-semibold text-[var(--earist-primary)]"
-                                : "text-[var(--earist-body-text)]"
-                            }`}
-                          >
-                            {title === stage.selectedTitle && "→ "}
-                            {i + 1}. {title}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Panel Display */}
-                  {stage.panel && (
-                    <div>
-                      <p className="mb-2 text-xs font-semibold text-[var(--earist-secondary)]">
-                        Panel Members
-                      </p>
-                      <div className="space-y-1">
-                        {stage.panel.map((member, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-2"
-                          >
-                            <Users className="h-3 w-3 text-[var(--earist-body-text)]" />
-                            <span className="text-xs text-[var(--earist-body-text)]">
-                              {member.name}{" "}
-                              <span className="text-[11px] text-gray-400">
-                                ({member.role})
-                              </span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* MS Teams Link */}
-                  {stage.teamsLink && (
-                    <a
-                      href={stage.teamsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Join Defense Meeting
-                    </a>
-                  )}
-
-                  {/* RAP Report Status */}
-                  {stage.rapStatus && (
-                    <div className="flex items-center justify-between">
-                      {getRapBadge(stage.rapStatus)}
-                      {stage.rapStatus === "signed" && (
-                        <button className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]">
-                          <Download className="h-3 w-3" />
-                          Student Copy
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action Link */}
                   <div className="border-t border-[var(--earist-border-gray)] pt-3">
-                    <Link
-                      href={stage.href}
-                      className={`inline-flex items-center gap-1 text-sm font-semibold transition-colors ${
-                        isLocked
-                          ? "cursor-not-allowed text-gray-400"
-                          : "text-[var(--earist-secondary)] hover:text-[var(--earist-primary)]"
-                      }`}
-                    >
-                      {isLocked ? (
-                        <>
-                          <Lock className="h-3 w-3" />
-                          Locked
-                        </>
-                      ) : stage.status === "completed" ||
-                        stage.status === "rap_signed" ? (
-                        <>
-                          View Details <ArrowRight className="h-3 w-3" />
-                        </>
+                    <div className="border-t border-[var(--earist-border-gray)] pt-3">
+                      {stage.key === "title_defense" && (!hasAdviser || !passedCompExam) ? (
+                        <div className="flex flex-col gap-2">
+                          {!passedCompExam && (
+                            <p className="text-xs text-red-500 font-medium">
+                              <Lock className="inline h-3 w-3 mr-1" />
+                              You must pass the Comprehensive Exam first.
+                            </p>
+                          )}
+                          {!hasAdviser && passedCompExam && (
+                            <Link
+                              href="/student/thesis/adviser-request"
+                              className="inline-flex items-center gap-1 text-sm font-bold text-[var(--earist-primary)] hover:text-[var(--earist-accent)]"
+                            >
+                              <Users className="h-3 w-3" /> Request Adviser{" "}
+                              <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          )}
+                        </div>
                       ) : (
-                        <>
-                          Apply / View Details{" "}
-                          <ArrowRight className="h-3 w-3" />
-                        </>
+                        <Link
+                          href={stage.href}
+                          className={`inline-flex items-center gap-1 text-sm font-semibold transition-colors ${
+                            isLocked
+                              ? "cursor-not-allowed text-gray-400 pointer-events-none"
+                              : "text-[var(--earist-secondary)] hover:text-[var(--earist-primary)]"
+                          }`}
+                        >
+                          {isLocked ? (
+                            <>
+                              {" "}
+                              <Lock className="h-3 w-3" /> Locked{" "}
+                            </>
+                          ) : stage.status === "completed" ? (
+                            <>
+                              {" "}
+                              View Details{" "}
+                              <ArrowRight className="h-3 w-3" />{" "}
+                            </>
+                          ) : (
+                            <>
+                              {" "}
+                              Apply / View Details{" "}
+                              <ArrowRight className="h-3 w-3" />{" "}
+                            </>
+                          )}
+                        </Link>
                       )}
-                    </Link>
+                    </div>
                   </div>
                 </div>
               </CardContent>

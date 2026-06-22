@@ -750,6 +750,8 @@ enum ThesisDocType {
   PLAGIARISM_REPORT
   RESPONDENT_DATA
   INSTRUMENTS
+  COR
+  RECEIPT
 
   @@map("thesis_doc_type")
 }

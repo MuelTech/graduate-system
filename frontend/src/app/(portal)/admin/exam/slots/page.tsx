@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,24 @@ interface Program {
 
 export default function AdminExamSlotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: slots = [], isLoading: isSlotsLoading } = useQuery<Slot[]>({
+    queryKey: ["examSlots"],
+    queryFn: async () => {
+      return apiClientRequest("/exam/slots", { method: "GET" });
+    },
+  });
+
+  const { data: programsData, isLoading: isProgramsLoading } = useQuery<{ graduatePrograms: Program[] }>({
+    queryKey: ["programs"],
+    queryFn: async () => {
+      return apiClientRequest("/programs", { method: "GET" });
+    },
+  });
+
+  const programs = programsData?.graduatePrograms || [];
+  const isLoading = isSlotsLoading || isProgramsLoading;
 
   // Form State
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -35,30 +51,6 @@ export default function AdminExamSlotsPage() {
   const [examDate, setExamDate] = useState("");
   const [examTime, setExamTime] = useState("");
   const [maxSlots, setMaxSlots] = useState("");
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    try {
-      setIsLoading(true);
-      const [slotsData, programsData] = await Promise.all([
-        apiClientRequest("/exam/slots", { method: "GET" }),
-        apiClientRequest("/programs", { method: "GET" }),
-      ]);
-      setSlots(slotsData);
-      
-      const allPrograms = [
-        ...(programsData.graduatePrograms || [])
-      ];
-      setPrograms(allPrograms);
-    } catch (error) {
-      console.error("Failed to load data", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleCreateSlot = async () => {
     try {
@@ -89,7 +81,7 @@ export default function AdminExamSlotsPage() {
 
       setShowCreateModal(false);
       setEditingSlotId(null);
-      fetchData(); // Refresh slots
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
     } catch (err: unknown) {
       if (err instanceof Error) {
         alert(err.message || "Failed to save slot.");
@@ -123,7 +115,7 @@ export default function AdminExamSlotsPage() {
         method: "PATCH",
         body: JSON.stringify({ isActive: !currentStatus }),
       });
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
     } catch (err: unknown) {
       alert("Failed to update slot status.");
       console.log("Error:", err);

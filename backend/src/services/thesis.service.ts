@@ -4,7 +4,7 @@ import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
 
-  async applyTitleDefense(userId: string, data: ApplyTitleDefenseInput, filePath: string) {
+  async applyTitleDefense(userId: string, data: ApplyTitleDefenseInput, conceptPaperPath: string, corPath: string, receiptPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new Error("Student profile not found.");
 
@@ -21,7 +21,7 @@ export class ThesisService {
     }
 
     const titles = [data.title1, data.title2, data.title3];
-    return this.thesisRepo.createTitleDefense(student.id, adviserAssignment.id, titles, filePath);
+    return this.thesisRepo.createTitleDefense(student.id, adviserAssignment.id, titles, conceptPaperPath, corPath, receiptPath);
   }
 
   async applyProposalDefense(userId: string, filePath: string) {

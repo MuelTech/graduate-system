@@ -27,11 +27,12 @@ import {
 
 const navItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  // { href: "/student/profile", label: "Profile", icon: User },
+  { href: "/student/profile", label: "Profile", icon: User },
   { href: "/student/curriculum", label: "Curriculum", icon: BookOpen },
-  // { href: "/student/journey", label: "Academic Journey", icon: Milestone },
+  { href: "/student/journey", label: "Academic Journey", icon: Milestone },
   {
     label: "Thesis Journey",
+    href: "/student/thesis",
     icon: FileText,
     children: [
       { href: "/student/thesis/title-defense", label: "Title Defense" },
@@ -106,7 +107,8 @@ export default function StudentLayout({
                 const isOpen = thesisOpen;
                 return (
                   <li key={item.label}>
-                    <button
+                    <Link
+                      href={item.href || "#"}
                       onClick={() => setThesisOpen(!isOpen)}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                         pathname.startsWith("/student/thesis")
@@ -126,10 +128,10 @@ export default function StudentLayout({
                           />
                         </>
                       )}
-                    </button>
+                    </Link>
                     {!collapsed && isOpen && (
                       <ul className="mt-1 ml-6 space-y-1 border-l border-white/10 pl-3">
-                        {item.children.map((child) => {
+                        {item.children?.map((child) => {
                           const isChildActive = pathname === child.href;
                           return (
                             <li key={child.href}>

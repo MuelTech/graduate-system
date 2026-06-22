@@ -8,11 +8,22 @@ export class ThesisController {
   applyTitle = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      if (!req.file) throw new Error('Title concept document is required');
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      if (!files || !files.conceptPaper || !files.cor || !files.receipt) {
+        throw new Error('Concept Paper, COR, and Receipt are all required.');
+      }
 
-      const result = await this.thesisService.applyTitleDefense(req.user.userId, req.body, req.file.path);
+      const result = await this.thesisService.applyTitleDefense(
+        req.user.userId, 
+        req.body, 
+        files.conceptPaper[0].path,
+        files.cor[0].path,
+        files.receipt[0].path
+      );
       res.status(201).json({ message: 'Title Defense application submitted successfully', result });
     } catch (error: any) {
+      console.error("APPLY TITLE ERROR:", error);
       res.status(400).json({ error: error.message });
     }
   };

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import {
   Card,
@@ -40,8 +41,16 @@ interface PendingUpload {
 }
 
 export default function AdminCORValidationPage() {
-  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: pendingUploads = [], isLoading: loading } = useQuery<PendingUpload[]>({
+    queryKey: ["pendingCors"],
+    queryFn: async () => {
+      const data = await apiClientRequest("/cor/pending");
+      return data || [];
+    },
+  });
+
   const [selectedCor, setSelectedCor] = useState<string | null>(null);
   
   const [showVerifyConfirm, setShowVerifyConfirm] = useState(false);
@@ -54,29 +63,6 @@ export default function AdminCORValidationPage() {
     academicYear: "2026-2027",
     semester: "First Semester",
   });
-
-  const fetchPending = async () => {
-    try {
-      const data = await apiClientRequest("/cor/pending");
-      setPendingUploads(data || []);
-    } catch (error) {
-      console.error("Failed to fetch pending CORs", error);
-    }
-  };
-
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        const data = await apiClientRequest("/cor/pending");
-        setPendingUploads(data || []);
-      } catch (error) {
-        console.error("Failed to fetch pending CORs", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    initData();
-  }, []);
 
   const corQueue = pendingUploads.map((u) => ({
     id: u.id,
@@ -131,7 +117,7 @@ export default function AdminCORValidationPage() {
       alert("Verification successful! The applicant has been promoted to a student and credentials were sent.");
       setShowVerifyConfirm(false);
       setSelectedCor(null);
-      fetchPending();
+      queryClient.invalidateQueries({ queryKey: ["pendingCors"] });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       alert("Verification failed: " + errorMessage);

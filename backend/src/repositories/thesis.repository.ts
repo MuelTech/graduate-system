@@ -20,7 +20,7 @@ export class ThesisRepository {
     });
   }
 
-  async createTitleDefense(studentId: string, assignmentId: string, titles: string[], filePath: string) {
+  async createTitleDefense(studentId: string, assignmentId: string, titles: string[], conceptPaperPath: string, corPath: string, receiptPath: string) {
     return prisma.$transaction(async (tx) => {
       // 1. Create the base Thesis Record linked to the Adviser Assignment
       const thesis = await tx.thesisRecord.create({
@@ -39,14 +39,28 @@ export class ThesisRepository {
         });
       }
 
-      // 3. Save the uploaded concept paper/document
-      await tx.thesisDocument.create({
-        data: {
-          thesisId: thesis.id,
-          docType: 'PROPOSAL_CHAPTERS',
-          filePath: filePath,
-          uploadedAt: new Date()
-        }
+      // 3. Save the uploaded concept paper, cor, and receipt
+      await tx.thesisDocument.createMany({
+        data: [
+          {
+            thesisId: thesis.id,
+            docType: 'PROPOSAL_CHAPTERS',
+            filePath: conceptPaperPath,
+            uploadedAt: new Date()
+          },
+          {
+            thesisId: thesis.id,
+            docType: 'COR',
+            filePath: corPath,
+            uploadedAt: new Date()
+          },
+          {
+            thesisId: thesis.id,
+            docType: 'RECEIPT',
+            filePath: receiptPath,
+            uploadedAt: new Date()
+          }
+        ]
       });
 
       return thesis;
