@@ -100,7 +100,7 @@ export default function AdminDefenseApplicationsPage() {
       return await apiClientRequest(`/thesis/defense/${thesisId}/status`, {
         method: "PUT",
         body: JSON.stringify({
-          status: "APPROVED",
+          status: titleId ? "APPROVED" : "PASSED",
           approvedTitleId: titleId,
         }),
       });

@@ -45,7 +45,15 @@ export default function TitleDefensePage() {
   const isPendingReview =
     activeThesis &&
     activeThesis.stage === "TITLE" &&
-    activeThesis.status === "PENDING";
+    (activeThesis.status === "PENDING" || activeThesis.status === "SCHEDULED");
+
+  const isPassed =
+    activeThesis &&
+    ((activeThesis.stage === "TITLE" && (activeThesis.status === "PASSED" || activeThesis.status === "APPROVED")) ||
+      activeThesis.stage === "PROPOSAL" ||
+      activeThesis.stage === "FINAL");
+
+  const winningTitle = activeThesis?.titles?.find((t: { isSelected: boolean; title: string }) => t.isSelected);
 
   const isLoadingData = isJourneyLoading || sessionStatus === "loading";
 
@@ -225,7 +233,44 @@ export default function TitleDefensePage() {
         </p>
       </div>
 
-      {isPendingReview ? (
+      {isPassed ? (
+        <Card className="mt-6 border-green-200 shadow-sm">
+          <CardHeader className="border-b border-green-100 bg-green-50/50">
+            <CardTitle className="flex items-center gap-2 text-green-700">
+              <CheckCircle2 className="h-5 w-5" />
+              Title Defense Passed!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Congratulations! You have passed your Title Defense.
+              </h3>
+              
+              {winningTitle && (
+                <div className="w-full max-w-lg rounded-lg border border-green-200 bg-green-50 p-4 text-left">
+                  <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">Approved Title</span>
+                  <p className="mt-1 font-medium text-gray-900">{winningTitle.title}</p>
+                </div>
+              )}
+
+              <p className="max-w-md text-gray-600">
+                The panel has evaluated your proposed titles and approved your concept. You may now proceed to the next stage of your thesis journey.
+              </p>
+              
+              <Button
+                onClick={() => router.push("/student/thesis/proposal-defense")}
+                className="mt-4 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+              >
+                Proceed to Proposal Defense
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : isPendingReview ? (
         <Card className="mt-6 border-amber-200 shadow-sm">
           <CardHeader className="border-b border-amber-100 bg-amber-50/50">
             <CardTitle className="flex items-center gap-2 text-amber-700">
@@ -239,7 +284,7 @@ export default function TitleDefensePage() {
                 <FileText className="h-8 w-8 text-amber-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Your proposal is pending administrative review.
+                Your proposal is under review or has been scheduled.
               </h3>
               <p className="max-w-md text-gray-600">
                 You have successfully submitted your proposed titles and

@@ -108,4 +108,28 @@ router.post(
   thesisController.scheduleDefense
 );
 
+// 🔒 STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
+router.post(
+  '/defense/proposal', 
+  authenticateJWT, 
+  requireRole(['STUDENT']), 
+  upload.fields([
+    { name: 'document', maxCount: 1 },
+    { name: 'cor', maxCount: 1 }
+  ]), 
+  thesisController.applyProposal
+);
+
+// 🔒 STUDENT ONLY: Final Defense (Expects files 'document' and 'cor')
+router.post(
+  '/defense/final', 
+  authenticateJWT, 
+  requireRole(['STUDENT']), 
+  upload.fields([
+    { name: 'document', maxCount: 1 },
+    { name: 'cor', maxCount: 1 }
+  ]), 
+  thesisController.applyFinal
+);
+
 export default router;

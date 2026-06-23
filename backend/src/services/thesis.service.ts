@@ -44,7 +44,7 @@ export class ThesisService {
     return this.thesisRepo.createTitleDefense(student.id, adviserAssignment.id, titles, conceptPaperPath, corPath, receiptPath);
   }
 
-  async applyProposalDefense(userId: string, filePath: string) {
+  async applyProposalDefense(userId: string, filePath: string, corPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new Error("Student profile not found.");
 
@@ -56,10 +56,10 @@ export class ThesisService {
       throw new Error("Your Title Defense must be PASSED before applying for Proposal Defense.");
     }
 
-    return this.thesisRepo.updateThesisToProposal(thesis.id, filePath);
+    return this.thesisRepo.updateThesisToProposal(thesis.id, filePath, corPath);
   }
 
-  async applyFinalDefense(userId: string, filePath: string) {
+  async applyFinalDefense(userId: string, filePath: string, corPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new Error("Student profile not found.");
 
@@ -71,7 +71,7 @@ export class ThesisService {
       throw new Error("Your Proposal Defense must be PASSED before applying for Final Defense.");
     }
 
-    return this.thesisRepo.updateThesisToFinal(thesis.id, filePath);
+    return this.thesisRepo.updateThesisToFinal(thesis.id, filePath, corPath);
   }
 
   async requestAdviser(userId: string, data: any) {

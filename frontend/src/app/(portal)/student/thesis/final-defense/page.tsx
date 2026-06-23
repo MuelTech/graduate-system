@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CheckCircle2,
   Clock,
@@ -19,20 +18,36 @@ import {
   Calendar,
   Database,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
 
 export default function FinalDefensePage() {
-  const applicationState = "form" as
-    | "form"
-    | "submitted"
-    | "strike_check"
-    | "post_defense"
-    | "corrections"
-    | "databank";
+  const queryClient = useQueryClient();
+
+  // Fetch student journey to get thesis status
+  const { data: studentJourney } = useQuery({
+    queryKey: ["studentJourney"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/student/journey");
+      return res || null;
+    },
+  });
+
+  const activeThesis = studentJourney?.thesisRecords?.[0];
+  const applicationState =
+    (activeThesis?.stage === "FINAL" && activeThesis?.status === "PENDING"
+      ? "submitted"
+      : "form") as "form" | "submitted" | "strike_check" | "post_defense" | "corrections" | "databank";
+
+  const isProposalPassed =
+    activeThesis &&
+    ((activeThesis.stage === "PROPOSAL" && (activeThesis.status === "PASSED" || activeThesis.status === "APPROVED")) ||
+      activeThesis.stage === "FINAL");
 
   const [requirements, setRequirements] = useState([
     {
       name: "Certificate of Registration (COR) — Current Semester",
-      status: "uploaded" as "pending" | "uploaded" | "verified",
+      status: "pending" as "pending" | "uploaded" | "verified",
       file: null as File | null,
     },
     {
@@ -74,10 +89,45 @@ export default function FinalDefensePage() {
     null,
   );
 
+  const submitMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      return await apiClientRequest("/thesis/defense/final", {
+        method: "POST",
+        body: formData,
+      });
+    },
+    onSuccess: () => {
+      alert("Final Defense application submitted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["studentJourney"] });
+    },
+    onError: (error: Error) => {
+      alert("Failed to submit: " + error.message);
+    },
+  });
+
+  // Only require COR (index 0) and Manuscript (index 4) or state to be uploaded for now
+  // Note: Your mock uses requirements[4] for the Manuscript, but we also have setCorrectedManuscript.
+  // Assuming the user uploads the manuscript via the requirements[4] item in the checklist:
   const allRequirementsMet = requirements.every(
-    (r) => r.status === "verified" || r.status === "uploaded",
+    (r) => r.status === "verified" || r.status === "uploaded"
   );
-  const canSubmit = allRequirementsMet;
+  const corUploaded =
+    requirements[0].status === "uploaded" ||
+    requirements[0].status === "verified";
+  const manuscriptUploaded =
+    requirements[4].status === "uploaded" ||
+    requirements[4].status === "verified";
+  const canSubmit = corUploaded && manuscriptUploaded;
+
+  const handleSubmit = () => {
+    if (!canSubmit || !requirements[0].file || !requirements[4].file) return;
+
+    const formData = new FormData();
+    formData.append("cor", requirements[0].file);
+    formData.append("document", requirements[4].file);
+
+    submitMutation.mutate(formData);
+  };
 
   const handleRequirementUpload = (index: number, file: File) => {
     setRequirements((prev) =>
@@ -114,6 +164,29 @@ export default function FinalDefensePage() {
         return null;
     }
   };
+  if (!studentJourney) {
+    return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  }
+
+  if (!isProposalPassed) {
+    return (
+      <div className="mx-auto max-w-3xl py-8">
+        <Card className="border-red-200 shadow-sm">
+          <CardHeader className="border-b border-red-100 bg-red-50/50">
+            <CardTitle className="text-red-700">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 text-center">
+            <h3 className="mb-2 text-lg font-bold text-gray-900">
+              Requirements Not Met
+            </h3>
+            <p className="text-gray-600">
+              You must pass your Proposal Defense before you can apply for your Final Defense.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -169,21 +242,27 @@ export default function FinalDefensePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(req.status)}
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleRequirementUpload(i, file);
-                      }}
-                      className="hidden"
-                    />
-                    <div className="rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)">
-                      <Upload className="mr-1 inline h-3 w-3" />
-                      Upload
+                  {req.status === "pending" ? (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleRequirementUpload(i, file);
+                        }}
+                        className="hidden"
+                      />
+                      <div className="rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)">
+                        <Upload className="mr-1 inline h-3 w-3" />
+                        Upload
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-700">
+                      <CheckCircle2 className="h-4 w-4" />
                     </div>
-                  </label>
+                  )}
                 </div>
               </div>
             ))}
@@ -313,7 +392,8 @@ export default function FinalDefensePage() {
         <Card>
           <CardContent className="py-4">
             <Button
-              disabled={!canSubmit}
+              disabled={!canSubmit || submitMutation.isPending}
+              onClick={handleSubmit}
               className={`w-full ${
                 canSubmit
                   ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
@@ -321,8 +401,11 @@ export default function FinalDefensePage() {
               }`}
             >
               <Send className="mr-2 h-4 w-4" />
-              File Final Defense Application
+              {submitMutation.isPending
+                ? "Submitting..."
+                : "File Final Defense Application"}
             </Button>
+
             {!canSubmit && (
               <p className="mt-2 text-center text-xs text-(--earist-body-text)">
                 Complete all requirements and upload the manuscript to submit.

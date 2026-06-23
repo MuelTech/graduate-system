@@ -76,9 +76,15 @@ export class ThesisController {
   applyProposal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      if (!req.file) throw new Error('Chapters 1-3 document is required');
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const document = files?.['document']?.[0];
+      const cor = files?.['cor']?.[0];
 
-      const result = await this.thesisService.applyProposalDefense(req.user.userId, req.file.path);
+      if (!document) throw new Error('Chapters 1-3 document is required');
+      if (!cor) throw new Error('COR is required');
+
+      const result = await this.thesisService.applyProposalDefense(req.user.userId, document.path, cor.path);
       res.status(200).json({ message: 'Proposal Defense application submitted successfully', result });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -88,14 +94,21 @@ export class ThesisController {
   applyFinal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      if (!req.file) throw new Error('Final Manuscript document is required');
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const document = files?.['document']?.[0];
+      const cor = files?.['cor']?.[0];
 
-      const result = await this.thesisService.applyFinalDefense(req.user.userId, req.file.path);
+      if (!document) throw new Error('Final Manuscript document is required');
+      if (!cor) throw new Error('COR is required');
+
+      const result = await this.thesisService.applyFinalDefense(req.user.userId, document.path, cor.path);
       res.status(200).json({ message: 'Final Defense application submitted successfully', result });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   };
+
 
   requestAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

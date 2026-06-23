@@ -123,40 +123,56 @@ export class ThesisRepository {
     });
   }
 
-  async updateThesisToProposal(thesisId: string, filePath: string) {
+  async updateThesisToProposal(thesisId: string, filePath: string, corPath: string) {
     return prisma.$transaction(async (tx) => {
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
         data: { stage: 'PROPOSAL', status: 'PENDING' }
       });
 
-      await tx.thesisDocument.create({
-        data: {
-          thesisId,
-          docType: 'PROPOSAL_CHAPTERS',
-          filePath: filePath,
-          uploadedAt: new Date()
-        }
+      await tx.thesisDocument.createMany({
+        data: [
+          {
+            thesisId,
+            docType: 'PROPOSAL_CHAPTERS',
+            filePath: filePath,
+            uploadedAt: new Date()
+          },
+          {
+            thesisId,
+            docType: 'COR',
+            filePath: corPath,
+            uploadedAt: new Date()
+          }
+        ]
       });
 
       return thesis;
     });
   }
 
-  async updateThesisToFinal(thesisId: string, filePath: string) {
+  async updateThesisToFinal(thesisId: string, filePath: string, corPath: string) {
     return prisma.$transaction(async (tx) => {
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
         data: { stage: 'FINAL', status: 'PENDING' }
       });
 
-      await tx.thesisDocument.create({
-        data: {
-          thesisId,
-          docType: 'FINAL_MANUSCRIPT',
-          filePath: filePath,
-          uploadedAt: new Date()
-        }
+      await tx.thesisDocument.createMany({
+        data: [
+          {
+            thesisId,
+            docType: 'FINAL_MANUSCRIPT',
+            filePath: filePath,
+            uploadedAt: new Date()
+          },
+          {
+            thesisId,
+            docType: 'COR',
+            filePath: corPath,
+            uploadedAt: new Date()
+          }
+        ]
       });
 
       return thesis;

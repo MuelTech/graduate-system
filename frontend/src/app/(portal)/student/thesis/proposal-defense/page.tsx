@@ -12,18 +12,39 @@ import {
   FileText,
   X,
   Send,
-  Lock,
-  Image,
   Copy,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
 
 export default function ProposalDefensePage() {
-  const applicationState = "form" as "form" | "submitted" | "post_defense";
+  const queryClient = useQueryClient();
+
+  //Fetch student journey to get thesis status
+  const { data: studentJourney } = useQuery({
+    queryKey: ["studentJourney"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/student/journey");
+      return res || null;
+    },
+  });
+
+  const activeThesis = studentJourney?.thesisRecords?.[0];
+  const applicationState =
+    (activeThesis?.stage === "PROPOSAL" && activeThesis?.status === "PENDING"
+      ? "submitted"
+      : "form") as "form" | "submitted" | "post_defense";
+
+  const isTitlePassed =
+    activeThesis &&
+    ((activeThesis.stage === "TITLE" && (activeThesis.status === "PASSED" || activeThesis.status === "APPROVED")) ||
+      activeThesis.stage === "PROPOSAL" ||
+      activeThesis.stage === "FINAL");
 
   const [requirements, setRequirements] = useState([
     {
       name: "Certificate of Registration (COR) — Current Semester",
-      status: "uploaded" as "pending" | "uploaded" | "verified",
+      status: "pending" as "pending" | "uploaded" | "verified",
       file: null as File | null,
     },
     {
@@ -56,10 +77,40 @@ export default function ProposalDefensePage() {
 
   const postDefenseInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const submitMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      return await apiClientRequest("/thesis/defense/proposal", {
+        method: "POST",
+        body: formData, // FormData automatically sets multipart/form-data
+      });
+    },
+    onSuccess: () => {
+      alert("Proposal Defense application submitted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["studentJourney"] });
+    },
+    onError: (error: Error) => {
+      alert("Failed to submit: " + error.message);
+    },
+  });
+
+  // Only require COR (index 0) and Manuscript to be uploaded for now
   const allRequirementsMet = requirements.every(
-    (r) => r.status === "verified" || r.status === "uploaded",
+    (r) => r.status === "verified" || r.status === "uploaded"
   );
-  const canSubmit = allRequirementsMet && manuscript !== null;
+  const corUploaded =
+    requirements[0].status === "uploaded" ||
+    requirements[0].status === "verified";
+  const canSubmit = corUploaded && manuscript !== null;
+
+  const handleSubmit = () => {
+    if (!canSubmit || !requirements[0].file || !manuscript) return;
+
+    const formData = new FormData();
+    formData.append("cor", requirements[0].file);
+    formData.append("document", manuscript);
+
+    submitMutation.mutate(formData);
+  };
 
   const handleRequirementUpload = (index: number, file: File) => {
     setRequirements((prev) =>
@@ -111,56 +162,29 @@ export default function ProposalDefensePage() {
     }
   };
 
-  const FileUploadItem = ({
-    file,
-    onUpload,
-    onRemove,
-  }: {
-    file: File | null;
-    onUpload: (file: File) => void;
-    onRemove: () => void;
-  }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
+  if (!studentJourney) {
+    return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  }
 
-    if (!file) {
-      return (
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-(--earist-border-gray) px-3 py-2 transition-colors hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)">
-          <Upload className="h-4 w-4 text-(--earist-body-text)/40" />
-          <span className="text-xs text-(--earist-body-text)">
-            Upload PDF
-          </span>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf"
-            onChange={(e) => {
-              const selected = e.target.files?.[0];
-              if (selected) onUpload(selected);
-            }}
-            className="hidden"
-          />
-        </label>
-      );
-    }
-
+  if (!isTitlePassed) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-(--earist-border-gray) px-3 py-2">
-        <FileText className="h-4 w-4 text-(--earist-primary)" />
-        <span className="flex-1 truncate text-xs text-(--earist-body-text)">
-          {file.name}
-        </span>
-        <span className="text-[11px] text-(--earist-body-text)">
-          {(file.size / 1024 / 1024).toFixed(2)} MB
-        </span>
-        <button
-          onClick={onRemove}
-          className="rounded p-0.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-        >
-          <X className="h-3 w-3" />
-        </button>
+      <div className="mx-auto max-w-3xl py-8">
+        <Card className="border-red-200 shadow-sm">
+          <CardHeader className="border-b border-red-100 bg-red-50/50">
+            <CardTitle className="text-red-700">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 text-center">
+            <h3 className="mb-2 text-lg font-bold text-gray-900">
+              Requirements Not Met
+            </h3>
+            <p className="text-gray-600">
+              You must pass your Title Defense before you can apply for your Proposal Defense.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-4">
@@ -215,21 +239,27 @@ export default function ProposalDefensePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(req.status)}
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleRequirementUpload(i, file);
-                      }}
-                      className="hidden"
-                    />
-                    <div className="rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)">
-                      <Upload className="mr-1 inline h-3 w-3" />
-                      Upload
+                  {req.status === "pending" ? (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleRequirementUpload(i, file);
+                        }}
+                        className="hidden"
+                      />
+                      <div className="rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)">
+                        <Upload className="mr-1 inline h-3 w-3" />
+                        Upload
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-700">
+                      <CheckCircle2 className="h-4 w-4" />
                     </div>
-                  </label>
+                  )}
                 </div>
               </div>
             ))}
@@ -310,7 +340,8 @@ export default function ProposalDefensePage() {
         <Card>
           <CardContent className="py-4">
             <Button
-              disabled={!canSubmit}
+              disabled={!canSubmit || submitMutation.isPending}
+              onClick={handleSubmit}
               className={`w-full ${
                 canSubmit
                   ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
@@ -318,8 +349,11 @@ export default function ProposalDefensePage() {
               }`}
             >
               <Send className="mr-2 h-4 w-4" />
-              File Proposal Defense Application
+              {submitMutation.isPending
+                ? "Submitting..."
+                : "File Proposal Defense Application"}
             </Button>
+
             {!canSubmit && (
               <p className="mt-2 text-center text-xs text-(--earist-body-text)">
                 Complete all requirements and upload the manuscript to submit.

@@ -48,12 +48,12 @@ export default async function ThesisPipelinePage() {
     currentThesis &&
     (currentThesis.stage === "PROPOSAL" ||
       currentThesis.stage === "FINAL" ||
-      (currentThesis.stage === "TITLE" && currentThesis.status === "PASSED"));
+      (currentThesis.stage === "TITLE" && (currentThesis.status === "PASSED" || currentThesis.status === "APPROVED")));
   const isProposalCompleted =
     currentThesis &&
     (currentThesis.stage === "FINAL" ||
       (currentThesis.stage === "PROPOSAL" &&
-        currentThesis.status === "PASSED"));
+        (currentThesis.status === "PASSED" || currentThesis.status === "APPROVED")));
 
   const getStageStatus = (
     stageName: string,
@@ -102,7 +102,7 @@ export default async function ThesisPipelinePage() {
       requirements: [
         { name: "Passed Title Defense", met: !!isTitleCompleted },
         {
-          name: "Chapters 1-3 Uploaded",
+          name: "Requirement Checklists and Chapters 1-3 Uploaded",
           met: currentThesis?.stage === "PROPOSAL" || isProposalCompleted,
         },
       ],
@@ -194,7 +194,7 @@ export default async function ThesisPipelinePage() {
           const requirementsMet = stage.requirements.every((r) => r.met);
 
           return (
-            <Card key={stage.key} className={isLocked ? "opacity-60" : ""}>
+            <Card key={stage.key} className={`flex flex-col ${isLocked ? "opacity-60" : ""}`}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
@@ -203,9 +203,9 @@ export default async function ThesisPipelinePage() {
                   {getStatusBadge(stage.status)}
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
+              <CardContent className="flex flex-1 flex-col">
+                <div className="flex flex-1 flex-col space-y-4">
+                  <div className="flex-1">
                     <p className="mb-2 text-xs font-semibold text-(--earist-secondary)">
                       Requirements
                     </p>
@@ -227,8 +227,8 @@ export default async function ThesisPipelinePage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-(--earist-border-gray) pt-3">
-                    <div className="border-t border-(--earist-border-gray) pt-3">
+                  <div className="mt-auto border-t border-(--earist-border-gray) pt-3">
+                    <div className="pt-1">
                       {stage.key === "title_defense" &&
                       (!hasAdviser || !passedCompExam) ? (
                         <div className="flex flex-col gap-2">
