@@ -11,6 +11,17 @@ export class CorService {
     const student = await prisma.student.findUnique({ where: { userId } });
     if (!student) throw new AppError("Student profile not found.", 404);
 
+    const hasPassedExam = await prisma.entranceExamApplication.findFirst({
+      where: { studentId: student.id, status: "PASSED" }
+    });
+
+    if (!hasPassedExam) {
+      throw new AppError(
+        "You must pass the entrance exam before uploading your COR.",
+        403,
+      );
+    }
+
     const uploadData = {
       studentId: student.id,
       filePath: file.path,
@@ -54,6 +65,14 @@ export class CorService {
 
     if (student.admissionStatus === "ENROLLED") {
       throw new AppError("Student is already enrolled.", 400);
+    }
+
+    const hasPassedExam = await prisma.entranceExamApplication.findFirst({
+      where: { studentId: student.id, status: "PASSED" }
+    });
+
+    if (!hasPassedExam) {
+      throw new AppError("Applicant has not passed the entrance exam.", 403);
     }
 
     const result = await this.corRepository.verifyAndPromote(

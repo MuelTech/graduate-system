@@ -87,7 +87,8 @@ export class ExamService {
             alignmentStatus: student.alignmentStatus,
             strikeCount: totalStrikes,
             programId: student.programId,
-            confirmedSlot
+            confirmedSlot,
+            examStatus: activeApp ? activeApp.status.toLowerCase() : 'none'
         };
     }
 
