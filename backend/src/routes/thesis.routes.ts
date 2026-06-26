@@ -86,6 +86,14 @@ router.put(
 );
 
 // 🔒 ADMIN: Schedule a defense (Requires venueOrLink string)
+router.post(
+  '/defense/:id/schedule', 
+  authenticateJWT, 
+  requireRole(['ADMIN']), 
+  thesisController.scheduleDefense
+);
+
+// 🔒 ADMIN: Get pending applications
 router.get(
   '/defense/pending', 
   authenticateJWT, 
@@ -99,6 +107,14 @@ router.get(
   authenticateJWT, 
   requireRole(['ADMIN']), 
   thesisController.getApprovedDefenses
+);
+
+// 🔒 ADMIN: Get ALL applications (for full status view)
+router.get(
+  '/defense/all',
+  authenticateJWT,
+  requireRole(['ADMIN']),
+  thesisController.getAllDefenses
 );
 
 router.post(

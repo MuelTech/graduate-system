@@ -46,6 +46,11 @@ export class StudentRepository {
           where: { isActive: true },
           include: { adviser: true },
         },
+        adviserRequests: {
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
   }

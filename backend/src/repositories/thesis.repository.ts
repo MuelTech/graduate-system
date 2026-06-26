@@ -33,6 +33,18 @@ export class ThesisRepository {
     });
   }
 
+  async getAllDefenses() {
+    return prisma.thesisRecord.findMany({
+      include: {
+        student: { include: { user: true } },
+        thesisTitles: true,
+        thesisDocuments: true,
+        assignment: { include: { adviser: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
   async getActiveAdviserAssignment(studentId: string) {
     return prisma.adviserAssignment.findFirst({
       where: { studentId, isActive: true },
@@ -236,24 +248,38 @@ export class ThesisRepository {
         data: {
           thesisId,
           defenseDate: new Date(data.defenseDate),
-          defenseTime: new Date(data.defenseTime),
+          defenseTime: new Date(`1970-01-01T${data.defenseTime}:00.000Z`),
           venueOrLink: data.venueOrLink,
-          defenseType: data.defenseType,
+          defenseType: data.defenseType.toUpperCase(),
           setById: adminId
         }
       });
 
-      // 2. Assign the panelists
-      for (const panelistId of data.panelistIds) {
+      // 2. Assign the specific panelists based on roles
+      if (data.chairmanId) {
         await tx.panelAssignment.create({
-          data: {
-            scheduleId: schedule.id,
-            userId: panelistId,
-            role: 'PANELIST'
-          }
+          data: { scheduleId: schedule.id, userId: data.chairmanId, role: 'CHAIRMAN' }
         });
       }
       
+      if (data.leadPanelistId) {
+        await tx.panelAssignment.create({
+          data: { scheduleId: schedule.id, userId: data.leadPanelistId, role: 'PANELIST' }
+        });
+      }
+      
+      if (data.externalPanelistId) {
+        await tx.panelAssignment.create({
+          data: { scheduleId: schedule.id, userId: data.externalPanelistId, role: 'PANELIST' }
+        });
+      }
+      
+      // 3. Update the ThesisRecord status to SCHEDULED
+      await tx.thesisRecord.update({
+        where: { id: thesisId },
+        data: { status: 'SCHEDULED' }
+      });
+
       return schedule;
     });
   }

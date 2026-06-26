@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, CheckCircle2, X, Send, Mail, Eye } from "lucide-react";
+import { CalendarClock, X, Send, Mail, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 
@@ -36,7 +36,9 @@ export default function AdminSchedulingPage() {
   const [defenseDate, setDefenseDate] = useState("");
   const [defenseTime, setDefenseTime] = useState("");
   const [teamsLink, setTeamsLink] = useState("");
-  const [selectedPanelists, setSelectedPanelists] = useState<string[]>([]);
+  const [chairmanId, setChairmanId] = useState("");
+  const [leadPanelistId, setLeadPanelistId] = useState("");
+  const [externalPanelistId, setExternalPanelistId] = useState("");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -69,7 +71,9 @@ export default function AdminSchedulingPage() {
         defenseTime: string;
         venueOrLink: string;
         defenseType: string;
-        panelistIds: string[];
+        chairmanId: string;
+        leadPanelistId: string;
+        externalPanelistId: string;
       };
     }) => {
       return await apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
@@ -81,14 +85,16 @@ export default function AdminSchedulingPage() {
       queryClient.invalidateQueries({ queryKey: ["approvedDefenses"] });
       setShowConfirm(false);
       setSelectedApp(null);
-      setSelectedPanelists([]);
+      setChairmanId("");
+      setLeadPanelistId("");
+      setExternalPanelistId("");
       setDefenseDate("");
       setDefenseTime("");
       setTeamsLink("");
       alert("Defense scheduled successfully!");
     },
     onError: (error: Error) => {
-      alert("Scheduling failed: " + error.message);
+      console.error("Scheduling failed: " + error.message);
     },
   });
 
@@ -120,11 +126,8 @@ export default function AdminSchedulingPage() {
     (a) => a.id === selectedApp,
   );
 
-  const togglePanelist = (id: string) => {
-    setSelectedPanelists((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    );
-  };
+  const canSchedule =
+    chairmanId && leadPanelistId && externalPanelistId && defenseDate && defenseTime && teamsLink;
 
   const getStageLabel = (stage: string) => {
     switch (stage) {
@@ -138,9 +141,6 @@ export default function AdminSchedulingPage() {
         return stage;
     }
   };
-
-  const canSchedule =
-    selectedPanelists.length >= 2 && defenseDate && defenseTime && teamsLink;
 
   return (
     <div className="space-y-4">
@@ -168,7 +168,9 @@ export default function AdminSchedulingPage() {
               key={app.id}
               onClick={() => {
                 setSelectedApp(app.id);
-                setSelectedPanelists([]);
+                setChairmanId("");
+                setLeadPanelistId("");
+                setExternalPanelistId("");
                 setDefenseDate("");
                 setDefenseTime("");
                 setTeamsLink("");
@@ -247,60 +249,33 @@ export default function AdminSchedulingPage() {
             {/* Panel Assignment */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                    Assign Panelists
-                  </CardTitle>
-                  <Badge
-                    className={
-                      selectedPanelists.length >= 2
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                    }
-                  >
-                    {selectedPanelists.length} selected (min 2)
-                  </Badge>
-                </div>
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  Assign Panelists
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {availablePanelists.map((panelist) => {
-                    const isSelected = selectedPanelists.includes(panelist.id);
-                    return (
-                      <button
-                        key={panelist.id}
-                        onClick={() => togglePanelist(panelist.id)}
-                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                          isSelected
-                            ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
-                            : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
-                        }`}
-                      >
-                        <div
-                          className={`flex h-5 w-5 items-center justify-center rounded border ${
-                            isSelected
-                              ? "border-(--earist-primary) bg-(--earist-primary)"
-                              : "border-(--earist-border-gray)"
-                          }`}
-                        >
-                          {isSelected && (
-                            <CheckCircle2 className="h-3 w-3 text-white" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-(--earist-primary)">
-                            {panelist.name}
-                          </p>
-                          <p className="text-xs text-(--earist-body-text)">
-                            {panelist.specialization} &middot;{" "}
-                            {panelist.type === "internal"
-                              ? "Faculty"
-                              : "External"}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Chairman</label>
+                    <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                      <option value="">Select Chairman...</option>
+                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Lead Panelist</label>
+                    <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                      <option value="">Select Lead Panelist...</option>
+                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">External Panelist</label>
+                    <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                      <option value="">Select External Panelist...</option>
+                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                    </select>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -377,7 +352,7 @@ export default function AdminSchedulingPage() {
             </Button>
             {!canSchedule && (
               <p className="text-center text-xs text-(--earist-body-text)">
-                Select at least 2 panelists and fill in date, time, and Teams
+                Select all 3 panelist roles and fill in date, time, and Teams
                 link.
               </p>
             )}
@@ -407,7 +382,7 @@ export default function AdminSchedulingPage() {
       {/* Email Preview Modal */}
       {showEmailPreview && selectedAppData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-(--earist-primary)">
                 Email Preview
@@ -430,7 +405,7 @@ export default function AdminSchedulingPage() {
                     <Mail className="mr-1 h-3 w-3" />
                     {selectedAppData.studentName}
                   </Badge>
-                  {selectedPanelists.map((id) => {
+                  {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id) => {
                     const p = availablePanelists.find((ap) => ap.id === id);
                     return p ? (
                       <Badge key={id} variant="outline" className="text-xs">
@@ -485,11 +460,12 @@ export default function AdminSchedulingPage() {
                     <p className="font-semibold text-(--earist-primary)">
                       Panel Members:
                     </p>
-                    {selectedPanelists.map((id, i) => {
+                    {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id, i) => {
+                      const roles = ["Chairman", "Lead Panelist", "External Panelist"];
                       const p = availablePanelists.find((ap) => ap.id === id);
                       return p ? (
                         <p key={id}>
-                          {i + 1}. {p.name} ({p.specialization})
+                          {i + 1}. {p.name} - {roles[i]} ({p.specialization})
                         </p>
                       ) : null;
                     })}
@@ -537,7 +513,7 @@ export default function AdminSchedulingPage() {
                   {defenseDate} at {defenseTime}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
-                  {selectedPanelists.length} panelist(s) assigned
+                  3 panelist(s) assigned
                 </p>
               </div>
               <p className="text-sm text-(--earist-body-text)">
@@ -566,7 +542,9 @@ export default function AdminSchedulingPage() {
                       defenseTime,
                       venueOrLink: teamsLink,
                       defenseType: selectedAppData.stage,
-                      panelistIds: selectedPanelists,
+                      chairmanId,
+                      leadPanelistId,
+                      externalPanelistId,
                     },
                   });
                 }}

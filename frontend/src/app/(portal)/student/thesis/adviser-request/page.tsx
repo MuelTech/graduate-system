@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UserPlus, Send, AlertCircle, CheckCircle2 } from "lucide-react";
+import { UserPlus, Send, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 export default function AdviserRequestPage() {
   const { data: session } = useSession();
@@ -18,6 +18,32 @@ export default function AdviserRequestPage() {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasPendingRequest, setHasPendingRequest] = useState<boolean | null>(null);
+
+  // Fetch the current journey to see if there is already a pending request
+  useEffect(() => {
+    if (!session?.user?.accessToken) return;
+    
+    const fetchJourney = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/student/journey", {
+          headers: { Authorization: `Bearer ${session.user.accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const pending = data?.adviserRequests?.some((req: { status: string }) => req.status === "PENDING");
+          setHasPendingRequest(pending || false);
+        } else {
+          setHasPendingRequest(false);
+        }
+      } catch(err) {
+        setHasPendingRequest(false);
+        console.error("Error:", err);
+      }
+    };
+    
+    fetchJourney();
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +97,38 @@ export default function AdviserRequestPage() {
         </p>
       </div>
 
-      <Card>
+      {hasPendingRequest === null && (
+        <Card>
+          <CardContent className="p-8 text-center text-gray-500">
+            Checking your request status...
+          </CardContent>
+        </Card>
+      )}
+
+      {hasPendingRequest === true && (
+        <Card className="border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <Clock className="h-8 w-8 text-amber-600" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-amber-900">
+              Request Pending Admin Approval
+            </h3>
+            <p className="text-sm text-amber-700">
+              You have already successfully submitted an adviser request. We are currently waiting for the admin to approve and formally assign your requested faculty member.
+            </p>
+            <Button
+              className="mt-6 bg-amber-600 text-white hover:bg-amber-700"
+              onClick={() => router.push("/student/thesis")}
+            >
+              Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasPendingRequest === false && (
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
             <UserPlus className="h-5 w-5" />
@@ -146,6 +203,7 @@ export default function AdviserRequestPage() {
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

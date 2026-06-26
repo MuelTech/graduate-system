@@ -15,6 +15,7 @@ import {
   X,
   Image as ImageIcon,
   Mail,
+  Lock,
 } from "lucide-react";
 
 type UploadState = "idle" | "uploading" | "pending" | "verified";
@@ -22,6 +23,7 @@ type UploadState = "idle" | "uploading" | "pending" | "verified";
 export default function ApplicantCORUploadPage() {
   const { data: session } = useSession();
   const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [examStatus, setExamStatus] = useState<string>("none");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -39,7 +41,20 @@ export default function ApplicantCORUploadPage() {
         console.log("No existing upload found or error:", error);
       }
     };
+
+    const fetchExamStatus = async () => {
+      try {
+        const data = await apiClientRequest("/exam/status");
+        if (data && data.examStatus) {
+          setExamStatus(data.examStatus);
+        }
+      } catch (error) {
+        console.error("Failed to fetch exam status:", error);
+      }
+    };
+
     fetchStatus();
+    fetchExamStatus();
   }, []);
 
   const handleFileSelect = (selectedFile: File) => {
@@ -146,7 +161,26 @@ export default function ApplicantCORUploadPage() {
         </Alert>
       )}
 
-      {(uploadState === "idle" || uploadState === "uploading") && (
+      {examStatus !== "passed" ? (
+        <Card>
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                <Lock className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
+                Access Denied
+              </h3>
+              <Alert className="max-w-md border-red-200 bg-red-50">
+                <X className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  You must pass the entrance examination before you can upload your Certificate of Registration.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (uploadState === "idle" || uploadState === "uploading") && (
         <>
           <Card>
             <CardHeader>

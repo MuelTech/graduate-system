@@ -12,6 +12,10 @@ export class ThesisService {
     return this.thesisRepo.getApprovedDefenses();
   }
 
+  async getAllDefenses() {
+    return this.thesisRepo.getAllDefenses();
+  }
+
   async getAllAdviserRequests() {
     return this.thesisRepo.getAllAdviserRequests();
   }
@@ -95,10 +99,14 @@ export class ThesisService {
     console.log(`\n=========================================`);
     console.log(`[EMAIL SYSTEM] Generating Panel Invitations`);
     console.log(`=========================================`);
-    console.log(`To: Panelist IDs ${data.panelistIds.join(', ')}`);
+    
+    const panelistIds = [data.chairmanId, data.leadPanelistId, data.externalPanelistId].filter(Boolean);
+    
+    console.log(`To: Panelist IDs ${panelistIds.join(', ')}`);
     console.log(`Subject: New Defense Schedule Assignment`);
-    console.log(`Message: You have been assigned to a ${data.defenseType}.`);
+    console.log(`Message: You have been assigned to a ${data.defenseType} as a Panelist.`);
     console.log(`Date: ${new Date(data.defenseDate).toDateString()}`);
+    console.log(`Time: ${data.defenseTime}`);
     console.log(`Location/Link: ${data.venueOrLink}`);
     console.log(`=========================================\n`);
 

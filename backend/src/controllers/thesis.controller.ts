@@ -23,6 +23,15 @@ export class ThesisController {
     }
   };
 
+  getAllDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAllDefenses();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const result = await this.thesisService.getAllAdviserRequests();
@@ -108,7 +117,6 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   };
-
 
   requestAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

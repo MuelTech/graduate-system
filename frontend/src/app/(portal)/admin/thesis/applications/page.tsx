@@ -16,6 +16,7 @@ import {
   X,
   AlertTriangle,
   Check,
+  Calendar,
 } from "lucide-react";
 
 interface ThesisDocument {
@@ -82,10 +83,10 @@ export default function AdminDefenseApplicationsPage() {
   const [winningTitleId, setWinningTitleId] = useState<string>("");
 
   const { data: dbApplications = [] } = useQuery<ThesisApplication[]>({
-    queryKey: ["pendingDefenses"],
+    queryKey: ["thesisApplications"],
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/pending");
-      return res || [];
+      const res = await apiClientRequest("/thesis/defense/all");
+      return Array.isArray(res) ? res : [];
     },
   });
 
@@ -106,7 +107,7 @@ export default function AdminDefenseApplicationsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pendingDefenses"] });
+      queryClient.invalidateQueries({ queryKey: ["thesisApplications"] });
       setShowApproveConfirm(false);
       setWinningTitleId("");
       alert("Thesis Application Approved!");
@@ -169,6 +170,9 @@ export default function AdminDefenseApplicationsPage() {
   const approvedCount = applications.filter(
     (a: MappedApplication) => a.status === "approved",
   ).length;
+  const scheduledCount = applications.filter(
+    (a: MappedApplication) => a.status === "scheduled",
+  ).length;
   const completedCount = applications.filter(
     (a: MappedApplication) => a.status === "completed",
   ).length;
@@ -213,6 +217,13 @@ export default function AdminDefenseApplicationsPage() {
             Approved
           </Badge>
         );
+      case "scheduled":
+        return (
+          <Badge className="bg-purple-100 text-purple-700">
+            <Calendar className="mr-1 h-3 w-3" />
+            Scheduled
+          </Badge>
+        );
       case "completed":
         return (
           <Badge className="bg-green-100 text-green-700">
@@ -248,7 +259,7 @@ export default function AdminDefenseApplicationsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Pending</p>
@@ -259,6 +270,12 @@ export default function AdminDefenseApplicationsPage() {
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Approved</p>
             <p className="text-lg font-bold text-blue-600">{approvedCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-(--earist-body-text)">Scheduled</p>
+            <p className="text-lg font-bold text-purple-600">{scheduledCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -314,6 +331,7 @@ export default function AdminDefenseApplicationsPage() {
                   { value: "all", label: "All" },
                   { value: "pending", label: "Pending" },
                   { value: "approved", label: "Approved" },
+                  { value: "scheduled", label: "Scheduled" },
                   { value: "completed", label: "Completed" },
                   { value: "rejected", label: "Rejected" },
                 ].map((f) => (
