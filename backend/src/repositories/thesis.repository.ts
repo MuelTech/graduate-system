@@ -336,6 +336,7 @@ export class ThesisRepository {
                     user: true,
                   },
                 },
+                thesisDocuments: true
               },
             },
           },
