@@ -158,4 +158,25 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   };
+
+  getPanelistAssignments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.getPanelistAssignments(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  submitOralExamScore = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const scheduleId  = req.params.scheduleId as string;
+      const { panelId, scores } = req.body;
+      const result = await this.thesisService.submitOralExamScore(panelId, scheduleId, scores);
+      res.status(201).json({ message: "Score submitted!", result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }

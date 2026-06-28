@@ -112,4 +112,12 @@ export class ThesisService {
 
     return schedule;
   }
+
+  async getPanelistAssignments(userId: string) {
+    return this.thesisRepo.getPanelistAssignments(userId);
+  }
+
+  async submitOralExamScore(panelId: string, scheduleId: string, data: any) {
+    return this.thesisRepo.submitOralExamScore(panelId, scheduleId, data);
+  }
 }

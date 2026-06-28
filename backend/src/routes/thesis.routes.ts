@@ -148,4 +148,20 @@ router.post(
   thesisController.applyFinal
 );
 
+// 🔒 PANELIST: Get assigned defenses
+router.get(
+  '/defense/panelist/assignments',
+  authenticateJWT,
+  requireRole(['PANELIST']),
+  thesisController.getPanelistAssignments
+);
+
+// 🔒 PANELIST: Submit Score
+router.post(
+  '/defense/:scheduleId/score',
+  authenticateJWT,
+  requireRole(['PANELIST']),
+  thesisController.submitOralExamScore
+);
+
 export default router;
