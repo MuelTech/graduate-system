@@ -1,109 +1,56 @@
+"use client";
+
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   FileCheck2,
   Calendar,
   Clock,
   ExternalLink,
-  FolderOpen,
-  PenLine,
   Users,
   CheckCircle2,
   MapPin,
 } from "lucide-react";
 
-export default function PanelistDefensesPage() {
-  const defenses = [
-    {
-      id: 1,
-      stage: "Final Defense",
-      researcher: "Maria Santos",
-      program: "Master of Science in Computer Science",
-      date: "June 10, 2026",
-      time: "9:00 AM — 12:00 PM",
-      status: "upcoming" as "upcoming" | "completed" | "in_progress",
-      teamsLink: "https://teams.microsoft.com/l/meetup-join/1",
-      role: "Chairperson",
-      panelMembers: [
-        "Dr. Roberto Reyes (Chairperson)",
-        "Dr. Ana Garcia (Member)",
-        "Dr. Juan Dela Cruz (Member)",
-      ],
-    },
-    {
-      id: 2,
-      stage: "Proposal Defense",
-      researcher: "Juan Dela Cruz",
-      program: "Master of Science in Computer Science",
-      date: "June 12, 2026",
-      time: "1:00 PM — 4:00 PM",
-      status: "upcoming" as "upcoming" | "completed" | "in_progress",
-      teamsLink: "https://teams.microsoft.com/l/meetup-join/2",
-      role: "Member",
-      panelMembers: [
-        "Dr. Ana Garcia (Chairperson)",
-        "Dr. Roberto Reyes (Member)",
-        "Dr. Pedro Lim (Member)",
-      ],
-    },
-    {
-      id: 3,
-      stage: "Title Defense",
-      researcher: "Ana Garcia",
-      program: "Master of Information Technology",
-      date: "June 15, 2026",
-      time: "10:00 AM — 12:00 PM",
-      status: "upcoming" as "upcoming" | "completed" | "in_progress",
-      teamsLink: "https://teams.microsoft.com/l/meetup-join/3",
-      role: "Member",
-      panelMembers: [
-        "Dr. Roberto Reyes (Chairperson)",
-        "Dr. Ana Garcia (Member)",
-        "Dr. Maria Santos (Member)",
-      ],
-    },
-    {
-      id: 4,
-      stage: "Final Defense",
-      researcher: "Carlos Luna",
-      program: "Master of Arts in Education",
-      date: "May 28, 2026",
-      time: "9:00 AM — 12:00 PM",
-      status: "completed" as "upcoming" | "completed" | "in_progress",
-      teamsLink: null,
-      role: "Member",
-      panelMembers: [
-        "Dr. Pedro Lim (Chairperson)",
-        "Dr. Roberto Reyes (Member)",
-        "Dr. Juan Dela Cruz (Member)",
-      ],
-    },
-    {
-      id: 5,
-      stage: "Proposal Defense",
-      researcher: "Elena Torres",
-      program: "Doctor of Education",
-      date: "May 20, 2026",
-      time: "1:00 PM — 4:00 PM",
-      status: "completed" as "upcoming" | "completed" | "in_progress",
-      teamsLink: null,
-      role: "Chairperson",
-      panelMembers: [
-        "Dr. Roberto Reyes (Chairperson)",
-        "Dr. Ana Garcia (Member)",
-        "Dr. Pedro Lim (Member)",
-      ],
-    },
-  ];
+interface AssignmentData {
+  id: string;
+  role: string;
+  schedule: {
+    id: string;
+    defenseDate: string;
+    defenseTime: string;
+    venueOrLink: string;
+    defenseType: string;
+    status: string; // "SCHEDULED" or "COMPLETED"
+    thesis: {
+      student: {
+        programId: string;
+        user: {
+          firstName: string;
+          lastName: string;
+        };
+      };
+    };
+  };
+}
 
-  const upcomingCount = defenses.filter((d) => d.status === "upcoming").length;
-  const completedCount = defenses.filter(
-    (d) => d.status === "completed",
-  ).length;
+export default function PanelistDefensesPage() {
+  const { data: assignments = [], isLoading } = useQuery({
+    queryKey: ["panelistAssignments"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/thesis/defense/panelist/assignments");
+      return Array.isArray(res) ? res : [];
+    },
+  });
+
+  const upcomingCount = assignments.filter((a: AssignmentData) => a.schedule.status === "SCHEDULED").length;
+  const completedCount = assignments.filter((a: AssignmentData) => a.schedule.status !== "SCHEDULED").length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       {/* Page Header */}
       <div>
         <h2
@@ -117,7 +64,7 @@ export default function PanelistDefensesPage() {
         </p>
       </div>
 
-      {/* Summary Badges */}
+      {/* Summary Badges (From your Mock) */}
       <div className="flex gap-2">
         <Badge className="bg-blue-100 text-blue-700">
           {upcomingCount} Upcoming
@@ -127,142 +74,128 @@ export default function PanelistDefensesPage() {
         </Badge>
       </div>
 
-      {/* Defense Cards */}
-      <div className="space-y-4">
-        {defenses.map((defense) => (
-          <Card key={defense.id}>
-            <CardContent className="p-0">
-              <div className="flex flex-col lg:flex-row">
-                {/* Left: Defense Info */}
-                <div className="flex-1 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        defense.status === "upcoming"
-                          ? "bg-blue-50"
-                          : defense.status === "in_progress"
-                            ? "bg-amber-50"
-                            : "bg-green-50"
-                      }`}
-                    >
-                      <FileCheck2
-                        className={`h-5 w-5 ${
-                          defense.status === "upcoming"
-                            ? "text-blue-600"
-                            : defense.status === "in_progress"
-                              ? "text-amber-600"
-                              : "text-green-600"
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-(--earist-primary)">
-                          {defense.stage}
-                        </p>
-                        <Badge
-                          className={
-                            defense.status === "upcoming"
-                              ? "bg-blue-100 text-blue-700"
-                              : defense.status === "in_progress"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-green-100 text-green-700"
-                          }
+      {isLoading ? (
+        <p className="text-sm text-gray-500 animate-pulse mt-8">Loading schedules...</p>
+      ) : assignments.length === 0 ? (
+        <Card className="mt-8">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-gray-500 font-medium">You have no scheduled defenses at this time.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        /* Defense Cards (Exact structure of your Mock) */
+        <div className="space-y-4">
+          {assignments.map((assignment: AssignmentData) => {
+            const schedule = assignment.schedule;
+            const student = schedule?.thesis?.student?.user;
+            
+            if (!schedule || !student) return null;
+
+            const isUpcoming = schedule.status === "SCHEDULED";
+            const isOnline = schedule.venueOrLink.includes("http");
+
+            return (
+              <Card key={assignment.id}>
+                <CardContent className="p-0">
+                  <div className="flex flex-col lg:flex-row">
+                    {/* Left: Defense Info */}
+                    <div className="flex-1 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                            isUpcoming ? "bg-blue-50" : "bg-green-50"
+                          }`}
                         >
-                          {defense.status === "upcoming"
-                            ? "Upcoming"
-                            : defense.status === "in_progress"
-                              ? "In Progress"
-                              : "Completed"}
-                        </Badge>
+                          {isUpcoming ? (
+                            <FileCheck2 className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-(--earist-primary)">
+                            {schedule.defenseType.replace("_", " ").toUpperCase()}
+                          </h3>
+                          <p className="text-xs text-(--earist-body-text)">
+                            <span className="font-semibold text-gray-800">{student.firstName} {student.lastName}</span> &middot;{" "}
+                            {schedule.thesis.student.programId}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-(--earist-body-text)">
-                        {defense.role}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-(--earist-primary)">
-                      {defense.researcher}
-                    </p>
-                    <p className="text-xs text-(--earist-body-text)">
-                      {defense.program}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-4 text-xs text-(--earist-body-text)">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {defense.date}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {defense.time}
-                    </div>
-                  </div>
-
-                  {/* Panel Members */}
-                  <div className="mt-3">
-                    <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                      Panel Members
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {defense.panelMembers.map((member, i) => (
-                        <Badge
-                          key={i}
-                          variant="outline"
-                          className="text-[11px]"
-                        >
-                          <Users className="mr-1 h-3 w-3" />
-                          {member}
+                      <div className="ml-12">
+                        <Badge variant="outline" className="mb-2 text-[10px] uppercase font-bold text-gray-500">
+                          Role: {assignment.role}
                         </Badge>
-                      ))}
+                        <div className="flex items-start gap-2 text-sm text-(--earist-body-text)">
+                          <Users className="mt-0.5 h-4 w-4 text-gray-400" />
+                          <div>
+                            <p className="font-semibold">Panel Members:</p>
+                            <ul className="ml-2 mt-1 list-disc space-y-1 text-xs">
+                              <li>{assignment.role} (You)</li>
+                              <li className="text-gray-400 italic">Other panelists hidden for privacy</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Schedule & Actions */}
+                    <div className="flex w-full flex-col justify-between border-t border-(--earist-border-gray) bg-(--earist-surface-gray) p-4 lg:w-72 lg:border-t-0 lg:border-l">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-(--earist-body-text)">
+                          <Calendar className="h-4 w-4 text-(--earist-primary)" />
+                          <span>{new Date(schedule.defenseDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-(--earist-body-text)">
+                          <Clock className="h-4 w-4 text-(--earist-primary)" />
+                          <span>{new Date(schedule.defenseTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-(--earist-body-text)">
+                          {isOnline ? (
+                            <ExternalLink className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <MapPin className="h-4 w-4 text-red-500" />
+                          )}
+                          {isOnline ? (
+                            <a
+                              href={schedule.venueOrLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              Join via Teams/Meet
+                            </a>
+                          ) : (
+                            <span>{schedule.venueOrLink}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-2">
+                        {isUpcoming && (
+                          <Link
+                            href={`/panelist/scoring/${schedule.id}?panelId=${assignment.id}`}
+                            className="inline-flex w-full items-center justify-center rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
+                          >
+                            Grade Defense
+                          </Link>
+                        )}
+                        <Link
+                          href="/panelist/materials"
+                          className="inline-flex w-full items-center justify-center rounded-lg border border-(--earist-border-gray) bg-white px-4 py-2 text-sm font-semibold text-(--earist-body-text) transition-colors hover:bg-gray-50"
+                        >
+                          View Materials
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2 border-t border-(--earist-border-gray) p-4 lg:flex-col lg:border-t-0 lg:border-l lg:px-4">
-                  {defense.status === "upcoming" && defense.teamsLink && (
-                    <a
-                      href={defense.teamsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 rounded-lg bg-(--earist-primary) px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Join Meeting
-                    </a>
-                  )}
-                  <Link
-                    href="/panelist/materials"
-                    className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)"
-                  >
-                    <FolderOpen className="h-3 w-3" />
-                    Materials
-                  </Link>
-                  {defense.status === "upcoming" && (
-                    <Link
-                      href="/panelist/scoring"
-                      className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray)"
-                    >
-                      <PenLine className="h-3 w-3" />
-                      Score
-                    </Link>
-                  )}
-                  {defense.status === "completed" && (
-                    <Badge className="bg-green-100 text-green-700">
-                      <CheckCircle2 className="mr-1 h-3 w-3" />
-                      Scored
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

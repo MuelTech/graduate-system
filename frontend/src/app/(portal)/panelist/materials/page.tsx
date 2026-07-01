@@ -1,69 +1,50 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
 
+interface DocumentData {
+  id: string;
+  docType: string;
+  filePath: string;
+  uploadedAt: string;
+}
+
+interface AssignmentData {
+  id: string;
+  role: string;
+  schedule: {
+    id: string;
+    defenseDate: string;
+    defenseType: string;
+    status: string; // "SCHEDULED" or "COMPLETED"
+    thesis: {
+      student: {
+        programId: string;
+        user: {
+          firstName: string;
+          lastName: string;
+        };
+      };
+      thesisDocuments?: DocumentData[];
+    };
+  };
+}
+
 export default function PanelistMaterialsPage() {
-  const defenseMaterials = [
-    {
-      defenseId: 1,
-      stage: "Final Defense",
-      researcher: "Maria Santos",
-      program: "MSCS",
-      date: "June 10, 2026",
-      status: "upcoming",
-      material: {
-        name: "Complete Manuscript (Chapters 1–5)",
-        type: "pdf",
-        size: "2.4 MB",
-        uploadDate: "June 1, 2026",
-      },
+  const { data: assignments = [], isLoading } = useQuery({
+    queryKey: ["panelistAssignments"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/thesis/defense/panelist/assignments");
+      return Array.isArray(res) ? res : [];
     },
-    {
-      defenseId: 2,
-      stage: "Proposal Defense",
-      researcher: "Juan Dela Cruz",
-      program: "MSCS",
-      date: "June 12, 2026",
-      status: "upcoming",
-      material: {
-        name: "Manuscript (Chapters 1–3)",
-        type: "pdf",
-        size: "1.8 MB",
-        uploadDate: "June 5, 2026",
-      },
-    },
-    {
-      defenseId: 3,
-      stage: "Title Defense",
-      researcher: "Ana Garcia",
-      program: "MIT",
-      date: "June 15, 2026",
-      status: "upcoming",
-      material: {
-        name: "Proposed Research Titles",
-        type: "pdf",
-        size: "156 KB",
-        uploadDate: "June 8, 2026",
-      },
-    },
-    {
-      defenseId: 4,
-      stage: "Final Defense",
-      researcher: "Carlos Luna",
-      program: "MAED",
-      date: "May 28, 2026",
-      status: "completed",
-      material: {
-        name: "Complete Manuscript (Chapters 1–5)",
-        type: "pdf",
-        size: "3.1 MB",
-        uploadDate: "May 20, 2026",
-      },
-    },
-  ];
+  });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       {/* Page Header */}
       <div>
         <h2
@@ -77,99 +58,110 @@ export default function PanelistMaterialsPage() {
         </p>
       </div>
 
-      {/* Materials by Defense */}
-      <div className="space-y-4">
-        {defenseMaterials.map((defense) => (
-          <Card key={defense.defenseId}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                      defense.status === "upcoming"
-                        ? "bg-blue-50"
-                        : "bg-green-50"
-                    }`}
-                  >
-                    <FileText
-                      className={`h-4 w-4 ${
-                        defense.status === "upcoming"
-                          ? "text-blue-600"
-                          : "text-green-600"
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                      {defense.stage}
-                    </CardTitle>
-                    <p className="text-xs text-(--earist-body-text)">
-                      {defense.researcher} &middot; {defense.program}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    className={
-                      defense.status === "upcoming"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-green-100 text-green-700"
-                    }
-                  >
-                    {defense.status === "upcoming" ? "Upcoming" : "Completed"}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-xs text-(--earist-body-text)">
-                    <Calendar className="h-3 w-3" />
-                    {defense.date}
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 rounded-lg border border-(--earist-border-gray) p-3 transition-colors hover:bg-(--earist-surface-gray)">
-                <div className="flex h-9 w-9 items-center justify-center rounded bg-red-50">
-                  <FileText className="h-4 w-4 text-red-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-(--earist-primary)">
-                    {defense.material.name}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {defense.material.size} &middot; Uploaded{" "}
-                    {defense.material.uploadDate}
-                  </p>
-                </div>
-                <a
-                  href="#"
-                  className="flex items-center gap-1 rounded-lg border border-(--earist-border-gray) px-3 py-1.5 text-xs font-semibold text-(--earist-body-text) transition-colors hover:bg-white hover:text-(--earist-primary)"
-                >
-                  <Download className="h-3 w-3" />
-                  View
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {defenseMaterials.length === 0 && (
-        <Card>
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-                <FolderOpen className="h-8 w-8 text-(--earist-body-text)/40" />
-              </div>
-              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                No Materials Available
-              </h3>
-              <p className="text-sm text-(--earist-body-text)">
-                Defense materials will appear here once uploaded by the
-                researcher.
-              </p>
-            </div>
+      {isLoading ? (
+        <p className="text-sm text-gray-500 animate-pulse mt-8">Loading materials...</p>
+      ) : assignments.length === 0 ? (
+        <Card className="mt-8">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <FolderOpen className="mb-4 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500 font-medium">You have no defense materials at this time.</p>
           </CardContent>
         </Card>
+      ) : (
+        /* Materials by Defense */
+        <div className="space-y-4 mt-6">
+          {assignments.map((assignment: AssignmentData) => {
+            const schedule = assignment.schedule;
+            const student = schedule?.thesis?.student?.user;
+            const documents = schedule?.thesis?.thesisDocuments || [];
+
+            if (!schedule || !student) return null;
+
+            const isUpcoming = schedule.status === "SCHEDULED";
+
+            return (
+              <Card key={assignment.id}>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                          isUpcoming ? "bg-blue-50" : "bg-green-50"
+                        }`}
+                      >
+                        <FileText
+                          className={`h-5 w-5 ${
+                            isUpcoming ? "text-blue-600" : "text-green-600"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-bold text-(--earist-primary)">
+                          {schedule.defenseType.replace("_", " ").toUpperCase()}
+                        </CardTitle>
+                        <p className="text-sm text-(--earist-body-text)">
+                          <span className="font-semibold text-gray-800">{student.firstName} {student.lastName}</span> &middot; {schedule.thesis.student.programId}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        className={
+                          isUpcoming
+                            ? "bg-blue-100 text-blue-700 font-bold uppercase text-[10px]"
+                            : "bg-green-100 text-green-700 font-bold uppercase text-[10px]"
+                        }
+                      >
+                        {isUpcoming ? "Upcoming" : "Completed"}
+                      </Badge>
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-(--earist-body-text)">
+                        <Calendar className="h-4 w-4 text-(--earist-primary)" />
+                        {new Date(schedule.defenseDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {documents.length > 0 ? (
+                      documents.map((doc) => (
+                        <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-(--earist-border-gray) p-3 transition-colors hover:bg-blue-50/30">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-red-50">
+                            <FileText className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-(--earist-primary) capitalize">
+                              {doc.docType.replace("_", " ").toLowerCase()}
+                            </p>
+                            <p className="text-xs font-medium text-gray-500">
+                              PDF Document &middot; Uploaded{" "}
+                              {new Date(doc.uploadedAt || new Date()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000"}/${doc.filePath.replace(/\\/g, "/")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-(--earist-primary) px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-(--earist-primary)/90 shadow-sm"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            View
+                          </a>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-full rounded-lg border border-dashed border-gray-200 p-6 text-center">
+                        <p className="text-sm text-gray-500 italic">No documents have been uploaded for this defense yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
