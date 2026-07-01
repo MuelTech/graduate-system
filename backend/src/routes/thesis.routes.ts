@@ -1,167 +1,183 @@
-import { Router } from 'express';
-import { ThesisController } from '../controllers/thesis.controller';
-import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
-import { upload } from '../middlewares/upload.middleware';
+import { Router } from "express";
+import { ThesisController } from "../controllers/thesis.controller";
+import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import { upload } from "../middlewares/upload.middleware";
 
 const router = Router();
 const thesisController = new ThesisController();
 
-// 🔒 STUDENT ONLY: Title Defense
+// STUDENT ONLY: Title Defense
 router.post(
-  '/defense/title', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
+  "/defense/title",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
   upload.fields([
-    { name: 'conceptPaper', maxCount: 1 },
-    { name: 'cor', maxCount: 1 },
-    { name: 'receipt', maxCount: 1 }
-  ]), 
-  thesisController.applyTitle
+    { name: "conceptPaper", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+    { name: "receipt", maxCount: 1 },
+  ]),
+  thesisController.applyTitle,
 );
 
-// 🔒 STUDENT ONLY: Proposal Defense (Expects file 'document')
+// STUDENT ONLY: Proposal Defense (Expects file 'document')
 router.post(
-  '/defense/proposal', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
-  upload.single('document'), 
-  thesisController.applyProposal
-);
-
-// 🔒 STUDENT ONLY: Final Defense (Expects file 'document')
-router.post(
-  '/defense/final', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
-  upload.single('document'), 
-  thesisController.applyFinal
-);
-
-// 🔒 STUDENT: Request an adviser
-router.post(
-  '/adviser/request', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
-  thesisController.requestAdviser
-);
-
-// 🔒 ADMIN: Get all adviser requests
-router.get(
-  '/adviser/requests',
+  "/defense/proposal",
   authenticateJWT,
-  requireRole(['ADMIN']),
-  thesisController.getAdviserRequests
+  requireRole(["STUDENT"]),
+  upload.single("document"),
+  thesisController.applyProposal,
 );
 
-// 🔒 ADMIN: Get all active assignments
-router.get(
-  '/adviser/assignments',
-  authenticateJWT,
-  requireRole(['ADMIN']),
-  thesisController.getActiveAssignments
-);
-
-// 🔒 ADMIN: Get available advisers (panelists)
-router.get(
-  '/adviser/available',
-  authenticateJWT,
-  requireRole(['ADMIN']),
-  thesisController.getAvailableAdvisers
-);
-
-// 🔒 ADMIN: Approve and Assign the adviser
+// STUDENT ONLY: Final Defense (Expects file 'document')
 router.post(
-  '/adviser/assign', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.assignAdviser
+  "/defense/final",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  upload.single("document"),
+  thesisController.applyFinal,
 );
 
-// 🔒 ADMIN: Approve or reject a defense application (Update Status)
+// STUDENT: Request an adviser
+router.post(
+  "/adviser/request",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.requestAdviser,
+);
+
+// ADMIN: Get all adviser requests
+router.get(
+  "/adviser/requests",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAdviserRequests,
+);
+
+// ADMIN: Get all active assignments
+router.get(
+  "/adviser/assignments",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getActiveAssignments,
+);
+
+// ADMIN: Get available advisers (panelists)
+router.get(
+  "/adviser/available",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAvailableAdvisers,
+);
+
+// ADMIN: Approve and Assign the adviser
+router.post(
+  "/adviser/assign",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.assignAdviser,
+);
+
+// ADMIN: Approve or reject a defense application (Update Status)
 router.put(
-  '/defense/:id/status', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.updateStatus
-);
-
-// 🔒 ADMIN: Schedule a defense (Requires venueOrLink string)
-router.post(
-  '/defense/:id/schedule', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.scheduleDefense
-);
-
-// 🔒 ADMIN: Get pending applications
-router.get(
-  '/defense/pending', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.getPendingDefenses
-);
-
-// 🔒 ADMIN: Get approved applications ready for scheduling
-router.get(
-  '/defense/approved', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.getApprovedDefenses
-);
-
-// 🔒 ADMIN: Get ALL applications (for full status view)
-router.get(
-  '/defense/all',
+  "/defense/:id/status",
   authenticateJWT,
-  requireRole(['ADMIN']),
-  thesisController.getAllDefenses
+  requireRole(["ADMIN"]),
+  thesisController.updateStatus,
+);
+
+// ADMIN: Schedule a defense (Requires venueOrLink string)
+router.post(
+  "/defense/:id/schedule",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.scheduleDefense,
+);
+
+// ADMIN: Get pending applications
+router.get(
+  "/defense/pending",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getPendingDefenses,
+);
+
+// ADMIN: Get approved applications ready for scheduling
+router.get(
+  "/defense/approved",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getApprovedDefenses,
+);
+
+// ADMIN: Get ALL applications (for full status view)
+router.get(
+  "/defense/all",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAllDefenses,
 );
 
 router.post(
-  '/defense/:id/schedule', 
-  authenticateJWT, 
-  requireRole(['ADMIN']), 
-  thesisController.scheduleDefense
+  "/defense/:id/schedule",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.scheduleDefense,
 );
 
-// 🔒 STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
+// STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
 router.post(
-  '/defense/proposal', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
+  "/defense/proposal",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
   upload.fields([
-    { name: 'document', maxCount: 1 },
-    { name: 'cor', maxCount: 1 }
-  ]), 
-  thesisController.applyProposal
+    { name: "document", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+  ]),
+  thesisController.applyProposal,
 );
 
-// 🔒 STUDENT ONLY: Final Defense (Expects files 'document' and 'cor')
+// STUDENT ONLY: Final Defense (Expects files 'document' and 'cor')
 router.post(
-  '/defense/final', 
-  authenticateJWT, 
-  requireRole(['STUDENT']), 
+  "/defense/final",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
   upload.fields([
-    { name: 'document', maxCount: 1 },
-    { name: 'cor', maxCount: 1 }
-  ]), 
-  thesisController.applyFinal
+    { name: "document", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+  ]),
+  thesisController.applyFinal,
 );
 
-// 🔒 PANELIST: Get assigned defenses
+// PANELIST: Get assigned defenses
 router.get(
-  '/defense/panelist/assignments',
+  "/defense/panelist/assignments",
   authenticateJWT,
-  requireRole(['PANELIST']),
-  thesisController.getPanelistAssignments
+  requireRole(["PANELIST"]),
+  thesisController.getPanelistAssignments,
 );
 
-// 🔒 PANELIST: Submit Score
+// PANELIST: Submit Score
 router.post(
-  '/defense/:scheduleId/score',
+  "/defense/:scheduleId/score",
   authenticateJWT,
-  requireRole(['PANELIST']),
-  thesisController.submitOralExamScore
+  requireRole(["PANELIST"]),
+  thesisController.submitOralExamScore,
+);
+
+// PANELIST: Get Pending RAP Reports
+router.get(
+  "/defense/rap-reports/pending",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getPendingRapReports,
+);
+
+// PANELIST: Sign RAP Report
+router.post(
+  "/defense/rap-reports/:sigId/sign",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.signRapReport,
 );
 
 export default router;

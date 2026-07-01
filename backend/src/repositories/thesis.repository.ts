@@ -415,10 +415,99 @@ export class ThesisRepository {
             where: { id: scheduleRecord.thesisId },
             data: { status: finalRating === "FAILED" ? "FAILED" : "PASSED" },
           });
+
+          //Automated RAP Report Generation
+          const rapReport = await tx.rapReport.create({
+            data: {
+              scheduleId,
+              thesisId: scheduleRecord.thesisId,
+              defenseType: scheduleRecord.defenseType,
+              status: "DRAFT",
+
+              generatedAt: new Date(),
+            },
+          });
+
+          // Auto-assign all panelists to digitally sign this report
+          const assignments = await tx.panelAssignment.findMany({
+            where: { scheduleId },
+          });
+
+          for (const assignment of assignments) {
+            await tx.rapReportSignature.create({
+              data: {
+                rapId: rapReport.id,
+                userId: assignment.userId,
+                isSigned: false,
+              },
+            });
+          }
         }
       }
 
       return score;
+    });
+  }
+
+  // Fetch RAP Reports assigned to this panelist that still need their signature
+  async getPendingRapReports(userId: string) {
+    return prisma.rapReportSignature.findMany({
+      where: {
+        userId,
+        isSigned: false
+      },
+      include: {
+        rapReport: {
+          include: {
+            thesis: {
+              include: {
+                student: {
+                  include: {
+                    user: true
+                  }
+                }
+              }
+            },
+            schedule: true,
+          }
+        }
+      }
+    });
+  }
+
+  // Securely save the Base64 signature and server timestamp
+  async signRapReport(sigId: string, userId: string, signatureData: string) {
+    const signature = await prisma.rapReportSignature.findFirst({
+      where: { id: sigId, userId, isSigned: false }
+    });
+
+    if (!signature) throw new Error("Signature request not found or already signed!");
+
+    return prisma.$transaction(async (tx) => {
+      // Update the signature record
+      const signed = await tx.rapReportSignature.update({
+        where: { id: sigId },
+        data: {
+          isSigned: true,
+          signatureData,
+          signedAt: new Date() // Secure server-side timestamp
+        }
+      });
+
+      // Check if all panelists have signed the RAP report
+      const pendingSignatures = await tx.rapReportSignature.count({
+        where: { rapId: signature.rapId, isSigned: false }
+      });
+
+      // If everyone has signed, move the report status from DRAFT to FINALIZED
+      if (pendingSignatures === 0) {
+        await tx.rapReport.update({
+          where: { id: signature.rapId },
+          data: { status: "FINALIZED" }
+        });
+      }
+
+      return signed;
     });
   }
 }

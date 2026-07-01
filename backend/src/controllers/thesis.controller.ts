@@ -179,4 +179,26 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  getPendingRapReports = async(req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error("Unauthorized!");
+      const result = await this.thesisService.getPendingRapReports(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  signRapReport = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error("Unauthorized!");
+      const sigId = req.params.sigId as string;
+      const { signatureData } = req.body;
+      const result = await this.thesisService.signRapReport(sigId, req.user.userId, signatureData);
+      res.status(200).json({ message: "Rap Report successfully signed", result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
 }

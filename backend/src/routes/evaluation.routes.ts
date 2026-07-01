@@ -7,7 +7,7 @@ import { upload } from '../middlewares/upload.middleware';
 const router = Router();
 const evalController = new EvaluationController();
 
-// 🔒 STUDENT ONLY: Upload instrument (expecting a file field named 'instrument')
+// STUDENT ONLY: Upload instrument (expecting a file field named 'instrument')
 router.post(
   '/request', 
   authenticateJWT, 
@@ -16,7 +16,7 @@ router.post(
   evalController.submitRequest
 );
 
-// 🔒 ADMIN ONLY: Assign an expert to a request
+// ADMIN ONLY: Assign an expert to a request
 router.post(
   '/:id/assign', 
   authenticateJWT, 

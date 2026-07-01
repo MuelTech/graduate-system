@@ -120,4 +120,12 @@ export class ThesisService {
   async submitOralExamScore(panelId: string, scheduleId: string, data: any) {
     return this.thesisRepo.submitOralExamScore(panelId, scheduleId, data);
   }
+
+  async getPendingRapReports(userId: string) {
+    return this.thesisRepo.getPendingRapReports(userId);
+  }
+
+  async signRapReport(sigId: string, userId: string, signatureData: string) {
+    return this.thesisRepo.signRapReport(sigId, userId, signatureData);
+  }
 }
