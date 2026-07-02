@@ -14,28 +14,7 @@ import {
   CheckCircle2,
   MapPin,
 } from "lucide-react";
-
-interface AssignmentData {
-  id: string;
-  role: string;
-  schedule: {
-    id: string;
-    defenseDate: string;
-    defenseTime: string;
-    venueOrLink: string;
-    defenseType: string;
-    status: string; // "SCHEDULED" or "COMPLETED"
-    thesis: {
-      student: {
-        programId: string;
-        user: {
-          firstName: string;
-          lastName: string;
-        };
-      };
-    };
-  };
-}
+import { PanelistAssignmentData as AssignmentData } from "@/types";
 
 export default function PanelistDefensesPage() {
   const { data: assignments = [], isLoading } = useQuery({
@@ -92,7 +71,7 @@ export default function PanelistDefensesPage() {
             if (!schedule || !student) return null;
 
             const isUpcoming = schedule.status === "SCHEDULED";
-            const isOnline = schedule.venueOrLink.includes("http");
+            const isOnline = (schedule.venueOrLink || "").includes("http");
 
             return (
               <Card key={assignment.id}>
@@ -149,7 +128,7 @@ export default function PanelistDefensesPage() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-(--earist-body-text)">
                           <Clock className="h-4 w-4 text-(--earist-primary)" />
-                          <span>{new Date(schedule.defenseTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+                          <span>{new Date(schedule.defenseTime || "").toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-(--earist-body-text)">
                           {isOnline ? (

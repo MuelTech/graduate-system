@@ -19,21 +19,7 @@ import {
   Shield,
   Loader2,
 } from "lucide-react";
-
-interface PendingUpload {
-  id: string;
-  originalFilename: string;
-  filePath: string;
-  createdAt: string;
-  student: {
-    programId: string;
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-  };
-}
+import { PendingCorUpload as PendingUpload} from "@/types";
 
 export default function AdminCORValidationPage() {
   const queryClient = useQueryClient();

@@ -7,22 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, CalendarClock, Edit, Trash2, X, Users } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
-
-interface Slot {
-  id: string;
-  programId: string;
-  examDate: string;
-  examTime: string;
-  maxSlots: number;
-  slotsTaken: number;
-  isActive: boolean;
-  program?: { programName: string };
-}
-
-interface Program {
-  id: string;
-  programName: string;
-}
+import { ExamSlot as Slot, Program} from "@/types";
 
 export default function AdminExamSlotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);

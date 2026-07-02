@@ -14,27 +14,7 @@ import {
   ClipboardSignature
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-
-interface AssignmentData {
-  id: string;
-  role: string;
-  schedule: {
-    id: string;
-    defenseDate: string;
-    defenseTime: string;
-    venueOrLink: string;
-    defenseType: string;
-    thesis: {
-      student: {
-        programId: string;
-        user: {
-          firstName: string;
-          lastName: string;
-        };
-      };
-    };
-  };
-}
+import { PanelistAssignmentData as AssignmentData } from "@/types";
 
 export default function PanelistDashboard() {
   const { data: session } = useSession();
@@ -137,7 +117,7 @@ export default function PanelistDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400" />
-                        <span>{formatTime(schedule.defenseTime)}</span>
+                        <span>{formatTime(schedule.defenseTime || "")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-400" />

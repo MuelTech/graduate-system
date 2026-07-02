@@ -7,29 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarClock, X, Send, Mail, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-
-interface ThesisApplication {
-  id: string;
-  stage: string;
-  status: string;
-  createdAt: string;
-  student: {
-    programId: string;
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-  };
-  thesisTitles?: { id: string; titleText: string; isSelected: boolean }[];
-}
-
-interface Panelist {
-  id: string;
-  firstName: string;
-  lastName: string;
-  department: string;
-}
+import { AdminThesisApplication as ThesisApplication, Panelist } from "@/types";
 
 export default function AdminSchedulingPage() {
   const [selectedApp, setSelectedApp] = useState<string | null>(null);

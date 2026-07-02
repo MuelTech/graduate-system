@@ -5,27 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { FileCheck2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-interface AssignmentData {
-  id: string;
-  role: string;
-  schedule: {
-    id: string;
-    defenseDate: string;
-    defenseTime: string;
-    venueOrLink: string;
-    defenseType: string;
-    thesis: {
-      student: {
-        programId: string;
-        user: {
-          firstName: string;
-          lastName: string;
-        };
-      };
-    };
-  };
-}
+import { PanelistAssignmentData as AssignmentData } from "@/types";
 
 export default function PanelistScoringIndex() {
   const { data: assignments = [], isLoading } = useQuery({
@@ -90,7 +70,7 @@ export default function PanelistScoringIndex() {
                     {new Date(schedule.defenseDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </Badge>
                   <span className="text-xs text-gray-400">
-                    {new Date(schedule.defenseTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                    {new Date(schedule.defenseTime || "").toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
                   </span>
                 </div>
               </Link>

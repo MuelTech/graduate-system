@@ -8,21 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ArrowLeft, Send } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
-
-interface DefenseData {
-  defenseType: string;
-  defenseDate: string;
-  thesis: {
-    student: {
-      programId: string;
-      user: {
-        firstName: string;
-        lastName: string;
-      };
-    };
-    thesisDocuments?: Array<{ id: string; docType: string; filePath: string }>;
-  };
-}
+import { DefenseData } from "@/types";
 
 export default function PanelistScoringPage() {
   const params = useParams();

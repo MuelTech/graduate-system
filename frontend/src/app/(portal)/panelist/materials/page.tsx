@@ -5,34 +5,7 @@ import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
-
-interface DocumentData {
-  id: string;
-  docType: string;
-  filePath: string;
-  uploadedAt: string;
-}
-
-interface AssignmentData {
-  id: string;
-  role: string;
-  schedule: {
-    id: string;
-    defenseDate: string;
-    defenseType: string;
-    status: string; // "SCHEDULED" or "COMPLETED"
-    thesis: {
-      student: {
-        programId: string;
-        user: {
-          firstName: string;
-          lastName: string;
-        };
-      };
-      thesisDocuments?: DocumentData[];
-    };
-  };
-}
+import { PanelistAssignmentData as AssignmentData, DocumentData } from "@/types";
 
 export default function PanelistMaterialsPage() {
   const { data: assignments = [], isLoading } = useQuery({
@@ -126,7 +99,7 @@ export default function PanelistMaterialsPage() {
                 <CardContent>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {documents.length > 0 ? (
-                      documents.map((doc) => (
+                      documents.map((doc: DocumentData) => (
                         <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-(--earist-border-gray) p-3 transition-colors hover:bg-blue-50/30">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-red-50">
                             <FileText className="h-5 w-5 text-red-600" />

@@ -18,52 +18,7 @@ import {
   Check,
   Calendar,
 } from "lucide-react";
-
-interface ThesisDocument {
-  docType: string;
-  filePath: string;
-}
-
-interface ThesisTitle {
-  id: string;
-  titleText: string;
-  isSelected: boolean;
-}
-
-interface ThesisApplication {
-  id: string;
-  stage: string;
-  status: string;
-  createdAt: string;
-  student: {
-    programId: string;
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-  };
-  thesisDocuments?: ThesisDocument[];
-  thesisTitles?: ThesisTitle[];
-  assignment?: {
-    adviser?: {
-      firstName: string;
-    };
-  };
-}
-
-interface MappedApplication {
-  id: string;
-  studentName: string;
-  studentNumber: string;
-  program: string;
-  stage: string;
-  dateSubmitted: string;
-  status: string;
-  requirements: { name: string; met: boolean; path: string }[];
-  proposedTitles: ThesisTitle[] | null;
-  adviser: string | null;
-}
+import { ThesisDocument, ThesisTitle, AdminThesisApplication as ThesisApplication, MappedApplication} from "@/types";
 
 export default function AdminDefenseApplicationsPage() {
   const [stageFilter, setStageFilter] = useState("all");

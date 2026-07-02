@@ -8,38 +8,7 @@ import { Users, CheckCircle2, UserPlus, Eye, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface AdviserRequestUI {
-  id: string;
-  studentName: string;
-  studentNumber: string;
-  program: string;
-  requestDate: string;
-  preferredAdviser: string | null;
-  researchInterest: string;
-  status: string;
-}
-
-interface ActiveAssignmentUI {
-  id: string;
-  studentName: string;
-  studentNumber: string;
-  program: string;
-  adviserName: string;
-  adviserType: string;
-  assignedDate: string;
-  thesisStage: string;
-  lastActivity: string;
-  progress: number;
-}
-
-interface AvailableAdviserUI {
-  id: string;
-  name: string;
-  advisees: number;
-  maxAdvisees: number;
-  specialization: string;
-}
+import { AdviserRequestUI, ActiveAssignmentUI, AvailableAdviserUI } from "@/types";
 
 export default function AdminAdviseesPage() {
   const { data: session } = useSession();

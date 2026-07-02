@@ -19,30 +19,11 @@ import {
   List,
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
-
-interface ApplicantStatus {
-  alignmentStatus: string;
-  strikeCount: number;
-  programId: string;
-  confirmedSlot?: {
-    id: string;
-    examDate: string;
-    examTime: string;
-    programName: string;
-  };
-}
-
-interface AvailableSlot {
-  id: string;
-  examDate: string;
-  examTime: string;
-  maxSlots: number;
-  slotsTaken: number;
-}
+import { ApplicantStatus, ExamSlot } from "@/types";
 
 export default function ApplicantSchedulePage() {
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
-  const [confirmSlot, setConfirmSlot] = useState<AvailableSlot | null>(null);
+  const [confirmSlot, setConfirmSlot] = useState<ExamSlot | null>(null);
   const queryClient = useQueryClient();
 
   const {
@@ -60,7 +41,7 @@ export default function ApplicantSchedulePage() {
     data: availableSlots = [],
     isLoading: isSlotsLoading,
     error: slotsError,
-  } = useQuery<AvailableSlot[]>({
+  } = useQuery<ExamSlot[]>({
     queryKey: ["examSlots", applicant?.programId],
     queryFn: async () => {
       return apiClientRequest(
