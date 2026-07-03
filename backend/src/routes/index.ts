@@ -7,6 +7,7 @@ import corRoutes from './cor.routes'
 import studentRoutes from './student.routes';
 import evaluationRoutes from './evaluation.routes';
 import thesisRoutes from './thesis.routes';
+import panelistRoutes from "./panelist.routes";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/cor', corRoutes);
 router.use('/student', studentRoutes);
 router.use('/evaluation', evaluationRoutes);
 router.use('/thesis', thesisRoutes);
+router.use('/panelists', panelistRoutes);
 
 export default router;
