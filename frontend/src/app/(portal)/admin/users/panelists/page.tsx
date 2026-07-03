@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PanelistResponse } from "@/types";
+import { Card, CardContent} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,87 +18,85 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Loader2,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient} from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
 
 export default function AdminPanelistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const panelists = [
-    {
-      id: 1,
-      name: "Dr. Roberto Reyes",
-      email: "roberto.reyes@earist.edu.ph",
-      type: "internal" as "internal" | "external",
-      qualification: "Ph.D. in Computer Science",
-      affiliation: "EARIST Faculty",
-      specialization: "Machine Learning, Data Science",
-      defensesAssigned: 5,
-      status: "active" as "active" | "inactive",
-      isAvailableAsAdviser: true,
-    },
-    {
-      id: 2,
-      name: "Dr. Ana Garcia",
-      email: "ana.garcia@earist.edu.ph",
-      type: "internal" as "internal" | "external",
-      qualification: "Ph.D. in Education",
-      affiliation: "EARIST Faculty",
-      specialization: "Curriculum Development, Educational Technology",
-      defensesAssigned: 3,
-      status: "active" as "active" | "inactive",
-      isAvailableAsAdviser: true,
-    },
-    {
-      id: 3,
-      name: "Dr. Juan Dela Cruz",
-      email: "juan.delacruz@earist.edu.ph",
-      type: "internal" as "internal" | "external",
-      qualification: "Ph.D. in Mathematics",
-      affiliation: "EARIST Faculty",
-      specialization: "Statistics, Research Methods",
-      defensesAssigned: 4,
-      status: "active" as "active" | "inactive",
-      isAvailableAsAdviser: false,
-    },
-    {
-      id: 4,
-      name: "Dr. Maria Santos",
-      email: "maria.santos@university.edu.ph",
-      type: "external" as "internal" | "external",
-      qualification: "Ph.D. in Information Technology",
-      affiliation: "University of the Philippines",
-      specialization: "Software Engineering, AI",
-      defensesAssigned: 2,
-      status: "active" as "active" | "inactive",
-      isAvailableAsAdviser: false,
-    },
-    {
-      id: 5,
-      name: "Dr. Pedro Lim",
-      email: "pedro.lim@earist.edu.ph",
-      type: "internal" as "internal" | "external",
-      qualification: "Ed.D. in Educational Management",
-      affiliation: "EARIST Faculty",
-      specialization: "Educational Leadership, Policy",
-      defensesAssigned: 6,
-      status: "active" as "active" | "inactive",
-      isAvailableAsAdviser: true,
-    },
-    {
-      id: 6,
-      name: "Dr. Elena Torres",
-      email: "elena.torres@external.edu.ph",
-      type: "external" as "internal" | "external",
-      qualification: "Ph.D. in Business Administration",
-      affiliation: "De La Salle University",
-      specialization: "Management, Organizational Studies",
-      defensesAssigned: 1,
-      status: "inactive" as "active" | "inactive",
-      isAvailableAsAdviser: false,
-    },
-  ];
+const queryClient = useQueryClient();
+
+// Form State
+const [formData, setFormData] = useState({
+  firstName: "",
+  lastName: "",
+  email: "",
+  type: "internal",
+  qualification: "",
+  affiliation: "",
+  specialization: ""
+});
+
+// Fetch from backend
+const { data: panelists = [] } = useQuery({
+  queryKey: ["adminPanelists"],
+  queryFn: async () => {
+    const res = await apiClientRequest("/panelists");
+
+    //Map backend data to match UI expected format
+    return (Array.isArray(res) ? res : []).map((p: PanelistResponse) => ({
+      id: p.id,
+      name: `${p.user.firstName} ${p.user.lastName}`,
+      email: p.user.email,
+      type: p.isExternal ? "external" : "internal",
+      qualification: p.highestEducationalAttainment || "N/A",
+      affiliation: p.officeAffiliation || "N/A",
+      specialization: p.specialization || "N/A",
+      status: p.user.isActive ? "active" :"inactive",
+      isAvailableAsAdviser: p.isAvailableAsAdviser,
+      defensesAssigned: 0
+    }));
+  },
+});
+
+// Create Mutation
+const createMutation = useMutation({
+  mutationFn: async (data: typeof formData) => {
+    return apiClientRequest("/panelists", {
+      method: "POST",
+      body: JSON.stringify({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        officeAffiliation: data.affiliation,
+        highestEducationalAttainment: data.qualification,
+        specialization: data.specialization,
+        isExternal: data.type === "external",
+      }),
+    });
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["adminPanelists"]
+    });
+    setShowAddModal(false);
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      type: "internal",
+      qualification: "",
+      affiliation: "",
+      specialization: ""
+    });
+    alert("Panelist created! Default password is their LAST NAME in all caps.");
+  },
+  onError: (error: Error) => alert(error.message)
+});
 
   const filteredPanelists = panelists.filter((p) => {
     const matchesSearch =
@@ -396,78 +395,48 @@ export default function AdminPanelistsPage() {
               </button>
             </div>
             <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Dr. Juan Dela Cruz"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">First Name</label>
+                  <input type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Last Name</label>
+                  <input type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
+                </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="email@example.com"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Email</label>
+                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Type
-                </label>
-                <select className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Type</label>
+                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
                   <option value="internal">Internal (Faculty)</option>
                   <option value="external">External</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Qualification
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ph.D. in Computer Science"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Qualification</label>
+                <input type="text" value={formData.qualification} onChange={e => setFormData({...formData, qualification: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Affiliation
-                </label>
-                <input
-                  type="text"
-                  placeholder="EARIST Faculty"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Affiliation</label>
+                <input type="text" value={formData.affiliation} onChange={e => setFormData({...formData, affiliation: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Specialization
-                </label>
-                <input
-                  type="text"
-                  placeholder="Machine Learning, Data Science"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Specialization</label>
+                <input type="text" value={formData.specialization} onChange={e => setFormData({...formData, specialization: e.target.value})} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
               </div>
             </div>
             <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddModal(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => setShowAddModal(false)}
+              <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">Cancel</Button>
+              <Button 
+                disabled={createMutation.isPending}
+                onClick={() => createMutation.mutate(formData)} 
                 className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
+                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Add Panelist
               </Button>
             </div>
