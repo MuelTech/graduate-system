@@ -110,4 +110,16 @@ export class PanelistService {
             });
         });
     }
+
+    async toggleAvailability(userId: string, isAvailableAsAdviser: boolean) {
+        // First find the panelist record associated with this user
+        const panelistRecord = await panelistRepository.findUserById(userId);
+
+        if (!panelistRecord) {
+            throw new Error("Panelist profile not found for this user.");
+        }
+
+        //Update the availability flag
+        return panelistRepository.updateAvailability(panelistRecord.id, isAvailableAsAdviser);
+    }
 }

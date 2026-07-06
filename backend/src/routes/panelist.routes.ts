@@ -5,11 +5,15 @@ import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
 const router = Router();
 const controller = new PanelistController();
 
+// Global Auth requirement
 router.use(authenticateJWT);
-router.use(requireRole(["ADMIN"]));
 
-router.get("/", controller.getAllPanelists.bind(controller));
-router.post("/", controller.createPanelist.bind(controller));
-router.put("/:id", controller.updatePanelist.bind(controller));
+// Admin-only CRUD routes
+router.get("/", requireRole(["ADMIN"]), controller.getAllPanelists.bind(controller));
+router.post("/", requireRole(["ADMIN"]), controller.createPanelist.bind(controller));
+router.put("/:id", requireRole(["ADMIN"]), controller.updatePanelist.bind(controller));
+
+// Panelist self-service routes
+router.patch("/me/availability", requireRole(["PANELIST"]), controller.toggleAvailability.bind(controller));
 
 export default router;
