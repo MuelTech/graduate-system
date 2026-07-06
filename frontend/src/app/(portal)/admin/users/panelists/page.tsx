@@ -98,6 +98,21 @@ const createMutation = useMutation({
   onError: (error: Error) => alert(error.message)
 });
 
+// Update Mutation (Activate/Deactivate)
+const updateMutation = useMutation({
+  mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
+    return await apiClientRequest(`/panelists/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ isActive })
+    });
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["adminPanelists"]
+    });
+  }
+});
+
   const filteredPanelists = panelists.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -335,15 +350,18 @@ const createMutation = useMutation({
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          className={`rounded p-1.5 ${
+                          onClick={() => updateMutation.mutate({
+                            id: panelist.id,
+                            isActive: panelist.status !== "active"
+                          })}
+                          disabled={updateMutation.isPending}
+                          className={`rounded p-1.5 transition-colors ${
                             panelist.status === "active"
                               ? "text-red-600 hover:bg-red-50"
                               : "text-green-600 hover:bg-green-50"
-                          }`}
+                          } ${updateMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
                           title={
-                            panelist.status === "active"
-                              ? "Deactivate"
-                              : "Activate"
+                            panelist.status === "active" ? "Deactivate" : "Activate"
                           }
                         >
                           {panelist.status === "active" ? (
