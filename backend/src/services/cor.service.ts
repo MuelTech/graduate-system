@@ -1,19 +1,16 @@
 import { CorRepository } from "../repositories/cor.repository";
 import { AppError } from "../utils/AppError";
 import { sendMockEmail } from "../utils/email.mock";
-import prisma from "../config/database";
 import fs from "fs";
 
 export class CorService {
   private corRepository = new CorRepository();
 
   async uploadCor(userId: string, file: Express.Multer.File) {
-    const student = await prisma.student.findUnique({ where: { userId } });
+    const student = await this.corRepository.findStudentByUserId(userId);
     if (!student) throw new AppError("Student profile not found.", 404);
 
-    const hasPassedExam = await prisma.entranceExamApplication.findFirst({
-      where: { studentId: student.id, status: "PASSED" }
-    });
+    const hasPassedExam = await this.corRepository.checkPassedExam(student.id);
 
     if (!hasPassedExam) {
       throw new AppError(
@@ -33,7 +30,7 @@ export class CorService {
   }
 
   async getMyUpload(userId: string) {
-    const student = await prisma.student.findUnique({ where: { userId } });
+    const student = await this.corRepository.findStudentByUserId(userId);
     if (!student) throw new AppError("Student profile not found.", 404);
 
     const upload = await this.corRepository.getUploadByStudentId(student.id);
@@ -41,9 +38,7 @@ export class CorService {
     if (!upload) return null;
 
     // Check if there is an associated verified CorRecord
-    const verifiedRecord = await prisma.corRecord.findFirst({
-      where: { corUploadId: upload.id, isAdminVerified: true },
-    });
+    const verifiedRecord = await this.corRepository.checkVerifiedRecord(upload.id);
 
     return {
       id: upload.id,
@@ -67,9 +62,7 @@ export class CorService {
       throw new AppError("Student is already enrolled.", 400);
     }
 
-    const hasPassedExam = await prisma.entranceExamApplication.findFirst({
-      where: { studentId: student.id, status: "PASSED" }
-    });
+    const hasPassedExam = await this.corRepository.checkPassedExam(student.id);
 
     if (!hasPassedExam) {
       throw new AppError("Applicant has not passed the entrance exam.", 403);

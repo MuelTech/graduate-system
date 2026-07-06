@@ -72,4 +72,20 @@ export class CorRepository {
             return { corRecord, updatedStudent, updatedUser };
         });
     }
+
+    async findStudentByUserId(userId: string) {
+        return prisma.student.findUnique({ where: { userId }});
+    }
+
+    async checkPassedExam(studentId: string) {
+        return prisma.entranceExamApplication.findFirst({
+            where: { studentId, status: "PASSED" }
+        });
+    }
+
+    async checkVerifiedRecord(corUploadId: string) {
+        return prisma.corRecord.findFirst({
+            where: { corUploadId, isAdminVerified: true }
+        });
+    }
 }
