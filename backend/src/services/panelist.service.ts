@@ -37,4 +37,8 @@ export class PanelistService {
 
         return panelistRepository.updateAvailability(panelistRecord.id, isAvailableAsAdviser);
     }
+
+    async getPanelistByUserId(userId: string) {
+        return panelistRepository.findUserById(userId);
+    }
 }

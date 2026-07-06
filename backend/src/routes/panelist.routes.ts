@@ -15,5 +15,6 @@ router.put("/:id", requireRole(["ADMIN"]), controller.updatePanelist.bind(contro
 
 // Panelist self-service routes
 router.patch("/me/availability", requireRole(["PANELIST"]), controller.toggleAvailability.bind(controller));
+router.get("/me", requireRole(["PANELIST"]), controller.getMe.bind(controller));
 
 export default router;

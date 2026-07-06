@@ -52,4 +52,24 @@ export class PanelistController {
             res.status(500).json({ error: error.message });
         }
     }
-}
+
+    async getMe(req: AuthenticatedRequest, res: Response): Promise<void> {
+        try {
+            if (!req.user || !req.user.userId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+
+            const panelist = await panelistService.getPanelistByUserId(req.user.userId);
+
+            if (!panelist) {
+                res.status(404).json({ error: "Panelist profile not found." });
+                return;
+            }
+
+            res.json(panelist);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+ }

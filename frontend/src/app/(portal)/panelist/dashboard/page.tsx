@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import {
   CalendarClock,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { PanelistAssignmentData as AssignmentData } from "@/types";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function PanelistDashboard() {
   const { data: session } = useSession();
@@ -25,6 +25,31 @@ export default function PanelistDashboard() {
       const res = await apiClientRequest("/thesis/defense/panelist/assignments");
       return Array.isArray(res) ? res : [];
     },
+  });
+
+  const queryClient = useQueryClient();
+
+  // Fetch Panelist Profile for initial availability state
+  const { data: profile } = useQuery({
+    queryKey: ["panelistProfile"],
+    queryFn: async () => {
+      return await apiClientRequest("/panelists/me");
+    },
+  });
+
+  // Toggle Availability Mutation
+  const toggleMutation = useMutation({
+    mutationFn: async (isAvailable: boolean) => {
+      return await apiClientRequest("/panelists/me/availability", {
+        method: "PATCH",
+        body: JSON.stringify({ isAvailable })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["panelistProfile"]
+      });
+    }
   });
 
   const getGreeting = () => {
@@ -54,17 +79,44 @@ export default function PanelistDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div>
-        <h2
-          suppressHydrationWarning
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          {getGreeting()}, {(user as { firstName?: string })?.firstName || "Panelist"}
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Welcome to your Panelist Dashboard. Here are your assigned thesis defenses.
-        </p>
+            {/* Welcome Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2
+            suppressHydrationWarning
+            className="text-2xl font-bold text-(--earist-primary)"
+            style={{ fontFamily: '"Calibri", sans-serif' }}
+          >
+            {getGreeting()}, {(user as { firstName?: string })?.firstName || "Panelist"}
+          </h2>
+          <p className="text-sm text-(--earist-body-text)">
+            Welcome to your Panelist Dashboard. Here are your assigned thesis defenses.
+          </p>
+        </div>
+
+        {profile && (
+          <div className="flex items-center gap-3 rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3 shadow-sm">
+            <span className="text-sm font-semibold text-(--earist-secondary)">
+              Available as Thesis Adviser
+            </span>
+            <button
+              onClick={() => toggleMutation.mutate(!profile.isAvailableAsAdviser)}
+              disabled={toggleMutation.isPending}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-(--earist-primary) focus:ring-offset-2 ${
+                profile.isAvailableAsAdviser ? "bg-green-500" : "bg-gray-300"
+              } ${toggleMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  profile.isAvailableAsAdviser ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className={`text-xs font-bold ${profile.isAvailableAsAdviser ? "text-green-600" : "text-gray-500"}`}>
+                {profile.isAvailableAsAdviser ? "ON" : "OFF"}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6">
