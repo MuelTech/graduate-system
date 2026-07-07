@@ -208,3 +208,17 @@ export interface AvailableAdviserUI {
   maxAdvisees: number;
   specialization: string;
 }
+
+export interface AuditLogItem {
+  id: string;
+  createdAt: string;
+  actionType: string;
+  targetTable: string;
+  targetId: string;
+  description: string;
+  actor?: {
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+}
