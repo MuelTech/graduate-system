@@ -8,6 +8,7 @@ import studentRoutes from './student.routes';
 import evaluationRoutes from './evaluation.routes';
 import thesisRoutes from './thesis.routes';
 import panelistRoutes from "./panelist.routes";
+import settingsRoutes from "./settings.routes";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/student', studentRoutes);
 router.use('/evaluation', evaluationRoutes);
 router.use('/thesis', thesisRoutes);
 router.use('/panelists', panelistRoutes);
+router.use('/settings', settingsRoutes);
 
 export default router;
