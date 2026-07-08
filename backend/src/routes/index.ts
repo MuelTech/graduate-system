@@ -9,6 +9,7 @@ import evaluationRoutes from './evaluation.routes';
 import thesisRoutes from './thesis.routes';
 import panelistRoutes from "./panelist.routes";
 import settingsRoutes from "./settings.routes";
+import databankRoutes from './databank.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/evaluation', evaluationRoutes);
 router.use('/thesis', thesisRoutes);
 router.use('/panelists', panelistRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/databank', databankRoutes);
 
 export default router;
