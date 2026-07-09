@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Library,
   Search,
   Filter,
-  Eye,
   Download,
   Calendar,
   User,
@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Upload,
 } from "lucide-react";
 
 export default function StudentRepositoryPage() {
@@ -157,17 +158,27 @@ export default function StudentRepositoryPage() {
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Research Repository
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Browse published graduate research from EARIST
-        </p>
+       {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2
+            className="text-2xl font-bold text-(--earist-primary)"
+            style={{ fontFamily: '"Calibri", sans-serif' }}
+          >
+            Research Repository
+          </h2>
+          <p className="text-sm text-(--earist-body-text)">
+            Browse published graduate research from EARIST
+          </p>
+        </div>
+        
+        {/* ADD THIS BUTTON */}
+        <Link href="/student/repository/submit">
+          <Button className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
+            <Upload className="mr-2 h-4 w-4" />
+            Submit to Databank
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}

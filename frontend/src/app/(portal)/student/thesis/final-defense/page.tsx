@@ -34,14 +34,23 @@ export default function FinalDefensePage() {
   });
 
   const activeThesis = studentJourney?.thesisRecords?.[0];
-  const applicationState =
-    (activeThesis?.stage === "FINAL" && activeThesis?.status === "PENDING"
+  const applicationState = (
+    activeThesis?.stage === "FINAL" && activeThesis?.status === "PENDING"
       ? "submitted"
-      : "form") as "form" | "submitted" | "strike_check" | "post_defense" | "corrections" | "databank";
+      : "form"
+  ) as
+    | "form"
+    | "submitted"
+    | "strike_check"
+    | "post_defense"
+    | "corrections"
+    | "databank";
 
   const isProposalPassed =
     activeThesis &&
-    ((activeThesis.stage === "PROPOSAL" && (activeThesis.status === "PASSED" || activeThesis.status === "APPROVED")) ||
+    ((activeThesis.stage === "PROPOSAL" &&
+      (activeThesis.status === "PASSED" ||
+        activeThesis.status === "APPROVED")) ||
       activeThesis.stage === "FINAL");
 
   const [requirements, setRequirements] = useState([
@@ -109,7 +118,7 @@ export default function FinalDefensePage() {
   // Note: Your mock uses requirements[4] for the Manuscript, but we also have setCorrectedManuscript.
   // Assuming the user uploads the manuscript via the requirements[4] item in the checklist:
   const allRequirementsMet = requirements.every(
-    (r) => r.status === "verified" || r.status === "uploaded"
+    (r) => r.status === "verified" || r.status === "uploaded",
   );
   const corUploaded =
     requirements[0].status === "uploaded" ||
@@ -180,7 +189,8 @@ export default function FinalDefensePage() {
               Requirements Not Met
             </h3>
             <p className="text-gray-600">
-              You must pass your Proposal Defense before you can apply for your Final Defense.
+              You must pass your Proposal Defense before you can apply for your
+              Final Defense.
             </p>
           </CardContent>
         </Card>
@@ -558,10 +568,12 @@ export default function FinalDefensePage() {
               Upload your approved final manuscript to the Research Databank for
               publication in the Repository.
             </p>
-            <Button className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
-              <Database className="mr-2 h-4 w-4" />
-              Upload to Databank
-            </Button>
+            <Link href="/student/repository/submit">
+              <Button className="w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
+                <Database className="mr-2 h-4 w-4" />
+                Upload to Databank
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}
