@@ -222,3 +222,38 @@ export interface AuditLogItem {
     role: string;
   };
 }
+
+export interface BackendEntry {
+  id: string;
+  title: string;
+  abstract: string;
+  keywords: string;
+  publishedAt: string | null;
+  isPublic: boolean;
+  thesis?: {
+    student?: {
+      studentId: string;
+      user?: {
+        firstName: string;
+        lastName: string;
+      };
+      program?: {
+        programName: string
+      };
+    };
+  };
+}
+
+export interface Entry {
+  id: string;
+  title: string;
+  author: string;
+  studentNumber: string;
+  program: string;
+  abstract: string;
+  keywords: string[];
+  datePublished: string | null;
+  status: string;
+  downloads: number;
+  views: number;
+}

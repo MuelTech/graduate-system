@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,10 @@ import {
   Library,
   Search,
   Filter,
-  Eye,
   Edit,
   CheckCircle2,
-  XCircle,
   Globe,
   GlobeLock,
-  Download,
   X,
   Save,
   FileText,
@@ -22,121 +20,92 @@ import {
   User,
   BookOpen,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
+import { BackendEntry, Entry } from "@/types";
 
 export default function AdminRepositoryPage() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
-  const [selectedEntry, setSelectedEntry] = useState<number | null>(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editAbstract, setEditAbstract] = useState("");
   const [editKeywords, setEditKeywords] = useState("");
 
-  const entries = [
-    {
-      id: 1,
-      title:
-        "Machine Learning Approaches for Early Detection of Student Academic Risk",
-      author: "Maria Santos",
-      studentNumber: "2026-GS-00456",
-      program: "MSCS",
-      abstract:
-        "This study explores the application of machine learning algorithms for early detection of students at academic risk. Using historical academic data, the researchers developed a predictive model that identifies at-risk students with 87% accuracy. The system analyzes factors including attendance patterns, quiz scores, and assignment submission timeliness to generate early warnings for academic advisors.",
-      keywords: [
-        "machine learning",
-        "academic risk",
-        "prediction",
-        "student performance",
-      ],
-      datePublished: "May 28, 2026",
-      status: "published" as "pending" | "published" | "unpublished",
-      downloads: 45,
-      views: 128,
+  // 1. Fetch live databank entries from backend
+  const { data: databankData, isLoading } = useQuery({
+    queryKey: ["admin-databank"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/databank");
+      return res || [];
     },
-    {
-      id: 2,
-      title: "Effectiveness of Blended Learning in Graduate Education",
-      author: "Elena Torres",
-      studentNumber: "2026-GS-00460",
-      program: "MSCS",
-      abstract:
-        "This research investigates the effectiveness of blended learning approaches in graduate-level computer science courses. The study compared student outcomes between traditional face-to-face instruction and blended learning formats across three graduate programs. Results indicate that blended learning improved student engagement by 23% and course completion rates by 15%.",
-      keywords: [
-        "blended learning",
-        "graduate education",
-        "online learning",
-        "student engagement",
-      ],
-      datePublished: "June 1, 2026",
-      status: "published" as "pending" | "published" | "unpublished",
-      downloads: 32,
-      views: 95,
-    },
-    {
-      id: 3,
-      title: "NLP-Based Chatbot System for Graduate School Student Support",
-      author: "Juan Dela Cruz",
-      studentNumber: "2026-GS-00457",
-      program: "MSCS",
-      abstract:
-        "This thesis presents the design, development, and evaluation of an NLP-powered chatbot system for graduate school student support. The system uses natural language processing to understand student queries and provide instant responses regarding enrollment procedures, thesis requirements, and academic policies. Evaluation showed 78% query resolution rate.",
-      keywords: [
-        "NLP",
-        "chatbot",
-        "student support",
-        "natural language processing",
-      ],
-      datePublished: null,
-      status: "pending" as "pending" | "published" | "unpublished",
-      downloads: 0,
-      views: 0,
-    },
-    {
-      id: 4,
-      title: "Curriculum Mapping for Industry-Aligned Graduate Programs",
-      author: "Ana Garcia",
-      studentNumber: "2026-GS-00459",
-      program: "MAED",
-      abstract:
-        "This study develops a curriculum mapping framework that aligns graduate program outcomes with industry requirements. Through surveys of employers and analysis of job market trends, the research identifies competency gaps and proposes curriculum modifications to better prepare graduates for industry demands.",
-      keywords: [
-        "curriculum mapping",
-        "industry alignment",
-        "graduate programs",
-        "competency",
-      ],
-      datePublished: null,
-      status: "pending" as "pending" | "published" | "unpublished",
-      downloads: 0,
-      views: 0,
-    },
-    {
-      id: 5,
-      title: "Blockchain for Academic Credential Verification",
-      author: "Carlos Luna",
-      studentNumber: "2025-GS-00289",
-      program: "PhD Education",
-      abstract:
-        "This research proposes a blockchain-based system for secure and tamper-proof academic credential verification. The prototype demonstrates how distributed ledger technology can streamline the verification process, reducing verification time from days to seconds while maintaining data integrity and privacy.",
-      keywords: [
-        "blockchain",
-        "credential verification",
-        "academic records",
-        "distributed ledger",
-      ],
-      datePublished: "May 15, 2026",
-      status: "unpublished" as "pending" | "published" | "unpublished",
-      downloads: 18,
-      views: 52,
-    },
-  ];
+  });
 
-  const filteredEntries = entries.filter((entry) => {
+  // Map backend structure to our UI state
+  const entries: Entry[] = (databankData || []).map((d: BackendEntry) => ({
+    id: d.id,
+    title: d.title,
+    author: d.thesis?.student?.user
+      ? `${d.thesis.student.user.firstName} ${d.thesis.student.user.lastName}`
+      : "Unknown",
+    studentNumber: d.thesis?.student?.studentId || "Unknown",
+    program: d.thesis?.student?.program?.programName || "Unknown",
+    abstract: d.abstract || "No abstract provided.",
+    keywords: d.keywords
+      ? d.keywords.split(",").map((k: string) => k.trim())
+      : [],
+    datePublished: d.publishedAt
+      ? new Date(d.publishedAt).toLocaleDateString()
+      : null,
+    status: d.isPublic ? "published" : "pending",
+    downloads: 0, // Future analytics integration
+    views: 0, // Future analytics integration
+  }));
+
+  // 2. Mutations for actions
+  const publishMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiClientRequest(`/databank/${id}/publish`, { method: "PUT" }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-databank"] }),
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiClientRequest(`/databank/${id}/unpublish`, { method: "PUT" }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-databank"] }),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      title: string;
+      abstract: string;
+      keywords: string;
+    }) =>
+      apiClientRequest(`/databank/${payload.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: payload.title,
+          abstract: payload.abstract,
+          keywords: payload.keywords,
+        }),
+      }),
+    onSuccess: () => {
+      setShowEditModal(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-databank"] });
+    },
+  });
+
+  const filteredEntries = entries.filter((entry: Entry) => {
     const matchesSearch =
       entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entry.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.keywords.some((k) =>
+      entry.keywords.some((k: string) =>
         k.toLowerCase().includes(searchQuery.toLowerCase()),
       );
 
@@ -148,16 +117,19 @@ export default function AdminRepositoryPage() {
     return true;
   });
 
-  const selectedEntryData = entries.find((e) => e.id === selectedEntry);
+  const selectedEntryData = entries.find((e: Entry) => e.id === selectedEntryId);
 
-  const publishedCount = entries.filter((e) => e.status === "published").length;
-  const pendingCount = entries.filter((e) => e.status === "pending").length;
-  const unpublishedCount = entries.filter(
-    (e) => e.status === "unpublished",
+  const publishedCount = entries.filter(
+    (e: Entry) => e.status === "published",
   ).length;
-  const totalDownloads = entries.reduce((sum, e) => sum + e.downloads, 0);
-
-  const programs = [...new Set(entries.map((e) => e.program))];
+  const pendingCount = entries.filter(
+    (e: Entry) => e.status === "pending",
+  ).length;
+  const totalDownloads = entries.reduce(
+    (sum: number, e: Entry) => sum + e.downloads,
+    0,
+  );
+  const programs = Array.from(new Set(entries.map((e: Entry) => e.program)));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -175,13 +147,6 @@ export default function AdminRepositoryPage() {
             Pending
           </Badge>
         );
-      case "unpublished":
-        return (
-          <Badge className="bg-gray-100 text-gray-500">
-            <GlobeLock className="mr-1 h-3 w-3" />
-            Unpublished
-          </Badge>
-        );
       default:
         return null;
     }
@@ -196,9 +161,13 @@ export default function AdminRepositoryPage() {
     }
   };
 
+  if (isLoading)
+    return (
+      <div className="p-8 text-center text-gray-500">Loading Databank...</div>
+    );
+
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"
@@ -211,7 +180,6 @@ export default function AdminRepositoryPage() {
         </p>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
@@ -227,19 +195,7 @@ export default function AdminRepositoryPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Unpublished
-            </p>
-            <p className="text-lg font-bold text-gray-500">
-              {unpublishedCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Total Downloads
-            </p>
+            <p className="text-xs text-(--earist-body-text)">Total Downloads</p>
             <p className="text-lg font-bold text-(--earist-primary)">
               {totalDownloads}
             </p>
@@ -247,7 +203,6 @@ export default function AdminRepositoryPage() {
         </Card>
       </div>
 
-      {/* Search & Filters */}
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -258,7 +213,7 @@ export default function AdminRepositoryPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by title, author, or keyword..."
-                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
+                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -266,20 +221,19 @@ export default function AdminRepositoryPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                className="rounded-lg border px-3 py-2 text-sm focus:outline-none"
               >
                 <option value="all">All Status</option>
                 <option value="published">Published</option>
                 <option value="pending">Pending</option>
-                <option value="unpublished">Unpublished</option>
               </select>
               <select
                 value={programFilter}
                 onChange={(e) => setProgramFilter(e.target.value)}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                className="rounded-lg border px-3 py-2 text-sm focus:outline-none"
               >
                 <option value="all">All Programs</option>
-                {programs.map((p) => (
+                {programs.map((p: string) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -293,11 +247,11 @@ export default function AdminRepositoryPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Entries List */}
         <div className="space-y-2 lg:col-span-1">
-          {filteredEntries.map((entry) => (
+          {filteredEntries.map((entry: Entry) => (
             <button
               key={entry.id}
-              onClick={() => setSelectedEntry(entry.id)}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedEntry === entry.id ? "border-(--earist-primary) bg-(--earist-surface-light-red)" : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"}`}
+              onClick={() => setSelectedEntryId(entry.id)}
+              className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedEntryId === entry.id ? "border-(--earist-primary) bg-(--earist-surface-light-red)" : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -310,18 +264,6 @@ export default function AdminRepositoryPage() {
                 </div>
                 {getStatusBadge(entry.status)}
               </div>
-              {entry.status === "published" && (
-                <div className="mt-2 flex items-center gap-3 text-xs text-(--earist-body-text)">
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {entry.views}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Download className="h-3 w-3" />
-                    {entry.downloads}
-                  </span>
-                </div>
-              )}
             </button>
           ))}
         </div>
@@ -380,71 +322,54 @@ export default function AdminRepositoryPage() {
                       Keywords
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {selectedEntryData.keywords.map((keyword, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {keyword}
-                        </Badge>
-                      ))}
+                      {selectedEntryData.keywords.map(
+                        (keyword: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {keyword}
+                          </Badge>
+                        ),
+                      )}
                     </div>
                   </div>
-                  {selectedEntryData.status === "published" && (
-                    <div className="flex items-center gap-4 rounded-lg bg-(--earist-surface-gray) p-3">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Eye className="h-4 w-4 text-(--earist-body-text)" />
-                        <span className="font-medium text-(--earist-primary)">
-                          {selectedEntryData.views}
-                        </span>
-                        <span className="text-xs text-(--earist-body-text)">
-                          views
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Download className="h-4 w-4 text-(--earist-body-text)" />
-                        <span className="font-medium text-(--earist-primary)">
-                          {selectedEntryData.downloads}
-                        </span>
-                        <span className="text-xs text-(--earist-body-text)">
-                          downloads
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions */}
             <Card>
               <CardContent className="py-4">
                 <div className="flex flex-wrap gap-2">
                   {selectedEntryData.status === "pending" && (
-                    <Button className="bg-green-600 text-white hover:bg-green-700">
+                    <Button
+                      className="bg-green-600 text-white hover:bg-green-700"
+                      onClick={() =>
+                        publishMutation.mutate(selectedEntryData.id)
+                      }
+                      disabled={publishMutation.isPending}
+                    >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Approve & Publish
+                      {publishMutation.isPending
+                        ? "Publishing..."
+                        : "Approve & Publish"}
                     </Button>
                   )}
                   {selectedEntryData.status === "published" && (
                     <Button
                       variant="outline"
                       className="text-amber-600 hover:bg-amber-50"
+                      onClick={() =>
+                        unpublishMutation.mutate(selectedEntryData.id)
+                      }
+                      disabled={unpublishMutation.isPending}
                     >
                       <GlobeLock className="mr-2 h-4 w-4" />
-                      Unpublish
-                    </Button>
-                  )}
-                  {selectedEntryData.status === "unpublished" && (
-                    <Button className="bg-green-600 text-white hover:bg-green-700">
-                      <Globe className="mr-2 h-4 w-4" />
-                      Republish
+                      {unpublishMutation.isPending
+                        ? "Unpublishing..."
+                        : "Unpublish"}
                     </Button>
                   )}
                   <Button variant="outline" onClick={handleEditMetadata}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Metadata
-                  </Button>
-                  <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Manuscript
                   </Button>
                 </div>
               </CardContent>
@@ -471,7 +396,6 @@ export default function AdminRepositoryPage() {
         )}
       </div>
 
-      {/* Edit Metadata Modal */}
       {showEditModal && selectedEntryData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
@@ -481,7 +405,7 @@ export default function AdminRepositoryPage() {
               </h3>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                className="rounded-full p-1 hover:bg-gray-100"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -495,7 +419,7 @@ export default function AdminRepositoryPage() {
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
+                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                 />
               </div>
               <div>
@@ -505,7 +429,7 @@ export default function AdminRepositoryPage() {
                 <textarea
                   value={editAbstract}
                   onChange={(e) => setEditAbstract(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
+                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                   rows={5}
                 />
               </div>
@@ -517,7 +441,7 @@ export default function AdminRepositoryPage() {
                   type="text"
                   value={editKeywords}
                   onChange={(e) => setEditKeywords(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
+                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                 />
               </div>
             </div>
@@ -530,11 +454,19 @@ export default function AdminRepositoryPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => setShowEditModal(false)}
+                onClick={() =>
+                  editMutation.mutate({
+                    id: selectedEntryData.id,
+                    title: editTitle,
+                    abstract: editAbstract,
+                    keywords: editKeywords,
+                  })
+                }
+                disabled={editMutation.isPending}
                 className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 <Save className="mr-2 h-4 w-4" />
-                Save Changes
+                {editMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

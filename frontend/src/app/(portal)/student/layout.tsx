@@ -12,7 +12,6 @@ import {
   Milestone,
   FileText,
   ShieldCheck,
-  Upload,
   Bell,
   GraduationCap,
   Menu,
@@ -20,7 +19,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronDown,
-  Calendar,
   Megaphone,
   Library,
 } from "lucide-react";
@@ -71,7 +69,7 @@ export default function StudentLayout({
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-(--earist-primary) transition-all duration-300 ${
-          collapsed ? "w-[68px]" : "w-[260px]"
+          collapsed ? "w-17" : "w-65"
         } ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
@@ -204,7 +202,7 @@ export default function StudentLayout({
       {/* Main Content */}
       <div
         className={`flex flex-1 flex-col transition-all duration-300 ${
-          collapsed ? "lg:ml-[68px]" : "lg:ml-[260px]"
+          collapsed ? "lg:ml-17" : "lg:ml-65"
         }`}
       >
         {/* Top Header */}
