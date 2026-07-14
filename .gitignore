@@ -9,3 +9,8 @@ references/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.agents/
+backend/prisma
+backend/uploads
+docs/
+frontend/public/images/
