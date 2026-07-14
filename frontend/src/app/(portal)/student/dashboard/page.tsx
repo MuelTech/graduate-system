@@ -1,10 +1,6 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { auth } from "@/auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
@@ -20,18 +16,36 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export default function StudentDashboard() {
+export default async function StudentDashboard() {
+  const session = await auth();
+  if (!session?.user?.accessToken) {
+    return <div>Please log in to view your dashboard.</div>;
+  }
+
+  const apiUrl =
+    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+  const res = await fetch(`${apiUrl}/api/student/journey`, {
+    headers: { Authorization: `Bearer ${session.user.accessToken}` },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return <div>Error loading profile data.</div>;
+  }
+  const journey = await res.json();
+
   const student = {
-    firstName: "Maria",
-    lastName: "Santos",
-    studentNumber: "2026-GS-00456",
-    program: "Master of Science in Computer Science",
+    firstName: journey.user?.firstName || "Student",
+    lastName: journey.user?.lastName || "",
+    studentNumber: journey.studentNumber || "Not Assigned",
+    program: journey.program?.programName || "Graduate Program",
     currentStage: "proposal_defense" as
       | "title_defense"
       | "proposal_defense"
       | "final_defense"
       | "repository",
-    compExamStatus: "passed" as "pending" | "passed" | "failed",
+    compExamStatus: (journey.compExamRecords?.[0]?.status?.toLowerCase() ||
+      "pending") as "pending" | "passed" | "failed",
     activeApplication: {
       stage: "Proposal Defense",
       dateSubmitted: "May 28, 2026",
@@ -47,7 +61,10 @@ export default function StudentDashboard() {
       time: string;
       teamsLink: string;
     },
-    requirements: { submitted: 4, total: 6 },
+    requirements: {
+      submitted: journey.studentRequirements?.length || 0,
+      total: 6,
+    },
   };
 
   const stages = [
@@ -58,7 +75,7 @@ export default function StudentDashboard() {
   ];
 
   const currentStageIndex = stages.findIndex(
-    (s) => s.key === student.currentStage
+    (s) => s.key === student.currentStage,
   );
 
   const getGreeting = () => {
@@ -73,27 +90,27 @@ export default function StudentDashboard() {
       {/* Welcome Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           {getGreeting()}, {student.firstName}
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           {student.program}
         </p>
-        <p className="text-xs text-[var(--earist-body-text)]">
+        <p className="text-xs text-(--earist-body-text)">
           Student Number: {student.studentNumber}
         </p>
       </div>
 
       {/* Thesis Pipeline Progress */}
-      <div className="rounded-xl border border-[var(--earist-border-gray)] bg-white px-6 py-4">
-        <p className="mb-3 text-xs font-semibold text-[var(--earist-secondary)]">
+      <div className="rounded-xl border border-(--earist-border-gray) bg-white px-6 py-4">
+        <p className="mb-3 text-xs font-semibold text-(--earist-secondary)">
           Thesis Pipeline
         </p>
         <div className="relative">
           {/* Connector lines */}
-          <div className="absolute top-4 left-4 right-4 h-1 -translate-y-1/2 rounded bg-[var(--earist-border-gray)]" />
+          <div className="absolute top-4 right-4 left-4 h-1 -translate-y-1/2 rounded bg-(--earist-border-gray)" />
           <div
             className="absolute top-4 left-4 h-1 -translate-y-1/2 rounded bg-green-500"
             style={{
@@ -113,23 +130,19 @@ export default function StudentDashboard() {
                       isCompleted
                         ? "bg-green-500 text-white"
                         : isCurrent
-                          ? "bg-[var(--earist-accent)] text-[var(--earist-primary)] ring-2 ring-[var(--earist-accent)]/20"
-                          : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)]"
+                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/20"
+                          : "bg-(--earist-surface-gray) text-(--earist-body-text)"
                     }`}
                   >
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      i + 1
-                    )}
+                    {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                   </div>
                   <span
                     className={`mt-1.5 text-center text-[11px] font-medium ${
                       isCurrent
-                        ? "text-[var(--earist-primary)]"
+                        ? "text-(--earist-primary)"
                         : isCompleted
                           ? "text-green-600"
-                          : "text-[var(--earist-body-text)]"
+                          : "text-(--earist-body-text)"
                     }`}
                   >
                     {stage.label}
@@ -147,7 +160,7 @@ export default function StudentDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Active Defense Application
               </CardTitle>
               <Badge className="bg-amber-100 text-amber-700">
@@ -157,17 +170,17 @@ export default function StudentDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-              <p className="text-sm font-semibold text-[var(--earist-primary)]">
+            <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
+              <p className="text-sm font-semibold text-(--earist-primary)">
                 {student.activeApplication.stage}
               </p>
-              <p className="text-xs text-[var(--earist-body-text)]">
+              <p className="text-xs text-(--earist-body-text)">
                 Submitted: {student.activeApplication.dateSubmitted}
               </p>
             </div>
             <Link
               href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
             >
               View Application <ArrowRight className="h-3 w-3" />
             </Link>
@@ -177,7 +190,7 @@ export default function StudentDashboard() {
         {/* Comp Exam Status — compact */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Comprehensive Exam
             </CardTitle>
           </CardHeader>
@@ -188,7 +201,7 @@ export default function StudentDashboard() {
               </div>
               <div>
                 <Badge className="bg-green-100 text-green-700">Passed</Badge>
-                <p className="mt-1 text-xs text-[var(--earist-body-text)]">
+                <p className="mt-1 text-xs text-(--earist-body-text)">
                   For academic tracking only
                 </p>
               </div>
@@ -200,29 +213,29 @@ export default function StudentDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Requirements Status
               </CardTitle>
-              <FileText className="h-5 w-5 text-[var(--earist-accent)]" />
+              <FileText className="h-5 w-5 text-(--earist-accent)" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="mb-3">
               <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-[var(--earist-primary)]">
+                <span className="text-2xl font-bold text-(--earist-primary)">
                   {student.requirements.submitted}
-                  <span className="text-base font-normal text-[var(--earist-body-text)]">
+                  <span className="text-base font-normal text-(--earist-body-text)">
                     {" "}
                     / {student.requirements.total}
                   </span>
                 </span>
-                <span className="text-xs text-[var(--earist-body-text)]">
+                <span className="text-xs text-(--earist-body-text)">
                   submitted
                 </span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[var(--earist-border-gray)]">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
                 <div
-                  className="h-full rounded-full bg-[var(--earist-primary)]"
+                  className="h-full rounded-full bg-(--earist-primary)"
                   style={{
                     width: `${(student.requirements.submitted / student.requirements.total) * 100}%`,
                   }}
@@ -231,7 +244,7 @@ export default function StudentDashboard() {
             </div>
             <Link
               href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
             >
               View Requirements <ArrowRight className="h-3 w-3" />
             </Link>
@@ -241,18 +254,18 @@ export default function StudentDashboard() {
         {/* Upcoming Defense / No Scheduled Defense — spans 2 cols */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Upcoming Defense
             </CardTitle>
           </CardHeader>
           <CardContent>
             {student.upcomingDefense ? (
               <div>
-                <div className="mb-3 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
+                  <p className="text-sm font-semibold text-(--earist-primary)">
                     {student.upcomingDefense.stage}
                   </p>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     {student.upcomingDefense.date} &middot;{" "}
                     {student.upcomingDefense.time}
                   </p>
@@ -261,16 +274,16 @@ export default function StudentDashboard() {
                   href={student.upcomingDefense.teamsLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
                 >
                   Join MS Teams <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             ) : (
-              <div className="flex items-center justify-center rounded-lg bg-[var(--earist-surface-gray)] py-6">
+              <div className="flex items-center justify-center rounded-lg bg-(--earist-surface-gray) py-6">
                 <div className="text-center">
-                  <Calendar className="mx-auto mb-2 h-8 w-8 text-[var(--earist-body-text)]/40" />
-                  <p className="text-sm text-[var(--earist-body-text)]">
+                  <Calendar className="mx-auto mb-2 h-8 w-8 text-(--earist-body-text)/40" />
+                  <p className="text-sm text-(--earist-body-text)">
                     No defense scheduled yet
                   </p>
                 </div>
@@ -282,7 +295,7 @@ export default function StudentDashboard() {
         {/* Quick Links — spans 2 cols */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Quick Links
             </CardTitle>
           </CardHeader>
@@ -328,7 +341,7 @@ export default function StudentDashboard() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-2.5 text-xs font-medium text-[var(--earist-body-text)] transition-colors hover:bg-[var(--earist-surface-light-red)] hover:text-[var(--earist-primary)]"
+                  className="flex items-center gap-2 rounded-lg bg-(--earist-surface-gray) p-2.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
                 >
                   <link.icon className="h-4 w-4 shrink-0" />
                   {link.label}
@@ -342,12 +355,12 @@ export default function StudentDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Recent Notifications
               </CardTitle>
               <Link
                 href="/student/notifications"
-                className="text-xs font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                className="text-xs font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
               >
                 View All
               </Link>
@@ -391,26 +404,26 @@ export default function StudentDashboard() {
                   key={i}
                   className={`flex items-start gap-3 rounded-lg p-2.5 ${
                     notif.unread
-                      ? "bg-[var(--earist-surface-light-red)]"
-                      : "bg-[var(--earist-surface-gray)]"
+                      ? "bg-(--earist-surface-light-red)"
+                      : "bg-(--earist-surface-gray)"
                   }`}
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
                       notif.unread
-                        ? "bg-[var(--earist-accent)]"
+                        ? "bg-(--earist-accent)"
                         : "bg-transparent"
                     }`}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-(--earist-primary)">
                       {notif.title}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)] truncate">
+                    <p className="truncate text-xs text-(--earist-body-text)">
                       {notif.desc}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-[var(--earist-body-text)]">
+                  <span className="shrink-0 text-xs text-(--earist-body-text)">
                     {notif.time}
                   </span>
                 </div>

@@ -67,7 +67,7 @@ export default function RepositoryPage() {
   return (
     <>
       {/* Page Header */}
-      <section className="bg-[var(--earist-primary)] py-16">
+      <section className="bg-(--earist-primary) py-16">
         <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
           <h1 className="mb-4 text-4xl font-bold text-white">
             Research Repository
@@ -80,15 +80,15 @@ export default function RepositoryPage() {
       </section>
 
       {/* Search & Filter */}
-      <section className="bg-[var(--earist-surface-gray)] py-8">
+      <section className="bg-(--earist-surface-gray) py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 placeholder="Search by title, author, program, or keyword..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] bg-white py-3 pl-10 pr-4 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--earist-primary)]"
+                className="w-full rounded-lg border border-(--earist-border-gray) bg-white py-3 pr-4 pl-10 text-sm transition-colors focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) focus:outline-none"
               />
             </div>
           </div>
@@ -99,10 +99,10 @@ export default function RepositoryPage() {
       <section className="bg-white py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6 flex items-center justify-between">
-            <p className="text-sm text-[var(--earist-body-text)]">
+            <p className="text-sm text-(--earist-body-text)">
               Showing {researchEntries.length} research entries
             </p>
-            <select className="rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none">
+            <select className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none">
               <option>All Programs</option>
               <option>Master of Arts in Education</option>
               <option>Doctor of Public Administration</option>
@@ -117,41 +117,41 @@ export default function RepositoryPage() {
             {researchEntries.map((entry) => (
               <div
                 key={entry.title}
-                className="rounded-lg border border-[var(--earist-border-gray)] p-6 transition-all hover:shadow-md"
+                className="rounded-lg border border-(--earist-border-gray) p-6 transition-all hover:shadow-md"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex rounded-full bg-[var(--earist-surface-light-red)] px-2.5 py-0.5 text-xs font-semibold text-[var(--earist-primary)]">
+                  <span className="inline-flex rounded-full bg-(--earist-surface-light-red) px-2.5 py-0.5 text-xs font-semibold text-(--earist-primary)">
                     {entry.program}
                   </span>
-                  <span className="text-xs text-[var(--earist-body-text)]">
+                  <span className="text-xs text-(--earist-body-text)">
                     {entry.year}
                   </span>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-[var(--earist-primary)]">
+                <h3 className="mb-2 text-lg font-semibold text-(--earist-primary)">
                   {entry.title}
                 </h3>
-                <p className="mb-2 text-sm text-[var(--earist-secondary)]">
+                <p className="mb-2 text-sm text-(--earist-secondary)">
                   by {entry.author}
                 </p>
-                <p className="mb-3 text-sm text-[var(--earist-body-text)]">
+                <p className="mb-3 text-sm text-(--earist-body-text)">
                   {entry.abstract}
                 </p>
                 <div className="mb-4 flex flex-wrap gap-2">
                   {entry.keywords.map((keyword) => (
                     <span
                       key={keyword}
-                      className="rounded-full bg-[var(--earist-surface-gray)] px-2 py-0.5 text-xs text-[var(--earist-body-text)]"
+                      className="rounded-full bg-(--earist-surface-gray) px-2 py-0.5 text-xs text-(--earist-body-text)"
                     >
                       {keyword}
                     </span>
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button className="inline-flex items-center gap-1 rounded-lg border border-[var(--earist-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-surface-light-red)]">
+                  <button className="inline-flex items-center gap-1 rounded-lg border border-(--earist-primary) px-3 py-1.5 text-xs font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)">
                     <Eye className="h-3 w-3" />
                     View Abstract
                   </button>
-                  <button className="inline-flex items-center gap-1 rounded-lg bg-[var(--earist-primary)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90">
+                  <button className="inline-flex items-center gap-1 rounded-lg bg-(--earist-primary) px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-(--earist-primary)/90">
                     <Download className="h-3 w-3" />
                     Download PDF
                   </button>

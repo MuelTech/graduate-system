@@ -89,7 +89,7 @@ export default function ProgramsPage() {
   return (
     <>
       {/* Page Header */}
-      <section className="bg-[var(--earist-primary)] py-16">
+      <section className="bg-(--earist-primary) py-16">
         <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
           <h1 className="mb-4 text-4xl font-bold text-white">
             Graduate Programs Offered
@@ -102,15 +102,15 @@ export default function ProgramsPage() {
       </section>
 
       {/* Search & Filter */}
-      <section className="bg-[var(--earist-surface-gray)] py-8">
+      <section className="bg-(--earist-surface-gray) py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-xl">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 placeholder="Search programs by name or department..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] bg-white py-3 pl-10 pr-4 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--earist-primary)]"
+                className="w-full rounded-lg border border-(--earist-border-gray) bg-white py-3 pr-4 pl-10 text-sm transition-colors focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) focus:outline-none"
               />
             </div>
           </div>
@@ -124,40 +124,40 @@ export default function ProgramsPage() {
             {programs.map((program) => (
               <div
                 key={program.code}
-                className="flex flex-col overflow-hidden rounded-lg border border-[var(--earist-border-gray)] transition-all hover:shadow-lg"
+                className="flex flex-col overflow-hidden rounded-lg border border-(--earist-border-gray) transition-all hover:shadow-lg"
               >
                 {/* Navy Top Border */}
-                <div className="h-2 bg-[var(--earist-primary)]" />
+                <div className="h-2 bg-(--earist-primary)" />
                 <div className="flex flex-1 flex-col p-6">
                   <div className="mb-3 flex items-center gap-2">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         program.type === "Masters"
-                          ? "bg-[var(--earist-surface-light-red)] text-[var(--earist-primary)]"
-                          : "bg-[var(--earist-surface-cream)] text-[var(--earist-warning)]"
+                          ? "bg-(--earist-surface-light-red) text-(--earist-primary)"
+                          : "bg-(--earist-surface-cream) text-(--earist-warning)"
                       }`}
                     >
                       {program.type}
                     </span>
-                    <span className="text-xs text-[var(--earist-body-text)]">
+                    <span className="text-xs text-(--earist-body-text)">
                       {program.code}
                     </span>
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-[var(--earist-primary)]">
+                  <h3 className="mb-2 text-lg font-semibold text-(--earist-primary)">
                     {program.name}
                   </h3>
-                  <p className="mb-1 text-sm text-[var(--earist-secondary)]">
+                  <p className="mb-1 text-sm text-(--earist-secondary)">
                     {program.department}
                   </p>
-                  <p className="mb-3 text-xs text-[var(--earist-body-text)]">
+                  <p className="mb-3 text-xs text-(--earist-body-text)">
                     Max Residency: {program.residency}
                   </p>
-                  <p className="mb-4 flex-1 text-sm text-[var(--earist-body-text)]">
+                  <p className="mb-4 flex-1 text-sm text-(--earist-body-text)">
                     {program.description}
                   </p>
                   <Link
                     href="/register"
-                    className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
                   >
                     Apply for this Program
                     <ArrowRight className="h-3 w-3" />
@@ -170,17 +170,17 @@ export default function ProgramsPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[var(--earist-surface-light-red)] py-12">
+      <section className="bg-(--earist-surface-light-red) py-12">
         <div className="container mx-auto px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-2xl font-bold text-[var(--earist-primary)]">
+          <h2 className="mb-4 text-2xl font-bold text-(--earist-primary)">
             Ready to Start Your Graduate Journey?
           </h2>
-          <p className="mb-6 text-[var(--earist-body-text)]">
+          <p className="mb-6 text-(--earist-body-text)">
             Applications are now open for the upcoming academic year.
           </p>
           <Link
             href="/register"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--earist-accent)] px-8 text-base font-bold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-accent)]/90"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-(--earist-accent) px-8 text-base font-bold text-(--earist-primary) transition-colors hover:bg-(--earist-accent)/90"
           >
             Apply for Admission
             <ArrowRight className="h-4 w-4" />

@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +28,11 @@ export default function AdminStudentsPage() {
       email: "maria.santos@gmail.com",
       program: "MSCS",
       enrollmentDate: "June 1, 2026",
-      thesisStage: "proposal_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "proposal_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2026",
       adviser: "Dr. Roberto Reyes",
@@ -44,7 +45,11 @@ export default function AdminStudentsPage() {
       email: "juan.delacruz@gmail.com",
       program: "MSCS",
       enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "title_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2026",
       adviser: null,
@@ -57,7 +62,11 @@ export default function AdminStudentsPage() {
       email: "pedro.reyes@gmail.com",
       program: "MIT",
       enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "title_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "pending" as "pending" | "passed" | "failed",
       residencyStart: "2026",
       adviser: null,
@@ -70,7 +79,11 @@ export default function AdminStudentsPage() {
       email: "ana.garcia@gmail.com",
       program: "MAED",
       enrollmentDate: "January 15, 2025",
-      thesisStage: "final_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "final_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2025",
       adviser: "Dr. Pedro Lim",
@@ -83,7 +96,11 @@ export default function AdminStudentsPage() {
       email: "carlos.luna@gmail.com",
       program: "PhD Education",
       enrollmentDate: "January 15, 2025",
-      thesisStage: "completed" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "completed" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2024",
       adviser: "Dr. Roberto Reyes",
@@ -96,7 +113,11 @@ export default function AdminStudentsPage() {
       email: "elena.torres@gmail.com",
       program: "MSCS",
       enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "title_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2026",
       adviser: "Dr. Ana Garcia",
@@ -109,7 +130,11 @@ export default function AdminStudentsPage() {
       email: "roberto.lim@gmail.com",
       program: "DIT",
       enrollmentDate: "January 15, 2024",
-      thesisStage: "proposal_defense" as "title_defense" | "proposal_defense" | "final_defense" | "completed",
+      thesisStage: "proposal_defense" as
+        | "title_defense"
+        | "proposal_defense"
+        | "final_defense"
+        | "completed",
       compExam: "passed" as "pending" | "passed" | "failed",
       residencyStart: "2024",
       adviser: "Dr. Juan Dela Cruz",
@@ -133,17 +158,27 @@ export default function AdminStudentsPage() {
   });
 
   const activeCount = students.filter((s) => s.status === "active").length;
-  const graduatedCount = students.filter((s) => s.status === "graduated").length;
+  const graduatedCount = students.filter(
+    (s) => s.status === "graduated",
+  ).length;
   const pendingAdviser = students.filter((s) => s.adviser === null).length;
 
   const getThesisStageBadge = (stage: string) => {
     switch (stage) {
       case "title_defense":
-        return <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>
+        );
       case "proposal_defense":
-        return <Badge className="bg-amber-100 text-amber-700">Proposal Defense</Badge>;
+        return (
+          <Badge className="bg-amber-100 text-amber-700">
+            Proposal Defense
+          </Badge>
+        );
       case "final_defense":
-        return <Badge className="bg-purple-100 text-purple-700">Final Defense</Badge>;
+        return (
+          <Badge className="bg-purple-100 text-purple-700">Final Defense</Badge>
+        );
       case "completed":
         return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
       default:
@@ -182,12 +217,12 @@ export default function AdminStudentsPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Student Management
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           View and manage enrolled student accounts and thesis progress
         </p>
       </div>
@@ -196,27 +231,29 @@ export default function AdminStudentsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Total Students</p>
-            <p className="text-lg font-bold text-[var(--earist-primary)]">
+            <p className="text-xs text-(--earist-body-text)">
+              Total Students
+            </p>
+            <p className="text-lg font-bold text-(--earist-primary)">
               {students.length}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Active</p>
+            <p className="text-xs text-(--earist-body-text)">Active</p>
             <p className="text-lg font-bold text-green-600">{activeCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Graduated</p>
+            <p className="text-xs text-(--earist-body-text)">Graduated</p>
             <p className="text-lg font-bold text-blue-600">{graduatedCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">No Adviser</p>
+            <p className="text-xs text-(--earist-body-text)">No Adviser</p>
             <p className="text-lg font-bold text-amber-600">{pendingAdviser}</p>
           </CardContent>
         </Card>
@@ -227,21 +264,21 @@ export default function AdminStudentsPage() {
         <CardContent className="py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, student number, or email..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] py-2 pl-10 pr-3 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
             </div>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[var(--earist-body-text)]" />
+              <Filter className="h-4 w-4 text-(--earist-body-text)" />
               <select
                 value={programFilter}
                 onChange={(e) => setProgramFilter(e.target.value)}
-                className="rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none"
+                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 <option value="all">All Programs</option>
                 {programs.map((p) => (
@@ -253,7 +290,7 @@ export default function AdminStudentsPage() {
               <select
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
-                className="rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none"
+                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 <option value="all">All Stages</option>
                 <option value="title_defense">Title Defense</option>
@@ -272,29 +309,29 @@ export default function AdminStudentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Student
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Program
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Thesis Stage
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Comp Exam
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Adviser
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Residency
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                     Actions
                   </th>
                 </tr>
@@ -303,22 +340,22 @@ export default function AdminStudentsPage() {
                 {filteredStudents.map((student) => (
                   <tr
                     key={student.id}
-                    className="border-b border-[var(--earist-border-gray)] last:border-0"
+                    className="border-b border-(--earist-border-gray) last:border-0"
                   >
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-[var(--earist-primary)]">
+                        <p className="font-medium text-(--earist-primary)">
                           {student.name}
                         </p>
-                        <p className="text-xs text-[var(--earist-body-text)]">
+                        <p className="text-xs text-(--earist-body-text)">
                           {student.studentNumber}
                         </p>
-                        <p className="text-xs text-[var(--earist-body-text)]">
+                        <p className="text-xs text-(--earist-body-text)">
                           {student.email}
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                       {student.program}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -329,7 +366,7 @@ export default function AdminStudentsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {student.adviser ? (
-                        <p className="text-xs text-[var(--earist-body-text)]">
+                        <p className="text-xs text-(--earist-body-text)">
                           {student.adviser}
                         </p>
                       ) : (
@@ -339,7 +376,7 @@ export default function AdminStudentsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <p className="text-xs text-[var(--earist-body-text)]">
+                      <p className="text-xs text-(--earist-body-text)">
                         Since {student.residencyStart}
                       </p>
                     </td>
@@ -349,19 +386,19 @@ export default function AdminStudentsPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button
-                          className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Profile"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
-                          className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Thesis Progress"
                         >
                           <FileText className="h-4 w-4" />
                         </button>
                         <button
-                          className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Curriculum"
                         >
                           <BookOpen className="h-4 w-4" />
@@ -374,18 +411,18 @@ export default function AdminStudentsPage() {
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-[var(--earist-border-gray)] px-4 py-3">
-            <p className="text-xs text-[var(--earist-body-text)]">
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
               Showing {filteredStudents.length} of {students.length} students
             </p>
             <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button className="rounded bg-[var(--earist-primary)] px-2 py-1 text-xs text-white">
+              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
                 1
               </button>
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
