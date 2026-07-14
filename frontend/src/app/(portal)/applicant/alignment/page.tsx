@@ -6,29 +6,29 @@ export default function ApplicantAlignmentPage() {
     <div className="space-y-6">
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Program Alignment
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Check your program alignment status and bridging waiver
         </p>
       </div>
 
-      <div className="rounded-lg border border-[var(--earist-border-gray)] bg-white p-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--earist-surface-light-red)]">
-          <ShieldCheck className="h-8 w-8 text-[var(--earist-primary)]" />
+      <div className="rounded-lg border border-(--earist-border-gray) bg-white p-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
+          <ShieldCheck className="h-8 w-8 text-(--earist-primary)" />
         </div>
-        <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+        <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
           Program Alignment Check
         </h3>
-        <p className="mb-4 text-sm text-[var(--earist-body-text)]">
+        <p className="mb-4 text-sm text-(--earist-body-text)">
           This page is under construction. Check back soon.
         </p>
         <Link
           href="/applicant/dashboard"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>

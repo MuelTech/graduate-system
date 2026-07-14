@@ -52,10 +52,10 @@ export function FeaturesSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mb-4 text-3xl font-bold text-[var(--earist-secondary)] sm:text-4xl">
+          <h2 className="mb-4 text-3xl font-bold text-(--earist-secondary) sm:text-4xl">
             Everything You Need
           </h2>
-          <p className="mb-12 text-lg text-[var(--earist-body-text)]">
+          <p className="mb-12 text-lg text-(--earist-body-text)">
             Our comprehensive platform manages the complete student lifecycle
             from application to research repository archiving.
           </p>
@@ -66,15 +66,15 @@ export function FeaturesSection() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group rounded-lg border border-[var(--earist-border-gray)] bg-[var(--earist-surface-light-red)] p-6 transition-all hover:border-[var(--earist-accent)] hover:shadow-lg"
+              className="group rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-light-red) p-6 transition-all hover:border-(--earist-accent) hover:shadow-lg"
             >
-              <div className="mb-4 inline-flex rounded-lg bg-[var(--earist-primary)] p-3 text-white transition-colors group-hover:bg-[var(--earist-accent)]">
+              <div className="mb-4 inline-flex rounded-lg bg-(--earist-primary) p-3 text-white transition-colors group-hover:bg-(--earist-accent)">
                 <feature.icon className="h-6 w-6" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-lg font-semibold text-(--earist-primary)">
                 {feature.title}
               </h3>
-              <p className="text-sm text-[var(--earist-body-text)]">
+              <p className="text-sm text-(--earist-body-text)">
                 {feature.description}
               </p>
             </div>

@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +54,10 @@ export default function AdminApplicantsPage() {
       pinnacleId: "PIN-2026-003",
       program: "MIT",
       applicationDate: "May 5, 2026",
-      alignmentStatus: "pending_waiver" as "aligned" | "pending_waiver" | "cleared",
+      alignmentStatus: "pending_waiver" as
+        | "aligned"
+        | "pending_waiver"
+        | "cleared",
       examStatus: "none" as "none" | "scheduled" | "passed" | "failed",
       corStatus: "none" as "none" | "pending" | "verified",
       admissionStatus: "applicant" as "applicant" | "enrolled" | "disqualified",
@@ -98,7 +96,10 @@ export default function AdminApplicantsPage() {
       pinnacleId: "PIN-2026-006",
       program: "MSCS",
       applicationDate: "May 12, 2026",
-      alignmentStatus: "pending_waiver" as "aligned" | "pending_waiver" | "cleared",
+      alignmentStatus: "pending_waiver" as
+        | "aligned"
+        | "pending_waiver"
+        | "cleared",
       examStatus: "none" as "none" | "scheduled" | "passed" | "failed",
       corStatus: "none" as "none" | "pending" | "verified",
       admissionStatus: "applicant" as "applicant" | "enrolled" | "disqualified",
@@ -170,16 +171,10 @@ export default function AdminApplicantsPage() {
         );
       case "pending_waiver":
         return (
-          <Badge className="bg-amber-100 text-amber-700">
-            Pending Waiver
-          </Badge>
+          <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>
         );
       case "cleared":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">
-            Cleared
-          </Badge>
-        );
+        return <Badge className="bg-blue-100 text-blue-700">Cleared</Badge>;
       default:
         return null;
     }
@@ -188,7 +183,9 @@ export default function AdminApplicantsPage() {
   const getExamBadge = (status: string) => {
     switch (status) {
       case "none":
-        return <Badge className="bg-gray-100 text-gray-500">Not Scheduled</Badge>;
+        return (
+          <Badge className="bg-gray-100 text-gray-500">Not Scheduled</Badge>
+        );
       case "scheduled":
         return <Badge className="bg-blue-100 text-blue-700">Scheduled</Badge>;
       case "passed":
@@ -231,12 +228,12 @@ export default function AdminApplicantsPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Applicant Management
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Manage applicant accounts
         </p>
       </div>
@@ -247,22 +244,22 @@ export default function AdminApplicantsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--earist-body-text)]" />
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, email, or Applicant ID..."
-                className="w-full rounded-lg border border-[var(--earist-border-gray)] py-2 pl-10 pr-3 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
             </div>
             {/* Filter Dropdown */}
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-[var(--earist-body-text)]" />
+              <Filter className="h-4 w-4 text-(--earist-body-text)" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm text-[var(--earist-body-text)] focus:border-[var(--earist-primary)] focus:outline-none"
+                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 {filters.map((f) => (
                   <option key={f.value} value={f.value}>
@@ -281,32 +278,32 @@ export default function AdminApplicantsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Applicant ID
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                     Program
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Alignment
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Exam
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     COR
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                     Strikes
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                     Actions
                   </th>
                 </tr>
@@ -315,22 +312,22 @@ export default function AdminApplicantsPage() {
                 {filteredApplicants.map((app) => (
                   <tr
                     key={app.id}
-                    className="border-b border-[var(--earist-border-gray)] last:border-0"
+                    className="border-b border-(--earist-border-gray) last:border-0"
                   >
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-[var(--earist-primary)]">
+                        <p className="font-medium text-(--earist-primary)">
                           {app.name}
                         </p>
-                        <p className="text-xs text-[var(--earist-body-text)]">
+                        <p className="text-xs text-(--earist-body-text)">
                           {app.email}
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                       {app.pinnacleId}
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                       {app.program}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -351,7 +348,7 @@ export default function AdminApplicantsPage() {
                           {app.strikeCount}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-[var(--earist-body-text)]">
+                        <span className="text-xs text-(--earist-body-text)">
                           0
                         </span>
                       )}
@@ -359,7 +356,7 @@ export default function AdminApplicantsPage() {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button
-                          className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Profile"
                         >
                           <Eye className="h-4 w-4" />
@@ -391,7 +388,7 @@ export default function AdminApplicantsPage() {
                           )}
                         {app.strikeCount > 0 && (
                           <button
-                            className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                             title="Reset Strike Count"
                           >
                             <RotateCcw className="h-4 w-4" />
@@ -405,19 +402,19 @@ export default function AdminApplicantsPage() {
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-[var(--earist-border-gray)] px-4 py-3">
-            <p className="text-xs text-[var(--earist-body-text)]">
+          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+            <p className="text-xs text-(--earist-body-text)">
               Showing {filteredApplicants.length} of {applicants.length}{" "}
               applicants
             </p>
             <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button className="rounded bg-[var(--earist-primary)] px-2 py-1 text-xs text-white">
+              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
                 1
               </button>
-              <button className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]">
+              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>

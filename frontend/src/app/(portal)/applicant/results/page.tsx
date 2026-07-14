@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
@@ -30,7 +25,7 @@ export default function ApplicantResultsPage() {
   };
 
   const percentage = Math.round(
-    (result.totalScore / result.totalPossible) * 100
+    (result.totalScore / result.totalPossible) * 100,
   );
 
   return (
@@ -38,12 +33,12 @@ export default function ApplicantResultsPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Examination Results
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Exam taken on {result.examDate}
         </p>
       </div>
@@ -60,7 +55,7 @@ export default function ApplicantResultsPage() {
                 <Badge className="mb-2 bg-green-100 px-4 py-1 text-base text-green-700">
                   PASSED
                 </Badge>
-                <p className="text-sm text-[var(--earist-body-text)]">
+                <p className="text-sm text-(--earist-body-text)">
                   Congratulations! You have passed the entrance examination.
                 </p>
               </>
@@ -72,7 +67,7 @@ export default function ApplicantResultsPage() {
                 <Badge className="mb-2 bg-red-100 px-4 py-1 text-base text-red-700">
                   FAILED
                 </Badge>
-                <p className="text-sm text-[var(--earist-body-text)]">
+                <p className="text-sm text-(--earist-body-text)">
                   You did not meet the passing score for this examination.
                 </p>
               </>
@@ -84,30 +79,30 @@ export default function ApplicantResultsPage() {
       {/* Score Breakdown Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
             Score Breakdown
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* MCQ Score */}
-            <div className="flex items-center justify-between rounded-lg bg-[var(--earist-surface-gray)] p-3">
+            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-gray) p-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded bg-blue-50">
                   <FileText className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     MCQ Score
                   </p>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     Multiple Choice Questions
                   </p>
                 </div>
               </div>
-              <p className="text-lg font-bold text-[var(--earist-primary)]">
+              <p className="text-lg font-bold text-(--earist-primary)">
                 {result.mcqScore}
-                <span className="text-sm font-normal text-[var(--earist-body-text)]">
+                <span className="text-sm font-normal text-(--earist-body-text)">
                   {" "}
                   / {result.mcqTotal}
                 </span>
@@ -115,23 +110,23 @@ export default function ApplicantResultsPage() {
             </div>
 
             {/* Essay Score */}
-            <div className="flex items-center justify-between rounded-lg bg-[var(--earist-surface-gray)] p-3">
+            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-gray) p-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded bg-purple-50">
                   <FileText className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--earist-primary)]">
+                  <p className="text-sm font-medium text-(--earist-primary)">
                     Essay Score
                   </p>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     Program Chair Evaluation
                   </p>
                 </div>
               </div>
-              <p className="text-lg font-bold text-[var(--earist-primary)]">
+              <p className="text-lg font-bold text-(--earist-primary)">
                 {result.essayScore}
-                <span className="text-sm font-normal text-[var(--earist-body-text)]">
+                <span className="text-sm font-normal text-(--earist-body-text)">
                   {" "}
                   / {result.essayTotal}
                 </span>
@@ -139,28 +134,27 @@ export default function ApplicantResultsPage() {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-[var(--earist-border-gray)]" />
+            <div className="border-t border-(--earist-border-gray)" />
 
             {/* Total Score */}
-            <div className="flex items-center justify-between rounded-lg bg-[var(--earist-surface-light-red)] p-3">
+            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-light-red) p-3">
               <div>
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                <p className="text-sm font-semibold text-(--earist-primary)">
                   Total Score
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
-                  Passing Score: {result.passingScore} /{" "}
-                  {result.totalPossible}
+                <p className="text-xs text-(--earist-body-text)">
+                  Passing Score: {result.passingScore} / {result.totalPossible}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-[var(--earist-primary)]">
+                <p className="text-2xl font-bold text-(--earist-primary)">
                   {result.totalScore}
-                  <span className="text-base font-normal text-[var(--earist-body-text)]">
+                  <span className="text-base font-normal text-(--earist-body-text)">
                     {" "}
                     / {result.totalPossible}
                   </span>
                 </p>
-                <p className="text-xs font-medium text-[var(--earist-body-text)]">
+                <p className="text-xs font-medium text-(--earist-body-text)">
                   {percentage}%
                 </p>
               </div>
@@ -169,27 +163,27 @@ export default function ApplicantResultsPage() {
             {/* Score Bar */}
             <div>
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-[var(--earist-body-text)]">Your Score</span>
-                <span className="font-medium text-[var(--earist-primary)]">
+                <span className="text-(--earist-body-text)">
+                  Your Score
+                </span>
+                <span className="font-medium text-(--earist-primary)">
                   {percentage}%
                 </span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--earist-border-gray)]">
+              <div className="h-3 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
                 <div
                   className={`h-full rounded-full ${
-                    result.status === "passed"
-                      ? "bg-green-500"
-                      : "bg-red-500"
+                    result.status === "passed" ? "bg-green-500" : "bg-red-500"
                   }`}
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--earist-body-text)]">
+              <div className="mt-1 flex items-center justify-between text-[11px] text-(--earist-body-text)">
                 <span>0</span>
                 <span>
                   Passing:{" "}
                   {Math.round(
-                    (result.passingScore / result.totalPossible) * 100
+                    (result.passingScore / result.totalPossible) * 100,
                   )}
                   %
                 </span>
@@ -211,12 +205,9 @@ export default function ApplicantResultsPage() {
               <ol className="mb-4 list-decimal space-y-1 pl-5 text-sm text-amber-700">
                 <li>Proceed to Pinnacle to complete your enrollment.</li>
                 <li>
-                  Download your Certificate of Registration (COR) from
-                  Pinnacle.
+                  Download your Certificate of Registration (COR) from Pinnacle.
                 </li>
-                <li>
-                  Upload your COR to this portal for Admin verification.
-                </li>
+                <li>Upload your COR to this portal for Admin verification.</li>
               </ol>
               <div className="flex flex-wrap gap-2">
                 <a
@@ -230,7 +221,7 @@ export default function ApplicantResultsPage() {
                 </a>
                 <Link
                   href="/applicant/cor-upload"
-                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--earist-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--earist-primary)]/90"
+                  className="inline-flex items-center gap-1 rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
                 >
                   <Upload className="mr-1 h-3 w-3" />
                   Upload COR
@@ -245,18 +236,18 @@ export default function ApplicantResultsPage() {
       {result.status === "failed" && (
         <Card>
           <CardContent className="py-4">
-            <div className="rounded-lg border border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)] p-4">
-              <p className="mb-2 text-sm font-semibold text-[var(--earist-primary)]">
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
+              <p className="mb-2 text-sm font-semibold text-(--earist-primary)">
                 Re-application Information
               </p>
-              <p className="mb-3 text-sm text-[var(--earist-body-text)]">
-                You may re-apply for the entrance examination per
-                institutional policy. Please contact the Graduate School
-                Office for guidance on the re-application process.
+              <p className="mb-3 text-sm text-(--earist-body-text)">
+                You may re-apply for the entrance examination per institutional
+                policy. Please contact the Graduate School Office for guidance
+                on the re-application process.
               </p>
               <Link
                 href="/applicant/dashboard"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
               >
                 Back to Dashboard <ArrowRight className="h-3 w-3" />
               </Link>
@@ -266,11 +257,11 @@ export default function ApplicantResultsPage() {
       )}
 
       {/* Email Notice */}
-      <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
-        <p className="text-xs text-[var(--earist-body-text)]">
-          A detailed results notification has been sent to your registered
-          email address.
+      <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
+        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
+        <p className="text-xs text-(--earist-body-text)">
+          A detailed results notification has been sent to your registered email
+          address.
         </p>
       </div>
     </div>

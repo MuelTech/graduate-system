@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { GraduationCap, Mail, Phone, MapPin, Globe, ExternalLink } from "lucide-react";
+import {
+  GraduationCap,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  ExternalLink,
+} from "lucide-react";
 
 const quickLinks = [
   { href: "/programs", label: "Programs" },
@@ -11,29 +18,29 @@ const quickLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-[var(--earist-primary)] text-white">
+    <footer className="bg-(--earist-primary) text-white">
       <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {/* Left Column — Contact Information */}
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <GraduationCap className="h-7 w-7 text-[var(--earist-accent)]" />
+              <GraduationCap className="h-7 w-7 text-(--earist-accent)" />
               <span className="text-lg font-bold">EARIST Graduate School</span>
             </div>
             <ul className="space-y-3">
               <li className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-accent)]" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-accent)" />
                 <span className="text-sm text-white/80">
-                  Eulogio &ldquo;Amang&rdquo; Rodriguez Institute of Science and Technology,
-                  Manila, Philippines
+                  Eulogio &ldquo;Amang&rdquo; Rodriguez Institute of Science and
+                  Technology, Manila, Philippines
                 </span>
               </li>
               <li className="flex items-center gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-[var(--earist-accent)]" />
+                <Mail className="h-4 w-4 shrink-0 text-(--earist-accent)" />
                 <span className="text-sm text-white/80">gs@earist.edu.ph</span>
               </li>
               <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-[var(--earist-accent)]" />
+                <Phone className="h-4 w-4 shrink-0 text-(--earist-accent)" />
                 <span className="text-sm text-white/80">(02) 8534-8267</span>
               </li>
             </ul>
@@ -41,7 +48,7 @@ export function Footer() {
 
           {/* Center Column — Quick Links */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--earist-accent)]">
+            <h3 className="mb-4 text-sm font-semibold tracking-wider text-(--earist-accent) uppercase">
               Quick Links
             </h3>
             <ul className="space-y-2">
@@ -60,21 +67,21 @@ export function Footer() {
 
           {/* Right Column — Social Media + Mission */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--earist-accent)]">
+            <h3 className="mb-4 text-sm font-semibold tracking-wider text-(--earist-accent) uppercase">
               Connect With Us
             </h3>
             <div className="mb-4 flex gap-3">
               <a
                 href="#"
                 aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[var(--earist-accent)] hover:text-[var(--earist-primary)]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-(--earist-accent) hover:text-(--earist-primary)"
               >
                 <Globe className="h-4 w-4" />
               </a>
               <a
                 href="#"
                 aria-label="Website"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-[var(--earist-accent)] hover:text-[var(--earist-primary)]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-(--earist-accent) hover:text-(--earist-primary)"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>

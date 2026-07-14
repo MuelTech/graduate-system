@@ -1,5 +1,6 @@
 "use client";
-
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -25,6 +26,7 @@ const roles: { value: UserRole; label: string }[] = [
 ];
 
 export default function LoginPage() {
+  const router = useRouter();
   const [role, setRole] = useState<UserRole>("applicant");
   const [showPassword, setShowPassword] = useState(false);
   const [applicantId, setApplicantId] = useState("");
@@ -58,50 +60,48 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
+    // --- Validation Logic ---
     if (role === "applicant") {
-      if (!applicantId) {
-        setError("Applicant ID is required.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!applicantId) return setError("Applicant ID is required.");
+      if (!password) return setError("Password is required.");
     } else if (role === "student") {
-      if (!studentId) {
-        setError("Student ID is required.");
-        return;
-      }
-      if (!birthdate) {
-        setError("Date of Birth is required.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!studentId) return setError("Student ID is required.");
+      if (!birthdate) return setError("Date of Birth is required.");
+      if (!password) return setError("Password is required.");
     } else {
-      if (!email) {
-        setError("Email address is required.");
-        return;
-      }
-      if (!validateEmail(email)) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-      if (!password) {
-        setError("Password is required.");
-        return;
-      }
+      if (!email) return setError("Email address is required.");
+      if (!validateEmail(email))
+        return setError("Please enter a valid email address.");
+      if (!password) return setError("Password is required.");
     }
 
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setError("Invalid credentials. Please try again.");
-    } catch {
-      setError("An error occurred. Please try again.");
+      // --- NextAuth Sign-In Logic ---
+      const res = await signIn("credentials", {
+        redirect: false,
+        role: role,
+        email: email,
+        password: password,
+        applicantId: applicantId,
+        studentId: studentId,
+        birthdate: birthdate,
+      });
+
+      if (res?.error) {
+        if (res.error === "CredentialsSignin") {
+          setError(
+            "Invalid credentials. Please check your details and try again.",
+          );
+        } else {
+          setError("An error occurred during sign in.");
+        }
+      } else {
+        router.push(`/${role}/dashboard`); // Successfully logged in! Redirect to dashboard/home.
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -110,19 +110,19 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
       <div
-        className="absolute inset-0 bg-cover bg-center blur-sm scale-105"
+        className="absolute inset-0 scale-105 bg-cover bg-center blur-sm"
         style={{ backgroundImage: "url('/images/campus-hero.jpg')" }}
       />
-      <div className="absolute inset-0 bg-[var(--earist-primary)]/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
       <div className="relative z-10 w-full max-w-[420px] px-4 py-12">
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--earist-surface-light-red)]">
-              <GraduationCap className="h-9 w-9 text-[var(--earist-primary)]" />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
+              <GraduationCap className="h-9 w-9 text-(--earist-primary)" />
             </div>
             <CardTitle
-              className="text-lg text-[var(--earist-primary)]"
+              className="text-lg text-(--earist-primary)"
               style={{ fontFamily: '"Calibri", sans-serif' }}
             >
               EARIST Graduate School
@@ -131,7 +131,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <h2
-              className="mb-6 text-center text-xl font-bold text-[var(--earist-secondary)]"
+              className="mb-6 text-center text-xl font-bold text-(--earist-secondary)"
               style={{ fontFamily: '"Calibri", sans-serif' }}
             >
               Sign In to Your Portal
@@ -144,18 +144,16 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Role Selector */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                   Login As
                 </label>
                 <select
                   value={role}
-                  onChange={(e) =>
-                    handleRoleChange(e.target.value as UserRole)
-                  }
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-4 py-3 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                  onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-4 py-3 text-sm transition-colors focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
                 >
                   {roles.map((r) => (
                     <option key={r.value} value={r.value}>
@@ -169,7 +167,7 @@ export default function LoginPage() {
               {role === "applicant" && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Applicant ID
                     </label>
                     <Input
@@ -199,7 +197,7 @@ export default function LoginPage() {
               {role === "student" && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Student ID
                     </label>
                     <Input
@@ -214,7 +212,7 @@ export default function LoginPage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Date of Birth
                     </label>
                     <Input
@@ -245,7 +243,7 @@ export default function LoginPage() {
                 role === "other") && (
                 <>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Email Address
                     </label>
                     <Input
@@ -275,7 +273,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[var(--earist-accent)] text-[var(--earist-primary)] hover:bg-[var(--earist-accent)]/90"
+                className="w-full bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)/90"
               >
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
@@ -284,23 +282,21 @@ export default function LoginPage() {
             <div className="mt-4 text-center">
               <Link
                 href="/forgot-password"
-                className="text-sm text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)] hover:underline"
+                className="text-sm text-(--earist-secondary) transition-colors hover:text-(--earist-primary) hover:underline"
               >
                 Forgot your password?
               </Link>
             </div>
 
             <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
-              <span className="text-xs text-[var(--earist-body-text)]">
-                or
-              </span>
-              <div className="h-px flex-1 bg-[var(--earist-border-gray)]" />
+              <div className="h-px flex-1 bg-(--earist-border-gray)" />
+              <span className="text-xs text-(--earist-body-text)">or</span>
+              <div className="h-px flex-1 bg-(--earist-border-gray)" />
             </div>
 
             <Link
               href="/register"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--earist-primary)] py-2.5 text-sm font-semibold text-[var(--earist-primary)] transition-colors hover:bg-[var(--earist-surface-light-red)]"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-(--earist-primary) py-2.5 text-sm font-semibold text-(--earist-primary) transition-colors hover:bg-(--earist-surface-light-red)"
             >
               New applicant? Apply here
             </Link>
@@ -333,7 +329,7 @@ function PasswordInput({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-semibold text-[var(--earist-secondary)]">
+      <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
         Password
       </label>
       <div className="relative">
@@ -349,13 +345,9 @@ function PasswordInput({
         <button
           type="button"
           onClick={toggleShow}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--earist-body-text)] transition-colors hover:text-[var(--earist-primary)]"
+          className="absolute top-1/2 right-3 -translate-y-1/2 text-(--earist-body-text) transition-colors hover:text-(--earist-primary)"
         >
-          {show ? (
-            <EyeOff className="h-4 w-4" />
-          ) : (
-            <Eye className="h-4 w-4" />
-          )}
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
     </div>

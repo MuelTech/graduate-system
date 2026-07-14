@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +76,8 @@ export default function AdminWaiverValidationPage() {
       waiverDownloadedAt: "May 20, 2026 at 1:00 PM",
       dateSubmitted: "May 22, 2026",
       status: "rejected" as "pending" | "validated" | "rejected",
-      adminNotes: "No sufficient bridging coursework. Please contact GS Office.",
+      adminNotes:
+        "No sufficient bridging coursework. Please contact GS Office.",
       validatedBy: "Admin",
       validatedAt: "May 23, 2026 at 11:00 AM",
     },
@@ -131,12 +127,12 @@ export default function AdminWaiverValidationPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Bridging Waiver Validation Queue
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Review and validate bridging waivers for misaligned applicants
         </p>
       </div>
@@ -145,19 +141,19 @@ export default function AdminWaiverValidationPage() {
       <div className="grid grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Pending</p>
+            <p className="text-xs text-(--earist-body-text)">Pending</p>
             <p className="text-lg font-bold text-amber-600">{pendingCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Validated</p>
+            <p className="text-xs text-(--earist-body-text)">Validated</p>
             <p className="text-lg font-bold text-green-600">{validatedCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-[var(--earist-body-text)]">Rejected</p>
+            <p className="text-xs text-(--earist-body-text)">Rejected</p>
             <p className="text-lg font-bold text-red-600">{rejectedCount}</p>
           </CardContent>
         </Card>
@@ -167,7 +163,7 @@ export default function AdminWaiverValidationPage() {
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-[var(--earist-body-text)]" />
+            <Filter className="h-4 w-4 text-(--earist-body-text)" />
             <div className="flex gap-2">
               {[
                 { value: "all", label: "All" },
@@ -180,8 +176,8 @@ export default function AdminWaiverValidationPage() {
                   onClick={() => setStatusFilter(filter.value)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                     statusFilter === filter.value
-                      ? "bg-[var(--earist-primary)] text-white"
-                      : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+                      ? "bg-(--earist-primary) text-white"
+                      : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
                   }`}
                 >
                   {filter.label}
@@ -200,23 +196,23 @@ export default function AdminWaiverValidationPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                      <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                    <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                         Applicant
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                         Undergraduate Course
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                         Intended Program
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                      <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                         Submitted
                       </th>
-                      <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                      <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                      <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                         Action
                       </th>
                     </tr>
@@ -225,29 +221,29 @@ export default function AdminWaiverValidationPage() {
                     {filteredWaivers.map((waiver) => (
                       <tr
                         key={waiver.id}
-                        className={`border-b border-[var(--earist-border-gray)] last:border-0 ${
+                        className={`border-b border-(--earist-border-gray) last:border-0 ${
                           selectedWaiver === waiver.id
-                            ? "bg-[var(--earist-surface-light-red)]"
+                            ? "bg-(--earist-surface-light-red)"
                             : ""
                         }`}
                       >
                         <td className="px-4 py-3">
                           <div>
-                            <p className="font-medium text-[var(--earist-primary)]">
+                            <p className="font-medium text-(--earist-primary)">
                               {waiver.name}
                             </p>
-                            <p className="text-xs text-[var(--earist-body-text)]">
+                            <p className="text-xs text-(--earist-body-text)">
                               {waiver.pinnacleId}
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                           {waiver.undergraduateCourse}
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                           {waiver.intendedProgram}
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                           {waiver.dateSubmitted}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -256,7 +252,7 @@ export default function AdminWaiverValidationPage() {
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setSelectedWaiver(waiver.id)}
-                            className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                             title="Review"
                           >
                             <Eye className="h-4 w-4" />
@@ -277,7 +273,7 @@ export default function AdminWaiverValidationPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     Review Panel
                   </CardTitle>
                   <button
@@ -285,7 +281,7 @@ export default function AdminWaiverValidationPage() {
                       setSelectedWaiver(null);
                       setAdminNotes("");
                     }}
-                    className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                    className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -294,40 +290,40 @@ export default function AdminWaiverValidationPage() {
               <CardContent>
                 <div className="space-y-4">
                   {/* Applicant Profile */}
-                  <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                    <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                  <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                    <p className="text-sm font-semibold text-(--earist-primary)">
                       {selectedWaiverData.name}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {selectedWaiverData.email}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {selectedWaiverData.pinnacleId}
                     </p>
                   </div>
 
                   {/* Program Comparison */}
                   <div>
-                    <p className="mb-2 text-xs font-semibold text-[var(--earist-secondary)]">
+                    <p className="mb-2 text-xs font-semibold text-(--earist-secondary)">
                       Program Comparison
                     </p>
                     <div className="space-y-2">
-                      <div className="rounded-lg border border-[var(--earist-border-gray)] p-2">
-                        <p className="text-[11px] text-[var(--earist-body-text)]">
+                      <div className="rounded-lg border border-(--earist-border-gray) p-2">
+                        <p className="text-[11px] text-(--earist-body-text)">
                           Undergraduate Course
                         </p>
-                        <p className="text-sm font-medium text-[var(--earist-primary)]">
+                        <p className="text-sm font-medium text-(--earist-primary)">
                           {selectedWaiverData.undergraduateCourse}
                         </p>
                       </div>
                       <div className="flex justify-center">
-                        <ArrowRight className="h-4 w-4 text-[var(--earist-body-text)]" />
+                        <ArrowRight className="h-4 w-4 text-(--earist-body-text)" />
                       </div>
-                      <div className="rounded-lg border border-[var(--earist-border-gray)] p-2">
-                        <p className="text-[11px] text-[var(--earist-body-text)]">
+                      <div className="rounded-lg border border-(--earist-border-gray) p-2">
+                        <p className="text-[11px] text-(--earist-body-text)">
                           Intended Graduate Program
                         </p>
-                        <p className="text-sm font-medium text-[var(--earist-primary)]">
+                        <p className="text-sm font-medium text-(--earist-primary)">
                           {selectedWaiverData.intendedProgram}
                         </p>
                       </div>
@@ -335,18 +331,18 @@ export default function AdminWaiverValidationPage() {
                   </div>
 
                   {/* Waiver Download Timestamp */}
-                  <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                    <p className="text-[11px] text-[var(--earist-body-text)]">
+                  <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                    <p className="text-[11px] text-(--earist-body-text)">
                       Waiver Form Downloaded At
                     </p>
-                    <p className="text-sm font-medium text-[var(--earist-primary)]">
+                    <p className="text-sm font-medium text-(--earist-primary)">
                       {selectedWaiverData.waiverDownloadedAt}
                     </p>
                   </div>
 
                   {/* Status */}
                   <div>
-                    <p className="mb-1 text-xs font-semibold text-[var(--earist-secondary)]">
+                    <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
                       Status
                     </p>
                     {getStatusBadge(selectedWaiverData.status)}
@@ -355,14 +351,14 @@ export default function AdminWaiverValidationPage() {
                   {/* Admin Notes (if rejected or validated) */}
                   {selectedWaiverData.adminNotes && (
                     <div>
-                      <p className="mb-1 text-xs font-semibold text-[var(--earist-secondary)]">
+                      <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
                         Admin Notes
                       </p>
-                      <p className="text-sm text-[var(--earist-body-text)]">
+                      <p className="text-sm text-(--earist-body-text)">
                         {selectedWaiverData.adminNotes}
                       </p>
                       {selectedWaiverData.validatedBy && (
-                        <p className="mt-1 text-xs text-[var(--earist-body-text)]">
+                        <p className="mt-1 text-xs text-(--earist-body-text)">
                           By: {selectedWaiverData.validatedBy} &middot;{" "}
                           {selectedWaiverData.validatedAt}
                         </p>
@@ -373,14 +369,14 @@ export default function AdminWaiverValidationPage() {
                   {/* Admin Notes Input (for pending) */}
                   {selectedWaiverData.status === "pending" && (
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-[var(--earist-secondary)]">
+                      <label className="mb-1 block text-xs font-semibold text-(--earist-secondary)">
                         Admin Notes
                       </label>
                       <textarea
                         value={adminNotes}
                         onChange={(e) => setAdminNotes(e.target.value)}
                         placeholder="Optional notes for validation or required for rejection..."
-                        className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                         rows={3}
                       />
                     </div>
@@ -415,13 +411,13 @@ export default function AdminWaiverValidationPage() {
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--earist-surface-gray)]">
-                    <ShieldCheck className="h-8 w-8 text-[var(--earist-body-text)]/40" />
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
+                    <ShieldCheck className="h-8 w-8 text-(--earist-body-text)/40" />
                   </div>
-                  <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+                  <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                     Select a Waiver
                   </h3>
-                  <p className="text-sm text-[var(--earist-body-text)]">
+                  <p className="text-sm text-(--earist-body-text)">
                     Click a waiver from the queue to review.
                   </p>
                 </div>
@@ -436,12 +432,12 @@ export default function AdminWaiverValidationPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 Validate Waiver
               </h3>
               <button
                 onClick={() => setShowValidateConfirm(false)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -459,21 +455,21 @@ export default function AdminWaiverValidationPage() {
                   &quot;Cleared&quot; and unlock exam scheduling.
                 </p>
               </div>
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
+              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                <p className="text-sm font-semibold text-(--earist-primary)">
                   {selectedWaiverData.name}
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
+                <p className="text-xs text-(--earist-body-text)">
                   {selectedWaiverData.pinnacleId} &middot;{" "}
                   {selectedWaiverData.intendedProgram}
                 </p>
               </div>
               {adminNotes && (
-                <div className="rounded-lg border border-[var(--earist-border-gray)] p-3">
-                  <p className="text-[11px] text-[var(--earist-body-text)]">
+                <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                  <p className="text-[11px] text-(--earist-body-text)">
                     Admin Notes
                   </p>
-                  <p className="text-sm text-[var(--earist-body-text)]">
+                  <p className="text-sm text-(--earist-body-text)">
                     {adminNotes}
                   </p>
                 </div>
@@ -511,12 +507,12 @@ export default function AdminWaiverValidationPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 Reject Waiver
               </h3>
               <button
                 onClick={() => setShowRejectModal(false)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -534,24 +530,24 @@ export default function AdminWaiverValidationPage() {
                   exam scheduling.
                 </p>
               </div>
-              <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
+              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                <p className="text-sm font-semibold text-(--earist-primary)">
                   {selectedWaiverData.name}
                 </p>
-                <p className="text-xs text-[var(--earist-body-text)]">
+                <p className="text-xs text-(--earist-body-text)">
                   {selectedWaiverData.pinnacleId} &middot;{" "}
                   {selectedWaiverData.intendedProgram}
                 </p>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--earist-secondary)]">
+                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
                   Reason for Rejection <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Enter reason for rejection..."
-                  className="w-full rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm focus:border-[var(--earist-primary)] focus:outline-none"
+                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
                   rows={3}
                 />
               </div>

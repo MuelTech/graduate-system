@@ -15,12 +15,10 @@ const botResponses: Record<string, string> = {
     "We offer 15+ graduate programs including Masters and Doctoral degrees in Education, Public Administration, Computer Science, Nursing, Industrial Engineering, and Mathematics. Visit our /programs page for the full list.",
   apply:
     "To apply to EARIST Graduate School: 1) Register in Pinnacle to get your Applicant ID, 2) Visit /register to complete your GS System registration, 3) Take the entrance examination, 4) Upload your Certificate of Registration after enrollment in Pinnacle.",
-  exam:
-    "The entrance examination is scheduled through your Applicant Portal after registration. You must pass the Program Alignment Check first. The exam includes MCQ and Essay sections. Results are sent to your email.",
+  exam: "The entrance examination is scheduled through your Applicant Portal after registration. You must pass the Program Alignment Check first. The exam includes MCQ and Essay sections. Results are sent to your email.",
   thesis:
     "The thesis pipeline has three stages: Title Defense → Proposal Defense → Final Defense. Each stage has specific requirements that must be completed before advancing. Visit /faq for detailed information.",
-  cor:
-    "After passing the entrance exam, complete your enrollment in Pinnacle, download your COR, and upload it through your Applicant Portal. The Admin will verify it and promote you to Student role.",
+  cor: "After passing the entrance exam, complete your enrollment in Pinnacle, download your COR, and upload it through your Applicant Portal. The Admin will verify it and promote you to Student role.",
   schedule:
     "You can schedule your entrance examination through the Exam Scheduling page in your Applicant Portal. Available slots are shown in real-time. Note: Exam scheduling is blocked if your alignment status is 'pending waiver'.",
   alignment:
@@ -33,36 +31,81 @@ const botResponses: Record<string, string> = {
     "You can sign in to your portal at /login. Use your registered email and password. If you forgot your password, click 'Forgot your password?' on the login page.",
   register:
     "To register, visit /register. You'll need your Pinnacle Applicant ID first. Then complete the 4-step registration: Pinnacle ID, Personal Info, Program Selection, and Account Setup.",
-  faq:
-    "Visit our FAQ page at /faq for answers to common questions about admissions, enrollment, thesis defense, and system access.",
+  faq: "Visit our FAQ page at /faq for answers to common questions about admissions, enrollment, thesis defense, and system access.",
 };
 
 function getBotResponse(input: string): string {
   const lower = input.toLowerCase();
 
-  if (lower.includes("program") || lower.includes("course") || lower.includes("degree"))
+  if (
+    lower.includes("program") ||
+    lower.includes("course") ||
+    lower.includes("degree")
+  )
     return botResponses.programs;
-  if (lower.includes("apply") || lower.includes("application") || lower.includes("admission"))
+  if (
+    lower.includes("apply") ||
+    lower.includes("application") ||
+    lower.includes("admission")
+  )
     return botResponses.apply;
-  if (lower.includes("exam") || lower.includes("entrance") || lower.includes("ecat"))
+  if (
+    lower.includes("exam") ||
+    lower.includes("entrance") ||
+    lower.includes("ecat")
+  )
     return botResponses.exam;
-  if (lower.includes("thesis") || lower.includes("defense") || lower.includes("proposal") || lower.includes("final defense"))
+  if (
+    lower.includes("thesis") ||
+    lower.includes("defense") ||
+    lower.includes("proposal") ||
+    lower.includes("final defense")
+  )
     return botResponses.thesis;
-  if (lower.includes("cor") || lower.includes("certificate of registration") || lower.includes("enrollment"))
+  if (
+    lower.includes("cor") ||
+    lower.includes("certificate of registration") ||
+    lower.includes("enrollment")
+  )
     return botResponses.cor;
-  if (lower.includes("schedule") || lower.includes("slot") || lower.includes("calendar"))
+  if (
+    lower.includes("schedule") ||
+    lower.includes("slot") ||
+    lower.includes("calendar")
+  )
     return botResponses.schedule;
-  if (lower.includes("align") || lower.includes("waiver") || lower.includes("bridging"))
+  if (
+    lower.includes("align") ||
+    lower.includes("waiver") ||
+    lower.includes("bridging")
+  )
     return botResponses.alignment;
-  if (lower.includes("repository") || lower.includes("research") || lower.includes("published"))
+  if (
+    lower.includes("repository") ||
+    lower.includes("research") ||
+    lower.includes("published")
+  )
     return botResponses.repository;
-  if (lower.includes("contact") || lower.includes("email") || lower.includes("phone") || lower.includes("address"))
+  if (
+    lower.includes("contact") ||
+    lower.includes("email") ||
+    lower.includes("phone") ||
+    lower.includes("address")
+  )
     return botResponses.contact;
-  if (lower.includes("login") || lower.includes("sign in") || lower.includes("password"))
+  if (
+    lower.includes("login") ||
+    lower.includes("sign in") ||
+    lower.includes("password")
+  )
     return botResponses.login;
   if (lower.includes("register") || lower.includes("sign up"))
     return botResponses.register;
-  if (lower.includes("faq") || lower.includes("help") || lower.includes("question"))
+  if (
+    lower.includes("faq") ||
+    lower.includes("help") ||
+    lower.includes("question")
+  )
     return botResponses.faq;
   if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey"))
     return "Hello! Welcome to the EARIST Graduate School Information System. How can I help you today? You can ask me about programs, admissions, exams, thesis defense, and more.";
@@ -146,24 +189,24 @@ export function ChatbotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--earist-primary)] text-white shadow-lg transition-all hover:scale-105 hover:bg-[var(--earist-primary)]/90 hover:shadow-xl"
+          className="fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-primary) text-white shadow-lg transition-all hover:scale-105 hover:bg-(--earist-primary)/90 hover:shadow-xl"
           aria-label="Open chatbot"
         >
           <div className="relative">
             <MessageCircle className="h-6 w-6" />
-            <Sparkles className="absolute -right-1 -top-1 h-3 w-3 text-[var(--earist-accent)]" />
+            <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-(--earist-accent)" />
           </div>
         </button>
       )}
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[480px] w-[320px] flex-col rounded-lg border border-[var(--earist-border-gray)] bg-white shadow-2xl sm:w-[360px]">
+        <div className="fixed right-6 bottom-6 z-50 flex h-[480px] w-[320px] flex-col rounded-lg border border-(--earist-border-gray) bg-white shadow-2xl sm:w-[360px]">
           {/* Header */}
-          <div className="flex items-center justify-between rounded-t-lg bg-[var(--earist-primary)] px-4 py-3">
+          <div className="flex items-center justify-between rounded-t-lg bg-(--earist-primary) px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                <Sparkles className="h-4 w-4 text-[var(--earist-accent)]" />
+                <Sparkles className="h-4 w-4 text-(--earist-accent)" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white">
@@ -194,8 +237,8 @@ export function ChatbotWidget() {
                   <div
                     className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                       message.role === "user"
-                        ? "bg-[var(--earist-primary)] text-white"
-                        : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)]"
+                        ? "bg-(--earist-primary) text-white"
+                        : "bg-(--earist-surface-gray) text-(--earist-body-text)"
                     }`}
                   >
                     <p className="whitespace-pre-line">{message.content}</p>
@@ -203,7 +246,7 @@ export function ChatbotWidget() {
                       className={`mt-1 text-xs ${
                         message.role === "user"
                           ? "text-white/50"
-                          : "text-[var(--earist-body-text)]/50"
+                          : "text-(--earist-body-text)/50"
                       }`}
                     >
                       {message.timestamp.toLocaleTimeString([], {
@@ -218,11 +261,11 @@ export function ChatbotWidget() {
               {/* Typing Indicator */}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="rounded-lg bg-[var(--earist-surface-gray)] px-3 py-2">
+                  <div className="rounded-lg bg-(--earist-surface-gray) px-3 py-2">
                     <div className="flex gap-1">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-[var(--earist-body-text)]/40 [animation-delay:-0.3s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-[var(--earist-body-text)]/40 [animation-delay:-0.15s]" />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-[var(--earist-body-text)]/40" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-(--earist-body-text)/40 [animation-delay:-0.3s]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-(--earist-body-text)/40 [animation-delay:-0.15s]" />
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-(--earist-body-text)/40" />
                     </div>
                   </div>
                 </div>
@@ -234,8 +277,8 @@ export function ChatbotWidget() {
 
           {/* Quick Questions */}
           {messages.length <= 1 && (
-            <div className="border-t border-[var(--earist-border-gray)] px-4 py-2">
-              <p className="mb-2 text-xs text-[var(--earist-body-text)]">
+            <div className="border-t border-(--earist-border-gray) px-4 py-2">
+              <p className="mb-2 text-xs text-(--earist-body-text)">
                 Quick questions:
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -266,7 +309,7 @@ export function ChatbotWidget() {
                         }, 800);
                       }, 100);
                     }}
-                    className="rounded-full border border-[var(--earist-border-gray)] px-2.5 py-1 text-xs text-[var(--earist-body-text)] transition-colors hover:border-[var(--earist-accent)] hover:text-[var(--earist-primary)]"
+                    className="rounded-full border border-(--earist-border-gray) px-2.5 py-1 text-xs text-(--earist-body-text) transition-colors hover:border-(--earist-accent) hover:text-(--earist-primary)"
                   >
                     {question}
                   </button>
@@ -276,7 +319,7 @@ export function ChatbotWidget() {
           )}
 
           {/* Input */}
-          <div className="border-t border-[var(--earist-border-gray)] p-3">
+          <div className="border-t border-(--earist-border-gray) p-3">
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -285,13 +328,13 @@ export function ChatbotWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your question..."
-                className="flex-1 rounded-lg border border-[var(--earist-border-gray)] px-3 py-2 text-sm transition-colors focus:border-[var(--earist-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--earist-primary)]"
+                className="flex-1 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm transition-colors focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) focus:outline-none"
                 disabled={isTyping}
               />
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isTyping}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--earist-primary)] text-white transition-colors hover:bg-[var(--earist-primary)]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-(--earist-primary) text-white transition-colors hover:bg-(--earist-primary)/90 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" />

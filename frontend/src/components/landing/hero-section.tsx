@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 export function HeroSection() {
   return (
-    <section className="relative flex min-h-[600px] items-center justify-center overflow-hidden bg-[var(--earist-primary)]">
+    <section className="relative flex min-h-150 items-center justify-center overflow-hidden bg-(--earist-primary)">
       {/* Background Image Placeholder with Navy Gradient Overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -13,25 +13,25 @@ export function HeroSection() {
           backgroundImage: "url('/images/campus-hero.jpg')",
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0a0a]/80 via-[var(--earist-primary)]/70 to-[var(--earist-primary)]/90" />
+      <div className="absolute inset-0 bg-linear-to-b from-[#1a0a0a]/80 via-(--earist-primary)/70 to-(--earist-primary)/90" />
 
       {/* Content */}
-      <div className="container relative z-10 mx-auto px-4 py-24 text-center sm:px-6 lg:px-8">
+      <div className="relative z-10 container mx-auto px-4 py-24 text-center sm:px-6 lg:px-8">
         {/* Headline */}
-        <h1 className="mx-auto mb-6 max-w-4xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+        <h1 className="mx-auto mb-6 max-w-4xl text-4xl leading-tight font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
           Graduate School Information System
         </h1>
 
         {/* Sub-headline */}
-        <p className="mx-auto mb-10 max-w-3xl text-lg italic text-white/80 sm:text-xl">
-          Eulogio "Amang" Rodriguez Institute of Science and Technology
+        <p className="mx-auto mb-10 max-w-3xl text-lg text-white/80 italic sm:text-xl">
+          Eulogio &quot;Amang&quot; Rodriguez Institute of Science and Technology
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             href="/register"
-            className="inline-flex h-12 items-center justify-center rounded-lg bg-[var(--earist-accent)] px-8 text-base font-bold text-[var(--earist-primary)] shadow-lg transition-colors hover:bg-[var(--earist-accent)]/90"
+            className="inline-flex h-12 items-center justify-center rounded-lg bg-(--earist-accent) px-8 text-base font-bold text-(--earist-primary) shadow-lg transition-colors hover:bg-(--earist-accent)/90"
           >
             Start Your Application
           </Link>

@@ -1,100 +1,124 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   CalendarClock,
-  Clock,
   AlertTriangle,
   CheckCircle2,
   Lock,
   ArrowLeft,
   Mail,
-  Info,
   X,
   LayoutGrid,
   List,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
+import { ApplicantStatus, ExamSlot } from "@/types";
 
 export default function ApplicantSchedulePage() {
-  const applicant = {
-    alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-    strikeCount: 0,
-    confirmedSlot: null as null | {
-      date: string;
-      time: string;
-      program: string;
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [confirmSlot, setConfirmSlot] = useState<ExamSlot | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: applicant,
+    isLoading: isApplicantLoading,
+    error: applicantError,
+  } = useQuery<ApplicantStatus>({
+    queryKey: ["examStatus"],
+    queryFn: async () => {
+      return apiClientRequest("/exam/status", { method: "GET" });
     },
+  });
+
+  const {
+    data: availableSlots = [],
+    isLoading: isSlotsLoading,
+    error: slotsError,
+  } = useQuery<ExamSlot[]>({
+    queryKey: ["examSlots", applicant?.programId],
+    queryFn: async () => {
+      return apiClientRequest(
+        `/exam/slots/available?programId=${applicant?.programId}`,
+        { method: "GET" },
+      );
+    },
+    enabled:
+      !!applicant &&
+      applicant.alignmentStatus === "ALIGNED" &&
+      !applicant.confirmedSlot,
+  });
+
+  const scheduleMutation = useMutation({
+    mutationFn: async (slotId: string) => {
+      return apiClientRequest("/exam/schedule", {
+        method: "POST",
+        body: JSON.stringify({ slotId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["examStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
+      setConfirmSlot(null);
+    },
+    onError: (err: unknown) => {
+      if (err instanceof Error) {
+        alert(err.message || "Failed to schedule exam.");
+      } else {
+        alert("Failed to schedule exam.");
+      }
+    },
+  });
+
+  const handleSchedule = () => {
+    if (!confirmSlot) return;
+    scheduleMutation.mutate(confirmSlot.id);
   };
 
-  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
-  const [confirmSlot, setConfirmSlot] = useState<null | {
-    date: string;
-    time: string;
-    program: string;
-  }>(null);
+  const isLoading =
+    isApplicantLoading || isSlotsLoading || scheduleMutation.isPending;
+  const error = applicantError?.message || slotsError?.message;
 
-  const availableSlots = [
-    {
-      date: "June 15, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 8,
-      status: "active",
-    },
-    {
-      date: "June 15, 2026",
-      time: "1:00 PM — 4:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 3,
-      status: "active",
-    },
-    {
-      date: "June 18, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "PhD / DIT",
-      slotsAvailable: 12,
-      status: "active",
-    },
-    {
-      date: "June 20, 2026",
-      time: "9:00 AM — 12:00 PM",
-      program: "All Programs",
-      slotsAvailable: 0,
-      status: "full",
-    },
-    {
-      date: "June 22, 2026",
-      time: "1:00 PM — 4:00 PM",
-      program: "MSCS / MIT",
-      slotsAvailable: 15,
-      status: "active",
-    },
-  ];
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
-  const isLocked = applicant.alignmentStatus === "pending_waiver";
-  const isScheduled = applicant.confirmedSlot !== null;
+  const formatDate = (isoString: string) => {
+    return new Date(isoString).toLocaleDateString([], {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  if (isLoading)
+    return <div className="p-4 text-center">Loading your schedule...</div>;
+  if (error)
+    return <div className="p-4 text-center text-red-500">Error: {error}</div>;
+
+  const isLocked = applicant?.alignmentStatus === "PENDING_WAIVER";
+  const isScheduled = !!applicant?.confirmedSlot;
 
   return (
     <div className="space-y-4">
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Exam Slot Selection
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Select your entrance examination schedule
         </p>
       </div>
@@ -107,7 +131,7 @@ export default function ApplicantSchedulePage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
                 <Lock className="h-8 w-8 text-amber-600" />
               </div>
-              <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                 Exam Scheduling Locked
               </h3>
               <Alert className="mb-4 max-w-md border-amber-200 bg-amber-50">
@@ -119,9 +143,10 @@ export default function ApplicantSchedulePage() {
               </Alert>
               <Link
                 href="/applicant/alignment"
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--earist-secondary)] transition-colors hover:text-[var(--earist-primary)]"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
               >
-                View Alignment Details <ArrowLeft className="h-3 w-3 rotate-180" />
+                View Alignment Details{" "}
+                <ArrowLeft className="h-3 w-3 rotate-180" />
               </Link>
             </div>
           </CardContent>
@@ -129,11 +154,11 @@ export default function ApplicantSchedulePage() {
       )}
 
       {/* Two-Strike Warning */}
-      {!isLocked && applicant.strikeCount > 0 && (
+      {!isLocked && (applicant?.strikeCount ?? 0) > 0 && (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-700">
-            Warning: You have {applicant.strikeCount} missed attempt(s). Two
+            Warning: You have {applicant?.strikeCount} missed attempt(s). Two
             missed attempts result in disqualification.
           </AlertDescription>
         </Alert>
@@ -144,7 +169,7 @@ export default function ApplicantSchedulePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                 Confirmed Schedule
               </CardTitle>
               <Badge className="bg-green-100 text-green-700">
@@ -157,27 +182,27 @@ export default function ApplicantSchedulePage() {
             <div className="rounded-lg border border-green-200 bg-green-50 p-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Date</p>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.date}
+                  <p className="text-xs text-(--earist-body-text)">Date</p>
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {formatDate(applicant?.confirmedSlot?.examDate || "")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Time</p>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.time}
+                  <p className="text-xs text-(--earist-body-text)">Time</p>
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {formatTime(applicant?.confirmedSlot?.examTime || "")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">
+                  <p className="text-xs text-(--earist-body-text)">
                     Program
                   </p>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {applicant.confirmedSlot.program}
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {applicant?.confirmedSlot?.programName}
                   </p>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-[var(--earist-body-text)]">
+              <p className="mt-3 text-xs text-(--earist-body-text)">
                 This schedule is locked and cannot be changed.
               </p>
             </div>
@@ -195,8 +220,8 @@ export default function ApplicantSchedulePage() {
                 onClick={() => setViewMode("table")}
                 className={`rounded-lg p-2 transition-colors ${
                   viewMode === "table"
-                    ? "bg-[var(--earist-primary)] text-white"
-                    : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+                    ? "bg-(--earist-primary) text-white"
+                    : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
                 }`}
               >
                 <List className="h-4 w-4" />
@@ -205,16 +230,15 @@ export default function ApplicantSchedulePage() {
                 onClick={() => setViewMode("calendar")}
                 className={`rounded-lg p-2 transition-colors ${
                   viewMode === "calendar"
-                    ? "bg-[var(--earist-primary)] text-white"
-                    : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+                    ? "bg-(--earist-primary) text-white"
+                    : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
                 }`}
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-xs text-[var(--earist-body-text)]">
-              {availableSlots.filter((s) => s.status === "active").length} slots
-              available
+            <p className="text-xs text-(--earist-body-text)">
+              {availableSlots.length} slots available
             </p>
           </div>
 
@@ -225,54 +249,59 @@ export default function ApplicantSchedulePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                        <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                        <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                           Exam Date
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                        <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                           Exam Time
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
-                          Program
+                        <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
+                          Slots Left
                         </th>
-                        <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
-                          Slots
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                        <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                           Action
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {availableSlots.map((slot, i) => {
-                        const isFull = slot.status === "full";
+                      {availableSlots.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-4 text-center text-gray-500"
+                          >
+                            No available slots found.
+                          </td>
+                        </tr>
+                      )}
+                      {availableSlots.map((slot) => {
+                        const slotsLeft = slot.maxSlots - slot.slotsTaken;
+                        const isFull = slotsLeft <= 0;
                         return (
                           <tr
-                            key={i}
-                            className={`border-b border-[var(--earist-border-gray)] last:border-0 ${
+                            key={slot.id}
+                            className={`border-b border-(--earist-border-gray) last:border-0 ${
                               isFull ? "opacity-50" : ""
                             }`}
                           >
-                            <td className="px-4 py-3 font-medium text-[var(--earist-primary)]">
-                              {slot.date}
+                            <td className="px-4 py-3 font-medium text-(--earist-primary)">
+                              {formatDate(slot.examDate)}
                             </td>
-                            <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                              {slot.time}
-                            </td>
-                            <td className="px-4 py-3 text-[var(--earist-body-text)]">
-                              {slot.program}
+                            <td className="px-4 py-3 text-(--earist-body-text)">
+                              {formatTime(slot.examTime)}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <Badge
                                 className={
                                   isFull
                                     ? "bg-red-100 text-red-700"
-                                    : slot.slotsAvailable <= 5
+                                    : slotsLeft <= 5
                                       ? "bg-amber-100 text-amber-700"
                                       : "bg-green-100 text-green-700"
                                 }
                               >
-                                {isFull ? "Full" : `${slot.slotsAvailable} left`}
+                                {isFull ? "Full" : `${slotsLeft} left`}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -283,7 +312,7 @@ export default function ApplicantSchedulePage() {
                                 className={
                                   isFull
                                     ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                                    : "bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                                    : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                                 }
                               >
                                 Select This Slot
@@ -302,38 +331,33 @@ export default function ApplicantSchedulePage() {
           {/* Calendar View */}
           {viewMode === "calendar" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {availableSlots.map((slot, i) => {
-                const isFull = slot.status === "full";
+              {availableSlots.map((slot) => {
+                const slotsLeft = slot.maxSlots - slot.slotsTaken;
+                const isFull = slotsLeft <= 0;
                 return (
-                  <Card
-                    key={i}
-                    className={isFull ? "opacity-50" : ""}
-                  >
+                  <Card key={slot.id} className={isFull ? "opacity-50" : ""}>
                     <CardContent className="p-4">
                       <div className="mb-3 flex items-center justify-between">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--earist-surface-light-red)]">
-                          <CalendarClock className="h-5 w-5 text-[var(--earist-primary)]" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--earist-surface-light-red)">
+                          <CalendarClock className="h-5 w-5 text-(--earist-primary)" />
                         </div>
                         <Badge
                           className={
                             isFull
                               ? "bg-red-100 text-red-700"
-                              : slot.slotsAvailable <= 5
+                              : slotsLeft <= 5
                                 ? "bg-amber-100 text-amber-700"
                                 : "bg-green-100 text-green-700"
                           }
                         >
-                          {isFull ? "Full" : `${slot.slotsAvailable} slots`}
+                          {isFull ? "Full" : `${slotsLeft} slots`}
                         </Badge>
                       </div>
-                      <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                        {slot.date}
+                      <p className="text-sm font-semibold text-(--earist-primary)">
+                        {formatDate(slot.examDate)}
                       </p>
-                      <p className="text-xs text-[var(--earist-body-text)]">
-                        {slot.time}
-                      </p>
-                      <p className="mb-3 text-xs text-[var(--earist-body-text)]">
-                        {slot.program}
+                      <p className="mb-3 text-xs text-(--earist-body-text)">
+                        {formatTime(slot.examTime)}
                       </p>
                       <Button
                         size="sm"
@@ -342,7 +366,7 @@ export default function ApplicantSchedulePage() {
                         className={`w-full ${
                           isFull
                             ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                            : "bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                            : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                         }`}
                       >
                         Select This Slot
@@ -356,16 +380,9 @@ export default function ApplicantSchedulePage() {
 
           {/* Info Notes */}
           <div className="space-y-2">
-            {/* <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
-              <p className="text-xs text-[var(--earist-body-text)]">
-                Exam application fee is collected through Registrar. No payment
-                is required in this portal.
-              </p>
-            </div> */}
-            <div className="flex items-start gap-2 rounded-lg bg-[var(--earist-surface-gray)] p-3">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--earist-body-text)]" />
-              <p className="text-xs text-[var(--earist-body-text)]">
+            <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
+              <p className="text-xs text-(--earist-body-text)">
                 An email reminder will be sent 24 hours before your scheduled
                 examination.
               </p>
@@ -379,38 +396,30 @@ export default function ApplicantSchedulePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--earist-primary)]">
+              <h3 className="text-lg font-bold text-(--earist-primary)">
                 Confirm Exam Schedule
               </h3>
               <button
                 onClick={() => setConfirmSlot(null)}
-                className="rounded-full p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="mb-4 rounded-lg bg-[var(--earist-surface-gray)] p-4">
+            <div className="mb-4 rounded-lg bg-(--earist-surface-gray) p-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Date</p>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {confirmSlot.date}
+                  <p className="text-xs text-(--earist-body-text)">Date</p>
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {formatDate(confirmSlot.examDate)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--earist-body-text)]">Time</p>
-                  <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                    {confirmSlot.time}
+                  <p className="text-xs text-(--earist-body-text)">Time</p>
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {formatTime(confirmSlot.examTime)}
                   </p>
                 </div>
-              </div>
-              <div className="mt-2">
-                <p className="text-xs text-[var(--earist-body-text)]">
-                  Program
-                </p>
-                <p className="text-sm font-semibold text-[var(--earist-primary)]">
-                  {confirmSlot.program}
-                </p>
               </div>
             </div>
             <Alert className="mb-4 border-amber-200 bg-amber-50">
@@ -428,10 +437,8 @@ export default function ApplicantSchedulePage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setConfirmSlot(null);
-                }}
-                className="flex-1 bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                onClick={handleSchedule}
+                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
               >
                 Confirm Schedule
               </Button>

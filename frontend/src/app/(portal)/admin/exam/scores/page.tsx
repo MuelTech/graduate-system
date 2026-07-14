@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +17,9 @@ import {
 
 export default function AdminExamScoresPage() {
   const [activeTab, setActiveTab] = useState<"queue" | "review">("queue");
-  const [selectedApplicant, setSelectedApplicant] = useState<number | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<number | null>(
+    null,
+  );
   const [essayScore, setEssayScore] = useState("");
 
   const essayQueue = [
@@ -114,12 +111,12 @@ export default function AdminExamScoresPage() {
       {/* Page Header */}
       <div>
         <h2
-          className="text-2xl font-bold text-[var(--earist-primary)]"
+          className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
           Exam Score Management
         </h2>
-        <p className="text-sm text-[var(--earist-body-text)]">
+        <p className="text-sm text-(--earist-body-text)">
           Grade essays and manage examination scores
         </p>
       </div>
@@ -130,8 +127,8 @@ export default function AdminExamScoresPage() {
           onClick={() => setActiveTab("queue")}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "queue"
-              ? "bg-[var(--earist-primary)] text-white"
-              : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+              ? "bg-(--earist-primary) text-white"
+              : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
           }`}
         >
           Essay Grading Queue ({essayQueue.length})
@@ -140,8 +137,8 @@ export default function AdminExamScoresPage() {
           onClick={() => setActiveTab("review")}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "review"
-              ? "bg-[var(--earist-primary)] text-white"
-              : "bg-[var(--earist-surface-gray)] text-[var(--earist-body-text)] hover:bg-[var(--earist-border-gray)]"
+              ? "bg-(--earist-primary) text-white"
+              : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
           }`}
         >
           Score Review ({scoreReview.length})
@@ -159,16 +156,16 @@ export default function AdminExamScoresPage() {
                 onClick={() => setSelectedApplicant(applicant.id)}
                 className={`w-full rounded-lg border p-4 text-left transition-colors ${
                   selectedApplicant === applicant.id
-                    ? "border-[var(--earist-primary)] bg-[var(--earist-surface-light-red)]"
-                    : "border-[var(--earist-border-gray)] hover:bg-[var(--earist-surface-gray)]"
+                    ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
+                    : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--earist-primary)]">
+                    <p className="text-sm font-semibold text-(--earist-primary)">
                       {applicant.name}
                     </p>
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                    <p className="text-xs text-(--earist-body-text)">
                       {applicant.program} &middot; {applicant.pinnacleId}
                     </p>
                   </div>
@@ -177,10 +174,10 @@ export default function AdminExamScoresPage() {
                     Awaiting
                   </Badge>
                 </div>
-                <div className="mt-2 flex items-center gap-4 text-xs text-[var(--earist-body-text)]">
+                <div className="mt-2 flex items-center gap-4 text-xs text-(--earist-body-text)">
                   <span>
                     MCQ:{" "}
-                    <span className="font-medium text-[var(--earist-primary)]">
+                    <span className="font-medium text-(--earist-primary)">
                       {applicant.mcqScore}/{applicant.mcqTotal}
                     </span>
                   </span>
@@ -195,7 +192,7 @@ export default function AdminExamScoresPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--earist-secondary)]">
+                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     Essay Grading — {selectedApp.name}
                   </CardTitle>
                   <button
@@ -203,7 +200,7 @@ export default function AdminExamScoresPage() {
                       setSelectedApplicant(null);
                       setEssayScore("");
                     }}
-                    className="rounded p-1 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                    className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -212,13 +209,13 @@ export default function AdminExamScoresPage() {
               <CardContent>
                 <div className="space-y-4">
                   {/* MCQ Score */}
-                  <div className="rounded-lg bg-[var(--earist-surface-gray)] p-3">
-                    <p className="text-xs text-[var(--earist-body-text)]">
+                  <div className="rounded-lg bg-(--earist-surface-gray) p-3">
+                    <p className="text-xs text-(--earist-body-text)">
                       MCQ Score (auto-graded)
                     </p>
-                    <p className="text-lg font-bold text-[var(--earist-primary)]">
+                    <p className="text-lg font-bold text-(--earist-primary)">
                       {selectedApp.mcqScore}
-                      <span className="text-sm font-normal text-[var(--earist-body-text)]">
+                      <span className="text-sm font-normal text-(--earist-body-text)">
                         {" "}
                         / {selectedApp.mcqTotal}
                       </span>
@@ -227,11 +224,11 @@ export default function AdminExamScoresPage() {
 
                   {/* Essay Response */}
                   <div>
-                    <p className="mb-1 text-xs font-semibold text-[var(--earist-secondary)]">
+                    <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
                       Essay Response
                     </p>
-                    <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)] p-3">
-                      <p className="text-sm text-[var(--earist-body-text)]">
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+                      <p className="text-sm text-(--earist-body-text)">
                         {selectedApp.essayResponse}
                       </p>
                     </div>
@@ -240,10 +237,10 @@ export default function AdminExamScoresPage() {
                   {/* Essay Score Input */}
                   <div>
                     <div className="mb-1 flex items-center justify-between">
-                      <label className="text-xs font-semibold text-[var(--earist-secondary)]">
+                      <label className="text-xs font-semibold text-(--earist-secondary)">
                         Essay Score
                       </label>
-                      <span className="text-xs text-[var(--earist-body-text)]">
+                      <span className="text-xs text-(--earist-body-text)">
                         max 30
                       </span>
                     </div>
@@ -254,32 +251,33 @@ export default function AdminExamScoresPage() {
                       value={essayScore}
                       onChange={(e) => setEssayScore(e.target.value)}
                       placeholder="0"
-                      className="w-full rounded-lg border border-[var(--earist-border-gray)] p-3 text-lg font-semibold text-center text-[var(--earist-primary)] focus:border-[var(--earist-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--earist-primary)]/20"
+                      className="w-full rounded-lg border border-(--earist-border-gray) p-3 text-center text-lg font-semibold text-(--earist-primary) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
                     />
                   </div>
 
                   {/* Total (auto-calculated) */}
                   {essayScore && (
-                    <div className="rounded-lg bg-[var(--earist-surface-light-red)] p-3">
+                    <div className="rounded-lg bg-(--earist-surface-light-red) p-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-[var(--earist-body-text)]">
+                        <span className="text-xs text-(--earist-body-text)">
                           Total Score
                         </span>
-                        <span className="text-lg font-bold text-[var(--earist-primary)]">
+                        <span className="text-lg font-bold text-(--earist-primary)">
                           {selectedApp.mcqScore + parseInt(essayScore || "0")}
-                          <span className="text-sm font-normal text-[var(--earist-body-text)]">
+                          <span className="text-sm font-normal text-(--earist-body-text)">
                             {" "}
                             / {selectedApp.mcqTotal + 30}
                           </span>
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between">
-                        <span className="text-xs text-[var(--earist-body-text)]">
+                        <span className="text-xs text-(--earist-body-text)">
                           Passing Score: {passingScore}
                         </span>
                         <Badge
                           className={
-                            selectedApp.mcqScore + parseInt(essayScore || "0") >=
+                            selectedApp.mcqScore +
+                              parseInt(essayScore || "0") >=
                             passingScore
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
@@ -300,7 +298,7 @@ export default function AdminExamScoresPage() {
                     onClick={handleSaveScore}
                     className={`w-full ${
                       essayScore
-                        ? "bg-[var(--earist-primary)] text-white hover:bg-[var(--earist-primary)]/90"
+                        ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                         : "cursor-not-allowed bg-gray-200 text-gray-400"
                     }`}
                   >
@@ -314,13 +312,13 @@ export default function AdminExamScoresPage() {
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--earist-surface-gray)]">
-                    <FileText className="h-8 w-8 text-[var(--earist-body-text)]/40" />
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
+                    <FileText className="h-8 w-8 text-(--earist-body-text)/40" />
                   </div>
-                  <h3 className="mb-2 text-lg font-bold text-[var(--earist-primary)]">
+                  <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                     Select an Applicant
                   </h3>
-                  <p className="text-sm text-[var(--earist-body-text)]">
+                  <p className="text-sm text-(--earist-body-text)">
                     Click an applicant from the queue to grade their essay.
                   </p>
                 </div>
@@ -337,29 +335,29 @@ export default function AdminExamScoresPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--earist-border-gray)] bg-[var(--earist-surface-gray)]">
-                    <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                       Applicant
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                       MCQ
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                       Essay
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                       Total
                     </th>
-                    <th className="px-4 py-3 text-center font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                       Graded By
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
                       Date
                     </th>
-                    <th className="px-4 py-3 text-right font-semibold text-[var(--earist-secondary)]">
+                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
                       Actions
                     </th>
                   </tr>
@@ -367,48 +365,48 @@ export default function AdminExamScoresPage() {
                 <tbody>
                   {scoreReview.map((result) => {
                     const percentage = Math.round(
-                      (result.totalScore / result.totalPossible) * 100
+                      (result.totalScore / result.totalPossible) * 100,
                     );
                     return (
                       <tr
                         key={result.id}
-                        className="border-b border-[var(--earist-border-gray)] last:border-0"
+                        className="border-b border-(--earist-border-gray) last:border-0"
                       >
                         <td className="px-4 py-3">
                           <div>
-                            <p className="font-medium text-[var(--earist-primary)]">
+                            <p className="font-medium text-(--earist-primary)">
                               {result.name}
                             </p>
-                            <p className="text-xs text-[var(--earist-body-text)]">
+                            <p className="text-xs text-(--earist-body-text)">
                               {result.program} &middot; {result.pinnacleId}
                             </p>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="font-medium text-[var(--earist-primary)]">
+                          <span className="font-medium text-(--earist-primary)">
                             {result.mcqScore}
                           </span>
-                          <span className="text-xs text-[var(--earist-body-text)]">
+                          <span className="text-xs text-(--earist-body-text)">
                             /{result.mcqTotal}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="font-medium text-[var(--earist-primary)]">
+                          <span className="font-medium text-(--earist-primary)">
                             {result.essayScore}
                           </span>
-                          <span className="text-xs text-[var(--earist-body-text)]">
+                          <span className="text-xs text-(--earist-body-text)">
                             /{result.essayTotal}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div>
-                            <span className="font-bold text-[var(--earist-primary)]">
+                            <span className="font-bold text-(--earist-primary)">
                               {result.totalScore}
                             </span>
-                            <span className="text-xs text-[var(--earist-body-text)]">
+                            <span className="text-xs text-(--earist-body-text)">
                               /{result.totalPossible}
                             </span>
-                            <p className="text-[11px] text-[var(--earist-body-text)]">
+                            <p className="text-[11px] text-(--earist-body-text)">
                               ({percentage}%)
                             </p>
                           </div>
@@ -426,22 +424,22 @@ export default function AdminExamScoresPage() {
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                           {result.gradedBy}
                         </td>
-                        <td className="px-4 py-3 text-xs text-[var(--earist-body-text)]">
+                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
                           {result.date}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
                             <button
-                              className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
-                              className="rounded p-1.5 text-[var(--earist-body-text)] hover:bg-[var(--earist-surface-gray)]"
+                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                               title="Send Result Email"
                             >
                               <Send className="h-4 w-4" />
