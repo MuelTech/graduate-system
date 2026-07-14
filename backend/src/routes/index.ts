@@ -10,6 +10,8 @@ import thesisRoutes from './thesis.routes';
 import panelistRoutes from "./panelist.routes";
 import settingsRoutes from "./settings.routes";
 import databankRoutes from './databank.routes';
+import memoRoutes from "./memo.routes";
+import notificationRoutes from "./notification.routes";
 
 const router = Router();
 
@@ -24,5 +26,7 @@ router.use('/thesis', thesisRoutes);
 router.use('/panelists', panelistRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/databank', databankRoutes);
+router.use("/memos", memoRoutes);
+router.use("/notifications", notificationRoutes);
 
 export default router;
