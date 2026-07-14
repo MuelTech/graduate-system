@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
@@ -20,7 +20,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronDown,
+  Megaphone,
 } from "lucide-react";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -57,6 +59,7 @@ const navItems = [
   },
   { href: "/admin/analytics", label: "Analytics & Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "System Settings", icon: Settings },
+  { href: "/admin/memos", label: "Announcements & Memos", icon: Megaphone },
   { href: "/admin/repository", label: "Repository", icon: Library },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
@@ -67,6 +70,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
@@ -252,17 +256,12 @@ export default function AdminLayout({
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin/notifications"
-              className="relative rounded-full p-2 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
+            <NotificationBell role="ADMIN" />
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white uppercase"
+              title={session?.user?.email || "Admin"}
             >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-(--earist-accent) text-[10px] font-bold text-(--earist-primary)">
-                5
-              </span>
-            </Link>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white">
-              A
+              {session?.user?.email?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>

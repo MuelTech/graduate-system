@@ -257,3 +257,11 @@ export interface Entry {
   downloads: number;
   views: number;
 }
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
