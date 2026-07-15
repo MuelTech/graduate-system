@@ -167,4 +167,10 @@
     font-family: "Calibri", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--earist-body-text);
   }
+
+  /* Forcefully hide default browser password reveal and clear icons */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none !important;
+  }
 }
