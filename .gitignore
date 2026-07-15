@@ -9,8 +9,8 @@ references/
 .Trashes
 ehthumbs.db
 Thumbs.db
-.agents
-prisma
-schema.prisma
+.agents/
+backend/uploads
+docs/
+frontend/public/images/
 node_modules
-docs
