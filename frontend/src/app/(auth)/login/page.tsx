@@ -102,6 +102,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
+      console.error(err)
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +116,7 @@ export default function LoginPage() {
       />
       <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
-      <div className="relative z-10 w-full max-w-[420px] px-4 py-12">
+      <div className="relative z-10 w-full max-w-105 px-4 py-12">
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
