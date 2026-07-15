@@ -12,6 +12,7 @@ CREATE TABLE `users` (
     `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `users_email_key`(`email`),
+    INDEX `users_custom_role_id_fkey`(`custom_role_id`),
     PRIMARY KEY (`user_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -39,6 +40,9 @@ CREATE TABLE `students` (
 
     UNIQUE INDEX `students_user_id_key`(`user_id`),
     UNIQUE INDEX `students_student_number_key`(`student_number`),
+    INDEX `students_previous_masters_program_id_fkey`(`previous_masters_program_id`),
+    INDEX `students_program_id_fkey`(`program_id`),
+    INDEX `students_undergraduate_program_id_fkey`(`undergraduate_program_id`),
     PRIMARY KEY (`student_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -95,6 +99,7 @@ CREATE TABLE `custom_roles` (
     `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `custom_roles_role_name_key`(`role_name`),
+    INDEX `custom_roles_created_by_fkey`(`created_by`),
     PRIMARY KEY (`role_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -108,6 +113,7 @@ CREATE TABLE `role_feature_access` (
     `can_edit` BOOLEAN NOT NULL DEFAULT false,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `role_feature_access_role_id_fkey`(`role_id`),
     PRIMARY KEY (`access_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -134,6 +140,9 @@ CREATE TABLE `curriculum_waivers` (
     `status` ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `curriculum_waivers_approved_by_fkey`(`approved_by`),
+    INDEX `curriculum_waivers_recommended_by_fkey`(`recommended_by`),
+    INDEX `curriculum_waivers_student_id_fkey`(`student_id`),
     PRIMARY KEY (`waiver_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -142,12 +151,13 @@ CREATE TABLE `exam_slots` (
     `slot_id` VARCHAR(191) NOT NULL,
     `program_id` VARCHAR(191) NOT NULL,
     `exam_date` DATE NOT NULL,
-    `exam_time` TIME NOT NULL,
+    `exam_time` TIME(0) NOT NULL,
     `max_slots` INTEGER NOT NULL,
     `slots_taken` INTEGER NOT NULL DEFAULT 0,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `exam_slots_program_id_fkey`(`program_id`),
     PRIMARY KEY (`slot_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -166,6 +176,9 @@ CREATE TABLE `applicant_bridging_waivers` (
     `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `applicant_bridging_waivers_student_id_key`(`student_id`),
+    INDEX `applicant_bridging_waivers_intended_program_id_fkey`(`intended_program_id`),
+    INDEX `applicant_bridging_waivers_undergraduate_program_id_fkey`(`undergraduate_program_id`),
+    INDEX `applicant_bridging_waivers_validated_by_fkey`(`validated_by`),
     PRIMARY KEY (`waiver_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -178,10 +191,13 @@ CREATE TABLE `entrance_exam_applications` (
     `strike_count` INTEGER NOT NULL DEFAULT 0,
     `application_date` DATE NOT NULL,
     `exam_date` DATE NULL,
-    `exam_time` TIME NULL,
+    `exam_time` TIME(0) NULL,
     `status` ENUM('PENDING', 'APPROVED', 'TAKEN', 'PASSED', 'FAILED', 'DISQUALIFIED') NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `entrance_exam_applications_program_id_fkey`(`program_id`),
+    INDEX `entrance_exam_applications_slot_id_fkey`(`slot_id`),
+    INDEX `entrance_exam_applications_student_id_fkey`(`student_id`),
     PRIMARY KEY (`application_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -197,6 +213,7 @@ CREATE TABLE `entrance_exam_scores` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `entrance_exam_scores_application_id_key`(`application_id`),
+    INDEX `entrance_exam_scores_graded_by_fkey`(`graded_by`),
     PRIMARY KEY (`score_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -207,6 +224,7 @@ CREATE TABLE `comp_exam_records` (
     `status` ENUM('PENDING', 'PASSED', 'FAILED') NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `comp_exam_records_student_id_fkey`(`student_id`),
     PRIMARY KEY (`comp_exam_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -222,6 +240,7 @@ CREATE TABLE `notifications` (
     `related_record_id` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `notifications_user_id_fkey`(`user_id`),
     PRIMARY KEY (`notification_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -237,6 +256,7 @@ CREATE TABLE `cor_uploads` (
     `processed_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `cor_uploads_student_id_fkey`(`student_id`),
     PRIMARY KEY (`cor_upload_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -273,6 +293,8 @@ CREATE TABLE `cor_records` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `cor_records_cor_upload_id_key`(`cor_upload_id`),
+    INDEX `cor_records_student_id_fkey`(`student_id`),
+    INDEX `cor_records_verified_by_fkey`(`verified_by`),
     PRIMARY KEY (`cor_record_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -286,6 +308,7 @@ CREATE TABLE `requirements_checklist` (
     `is_mandatory` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `requirements_checklist_program_id_fkey`(`program_id`),
     PRIMARY KEY (`requirement_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -301,6 +324,9 @@ CREATE TABLE `student_requirements` (
     `review_notes` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `student_requirements_requirement_id_fkey`(`requirement_id`),
+    INDEX `student_requirements_reviewed_by_fkey`(`reviewed_by`),
+    INDEX `student_requirements_student_id_fkey`(`student_id`),
     PRIMARY KEY (`student_req_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -315,6 +341,9 @@ CREATE TABLE `adviser_requests` (
     `request_date` DATE NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `adviser_requests_approved_by_fkey`(`approved_by`),
+    INDEX `adviser_requests_requested_adviser_id_fkey`(`requested_adviser_id`),
+    INDEX `adviser_requests_student_id_fkey`(`student_id`),
     PRIMARY KEY (`adviser_req_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -327,6 +356,8 @@ CREATE TABLE `adviser_assignments` (
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `adviser_assignments_adviser_id_fkey`(`adviser_id`),
+    INDEX `adviser_assignments_student_id_fkey`(`student_id`),
     PRIMARY KEY (`assignment_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -336,11 +367,13 @@ CREATE TABLE `thesis_records` (
     `student_id` VARCHAR(191) NOT NULL,
     `assignment_id` VARCHAR(191) NOT NULL,
     `stage` ENUM('TITLE', 'PROPOSAL', 'FINAL') NOT NULL DEFAULT 'TITLE',
-    `status` ENUM('PENDING', 'SCHEDULED', 'PASSED', 'FAILED', 'REVISION') NOT NULL DEFAULT 'PENDING',
+    `status` ENUM('PENDING', 'APPROVED', 'SCHEDULED', 'PASSED', 'FAILED', 'REVISION') NOT NULL DEFAULT 'PENDING',
     `or_number` VARCHAR(191) NULL,
     `amount_paid` DECIMAL(65, 30) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `thesis_records_assignment_id_fkey`(`assignment_id`),
+    INDEX `thesis_records_student_id_fkey`(`student_id`),
     PRIMARY KEY (`thesis_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -352,6 +385,7 @@ CREATE TABLE `thesis_titles` (
     `is_selected` BOOLEAN NOT NULL DEFAULT false,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `thesis_titles_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`title_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -359,11 +393,12 @@ CREATE TABLE `thesis_titles` (
 CREATE TABLE `thesis_documents` (
     `document_id` VARCHAR(191) NOT NULL,
     `thesis_id` VARCHAR(191) NOT NULL,
-    `doc_type` ENUM('PROPOSAL_CHAPTERS', 'FINAL_MANUSCRIPT', 'PLAGIARISM_REPORT', 'RESPONDENT_DATA', 'INSTRUMENTS') NOT NULL,
+    `doc_type` ENUM('PROPOSAL_CHAPTERS', 'FINAL_MANUSCRIPT', 'PLAGIARISM_REPORT', 'RESPONDENT_DATA', 'INSTRUMENTS', 'COR', 'RECEIPT') NOT NULL,
     `file_path` VARCHAR(191) NOT NULL,
     `copy_number` INTEGER NULL,
     `uploaded_at` DATETIME(3) NOT NULL,
 
+    INDEX `thesis_documents_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`document_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -372,12 +407,14 @@ CREATE TABLE `defense_schedules` (
     `schedule_id` VARCHAR(191) NOT NULL,
     `thesis_id` VARCHAR(191) NOT NULL,
     `defense_date` DATE NOT NULL,
-    `defense_time` TIME NOT NULL,
+    `defense_time` TIME(0) NOT NULL,
     `venue_or_link` VARCHAR(191) NULL,
     `defense_type` ENUM('TITLE_DEFENSE', 'PROPOSAL_DEFENSE', 'FINAL_DEFENSE') NOT NULL,
     `set_by` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `defense_schedules_set_by_fkey`(`set_by`),
+    INDEX `defense_schedules_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`schedule_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -389,6 +426,8 @@ CREATE TABLE `panel_assignments` (
     `role` ENUM('CHAIRMAN', 'PANELIST', 'ADVISER', 'RAPPORTEUR', 'FACILITATOR') NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `panel_assignments_schedule_id_fkey`(`schedule_id`),
+    INDEX `panel_assignments_user_id_fkey`(`user_id`),
     PRIMARY KEY (`panel_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -413,6 +452,8 @@ CREATE TABLE `oral_exam_scores` (
     `recommendations` TEXT NULL,
     `scored_at` DATETIME(3) NOT NULL,
 
+    INDEX `oral_exam_scores_panel_id_fkey`(`panel_id`),
+    INDEX `oral_exam_scores_schedule_id_fkey`(`schedule_id`),
     PRIMARY KEY (`score_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -429,6 +470,7 @@ CREATE TABLE `oral_exam_summary` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `oral_exam_summary_schedule_id_key`(`schedule_id`),
+    INDEX `oral_exam_summary_attested_by_fkey`(`attested_by`),
     PRIMARY KEY (`summary_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -443,6 +485,7 @@ CREATE TABLE `plagiarism_results` (
     `submitted_at` DATETIME(3) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `plagiarism_results_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`strike_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -460,6 +503,7 @@ CREATE TABLE `manuscript_submissions` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `manuscript_submissions_thesis_id_key`(`thesis_id`),
+    INDEX `manuscript_submissions_extension_approved_by_fkey`(`extension_approved_by`),
     PRIMARY KEY (`submission_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -474,6 +518,7 @@ CREATE TABLE `manuscript_distributions` (
     `signature_path` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `manuscript_distributions_submission_id_fkey`(`submission_id`),
     PRIMARY KEY (`distribution_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -485,6 +530,8 @@ CREATE TABLE `acknowledgement_receipts` (
     `defense_type` ENUM('TITLE_DEFENSE', 'PROPOSAL_DEFENSE', 'FINAL_DEFENSE') NOT NULL,
     `receipt_date` DATETIME(3) NOT NULL,
 
+    INDEX `acknowledgement_receipts_schedule_id_fkey`(`schedule_id`),
+    INDEX `acknowledgement_receipts_student_id_fkey`(`student_id`),
     PRIMARY KEY (`receipt_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -503,6 +550,7 @@ CREATE TABLE `e_library` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `e_library_thesis_id_key`(`thesis_id`),
+    INDEX `e_library_approved_by_fkey`(`approved_by`),
     PRIMARY KEY (`elibrary_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -522,6 +570,9 @@ CREATE TABLE `rap_reports` (
     `generated_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `rap_reports_generated_by_fkey`(`generated_by`),
+    INDEX `rap_reports_schedule_id_fkey`(`schedule_id`),
+    INDEX `rap_reports_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`rap_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -536,6 +587,8 @@ CREATE TABLE `rap_report_signatures` (
     `notified_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `rap_report_signatures_rap_id_fkey`(`rap_id`),
+    INDEX `rap_report_signatures_user_id_fkey`(`user_id`),
     PRIMARY KEY (`sig_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -550,6 +603,8 @@ CREATE TABLE `adviser_certifications` (
     `status` ENUM('PENDING', 'ISSUED') NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `adviser_certifications_adviser_id_fkey`(`adviser_id`),
+    INDEX `adviser_certifications_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`cert_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -596,6 +651,7 @@ CREATE TABLE `research_variable_forms` (
     `approved_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `research_variable_forms_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`var_form_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -608,6 +664,8 @@ CREATE TABLE `research_var_signatures` (
     `signed_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `research_var_signatures_user_id_fkey`(`user_id`),
+    INDEX `research_var_signatures_var_form_id_fkey`(`var_form_id`),
     PRIMARY KEY (`sig_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -618,10 +676,12 @@ CREATE TABLE `expert_evaluation_requests` (
     `instrument_type` VARCHAR(191) NULL,
     `instrument_description` TEXT NULL,
     `status` ENUM('PENDING', 'ASSIGNED', 'COMPLETED') NOT NULL DEFAULT 'PENDING',
-    `assigned_by` VARCHAR(191) NOT NULL,
+    `assigned_by` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
+    INDEX `expert_evaluation_requests_assigned_by_fkey`(`assigned_by`),
+    INDEX `expert_evaluation_requests_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`request_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -642,6 +702,8 @@ CREATE TABLE `expert_evaluations` (
     `file_path` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `expert_evaluations_request_id_fkey`(`request_id`),
+    INDEX `expert_evaluations_thesis_id_fkey`(`thesis_id`),
     PRIMARY KEY (`eval_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -656,6 +718,8 @@ CREATE TABLE `memos` (
     `sent_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `memos_created_by_fkey`(`created_by`),
+    INDEX `memos_program_id_fkey`(`program_id`),
     PRIMARY KEY (`memo_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -669,6 +733,7 @@ CREATE TABLE `student_files` (
     `description` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `student_files_student_id_fkey`(`student_id`),
     PRIMARY KEY (`file_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -682,6 +747,7 @@ CREATE TABLE `chatbot_faqs` (
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `chatbot_faqs_created_by_fkey`(`created_by`),
     PRIMARY KEY (`faq_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -694,6 +760,7 @@ CREATE TABLE `student_calendars` (
     `event_description` TEXT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `student_calendars_student_id_fkey`(`student_id`),
     PRIMARY KEY (`calendar_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -710,6 +777,7 @@ CREATE TABLE `school_year_calendar` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
+    INDEX `school_year_calendar_created_by_fkey`(`created_by`),
     PRIMARY KEY (`event_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -727,6 +795,7 @@ CREATE TABLE `system_settings` (
     `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `system_settings_setting_key_key`(`setting_key`),
+    INDEX `system_settings_last_modified_by_fkey`(`last_modified_by`),
     PRIMARY KEY (`setting_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -743,6 +812,7 @@ CREATE TABLE `audit_logs` (
     `ip_address` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `audit_logs_actor_id_fkey`(`actor_id`),
     PRIMARY KEY (`log_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -760,6 +830,8 @@ CREATE TABLE `email_templates` (
     `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `email_templates_template_key_key`(`template_key`),
+    INDEX `email_templates_created_by_fkey`(`created_by`),
+    INDEX `email_templates_updated_by_fkey`(`updated_by`),
     PRIMARY KEY (`template_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -770,13 +842,13 @@ ALTER TABLE `users` ADD CONSTRAINT `users_custom_role_id_fkey` FOREIGN KEY (`cus
 ALTER TABLE `students` ADD CONSTRAINT `students_previous_masters_program_id_fkey` FOREIGN KEY (`previous_masters_program_id`) REFERENCES `programs`(`program_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `students` ADD CONSTRAINT `students_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `students` ADD CONSTRAINT `students_program_id_fkey` FOREIGN KEY (`program_id`) REFERENCES `programs`(`program_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `students` ADD CONSTRAINT `students_undergraduate_program_id_fkey` FOREIGN KEY (`undergraduate_program_id`) REFERENCES `undergraduate_programs`(`ug_program_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `students` ADD CONSTRAINT `students_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `panelists` ADD CONSTRAINT `panelists_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -791,37 +863,37 @@ ALTER TABLE `role_feature_access` ADD CONSTRAINT `role_feature_access_role_id_fk
 ALTER TABLE `residency_tracking` ADD CONSTRAINT `residency_tracking_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `curriculum_waivers` ADD CONSTRAINT `curriculum_waivers_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `curriculum_waivers` ADD CONSTRAINT `curriculum_waivers_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `curriculum_waivers` ADD CONSTRAINT `curriculum_waivers_recommended_by_fkey` FOREIGN KEY (`recommended_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `curriculum_waivers` ADD CONSTRAINT `curriculum_waivers_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `curriculum_waivers` ADD CONSTRAINT `curriculum_waivers_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `exam_slots` ADD CONSTRAINT `exam_slots_program_id_fkey` FOREIGN KEY (`program_id`) REFERENCES `programs`(`program_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_intended_program_id_fkey` FOREIGN KEY (`intended_program_id`) REFERENCES `programs`(`program_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_validated_by_fkey` FOREIGN KEY (`validated_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_undergraduate_program_id_fkey` FOREIGN KEY (`undergraduate_program_id`) REFERENCES `undergraduate_programs`(`ug_program_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `entrance_exam_applications` ADD CONSTRAINT `entrance_exam_applications_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `applicant_bridging_waivers` ADD CONSTRAINT `applicant_bridging_waivers_validated_by_fkey` FOREIGN KEY (`validated_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `entrance_exam_applications` ADD CONSTRAINT `entrance_exam_applications_program_id_fkey` FOREIGN KEY (`program_id`) REFERENCES `programs`(`program_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `entrance_exam_applications` ADD CONSTRAINT `entrance_exam_applications_slot_id_fkey` FOREIGN KEY (`slot_id`) REFERENCES `exam_slots`(`slot_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `entrance_exam_applications` ADD CONSTRAINT `entrance_exam_applications_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `entrance_exam_scores` ADD CONSTRAINT `entrance_exam_scores_application_id_fkey` FOREIGN KEY (`application_id`) REFERENCES `entrance_exam_applications`(`application_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -851,34 +923,34 @@ ALTER TABLE `cor_records` ADD CONSTRAINT `cor_records_verified_by_fkey` FOREIGN 
 ALTER TABLE `requirements_checklist` ADD CONSTRAINT `requirements_checklist_program_id_fkey` FOREIGN KEY (`program_id`) REFERENCES `programs`(`program_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `student_requirements` ADD CONSTRAINT `student_requirements_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `student_requirements` ADD CONSTRAINT `student_requirements_requirement_id_fkey` FOREIGN KEY (`requirement_id`) REFERENCES `requirements_checklist`(`requirement_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `student_requirements` ADD CONSTRAINT `student_requirements_reviewed_by_fkey` FOREIGN KEY (`reviewed_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `adviser_requests` ADD CONSTRAINT `adviser_requests_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `adviser_requests` ADD CONSTRAINT `adviser_requests_requested_adviser_id_fkey` FOREIGN KEY (`requested_adviser_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `student_requirements` ADD CONSTRAINT `student_requirements_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `adviser_requests` ADD CONSTRAINT `adviser_requests_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `adviser_assignments` ADD CONSTRAINT `adviser_assignments_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `adviser_requests` ADD CONSTRAINT `adviser_requests_requested_adviser_id_fkey` FOREIGN KEY (`requested_adviser_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `adviser_requests` ADD CONSTRAINT `adviser_requests_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `adviser_assignments` ADD CONSTRAINT `adviser_assignments_adviser_id_fkey` FOREIGN KEY (`adviser_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `thesis_records` ADD CONSTRAINT `thesis_records_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `adviser_assignments` ADD CONSTRAINT `adviser_assignments_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `thesis_records` ADD CONSTRAINT `thesis_records_assignment_id_fkey` FOREIGN KEY (`assignment_id`) REFERENCES `adviser_assignments`(`assignment_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `thesis_records` ADD CONSTRAINT `thesis_records_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `thesis_titles` ADD CONSTRAINT `thesis_titles_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -887,10 +959,10 @@ ALTER TABLE `thesis_titles` ADD CONSTRAINT `thesis_titles_thesis_id_fkey` FOREIG
 ALTER TABLE `thesis_documents` ADD CONSTRAINT `thesis_documents_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_set_by_fkey` FOREIGN KEY (`set_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_set_by_fkey` FOREIGN KEY (`set_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `panel_assignments` ADD CONSTRAINT `panel_assignments_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -899,25 +971,25 @@ ALTER TABLE `panel_assignments` ADD CONSTRAINT `panel_assignments_schedule_id_fk
 ALTER TABLE `panel_assignments` ADD CONSTRAINT `panel_assignments_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `oral_exam_scores` ADD CONSTRAINT `oral_exam_scores_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `oral_exam_scores` ADD CONSTRAINT `oral_exam_scores_panel_id_fkey` FOREIGN KEY (`panel_id`) REFERENCES `panel_assignments`(`panel_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `oral_exam_summary` ADD CONSTRAINT `oral_exam_summary_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `oral_exam_scores` ADD CONSTRAINT `oral_exam_scores_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `oral_exam_summary` ADD CONSTRAINT `oral_exam_summary_attested_by_fkey` FOREIGN KEY (`attested_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `oral_exam_summary` ADD CONSTRAINT `oral_exam_summary_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `plagiarism_results` ADD CONSTRAINT `plagiarism_results_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `manuscript_submissions` ADD CONSTRAINT `manuscript_submissions_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `manuscript_submissions` ADD CONSTRAINT `manuscript_submissions_extension_approved_by_fkey` FOREIGN KEY (`extension_approved_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `manuscript_submissions` ADD CONSTRAINT `manuscript_submissions_extension_approved_by_fkey` FOREIGN KEY (`extension_approved_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `manuscript_submissions` ADD CONSTRAINT `manuscript_submissions_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `manuscript_distributions` ADD CONSTRAINT `manuscript_distributions_submission_id_fkey` FOREIGN KEY (`submission_id`) REFERENCES `manuscript_submissions`(`submission_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -929,10 +1001,13 @@ ALTER TABLE `acknowledgement_receipts` ADD CONSTRAINT `acknowledgement_receipts_
 ALTER TABLE `acknowledgement_receipts` ADD CONSTRAINT `acknowledgement_receipts_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`student_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `e_library` ADD CONSTRAINT `e_library_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `e_library` ADD CONSTRAINT `e_library_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `e_library` ADD CONSTRAINT `e_library_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `rap_reports` ADD CONSTRAINT `rap_reports_generated_by_fkey` FOREIGN KEY (`generated_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `rap_reports` ADD CONSTRAINT `rap_reports_schedule_id_fkey` FOREIGN KEY (`schedule_id`) REFERENCES `defense_schedules`(`schedule_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -941,19 +1016,16 @@ ALTER TABLE `rap_reports` ADD CONSTRAINT `rap_reports_schedule_id_fkey` FOREIGN 
 ALTER TABLE `rap_reports` ADD CONSTRAINT `rap_reports_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `rap_reports` ADD CONSTRAINT `rap_reports_generated_by_fkey` FOREIGN KEY (`generated_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `rap_report_signatures` ADD CONSTRAINT `rap_report_signatures_rap_id_fkey` FOREIGN KEY (`rap_id`) REFERENCES `rap_reports`(`rap_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `rap_report_signatures` ADD CONSTRAINT `rap_report_signatures_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `adviser_certifications` ADD CONSTRAINT `adviser_certifications_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `adviser_certifications` ADD CONSTRAINT `adviser_certifications_adviser_id_fkey` FOREIGN KEY (`adviser_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `adviser_certifications` ADD CONSTRAINT `adviser_certifications_adviser_id_fkey` FOREIGN KEY (`adviser_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `adviser_certifications` ADD CONSTRAINT `adviser_certifications_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `statistician_certifications` ADD CONSTRAINT `statistician_certifications_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -965,16 +1037,16 @@ ALTER TABLE `grammarian_certifications` ADD CONSTRAINT `grammarian_certification
 ALTER TABLE `research_variable_forms` ADD CONSTRAINT `research_variable_forms_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `research_var_signatures` ADD CONSTRAINT `research_var_signatures_var_form_id_fkey` FOREIGN KEY (`var_form_id`) REFERENCES `research_variable_forms`(`var_form_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `research_var_signatures` ADD CONSTRAINT `research_var_signatures_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `expert_evaluation_requests` ADD CONSTRAINT `expert_evaluation_requests_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `research_var_signatures` ADD CONSTRAINT `research_var_signatures_var_form_id_fkey` FOREIGN KEY (`var_form_id`) REFERENCES `research_variable_forms`(`var_form_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `expert_evaluation_requests` ADD CONSTRAINT `expert_evaluation_requests_assigned_by_fkey` FOREIGN KEY (`assigned_by`) REFERENCES `users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `expert_evaluation_requests` ADD CONSTRAINT `expert_evaluation_requests_assigned_by_fkey` FOREIGN KEY (`assigned_by`) REFERENCES `users`(`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `expert_evaluation_requests` ADD CONSTRAINT `expert_evaluation_requests_thesis_id_fkey` FOREIGN KEY (`thesis_id`) REFERENCES `thesis_records`(`thesis_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `expert_evaluations` ADD CONSTRAINT `expert_evaluations_request_id_fkey` FOREIGN KEY (`request_id`) REFERENCES `expert_evaluation_requests`(`request_id`) ON DELETE RESTRICT ON UPDATE CASCADE;

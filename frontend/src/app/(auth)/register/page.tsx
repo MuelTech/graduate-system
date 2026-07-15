@@ -50,6 +50,8 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   const [graduateProgramsList, setGraduateProgramsList] = useState<
     { id: string; programName: string; programType: string }[]
   >([]);
@@ -59,6 +61,32 @@ export default function RegisterPage() {
   >([]);
 
   useEffect(() => {
+    // 1. Restore draft progress on initial load
+    const draft = localStorage.getItem("registrationDraft");
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setTimeout(() => {
+          if (parsed.step !== undefined) setStep(parsed.step);
+          if (parsed.formData) {
+            setFormData((prev) => ({ 
+              ...prev, 
+              ...parsed.formData, 
+              password: "", 
+              confirmPassword: "" 
+            }));
+          }
+          setIsLoaded(true);
+        }, 0);
+      } catch (e) {
+        console.error("Failed to parse registration draft", e);
+        setTimeout(() => setIsLoaded(true), 0);
+      }
+    } else {
+      setTimeout(() => setIsLoaded(true), 0);
+    }
+
+    // 2. Fetch programs
     const fetchPrograms = async () => {
       try {
         const apiUrl =
@@ -75,6 +103,14 @@ export default function RegisterPage() {
     };
     fetchPrograms();
   }, []);
+
+  // Save progress to localStorage whenever step or form data changes
+  useEffect(() => {
+    if (isLoaded) {
+      const { ...safeFormData } = formData;
+      localStorage.setItem("registrationDraft", JSON.stringify({ step, formData: safeFormData }));
+    }
+  }, [step, formData, isLoaded]);
 
   const updateForm = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -167,8 +203,10 @@ export default function RegisterPage() {
         return;
       }
 
+      // Clear the draft on successful registration
+      localStorage.removeItem("registrationDraft");
       setIsSubmitted(true);
-    } catch (err) {
+    } catch {
       setError("A network error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -184,7 +222,7 @@ export default function RegisterPage() {
         />
         <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
-        <div className="relative z-10 w-full max-w-[480px] px-4 py-12">
+        <div className="relative z-10 w-full max-w-120 px-4 py-12">
           <Card className="shadow-2xl">
             <CardContent className="pt-6 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
@@ -254,7 +292,7 @@ export default function RegisterPage() {
       />
       <div className="absolute inset-0 bg-(--earist-primary)/60 backdrop-blur-sm" />
 
-      <div className="relative z-10 w-full max-w-[480px] px-4 py-12">
+      <div className="relative z-10 w-full max-w-120 px-4 py-12">
         <Card className="shadow-2xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
@@ -547,7 +585,7 @@ export default function RegisterPage() {
                         onChange={(e) => updateForm("password", e.target.value)}
                         placeholder="Create a password"
                         required
-                        className="pr-10"
+                        className="pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                       />
                       <button
                         type="button"
@@ -566,15 +604,29 @@ export default function RegisterPage() {
                     <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
                       Confirm Password <span className="text-red-500">*</span>
                     </label>
-                    <Input
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        updateForm("confirmPassword", e.target.value)
-                      }
-                      placeholder="Confirm your password"
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={(e) =>
+                          updateForm("confirmPassword", e.target.value)
+                        }
+                        placeholder="Confirm your password"
+                        required
+                        className="pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-(--earist-body-text) transition-colors hover:text-(--earist-primary)"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

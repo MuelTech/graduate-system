@@ -340,7 +340,7 @@ function PasswordInput({
           placeholder="Enter your password"
           required
           autoComplete="current-password"
-          className="pr-10"
+          className="pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
         />
         <button
           type="button"
