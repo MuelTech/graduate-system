@@ -7,11 +7,12 @@ import corRoutes from './cor.routes'
 import studentRoutes from './student.routes';
 import evaluationRoutes from './evaluation.routes';
 import thesisRoutes from './thesis.routes';
-import panelistRoutes from "./panelist.routes";
-import settingsRoutes from "./settings.routes";
+import panelistRoutes from './panelist.routes';
+import settingsRoutes from './settings.routes';
 import databankRoutes from './databank.routes';
-import memoRoutes from "./memo.routes";
-import notificationRoutes from "./notification.routes";
+import memoRoutes from './memo.routes';
+import notificationRoutes from './notification.routes';
+import waiverRoutes from './waiver.routes'
 
 const router = Router();
 
@@ -26,7 +27,8 @@ router.use('/thesis', thesisRoutes);
 router.use('/panelists', panelistRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/databank', databankRoutes);
-router.use("/memos", memoRoutes);
-router.use("/notifications", notificationRoutes);
+router.use('/memos', memoRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/waivers', waiverRoutes);
 
 export default router;
