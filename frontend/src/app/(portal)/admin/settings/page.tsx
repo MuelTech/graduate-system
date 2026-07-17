@@ -9,6 +9,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { toast } from "sonner";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Settings,
   Calendar,
   Save,
@@ -21,9 +29,6 @@ import {
   Lock,
   Search,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Download,
 } from "lucide-react";
 
 type EmailTemplateItem = {
@@ -715,27 +720,45 @@ export default function AdminSettingsPage() {
                     <p className="text-sm text-gray-500">
                       Showing {(auditPage - 1) * 20 + 1} to {Math.min(auditPage * 20, auditTotal)} of {auditTotal} logs
                     </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setAuditPage(auditPage - 1)}
-                        disabled={auditPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm text-gray-700">
-                        Page {auditPage} of {auditTotalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setAuditPage(auditPage + 1)}
-                        disabled={auditPage === auditTotalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setAuditPage(auditPage - 1)}
+                            className={auditPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: Math.min(5, auditTotalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (auditTotalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (auditPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (auditPage >= auditTotalPages - 2) {
+                            pageNum = auditTotalPages - 4 + i;
+                          } else {
+                            pageNum = auditPage - 2 + i;
+                          }
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <PaginationLink
+                                onClick={() => setAuditPage(pageNum)}
+                                isActive={auditPage === pageNum}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setAuditPage(auditPage + 1)}
+                            className={auditPage === auditTotalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   </div>
                 )}
               </CardContent>
