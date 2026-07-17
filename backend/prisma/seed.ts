@@ -332,6 +332,49 @@ async function main() {
       }
     });
     console.log('Created Applicant 4 (Cleared)');
+
+    // Applicants 5-12 for pagination testing
+    const additionalApplicants = [
+      { email: 'applicant5@earist.edu.ph', firstName: 'Carlos', lastName: 'Mendoza', alignment: 'ALIGNED' as const },
+      { email: 'applicant6@earist.edu.ph', firstName: 'Rosa', lastName: 'Lim', alignment: 'PENDING_WAIVER' as const },
+      { email: 'applicant7@earist.edu.ph', firstName: 'Miguel', lastName: 'Torres', alignment: 'ALIGNED' as const },
+      { email: 'applicant8@earist.edu.ph', firstName: 'Elena', lastName: 'Cruz', alignment: 'CLEARED' as const },
+      { email: 'applicant9@earist.edu.ph', firstName: 'Ricardo', lastName: 'Villanueva', alignment: 'ALIGNED' as const },
+      { email: 'applicant10@earist.edu.ph', firstName: 'Sofia', lastName: 'Aquino', alignment: 'PENDING_WAIVER' as const },
+      { email: 'applicant11@earist.edu.ph', firstName: 'Andres', lastName: 'Ramos', alignment: 'ALIGNED' as const },
+      { email: 'applicant12@earist.edu.ph', firstName: 'Isabel', lastName: 'Fernandez', alignment: 'CLEARED' as const },
+    ];
+
+    for (let i = 0; i < additionalApplicants.length; i++) {
+      const app = additionalApplicants[i];
+      const progIndex = i % allPrograms.length;
+      const undergradIndex = i % allUndergradPrograms.length;
+
+      await prisma.user.upsert({
+        where: { email: app.email },
+        update: {},
+        create: {
+          email: app.email,
+          passwordHash,
+          firstName: app.firstName,
+          lastName: app.lastName,
+          role: 'APPLICANT',
+          student: {
+            create: {
+              cellphone: `+63917${String(1000000 + i).slice(0, 7)}`,
+              dateOfBirth: new Date(`199${5 + (i % 5)}-0${(i % 9) + 1}-15T00:00:00.000Z`),
+              pinnacleApplicantId: `PIN-2026-${String(i + 5).padStart(3, '0')}`,
+              programId: allPrograms[progIndex].id,
+              undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
+              admissionStatus: 'APPLICANT',
+              isProgramAligned: app.alignment !== 'PENDING_WAIVER',
+              alignmentStatus: app.alignment,
+            }
+          }
+        }
+      });
+    }
+    console.log('Created Applicants 5-12 for pagination testing');
   }
 
 }
