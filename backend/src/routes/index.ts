@@ -13,6 +13,7 @@ import databankRoutes from './databank.routes';
 import memoRoutes from './memo.routes';
 import notificationRoutes from './notification.routes';
 import waiverRoutes from './waiver.routes'
+import adminApplicantRoutes from './admin-applicant.routes'
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/databank', databankRoutes);
 router.use('/memos', memoRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/waivers', waiverRoutes);
+router.use('/admin/applicants', adminApplicantRoutes);
 
 export default router;
