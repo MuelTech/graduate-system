@@ -324,7 +324,7 @@ export default function ApplicantDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-gray-400" />
+              <Calendar className="h-4 w-4 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Registered</p>
                 <p className="font-medium">{formatDate(applicant.createdAt)}</p>
