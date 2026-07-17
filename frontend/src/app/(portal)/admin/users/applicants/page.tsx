@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { apiClientRequest } from "@/lib/api.client";
 import { Eye, Search, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { AdminApplicantListItem } from "@/types";
 
 export default function AdminApplicantsPage() {
+  const { data: session, status } = useSession();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [alignmentFilter, setAlignmentFilter] = useState("");
@@ -21,6 +23,7 @@ export default function AdminApplicantsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["adminApplicants", page, search, alignmentFilter, examFilter, corFilter, statusFilter],
+    enabled: status === "authenticated",
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
