@@ -46,7 +46,7 @@ export class AdminApplicantService {
 
     let corStatus = "NONE";
     if (corUpload) {
-      corStatus = corUpload.corRecord?.isVerified ? "VERIFIED" : "PENDING";
+      corStatus = corUpload.corRecord?.isAdminVerified ? "VERIFIED" : "PENDING";
     }
 
     return {
@@ -58,28 +58,28 @@ export class AdminApplicantService {
       cellphone: student.cellphone || "",
       dateOfBirth: student.dateOfBirth?.toISOString() || "",
       program: student.program,
-      undergraduateCourse: student.undergraduateCourse || "",
+      undergraduateCourse: student.undergraduateProgram?.programName || "",
       alignmentStatus: student.alignmentStatus || "ALIGNED",
       isProgramAligned: student.isProgramAligned || false,
       examStatus,
-      examScores: examApp?.examScores
+      examScores: examApp?.score
         ? {
-            mcq: examApp.examScores.multipleChoiceScore,
-            essay: examApp.examScores.essayScore,
-            total: examApp.examScores.totalScore,
+            mcq: Number(examApp.score.multipleChoiceScore),
+            essay: Number(examApp.score.essayScore),
+            total: Number(examApp.score.totalScore),
           }
         : null,
       corStatus,
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() || null,
-      strikeCount: student.strikeCount || 0,
+      strikeCount: examApp?.strikeCount || 0,
       bridgingWaiver: student.bridgingWaiver
         ? {
             id: student.bridgingWaiver.id,
             status: student.bridgingWaiver.status,
             waiverFormDownloadedAt:
               student.bridgingWaiver.waiverFormDownloadedAt?.toISOString() || null,
-            validatedBy: student.bridgingWaiver.validatedByUser,
+            validatedBy: student.bridgingWaiver.validatedBy,
             validatedAt:
               student.bridgingWaiver.validatedAt?.toISOString() || null,
             adminNotes: student.bridgingWaiver.adminNotes,
@@ -88,21 +88,21 @@ export class AdminApplicantService {
       examApplications: student.examApplications.map((app) => ({
         id: app.id,
         status: app.status,
-        examSlot: app.examSlot
+        slot: app.slot
           ? {
-              examDate: app.examSlot.examDate.toISOString(),
-              examTime: app.examSlot.examTime,
-              venueOrLink: app.examSlot.venueOrLink || "",
+              examDate: app.slot.examDate.toISOString(),
+              examTime: app.slot.examTime,
+              venueOrLink: "",
             }
           : null,
-        examScores: app.examScores
+        examScores: app.score
           ? {
-              multipleChoiceScore: app.examScores.multipleChoiceScore,
-              essayScore: app.examScores.essayScore,
-              totalScore: app.examScores.totalScore,
+              multipleChoiceScore: Number(app.score.multipleChoiceScore),
+              essayScore: Number(app.score.essayScore),
+              totalScore: Number(app.score.totalScore),
             }
           : null,
-      })),
+      })) as any,
       corUploads: student.corUploads.map((upload) => ({
         id: upload.id,
         ocrStatus: upload.ocrStatus,
@@ -116,18 +116,19 @@ export class AdminApplicantService {
               semester: upload.corRecord.semester || "",
               extractedProgramName: upload.corRecord.extractedProgramName || "",
               extractedYearLevel: upload.corRecord.extractedYearLevel || "",
-              totalAssessment: upload.corRecord.totalAssessment || 0,
-              netAssessed: upload.corRecord.netAssessed || 0,
-              outstandingBalance: upload.corRecord.outstandingBalance || 0,
-              isVerified: upload.corRecord.isVerified,
+              totalAssessment: Number(upload.corRecord.totalAssessment) || 0,
+              netAssessed: Number(upload.corRecord.netAssessed) || 0,
+              outstandingBalance: Number(upload.corRecord.outstandingBalance) || 0,
+              isVerified: upload.corRecord.isAdminVerified,
               verificationMethod: upload.corRecord.verificationMethod,
-              verifiedBy: upload.corRecord.verifiedByUser,
+              verifiedBy: upload.corRecord.verifiedBy,
               verifiedAt: upload.corRecord.verifiedAt?.toISOString() || null,
             }
           : null,
       })),
       activityLog,
-    };
+      createdAt: student.createdAt.toISOString(),
+    } as any;
   }
 
   async validateWaiver(
@@ -143,13 +144,13 @@ export class AdminApplicantService {
       throw new AppError("No pending waiver found!", 400);
     }
 
-    if (student.bridgingWaiver.status !== "pending") {
+    if (student.bridgingWaiver.status !== "PENDING") {
       throw new AppError("Waiver is not in pending status!", 400);
     }
 
     await this.repository.updateWaiverStatus(
       student.bridgingWaiver.id,
-      "validated",
+      "VALIDATED",
       adminId
     );
 
@@ -184,7 +185,7 @@ export class AdminApplicantService {
 
     await this.repository.updateWaiverStatus(
       student.bridgingWaiver.id,
-      "rejected",
+      "REJECTED",
       adminId,
       input.adminNotes
     );
@@ -221,7 +222,7 @@ export class AdminApplicantService {
       throw new AppError("No COR record found!", 400);
     }
 
-    if (corUpload.corRecord.isVerified) {
+    if (corUpload.corRecord.isAdminVerified) {
       throw new AppError("COR is already verified!", 400);
     }
 
@@ -294,7 +295,7 @@ export class AdminApplicantService {
     }
 
     const corUpload = student.corUploads[0];
-    if (!corUpload?.corRecord?.isVerified) {
+    if (!corUpload?.corRecord?.isAdminVerified) {
       throw new AppError("COR is not verified!", 400);
     }
 

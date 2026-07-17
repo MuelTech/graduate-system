@@ -34,14 +34,14 @@ export class AdminApplicantRepository {
         },
         examApplications: {
           include: {
-            examScores: {
+            score: {
               select: {
                 multipleChoiceScore: true,
                 essayScore: true,
                 totalScore: true,
               },
             },
-            examSlot: {
+            slot: {
               select: {
                 examDate: true,
                 examTime: true,
@@ -55,7 +55,7 @@ export class AdminApplicantRepository {
           include: {
             corRecord: {
               select: {
-                isVerified: true,
+                isAdminVerified: true,
               },
             },
           },
@@ -79,7 +79,7 @@ export class AdminApplicantRepository {
 
       let corStatus = "NONE";
       if (corUpload) {
-        corStatus = corUpload.corRecord?.isVerified ? "VERIFIED" : "PENDING";
+        corStatus = corUpload.corRecord?.isAdminVerified ? "VERIFIED" : "PENDING";
       }
 
       return {
@@ -91,16 +91,16 @@ export class AdminApplicantRepository {
         program: student.program,
         alignmentStatus: student.alignmentStatus || "ALIGNED",
         examStatus,
-        examScores: examApp?.examScores
+        examScores: examApp?.score
           ? {
-              mcq: examApp.examScores.multipleChoiceScore,
-              essay: examApp.examScores.essayScore,
-              total: examApp.examScores.totalScore,
+              mcq: Number(examApp.score.multipleChoiceScore),
+              essay: Number(examApp.score.essayScore),
+              total: Number(examApp.score.totalScore),
             }
           : null,
         corStatus,
         admissionStatus: student.admissionStatus,
-        strikeCount: student.strikeCount || 0,
+        strikeCount: examApp?.strikeCount || 0,
         createdAt: student.createdAt.toISOString(),
       };
     });
@@ -123,9 +123,15 @@ export class AdminApplicantRepository {
             programName: true,
           },
         },
+        undergraduateProgram: {
+          select: {
+            id: true,
+            programName: true,
+          },
+        },
         bridgingWaiver: {
           include: {
-            validatedByUser: {
+            validatedBy: {
               select: {
                 firstName: true,
                 lastName: true,
@@ -135,8 +141,8 @@ export class AdminApplicantRepository {
         },
         examApplications: {
           include: {
-            examScores: true,
-            examSlot: true,
+            score: true,
+            slot: true,
           },
           orderBy: { createdAt: "desc" },
         },
@@ -144,7 +150,7 @@ export class AdminApplicantRepository {
           include: {
             corRecord: {
               include: {
-                verifiedByUser: {
+                verifiedBy: {
                   select: {
                     firstName: true,
                     lastName: true,
@@ -194,14 +200,14 @@ export class AdminApplicantRepository {
   async updateWaiverStatus(
     waiverId: string,
     status: string,
-    validatedBy?: string,
+    validatedById?: string,
     adminNotes?: string
   ) {
     return prisma.applicantBridgingWaiver.update({
       where: { id: waiverId },
       data: {
         status: status as any,
-        validatedBy: validatedBy || null,
+        validatedById: validatedById || null,
         validatedAt: status === "validated" ? new Date() : null,
         adminNotes: adminNotes || null,
       },
@@ -212,14 +218,14 @@ export class AdminApplicantRepository {
     corRecordId: string,
     verified: boolean,
     verificationMethod?: string,
-    verifiedBy?: string
+    verifiedById?: string
   ) {
     return prisma.corRecord.update({
       where: { id: corRecordId },
       data: {
-        isVerified: verified,
-        verificationMethod: verificationMethod || null,
-        verifiedBy: verifiedBy || null,
+        isAdminVerified: verified,
+        verificationMethod: verificationMethod as any || null,
+        verifiedById: verifiedById || null,
         verifiedAt: verified ? new Date() : null,
       },
     });
@@ -236,24 +242,33 @@ export class AdminApplicantRepository {
         },
       });
 
-      await tx.user.update({
-        where: {
-          students: { some: { id: studentId } },
-        },
-        data: {
-          role: "STUDENT",
-        },
-      });
+      const student = await tx.student.findUnique({ where: { id: studentId } });
+      if (student) {
+        await tx.user.update({
+          where: { id: student.userId },
+          data: {
+            role: "STUDENT",
+          },
+        });
+      }
 
       return { studentNumber };
     });
   }
 
   async resetStrikeCount(studentId: string) {
-    return prisma.student.update({
-      where: { id: studentId },
-      data: { strikeCount: 0 },
+    const examApp = await prisma.entranceExamApplication.findFirst({
+      where: { studentId },
+      orderBy: { createdAt: "desc" },
     });
+
+    if (examApp) {
+      return prisma.entranceExamApplication.update({
+        where: { id: examApp.id },
+        data: { strikeCount: 0 },
+      });
+    }
+    return null;
   }
 
   async createAuditLog(
