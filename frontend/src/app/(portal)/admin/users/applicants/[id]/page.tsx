@@ -24,7 +24,6 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import { AdminApplicantDetail } from "@/types";
 import { toast } from "sonner";
 
@@ -32,7 +31,6 @@ export default function ApplicantDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { status } = useSession();
   const applicantId = params.id as string;
 
   const [rejectNotes, setRejectNotes] = useState("");
@@ -41,7 +39,6 @@ export default function ApplicantDetailPage() {
 
   const { data: applicant, isLoading } = useQuery<AdminApplicantDetail>({
     queryKey: ["adminApplicantDetail", applicantId],
-    enabled: status === "authenticated",
     queryFn: async () => {
       return await apiClientRequest(`/admin/applicants/${applicantId}`);
     },
