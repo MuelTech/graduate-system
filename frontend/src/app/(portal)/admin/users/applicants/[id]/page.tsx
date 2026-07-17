@@ -19,7 +19,6 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Clock,
   Shield,
   RotateCcw,
 } from "lucide-react";
@@ -625,35 +624,6 @@ export default function ApplicantDetailPage() {
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Activity Log */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Activity Log
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {applicant.activityLog.length === 0 ? (
-            <p className="text-sm text-gray-500">No activity recorded</p>
-          ) : (
-            <div className="space-y-3">
-              {applicant.activityLog.map((log, index) => (
-                <div key={index} className="flex gap-3 text-sm">
-                  <div className="flex-shrink-0 w-32 text-gray-500">
-                    {formatDateTime(log.timestamp)}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-700">{log.description}</p>
-                    <p className="text-gray-500">by {log.actor}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
