@@ -22,7 +22,7 @@ export const apiClientRequest = async (
   });
 
   // Automatically force logout if the backend rejects the token
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     if (typeof window !== "undefined") {
       signOut({ callbackUrl: "/login" });
     }
