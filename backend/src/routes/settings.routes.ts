@@ -17,7 +17,9 @@ router.put("/:key", controller.updateSetting.bind(controller));
 router.get("/email-templates", controller.getAllEmailTemplates.bind(controller));
 router.put("/email-templates/:key", controller.updateEmailTemplate.bind(controller));
 
-// Audit Logs Route (Read-Only)
+// Audit Logs Routes
 router.get("/audit-logs", controller.getAuditLogs.bind(controller));
+router.delete("/audit-logs/:id", controller.deleteAuditLog.bind(controller));
+router.post("/audit-logs/delete", controller.deleteAuditLogs.bind(controller));
 
 export default router;
