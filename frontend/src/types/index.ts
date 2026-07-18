@@ -114,16 +114,21 @@ export interface Panelist {
 export interface PanelistResponse {
   id: string;
   user: {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
+    title?: string;
+    suffix?: string;
     isActive: boolean;
+    createdAt: string;
   };
   isExternal: boolean;
   highestEducationalAttainment: string;
   officeAffiliation: string;
   specialization: string;
   isAvailableAsAdviser: boolean;
+  createdAt: string;
 }
 
 // ADMIN THESIS INTERFACES
