@@ -8,24 +8,37 @@ export class PanelistService {
         return panelistRepository.findAll();
     }
 
+    async getPanelistById(id: string) {
+        return panelistRepository.findById(id);
+    }
+
     async createPanelist(data: any) {
-        // Check if email is already in use via Repository
+        // Check if email is already in use
         const existingUser = await panelistRepository.checkEmailInUse(data.email);
         if (existingUser) {
             throw new Error("Email is already in use by another account.");
         }
 
-        // Hash default password
+        // Hash default password (LASTNAME uppercase)
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(data.lastName.toUpperCase(), salt);
+        const defaultPassword = data.lastName.toUpperCase();
+        const passwordHash = await bcrypt.hash(defaultPassword, salt);
 
-        // Delegate transaction logic to Repository
-        return panelistRepository.createWithUserTransaction(data, passwordHash);
+        const panelist = await panelistRepository.createWithUserTransaction(data, passwordHash);
+
+        // Return panelist with default password for display
+        return { ...panelist, defaultPassword };
     }
 
     async updatePanelist(id: string, data: any) {
-        // Delegate transaction logic to Repository
-        return panelistRepository.updateWithUserTransaction(id, data);
+        // Handle password reset if provided
+        let passwordHash: string | undefined;
+        if (data.password && data.password.trim() !== '') {
+            const salt = await bcrypt.genSalt(10);
+            passwordHash = await bcrypt.hash(data.password, salt);
+        }
+
+        return panelistRepository.updateWithUserTransaction(id, data, passwordHash);
     }
 
     async toggleAvailability(userId: string, isAvailableAsAdviser: boolean) {

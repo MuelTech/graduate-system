@@ -14,6 +14,20 @@ export class PanelistController {
         }
     }
 
+    async getPanelistById(req: Request, res: Response) {
+        try {
+            const id = req.params.id as string;
+            const panelist = await panelistService.getPanelistById(id);
+            if (!panelist) {
+                res.status(404).json({ error: "Panelist not found" });
+                return;
+            }
+            res.json(panelist);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
     async createPanelist(req: Request, res: Response) {
         try {
             const panelist = await panelistService.createPanelist(req.body);
@@ -39,7 +53,6 @@ export class PanelistController {
 
     async toggleAvailability(req: AuthenticatedRequest, res: Response): Promise<void> {
         try {
-            // Ensure the user object exist from the JWT token
             if (!req.user || !req.user.userId) {
                 res.status(401).json({ error: "Unauthorized!" });
                 return;
@@ -72,4 +85,4 @@ export class PanelistController {
             res.status(500).json({ error: error.message });
         }
     }
- }
+}
