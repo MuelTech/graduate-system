@@ -37,8 +37,11 @@ export default function AdminWaiverValidationPage() {
 
   // 2. Setup Mutations for Actions
   const validateMutation = useMutation({
-    mutationFn: async (id: string) =>
-      await apiClientRequest(`/waivers/${id}/validate`, { method: "PUT" }),
+    mutationFn: async ({ id, notes }: { id: string; notes?: string }) =>
+      await apiClientRequest(`/waivers/${id}/validate`, { 
+        method: "PUT",
+        body: JSON.stringify({ notes }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-waivers"] });
       setShowValidateConfirm(false);
@@ -46,6 +49,7 @@ export default function AdminWaiverValidationPage() {
       setAdminNotes("");
     },
   });
+
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: string; notes: string }) =>
@@ -284,7 +288,10 @@ export default function AdminWaiverValidationPage() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button
-                              onClick={() => setSelectedWaiverId(waiver.id)}
+                              onClick={() => {
+                                setSelectedWaiverId(waiver.id);
+                                setAdminNotes("");
+                              }}
                               className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                               title="Review"
                             >
@@ -539,7 +546,10 @@ export default function AdminWaiverValidationPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => validateMutation.mutate(selectedWaiverData.id)}
+                onClick={() => validateMutation.mutate({
+                  id: selectedWaiverData.id,
+                  notes: adminNotes.trim() || undefined,
+                })}
                 className="flex-1 bg-green-600 text-white hover:bg-green-700"
                 disabled={validateMutation.isPending}
               >
