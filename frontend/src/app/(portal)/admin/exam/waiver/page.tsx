@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Waiver } from "@/types";
 import {
   ShieldCheck,
   Clock,
@@ -14,103 +17,98 @@ import {
   Filter,
   Eye,
   ArrowRight,
+  Search,
 } from "lucide-react";
 
 export default function AdminWaiverValidationPage() {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedWaiver, setSelectedWaiver] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedWaiverId, setSelectedWaiverId] = useState<string | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [showValidateConfirm, setShowValidateConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
 
-  const waivers = [
-    {
-      id: 1,
-      name: "Pedro Reyes",
-      email: "pedro.reyes@gmail.com",
-      pinnacleId: "PIN-2026-003",
-      undergraduateCourse: "BS Information Technology",
-      intendedProgram: "Master of Science in Computer Science",
-      waiverDownloadedAt: "May 10, 2026 at 2:30 PM",
-      dateSubmitted: "May 12, 2026",
-      status: "pending" as "pending" | "validated" | "rejected",
-      adminNotes: null as string | null,
-      validatedBy: null as string | null,
-      validatedAt: null as string | null,
-    },
-    {
-      id: 2,
-      name: "Elena Torres",
-      email: "elena.torres@gmail.com",
-      pinnacleId: "PIN-2026-006",
-      undergraduateCourse: "BS Education",
-      intendedProgram: "Master of Science in Computer Science",
-      waiverDownloadedAt: "May 15, 2026 at 10:00 AM",
-      dateSubmitted: "May 18, 2026",
-      status: "pending" as "pending" | "validated" | "rejected",
-      adminNotes: null as string | null,
-      validatedBy: null as string | null,
-      validatedAt: null as string | null,
-    },
-    {
-      id: 3,
-      name: "Ana Garcia",
-      email: "ana.garcia@gmail.com",
-      pinnacleId: "PIN-2026-004",
-      undergraduateCourse: "BS Business Administration",
-      intendedProgram: "Master of Arts in Education",
-      waiverDownloadedAt: "May 5, 2026 at 3:15 PM",
-      dateSubmitted: "May 8, 2026",
-      status: "validated" as "pending" | "validated" | "rejected",
-      adminNotes: "Programs have sufficient overlap. Approved.",
-      validatedBy: "Admin",
-      validatedAt: "May 9, 2026 at 9:00 AM",
-    },
-    {
-      id: 4,
-      name: "Carlos Mendoza",
-      email: "carlos.mendoza@gmail.com",
-      pinnacleId: "PIN-2026-008",
-      undergraduateCourse: "BS Nursing",
-      intendedProgram: "Doctor of Information Technology",
-      waiverDownloadedAt: "May 20, 2026 at 1:00 PM",
-      dateSubmitted: "May 22, 2026",
-      status: "rejected" as "pending" | "validated" | "rejected",
-      adminNotes:
-        "No sufficient bridging coursework. Please contact GS Office.",
-      validatedBy: "Admin",
-      validatedAt: "May 23, 2026 at 11:00 AM",
-    },
-  ];
-
-  const filteredWaivers = waivers.filter((w) => {
-    if (statusFilter === "all") return true;
-    return w.status === statusFilter;
+  // 1. Fetch live queue from backend
+  const { data: waivers = [], isLoading } = useQuery<Waiver[]>({
+    queryKey: ["admin-waivers"],
+    queryFn: async () => await apiClientRequest("/waivers"),
   });
 
-  const selectedWaiverData = waivers.find((w) => w.id === selectedWaiver);
+  // 2. Setup Mutations for Actions
+  const validateMutation = useMutation({
+    mutationFn: async (id: string) =>
+      await apiClientRequest(`/waivers/${id}/validate`, { method: "PUT" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-waivers"] });
+      setShowValidateConfirm(false);
+      setSelectedWaiverId(null);
+      setAdminNotes("");
+    },
+  });
 
-  const pendingCount = waivers.filter((w) => w.status === "pending").length;
-  const validatedCount = waivers.filter((w) => w.status === "validated").length;
-  const rejectedCount = waivers.filter((w) => w.status === "rejected").length;
+  const rejectMutation = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) =>
+      await apiClientRequest(`/waivers/${id}/reject`, {
+        method: "PUT",
+        body: JSON.stringify({ notes }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-waivers"] });
+      setShowRejectModal(false);
+      setSelectedWaiverId(null);
+      setAdminNotes("");
+    },
+  });
+
+  // 3. Filter Logic (Search by Name/ID + Status dropdown)
+  const filteredWaivers = waivers.filter((w: Waiver) => {
+    const statusMatch =
+      statusFilter === "all" ||
+      w.status.toLowerCase() === statusFilter.toLowerCase();
+
+    const fullName =
+      `${w.student?.user?.firstName || ""} ${w.student?.user?.lastName || ""}`.toLowerCase();
+    const pinnacleId = w.student?.pinnacleApplicantId?.toLowerCase() || "";
+    const search = searchQuery.toLowerCase();
+
+    const searchMatch =
+      fullName.includes(search) || pinnacleId.includes(search);
+
+    return statusMatch && searchMatch;
+  });
+
+  const selectedWaiverData = waivers.find(
+    (w: Waiver) => w.id === selectedWaiverId,
+  );
+
+  const pendingCount = waivers.filter(
+    (w: Waiver) => w.status === "PENDING",
+  ).length;
+  const validatedCount = waivers.filter(
+    (w: Waiver) => w.status === "VALIDATED",
+  ).length;
+  const rejectedCount = waivers.filter(
+    (w: Waiver) => w.status === "REJECTED",
+  ).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
+      case "PENDING":
         return (
           <Badge className="bg-amber-100 text-amber-700">
             <Clock className="mr-1 h-3 w-3" />
             Pending
           </Badge>
         );
-      case "validated":
+      case "VALIDATED":
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle2 className="mr-1 h-3 w-3" />
             Validated
           </Badge>
         );
-      case "rejected":
+      case "REJECTED":
         return (
           <Badge className="bg-red-100 text-red-700">
             <XCircle className="mr-1 h-3 w-3" />
@@ -159,30 +157,45 @@ export default function AdminWaiverValidationPage() {
         </Card>
       </div>
 
-      {/* Status Filter */}
+      {/* Filter and Search Bar */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-(--earist-body-text)" />
-            <div className="flex gap-2">
-              {[
-                { value: "all", label: "All" },
-                { value: "pending", label: "Pending" },
-                { value: "validated", label: "Validated" },
-                { value: "rejected", label: "Rejected" },
-              ].map((filter) => (
-                <button
-                  key={filter.value}
-                  onClick={() => setStatusFilter(filter.value)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    statusFilter === filter.value
-                      ? "bg-(--earist-primary) text-white"
-                      : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-(--earist-body-text)" />
+              <div className="flex gap-2">
+                {[
+                  { value: "all", label: "All" },
+                  { value: "pending", label: "Pending" },
+                  { value: "validated", label: "Validated" },
+                  { value: "rejected", label: "Rejected" },
+                ].map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setStatusFilter(filter.value)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      statusFilter === filter.value
+                        ? "bg-(--earist-primary) text-white"
+                        : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search name or Applicant ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-(--earist-border-gray) bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-(--earist-primary)"
+              />
             </div>
           </div>
         </CardContent>
@@ -218,48 +231,69 @@ export default function AdminWaiverValidationPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredWaivers.map((waiver) => (
-                      <tr
-                        key={waiver.id}
-                        className={`border-b border-(--earist-border-gray) last:border-0 ${
-                          selectedWaiver === waiver.id
-                            ? "bg-(--earist-surface-light-red)"
-                            : ""
-                        }`}
-                      >
-                        <td className="px-4 py-3">
-                          <div>
-                            <p className="font-medium text-(--earist-primary)">
-                              {waiver.name}
-                            </p>
-                            <p className="text-xs text-(--earist-body-text)">
-                              {waiver.pinnacleId}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                          {waiver.undergraduateCourse}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                          {waiver.intendedProgram}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                          {waiver.dateSubmitted}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {getStatusBadge(waiver.status)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setSelectedWaiver(waiver.id)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Review"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                    {isLoading ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-8 text-center text-gray-500"
+                        >
+                          Loading waivers...
                         </td>
                       </tr>
-                    ))}
+                    ) : filteredWaivers.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-8 text-center text-gray-500"
+                        >
+                          No waivers found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredWaivers.map((waiver: Waiver) => (
+                        <tr
+                          key={waiver.id}
+                          className={`border-b border-(--earist-border-gray) last:border-0 ${
+                            selectedWaiverId === waiver.id
+                              ? "bg-(--earist-surface-light-red)"
+                              : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="font-medium text-(--earist-primary)">
+                                {waiver.student?.user?.firstName}{" "}
+                                {waiver.student?.user?.lastName}
+                              </p>
+                              <p className="text-xs text-(--earist-body-text)">
+                                {waiver.student?.pinnacleApplicantId}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
+                            {waiver.undergraduateProgram?.programName || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
+                            {waiver.intendedProgram?.programName || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-(--earist-body-text)">
+                            {new Date(waiver.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {getStatusBadge(waiver.status)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => setSelectedWaiverId(waiver.id)}
+                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                              title="Review"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -278,7 +312,7 @@ export default function AdminWaiverValidationPage() {
                   </CardTitle>
                   <button
                     onClick={() => {
-                      setSelectedWaiver(null);
+                      setSelectedWaiverId(null);
                       setAdminNotes("");
                     }}
                     className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
@@ -292,13 +326,14 @@ export default function AdminWaiverValidationPage() {
                   {/* Applicant Profile */}
                   <div className="rounded-lg bg-(--earist-surface-gray) p-3">
                     <p className="text-sm font-semibold text-(--earist-primary)">
-                      {selectedWaiverData.name}
+                      {selectedWaiverData.student?.user?.firstName}{" "}
+                      {selectedWaiverData.student?.user?.lastName}
                     </p>
                     <p className="text-xs text-(--earist-body-text)">
-                      {selectedWaiverData.email}
+                      {selectedWaiverData.student?.user?.email}
                     </p>
                     <p className="text-xs text-(--earist-body-text)">
-                      {selectedWaiverData.pinnacleId}
+                      {selectedWaiverData.student?.pinnacleApplicantId}
                     </p>
                   </div>
 
@@ -313,7 +348,8 @@ export default function AdminWaiverValidationPage() {
                           Undergraduate Course
                         </p>
                         <p className="text-sm font-medium text-(--earist-primary)">
-                          {selectedWaiverData.undergraduateCourse}
+                          {selectedWaiverData.undergraduateProgram
+                            ?.programName || "N/A"}
                         </p>
                       </div>
                       <div className="flex justify-center">
@@ -324,7 +360,8 @@ export default function AdminWaiverValidationPage() {
                           Intended Graduate Program
                         </p>
                         <p className="text-sm font-medium text-(--earist-primary)">
-                          {selectedWaiverData.intendedProgram}
+                          {selectedWaiverData.intendedProgram?.programName ||
+                            "N/A"}
                         </p>
                       </div>
                     </div>
@@ -336,7 +373,11 @@ export default function AdminWaiverValidationPage() {
                       Waiver Form Downloaded At
                     </p>
                     <p className="text-sm font-medium text-(--earist-primary)">
-                      {selectedWaiverData.waiverDownloadedAt}
+                      {selectedWaiverData.waiverFormDownloadedAt
+                        ? new Date(
+                            selectedWaiverData.waiverFormDownloadedAt,
+                          ).toLocaleString()
+                        : "Not downloaded yet"}
                     </p>
                   </div>
 
@@ -359,15 +400,18 @@ export default function AdminWaiverValidationPage() {
                       </p>
                       {selectedWaiverData.validatedBy && (
                         <p className="mt-1 text-xs text-(--earist-body-text)">
-                          By: {selectedWaiverData.validatedBy} &middot;{" "}
-                          {selectedWaiverData.validatedAt}
+                          By: {selectedWaiverData.validatedBy.firstName}{" "}
+                          {selectedWaiverData.validatedBy.lastName} &middot;{" "}
+                          {new Date(
+                            selectedWaiverData.validatedAt as string,
+                          ).toLocaleDateString()}
                         </p>
                       )}
                     </div>
                   )}
 
                   {/* Admin Notes Input (for pending) */}
-                  {selectedWaiverData.status === "pending" && (
+                  {selectedWaiverData.status === "PENDING" && (
                     <div>
                       <label className="mb-1 block text-xs font-semibold text-(--earist-secondary)">
                         Admin Notes
@@ -383,11 +427,14 @@ export default function AdminWaiverValidationPage() {
                   )}
 
                   {/* Action Buttons (for pending) */}
-                  {selectedWaiverData.status === "pending" && (
+                  {selectedWaiverData.status === "PENDING" && (
                     <div className="flex gap-2">
                       <Button
                         onClick={() => setShowValidateConfirm(true)}
                         className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                        disabled={
+                          validateMutation.isPending || rejectMutation.isPending
+                        }
                       >
                         <CheckCircle2 className="mr-1 h-3 w-3" />
                         Validate
@@ -396,6 +443,9 @@ export default function AdminWaiverValidationPage() {
                         onClick={() => setShowRejectModal(true)}
                         variant="outline"
                         className="flex-1 text-red-600 hover:bg-red-50"
+                        disabled={
+                          validateMutation.isPending || rejectMutation.isPending
+                        }
                       >
                         <XCircle className="mr-1 h-3 w-3" />
                         Reject
@@ -457,11 +507,12 @@ export default function AdminWaiverValidationPage() {
               </div>
               <div className="rounded-lg bg-(--earist-surface-gray) p-3">
                 <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedWaiverData.name}
+                  {selectedWaiverData.student?.user?.firstName}{" "}
+                  {selectedWaiverData.student?.user?.lastName}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
-                  {selectedWaiverData.pinnacleId} &middot;{" "}
-                  {selectedWaiverData.intendedProgram}
+                  {selectedWaiverData.student?.pinnacleApplicantId} &middot;{" "}
+                  {selectedWaiverData.intendedProgram?.programName}
                 </p>
               </div>
               {adminNotes && (
@@ -483,19 +534,19 @@ export default function AdminWaiverValidationPage() {
                 variant="outline"
                 onClick={() => setShowValidateConfirm(false)}
                 className="flex-1"
+                disabled={validateMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setShowValidateConfirm(false);
-                  setSelectedWaiver(null);
-                  setAdminNotes("");
-                }}
+                onClick={() => validateMutation.mutate(selectedWaiverData.id)}
                 className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                disabled={validateMutation.isPending}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                Confirm Validate
+                {validateMutation.isPending
+                  ? "Validating..."
+                  : "Confirm Validate"}
               </Button>
             </div>
           </div>
@@ -532,11 +583,12 @@ export default function AdminWaiverValidationPage() {
               </div>
               <div className="rounded-lg bg-(--earist-surface-gray) p-3">
                 <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedWaiverData.name}
+                  {selectedWaiverData.student?.user?.firstName}{" "}
+                  {selectedWaiverData.student?.user?.lastName}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
-                  {selectedWaiverData.pinnacleId} &middot;{" "}
-                  {selectedWaiverData.intendedProgram}
+                  {selectedWaiverData.student?.pinnacleApplicantId} &middot;{" "}
+                  {selectedWaiverData.intendedProgram?.programName}
                 </p>
               </div>
               <div>
@@ -563,16 +615,18 @@ export default function AdminWaiverValidationPage() {
                   setAdminNotes("");
                 }}
                 className="flex-1"
+                disabled={rejectMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
-                disabled={!adminNotes.trim()}
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setSelectedWaiver(null);
-                  setAdminNotes("");
-                }}
+                disabled={!adminNotes.trim() || rejectMutation.isPending}
+                onClick={() =>
+                  rejectMutation.mutate({
+                    id: selectedWaiverData.id,
+                    notes: adminNotes,
+                  })
+                }
                 className={`flex-1 ${
                   adminNotes.trim()
                     ? "bg-red-600 text-white hover:bg-red-700"
@@ -580,7 +634,7 @@ export default function AdminWaiverValidationPage() {
                 }`}
               >
                 <XCircle className="mr-2 h-4 w-4" />
-                Confirm Reject
+                {rejectMutation.isPending ? "Rejecting..." : "Confirm Reject"}
               </Button>
             </div>
           </div>
