@@ -368,4 +368,3 @@ export interface ActivityLogEntry {
   description: string;
   actor: string;
 }
-}
