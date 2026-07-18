@@ -14,6 +14,14 @@ import {
   Save,
   Eye,
 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function AdminExamScoresPage() {
   const [activeTab, setActiveTab] = useState<"queue" | "review">("queue");
@@ -21,6 +29,8 @@ export default function AdminExamScoresPage() {
     null,
   );
   const [essayScore, setEssayScore] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const essayQueue = [
     {
@@ -99,6 +109,14 @@ export default function AdminExamScoresPage() {
 
   const passingScore = 48;
 
+  const queueTotalPages = Math.ceil(essayQueue.length / pageSize);
+  const queueStart = (page - 1) * pageSize;
+  const paginatedQueue = essayQueue.slice(queueStart, queueStart + pageSize);
+
+  const reviewTotalPages = Math.ceil(scoreReview.length / pageSize);
+  const reviewStart = (page - 1) * pageSize;
+  const paginatedReview = scoreReview.slice(reviewStart, reviewStart + pageSize);
+
   const selectedApp = essayQueue.find((a) => a.id === selectedApplicant);
 
   const handleSaveScore = () => {
@@ -124,7 +142,7 @@ export default function AdminExamScoresPage() {
       {/* Tabs */}
       <div className="flex gap-2">
         <button
-          onClick={() => setActiveTab("queue")}
+          onClick={() => { setActiveTab("queue"); setPage(1); }}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "queue"
               ? "bg-(--earist-primary) text-white"
@@ -134,7 +152,7 @@ export default function AdminExamScoresPage() {
           Essay Grading Queue ({essayQueue.length})
         </button>
         <button
-          onClick={() => setActiveTab("review")}
+          onClick={() => { setActiveTab("review"); setPage(1); }}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "review"
               ? "bg-(--earist-primary) text-white"
@@ -150,7 +168,7 @@ export default function AdminExamScoresPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Queue List */}
           <div className="space-y-2">
-            {essayQueue.map((applicant) => (
+            {paginatedQueue.map((applicant) => (
               <button
                 key={applicant.id}
                 onClick={() => setSelectedApplicant(applicant.id)}
@@ -185,6 +203,37 @@ export default function AdminExamScoresPage() {
                 </div>
               </button>
             ))}
+            {queueTotalPages > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                      className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: queueTotalPages }, (_, i) => i + 1).map((p) => (
+                    <PaginationItem key={p}>
+                      <PaginationLink
+                        href="#"
+                        isActive={p === page}
+                        onClick={(e) => { e.preventDefault(); setPage(p); }}
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (page < queueTotalPages) setPage(page + 1); }}
+                      className={page >= queueTotalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
 
           {/* Essay Grading Form */}
@@ -363,7 +412,7 @@ export default function AdminExamScoresPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scoreReview.map((result) => {
+                  {paginatedReview.map((result) => {
                     const percentage = Math.round(
                       (result.totalScore / result.totalPossible) * 100,
                     );
@@ -452,6 +501,39 @@ export default function AdminExamScoresPage() {
                 </tbody>
               </table>
             </div>
+            {reviewTotalPages > 1 && (
+              <div className="border-t border-(--earist-border-gray) p-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                        className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: reviewTotalPages }, (_, i) => i + 1).map((p) => (
+                      <PaginationItem key={p}>
+                        <PaginationLink
+                          href="#"
+                          isActive={p === page}
+                          onClick={(e) => { e.preventDefault(); setPage(p); }}
+                        >
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); if (page < reviewTotalPages) setPage(page + 1); }}
+                        className={page >= reviewTotalPages ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

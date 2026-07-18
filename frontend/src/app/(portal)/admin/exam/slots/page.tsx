@@ -5,12 +5,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Plus, CalendarClock, Edit, Trash2, X, Users } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 import { ExamSlot as Slot, Program} from "@/types";
 
 export default function AdminExamSlotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const queryClient = useQueryClient();
 
   const { data: slots = [], isLoading: isSlotsLoading } = useQuery<Slot[]>({
@@ -31,6 +41,9 @@ export default function AdminExamSlotsPage() {
 
   const programs = programsData?.graduatePrograms || [];
   const isLoading = isSlotsLoading || isProgramsLoading;
+
+  const totalPages = Math.ceil(slots.length / pageSize);
+  const paginatedSlots = slots.slice((page - 1) * pageSize, page * pageSize);
 
   // Form State
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -254,7 +267,7 @@ export default function AdminExamSlotsPage() {
                     </td>
                   </tr>
                 )}
-                {slots.map((slot) => {
+                {paginatedSlots.map((slot) => {
                   const percentage = Math.round(
                     (slot.slotsTaken / slot.maxSlots) * 100,
                   );
@@ -347,6 +360,53 @@ export default function AdminExamSlotsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-(--earist-body-text)">
+            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, slots.length)} of {slots.length} slots
+          </p>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 1) setPage(page - 1);
+                  }}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <PaginationItem key={p}>
+                  <PaginationLink
+                    href="#"
+                    isActive={p === page}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage(p);
+                    }}
+                  >
+                    {p}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page < totalPages) setPage(page + 1);
+                  }}
+                  className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
 
       {/* Create Slot Modal */}
       {showCreateModal && (

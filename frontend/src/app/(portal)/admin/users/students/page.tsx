@@ -5,12 +5,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Search,
   Filter,
   Eye,
   GraduationCap,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   BookOpen,
 } from "lucide-react";
@@ -19,6 +25,8 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [programFilter, setProgramFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const students = [
     {
@@ -156,6 +164,9 @@ export default function AdminStudentsPage() {
 
     return true;
   });
+
+  const totalPages = Math.ceil(filteredStudents.length / pageSize);
+  const paginatedStudents = filteredStudents.slice((page - 1) * pageSize, page * pageSize);
 
   const activeCount = students.filter((s) => s.status === "active").length;
   const graduatedCount = students.filter(
@@ -337,7 +348,7 @@ export default function AdminStudentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student) => (
+                {paginatedStudents.map((student) => (
                   <tr
                     key={student.id}
                     className="border-b border-(--earist-border-gray) last:border-0"
@@ -411,22 +422,47 @@ export default function AdminStudentsPage() {
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Showing {filteredStudents.length} of {students.length} students
-            </p>
-            <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
-                1
-              </button>
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredStudents.length)} of {filteredStudents.length}
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage(page - 1)}
+                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (page <= 3) pageNum = i + 1;
+                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = page - 2 + i;
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          onClick={() => setPage(pageNum)}
+                          isActive={page === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage(page + 1)}
+                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
