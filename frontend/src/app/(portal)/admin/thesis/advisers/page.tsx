@@ -4,6 +4,14 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Users, CheckCircle2, UserPlus, Eye, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +28,9 @@ export default function AdminAdviseesPage() {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedAdviser, setSelectedAdviser] = useState("");
+  const [requestsPage, setRequestsPage] = useState(1);
+  const [assignmentsPage, setAssignmentsPage] = useState(1);
+  const pageSize = 10;
 
   const apiUrl =
     process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
@@ -190,6 +201,18 @@ export default function AdminAdviseesPage() {
     (a: ActiveAssignmentUI) => a.thesisStage === "completed",
   ).length;
 
+  // Pagination calculations
+  const requestsTotalPages = Math.ceil(adviserRequests.length / pageSize);
+  const paginatedRequests = adviserRequests.slice(
+    (requestsPage - 1) * pageSize,
+    requestsPage * pageSize,
+  );
+  const assignmentsTotalPages = Math.ceil(activeAssignments.length / pageSize);
+  const paginatedAssignments = activeAssignments.slice(
+    (assignmentsPage - 1) * pageSize,
+    assignmentsPage * pageSize,
+  );
+
   const selectedRequestData = adviserRequests.find(
     (r: AdviserRequestUI) => r.id === selectedRequest,
   );
@@ -287,7 +310,7 @@ export default function AdminAdviseesPage() {
       {activeTab === "requests" && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-2 lg:col-span-1">
-            {adviserRequests.map((request: AdviserRequestUI) => (
+            {paginatedRequests.map((request: AdviserRequestUI) => (
               <button
                 key={request.id}
                 onClick={() => setSelectedRequest(request.id)}
@@ -321,6 +344,72 @@ export default function AdminAdviseesPage() {
                 </p>
               </button>
             ))}
+            {requestsTotalPages > 1 && (
+              <div className="pt-2">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() =>
+                          setRequestsPage((p) => Math.max(1, p - 1))
+                        }
+                        className={
+                          requestsPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: requestsTotalPages }, (_, i) => i + 1)
+                      .filter(
+                        (p) =>
+                          p === 1 ||
+                          p === requestsTotalPages ||
+                          Math.abs(p - requestsPage) <= 1,
+                      )
+                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                          acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === "..." ? (
+                          <PaginationItem key={`ellipsis-${idx}`}>
+                            <span className="px-2 text-sm text-(--earist-body-text)">
+                              ...
+                            </span>
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              onClick={() => setRequestsPage(p as number)}
+                              isActive={requestsPage === p}
+                              className="cursor-pointer"
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ),
+                      )}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          setRequestsPage((p) =>
+                            Math.min(requestsTotalPages, p + 1),
+                          )
+                        }
+                        className={
+                          requestsPage === requestsTotalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </div>
 
           {selectedRequestData ? (
@@ -451,7 +540,7 @@ export default function AdminAdviseesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeAssignments.map((assignment: ActiveAssignmentUI) => (
+                  {paginatedAssignments.map((assignment: ActiveAssignmentUI) => (
                     <tr
                       key={assignment.id}
                       className="border-b border-(--earist-border-gray) last:border-0"
@@ -515,6 +604,75 @@ export default function AdminAdviseesPage() {
                 </tbody>
               </table>
             </div>
+            {assignmentsTotalPages > 1 && (
+              <div className="border-t border-(--earist-border-gray) px-4 py-3">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() =>
+                          setAssignmentsPage((p) => Math.max(1, p - 1))
+                        }
+                        className={
+                          assignmentsPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                    {Array.from(
+                      { length: assignmentsTotalPages },
+                      (_, i) => i + 1,
+                    )
+                      .filter(
+                        (p) =>
+                          p === 1 ||
+                          p === assignmentsTotalPages ||
+                          Math.abs(p - assignmentsPage) <= 1,
+                      )
+                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1)
+                          acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === "..." ? (
+                          <PaginationItem key={`ellipsis-${idx}`}>
+                            <span className="px-2 text-sm text-(--earist-body-text)">
+                              ...
+                            </span>
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              onClick={() => setAssignmentsPage(p as number)}
+                              isActive={assignmentsPage === p}
+                              className="cursor-pointer"
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ),
+                      )}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          setAssignmentsPage((p) =>
+                            Math.min(assignmentsTotalPages, p + 1),
+                          )
+                        }
+                        className={
+                          assignmentsPage === assignmentsTotalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,17 +11,29 @@ import {
   ShieldCheck,
   CalendarClock,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   X,
   RotateCcw,
   Ban,
 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function AdminExamApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedApp, setSelectedApp] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter]);
 
   const applications = [
     {
@@ -153,6 +165,12 @@ export default function AdminExamApplicationsPage() {
 
     return true;
   });
+
+  const totalPages = Math.ceil(filteredApplications.length / pageSize);
+  const paginatedApplications = filteredApplications.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   const selectedApplication = applications.find((a) => a.id === selectedApp);
 
@@ -312,7 +330,7 @@ export default function AdminExamApplicationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredApplications.map((app) => (
+                {paginatedApplications.map((app) => (
                   <tr
                     key={app.id}
                     className="border-b border-(--earist-border-gray) last:border-0"
@@ -389,20 +407,61 @@ export default function AdminExamApplicationsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
             <p className="text-xs text-(--earist-body-text)">
-              Showing {filteredApplications.length} of {applications.length}{" "}
-              applications
+              Showing {(page - 1) * pageSize + 1}–
+              {Math.min(page * pageSize, filteredApplications.length)} of{" "}
+              {filteredApplications.length} applications
             </p>
-            <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
-                1
-              </button>
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            {totalPages > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setPage(page - 1);
+                      }}
+                      className={
+                        page <= 1
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <PaginationItem key={p}>
+                        <PaginationLink
+                          href="#"
+                          isActive={p === page}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(p);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages) setPage(page + 1);
+                      }}
+                      className={
+                        page >= totalPages
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         </CardContent>
       </Card>

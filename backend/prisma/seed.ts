@@ -224,6 +224,159 @@ async function main() {
     console.log('Created Student test account');
   }
 
+  // 4. Applicant Test Accounts
+  const allPrograms = await prisma.program.findMany();
+  const allUndergradPrograms = await prisma.undergraduateProgram.findMany();
+
+  if (allPrograms.length > 0 && allUndergradPrograms.length > 0) {
+    // Applicant 1 - Aligned, Exam Passed, COR Verified (eligible for promotion)
+    await prisma.user.upsert({
+      where: { email: 'applicant1@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'applicant1@earist.edu.ph',
+        passwordHash,
+        firstName: 'Juan',
+        lastName: 'Dela Cruz',
+        role: 'APPLICANT',
+        student: {
+          create: {
+            cellphone: '+639171234567',
+            dateOfBirth: new Date('1998-01-15T00:00:00.000Z'),
+            pinnacleApplicantId: 'PIN-2026-001',
+            programId: allPrograms[0].id,
+            undergraduateProgramId: allUndergradPrograms[0].id,
+            admissionStatus: 'APPLICANT',
+            isProgramAligned: true,
+            alignmentStatus: 'ALIGNED',
+          }
+        }
+      }
+    });
+    console.log('Created Applicant 1 (Aligned, eligible)');
+
+    // Applicant 2 - Pending Waiver
+    await prisma.user.upsert({
+      where: { email: 'applicant2@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'applicant2@earist.edu.ph',
+        passwordHash,
+        firstName: 'Maria',
+        lastName: 'Santos',
+        role: 'APPLICANT',
+        student: {
+          create: {
+            cellphone: '+639181234567',
+            dateOfBirth: new Date('1999-03-20T00:00:00.000Z'),
+            pinnacleApplicantId: 'PIN-2026-002',
+            programId: allPrograms[0].id,
+            undergraduateProgramId: allUndergradPrograms.length > 1 ? allUndergradPrograms[1].id : allUndergradPrograms[0].id,
+            admissionStatus: 'APPLICANT',
+            isProgramAligned: false,
+            alignmentStatus: 'PENDING_WAIVER',
+          }
+        }
+      }
+    });
+    console.log('Created Applicant 2 (Pending Waiver)');
+
+    // Applicant 3 - Aligned, Exam Scheduled
+    await prisma.user.upsert({
+      where: { email: 'applicant3@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'applicant3@earist.edu.ph',
+        passwordHash,
+        firstName: 'Pedro',
+        lastName: 'Reyes',
+        role: 'APPLICANT',
+        student: {
+          create: {
+            cellphone: '+639191234567',
+            dateOfBirth: new Date('2000-06-10T00:00:00.000Z'),
+            pinnacleApplicantId: 'PIN-2026-003',
+            programId: allPrograms.length > 1 ? allPrograms[1].id : allPrograms[0].id,
+            undergraduateProgramId: allUndergradPrograms[0].id,
+            admissionStatus: 'APPLICANT',
+            isProgramAligned: true,
+            alignmentStatus: 'ALIGNED',
+          }
+        }
+      }
+    });
+    console.log('Created Applicant 3 (Aligned, Exam Scheduled)');
+
+    // Applicant 4 - Cleared (waiver validated)
+    await prisma.user.upsert({
+      where: { email: 'applicant4@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'applicant4@earist.edu.ph',
+        passwordHash,
+        firstName: 'Ana',
+        lastName: 'Garcia',
+        role: 'APPLICANT',
+        student: {
+          create: {
+            cellphone: '+639201234567',
+            dateOfBirth: new Date('1997-09-25T00:00:00.000Z'),
+            pinnacleApplicantId: 'PIN-2026-004',
+            programId: allPrograms[0].id,
+            undergraduateProgramId: allUndergradPrograms.length > 2 ? allUndergradPrograms[2].id : allUndergradPrograms[0].id,
+            admissionStatus: 'APPLICANT',
+            isProgramAligned: false,
+            alignmentStatus: 'CLEARED',
+          }
+        }
+      }
+    });
+    console.log('Created Applicant 4 (Cleared)');
+
+    // Applicants 5-12 for pagination testing
+    const additionalApplicants = [
+      { email: 'applicant5@earist.edu.ph', firstName: 'Carlos', lastName: 'Mendoza', alignment: 'ALIGNED' as const },
+      { email: 'applicant6@earist.edu.ph', firstName: 'Rosa', lastName: 'Lim', alignment: 'PENDING_WAIVER' as const },
+      { email: 'applicant7@earist.edu.ph', firstName: 'Miguel', lastName: 'Torres', alignment: 'ALIGNED' as const },
+      { email: 'applicant8@earist.edu.ph', firstName: 'Elena', lastName: 'Cruz', alignment: 'CLEARED' as const },
+      { email: 'applicant9@earist.edu.ph', firstName: 'Ricardo', lastName: 'Villanueva', alignment: 'ALIGNED' as const },
+      { email: 'applicant10@earist.edu.ph', firstName: 'Sofia', lastName: 'Aquino', alignment: 'PENDING_WAIVER' as const },
+      { email: 'applicant11@earist.edu.ph', firstName: 'Andres', lastName: 'Ramos', alignment: 'ALIGNED' as const },
+      { email: 'applicant12@earist.edu.ph', firstName: 'Isabel', lastName: 'Fernandez', alignment: 'CLEARED' as const },
+    ];
+
+    for (let i = 0; i < additionalApplicants.length; i++) {
+      const app = additionalApplicants[i];
+      const progIndex = i % allPrograms.length;
+      const undergradIndex = i % allUndergradPrograms.length;
+
+      await prisma.user.upsert({
+        where: { email: app.email },
+        update: {},
+        create: {
+          email: app.email,
+          passwordHash,
+          firstName: app.firstName,
+          lastName: app.lastName,
+          role: 'APPLICANT',
+          student: {
+            create: {
+              cellphone: `+63917${String(1000000 + i).slice(0, 7)}`,
+              dateOfBirth: new Date(`199${5 + (i % 5)}-0${(i % 9) + 1}-15T00:00:00.000Z`),
+              pinnacleApplicantId: `PIN-2026-${String(i + 5).padStart(3, '0')}`,
+              programId: allPrograms[progIndex].id,
+              undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
+              admissionStatus: 'APPLICANT',
+              isProgramAligned: app.alignment !== 'PENDING_WAIVER',
+              alignmentStatus: app.alignment,
+            }
+          }
+        }
+      });
+    }
+    console.log('Created Applicants 5-12 for pagination testing');
+  }
+
 }
 
 main()

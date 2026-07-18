@@ -4,8 +4,18 @@ import { useState, useEffect } from "react";
 import { AuditLogItem } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Settings,
   Calendar,
@@ -17,6 +27,8 @@ import {
   FileText,
   Mail,
   Lock,
+  Search,
+  Trash2,
 } from "lucide-react";
 
 type EmailTemplateItem = {
@@ -44,6 +56,14 @@ export default function AdminSettingsPage() {
   const [finalDefenseStart, setFinalDefenseStart] = useState("");
   const [finalDefenseEnd, setFinalDefenseEnd] = useState("");
 
+  // Audit Logs filters
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditStartDate, setAuditStartDate] = useState("");
+  const [auditEndDate, setAuditEndDate] = useState("");
+  const [selectedLogs, setSelectedLogs] = useState<string[]>([]);
+
   const tabs = [
     { id: "programs", label: "Programs", icon: BookOpen },
     { id: "chatbot", label: "AI Chatbot FAQ", icon: GraduationCap },
@@ -68,12 +88,57 @@ export default function AdminSettingsPage() {
   });
 
   // Fetch Audit Logs (Only when the tab is clicked)
-  const { data: auditLogs = [] } = useQuery({
-    queryKey: ["auditLogs"],
+  const { data: auditData, isLoading: auditLoading } = useQuery({
+    queryKey: ["auditLogs", auditPage, auditSearch, auditActionFilter, auditStartDate, auditEndDate],
     queryFn: async () => {
-      return await apiClientRequest("/settings/audit-logs");
+      const params = new URLSearchParams({
+        page: auditPage.toString(),
+        pageSize: "20",
+        search: auditSearch,
+        actionType: auditActionFilter,
+        startDate: auditStartDate,
+        endDate: auditEndDate,
+      });
+      return await apiClientRequest(`/settings/audit-logs?${params.toString()}`);
     },
-    enabled: activeTab === "audit", 
+    enabled: activeTab === "audit",
+  });
+
+  const auditLogs = auditData?.logs || [];
+  const auditTotal = auditData?.total || 0;
+  const auditTotalPages = Math.ceil(auditTotal / 20);
+
+  // Delete single audit log
+  const deleteLogMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiClientRequest(`/settings/audit-logs/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      toast.success("Audit log deleted.");
+      queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
+      setSelectedLogs([]);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Bulk delete audit logs
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiClientRequest("/settings/audit-logs/delete", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      });
+    },
+    onSuccess: (data) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ["auditLogs"] });
+      setSelectedLogs([]);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
   });
 
   // Fetch Email Templates
@@ -477,30 +542,140 @@ export default function AdminSettingsPage() {
           {activeTab === "audit" && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-bold text-(--earist-primary)">System Audit Logs</CardTitle>
-                <p className="text-sm text-(--earist-body-text)">Read-only record of all critical system modifications.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-bold text-(--earist-primary)">System Audit Logs</CardTitle>
+                    <p className="text-sm text-(--earist-body-text)">Track and manage all critical system modifications.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {selectedLogs.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Delete ${selectedLogs.length} selected log(s)?`)) {
+                            bulkDeleteMutation.mutate(selectedLogs);
+                          }
+                        }}
+                        disabled={bulkDeleteMutation.isPending}
+                      >
+                        <Trash2 className="mr-1 h-4 w-4" />
+                        Delete ({selectedLogs.length})
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
+                {/* Filters */}
+                <div className="mb-4 flex flex-wrap gap-3">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-gray-400 -translate-y-1/2" />
+                    <Input
+                      placeholder="Search logs..."
+                      value={auditSearch}
+                      onChange={(e) => { setAuditSearch(e.target.value); setAuditPage(1); }}
+                      className="pl-9"
+                    />
+                  </div>
+                  <select
+                    value={auditActionFilter}
+                    onChange={(e) => { setAuditActionFilter(e.target.value); setAuditPage(1); }}
+                    className="px-3 py-2 border rounded-md text-sm"
+                  >
+                    <option value="">All Actions</option>
+                    <option value="setting_changed">Setting Changed</option>
+                    <option value="user_promoted">User Promoted</option>
+                    <option value="waiver_validated">Waiver Validated</option>
+                    <option value="waiver_rejected">Waiver Rejected</option>
+                    <option value="cor_verified">COR Verified</option>
+                    <option value="cor_rejected">COR Rejected</option>
+                    <option value="role_assigned">Role Assigned</option>
+                    <option value="strikes_reset">Strikes Reset</option>
+                  </select>
+                  <Input
+                    type="date"
+                    value={auditStartDate}
+                    onChange={(e) => { setAuditStartDate(e.target.value); setAuditPage(1); }}
+                    className="w-[150px]"
+                    placeholder="Start date"
+                  />
+                  <Input
+                    type="date"
+                    value={auditEndDate}
+                    onChange={(e) => { setAuditEndDate(e.target.value); setAuditPage(1); }}
+                    className="w-[150px]"
+                    placeholder="End date"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAuditSearch("");
+                      setAuditActionFilter("");
+                      setAuditStartDate("");
+                      setAuditEndDate("");
+                      setAuditPage(1);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+
+                {/* Table */}
                 <div className="overflow-x-auto rounded-lg border border-(--earist-border-gray)">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-(--earist-surface-gray) text-xs uppercase text-(--earist-secondary)">
                       <tr>
+                        <th className="px-4 py-3 font-semibold w-10">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLogs(auditLogs.map((l: AuditLogItem) => l.id));
+                              } else {
+                                setSelectedLogs([]);
+                              }
+                            }}
+                            checked={selectedLogs.length === auditLogs.length && auditLogs.length > 0}
+                          />
+                        </th>
                         <th className="px-4 py-3 font-semibold">Timestamp</th>
                         <th className="px-4 py-3 font-semibold">User</th>
                         <th className="px-4 py-3 font-semibold">Action</th>
                         <th className="px-4 py-3 font-semibold">Details</th>
+                        <th className="px-4 py-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-(--earist-border-gray) bg-white">
-                      {auditLogs.length === 0 ? (
+                      {auditLoading ? (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-(--earist-body-text)">
-                            No audit logs recorded yet.
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500 animate-pulse">
+                            Loading audit logs...
+                          </td>
+                        </tr>
+                      ) : auditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-(--earist-body-text)">
+                            No audit logs found.
                           </td>
                         </tr>
                       ) : (
                         auditLogs.map((log: AuditLogItem) => (
                           <tr key={log.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedLogs.includes(log.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedLogs([...selectedLogs, log.id]);
+                                  } else {
+                                    setSelectedLogs(selectedLogs.filter(id => id !== log.id));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td className="whitespace-nowrap px-4 py-3 text-gray-600">
                               {new Date(log.createdAt).toLocaleString()}
                             </td>
@@ -518,12 +693,74 @@ export default function AdminSettingsPage() {
                             <td className="px-4 py-3 text-gray-600">
                               {log.description || `Modified ${log.targetTable || 'record'}`}
                             </td>
+                            <td className="px-4 py-3 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  if (confirm("Delete this audit log?")) {
+                                    deleteLogMutation.mutate(log.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {auditTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-gray-500">
+                      Showing {(auditPage - 1) * 20 + 1} to {Math.min(auditPage * 20, auditTotal)} of {auditTotal} logs
+                    </p>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setAuditPage(auditPage - 1)}
+                            className={auditPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: Math.min(5, auditTotalPages) }, (_, i) => {
+                          let pageNum: number;
+                          if (auditTotalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (auditPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (auditPage >= auditTotalPages - 2) {
+                            pageNum = auditTotalPages - 4 + i;
+                          } else {
+                            pageNum = auditPage - 2 + i;
+                          }
+                          return (
+                            <PaginationItem key={pageNum}>
+                              <PaginationLink
+                                onClick={() => setAuditPage(pageNum)}
+                                isActive={auditPage === pageNum}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setAuditPage(auditPage + 1)}
+                            className={auditPage === auditTotalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

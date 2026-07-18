@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PanelistResponse } from "@/types";
 import { Card, CardContent} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,17 @@ import {
   UserX,
   GraduationCap,
   Building,
-  ChevronLeft,
-  ChevronRight,
   X,
   Loader2,
 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useQuery, useMutation, useQueryClient} from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 
@@ -27,6 +33,8 @@ export default function AdminPanelistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
 const queryClient = useQueryClient();
 
@@ -126,6 +134,13 @@ const updateMutation = useMutation({
     if (typeFilter === "adviser") return p.isAvailableAsAdviser;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredPanelists.length / pageSize);
+  const paginatedPanelists = filteredPanelists.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, typeFilter]);
 
   const activeCount = panelists.filter((p) => p.status === "active").length;
   const internalCount = panelists.filter((p) => p.type === "internal").length;
@@ -259,7 +274,7 @@ const updateMutation = useMutation({
                 </tr>
               </thead>
               <tbody>
-                {filteredPanelists.map((panelist) => (
+                {paginatedPanelists.map((panelist) => (
                   <tr
                     key={panelist.id}
                     className="border-b border-(--earist-border-gray) last:border-0"
@@ -378,22 +393,40 @@ const updateMutation = useMutation({
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Showing {filteredPanelists.length} of {panelists.length} panelists
-            </p>
-            <div className="flex items-center gap-1">
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button className="rounded bg-(--earist-primary) px-2 py-1 text-xs text-white">
-                1
-              </button>
-              <button className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)">
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
+              <p className="text-xs text-(--earist-body-text)">
+                Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredPanelists.length)} of {filteredPanelists.length} panelists
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setPage(pageNum)}
+                        isActive={pageNum === page}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

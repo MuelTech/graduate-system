@@ -8,6 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Waiver } from "@/types";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   ShieldCheck,
   Clock,
   CheckCircle2,
@@ -28,6 +36,8 @@ export default function AdminWaiverValidationPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [showValidateConfirm, setShowValidateConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   // 1. Fetch live queue from backend
   const { data: waivers = [], isLoading } = useQuery<Waiver[]>({
@@ -49,7 +59,6 @@ export default function AdminWaiverValidationPage() {
       setAdminNotes("");
     },
   });
-
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: string; notes: string }) =>
@@ -81,6 +90,12 @@ export default function AdminWaiverValidationPage() {
 
     return statusMatch && searchMatch;
   });
+
+  const totalPages = Math.ceil(filteredWaivers.length / pageSize);
+  const paginatedWaivers = filteredWaivers.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
   const selectedWaiverData = waivers.find(
     (w: Waiver) => w.id === selectedWaiverId,
@@ -244,7 +259,7 @@ export default function AdminWaiverValidationPage() {
                           Loading waivers...
                         </td>
                       </tr>
-                    ) : filteredWaivers.length === 0 ? (
+                    ) : paginatedWaivers.length === 0 ? (
                       <tr>
                         <td
                           colSpan={6}
@@ -254,7 +269,7 @@ export default function AdminWaiverValidationPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredWaivers.map((waiver: Waiver) => (
+                      paginatedWaivers.map((waiver: Waiver) => (
                         <tr
                           key={waiver.id}
                           className={`border-b border-(--earist-border-gray) last:border-0 ${
@@ -306,6 +321,50 @@ export default function AdminWaiverValidationPage() {
               </div>
             </CardContent>
           </Card>
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setPage(page - 1);
+                      }}
+                      className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <PaginationItem key={p}>
+                        <PaginationLink
+                          href="#"
+                          isActive={p === page}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(p);
+                          }}
+                        >
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages) setPage(page + 1);
+                      }}
+                      className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
 
         {/* Review Panel */}
