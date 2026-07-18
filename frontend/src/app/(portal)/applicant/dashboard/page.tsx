@@ -47,9 +47,7 @@ export default async function ApplicantDashboard() {
         >
           Welcome, {applicant.firstName}
         </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          {applicant.program}
-        </p>
+        <p className="text-sm text-(--earist-body-text)">{applicant.program}</p>
         <p className="text-xs text-(--earist-body-text)">
           Applicant ID: {applicant.applicantId}
         </p>
@@ -152,31 +150,24 @@ export default async function ApplicantDashboard() {
             {applicant.alignmentStatus === "pending_waiver" && (
               <Alert className="mb-3 border-amber-200 bg-amber-50">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700">
-                  Your account is pending — download and submit your Bridging
-                  Waiver to the GS Office.
+                <AlertDescription className="text-amber-700 font-semibold">
+                  Action Required: You have a pending Bridging Waiver.
                 </AlertDescription>
-                <Button
-                  size="sm"
-                  className="mt-2 bg-amber-600 hover:bg-amber-700"
-                >
-                  <Download className="mr-1 h-3 w-3" />
-                  Download Waiver Form
-                </Button>
               </Alert>
             )}
-            <p className="mb-3 text-sm text-(--earist-body-text)">
+            <p className="mb-4 text-sm text-(--earist-body-text)">
               {applicant.alignmentStatus === "aligned"
                 ? "Your undergraduate program is aligned. You may proceed to schedule your exam."
                 : applicant.alignmentStatus === "pending_waiver"
-                  ? "Exam scheduling is locked until your waiver is validated."
+                  ? "Exam scheduling is locked until your waiver is submitted and validated."
                   : "Your waiver has been cleared. You may schedule your exam."}
             </p>
             <Link
               href="/applicant/alignment"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+              className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
             >
-              View Details <ArrowRight className="h-3 w-3" />
+              Proceed to Program Alignment Page{" "}
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </CardContent>
         </Card>
@@ -367,9 +358,7 @@ export default async function ApplicantDashboard() {
                 >
                   <div
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-                      notif.unread
-                        ? "bg-(--earist-accent)"
-                        : "bg-transparent"
+                      notif.unread ? "bg-(--earist-accent)" : "bg-transparent"
                     }`}
                   />
                   <div className="min-w-0 flex-1">

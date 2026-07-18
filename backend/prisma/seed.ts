@@ -275,6 +275,14 @@ async function main() {
             admissionStatus: 'APPLICANT',
             isProgramAligned: false,
             alignmentStatus: 'PENDING_WAIVER',
+            bridgingWaiver: {
+              create: {
+                intendedProgramId: allPrograms[0].id,
+                undergraduateProgramId: allUndergradPrograms.length > 1 ? allUndergradPrograms[1].id : allUndergradPrograms[0].id,
+                status: 'PENDING',
+                waiverFormDownloadedAt: new Date()
+              }
+            }
           }
         }
       }
@@ -327,6 +335,14 @@ async function main() {
             admissionStatus: 'APPLICANT',
             isProgramAligned: false,
             alignmentStatus: 'CLEARED',
+            bridgingWaiver: {
+              create: {
+                intendedProgramId: allPrograms[0].id,
+                undergraduateProgramId: allUndergradPrograms.length > 2 ? allUndergradPrograms[2].id : allUndergradPrograms[0].id,
+                status: 'VALIDATED',
+                validatedAt: new Date()
+              }
+            }
           }
         }
       }
@@ -369,6 +385,16 @@ async function main() {
               admissionStatus: 'APPLICANT',
               isProgramAligned: app.alignment !== 'PENDING_WAIVER',
               alignmentStatus: app.alignment,
+              ...(app.alignment !== 'ALIGNED' ? {
+                bridgingWaiver: {
+                  create: {
+                    intendedProgramId: allPrograms[progIndex].id,
+                    undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
+                    status: app.alignment === 'CLEARED' ? 'VALIDATED' : 'PENDING',
+                    ...(app.alignment === 'CLEARED' ? { validatedAt: new Date() } : { waiverFormDownloadedAt: new Date() })
+                  }
+                }
+              } : {})
             }
           }
         }

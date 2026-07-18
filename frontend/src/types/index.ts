@@ -266,6 +266,33 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+
+export interface Waiver {
+  id: string;
+  createdAt: string;
+  status: "PENDING" | "VALIDATED" | "REJECTED";
+  waiverFormDownloadedAt: string | null;
+  adminNotes: string | null;
+  validatedAt: string | null;
+  student: {
+    pinnacleApplicantId: string;
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  };
+  undergraduateProgram: {
+    programName: string;
+  } | null;
+  intendedProgram: {
+    programName: string;
+  } | null;
+  validatedBy: {
+    firstName: string;
+    lastName: string;
+  } | null;
+};
 // ADMIN APPLICANT INTERFACES
 export interface AdminApplicantListItem {
   id: string;
