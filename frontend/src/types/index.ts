@@ -122,6 +122,7 @@ export interface PanelistResponse {
     suffix?: string;
     isActive: boolean;
     createdAt: string;
+    updatedAt: string;
   };
   isExternal: boolean;
   highestEducationalAttainment: string;

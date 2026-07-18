@@ -28,6 +28,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 
@@ -107,6 +108,7 @@ type PanelistRow = {
   isAvailableAsAdviser: boolean;
   createdAt: string;
   userCreatedAt: string;
+  userUpdatedAt: string;
 };
 
 function formatDisplayName(p: PanelistRow) {
@@ -130,6 +132,7 @@ function mapPanelist(p: PanelistResponse): PanelistRow {
     isAvailableAsAdviser: p.isAvailableAsAdviser,
     createdAt: p.createdAt,
     userCreatedAt: p.user.createdAt,
+    userUpdatedAt: p.user.updatedAt || p.user.createdAt,
   };
 }
 
@@ -948,54 +951,30 @@ export default function AdminPanelistsPage() {
               <div className="border-t border-(--earist-border-gray) pt-3">
                 {/* Is Available as Adviser */}
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">
-                    Available as Adviser
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditForm({
-                        ...editForm,
-                        isAvailableAsAdviser: !editForm.isAvailableAsAdviser,
-                      })
-                    }
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      editForm.isAvailableAsAdviser
-                        ? "bg-(--earist-primary)"
-                        : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        editForm.isAvailableAsAdviser ? "translate-x-6" : "translate-x-1"
-                      }`}
+                  <Label className="text-sm text-(--earist-body-text)">Available as Adviser</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editForm.isAvailableAsAdviser}
+                      onCheckedChange={(checked) => setEditForm({ ...editForm, isAvailableAsAdviser: checked })}
                     />
-                  </button>
+                    <span className="text-xs text-(--earist-body-text)">
+                      {editForm.isAvailableAsAdviser ? "Yes" : "No"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Account Status */}
                 <div className="mt-3 flex items-center justify-between">
-                  <Label className="text-sm text-(--earist-body-text)">
-                    Account Status
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditForm({ ...editForm, isActive: !editForm.isActive })
-                    }
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      editForm.isActive ? "bg-green-500" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        editForm.isActive ? "translate-x-6" : "translate-x-1"
-                      }`}
+                  <Label className="text-sm text-(--earist-body-text)">Account Status</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={editForm.isActive}
+                      onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
                     />
-                  </button>
-                  <span className="text-xs text-(--earist-body-text)">
-                    {editForm.isActive ? "Active" : "Inactive"}
-                  </span>
+                    <span className="text-xs text-(--earist-body-text)">
+                      {editForm.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* New Password */}
@@ -1164,6 +1143,23 @@ export default function AdminPanelistsPage() {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
+                    }
+                  )}
+                </p>
+              </div>
+
+              {/* Last Updated */}
+              <div>
+                <p className="text-xs text-(--earist-body-text)">Last Updated</p>
+                <p className="text-sm text-(--earist-body-text)">
+                  {new Date(selectedPanelist.userUpdatedAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
                     }
                   )}
                 </p>
