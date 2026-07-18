@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `users` ADD COLUMN `suffix` VARCHAR(191) NULL,
+    ADD COLUMN `title` VARCHAR(191) NULL;

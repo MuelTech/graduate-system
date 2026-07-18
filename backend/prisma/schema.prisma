@@ -12,8 +12,10 @@ model User {
   passwordHash                       String                    @map("password_hash")
   role                               UserRole                  @default(APPLICANT)
   customRoleId                       String?                   @map("custom_role_id")
+  title                              String?
   firstName                          String                    @map("first_name")
   lastName                           String                    @map("last_name")
+  suffix                             String?
   isActive                           Boolean                   @default(true) @map("is_active")
   createdAt                          DateTime                  @default(now()) @map("created_at")
   updatedAt                          DateTime                  @updatedAt @map("updated_at")
