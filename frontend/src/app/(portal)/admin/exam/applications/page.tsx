@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
 import {
   Search,
   Filter,
   Eye,
-  ShieldCheck,
   CalendarClock,
   AlertTriangle,
   X,
@@ -23,135 +23,127 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { format } from "date-fns";
+import { ExamApplication, ApiExamApplication } from "@/types";
 
 export default function AdminExamApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedApp, setSelectedApp] = useState<number | null>(null);
+  const [selectedApp, setSelectedApp] = useState<ExamApplication | null>(null);
   const [page, setPage] = useState(1);
+  const [applications, setApplications] = useState<ExamApplication[]>([]);
+  const [loading, setLoading] = useState(true);
   const pageSize = 10;
+  const { data: session } = useSession();
 
+   const fetchApplications = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/exam/applications", {
+        headers: {
+          Authorization: `Bearer ${session?.user?.accessToken}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch applications");
+      const data = await res.json();
+
+      const mappedData = data.map(
+        (app: ApiExamApplication): ExamApplication => {
+          let scheduledSlot = "N/A";
+          if (app.slot) {
+            const dateStr = format(new Date(app.slot.examDate), "MMMM d, yyyy");
+            const timeStr = format(new Date(app.slot.examTime), "h:mm a");
+            scheduledSlot = `${dateStr} — ${timeStr}`;
+          }
+          return {
+            id: app.id,
+            name: `${app.student.user.firstName} ${app.student.user.lastName}`,
+            email: app.student.user.email,
+            pinnacleId: app.student.pinnacleApplicantId || "N/A",
+            program: app.program.programName,
+            scheduledSlot,
+            applicationDate: format(
+              new Date(app.applicationDate),
+              "MMMM d, yyyy",
+            ),
+            alignmentStatus:
+              app.student.alignmentStatus?.toLowerCase() || "aligned",
+            strikeCount: app.strikeCount,
+            status: app.status.toLowerCase(),
+          };
+        },
+      );
+      setApplications(mappedData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
   useEffect(() => {
-    setPage(1);
-  }, [searchQuery, statusFilter]);
-
-  const applications = [
-    {
-      id: 1,
-      name: "Juan Dela Cruz",
-      email: "juan.delacruz@gmail.com",
-      pinnacleId: "PIN-2026-001",
-      program: "MSCS",
-      scheduledSlot: "June 15, 2026 — 9:00 AM",
-      applicationDate: "May 5, 2026",
-      alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 0,
-      status: "confirmed" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 2,
-      name: "Maria Santos",
-      email: "maria.santos@gmail.com",
-      pinnacleId: "PIN-2026-002",
-      program: "MSCS",
-      scheduledSlot: "June 15, 2026 — 9:00 AM",
-      applicationDate: "May 6, 2026",
-      alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 0,
-      status: "completed" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 3,
-      name: "Pedro Reyes",
-      email: "pedro.reyes@gmail.com",
-      pinnacleId: "PIN-2026-003",
-      program: "MIT",
-      scheduledSlot: "June 15, 2026 — 1:00 PM",
-      applicationDate: "May 8, 2026",
-      alignmentStatus: "pending_waiver" as
-        | "aligned"
-        | "pending_waiver"
-        | "cleared",
-      strikeCount: 0,
-      status: "pending" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 4,
-      name: "Ana Garcia",
-      email: "ana.garcia@gmail.com",
-      pinnacleId: "PIN-2026-004",
-      program: "MAED",
-      scheduledSlot: "June 18, 2026 — 9:00 AM",
-      applicationDate: "May 10, 2026",
-      alignmentStatus: "cleared" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 1,
-      status: "confirmed" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 5,
-      name: "Carlos Luna",
-      email: "carlos.luna@gmail.com",
-      pinnacleId: "PIN-2026-005",
-      program: "PhD Education",
-      scheduledSlot: "June 15, 2026 — 9:00 AM",
-      applicationDate: "May 12, 2026",
-      alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 2,
-      status: "disqualified" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 6,
-      name: "Elena Torres",
-      email: "elena.torres@gmail.com",
-      pinnacleId: "PIN-2026-006",
-      program: "MSCS",
-      scheduledSlot: "June 20, 2026 — 9:00 AM",
-      applicationDate: "May 15, 2026",
-      alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 0,
-      status: "pending" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-    {
-      id: 7,
-      name: "Roberto Lim",
-      email: "roberto.lim@gmail.com",
-      pinnacleId: "PIN-2026-007",
-      program: "DIT",
-      scheduledSlot: "June 18, 2026 — 9:00 AM",
-      applicationDate: "May 18, 2026",
-      alignmentStatus: "aligned" as "aligned" | "pending_waiver" | "cleared",
-      strikeCount: 0,
-      status: "confirmed" as
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "disqualified",
-    },
-  ];
+    const init = async () => {
+      if (session?.user?.accessToken) {
+        await fetchApplications();
+      }
+    };
+    init();
+  }, [session, fetchApplications]);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1); // Reset page on filter change instead of using useEffect
+  };
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+    setPage(1); // Reset page on filter change instead of using useEffect
+  };
+  const handleResetStrikes = async (id: string) => {
+    if (!confirm("Are you sure you want to reset strikes for this applicant?"))
+      return;
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/exam/applications/${id}/reset-strikes`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        },
+      );
+      if (res.ok) {
+        if (selectedApp?.id === id) {
+          setSelectedApp({ ...selectedApp, strikeCount: 0 });
+        }
+        await fetchApplications();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  const handleDisqualify = async (id: string) => {
+    if (!confirm("Are you sure you want to disqualify this applicant?")) return;
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/exam/applications/${id}/disqualify`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        },
+      );
+      if (res.ok) {
+        if (selectedApp?.id === id) {
+          setSelectedApp({
+            ...selectedApp,
+            strikeCount: 2,
+            status: "disqualified",
+          });
+        }
+        await fetchApplications();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const filteredApplications = applications.filter((app) => {
     const matchesSearch =
@@ -160,9 +152,7 @@ export default function AdminExamApplicationsPage() {
       app.pinnacleId.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
-
     if (statusFilter !== "all" && app.status !== statusFilter) return false;
-
     return true;
   });
 
@@ -172,16 +162,17 @@ export default function AdminExamApplicationsPage() {
     page * pageSize,
   );
 
-  const selectedApplication = applications.find((a) => a.id === selectedApp);
-
   const pendingCount = applications.filter(
     (a) => a.status === "pending",
   ).length;
   const confirmedCount = applications.filter(
-    (a) => a.status === "confirmed",
+    (a) => a.status === "confirmed" || a.status === "approved",
   ).length;
   const completedCount = applications.filter(
-    (a) => a.status === "completed",
+    (a) =>
+      a.status === "completed" ||
+      a.status === "passed" ||
+      a.status === "failed",
   ).length;
   const disqualifiedCount = applications.filter(
     (a) => a.status === "disqualified",
@@ -191,8 +182,11 @@ export default function AdminExamApplicationsPage() {
     switch (status) {
       case "pending":
         return <Badge className="bg-amber-100 text-amber-700">Pending</Badge>;
+      case "approved":
       case "confirmed":
         return <Badge className="bg-blue-100 text-blue-700">Confirmed</Badge>;
+      case "passed":
+      case "failed":
       case "completed":
         return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
       case "disqualified":
@@ -216,6 +210,14 @@ export default function AdminExamApplicationsPage() {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Loading applications...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -254,9 +256,7 @@ export default function AdminExamApplicationsPage() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Disqualified
-            </p>
+            <p className="text-xs text-(--earist-body-text)">Disqualified</p>
             <p className="text-lg font-bold text-red-600">
               {disqualifiedCount}
             </p>
@@ -273,7 +273,7 @@ export default function AdminExamApplicationsPage() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 placeholder="Search by name, email, or Pinnacle ID..."
                 className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
               />
@@ -282,7 +282,7 @@ export default function AdminExamApplicationsPage() {
               <Filter className="h-4 w-4 text-(--earist-body-text)" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={handleFilterChange}
                 className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 <option value="all">All Status</option>
@@ -385,7 +385,7 @@ export default function AdminExamApplicationsPage() {
                         <button
                           className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                           title="View Details"
-                          onClick={() => setSelectedApp(app.id)}
+                          onClick={() => setSelectedApp(app)}
                         >
                           <Eye className="h-4 w-4" />
                         </button>
@@ -393,6 +393,7 @@ export default function AdminExamApplicationsPage() {
                           <button
                             className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
                             title="Reset Strike Count"
+                            onClick={() => handleResetStrikes(app.id)}
                           >
                             <RotateCcw className="h-4 w-4" />
                           </button>
@@ -467,7 +468,7 @@ export default function AdminExamApplicationsPage() {
       </Card>
 
       {/* Application Detail Modal */}
-      {selectedApplication && (
+      {selectedApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
@@ -484,36 +485,32 @@ export default function AdminExamApplicationsPage() {
             <div className="space-y-3">
               <div className="rounded-lg bg-(--earist-surface-gray) p-3">
                 <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedApplication.name}
+                  {selectedApp.name}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
-                  {selectedApplication.email}
+                  {selectedApp.email}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
-                  {selectedApplication.pinnacleId}
+                  {selectedApp.pinnacleId}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Program
-                  </p>
+                  <p className="text-xs text-(--earist-body-text)">Program</p>
                   <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedApplication.program}
+                    {selectedApp.program}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Alignment
-                  </p>
-                  {getAlignmentBadge(selectedApplication.alignmentStatus)}
+                  <p className="text-xs text-(--earist-body-text)">Alignment</p>
+                  {getAlignmentBadge(selectedApp.alignmentStatus)}
                 </div>
                 <div>
                   <p className="text-xs text-(--earist-body-text)">
                     Scheduled Slot
                   </p>
                   <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedApplication.scheduledSlot}
+                    {selectedApp.scheduledSlot}
                   </p>
                 </div>
                 <div>
@@ -521,7 +518,7 @@ export default function AdminExamApplicationsPage() {
                     Application Date
                   </p>
                   <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedApplication.applicationDate}
+                    {selectedApp.applicationDate}
                   </p>
                 </div>
                 <div>
@@ -529,36 +526,39 @@ export default function AdminExamApplicationsPage() {
                     Strike Count
                   </p>
                   <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedApplication.strikeCount}
+                    {selectedApp.strikeCount}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Status
-                  </p>
-                  {getStatusBadge(selectedApplication.status)}
+                  <p className="text-xs text-(--earist-body-text)">Status</p>
+                  {getStatusBadge(selectedApp.status)}
                 </div>
               </div>
-              {selectedApplication.strikeCount > 0 && (
+              {selectedApp.strikeCount > 0 && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs font-semibold text-amber-700">
                     Strike Management
                   </p>
                   <p className="text-xs text-amber-600">
-                    {selectedApplication.strikeCount >= 2
+                    {selectedApp.strikeCount >= 2
                       ? "This applicant has been disqualified (2 strikes)."
-                      : `${selectedApplication.strikeCount} strike(s) recorded. Two strikes result in disqualification.`}
+                      : `${selectedApp.strikeCount} strike(s) recorded. Two strikes result in disqualification.`}
                   </p>
                   <div className="mt-2 flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResetStrikes(selectedApp.id)}
+                    >
                       <RotateCcw className="mr-1 h-3 w-3" />
                       Reset Strikes
                     </Button>
-                    {selectedApplication.strikeCount < 2 && (
+                    {selectedApp.strikeCount < 2 && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-red-600"
+                        onClick={() => handleDisqualify(selectedApp.id)}
                       >
                         <Ban className="mr-1 h-3 w-3" />
                         Disqualify

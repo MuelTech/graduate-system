@@ -376,3 +376,39 @@ export interface ActivityLogEntry {
   description: string;
   actor: string;
 }
+
+export interface ExamApplication {
+  id: string;
+  name: string;
+  email: string;
+  pinnacleId: string;
+  program: string;
+  scheduledSlot: string;
+  applicationDate: string;
+  alignmentStatus: string;
+  strikeCount: number;
+  status: string;
+}
+
+export interface ApiExamApplication {
+  id: string;
+  slot?: {
+    examDate: string;
+    examTime: string;
+  };
+  student: {
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+    pinnacleApplicantId?: string;
+    alignmentStatus?: string;
+  };
+  program: {
+    programName: string;
+  };
+  applicationDate: string;
+  strikeCount: number;
+  status: string;
+}

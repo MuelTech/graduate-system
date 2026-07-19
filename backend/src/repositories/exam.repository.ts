@@ -82,4 +82,28 @@ export class ExamRepository {
             include: { student: { include: { user: true } } }
         });
     }
+
+    async getAllApplications() {
+        return prisma.entranceExamApplication.findMany({
+            include: {
+                student: {
+                    include: {
+                        user: true,
+                    }
+                },
+                program: true,
+                slot: true,
+            },
+            orderBy: {
+                applicationDate: 'desc'
+            }
+        });
+    }
+
+    async updateApplication(applicationId: string, data: Prisma.EntranceExamApplicationUncheckedUpdateInput) {
+        return prisma.entranceExamApplication.update({
+            where: { id: applicationId },
+            data
+        });
+    }
 }
