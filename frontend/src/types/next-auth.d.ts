@@ -5,6 +5,7 @@ declare module "next-auth" {
     id?: string;
     role?: string;
     accessToken?: string;
+    mustChangePassword?: boolean;
   }
 
   interface Session {
@@ -12,6 +13,7 @@ declare module "next-auth" {
       id: string;
       role: string;
       accessToken: string;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -21,5 +23,6 @@ declare module "@auth/core/jwt" {
     id: string;
     role: string;
     accessToken: string;
+    mustChangePassword: boolean;
   }
 }

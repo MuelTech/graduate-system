@@ -26,6 +26,7 @@ export interface UserResponse {
   id: string;
   email: string;
   role: UserRole;
+  mustChangePassword: boolean;
 }
 
 export interface LoginResponse {

@@ -57,6 +57,7 @@ export class PanelistRepository {
                     suffix: data.suffix || null,
                     role: UserRole.PANELIST,
                     isActive: true,
+                    mustChangePassword: true,
                     createdById: adminId,
                     updatedById: adminId,
                 },
