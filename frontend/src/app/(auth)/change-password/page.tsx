@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { update } = useSession();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,16 +33,35 @@ export default function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
-      const result = await apiClientRequest("/auth/change-password", {
+      // Get current session to get email for re-login
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
+
+      // Change password on backend
+      await apiClientRequest("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });
 
-      // Update session with new token (which has mustChangePassword: false)
-      await update({ accessToken: result.token, mustChangePassword: false });
-
       toast.success("Password changed successfully!");
-      router.push("/panelist/dashboard");
+
+      // Auto-login with new password to get fresh JWT
+      const email = session?.user?.email;
+      if (email) {
+        const result = await signIn("credentials", {
+          email,
+          password: newPassword,
+          redirect: false,
+        });
+
+        if (result?.ok) {
+          router.push("/panelist/dashboard");
+        } else {
+          router.push("/login");
+        }
+      } else {
+        router.push("/login");
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to change password";
       toast.error(message);
