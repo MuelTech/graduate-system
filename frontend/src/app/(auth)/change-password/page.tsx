@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,35 +33,15 @@ export default function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
-      // Get current session to get email for re-login
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-
-      // Change password on backend
       await apiClientRequest("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });
 
-      toast.success("Password changed successfully!");
+      toast.success("Password changed successfully! Please login with your new password.");
 
-      // Auto-login with new password to get fresh JWT
-      const email = session?.user?.email;
-      if (email) {
-        const result = await signIn("credentials", {
-          email,
-          password: newPassword,
-          redirect: false,
-        });
-
-        if (result?.ok) {
-          router.push("/panelist/dashboard");
-        } else {
-          router.push("/login");
-        }
-      } else {
-        router.push("/login");
-      }
+      // Sign out to clear old JWT, redirect to login
+      await signOut({ callbackUrl: "/login" });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to change password";
       toast.error(message);
