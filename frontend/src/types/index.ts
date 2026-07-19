@@ -123,6 +123,8 @@ export interface PanelistResponse {
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
+    createdBy?: { firstName: string; lastName: string } | null;
+    updatedBy?: { firstName: string; lastName: string } | null;
   };
   isExternal: boolean;
   highestEducationalAttainment: string;

@@ -12,33 +12,29 @@ export class PanelistService {
         return panelistRepository.findById(id);
     }
 
-    async createPanelist(data: any) {
-        // Check if email is already in use
+    async createPanelist(data: any, adminId: string) {
         const existingUser = await panelistRepository.checkEmailInUse(data.email);
         if (existingUser) {
             throw new Error("Email is already in use by another account.");
         }
 
-        // Hash default password (LASTNAME uppercase)
         const salt = await bcrypt.genSalt(10);
         const defaultPassword = data.lastName.toUpperCase();
         const passwordHash = await bcrypt.hash(defaultPassword, salt);
 
-        const panelist = await panelistRepository.createWithUserTransaction(data, passwordHash);
+        const panelist = await panelistRepository.createWithUserTransaction(data, passwordHash, adminId);
 
-        // Return panelist with default password for display
         return { ...panelist, defaultPassword };
     }
 
-    async updatePanelist(id: string, data: any) {
-        // Handle password reset if provided
+    async updatePanelist(id: string, data: any, adminId: string) {
         let passwordHash: string | undefined;
         if (data.password && data.password.trim() !== '') {
             const salt = await bcrypt.genSalt(10);
             passwordHash = await bcrypt.hash(data.password, salt);
         }
 
-        return panelistRepository.updateWithUserTransaction(id, data, passwordHash);
+        return panelistRepository.updateWithUserTransaction(id, data, adminId, passwordHash);
     }
 
     async toggleAvailability(userId: string, isAvailableAsAdviser: boolean) {

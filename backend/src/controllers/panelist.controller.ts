@@ -28,9 +28,14 @@ export class PanelistController {
         }
     }
 
-    async createPanelist(req: Request, res: Response) {
+    async createPanelist(req: AuthenticatedRequest, res: Response) {
         try {
-            const panelist = await panelistService.createPanelist(req.body);
+            const adminId = req.user?.userId;
+            if (!adminId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+            const panelist = await panelistService.createPanelist(req.body, adminId);
             res.status(201).json(panelist);
         } catch (error: any) {
             if (error.message === "Email is already in use by another account.") {
@@ -41,10 +46,15 @@ export class PanelistController {
         }
     }
 
-    async updatePanelist(req: Request, res: Response) {
+    async updatePanelist(req: AuthenticatedRequest, res: Response) {
         try {
+            const adminId = req.user?.userId;
+            if (!adminId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
             const id = req.params.id as string;
-            const updated = await panelistService.updatePanelist(id, req.body);
+            const updated = await panelistService.updatePanelist(id, req.body, adminId);
             res.json(updated);
         } catch (error: any) {
             res.status(500).json({ error: error.message });

@@ -109,6 +109,8 @@ type PanelistRow = {
   createdAt: string;
   userCreatedAt: string;
   userUpdatedAt: string;
+  createdByName?: string;
+  updatedByName?: string;
 };
 
 function formatDisplayName(p: PanelistRow) {
@@ -133,6 +135,8 @@ function mapPanelist(p: PanelistResponse): PanelistRow {
     createdAt: p.createdAt,
     userCreatedAt: p.user.createdAt,
     userUpdatedAt: p.user.updatedAt || p.user.createdAt,
+    createdByName: p.user?.createdBy ? `${p.user.createdBy.firstName} ${p.user.createdBy.lastName}` : undefined,
+    updatedByName: p.user?.updatedBy ? `${p.user.updatedBy.firstName} ${p.user.updatedBy.lastName}` : undefined,
   };
 }
 
@@ -1133,36 +1137,47 @@ export default function AdminPanelistsPage() {
                 </Badge>
               </div>
 
-              {/* Created At */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Created At</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {new Date(selectedPanelist.userCreatedAt).toLocaleDateString(
-                    "en-US",
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }
+              {/* Account History */}
+              <div className="border-t border-(--earist-border-gray) pt-4">
+                <p className="text-xs font-semibold text-(--earist-primary) uppercase tracking-wide mb-3">Account History</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-(--earist-body-text)">Created At</span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(selectedPanelist.userCreatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  {selectedPanelist.createdByName && (
+                    <div className="flex justify-between">
+                      <span className="text-xs text-(--earist-body-text)">Created By</span>
+                      <span className="text-sm text-gray-900">{selectedPanelist.createdByName}</span>
+                    </div>
                   )}
-                </p>
-              </div>
-
-              {/* Last Updated */}
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Last Updated</p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {new Date(selectedPanelist.userUpdatedAt).toLocaleDateString(
-                    "en-US",
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    }
+                  <div className="flex justify-between">
+                    <span className="text-xs text-(--earist-body-text)">Last Updated</span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(selectedPanelist.userUpdatedAt || selectedPanelist.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  {selectedPanelist.updatedByName && (
+                    <div className="flex justify-between">
+                      <span className="text-xs text-(--earist-body-text)">Updated By</span>
+                      <span className="text-sm text-gray-900">{selectedPanelist.updatedByName}</span>
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
             </div>
 
