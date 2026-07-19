@@ -50,8 +50,8 @@ export class AuthController {
                 return;
             }
 
-            await this.authService.changePassword(userId, newPassword);
-            res.status(200).json({ message: "Password changed successfully" });
+            const result = await this.authService.changePassword(userId, newPassword);
+            res.status(200).json({ message: "Password changed successfully", token: result.token });
         } catch (error: unknown) {
             if (error instanceof AppError) {
                 res.status(error.statusCode).json({ error: error.message });

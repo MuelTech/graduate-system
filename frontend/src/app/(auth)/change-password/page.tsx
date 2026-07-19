@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const { update } = useSession();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,15 +34,16 @@ export default function ChangePasswordPage() {
 
     setIsLoading(true);
     try {
-      await apiClientRequest("/auth/change-password", {
+      const result = await apiClientRequest("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });
 
-      toast.success("Password changed successfully! Please login with your new password.");
+      // Update session with new token (which has mustChangePassword: false)
+      await update({ accessToken: result.token, mustChangePassword: false });
 
-      // Sign out to clear old JWT, then redirect to login
-      await signOut({ callbackUrl: "/login" });
+      toast.success("Password changed successfully!");
+      router.push("/panelist/dashboard");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to change password";
       toast.error(message);

@@ -207,10 +207,25 @@ export class AuthService {
         };
     }
 
-    async changePassword(userId: string, newPassword: string): Promise<void> {
+    async changePassword(userId: string, newPassword: string): Promise<{ token: string }> {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(newPassword, salt);
 
         await this.authRepository.updatePassword(userId, passwordHash);
+
+        // Get updated user to issue new JWT
+        const user = await this.authRepository.findUserById(userId);
+        if (!user) {
+            throw new AppError("User not found!", 404);
+        }
+
+        // Issue new JWT with mustChangePassword: false
+        const token = jwt.sign(
+            { userId: user.id, role: user.role, mustChangePassword: false },
+            this.getJwtSecret(),
+            { expiresIn: '24h' }
+        );
+
+        return { token };
     }
 }
