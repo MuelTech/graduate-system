@@ -150,7 +150,7 @@ export class AuthService {
         // 6. Save atomically
         const newUser = await this.authRepository.registerApplicant(userData, studentData, bridgingWaiverData);
 
-        return { id: newUser.id, email: newUser.email, role: newUser.role }
+        return { id: newUser.id, email: newUser.email, role: newUser.role, mustChangePassword: false }
     }
 
     async login(data: LoginInput): Promise<LoginResponse> {
@@ -191,14 +191,41 @@ export class AuthService {
         }
 
         const token = jwt.sign(
-            { userId: user.id, role: user.role },
+            { userId: user.id, role: user.role, mustChangePassword: user.mustChangePassword },
             this.getJwtSecret(),
             { expiresIn: '24h' }
         );
 
         return {
             token,
-            user: { id: user.id, email: user.email, role: user.role },
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                mustChangePassword: user.mustChangePassword,
+            },
         };
+    }
+
+    async changePassword(userId: string, newPassword: string): Promise<{ token: string }> {
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(newPassword, salt);
+
+        await this.authRepository.updatePassword(userId, passwordHash);
+
+        // Get updated user to issue new JWT
+        const user = await this.authRepository.findUserById(userId);
+        if (!user) {
+            throw new AppError("User not found!", 404);
+        }
+
+        // Issue new JWT with mustChangePassword: false
+        const token = jwt.sign(
+            { userId: user.id, role: user.role, mustChangePassword: false },
+            this.getJwtSecret(),
+            { expiresIn: '24h' }
+        );
+
+        return { token };
     }
 }

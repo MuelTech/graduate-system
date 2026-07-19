@@ -79,4 +79,20 @@ export class AuthRepository {
             return newUser;
         });
     }
+
+    async updatePassword(userId: string, passwordHash: string): Promise<void> {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                passwordHash,
+                mustChangePassword: false,
+            },
+        });
+    }
+
+    async findUserById(userId: string) {
+        return prisma.user.findUnique({
+            where: { id: userId },
+        });
+    }
 }

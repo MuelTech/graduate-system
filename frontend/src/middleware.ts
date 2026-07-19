@@ -16,6 +16,17 @@ export default auth((req: NextRequest & { auth: Session | null }) => {
   }
 
   const role = token.user?.role;
+  const mustChangePassword = token.user?.mustChangePassword;
+
+  // Force panelists to change password on first login
+  if (role === "panelist" && mustChangePassword && path !== "/change-password") {
+    return NextResponse.redirect(new URL("/change-password", req.url));
+  }
+
+  // Allow change-password page access for panelists
+  if (path === "/change-password" && role === "panelist") {
+    return NextResponse.next();
+  }
 
   if (path.startsWith("/applicant") && role !== "applicant") {
     return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
@@ -40,5 +51,6 @@ export const config = {
     "/student/:path*",
     "/admin/:path*",
     "/panelist/:path*",
+    "/change-password",
   ],
 };

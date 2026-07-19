@@ -2,15 +2,42 @@ import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { UserRole } from "@prisma/client";
 
+const userSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    title: true,
+    suffix: true,
+    isActive: true,
+    createdAt: true,
+    updatedAt: true,
+    createdBy: {
+        select: {
+            firstName: true,
+            lastName: true,
+        },
+    },
+    updatedBy: {
+        select: {
+            firstName: true,
+            lastName: true,
+        },
+    },
+};
+
 export class PanelistRepository {
     async findAll() {
         return prisma.panelist.findMany({
-            include: {
-                user: {
-                    select: { firstName: true, lastName: true, email: true, isActive: true },
-                },
-            },
+            include: { user: { select: userSelect } },
             orderBy: { createdAt: "desc" },
+        });
+    }
+
+    async findById(id: string) {
+        return prisma.panelist.findUnique({
+            where: { id },
+            include: { user: { select: userSelect } },
         });
     }
 
@@ -18,16 +45,21 @@ export class PanelistRepository {
         return prisma.user.findUnique({ where: { email } });
     }
 
-    async createWithUserTransaction(data: any, passwordHash: string) {
+    async createWithUserTransaction(data: any, passwordHash: string, adminId: string) {
         return prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
                     email: data.email,
                     passwordHash,
+                    title: data.title || null,
                     firstName: data.firstName,
                     lastName: data.lastName,
+                    suffix: data.suffix || null,
                     role: UserRole.PANELIST,
                     isActive: true,
+                    mustChangePassword: true,
+                    createdById: adminId,
+                    updatedById: adminId,
                 },
             });
 
@@ -38,17 +70,15 @@ export class PanelistRepository {
                     officeAffiliation: data.officeAffiliation,
                     specialization: data.specialization,
                     isExternal: data.isExternal,
-                    isAvailableAsAdviser: true, // Default to available
+                    isAvailableAsAdviser: true,
                 },
-                include: {
-                    user: { select: { firstName: true, lastName: true, email: true, isActive: true } },
-                },
+                include: { user: { select: userSelect } },
             });
             return panelist;
         });
     }
 
-    async updateWithUserTransaction(id: string, data: any) {
+    async updateWithUserTransaction(id: string, data: any, adminId: string, passwordHash?: string) {
         return prisma.$transaction(async (tx) => {
             const panelistRecord = await tx.panelist.findUnique({
                 where: { id },
@@ -57,16 +87,22 @@ export class PanelistRepository {
 
             if (!panelistRecord) throw new Error("Panelist not found!");
 
-            if (data.firstName || data.lastName || data.isActive !== undefined) {
-                await tx.user.update({
-                    where: { id: panelistRecord.userId },
-                    data: {
-                        firstName: data.firstName,
-                        lastName: data.lastName,
-                        isActive: data.isActive,
-                    },
-                });
+            const userData: any = {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                title: data.title || null,
+                suffix: data.suffix || null,
+                isActive: data.isActive,
+                updatedById: adminId,
+            };
+            if (passwordHash) {
+                userData.passwordHash = passwordHash;
             }
+
+            await tx.user.update({
+                where: { id: panelistRecord.userId },
+                data: userData,
+            });
 
             return tx.panelist.update({
                 where: { id },
@@ -77,9 +113,7 @@ export class PanelistRepository {
                     isExternal: data.isExternal,
                     isAvailableAsAdviser: data.isAvailableAsAdviser,
                 },
-                include: {
-                    user: { select: { firstName: true, lastName: true, email: true, isActive: true } },
-                },
+                include: { user: { select: userSelect } },
             });
         });
     }

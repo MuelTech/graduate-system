@@ -140,4 +140,52 @@ export class ExamController {
         .json({ error: error.message || "An unexpected error occurred." });
     }
   };
+
+  getAllApplications = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const applications = await this.examService.getAllApplications();
+      res.status(200).json(applications);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
+
+  resetStrikes = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const application = await this.examService.resetStrikes(id);
+      res
+        .status(200)
+        .json({ message: "Strikes reset successfully.", application });
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
+
+  disqualifyApplication = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const application = await this.examService.disqualifyApplication(id);
+      res
+        .status(200)
+        .json({ message: "Applicant disqualified successfully.", application });
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ error: error.message || "An unexpected error occurred." });
+    }
+  };
 }

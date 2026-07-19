@@ -114,16 +114,24 @@ export interface Panelist {
 export interface PanelistResponse {
   id: string;
   user: {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
+    title?: string;
+    suffix?: string;
     isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    createdBy?: { firstName: string; lastName: string } | null;
+    updatedBy?: { firstName: string; lastName: string } | null;
   };
   isExternal: boolean;
   highestEducationalAttainment: string;
   officeAffiliation: string;
   specialization: string;
   isAvailableAsAdviser: boolean;
+  createdAt: string;
 }
 
 // ADMIN THESIS INTERFACES
@@ -367,4 +375,40 @@ export interface ActivityLogEntry {
   action: string;
   description: string;
   actor: string;
+}
+
+export interface ExamApplication {
+  id: string;
+  name: string;
+  email: string;
+  pinnacleId: string;
+  program: string;
+  scheduledSlot: string;
+  applicationDate: string;
+  alignmentStatus: string;
+  strikeCount: number;
+  status: string;
+}
+
+export interface ApiExamApplication {
+  id: string;
+  slot?: {
+    examDate: string;
+    examTime: string;
+  };
+  student: {
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+    pinnacleApplicantId?: string;
+    alignmentStatus?: string;
+  };
+  program: {
+    programName: string;
+  };
+  applicationDate: string;
+  strikeCount: number;
+  status: string;
 }

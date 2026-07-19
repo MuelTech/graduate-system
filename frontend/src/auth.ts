@@ -28,6 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: data.user.email,
             role: data.user.role,
             accessToken: data.token,
+            mustChangePassword: data.user.mustChangePassword,
           };
         }
         class CustomError extends CredentialsSignin {
@@ -47,6 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id!;
         token.role = user.role?.toLowerCase() ?? "";
         token.accessToken = user.accessToken ?? "";
+        token.mustChangePassword = user.mustChangePassword ?? false;
       }
       return token;
     },
@@ -55,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.accessToken = token.accessToken;
+        session.user.mustChangePassword = token.mustChangePassword;
       }
       return session;
     },

@@ -113,4 +113,20 @@ export class ExamService {
     async toggleSlotStatus(slotId: string, isActive: boolean) {
         return this.examRepo.updateSlot(slotId, { isActive });
     }
+
+    async getAllApplications() {
+        return this.examRepo.getAllApplications();
+    }
+
+    async resetStrikes(applicationId: string) {
+        return this.examRepo.updateApplication(applicationId, { strikeCount: 0 });
+    }
+
+    async disqualifyApplication(applicationId: string) {
+        // 2 strikes is the threshold for disqualification, and we mark the status as DISQUALIFIED
+        return this.examRepo.updateApplication(applicationId, {
+            strikeCount: 2,
+            status: ExamAppStatus.DISQUALIFIED
+        });
+    }
 }
