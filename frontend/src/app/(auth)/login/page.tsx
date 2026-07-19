@@ -1,7 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { GraduationCap, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 
 type UserRole = "applicant" | "student" | "admin" | "panelist" | "other";
 
@@ -27,6 +27,7 @@ const roles: { value: UserRole; label: string }[] = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [role, setRole] = useState<UserRole>("applicant");
   const [showPassword, setShowPassword] = useState(false);
   const [applicantId, setApplicantId] = useState("");
@@ -35,7 +36,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("passwordChanged") === "true") {
+      setSuccess("Password changed successfully! Please login with your new password.");
+    }
+  }, [searchParams]);
 
   const clearFields = () => {
     setApplicantId("");
@@ -142,6 +150,13 @@ export default function LoginPage() {
               <Alert variant="destructive" className="mb-5">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="mb-5 border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 

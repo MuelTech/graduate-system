@@ -38,10 +38,8 @@ export default function ChangePasswordPage() {
         body: JSON.stringify({ newPassword }),
       });
 
-      toast.success("Password changed successfully! Please login with your new password.");
-
-      // Sign out to clear old JWT, redirect to login
-      await signOut({ callbackUrl: "/login" });
+      // Sign out and redirect to login with success message
+      await signOut({ callbackUrl: "/login?passwordChanged=true" });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to change password";
       toast.error(message);
