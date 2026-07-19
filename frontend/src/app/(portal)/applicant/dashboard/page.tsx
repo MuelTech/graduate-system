@@ -162,13 +162,22 @@ export default async function ApplicantDashboard() {
                   ? "Exam scheduling is locked until your waiver is submitted and validated."
                   : "Your waiver has been cleared. You may schedule your exam."}
             </p>
-            <Link
-              href="/applicant/alignment"
-              className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
-            >
-              Proceed to Program Alignment Page{" "}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+                        {applicant.alignmentStatus === "aligned" ? (
+              <Link
+                href="/applicant/schedule"
+                className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
+              >
+                Proceed to Exam Schedule Page <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Link
+                href="/applicant/alignment"
+                className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
+              >
+                Proceed to Program Alignment Page{" "}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </CardContent>
         </Card>
 
