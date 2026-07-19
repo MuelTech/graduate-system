@@ -19,6 +19,7 @@ import {
   Loader2,
   UserCheck,
   UserX,
+  Info,
 } from "lucide-react";
 import {
   Pagination,
@@ -584,6 +585,23 @@ export default function AdminPanelistsPage() {
               >
                 <X className="h-5 w-5" />
               </button>
+            </div>
+
+            {/* Default Password Info Banner */}
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold">Default Password</p>
+                <p>
+                  The panelist's default password is their{" "}
+                  <strong>LAST NAME in ALL CAPS</strong> (e.g., "Marcial" →{" "}
+                  <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
+                    MARCIAL
+                  </code>
+                  ). The panelist will be required to change this password upon
+                  first login.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3">
