@@ -61,10 +61,6 @@ export default function AdminExamApplicationsPage() {
             pinnacleId: app.student.pinnacleApplicantId || "N/A",
             program: app.program.programName,
             scheduledSlot,
-            applicationDate: format(
-              new Date(app.applicationDate),
-              "MMMM d, yyyy",
-            ),
             alignmentStatus:
               app.student.alignmentStatus?.toLowerCase() || "aligned",
             strikeCount: app.strikeCount,
@@ -511,14 +507,6 @@ export default function AdminExamApplicationsPage() {
                   </p>
                   <p className="text-sm font-medium text-(--earist-primary)">
                     {selectedApp.scheduledSlot}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Application Date
-                  </p>
-                  <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedApp.applicationDate}
                   </p>
                 </div>
                 <div>

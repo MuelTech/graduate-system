@@ -384,7 +384,6 @@ export interface ExamApplication {
   pinnacleId: string;
   program: string;
   scheduledSlot: string;
-  applicationDate: string;
   alignmentStatus: string;
   strikeCount: number;
   status: string;
