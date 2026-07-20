@@ -100,7 +100,7 @@ export default function ApplicantExamPage() {
       }
     };
     fetchExamData();
-  }, []);
+  }, [API_BASE]);
   // 2. LIVE COUNTDOWN TIMER (BEFORE EXAM)
   useEffect(() => {
     if (examState !== "countdown" || !upcomingExamStart) return;
@@ -151,7 +151,7 @@ export default function ApplicantExamPage() {
       }
     }, 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [examState, essayQuestion, essayText]);
+  }, [examState, essayQuestion, essayText, API_BASE]);
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);

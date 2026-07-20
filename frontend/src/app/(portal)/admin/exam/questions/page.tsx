@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useState, useEffect, useCallback } from "react";
+import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,6 @@ import { Pencil, Trash2, Plus, X, Save } from "lucide-react";
 import { AdminQuestion, AdminOption } from "@/types";
 
 export default function AdminExamQuestionsPage() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,28 +28,25 @@ export default function AdminExamQuestionsPage() {
     { optionText: "", isCorrect: false },
   ]);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     try {
-      const res = await axios.get(
-        `${API_BASE}/exam-engine/admin/questions`,
-        {
-          withCredentials: true,
-        },
-      );
-      setQuestions(res.data);
+      const data = await apiClientRequest("/exam-engine/admin/questions", {
+        method: "GET",
+      });
+      setQuestions(data); // apiClientRequest returns the data directly
     } catch (error) {
       console.error("Failed to fetch questions", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initFetch = async () => {
       await fetchQuestions();
     };
     initFetch();
-  }, []);
+  }, [fetchQuestions]);
 
   const openNewModal = () => {
     setEditingId(null);
@@ -110,7 +106,10 @@ export default function AdminExamQuestionsPage() {
       alert("Question text cannot be empty.");
       return;
     }
-    if (type === "MULTIPLE_CHOICE" && options.some(opt => !opt.optionText.trim())) {
+    if (
+      type === "MULTIPLE_CHOICE" &&
+      options.some((opt) => !opt.optionText.trim())
+    ) {
       alert("All multiple choice options must have text.");
       return;
     }
@@ -125,21 +124,15 @@ export default function AdminExamQuestionsPage() {
       };
 
       if (editingId) {
-        await axios.put(
-          `${API_BASE}/exam-engine/admin/questions/${editingId}`,
-          payload,
-          {
-            withCredentials: true,
-          },
-        );
+        await apiClientRequest(`/exam-engine/admin/questions/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
       } else {
-        await axios.post(
-          `${API_BASE}/exam-engine/admin/questions`,
-          payload,
-          {
-            withCredentials: true,
-          },
-        );
+        await apiClientRequest("/exam-engine/admin/questions", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
       }
 
       setIsModalOpen(false);
@@ -160,12 +153,9 @@ export default function AdminExamQuestionsPage() {
     )
       return;
     try {
-      await axios.delete(
-        `${API_BASE}/exam-engine/admin/questions/${id}`,
-        {
-          withCredentials: true,
-        },
-      );
+      await apiClientRequest(`/exam-engine/admin/questions/${id}`, {
+        method: "DELETE",
+      });
       fetchQuestions();
     } catch (error) {
       console.error("Failed to delete", error);
@@ -382,7 +372,8 @@ export default function AdminExamQuestionsPage() {
                   disabled={isSaving}
                   className="bg-(--earist-primary) hover:bg-red-900"
                 >
-                  <Save className="mr-2 h-4 w-4" /> {isSaving ? "Saving..." : "Save Question"}
+                  <Save className="mr-2 h-4 w-4" />{" "}
+                  {isSaving ? "Saving..." : "Save Question"}
                 </Button>
               </div>
             </CardContent>
