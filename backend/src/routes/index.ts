@@ -12,8 +12,9 @@ import settingsRoutes from './settings.routes';
 import databankRoutes from './databank.routes';
 import memoRoutes from './memo.routes';
 import notificationRoutes from './notification.routes';
-import waiverRoutes from './waiver.routes'
-import adminApplicantRoutes from './admin-applicant.routes'
+import waiverRoutes from './waiver.routes';
+import adminApplicantRoutes from './admin-applicant.routes';
+import examEngineRoutes from './exam-engine.routes';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/memos', memoRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/waivers', waiverRoutes);
 router.use('/admin/applicants', adminApplicantRoutes);
+router.use('/exam-engine', examEngineRoutes);
 
 export default router;
