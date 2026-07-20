@@ -403,6 +403,72 @@ async function main() {
     console.log('Created Applicants 5-12 for pagination testing');
   }
 
+  // 5. Exam Slots
+  console.log('Seeding exam slots...');
+  const examSlots = [
+    { programId: allPrograms[0].id, examDate: new Date('2026-08-01T00:00:00.000Z'), examTime: new Date('2026-08-01T09:00:00.000Z'), maxSlots: 30 },
+    { programId: allPrograms[0].id, examDate: new Date('2026-08-15T00:00:00.000Z'), examTime: new Date('2026-08-15T09:00:00.000Z'), maxSlots: 30 },
+    { programId: allPrograms[1].id, examDate: new Date('2026-08-02T00:00:00.000Z'), examTime: new Date('2026-08-02T14:00:00.000Z'), maxSlots: 25 },
+    { programId: allPrograms[4].id, examDate: new Date('2026-08-05T00:00:00.000Z'), examTime: new Date('2026-08-05T10:00:00.000Z'), maxSlots: 20 },
+  ];
+
+  const createdSlots = [];
+  for (const slot of examSlots) {
+    const existing = await prisma.examSlot.findFirst({
+      where: { programId: slot.programId, examDate: slot.examDate }
+    });
+    if (!existing) {
+      const created = await prisma.examSlot.create({ data: slot as any });
+      createdSlots.push(created);
+      console.log(`Created exam slot: ${slot.examDate.toLocaleDateString()}`);
+    } else {
+      createdSlots.push(existing);
+      console.log(`Exam slot already exists: ${slot.examDate.toLocaleDateString()}`);
+    }
+  }
+
+  // 6. Exam Applications (for applicants with ALIGNED status)
+  console.log('Seeding exam applications...');
+  const applicantsToSchedule = [
+    { email: 'applicant1@earist.edu.ph', slotIndex: 0, status: 'PASSED' },
+    { email: 'applicant3@earist.edu.ph', slotIndex: 0, status: 'SCHEDULED' },
+    { email: 'applicant5@earist.edu.ph', slotIndex: 1, status: 'PENDING' },
+    { email: 'applicant7@earist.edu.ph', slotIndex: 2, status: 'PASSED' },
+    { email: 'applicant9@earist.edu.ph', slotIndex: 3, status: 'FAILED' },
+  ];
+
+  for (const app of applicantsToSchedule) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: app.email },
+        include: { student: true }
+      });
+
+      if (user?.student) {
+        const existing = await prisma.entranceExamApplication.findFirst({
+          where: { studentId: user.student.id }
+        });
+
+        if (!existing && createdSlots[app.slotIndex]) {
+          const slot = createdSlots[app.slotIndex];
+          await prisma.entranceExamApplication.create({
+            data: {
+              studentId: user.student.id,
+              programId: user.student.programId,
+              slotId: slot.id,
+              examDate: slot.examDate,
+              examTime: slot.examTime,
+              status: app.status as any,
+            }
+          });
+          console.log(`Created exam application for ${app.email} - ${app.status}`);
+        }
+      }
+    } catch (e: any) {
+      console.log(`Skipping ${app.email}: ${e.message}`);
+    }
+  }
+
 }
 
 main()
