@@ -100,7 +100,6 @@ export class AdminApplicantRepository {
           : null,
         corStatus,
         admissionStatus: student.admissionStatus,
-        strikeCount: examApp?.strikeCount || 0,
         createdAt: student.createdAt.toISOString(),
       };
     });
@@ -254,21 +253,6 @@ export class AdminApplicantRepository {
 
       return { studentNumber };
     });
-  }
-
-  async resetStrikeCount(studentId: string) {
-    const examApp = await prisma.entranceExamApplication.findFirst({
-      where: { studentId },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (examApp) {
-      return prisma.entranceExamApplication.update({
-        where: { id: examApp.id },
-        data: { strikeCount: 0 },
-      });
-    }
-    return null;
   }
 
   async createAuditLog(

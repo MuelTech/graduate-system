@@ -72,7 +72,6 @@ export class AdminApplicantService {
       corStatus,
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() || null,
-      strikeCount: examApp?.strikeCount || 0,
       bridgingWaiver: student.bridgingWaiver
         ? {
             id: student.bridgingWaiver.id,
@@ -322,30 +321,6 @@ export class AdminApplicantService {
         username: studentNumber,
         password,
       },
-    };
-  }
-
-  async resetStrikes(
-    studentId: string,
-    adminId: string
-  ): Promise<{ message: string; strikeCount: number }> {
-    const student = await this.repository.findStudentById(studentId);
-    if (!student) {
-      throw new AppError("Applicant not found!", 404);
-    }
-
-    await this.repository.resetStrikeCount(studentId);
-
-    await this.repository.createAuditLog(
-      adminId,
-      "strikes_reset",
-      studentId,
-      "Strike count reset to 0"
-    );
-
-    return {
-      message: "Strike count reset.",
-      strikeCount: 0,
     };
   }
 }
