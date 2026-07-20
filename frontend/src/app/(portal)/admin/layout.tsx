@@ -42,6 +42,7 @@ const navItems = [
     children: [
       { href: "/admin/exam/slots", label: "Exam Slots" },
       { href: "/admin/exam/applications", label: "Applications" },
+      { href: "/admin/exam/questions", label: "Exam Questions" },
       { href: "/admin/exam/scores", label: "Score Management" },
       { href: "/admin/exam/cor", label: "COR Validation" },
       { href: "/admin/exam/waiver", label: "Waiver Validation" },
