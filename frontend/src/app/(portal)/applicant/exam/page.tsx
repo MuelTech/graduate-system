@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 const getLetter = (index: number) => String.fromCharCode(65 + index);
 export default function ApplicantExamPage() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
   const [examState, setExamState] = useState<
     "loading" | "countdown" | "in_progress" | "submitted"
   >("loading");
@@ -42,7 +43,7 @@ export default function ApplicantExamPage() {
       try {
         // Get Schedule First
         const schedRes = await axios.get(
-          "http://localhost:5000/api/exam-engine/schedule",
+          `${API_BASE}/exam-engine/schedule`,
           { withCredentials: true },
         );
         const { examDate, examTime, status } = schedRes.data;
@@ -77,7 +78,7 @@ export default function ApplicantExamPage() {
         }
         // If time is valid, fetch questions
         const res = await axios.get(
-          "http://localhost:5000/api/exam-engine/questions",
+          `${API_BASE}/exam-engine/questions`,
           { withCredentials: true },
         );
         setMcqQuestions(
@@ -138,7 +139,7 @@ export default function ApplicantExamPage() {
     const autoSaveTimer = setInterval(async () => {
       try {
         await axios.patch(
-          "http://localhost:5000/api/exam-engine/autosave",
+          `${API_BASE}/exam-engine/autosave`,
           {
             questionId: essayQuestion.id,
             essayAnswer: essayText,
@@ -176,7 +177,7 @@ export default function ApplicantExamPage() {
           essayAnswer: essayText,
         });
       await axios.post(
-        "http://localhost:5000/api/exam-engine/submit",
+        `${API_BASE}/exam-engine/submit`,
         { answers: formattedAnswers },
         { withCredentials: true },
       );

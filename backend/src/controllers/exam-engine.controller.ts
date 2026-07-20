@@ -116,9 +116,14 @@ export class ExamEngineController {
                 }
             });
 
+            if (!app) {
+                res.status(404).json({ error: "Exam application record not found." });
+                return;
+            }
+
             res.status(200).json(app);
         } catch (error: any) {
-            res.status(500).json({ error: error.message });
+            res.status(403).json({ error: error.message });
         }
     }
 }

@@ -9,8 +9,10 @@ import { Pencil, Trash2, Plus, X, Save } from "lucide-react";
 import { AdminQuestion, AdminOption } from "@/types";
 
 export default function AdminExamQuestionsPage() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +32,7 @@ export default function AdminExamQuestionsPage() {
   const fetchQuestions = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/exam-engine/admin/questions",
+        `${API_BASE}/exam-engine/admin/questions`,
         {
           withCredentials: true,
         },
@@ -104,7 +106,17 @@ export default function AdminExamQuestionsPage() {
   };
 
   const handleSave = async () => {
+    if (!questionText.trim()) {
+      alert("Question text cannot be empty.");
+      return;
+    }
+    if (type === "MULTIPLE_CHOICE" && options.some(opt => !opt.optionText.trim())) {
+      alert("All multiple choice options must have text.");
+      return;
+    }
+
     try {
+      setIsSaving(true);
       const payload = {
         questionText,
         type,
@@ -114,7 +126,7 @@ export default function AdminExamQuestionsPage() {
 
       if (editingId) {
         await axios.put(
-          `http://localhost:5000/api/exam-engine/admin/questions/${editingId}`,
+          `${API_BASE}/exam-engine/admin/questions/${editingId}`,
           payload,
           {
             withCredentials: true,
@@ -122,7 +134,7 @@ export default function AdminExamQuestionsPage() {
         );
       } else {
         await axios.post(
-          "http://localhost:5000/api/exam-engine/admin/questions",
+          `${API_BASE}/exam-engine/admin/questions`,
           payload,
           {
             withCredentials: true,
@@ -135,6 +147,8 @@ export default function AdminExamQuestionsPage() {
     } catch (error) {
       console.error("Failed to save question", error);
       alert("Failed to save question. Please check the console.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -147,7 +161,7 @@ export default function AdminExamQuestionsPage() {
       return;
     try {
       await axios.delete(
-        `http://localhost:5000/api/exam-engine/admin/questions/${id}`,
+        `${API_BASE}/exam-engine/admin/questions/${id}`,
         {
           withCredentials: true,
         },
@@ -365,9 +379,10 @@ export default function AdminExamQuestionsPage() {
                 </Button>
                 <Button
                   onClick={handleSave}
+                  disabled={isSaving}
                   className="bg-(--earist-primary) hover:bg-red-900"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save Question
+                  <Save className="mr-2 h-4 w-4" /> {isSaving ? "Saving..." : "Save Question"}
                 </Button>
               </div>
             </CardContent>
