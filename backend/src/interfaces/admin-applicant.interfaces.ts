@@ -29,7 +29,6 @@ export interface AdminApplicantListItem {
   examScores: { mcq: number; essay: number; total: number } | null;
   corStatus: string;
   admissionStatus: string;
-  strikeCount: number;
   createdAt: string;
 }
 

@@ -441,23 +441,6 @@ export default function ApplicantDetailPage() {
                   </div>
                 </div>
               )}
-              <div>
-                <p className="text-sm text-gray-500">Strike Count</p>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{applicant.strikeCount}</span>
-                  {applicant.strikeCount > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => resetStrikesMutation.mutate()}
-                      disabled={resetStrikesMutation.isPending}
-                    >
-                      <RotateCcw className="mr-1 h-3 w-3" />
-                      Reset
-                    </Button>
-                  )}
-                </div>
-              </div>
             </div>
             {applicant.examApplications[0]?.examSlot && (
               <div className="p-4 bg-gray-50 rounded-lg">

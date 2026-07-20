@@ -153,17 +153,6 @@ export default function ApplicantSchedulePage() {
         </Card>
       )}
 
-      {/* Two-Strike Warning */}
-      {!isLocked && (applicant?.strikeCount ?? 0) > 0 && (
-        <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-700">
-            Warning: You have {applicant?.strikeCount} missed attempt(s). Two
-            missed attempts result in disqualification.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Confirmed Schedule Display */}
       {!isLocked && isScheduled && (
         <Card>

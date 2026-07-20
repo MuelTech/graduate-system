@@ -1,7 +1,6 @@
 // APPLICANT & EXAM INTERFACES
 export interface ApplicantStatus {
   alignmentStatus: string;
-  strikeCount: number;
   programId: string;
   confirmedSlot?: {
     id: string;
@@ -314,7 +313,6 @@ export interface AdminApplicantListItem {
   examScores: { mcq: number; essay: number; total: number } | null;
   corStatus: string;
   admissionStatus: string;
-  strikeCount: number;
   createdAt: string;
 }
 
@@ -385,7 +383,6 @@ export interface ExamApplication {
   program: string;
   scheduledSlot: string;
   alignmentStatus: string;
-  strikeCount: number;
   status: string;
 }
 
@@ -407,8 +404,6 @@ export interface ApiExamApplication {
   program: {
     programName: string;
   };
-  applicationDate: string;
-  strikeCount: number;
   status: string;
 }
 

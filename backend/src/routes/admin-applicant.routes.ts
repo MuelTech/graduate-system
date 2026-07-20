@@ -61,12 +61,4 @@ router.put(
   controller.promoteToStudent
 );
 
-// Reset strike count
-router.put(
-  "/:id/strikes/reset",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  controller.resetStrikes
-);
-
 export default router;
