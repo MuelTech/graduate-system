@@ -1,10 +1,11 @@
 "use client";
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ExamOption, ExamQuestion } from "@/types";
 import {
   Clock,
   ChevronLeft,
@@ -16,148 +17,183 @@ import {
   Send,
   X,
 } from "lucide-react";
-
+const getLetter = (index: number) => String.fromCharCode(65 + index);
 export default function ApplicantExamPage() {
-  const examState = "in_progress" as "countdown" | "in_progress" | "submitted";
+  const [examState, setExamState] = useState<
+    "loading" | "countdown" | "in_progress" | "submitted"
+  >("loading");
 
+  const [mcqQuestions, setMcqQuestions] = useState<ExamQuestion[]>([]);
+  const [essayQuestion, setEssayQuestion] = useState<ExamQuestion | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const [upcomingExamStart, setUpcomingExamStart] = useState<Date | null>(null);
+  const [timeUntilExam, setTimeUntilExam] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [essayText, setEssayText] = useState("");
+
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10800);
   const [showEssay, setShowEssay] = useState(false);
-
-  const mcqQuestions = [
-    {
-      id: 1,
-      question:
-        "Which of the following best describes the primary purpose of a literature review in research?",
-      options: [
-        "To present the researcher's personal opinions on the topic",
-        "To summarize existing research and identify gaps in knowledge",
-        "To prove that the researcher has read enough books",
-        "To replace the need for primary data collection",
-      ],
-    },
-    {
-      id: 2,
-      question: "In research methodology, what does 'validity' refer to?",
-      options: [
-        "The consistency of a measurement instrument",
-        "The extent to which a test measures what it claims to measure",
-        "The sample size of the study",
-        "The speed of data collection",
-      ],
-    },
-    {
-      id: 3,
-      question:
-        "Which sampling technique gives every member of a population an equal chance of being selected?",
-      options: [
-        "Convenience sampling",
-        "Purposive sampling",
-        "Random sampling",
-        "Snowball sampling",
-      ],
-    },
-    {
-      id: 4,
-      question:
-        "What is the primary advantage of using a mixed-methods research design?",
-      options: [
-        "It is faster to complete than single-method studies",
-        "It combines quantitative and qualitative data for comprehensive insights",
-        "It eliminates the need for statistical analysis",
-        "It requires fewer resources than other approaches",
-      ],
-    },
-    {
-      id: 5,
-      question: "Which of the following is an example of a null hypothesis?",
-      options: [
-        "There is a significant relationship between study hours and exam scores",
-        "There is no significant difference between group A and group B",
-        "The treatment will improve patient outcomes",
-        "The sample mean is greater than the population mean",
-      ],
-    },
-    {
-      id: 6,
-      question:
-        "What does 'ethical consideration' in research primarily ensure?",
-      options: [
-        "That the research will be published in a reputable journal",
-        "That participants' rights, privacy, and well-being are protected",
-        "That the researcher will receive academic credit",
-        "That the results will be statistically significant",
-      ],
-    },
-    {
-      id: 7,
-      question: "In qualitative research, what is 'triangulation'?",
-      options: [
-        "Using three different statistical tests",
-        "Collecting data from three different countries",
-        "Using multiple methods or data sources to verify findings",
-        "Having three researchers conduct the same study",
-      ],
-    },
-    {
-      id: 8,
-      question:
-        "Which of the following is NOT a characteristic of a good research question?",
-      options: [
-        "Clear and specific",
-        "Feasible to investigate",
-        "Broad and general",
-        "Relevant to the field of study",
-      ],
-    },
-    {
-      id: 9,
-      question: "What is the purpose of a pilot study in research?",
-      options: [
-        "To replace the main study",
-        "To test the research instruments and procedures before full implementation",
-        "To collect preliminary data for publication",
-        "To train other researchers",
-      ],
-    },
-    {
-      id: 10,
-      question: "Which of the following best describes 'academic integrity'?",
-      options: [
-        "Writing papers as quickly as possible",
-        "Maintaining honesty, trust, fairness, and responsibility in academic work",
-        "Citing only sources that support your argument",
-        "Submitting work before the deadline",
-      ],
-    },
-  ];
-
-  const allMcqAnswered = Object.keys(answers).length === mcqQuestions.length;
-
+  // 1. FETCH SCHEDULE AND QUESTIONS
   useEffect(() => {
-    if (examState !== "in_progress") return;
+    const fetchExamData = async () => {
+      try {
+        // Get Schedule First
+        const schedRes = await axios.get(
+          "http://localhost:5000/api/exam-engine/schedule",
+          { withCredentials: true },
+        );
+        const { examDate, examTime, status } = schedRes.data;
+        if (status === "TAKEN" || status === "PASSED" || status === "FAILED") {
+          setExamState("submitted");
+          return;
+        }
+        if (!examDate || !examTime) {
+          setErrorMsg(
+            "You do not have a scheduled exam date yet. Please check your application status.",
+          );
+          setExamState("countdown");
+          return;
+        }
+        const scheduledDate = new Date(examDate);
+        const scheduledTimeStr = new Date(examTime);
+        const examStart = new Date(
+          scheduledDate.getFullYear(),
+          scheduledDate.getMonth(),
+          scheduledDate.getDate(),
+          scheduledTimeStr.getHours(),
+          scheduledTimeStr.getMinutes(),
+          0,
+        );
+        if (new Date() < examStart) {
+          setUpcomingExamStart(examStart);
+          setErrorMsg(
+            `Your exam is scheduled for ${examStart.toLocaleString()}`,
+          );
+          setExamState("countdown");
+          return;
+        }
+        // If time is valid, fetch questions
+        const res = await axios.get(
+          "http://localhost:5000/api/exam-engine/questions",
+          { withCredentials: true },
+        );
+        setMcqQuestions(
+          res.data.filter((q: ExamQuestion) => q.type === "MULTIPLE_CHOICE"),
+        );
+        setEssayQuestion(
+          res.data.find((q: ExamQuestion) => q.type === "ESSAY"),
+        );
+        setExamState("in_progress");
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          setErrorMsg(
+            error.response?.data?.error || "Failed to load exam data.",
+          );
+        } else {
+          setErrorMsg("An unexpected error occurred.");
+        }
+        setExamState("countdown");
+      }
+    };
+    fetchExamData();
+  }, []);
+  // 2. LIVE COUNTDOWN TIMER (BEFORE EXAM)
+  useEffect(() => {
+    if (examState !== "countdown" || !upcomingExamStart) return;
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      const diff = upcomingExamStart.getTime() - new Date().getTime();
+      if (diff <= 0) {
+        clearInterval(timer);
+        window.location.reload(); // Reload page to start exam automatically!
+      } else {
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeUntilExam(`${d > 0 ? d + "d " : ""}${h}h ${m}m ${s}s`);
+      }
     }, 1000);
     return () => clearInterval(timer);
+  }, [examState, upcomingExamStart]);
+  // 3. EXAM DURATION TIMER (DURING EXAM)
+  useEffect(() => {
+    if (examState !== "in_progress") return;
+    const timer = setInterval(
+      () => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)),
+      1000,
+    );
+    return () => clearInterval(timer);
   }, [examState]);
-
+  // 4. 60-SECOND ESSAY AUTO-SAVE
+  useEffect(() => {
+    if (
+      examState !== "in_progress" ||
+      !essayQuestion ||
+      essayText.trim() === ""
+    )
+      return;
+    const autoSaveTimer = setInterval(async () => {
+      try {
+        await axios.patch(
+          "http://localhost:5000/api/exam-engine/autosave",
+          {
+            questionId: essayQuestion.id,
+            essayAnswer: essayText,
+          },
+          { withCredentials: true },
+        );
+      } catch (err) {
+        console.error("Auto-save failed", err);
+      }
+    }, 60000);
+    return () => clearInterval(autoSaveTimer);
+  }, [examState, essayQuestion, essayText]);
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return `${h.toString().padStart(2, "0")}:${m
-      .toString()
-      .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
-
   const essayWordCount = essayText
     .trim()
     .split(/\s+/)
     .filter((w) => w.length > 0).length;
+  const allMcqAnswered = Object.keys(answers).length === mcqQuestions.length;
+  const handleFinalSubmit = async () => {
+    try {
+            const formattedAnswers: Array<{ questionId: string; selectedOptionId?: string; essayAnswer?: string }> = 
+        Object.entries(answers).map(([qId, oId]) => ({
+          questionId: qId,
+          selectedOptionId: oId,
+        }));
+
+      if (essayQuestion && essayText)
+        formattedAnswers.push({
+          questionId: essayQuestion.id,
+          essayAnswer: essayText,
+        });
+      await axios.post(
+        "http://localhost:5000/api/exam-engine/submit",
+        { answers: formattedAnswers },
+        { withCredentials: true },
+      );
+      setExamState("submitted");
+      setShowSubmitConfirm(false);
+    } catch (error) {
+      alert("Submission failed! Your time might have expired.");
+      console.error(error);
+    }
+  };
+  if (examState === "loading") {
+    return (
+      <div className="p-8 text-center text-(--earist-primary)">
+        Loading exam environment...
+      </div>
+    );
+  }
 
   if (examState === "submitted") {
     return (
@@ -172,8 +208,9 @@ export default function ApplicantExamPage() {
                 Examination Submitted Successfully
               </h3>
               <p className="mb-4 max-w-md text-sm text-(--earist-body-text)">
-                Your entrance examination has been submitted. Results will be
-                sent to your registered email address.
+                Your entrance examination has been submitted. The MCQ section
+                was auto-graded, and the essay has been queued for Program Chair
+                review.
               </p>
               <Badge className="bg-green-100 text-green-700">Submitted</Badge>
             </div>
@@ -196,16 +233,19 @@ export default function ApplicantExamPage() {
                 Exam Not Yet Available
               </h3>
               <p className="mb-4 text-sm text-(--earist-body-text)">
-                Your exam is scheduled for June 15, 2026 at 9:00 AM.
+                {errorMsg}
               </p>
-              <div className="rounded-lg bg-(--earist-surface-gray) p-4">
-                <p className="text-xs text-(--earist-body-text)">
-                  Time until exam
-                </p>
-                <p className="font-mono text-2xl font-bold text-(--earist-primary)">
-                  23:45:30
-                </p>
-              </div>
+
+              {timeUntilExam && (
+                <div className="rounded-lg bg-(--earist-surface-gray) p-4 mt-2 border border-(--earist-border-gray)">
+                  <p className="text-xs text-(--earist-body-text) mb-1 uppercase tracking-wider font-semibold">
+                    Time until exam opens
+                  </p>
+                  <p className="font-mono text-3xl font-bold text-(--earist-primary)">
+                    {timeUntilExam}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -214,9 +254,9 @@ export default function ApplicantExamPage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Exam Header Bar */}
-      <div className="sticky top-16 z-20 flex items-center justify-between rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3">
+    <div className="space-y-4 relative">
+      {/* 4. EXAM HEADER BAR */}
+      <div className="sticky top-16 z-20 flex items-center justify-between rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3">
           <FileText className="h-5 w-5 text-(--earist-primary)" />
           <div>
@@ -247,8 +287,8 @@ export default function ApplicantExamPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {/* Main Content Area */}
         <div className="lg:col-span-3">
-          {/* MCQ Section */}
-          {!showEssay && (
+          {/* MCQ SECTION */}
+          {!showEssay && mcqQuestions.length > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -264,81 +304,45 @@ export default function ApplicantExamPage() {
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-sm font-medium text-(--earist-primary)">
-                    {mcqQuestions[currentQuestion].question}
+                    {mcqQuestions[currentQuestion].questionText}
                   </p>
                   <div className="space-y-2">
-                    {mcqQuestions[currentQuestion].options.map((option, i) => {
-                      const optionLabel = String.fromCharCode(65 + i);
-                      const isSelected =
-                        answers[currentQuestion] === optionLabel;
-                      return (
-                        <label
-                          key={i}
-                          className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                            isSelected
-                              ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
-                              : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`q-${currentQuestion}`}
-                            value={optionLabel}
-                            checked={isSelected}
-                            onChange={() =>
-                              setAnswers((prev) => ({
-                                ...prev,
-                                [currentQuestion]: optionLabel,
-                              }))
-                            }
-                            className="mt-0.5"
-                          />
-                          <span className="text-sm text-(--earist-body-text)">
-                            <span className="mr-2 font-semibold text-(--earist-primary)">
-                              {optionLabel}.
+                    {mcqQuestions[currentQuestion].options.map(
+                      (option: ExamOption, i: number) => {
+                        const isSelected =
+                          answers[mcqQuestions[currentQuestion].id] ===
+                          option.id;
+                        return (
+                          <label
+                            key={option.id}
+                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                              isSelected
+                                ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
+                                : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q-${mcqQuestions[currentQuestion].id}`}
+                              value={option.id}
+                              checked={isSelected}
+                              onChange={() =>
+                                setAnswers((prev) => ({
+                                  ...prev,
+                                  [mcqQuestions[currentQuestion].id]: option.id,
+                                }))
+                              }
+                              className="mt-0.5"
+                            />
+                            <span className="text-sm text-(--earist-body-text)">
+                              <span className="mr-2 font-semibold text-(--earist-primary)">
+                                {getLetter(i)}.
+                              </span>
+                              {option.optionText}
                             </span>
-                            {option}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  {/* Navigation */}
-                  <div className="flex items-center justify-between border-t border-(--earist-border-gray) pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentQuestion((prev) => Math.max(0, prev - 1))
-                      }
-                      disabled={currentQuestion === 0}
-                    >
-                      <ChevronLeft className="mr-1 h-4 w-4" />
-                      Previous
-                    </Button>
-                    {currentQuestion === mcqQuestions.length - 1 ? (
-                      <Button
-                        size="sm"
-                        onClick={() => setShowEssay(true)}
-                        className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                      >
-                        Proceed to Essay
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          setCurrentQuestion((prev) =>
-                            Math.min(mcqQuestions.length - 1, prev + 1),
-                          )
-                        }
-                        className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                      >
-                        Next
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
+                          </label>
+                        );
+                      },
                     )}
                   </div>
                 </div>
@@ -346,186 +350,199 @@ export default function ApplicantExamPage() {
             </Card>
           )}
 
-          {/* Essay Section */}
-          {showEssay && (
+          {/* ESSAY SECTION */}
+          {showEssay && essayQuestion && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                    Essay Section
-                  </CardTitle>
-                  <Badge variant="outline">{essayWordCount} words</Badge>
-                </div>
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  Essay Section
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-(--earist-surface-gray) p-4">
-                    <p className="text-sm font-medium text-(--earist-primary)">
-                      Essay Question:
-                    </p>
-                    <p className="mt-1 text-sm text-(--earist-body-text)">
-                      Discuss the importance of research ethics in graduate
-                      studies. How does maintaining academic integrity
-                      contribute to the advancement of knowledge in your chosen
-                      field? Provide specific examples to support your answer.
-                    </p>
-                  </div>
-                  <textarea
-                    value={essayText}
-                    onChange={(e) => setEssayText(e.target.value)}
-                    placeholder="Type your essay response here..."
-                    className="min-h-[300px] w-full rounded-lg border border-(--earist-border-gray) p-4 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
-                  />
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowEssay(false)}
-                    >
-                      <ChevronLeft className="mr-1 h-4 w-4" />
-                      Back to MCQ
-                    </Button>
-                    <p className="text-xs text-(--earist-body-text)">
-                      Auto-saved every 60 seconds
+                  <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+                    <AlertDescription className="text-xs">
+                      Your answer will be saved automatically every 60 seconds.
+                    </AlertDescription>
+                  </Alert>
+                  <p className="text-sm font-medium text-(--earist-primary)">
+                    {essayQuestion.questionText}
+                  </p>
+                  <div>
+                    <textarea
+                      className="min-h-75 w-full rounded-md border border-(--earist-border-gray) p-3 text-sm focus:border-(--earist-primary) focus:outline-none focus:ring-1 focus:ring-(--earist-primary)"
+                      placeholder="Type your essay here..."
+                      value={essayText}
+                      onChange={(e) => setEssayText(e.target.value)}
+                    />
+                    {/* 5. WORD COUNT DISPLAY */}
+                    <p className="mt-2 text-right text-xs text-(--earist-body-text)">
+                      Word count: {essayWordCount} / 500
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {/* NAVIGATION CONTROLS */}
+          <div className="mt-4 flex items-center justify-between">
+            {!showEssay ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setCurrentQuestion((prev) => Math.max(0, prev - 1))
+                  }
+                  disabled={currentQuestion === 0}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                </Button>
+                {currentQuestion < mcqQuestions.length - 1 ? (
+                  <Button
+                    onClick={() => setCurrentQuestion((prev) => prev + 1)}
+                  >
+                    Next <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setShowEssay(true)}
+                    className="bg-(--earist-secondary) hover:bg-orange-600"
+                  >
+                    Proceed to Essay <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setShowEssay(false)}>
+                  <ChevronLeft className="mr-1 h-4 w-4" /> Back to Multiple
+                  Choice
+                </Button>
+                <Button
+                  onClick={() => setShowSubmitConfirm(true)}
+                  disabled={!allMcqAnswered} // Strictly disabled until MCQ done
+                  className="bg-(--earist-primary) hover:bg-red-900"
+                >
+                  <Send className="mr-2 h-4 w-4" /> Submit Examination
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Question Palette Sidebar */}
+        {/* QUESTION PALETTE SIDEBAR */}
         <div className="lg:col-span-1">
           <Card className="sticky top-32">
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-(--earist-primary)">
                 Question Palette
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-5 gap-2">
-                {mcqQuestions.map((_, i) => {
-                  const isAnswered = answers[i] !== undefined;
-                  const isCurrent = i === currentQuestion && !showEssay;
+              <div className="grid grid-cols-4 gap-2">
+                {mcqQuestions.map((q: ExamQuestion, idx: number) => {
+                  const isAnswered = !!answers[q.id];
+                  const isCurrent = !showEssay && currentQuestion === idx;
                   return (
                     <button
-                      key={i}
+                      key={q.id}
                       onClick={() => {
-                        setCurrentQuestion(i);
                         setShowEssay(false);
+                        setCurrentQuestion(idx);
                       }}
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                      className={`flex h-10 w-full items-center justify-center rounded-md border text-sm font-medium transition-colors ${
                         isCurrent
-                          ? "bg-(--earist-primary) text-white"
-                          : isAnswered
-                            ? "bg-green-100 text-green-700"
-                            : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
+                          ? "border-(--earist-secondary) ring-1 ring-(--earist-secondary)"
+                          : ""
+                      } ${
+                        isAnswered
+                          ? "bg-(--earist-primary) text-white border-(--earist-primary)"
+                          : "bg-white text-(--earist-body-text) border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
                       }`}
                     >
-                      {i + 1}
+                      {idx + 1}
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-4 space-y-2 border-t border-(--earist-border-gray) pt-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded bg-green-100" />
-                  <span className="text-xs text-(--earist-body-text)">
-                    Answered ({Object.keys(answers).length})
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded bg-(--earist-surface-gray)" />
-                  <span className="text-xs text-(--earist-body-text)">
-                    Not answered (
-                    {mcqQuestions.length - Object.keys(answers).length})
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded bg-(--earist-primary)" />
-                  <span className="text-xs text-(--earist-body-text)">
-                    Current
-                  </span>
-                </div>
-              </div>
 
-              {/* Submit Button */}
-              <div className="mt-4 border-t border-(--earist-border-gray) pt-4">
-                <Button
-                  onClick={() => setShowSubmitConfirm(true)}
-                  disabled={!allMcqAnswered}
-                  className={`w-full ${
-                    allMcqAnswered
-                      ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                      : "cursor-not-allowed bg-gray-200 text-gray-400"
-                  }`}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  Submit Examination
-                </Button>
-                {!allMcqAnswered && (
-                  <p className="mt-2 text-center text-[11px] text-(--earist-body-text)">
-                    Answer all MCQ questions to submit
-                  </p>
-                )}
+              {essayQuestion && (
+                <div className="mt-6 border-t border-(--earist-border-gray) pt-4">
+                  <button
+                    onClick={() => setShowEssay(true)}
+                    className={`flex w-full items-center justify-between rounded-md border p-3 text-sm font-medium transition-colors ${
+                      showEssay
+                        ? "border-(--earist-secondary) ring-1 ring-(--earist-secondary) bg-orange-50"
+                        : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
+                    }`}
+                  >
+                    <span>Essay Section</span>
+                    {essayText.trim().length > 0 && (
+                      <CheckCircle2 className="h-4 w-4 text-(--earist-primary)" />
+                    )}
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-col gap-2 text-xs text-(--earist-body-text)">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-sm bg-(--earist-primary)"></div>
+                  <span>Answered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-sm border border-(--earist-border-gray) bg-white"></div>
+                  <span>Not Answered</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Submit Confirmation Modal */}
+      {/* CONFIRMATION MODAL */}
       {showSubmitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Submit Examination
-              </h3>
-              <button
-                onClick={() => setShowSubmitConfirm(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="mb-4 space-y-2">
-              <p className="text-sm text-(--earist-body-text)">
-                Are you sure you want to submit your examination?
-              </p>
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3 text-xs">
-                <p className="text-(--earist-body-text)">
-                  MCQ: {Object.keys(answers).length} / {mcqQuestions.length}{" "}
-                  answered
-                </p>
-                <p className="text-(--earist-body-text)">
-                  Essay: {essayWordCount} words
+          <Card className="w-full max-w-md animate-in fade-in zoom-in-95">
+            <CardHeader className="pb-3 border-b border-(--earist-border-gray)">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-bold text-(--earist-primary)">
+                  Submit Examination?
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowSubmitConfirm(false)}
+                  className="h-8 w-8 rounded-full"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="flex items-start gap-3 rounded-md bg-amber-50 p-3 text-amber-800">
+                <AlertTriangle className="h-5 w-5 shrink-0" />
+                <p className="text-sm">
+                  Are you sure you want to submit? You will not be able to
+                  change your answers after submission.
                 </p>
               </div>
-              <Alert className="border-amber-200 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700">
-                  This action cannot be undone.
-                </AlertDescription>
-              </Alert>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowSubmitConfirm(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => setShowSubmitConfirm(false)}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                Confirm Submit
-              </Button>
-            </div>
-          </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSubmitConfirm(false)}
+                >
+                  Review Answers
+                </Button>
+                <Button
+                  onClick={handleFinalSubmit}
+                  className="bg-(--earist-primary) hover:bg-red-900"
+                >
+                  Confirm Submission
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

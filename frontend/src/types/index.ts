@@ -412,3 +412,24 @@ export interface ApiExamApplication {
   strikeCount: number;
   status: string;
 }
+
+export interface ExamOption {
+  id: string;
+  optionText: string;
+}
+
+export interface ExamQuestion {
+  id: string;
+  questionText: string;
+  type: string;
+  order: number;
+  options: ExamOption[];
+}
+
+export interface AdminOption extends ExamOption {
+  isCorrect: boolean;
+}
+
+export interface AdminQuestion extends Omit<ExamQuestion, 'options'> {
+  options: AdminOption[];
+}

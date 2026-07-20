@@ -103,4 +103,22 @@ export class ExamEngineController {
             res.status(500).json({ error: error.message });
         }
     }
+
+    getSchedule = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const appId = await this.getAppId(req.user!.userId);
+            const app = await prisma.entranceExamApplication.findUnique({
+                where: { id: appId },
+                select: {
+                    examDate: true,
+                    examTime: true,
+                    status: true
+                }
+            });
+
+            res.status(200).json(app);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
 }
