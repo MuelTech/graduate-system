@@ -20,7 +20,7 @@ export class ExamEngineController {
 
         const app = await prisma.entranceExamApplication.findFirst({
             where: { studentId: student.id },
-            orderBy: { applicationDate: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         if (!app) throw new Error("Exam application not found.");

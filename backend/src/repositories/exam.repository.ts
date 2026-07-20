@@ -95,7 +95,7 @@ export class ExamRepository {
                 slot: true,
             },
             orderBy: {
-                applicationDate: 'desc'
+                createdAt: 'desc'
             }
         });
     }

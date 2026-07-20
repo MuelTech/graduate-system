@@ -47,7 +47,6 @@ export class ExamService {
                 studentId: student.id,
                 programId: student.programId,
                 slotId: slot.id,
-                applicationDate: new Date(),
                 examDate: slot.examDate,
                 examTime: slot.examTime,
                 status: ExamAppStatus.PENDING
