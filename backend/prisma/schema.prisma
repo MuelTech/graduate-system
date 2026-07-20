@@ -254,21 +254,19 @@ model ApplicantBridgingWaiver {
 }
 
 model EntranceExamApplication {
-  id              String             @id @default(uuid()) @map("application_id")
-  studentId       String             @map("student_id")
-  programId       String             @map("program_id")
-  slotId          String             @map("slot_id")
-  strikeCount     Int                @default(0) @map("strike_count")
-  applicationDate DateTime           @map("application_date") @db.Date
-  examDate        DateTime?          @map("exam_date") @db.Date
-  examTime        DateTime?          @map("exam_time") @db.Time(0)
-  status          ExamAppStatus      @default(PENDING)
-  createdAt       DateTime           @default(now()) @map("created_at")
-  program         Program            @relation(fields: [programId], references: [id])
-  slot            ExamSlot           @relation(fields: [slotId], references: [id])
-  student         Student            @relation(fields: [studentId], references: [id])
-  score           EntranceExamScore?
-  answers         ApplicantAnswer[]
+  id        String         @id @default(uuid()) @map("application_id")
+  studentId String         @map("student_id")
+  programId String         @map("program_id")
+  slotId    String         @map("slot_id")
+  examDate  DateTime?      @map("exam_date") @db.Date
+  examTime  DateTime?      @map("exam_time") @db.Time(0)
+  status    ExamAppStatus  @default(PENDING)
+  createdAt DateTime       @default(now()) @map("created_at")
+  program   Program        @relation(fields: [programId], references: [id])
+  slot      ExamSlot       @relation(fields: [slotId], references: [id])
+  student   Student        @relation(fields: [studentId], references: [id])
+  score     EntranceExamScore?
+  answers   ApplicantAnswer[]
 
   @@index([programId], map: "entrance_exam_applications_program_id_fkey")
   @@index([slotId], map: "entrance_exam_applications_slot_id_fkey")
