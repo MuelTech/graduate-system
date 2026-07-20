@@ -17,8 +17,6 @@ router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.get
 
 // Routes for Admin Exam Applications
 router.get('/applications', authenticateJWT, requireRole(['ADMIN']), examController.getAllApplications);
-router.patch('/applications/:id/reset-strikes', authenticateJWT, requireRole(['ADMIN']), examController.resetStrikes);
-router.patch('/applications/:id/disqualify', authenticateJWT, requireRole(['ADMIN']), examController.disqualifyApplication);
 
 // APPLICANT ONLY: Get applicant status
 router.get('/status', authenticateJWT, requireRole(['APPLICANT']), examController.getApplicantStatus);
