@@ -268,23 +268,14 @@ export default function AdminExamApplicationsPage() {
                       </td>
                       <td className="px-4 py-3 text-center">{getStatusBadge(app.status)}</td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelectedApp(app)}
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {(app.status === "passed" || app.status === "failed") && (
-                            <Link href="/admin/exam/scores">
-                              <Button variant="ghost" size="icon" title="View Scores">
-                                <Clipboard className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedApp(app)}
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))
