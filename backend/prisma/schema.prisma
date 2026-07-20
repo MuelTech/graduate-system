@@ -268,6 +268,7 @@ model EntranceExamApplication {
   slot            ExamSlot           @relation(fields: [slotId], references: [id])
   student         Student            @relation(fields: [studentId], references: [id])
   score           EntranceExamScore?
+  answers         ApplicantAnswer[]
 
   @@index([programId], map: "entrance_exam_applications_program_id_fkey")
   @@index([slotId], map: "entrance_exam_applications_slot_id_fkey")
@@ -1245,4 +1246,53 @@ enum SettingType {
   JSON
 
   @@map("setting_type")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  ESSAY
+
+  @@map("question_type")
+}
+
+model ExamQuestion {
+  id           String       @id @default(uuid()) @map("question_id")
+  questionText String       @map("question_text") @db.Text
+  type         QuestionType @default(MULTIPLE_CHOICE)
+  order        Int          @default(0)
+
+  options      ExamOption[]
+  answers      ApplicantAnswer[]
+  
+  @@map("exam_questions")
+}
+
+model ExamOption {
+  id           String       @id @default(uuid()) @map("option_id")
+  questionId   String       @map("question_id")
+  optionText   String       @map("option_text") @db.Text
+  isCorrect    Boolean      @default(false) @map("is_correct")
+
+  question     ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers      ApplicantAnswer[]
+
+  @@index([questionId], map: "exam_options_question_id_fkey")
+  @@map("exam_options")
+}
+
+model ApplicantAnswer {
+  id               String                  @id @default(uuid()) @map("answer_id")
+  applicationId    String                  @map("application_id")
+  questionId       String                  @map("question_id")
+  selectedOptionId String?                 @map("selected_option_id")
+  essayAnswer      String?                 @map("essay_answer") @db.Text
+
+  application      EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question         ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption   ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([applicationId, questionId], map: "unique_applicant_question_answer")
+  @@index([questionId], map: "applicant_answers_question_id_fkey")
+  @@index([selectedOptionId], map: "applicant_answers_option_id_fkey")
+  @@map("applicant_answers")
 }
