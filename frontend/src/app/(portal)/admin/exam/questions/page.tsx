@@ -101,6 +101,26 @@ export default function AdminExamQuestionsPage() {
     setOptions(newOptions);
   };
 
+    const addOption = () => {
+    setOptions([
+      ...options,
+      { optionText: "", isCorrect: options.length === 0 }
+    ]);
+  };
+
+  const removeOption = (index: number) => {
+    if (options.length <= 2) {
+      alert("Multiple choice questions must have at least 2 options.");
+      return;
+    }
+    const newOptions = options.filter((_, i) => i !== index);
+    // If the removed option was selected as correct, set the first remaining option as correct
+    if (options[index].isCorrect && newOptions.length > 0) {
+      newOptions[0].isCorrect = true;
+    }
+    setOptions(newOptions);
+  };
+
   const handleSave = async () => {
     if (!questionText.trim()) {
       alert("Question text cannot be empty.");
@@ -358,8 +378,30 @@ export default function AdminExamQuestionsPage() {
                         value={opt.optionText}
                         onChange={(e) => updateOptionText(i, e.target.value)}
                       />
+                      {options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeOption(i)}
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                          title="Remove Option"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   ))}
+
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addOption}
+                      className="text-xs flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" /> Add Option
+                    </Button>
+                  </div>
                 </div>
               )}
 
