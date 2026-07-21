@@ -459,6 +459,7 @@ async function main() {
               examDate: slot.examDate,
               examTime: slot.examTime,
               status: app.status as any,
+              createdAt: new Date(),
             }
           });
           console.log(`Created exam application for ${app.email} - ${app.status}`);
