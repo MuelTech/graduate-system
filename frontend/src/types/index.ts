@@ -427,3 +427,31 @@ export interface AdminOption extends ExamOption {
 export interface AdminQuestion extends Omit<ExamQuestion, 'options'> {
   options: AdminOption[];
 }
+
+// ADMIN STUDENT INTERFACES
+export interface AdminStudentListItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  studentNumber: string;
+  program: { id: string; programName: string };
+  thesisStage: string;
+  thesisStatus: string;
+  compExamStatus: string;
+  compExamStrikes: number;
+  adviser: string;
+  admissionStatus: string;
+  enrollmentDate: string | null;
+}
+
+export interface AdminStudentDetail extends AdminStudentListItem {
+  cellphone: string;
+  dateOfBirth: string;
+  curriculumType: string;
+  alignmentStatus: string;
+  residencyStartDate: string | null;
+  residencyMaxYears: number | null;
+  compExamRecords: { status: string; createdAt: string }[];
+  adviserAssignment: { adviser: { firstName: string; lastName: string }; assignedDate: string } | null;
+}
