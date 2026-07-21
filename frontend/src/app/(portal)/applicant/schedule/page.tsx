@@ -51,7 +51,7 @@ export default function ApplicantSchedulePage() {
     },
     enabled:
       !!applicant &&
-      applicant.alignmentStatus === "ALIGNED" &&
+      (applicant.alignmentStatus === "ALIGNED" || applicant.alignmentStatus === "CLEARED") &&
       !applicant.confirmedSlot,
   });
 
