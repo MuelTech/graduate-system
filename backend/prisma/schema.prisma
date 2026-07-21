@@ -1270,6 +1270,7 @@ model ExamOption {
   questionId   String       @map("question_id")
   optionText   String       @map("option_text") @db.Text
   isCorrect    Boolean      @default(false) @map("is_correct")
+  order        Int          @default(0) @map("order")
 
   question     ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answers      ApplicantAnswer[]

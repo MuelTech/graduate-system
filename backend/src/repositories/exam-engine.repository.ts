@@ -6,6 +6,7 @@ export class ExamEngineRepository {
             orderBy: { order: 'desc' },
             include: {
                 options: {
+                    orderBy: { order: 'asc' },
                     select: {
                         id: true,
                         questionId: true,
@@ -66,7 +67,11 @@ export class ExamEngineRepository {
     async getAllQuestionsForAdmin() {
         return prisma.examQuestion.findMany({
             orderBy: { order: 'asc' },
-            include: { options: true } // Includes the 'isCorrect' flag
+            include: {
+                options: {
+                    orderBy: { order: 'asc' }
+                }
+            }
         });
     }
 
@@ -77,7 +82,11 @@ export class ExamEngineRepository {
                 type: data.type,
                 order: data.order,
                 options: data.options ? {
-                    create: data.options
+                    create: data.options.map((opt: any, index: number) => ({
+                        optionText: opt.optionText,
+                        isCorrect: opt.isCorrect,
+                        order: index
+                    }))
                 } : undefined
             },
             include: { options: true }
@@ -98,7 +107,11 @@ export class ExamEngineRepository {
                 type: data.type,
                 order: data.order,
                 options: data.options ? {
-                    create: data.options
+                    create: data.options.map((opt: any, index: number) => ({
+                        optionText: opt.optionText,
+                        isCorrect: opt.isCorrect,
+                        order: index
+                    }))
                 } : undefined
             },
             include: { options: true }
