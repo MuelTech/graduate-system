@@ -34,7 +34,10 @@ export class AdminStudentController {
   getStudentDetail = async (req: Request, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
+      console.log('[StudentDetail] Fetching student:', id);
       const result = await this.service.getStudentDetail(id);
+      console.log('[StudentDetail] Result keys:', Object.keys(result));
+      console.log('[StudentDetail] firstName:', result.firstName, 'lastName:', result.lastName);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {
