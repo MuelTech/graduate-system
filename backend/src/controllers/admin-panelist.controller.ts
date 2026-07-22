@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
-import { PanelistService } from "../services/panelist.service";
+import { AdminPanelistService } from "../services/admin-panelist.service";
 import { AppError } from "../utils/AppError";
 
-const panelistService = new PanelistService();
+const adminPanelistService = new AdminPanelistService();
 
 export class AdminPanelistController {
     async getAllPanelists(req: Request, res: Response) {
         try {
-            const panelists = await panelistService.getAllPanelists();
+            const panelists = await adminPanelistService.getAllPanelists();
             res.json(panelists);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -24,7 +24,7 @@ export class AdminPanelistController {
     async getPanelistById(req: Request, res: Response) {
         try {
             const id = req.params.id as string;
-            const panelist = await panelistService.getPanelistById(id);
+            const panelist = await adminPanelistService.getPanelistById(id);
             if (!panelist) {
                 res.status(404).json({ error: "Panelist not found" });
                 return;
@@ -48,7 +48,7 @@ export class AdminPanelistController {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
-            const panelist = await panelistService.createPanelist(req.body, adminId);
+            const panelist = await adminPanelistService.createPanelist(req.body, adminId);
             res.status(201).json(panelist);
         } catch (error: unknown) {
             if (error instanceof AppError) {
@@ -69,7 +69,7 @@ export class AdminPanelistController {
                 return;
             }
             const id = req.params.id as string;
-            const updated = await panelistService.updatePanelist(id, req.body, adminId);
+            const updated = await adminPanelistService.updatePanelist(id, req.body, adminId);
             res.json(updated);
         } catch (error: unknown) {
             if (error instanceof AppError) {
