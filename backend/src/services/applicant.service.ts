@@ -19,8 +19,7 @@ export class ApplicantService {
             alignmentStatus: student.alignmentStatus?.toLowerCase() || 'pending_waiver',
             currentStep: student.examApplications.length > 0 ? 2 : 1,
             examDate: student.examApplications[0]?.slot?.examDate || null,
-            examTime: student.examApplications[0]?.slot?.examTime || null,
-            strikeCount: student.examApplications[0]?.strikeCount || 0
+            examTime: student.examApplications[0]?.slot?.examTime || null
         };
     }
 }
