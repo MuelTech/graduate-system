@@ -14,6 +14,7 @@ import memoRoutes from './memo.routes';
 import notificationRoutes from './notification.routes';
 import waiverRoutes from './waiver.routes';
 import adminApplicantRoutes from './admin-applicant.routes';
+import adminPanelistRoutes from './admin-panelist.routes';
 import examEngineRoutes from './exam-engine.routes';
 import adminStudentRoutes from './admin-student.routes';
 
@@ -34,6 +35,7 @@ router.use('/memos', memoRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/waivers', waiverRoutes);
 router.use('/admin/applicants', adminApplicantRoutes);
+router.use('/admin/panelists', adminPanelistRoutes);
 router.use('/admin/students', adminStudentRoutes);
 router.use('/exam-engine', examEngineRoutes);
 

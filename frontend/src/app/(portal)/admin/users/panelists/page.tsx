@@ -165,14 +165,14 @@ export default function AdminPanelistsPage() {
   const { data: panelists = [], isLoading } = useQuery({
     queryKey: ["adminPanelists"],
     queryFn: async () => {
-      const res = await apiClientRequest("/panelists");
+      const res = await apiClientRequest("/admin/panelists");
       return (Array.isArray(res) ? res : []).map(mapPanelist);
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: PanelistFormData) => {
-      return apiClientRequest("/panelists", {
+      return apiClientRequest("/admin/panelists", {
         method: "POST",
         body: JSON.stringify({
           title: data.title || undefined,
@@ -202,7 +202,7 @@ export default function AdminPanelistsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      return apiClientRequest(`/panelists/${id}`, {
+      return apiClientRequest(`/admin/panelists/${id}`, {
         method: "PUT",
         body: JSON.stringify({ isActive }),
       });
@@ -234,7 +234,7 @@ export default function AdminPanelistsPage() {
       if (data.newPassword.trim()) {
         payload.password = data.newPassword.trim();
       }
-      return apiClientRequest(`/panelists/${id}`, {
+      return apiClientRequest(`/admin/panelists/${id}`, {
         method: "PUT",
         body: JSON.stringify(payload),
       });
