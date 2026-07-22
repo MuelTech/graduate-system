@@ -29,10 +29,6 @@ export class ExamService {
             }
 
             const previousApps = student.examApplications;
-            const totalStrikes = previousApps.reduce((sum: number, app: any) => sum + app.strikeCount, 0);
-            if (totalStrikes >= 2) {
-                throw new Error("You have reached the maximum allowed attempts (Two strikes). You are disqualified.");
-            }
 
             const pendingApp = previousApps.find((app: any) => app.status === 'PENDING');
             if (pendingApp) throw new Error("You already have a pending exam schedule.");
@@ -65,7 +61,6 @@ export class ExamService {
         if (!student) throw new Error("Student not found");
 
         const applications = student.examApplications || [];
-        const totalStrikes = applications.reduce((sum: number, app: any) => sum + app.strikeCount, 0);
 
         // Find the active confirmed slot if it exists
         const activeApp = applications.find((app: any) => 
@@ -84,7 +79,6 @@ export class ExamService {
 
         return {
             alignmentStatus: student.alignmentStatus,
-            strikeCount: totalStrikes,
             programId: student.programId,
             confirmedSlot,
             examStatus: activeApp ? activeApp.status.toLowerCase() : 'none'
@@ -115,5 +109,27 @@ export class ExamService {
 
     async getAllApplications() {
         return this.examRepo.getAllApplications();
+    }
+
+        async appealMissedExam(userId: string) {
+        return this.examRepo.runInTransaction(async (tx) => {
+            const student = await this.examRepo.getApplicantStatus(userId);
+            if (!student) throw new Error("Student not found");
+
+            const pendingApp = student.examApplications?.find((app: any) => app.status === 'PENDING');
+            if (!pendingApp) {
+                throw new Error("No pending or missed exam found to appeal.");
+            }
+
+            // Update status to FAILED so it clears the way for a new schedule
+            await tx.entranceExamApplication.update({
+                where: { id: pendingApp.id },
+                data: { status: 'FAILED' } 
+            });
+
+            // TODO: In the future, you can integrate email notifications here to inform the admin
+
+            return { success: true, message: "Appeal processed successfully." };
+        });
     }
 }

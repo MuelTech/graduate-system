@@ -154,4 +154,13 @@ export class ExamController {
         .json({ error: error.message || "An unexpected error occurred." });
     }
   };
+
+      appealMissedExam = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const result = await this.examService.appealMissedExam(req.user!.userId);
+            res.status(200).json(result);
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
 }

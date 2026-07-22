@@ -35,7 +35,7 @@ export class ExamEngineController {
 
             res.status(200).json(questions);
         } catch (error: any) {
-            res.status(403).json({ error: error.message }); // 403 Forbidden if not exam time!
+            res.status(400).json({ error: error.message });
         }
     }
 
@@ -48,7 +48,7 @@ export class ExamEngineController {
 
             res.status(200).json({ success: true });
         } catch (error: any) {
-            res.status(403).json({ error: error.message });
+            res.status(400).json({ error: error.message });
         }
     }
 
@@ -60,7 +60,7 @@ export class ExamEngineController {
 
             res.status(200).json(result);
         } catch (error: any) {
-            res.status(403).json({ error: error.message });
+            res.status(400).json({ error: error.message });
         }
     }
 
@@ -123,7 +123,7 @@ export class ExamEngineController {
 
             res.status(200).json(app);
         } catch (error: any) {
-            res.status(403).json({ error: error.message });
+            res.status(400).json({ error: error.message });
         }
     }
 }

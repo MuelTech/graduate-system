@@ -27,4 +27,7 @@ router.put('/slots/:id', authenticateJWT, requireRole(['ADMIN']), examController
 // ADMIN ONLY: Toggle slot active status
 router.patch('/slots/:id/status', authenticateJWT, requireRole(['ADMIN']), examController.toggleSlotStatus);
 
+// APPLICANT ONLY: Entrance Exam Reschedule Appeal
+router.post('/appeal', authenticateJWT, requireRole(['APPLICANT']), examController.appealMissedExam);
+
 export default router;
