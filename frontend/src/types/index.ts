@@ -455,3 +455,33 @@ export interface AdminStudentDetail extends AdminStudentListItem {
   compExamRecords: { status: string; createdAt: string }[];
   adviserAssignment: { adviser: { firstName: string; lastName: string }; assignedDate: string } | null;
 }
+
+export interface Application {
+  id: string;
+  name: string;
+  email: string;
+  pinnacleId: string;
+  program: string;
+  scheduledSlot: string;
+  status: string;
+}
+
+export interface ApiApplication {
+  id: string;
+  slot?: {
+    examDate: string;
+    examTime: string;
+  };
+  student: {
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+    pinnacleApplicantId?: string;
+  };
+  program: {
+    programName: string;
+  };
+  status: string;
+}

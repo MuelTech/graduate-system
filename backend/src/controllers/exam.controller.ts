@@ -163,4 +163,31 @@ export class ExamController {
             res.status(400).json({ error: error.message });
         }
     }
+
+        getAppeals = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const appeals = await this.examService.getAppealedExams();
+            res.status(200).json(appeals);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    approveAppeal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const result = await this.examService.approveAppeal(req.params.id as string);
+            res.status(200).json({ success: true, result });
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    rejectAppeal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            const result = await this.examService.rejectAppeal(req.params.id as string);
+            res.status(200).json({ success: true, result });
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }
 }

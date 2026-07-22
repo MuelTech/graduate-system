@@ -106,4 +106,36 @@ export class ExamRepository {
             data
         });
     }
+
+        async getAppealedExams() {
+        return prisma.entranceExamApplication.findMany({
+            where: { status: 'APPEALED' },
+            include: {
+                student: {
+                    include: {
+                        user: { select: { firstName: true, lastName: true, email: true } },
+                        program: { select: { programName: true } }
+                    }
+                },
+                slot: { select: { examDate: true, examTime: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async approveAppeal(applicationId: string) {
+        // Change status to FAILED so the applicant can book a new slot
+        return prisma.entranceExamApplication.update({
+            where: { id: applicationId },
+            data: { status: 'FAILED' }
+        });
+    }
+
+    async rejectAppeal(applicationId: string) {
+        // Change status to DISQUALIFIED so they are permanently locked out
+        return prisma.entranceExamApplication.update({
+            where: { id: applicationId },
+            data: { status: 'DISQUALIFIED' }
+        });
+    }
 }
