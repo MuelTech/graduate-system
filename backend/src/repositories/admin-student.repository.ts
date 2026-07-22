@@ -96,7 +96,7 @@ export class AdminStudentRepository {
   }
 
   async findStudentById(studentId: string) {
-    return prisma.student.findUnique({
+    const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
         user: {
@@ -149,6 +149,16 @@ export class AdminStudentRepository {
         },
       },
     });
+
+    if (!student) return null;
+
+    // Flatten user data to top level
+    return {
+      ...student,
+      firstName: student.user.firstName,
+      lastName: student.user.lastName,
+      email: student.user.email,
+    };
   }
 
   async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED") {
