@@ -124,18 +124,28 @@ export class ExamRepository {
     }
 
     async approveAppeal(applicationId: string) {
-        // Change status to FAILED so the applicant can book a new slot
-        return prisma.entranceExamApplication.update({
-            where: { id: applicationId },
-            data: { status: 'FAILED' }
+        return prisma.$transaction(async (tx) => {
+            const app = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
+            if (!app || app.status !== 'APPEALED') {
+                throw new Error("Application must be in APPEALED state to approve");
+            }
+            return tx.entranceExamApplication.update({
+                where: { id: applicationId },
+                data: { status: 'FAILED' }
+            });
         });
     }
 
     async rejectAppeal(applicationId: string) {
-        // Change status to DISQUALIFIED so they are permanently locked out
-        return prisma.entranceExamApplication.update({
-            where: { id: applicationId },
-            data: { status: 'DISQUALIFIED' }
+        return prisma.$transaction(async (tx) => {
+            const app = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
+            if (!app || app.status !== 'APPEALED') {
+                throw new Error("Application must be in APPEALED state to reject");
+            }
+            return tx.entranceExamApplication.update({
+                where: { id: applicationId },
+                data: { status: 'DISQUALIFIED' }
+            });
         });
     }
 }

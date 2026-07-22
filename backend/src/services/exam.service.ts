@@ -36,10 +36,10 @@ export class ExamService {
       const previousApps = student.examApplications;
 
       const pendingApp = previousApps.find(
-        (app: any) => app.status === "PENDING",
+        (app: any) => ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
       );
       if (pendingApp)
-        throw new Error("You already have a pending exam schedule.");
+        throw new Error(`You already have an application with status: ${pendingApp.status}`);
 
       const slot = await this.examRepo.getSlotById(slotId, tx);
       if (!slot) throw new Error("Exam slot not found.");
@@ -76,7 +76,7 @@ export class ExamService {
 
     // Find the active confirmed slot if it exists
     const activeApp = applications.find((app: any) =>
-      ["PENDING", "APPROVED", "TAKEN", "PASSED", "FAILED"].includes(app.status),
+      ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
     );
 
     let confirmedSlot = null;
@@ -145,7 +145,16 @@ export class ExamService {
         throw new Error("No pending or missed exam found to appeal.");
       }
 
-      // Update status to FAILED so it clears the way for a new schedule
+      if (pendingApp.slot) {
+        const d = new Date(pendingApp.slot.examDate);
+        const t = new Date(pendingApp.slot.examTime);
+        d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
+        if (d > new Date()) {
+          throw new Error("Cannot appeal an exam that has not happened yet.");
+        }
+      }
+
+      // Update status to APPEALED so the admin can review it
       await tx.entranceExamApplication.update({
         where: { id: pendingApp.id },
         data: { status: "APPEALED" },

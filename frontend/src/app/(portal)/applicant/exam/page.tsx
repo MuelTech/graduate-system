@@ -231,16 +231,15 @@ export default function ApplicantExamPage() {
       setShowSubmitConfirm(false);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        setErrorMsg(error.message);
-        // If the error is exactly the expiration message, set a specific missed state
+        // Only eject the user if the exam explicitly expired
         if (error.message.includes("expired")) {
+          setErrorMsg(error.message);
           setExamState("no_schedule"); // We will repurpose this state
         } else {
-          setExamState("no_schedule");
+          alert(`Submission failed: ${error.message}. Please check your connection and try again.`);
         }
       } else {
-        setErrorMsg("Failed to load examination status.");
-        setExamState("no_schedule");
+        alert("Failed to submit examination. Please try again.");
       }
     }
   };
