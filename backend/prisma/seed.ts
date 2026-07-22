@@ -199,10 +199,13 @@ async function main() {
   });
   console.log('Created Panelist3 test account');
 
-  // 3. Enrolled Student Test Account
+  // 3. Enrolled Student Test Accounts
   const firstProgram = await prisma.program.findFirst();
-  if (firstProgram) {
-    await prisma.user.upsert({
+  const panelist1 = await prisma.user.findUnique({ where: { email: 'panelist1@earist.edu.ph' } });
+
+  if (firstProgram && panelist1) {
+    // Student 1 - Jane Smith (enrolled, comp exam passed, thesis in progress)
+    const student1 = await prisma.user.upsert({
       where: { email: 'student@earist.edu.ph' },
       update: {},
       create: {
@@ -217,11 +220,167 @@ async function main() {
             dateOfBirth: new Date('1995-05-15T00:00:00.000Z'),
             programId: firstProgram.id,
             admissionStatus: 'ENROLLED',
+            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
+            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
+            curriculumType: 'NEW',
+            alignmentStatus: 'ALIGNED',
           }
         }
       }
     });
-    console.log('Created Student test account');
+    console.log('Created Student 1 (Jane Smith)');
+
+    // Add comprehensive exam record for Student 1
+    const student1Record = await prisma.student.findUnique({ where: { userId: student1.id } });
+    if (student1Record) {
+      await prisma.compExamRecord.create({
+        data: {
+          studentId: student1Record.id,
+          status: 'PASSED',
+        }
+      });
+      console.log('Created Comp Exam record for Student 1 (PASSED)');
+
+      // Add thesis record for Student 1
+      const adviserAssignment = await prisma.adviserAssignment.create({
+        data: {
+          studentId: student1Record.id,
+          adviserId: panelist1.id,
+          assignedDate: new Date('2026-06-15T00:00:00.000Z'),
+          isActive: true,
+        }
+      });
+
+      await prisma.thesisRecord.create({
+        data: {
+          studentId: student1Record.id,
+          assignmentId: adviserAssignment.id,
+          stage: 'PROPOSAL',
+          status: 'PENDING',
+        }
+      });
+      console.log('Created Thesis record for Student 1 (Proposal Defense)');
+
+      // Add residency tracking
+      await prisma.residencyTracking.create({
+        data: {
+          studentId: student1Record.id,
+          startDate: new Date('2026-06-01T00:00:00.000Z'),
+          maxYears: 5,
+        }
+      });
+      console.log('Created Residency Tracking for Student 1');
+    }
+
+    // Student 2 - Juan Dela Cruz (enrolled, comp exam failed once)
+    const student2 = await prisma.user.upsert({
+      where: { email: 'student2@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'student2@earist.edu.ph',
+        passwordHash,
+        firstName: 'Juan',
+        lastName: 'Dela Cruz',
+        role: 'STUDENT',
+        student: {
+          create: {
+            studentNumber: '2026-0002',
+            dateOfBirth: new Date('1998-03-20T00:00:00.000Z'),
+            programId: firstProgram.id,
+            admissionStatus: 'ENROLLED',
+            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
+            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
+            curriculumType: 'OLD',
+            alignmentStatus: 'ALIGNED',
+          }
+        }
+      }
+    });
+    console.log('Created Student 2 (Juan Dela Cruz)');
+
+    // Add comprehensive exam record for Student 2 (1 strike)
+    const student2Record = await prisma.student.findUnique({ where: { userId: student2.id } });
+    if (student2Record) {
+      await prisma.compExamRecord.create({
+        data: {
+          studentId: student2Record.id,
+          status: 'FAILED',
+        }
+      });
+      console.log('Created Comp Exam record for Student 2 (FAILED - 1 strike)');
+    }
+
+    // Student 3 - Maria Santos (enrolled, no comp exam yet)
+    await prisma.user.upsert({
+      where: { email: 'student3@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'student3@earist.edu.ph',
+        passwordHash,
+        firstName: 'Maria',
+        lastName: 'Santos',
+        role: 'STUDENT',
+        student: {
+          create: {
+            studentNumber: '2026-0003',
+            dateOfBirth: new Date('1999-07-10T00:00:00.000Z'),
+            programId: firstProgram.id,
+            admissionStatus: 'ENROLLED',
+            enrollmentDate: new Date('2026-06-15T00:00:00.000Z'),
+            residencyStartDate: new Date('2026-06-15T00:00:00.000Z'),
+            curriculumType: 'NEW',
+            alignmentStatus: 'ALIGNED',
+          }
+        }
+      }
+    });
+    console.log('Created Student 3 (Maria Santos)');
+
+    // Student 4 - Pedro Reyes (enrolled, comp exam failed twice - dismissed)
+    const student4 = await prisma.user.upsert({
+      where: { email: 'student4@earist.edu.ph' },
+      update: {},
+      create: {
+        email: 'student4@earist.edu.ph',
+        passwordHash,
+        firstName: 'Pedro',
+        lastName: 'Reyes',
+        role: 'STUDENT',
+        student: {
+          create: {
+            studentNumber: '2026-0004',
+            dateOfBirth: new Date('1997-11-25T00:00:00.000Z'),
+            programId: firstProgram.id,
+            admissionStatus: 'DISMISSED',
+            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
+            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
+            curriculumType: 'NEW',
+            alignmentStatus: 'ALIGNED',
+          }
+        }
+      }
+    });
+    console.log('Created Student 4 (Pedro Reyes - Dismissed)');
+
+    // Add 2 failed comp exam records for Student 4
+    const student4Record = await prisma.student.findUnique({ where: { userId: student4.id } });
+    if (student4Record) {
+      await prisma.compExamRecord.create({
+        data: {
+          studentId: student4Record.id,
+          status: 'FAILED',
+        }
+      });
+      await prisma.compExamRecord.create({
+        data: {
+          studentId: student4Record.id,
+          status: 'FAILED',
+        }
+      });
+      console.log('Created 2 Comp Exam records for Student 4 (2 strikes - dismissed)');
+    }
+
+    console.log('Created all Student test accounts');
   }
 
   // 4. Applicant Test Accounts
