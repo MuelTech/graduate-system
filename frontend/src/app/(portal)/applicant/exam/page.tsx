@@ -75,7 +75,11 @@ export default function ApplicantExamPage() {
           return;
         }
 
-        if (!confirmedSlot || !confirmedSlot.examDate || !confirmedSlot.examTime) {
+        if (
+          !confirmedSlot ||
+          !confirmedSlot.examDate ||
+          !confirmedSlot.examTime
+        ) {
           setExamState("no_schedule");
           return;
         }
@@ -106,7 +110,9 @@ export default function ApplicantExamPage() {
         });
 
         setMcqQuestions(
-          questionsRes.filter((q: ExamQuestion) => q.type === "MULTIPLE_CHOICE"),
+          questionsRes.filter(
+            (q: ExamQuestion) => q.type === "MULTIPLE_CHOICE",
+          ),
         );
         setEssayQuestion(
           questionsRes.find((q: ExamQuestion) => q.type === "ESSAY") || null,
@@ -225,9 +231,15 @@ export default function ApplicantExamPage() {
       setShowSubmitConfirm(false);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        alert(error.message);
+        // Only eject the user if the exam explicitly expired
+        if (error.message.includes("expired")) {
+          setErrorMsg(error.message);
+          setExamState("no_schedule"); // We will repurpose this state
+        } else {
+          alert(`Submission failed: ${error.message}. Please check your connection and try again.`);
+        }
       } else {
-        alert("Submission failed! Your time might have expired.");
+        alert("Failed to submit examination. Please try again.");
       }
     }
   };
@@ -241,28 +253,63 @@ export default function ApplicantExamPage() {
     );
   }
 
-  // --- STATE 2: NO SCHEDULE ---
+  // --- STATE 2: NO SCHEDULE OR MISSED EXAM ---
   if (examState === "no_schedule") {
+    const isMissed = errorMsg?.includes("expired");
+
     return (
       <div className="space-y-4">
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
-                <Calendar className="h-8 w-8 text-amber-600" />
+              <div
+                className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isMissed ? "bg-red-50" : "bg-amber-50"}`}
+              >
+                {isMissed ? (
+                  <ShieldAlert className="h-8 w-8 text-red-600" />
+                ) : (
+                  <Calendar className="h-8 w-8 text-amber-600" />
+                )}
               </div>
               <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                No Exam Schedule Found
+                {isMissed ? "Examination Missed" : "No Exam Schedule Found"}
               </h3>
               <p className="mb-6 max-w-md text-sm text-(--earist-body-text)">
-                {errorMsg ||
-                  "You have not confirmed an entrance examination schedule yet. Please choose a slot to proceed."}
+                {isMissed
+                  ? "You missed your scheduled entrance examination window. To take the exam, you must submit an appeal to reschedule."
+                  : "You have not confirmed an entrance examination schedule yet. Please choose a slot to proceed."}
               </p>
-              <Link href="/applicant/schedule">
-                <Button className="bg-(--earist-primary) hover:bg-red-900">
-                  Select Exam Schedule <ArrowRight className="ml-2 h-4 w-4" />
+
+              {isMissed ? (
+                <Button
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={async () => {
+                    try {
+                      await apiClientRequest("/exam/appeal", {
+                        method: "POST",
+                      });
+                      alert(
+                        "Appeal submitted successfully! You can now select a new exam schedule.",
+                      );
+                      window.location.href = "/applicant/schedule";
+                    } catch (err: unknown) {
+                      if (err instanceof Error) {
+                        alert(err.message);
+                      } else {
+                        alert("Failed to submit appeal.");
+                      }
+                    }
+                  }}
+                >
+                  Appeal for Reschedule <Send className="ml-2 h-4 w-4" />
                 </Button>
-              </Link>
+              ) : (
+                <Link href="/applicant/schedule">
+                  <Button className="bg-(--earist-primary) hover:bg-red-900">
+                    Select Exam Schedule <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -285,8 +332,8 @@ export default function ApplicantExamPage() {
               </h3>
               <p className="mb-4 max-w-md text-sm text-(--earist-body-text)">
                 Your entrance examination answers have been recorded. The MCQ
-                section is evaluated, and your essay response has been queued for
-                review.
+                section is evaluated, and your essay response has been queued
+                for review.
               </p>
               <Badge className="bg-green-100 text-green-700">Submitted</Badge>
             </div>
@@ -312,7 +359,8 @@ export default function ApplicantExamPage() {
                   Entrance Examination Gateway
                 </h2>
                 <p className="text-sm text-(--earist-body-text)">
-                  Your exam environment will automatically unlock when the countdown reaches zero.
+                  Your exam environment will automatically unlock when the
+                  countdown reaches zero.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-(--earist-primary) bg-(--earist-surface-gray) px-3 py-2 rounded-lg border border-(--earist-border-gray)">
@@ -424,11 +472,17 @@ export default function ApplicantExamPage() {
             <CardContent className="space-y-2 text-xs text-(--earist-body-text)">
               <div className="flex items-start gap-2">
                 <Wifi className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                <p>Ensure you are connected to a stable internet connection before beginning.</p>
+                <p>
+                  Ensure you are connected to a stable internet connection
+                  before beginning.
+                </p>
               </div>
               <div className="flex items-start gap-2">
                 <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <p>The 3-hour timer starts immediately upon opening the examination.</p>
+                <p>
+                  The 3-hour timer starts immediately upon opening the
+                  examination.
+                </p>
               </div>
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
@@ -495,7 +549,8 @@ export default function ApplicantExamPage() {
                     Multiple Choice — Question {currentQuestion + 1}
                   </CardTitle>
                   <Badge variant="outline">
-                    {Object.keys(answers).length} / {mcqQuestions.length} Answered
+                    {Object.keys(answers).length} / {mcqQuestions.length}{" "}
+                    Answered
                   </Badge>
                 </div>
               </CardHeader>
@@ -560,7 +615,8 @@ export default function ApplicantExamPage() {
                         className="bg-blue-600 hover:bg-blue-700"
                         onClick={() => setShowEssay(true)}
                       >
-                        Proceed to Essay Section <ChevronRight className="ml-1 h-4 w-4" />
+                        Proceed to Essay Section{" "}
+                        <ChevronRight className="ml-1 h-4 w-4" />
                       </Button>
                     )
                   )}
@@ -697,14 +753,19 @@ export default function ApplicantExamPage() {
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
               <p className="text-sm text-(--earist-body-text)">
-                Are you sure you want to submit your examination? Once submitted, you cannot change your answers.
+                Are you sure you want to submit your examination? Once
+                submitted, you cannot change your answers.
               </p>
               <div className="rounded-lg bg-(--earist-surface-gray) p-3 text-xs space-y-1">
                 <p>
-                  <strong>MCQ Progress:</strong> {Object.keys(answers).length} / {mcqQuestions.length} answered
+                  <strong>MCQ Progress:</strong> {Object.keys(answers).length} /{" "}
+                  {mcqQuestions.length} answered
                 </p>
                 <p>
-                  <strong>Essay Progress:</strong> {essayText.trim() ? `${essayWordCount} words written` : "Not answered"}
+                  <strong>Essay Progress:</strong>{" "}
+                  {essayText.trim()
+                    ? `${essayWordCount} words written`
+                    : "Not answered"}
                 </p>
               </div>
               <div className="flex justify-end gap-2 pt-2">

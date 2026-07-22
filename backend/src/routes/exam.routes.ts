@@ -27,4 +27,12 @@ router.put('/slots/:id', authenticateJWT, requireRole(['ADMIN']), examController
 // ADMIN ONLY: Toggle slot active status
 router.patch('/slots/:id/status', authenticateJWT, requireRole(['ADMIN']), examController.toggleSlotStatus);
 
+// APPLICANT ONLY: Entrance Exam Reschedule Appeal
+router.post('/appeal', authenticateJWT, requireRole(['APPLICANT']), examController.appealMissedExam);
+
+// ADMIN ONLY: Appeal Management
+router.get('/appeals', authenticateJWT, requireRole(['ADMIN']), examController.getAppeals);
+router.patch('/appeals/:id/approve', authenticateJWT, requireRole(['ADMIN']), examController.approveAppeal);
+router.patch('/appeals/:id/reject', authenticateJWT, requireRole(['ADMIN']), examController.rejectAppeal);
+
 export default router;

@@ -14,6 +14,8 @@ import {
   CalendarClock,
   X,
   Clipboard,
+  Check,
+  Ban,
 } from "lucide-react";
 import {
   Pagination,
@@ -24,36 +26,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { format } from "date-fns";
-
-interface Application {
-  id: string;
-  name: string;
-  email: string;
-  pinnacleId: string;
-  program: string;
-  scheduledSlot: string;
-  status: string;
-}
-
-interface ApiApplication {
-  id: string;
-  slot?: {
-    examDate: string;
-    examTime: string;
-  };
-  student: {
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-    pinnacleApplicantId?: string;
-  };
-  program: {
-    programName: string;
-  };
-  status: string;
-}
+import { Application, ApiApplication } from "@/types";
 
 export default function AdminExamApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,8 +69,29 @@ export default function AdminExamApplicationsPage() {
   };
 
   useEffect(() => {
-    fetchApplications();
+    const timer = setTimeout(() => fetchApplications(), 0);
+    return () => clearTimeout(timer);
   }, []);
+
+  const handleAppealAction = async (
+    appId: string,
+    action: "approve" | "reject",
+  ) => {
+    try {
+      await apiClientRequest(`/exam/appeals/${appId}/${action}`, {
+        method: "PATCH",
+      });
+      toast.success(`Appeal ${action}d successfully`);
+      setSelectedApp(null);
+      fetchApplications(); // Refresh the list
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error(`Failed to ${action} appeal`);
+      }
+    }
+  };
 
   const filteredApplications = applications.filter((app) => {
     const matchesSearch =
@@ -116,14 +110,22 @@ export default function AdminExamApplicationsPage() {
     page * pageSize,
   );
 
-  const pendingCount = applications.filter((a) => a.status === "pending").length;
+  const pendingCount = applications.filter(
+    (a) => a.status === "pending",
+  ).length;
   const scheduledCount = applications.filter(
     (a) => a.status === "scheduled" || a.status === "approved",
   ).length;
   const completedCount = applications.filter(
-    (a) => a.status === "completed" || a.status === "passed" || a.status === "failed",
+    (a) =>
+      a.status === "completed" ||
+      a.status === "passed" ||
+      a.status === "failed",
   ).length;
   const passedCount = applications.filter((a) => a.status === "passed").length;
+  const appealedCount = applications.filter(
+    (a) => a.status === "appealed",
+  ).length;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -138,6 +140,10 @@ export default function AdminExamApplicationsPage() {
         return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
       case "failed":
         return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
+      case "appealed":
+        return (
+          <Badge className="bg-purple-100 text-purple-700">Appealed</Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -146,7 +152,9 @@ export default function AdminExamApplicationsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-gray-500 animate-pulse">Loading applications...</p>
+        <p className="text-sm text-gray-500 animate-pulse">
+          Loading applications...
+        </p>
       </div>
     );
   }
@@ -164,7 +172,7 @@ export default function AdminExamApplicationsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Pending</p>
@@ -187,6 +195,12 @@ export default function AdminExamApplicationsPage() {
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">Passed</p>
             <p className="text-lg font-bold text-green-600">{passedCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-(--earist-body-text)">Appealed</p>
+            <p className="text-lg font-bold text-purple-600">{appealedCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -222,6 +236,7 @@ export default function AdminExamApplicationsPage() {
               <option value="completed">Completed</option>
               <option value="passed">Passed</option>
               <option value="failed">Failed</option>
+              <option value="appealed">Appealed</option>
             </select>
           </div>
         </CardContent>
@@ -234,18 +249,33 @@ export default function AdminExamApplicationsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Applicant</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Pinnacle ID</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Program</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Scheduled Slot</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Applicant
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Pinnacle ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Program
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                    Scheduled Slot
+                  </th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-4 py-8 text-center text-gray-500"
+                    >
                       No applications found
                     </td>
                   </tr>
@@ -254,19 +284,27 @@ export default function AdminExamApplicationsPage() {
                     <tr key={app.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-gray-900">{app.name}</p>
+                          <p className="font-medium text-gray-900">
+                            {app.name}
+                          </p>
                           <p className="text-sm text-gray-500">{app.email}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{app.pinnacleId}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{app.program}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {app.pinnacleId}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {app.program}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 text-sm text-gray-700">
                           <CalendarClock className="h-4 w-4 text-gray-400" />
                           {app.scheduledSlot}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center">{getStatusBadge(app.status)}</td>
+                      <td className="px-4 py-3 text-center">
+                        {getStatusBadge(app.status)}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           variant="ghost"
@@ -288,21 +326,28 @@ export default function AdminExamApplicationsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t px-4 py-3">
               <p className="text-sm text-gray-500">
-                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredApplications.length)} of {filteredApplications.length}
+                Showing {(page - 1) * pageSize + 1} to{" "}
+                {Math.min(page * pageSize, filteredApplications.length)} of{" "}
+                {filteredApplications.length}
               </p>
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious
                       onClick={() => setPage(page - 1)}
-                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={
+                        page === 1
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
                     />
                   </PaginationItem>
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum: number;
                     if (totalPages <= 5) pageNum = i + 1;
                     else if (page <= 3) pageNum = i + 1;
-                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else if (page >= totalPages - 2)
+                      pageNum = totalPages - 4 + i;
                     else pageNum = page - 2 + i;
                     return (
                       <PaginationItem key={pageNum}>
@@ -319,7 +364,11 @@ export default function AdminExamApplicationsPage() {
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setPage(page + 1)}
-                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      className={
+                        page === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -334,7 +383,9 @@ export default function AdminExamApplicationsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">Application Details</h3>
+              <h3 className="text-lg font-bold text-(--earist-primary)">
+                Application Details
+              </h3>
               <button
                 onClick={() => setSelectedApp(null)}
                 className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
@@ -345,19 +396,27 @@ export default function AdminExamApplicationsPage() {
 
             <div className="space-y-3">
               <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-sm font-semibold text-(--earist-primary)">{selectedApp.name}</p>
+                <p className="text-sm font-semibold text-(--earist-primary)">
+                  {selectedApp.name}
+                </p>
                 <p className="text-xs text-gray-500">{selectedApp.email}</p>
-                <p className="text-xs text-gray-500">{selectedApp.pinnacleId}</p>
+                <p className="text-xs text-gray-500">
+                  {selectedApp.pinnacleId}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-gray-500">Program</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedApp.program}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedApp.program}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Scheduled Slot</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedApp.scheduledSlot}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedApp.scheduledSlot}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Status</p>
@@ -367,7 +426,27 @@ export default function AdminExamApplicationsPage() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              {(selectedApp.status === "passed" || selectedApp.status === "failed") && (
+              {selectedApp.status === "appealed" && (
+                <>
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleAppealAction(selectedApp.id, 'approve')}
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Approve
+                  </Button>
+                  <Button
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => handleAppealAction(selectedApp.id, 'reject')}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                </>
+              )}
+              
+              {(selectedApp.status === "passed" ||
+                selectedApp.status === "failed") && (
                 <Link href="/admin/exam/scores" className="flex-1">
                   <Button variant="outline" className="w-full">
                     <Clipboard className="mr-2 h-4 w-4" />

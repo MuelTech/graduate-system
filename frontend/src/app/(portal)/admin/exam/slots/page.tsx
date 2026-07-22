@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/pagination";
 import { Plus, CalendarClock, Edit, Trash2, X, Users } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
-import { ExamSlot as Slot, Program} from "@/types";
+import { ExamSlot as Slot, Program } from "@/types";
 
 export default function AdminExamSlotsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const pageSize = 10;
   const queryClient = useQueryClient();
 
@@ -42,8 +43,26 @@ export default function AdminExamSlotsPage() {
   const programs = programsData?.graduatePrograms || [];
   const isLoading = isSlotsLoading || isProgramsLoading;
 
-  const totalPages = Math.ceil(slots.length / pageSize);
-  const paginatedSlots = slots.slice((page - 1) * pageSize, page * pageSize);
+  const isPast = (dateStr: string, timeStr: string) => {
+    const d = new Date(dateStr);
+    const t = new Date(timeStr);
+    d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
+    return d < new Date();
+  };
+
+  const filteredSlots = slots.filter((slot) => {
+    if (filter === "all") return true;
+    const past = isPast(slot.examDate, slot.examTime);
+    if (filter === "upcoming") return !past;
+    if (filter === "past") return past;
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredSlots.length / pageSize);
+  const paginatedSlots = filteredSlots.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   // Form State
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -176,29 +195,41 @@ export default function AdminExamSlotsPage() {
             Create and manage examination slots
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingSlotId(null);
-            setProgramId("");
-            setExamDate("");
-            setExamTime("");
-            setMaxSlots("");
-            setShowCreateModal(true);
-          }}
-          className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          Create Exam Slot
-        </Button>
+        <div className="flex items-center gap-3">
+          <select
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value as "upcoming" | "past" | "all");
+              setPage(1);
+            }}
+            className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+          >
+            <option value="upcoming">Upcoming Slots</option>
+            <option value="past">Past Slots</option>
+            <option value="all">All Slots</option>
+          </select>
+          <Button
+            onClick={() => {
+              setEditingSlotId(null);
+              setProgramId("");
+              setExamDate("");
+              setExamTime("");
+              setMaxSlots("");
+              setShowCreateModal(true);
+            }}
+            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Create Exam Slot
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Total Slots
-            </p>
+            <p className="text-xs text-(--earist-body-text)">Total Slots</p>
             <p className="text-lg font-bold text-(--earist-primary)">
               {isLoading ? "..." : slots.length}
             </p>
@@ -365,7 +396,9 @@ export default function AdminExamSlotsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-(--earist-body-text)">
-            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, slots.length)} of {slots.length} slots
+            Showing {(page - 1) * pageSize + 1}–
+            {Math.min(page * pageSize, filteredSlots.length)} of{" "}
+            {filteredSlots.length} slots
           </p>
           <Pagination>
             <PaginationContent>
@@ -400,7 +433,9 @@ export default function AdminExamSlotsPage() {
                     e.preventDefault();
                     if (page < totalPages) setPage(page + 1);
                   }}
-                  className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                  className={
+                    page >= totalPages ? "pointer-events-none opacity-50" : ""
+                  }
                 />
               </PaginationItem>
             </PaginationContent>
@@ -423,60 +458,77 @@ export default function AdminExamSlotsPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Program
-                </label>
-                <select
-                  value={programId}
-                  onChange={(e) => setProgramId(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                >
-                  <option value="">Select program...</option>
-                  {programs.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.programName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Exam Date
-                </label>
-                <input
-                  type="date"
-                  value={examDate}
-                  onChange={(e) => setExamDate(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Exam Time (Start)
-                </label>
-                <input
-                  type="time"
-                  value={examTime}
-                  onChange={(e) => setExamTime(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Max Slots
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={maxSlots}
-                  onChange={(e) => setMaxSlots(e.target.value)}
-                  placeholder="e.g., 30"
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                />
-              </div>
-            </div>
+            {(() => {
+              const editingSlot = slots.find(s => s.id === editingSlotId);
+              const hasApplicants = editingSlot ? editingSlot.slotsTaken > 0 : false;
+              
+              return (
+                <>
+                  {hasApplicants && (
+                    <div className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-700 border border-amber-200">
+                      <strong>Note:</strong> Date, time, and program cannot be changed because applicants have already booked this slot.
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
+                        Program
+                      </label>
+                      <select
+                        value={programId}
+                        onChange={(e) => setProgramId(e.target.value)}
+                        disabled={hasApplicants}
+                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                      >
+                        <option value="">Select program...</option>
+                        {programs.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.programName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
+                        Exam Date
+                      </label>
+                      <input
+                        type="date"
+                        value={examDate}
+                        onChange={(e) => setExamDate(e.target.value)}
+                        disabled={hasApplicants}
+                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
+                        Exam Time (Start)
+                      </label>
+                      <input
+                        type="time"
+                        value={examTime}
+                        onChange={(e) => setExamTime(e.target.value)}
+                        disabled={hasApplicants}
+                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
+                        Max Slots
+                      </label>
+                      <input
+                        type="number"
+                        min={hasApplicants ? editingSlot!.slotsTaken : 1}
+                        value={maxSlots}
+                        onChange={(e) => setMaxSlots(e.target.value)}
+                        placeholder="e.g., 30"
+                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
             <div className="mt-4 flex gap-3">
               <Button
                 variant="outline"

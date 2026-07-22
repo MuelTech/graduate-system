@@ -100,6 +100,13 @@ export default function ApplicantSchedulePage() {
     });
   };
 
+  const isPast = (dateStr: string, timeStr: string) => {
+    const d = new Date(dateStr);
+    const t = new Date(timeStr);
+    d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
+    return d < new Date();
+  };
+
   if (isLoading)
     return <div className="p-4 text-center">Loading your schedule...</div>;
   if (error)
@@ -267,11 +274,13 @@ export default function ApplicantSchedulePage() {
                       {availableSlots.map((slot) => {
                         const slotsLeft = slot.maxSlots - slot.slotsTaken;
                         const isFull = slotsLeft <= 0;
+                        const isPastSlot = isPast(slot.examDate, slot.examTime);
+                        const isDisabled = isFull || isPastSlot;
                         return (
                           <tr
                             key={slot.id}
                             className={`border-b border-(--earist-border-gray) last:border-0 ${
-                              isFull ? "opacity-50" : ""
+                              isDisabled ? "opacity-50" : ""
                             }`}
                           >
                             <td className="px-4 py-3 font-medium text-(--earist-primary)">
@@ -283,23 +292,23 @@ export default function ApplicantSchedulePage() {
                             <td className="px-4 py-3 text-center">
                               <Badge
                                 className={
-                                  isFull
+                                  isDisabled
                                     ? "bg-red-100 text-red-700"
                                     : slotsLeft <= 5
                                       ? "bg-amber-100 text-amber-700"
                                       : "bg-green-100 text-green-700"
                                 }
                               >
-                                {isFull ? "Full" : `${slotsLeft} left`}
+                                {isPastSlot ? "Expired" : isFull ? "Full" : `${slotsLeft} left`}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <Button
                                 size="sm"
-                                disabled={isFull}
+                                disabled={isDisabled}
                                 onClick={() => setConfirmSlot(slot)}
                                 className={
-                                  isFull
+                                  isDisabled
                                     ? "cursor-not-allowed bg-gray-200 text-gray-400"
                                     : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                                 }
@@ -323,8 +332,10 @@ export default function ApplicantSchedulePage() {
               {availableSlots.map((slot) => {
                 const slotsLeft = slot.maxSlots - slot.slotsTaken;
                 const isFull = slotsLeft <= 0;
+                const isPastSlot = isPast(slot.examDate, slot.examTime);
+                const isDisabled = isFull || isPastSlot;
                 return (
-                  <Card key={slot.id} className={isFull ? "opacity-50" : ""}>
+                  <Card key={slot.id} className={isDisabled ? "opacity-50" : ""}>
                     <CardContent className="p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--earist-surface-light-red)">
@@ -332,14 +343,14 @@ export default function ApplicantSchedulePage() {
                         </div>
                         <Badge
                           className={
-                            isFull
+                            isDisabled
                               ? "bg-red-100 text-red-700"
                               : slotsLeft <= 5
                                 ? "bg-amber-100 text-amber-700"
                                 : "bg-green-100 text-green-700"
                           }
                         >
-                          {isFull ? "Full" : `${slotsLeft} slots`}
+                          {isPastSlot ? "Expired" : isFull ? "Full" : `${slotsLeft} slots`}
                         </Badge>
                       </div>
                       <p className="text-sm font-semibold text-(--earist-primary)">
@@ -350,10 +361,10 @@ export default function ApplicantSchedulePage() {
                       </p>
                       <Button
                         size="sm"
-                        disabled={isFull}
+                        disabled={isDisabled}
                         onClick={() => setConfirmSlot(slot)}
                         className={`w-full ${
-                          isFull
+                          isDisabled
                             ? "cursor-not-allowed bg-gray-200 text-gray-400"
                             : "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                         }`}

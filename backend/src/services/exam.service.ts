@@ -1,119 +1,180 @@
-import { ExamRepository } from '../repositories/exam.repository';
-import { ExamAppStatus } from '@prisma/client';
+import { ExamRepository } from "../repositories/exam.repository";
+import { ExamAppStatus } from "@prisma/client";
 
 export class ExamService {
-    private examRepo = new ExamRepository();
+  private examRepo = new ExamRepository();
 
-    async createSlot(data: { programId: string, examDate: string, examTime: string, maxSlots: number }) {
-        return this.examRepo.createSlot({
-            programId: data.programId,
-            examDate: new Date(data.examDate),
-            examTime: new Date(data.examTime),
-            maxSlots: data.maxSlots,
-            isActive: true
-        });
+  async createSlot(data: {
+    programId: string;
+    examDate: string;
+    examTime: string;
+    maxSlots: number;
+  }) {
+    return this.examRepo.createSlot({
+      programId: data.programId,
+      examDate: new Date(data.examDate),
+      examTime: new Date(data.examTime),
+      maxSlots: data.maxSlots,
+      isActive: true,
+    });
+  }
+
+  async getAvailableSlots(programId: string) {
+    const slots = await this.examRepo.getFutureActiveSlots(programId);
+    return slots.filter((slot) => slot.slotsTaken < slot.maxSlots);
+  }
+
+  async scheduleExam(userId: string, slotId: string) {
+    return this.examRepo.runInTransaction(async (tx) => {
+      const student = await this.examRepo.getStudentWithExamApps(userId, tx);
+
+      if (!student) throw new Error("Student not found");
+      if (student.alignmentStatus === "PENDING_WAIVER") {
+        throw new Error("Cannot schedule exam. Pending Bridging Waiver.");
+      }
+
+      const previousApps = student.examApplications;
+
+      const pendingApp = previousApps.find(
+        (app: any) => ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+      );
+      if (pendingApp)
+        throw new Error(`You already have an application with status: ${pendingApp.status}`);
+
+      const slot = await this.examRepo.getSlotById(slotId, tx);
+      if (!slot) throw new Error("Exam slot not found.");
+      if (slot.slotsTaken >= slot.maxSlots)
+        throw new Error("This slot is fully booked.");
+
+      await this.examRepo.incrementSlotTaken(slotId, tx);
+
+      const application = await this.examRepo.createApplication(
+        {
+          studentId: student.id,
+          programId: student.programId,
+          slotId: slot.id,
+          examDate: slot.examDate,
+          examTime: slot.examTime,
+          status: ExamAppStatus.PENDING,
+        },
+        tx,
+      );
+
+      return application;
+    });
+  }
+
+  async getAllSlots() {
+    return this.examRepo.getAllSlots();
+  }
+
+  async getApplicantStatus(userId: string) {
+    const student = await this.examRepo.getApplicantStatus(userId);
+    if (!student) throw new Error("Student not found");
+
+    const applications = student.examApplications || [];
+
+    // Find the active confirmed slot if it exists
+    const activeApp = applications.find((app: any) =>
+      ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+    );
+
+    let confirmedSlot = null;
+    if (activeApp && activeApp.slot) {
+      confirmedSlot = {
+        id: activeApp.slot.id,
+        examDate: activeApp.slot.examDate,
+        examTime: activeApp.slot.examTime,
+        programName: activeApp.slot.program?.programName || "Unknown Program",
+      };
     }
 
-    async getAvailableSlots(programId: string) {
-        const slots = await this.examRepo.getFutureActiveSlots(programId);
-        return slots.filter(slot => slot.slotsTaken < slot.maxSlots);
+    return {
+      alignmentStatus: student.alignmentStatus,
+      programId: student.programId,
+      confirmedSlot,
+      examStatus: activeApp ? activeApp.status.toLowerCase() : "none",
+    };
+  }
+
+  async updateSlot(
+    slotId: string,
+    data: {
+      programId: string;
+      examDate: string;
+      examTime: string;
+      maxSlots: number;
+    },
+  ) {
+    const updatedSlot = await this.examRepo.updateSlot(slotId, {
+      programId: data.programId,
+      examDate: new Date(data.examDate),
+      examTime: new Date(data.examTime),
+      maxSlots: data.maxSlots,
+    });
+
+    // Email Notification Placeholder
+    const applications = await this.examRepo.getApplicantsForSlot(slotId);
+    if (applications.length > 0) {
+      console.log(
+        `[EMAIL QUEUE] Sending schedule change notification to ${applications.length} applicants for slot ${slotId}`,
+      );
+      // TODO: Implement actual Nodemailer logic here later
     }
 
-    async scheduleExam(userId: string, slotId: string) {
-        return this.examRepo.runInTransaction(async (tx) => {
-            const student = await this.examRepo.getStudentWithExamApps(userId, tx);
+    return updatedSlot;
+  }
 
-            if (!student) throw new Error("Student not found");
-            if (student.alignmentStatus === 'PENDING_WAIVER') {
-                throw new Error("Cannot schedule exam. Pending Bridging Waiver.");
-            }
+  async toggleSlotStatus(slotId: string, isActive: boolean) {
+    return this.examRepo.updateSlot(slotId, { isActive });
+  }
 
-            const previousApps = student.examApplications;
-            const totalStrikes = previousApps.reduce((sum: number, app: any) => sum + app.strikeCount, 0);
-            if (totalStrikes >= 2) {
-                throw new Error("You have reached the maximum allowed attempts (Two strikes). You are disqualified.");
-            }
+  async getAllApplications() {
+    return this.examRepo.getAllApplications();
+  }
 
-            const pendingApp = previousApps.find((app: any) => app.status === 'PENDING');
-            if (pendingApp) throw new Error("You already have a pending exam schedule.");
+  async appealMissedExam(userId: string) {
+    return this.examRepo.runInTransaction(async (tx) => {
+      const student = await this.examRepo.getApplicantStatus(userId);
+      if (!student) throw new Error("Student not found");
 
-            const slot = await this.examRepo.getSlotById(slotId, tx);
-            if (!slot) throw new Error("Exam slot not found.");
-            if (slot.slotsTaken >= slot.maxSlots) throw new Error("This slot is fully booked.");
+      const pendingApp = student.examApplications?.find(
+        (app: any) => app.status === "PENDING",
+      );
+      if (!pendingApp) {
+        throw new Error("No pending or missed exam found to appeal.");
+      }
 
-            await this.examRepo.incrementSlotTaken(slotId, tx);
-
-            const application = await this.examRepo.createApplication({
-                studentId: student.id,
-                programId: student.programId,
-                slotId: slot.id,
-                examDate: slot.examDate,
-                examTime: slot.examTime,
-                status: ExamAppStatus.PENDING
-            }, tx);
-
-            return application;
-        });
-    }
-
-        async getAllSlots() {
-        return this.examRepo.getAllSlots();
-    }
-
-    async getApplicantStatus(userId: string) {
-        const student = await this.examRepo.getApplicantStatus(userId);
-        if (!student) throw new Error("Student not found");
-
-        const applications = student.examApplications || [];
-        const totalStrikes = applications.reduce((sum: number, app: any) => sum + app.strikeCount, 0);
-
-        // Find the active confirmed slot if it exists
-        const activeApp = applications.find((app: any) => 
-            ['PENDING', 'APPROVED', 'TAKEN', 'PASSED', 'FAILED'].includes(app.status)
-        );
-
-        let confirmedSlot = null;
-        if (activeApp && activeApp.slot) {
-            confirmedSlot = {
-                id: activeApp.slot.id,
-                examDate: activeApp.slot.examDate,
-                examTime: activeApp.slot.examTime,
-                programName: activeApp.slot.program?.programName || 'Unknown Program'
-            };
+      if (pendingApp.slot) {
+        const d = new Date(pendingApp.slot.examDate);
+        const t = new Date(pendingApp.slot.examTime);
+        d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
+        if (d > new Date()) {
+          throw new Error("Cannot appeal an exam that has not happened yet.");
         }
+      }
 
-        return {
-            alignmentStatus: student.alignmentStatus,
-            strikeCount: totalStrikes,
-            programId: student.programId,
-            confirmedSlot,
-            examStatus: activeApp ? activeApp.status.toLowerCase() : 'none'
-        };
-    }
+      // Update status to APPEALED so the admin can review it
+      await tx.entranceExamApplication.update({
+        where: { id: pendingApp.id },
+        data: { status: "APPEALED" },
+      });
 
-        async updateSlot(slotId: string, data: { programId: string, examDate: string, examTime: string, maxSlots: number }) {
-        const updatedSlot = await this.examRepo.updateSlot(slotId, {
-            programId: data.programId,
-            examDate: new Date(data.examDate),
-            examTime: new Date(data.examTime),
-            maxSlots: data.maxSlots
-        });
+      // TODO: In the future, you can integrate email notifications here to inform the admin
 
-        // Email Notification Placeholder
-        const applications = await this.examRepo.getApplicantsForSlot(slotId);
-        if (applications.length > 0) {
-            console.log(`[EMAIL QUEUE] Sending schedule change notification to ${applications.length} applicants for slot ${slotId}`);
-            // TODO: Implement actual Nodemailer logic here later
-        }
+      return { success: true, message: "Appeal processed successfully." };
+    });
+  }
 
-        return updatedSlot;
-    }
+  async getAppealedExams() {
+    return this.examRepo.getAppealedExams();
+  }
 
-    async toggleSlotStatus(slotId: string, isActive: boolean) {
-        return this.examRepo.updateSlot(slotId, { isActive });
-    }
+  async approveAppeal(applicationId: string) {
+    return this.examRepo.approveAppeal(applicationId);
+  }
 
-    async getAllApplications() {
-        return this.examRepo.getAllApplications();
-    }
+  async rejectAppeal(applicationId: string) {
+    return this.examRepo.rejectAppeal(applicationId);
+  }
 }
