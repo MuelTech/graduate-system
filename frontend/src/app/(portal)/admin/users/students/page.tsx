@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiClientRequest } from "@/lib/api.client";
 import {
   Pagination,
   PaginationContent,
@@ -12,242 +15,104 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  Search,
-  Filter,
-  Eye,
-  GraduationCap,
-  FileText,
-  BookOpen,
-} from "lucide-react";
+import { Eye, Search, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { AdminStudentListItem } from "@/types";
 
 export default function AdminStudentsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [programFilter, setProgramFilter] = useState("all");
-  const [stageFilter, setStageFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [programFilter, setProgramFilter] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
 
-  const students = [
-    {
-      id: 1,
-      name: "Maria Santos",
-      studentNumber: "2026-GS-00456",
-      email: "maria.santos@gmail.com",
-      program: "MSCS",
-      enrollmentDate: "June 1, 2026",
-      thesisStage: "proposal_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2026",
-      adviser: "Dr. Roberto Reyes",
-      status: "active" as "active" | "on_leave" | "graduated",
+  const { data, isLoading } = useQuery({
+    queryKey: ["adminStudents", page, search, programFilter, stageFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: "10",
+        search,
+        program: programFilter,
+        thesisStage: stageFilter,
+      });
+      const res = await apiClientRequest(`/admin/students?${params.toString()}`);
+      return res;
     },
-    {
-      id: 2,
-      name: "Juan Dela Cruz",
-      studentNumber: "2026-GS-00457",
-      email: "juan.delacruz@gmail.com",
-      program: "MSCS",
-      enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2026",
-      adviser: null,
-      status: "active" as "active" | "on_leave" | "graduated",
-    },
-    {
-      id: 3,
-      name: "Pedro Reyes",
-      studentNumber: "2026-GS-00458",
-      email: "pedro.reyes@gmail.com",
-      program: "MIT",
-      enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "pending" as "pending" | "passed" | "failed",
-      residencyStart: "2026",
-      adviser: null,
-      status: "active" as "active" | "on_leave" | "graduated",
-    },
-    {
-      id: 4,
-      name: "Ana Garcia",
-      studentNumber: "2025-GS-00312",
-      email: "ana.garcia@gmail.com",
-      program: "MAED",
-      enrollmentDate: "January 15, 2025",
-      thesisStage: "final_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2025",
-      adviser: "Dr. Pedro Lim",
-      status: "active" as "active" | "on_leave" | "graduated",
-    },
-    {
-      id: 5,
-      name: "Carlos Luna",
-      studentNumber: "2025-GS-00289",
-      email: "carlos.luna@gmail.com",
-      program: "PhD Education",
-      enrollmentDate: "January 15, 2025",
-      thesisStage: "completed" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2024",
-      adviser: "Dr. Roberto Reyes",
-      status: "graduated" as "active" | "on_leave" | "graduated",
-    },
-    {
-      id: 6,
-      name: "Elena Torres",
-      studentNumber: "2026-GS-00459",
-      email: "elena.torres@gmail.com",
-      program: "MSCS",
-      enrollmentDate: "June 1, 2026",
-      thesisStage: "title_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2026",
-      adviser: "Dr. Ana Garcia",
-      status: "active" as "active" | "on_leave" | "graduated",
-    },
-    {
-      id: 7,
-      name: "Roberto Lim",
-      studentNumber: "2024-GS-00198",
-      email: "roberto.lim@gmail.com",
-      program: "DIT",
-      enrollmentDate: "January 15, 2024",
-      thesisStage: "proposal_defense" as
-        | "title_defense"
-        | "proposal_defense"
-        | "final_defense"
-        | "completed",
-      compExam: "passed" as "pending" | "passed" | "failed",
-      residencyStart: "2024",
-      adviser: "Dr. Juan Dela Cruz",
-      status: "active" as "active" | "on_leave" | "graduated",
-    },
-  ];
-
-  const programs = [...new Set(students.map((s) => s.program))];
-
-  const filteredStudents = students.filter((s) => {
-    const matchesSearch =
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.studentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-    if (programFilter !== "all" && s.program !== programFilter) return false;
-    if (stageFilter !== "all" && s.thesisStage !== stageFilter) return false;
-
-    return true;
   });
 
-  const totalPages = Math.ceil(filteredStudents.length / pageSize);
-  const paginatedStudents = filteredStudents.slice((page - 1) * pageSize, page * pageSize);
+  const students: AdminStudentListItem[] = data?.students || [];
+  const total = data?.total || 0;
+  const totalPages = Math.ceil(total / 10);
 
-  const activeCount = students.filter((s) => s.status === "active").length;
-  const graduatedCount = students.filter(
-    (s) => s.status === "graduated",
-  ).length;
-  const pendingAdviser = students.filter((s) => s.adviser === null).length;
+  // Summary counts from API response
+  const activeCount = data?.activeCount ?? students.filter((s) => s.admissionStatus === "ENROLLED").length;
+  const graduatedCount = data?.graduatedCount ?? students.filter((s) => s.admissionStatus === "GRADUATED").length;
+  const noAdviserCount = data?.noAdviserCount ?? students.filter((s) => !s.adviser).length;
 
   const getThesisStageBadge = (stage: string) => {
     switch (stage) {
-      case "title_defense":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>
-        );
-      case "proposal_defense":
-        return (
-          <Badge className="bg-amber-100 text-amber-700">
-            Proposal Defense
-          </Badge>
-        );
-      case "final_defense":
-        return (
-          <Badge className="bg-purple-100 text-purple-700">Final Defense</Badge>
-        );
-      case "completed":
+      case "TITLE":
+        return <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>;
+      case "PROPOSAL":
+        return <Badge className="bg-amber-100 text-amber-700">Proposal Defense</Badge>;
+      case "FINAL":
+        return <Badge className="bg-purple-100 text-purple-700">Final Defense</Badge>;
+      case "COMPLETED":
         return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
+      case "NONE":
+        return <Badge variant="outline">None</Badge>;
       default:
-        return null;
+        return <Badge variant="outline">{stage}</Badge>;
     }
   };
 
   const getCompExamBadge = (status: string) => {
     switch (status) {
-      case "pending":
+      case "PENDING":
         return <Badge className="bg-gray-100 text-gray-500">Pending</Badge>;
-      case "passed":
+      case "PASSED":
         return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
-      case "failed":
+      case "FAILED":
         return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
       default:
-        return null;
+        return <Badge variant="outline">{status || "--"}</Badge>;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "ENROLLED":
         return <Badge className="bg-green-100 text-green-700">Active</Badge>;
-      case "on_leave":
-        return <Badge className="bg-amber-100 text-amber-700">On Leave</Badge>;
-      case "graduated":
+      case "GRADUATED":
         return <Badge className="bg-blue-100 text-blue-700">Graduated</Badge>;
+      case "ON_LEAVE":
+        return <Badge className="bg-amber-100 text-amber-700">On Leave</Badge>;
+      case "DISMISSED":
+        return <Badge className="bg-red-100 text-red-700">Dismissed</Badge>;
       default:
-        return null;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Student Management
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          View and manage enrolled student accounts and thesis progress
-        </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-(--earist-primary)">
+            Student Management
+          </h2>
+          <p className="text-sm text-(--earist-body-text)">
+            View and manage enrolled student accounts and thesis progress
+          </p>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Total Students
-            </p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {students.length}
-            </p>
+            <p className="text-xs text-(--earist-body-text)">Total Students</p>
+            <p className="text-lg font-bold text-(--earist-primary)">{total}</p>
           </CardContent>
         </Card>
         <Card>
@@ -265,49 +130,57 @@ export default function AdminStudentsPage() {
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">No Adviser</p>
-            <p className="text-lg font-bold text-amber-600">{pendingAdviser}</p>
+            <p className="text-lg font-bold text-amber-600">{noAdviserCount}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search and Filters */}
       <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 text-gray-400 -translate-y-1/2" />
+              <Input
                 placeholder="Search by name, student number, or email..."
-                className="w-full rounded-lg border border-(--earist-border-gray) py-2 pr-3 pl-10 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-10"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
+            <div className="flex flex-wrap gap-2">
               <select
                 value={programFilter}
-                onChange={(e) => setProgramFilter(e.target.value)}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                onChange={(e) => {
+                  setProgramFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="px-3 py-2 border rounded-md text-sm"
               >
-                <option value="all">All Programs</option>
-                {programs.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
+                <option value="">All Programs</option>
+                <option value="MSCS">Master of Science in Computer Science</option>
+                <option value="MIT">Master of Information Technology</option>
+                <option value="MAED">Master of Arts in Education</option>
+                <option value="PhD Education">Doctor of Philosophy in Education</option>
+                <option value="DIT">Doctor of Information Technology</option>
               </select>
               <select
                 value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                onChange={(e) => {
+                  setStageFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="px-3 py-2 border rounded-md text-sm"
               >
-                <option value="all">All Stages</option>
-                <option value="title_defense">Title Defense</option>
-                <option value="proposal_defense">Proposal Defense</option>
-                <option value="final_defense">Final Defense</option>
-                <option value="completed">Completed</option>
+                <option value="">All Thesis Stages</option>
+                <option value="TITLE">Title Defense</option>
+                <option value="PROPOSAL">Proposal Defense</option>
+                <option value="FINAL">Final Defense</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="NONE">None</option>
               </select>
             </div>
           </div>
@@ -317,154 +190,123 @@ export default function AdminStudentsPage() {
       {/* Students Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Student
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Program
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Thesis Stage
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Comp Exam
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Adviser
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Residency
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedStudents.map((student) => (
-                  <tr
-                    key={student.id}
-                    className="border-b border-(--earist-border-gray) last:border-0"
-                  >
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-(--earist-primary)">
-                          {student.name}
-                        </p>
-                        <p className="text-xs text-(--earist-body-text)">
-                          {student.studentNumber}
-                        </p>
-                        <p className="text-xs text-(--earist-body-text)">
-                          {student.email}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                      {student.program}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {getThesisStageBadge(student.thesisStage)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {getCompExamBadge(student.compExam)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {student.adviser ? (
-                        <p className="text-xs text-(--earist-body-text)">
-                          {student.adviser}
-                        </p>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-700">
-                          Not Assigned
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <p className="text-xs text-(--earist-body-text)">
-                        Since {student.residencyStart}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {getStatusBadge(student.status)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                          title="View Profile"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                          title="View Thesis Progress"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                          title="View Curriculum"
-                        >
-                          <BookOpen className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-gray-500 animate-pulse">Loading students...</p>
+            </div>
+          ) : students.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="mb-4 h-12 w-12 text-gray-300" />
+              <p className="text-gray-500">No students found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Student</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Program</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Thesis Stage</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Comp Exam</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Adviser</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-(--earist-border-gray) px-4 py-3">
-              <p className="text-sm text-gray-500">
-                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredStudents.length)} of {filteredStudents.length}
-              </p>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setPage(page - 1)}
-                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) pageNum = i + 1;
-                    else if (page <= 3) pageNum = i + 1;
-                    else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-                    else pageNum = page - 2 + i;
-                    return (
-                      <PaginationItem key={pageNum}>
-                        <PaginationLink
-                          onClick={() => setPage(pageNum)}
-                          isActive={page === pageNum}
-                          className="cursor-pointer"
-                        >
-                          {pageNum}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setPage(page + 1)}
-                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500">{student.studentNumber}</p>
+                          <p className="text-xs text-gray-500">{student.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {student.program.programName}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getThesisStageBadge(student.thesisStage)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getCompExamBadge(student.compExamStatus)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {student.adviser ? (
+                          <p className="text-sm text-gray-700">{student.adviser}</p>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-700">Not Assigned</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {getStatusBadge(student.admissionStatus)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={`/admin/users/students/${student.id}`}>
+                          <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, total)} of {total} students
+          </p>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setPage(page - 1)}
+                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (page <= 3) {
+                  pageNum = i + 1;
+                } else if (page >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = page - 2 + i;
+                }
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      onClick={() => setPage(pageNum)}
+                      isActive={page === pageNum}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setPage(page + 1)}
+                  className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 }
