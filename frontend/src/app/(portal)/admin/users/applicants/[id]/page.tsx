@@ -219,6 +219,8 @@ export default function ApplicantDetailPage() {
     });
   };
 
+  const isEligibleForPromotion = applicant?.examStatus === "PASSED" && applicant?.corStatus === "VERIFIED";
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -241,9 +243,6 @@ export default function ApplicantDetailPage() {
       </div>
     );
   }
-
-  const isEligibleForPromotion =
-    applicant.examStatus === "PASSED" && applicant.corStatus === "VERIFIED";
 
   return (
     <div className="space-y-6">
