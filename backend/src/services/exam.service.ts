@@ -35,11 +35,20 @@ export class ExamService {
 
       const previousApps = student.examApplications;
 
-      const pendingApp = previousApps.find(
-        (app: any) => ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+      const pendingApp = previousApps.find((app: any) =>
+        [
+          "PENDING",
+          "APPROVED",
+          "TAKEN",
+          "PASSED",
+          "APPEALED",
+          "DISQUALIFIED",
+        ].includes(app.status),
       );
       if (pendingApp)
-        throw new Error(`You already have an application with status: ${pendingApp.status}`);
+        throw new Error(
+          `You already have an application with status: ${pendingApp.status}`,
+        );
 
       const slot = await this.examRepo.getSlotById(slotId, tx);
       if (!slot) throw new Error("Exam slot not found.");
@@ -76,7 +85,14 @@ export class ExamService {
 
     // Find the active confirmed slot if it exists
     const activeApp = applications.find((app: any) =>
-      ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+      [
+        "PENDING",
+        "APPROVED",
+        "TAKEN",
+        "PASSED",
+        "APPEALED",
+        "DISQUALIFIED",
+      ].includes(app.status),
     );
 
     let confirmedSlot = null;
@@ -182,14 +198,22 @@ export class ExamService {
     const app = await this.examRepo.getLatestResult(userId);
 
     if (!app || !app.score) {
-      throw new Error("No exam found. Your exam is either pending grading or you have not taken it.");
+      throw new Error(
+        "No exam found. Your exam is either pending grading or you have not taken it.",
+      );
     }
 
-    const mcqTotal = app.program?.examMcqTotal;
-    const essayTotal = app.program?.examEssayTotal;
-    const passingScore = app.program?.examPassingScore;
+    const mcqTotal = app.program?.examMcqTotal ?? 0;
+    const essayTotal = app.program?.examEssayTotal ?? 0;
+    const passingScore = app.program?.examPassingScore ?? 0;
 
-    const totalPossible = (mcqTotal || 0) + (essayTotal || 0);
+    const totalPossible = mcqTotal + essayTotal;
+
+    if (totalPossible <= 0) {
+      throw new Error(
+        "Exam scoring configuration is incomplete. Total possible score must be greater than zero.",
+      );
+    }
 
     return {
       status: app.score.status.toLowerCase(),

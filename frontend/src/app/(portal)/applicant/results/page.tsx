@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import {
   CheckCircle2,
   XCircle,
@@ -16,14 +17,16 @@ import {
 import { apiClientRequest } from "@/lib/api.client";
 
 export default function ApplicantResultsPage() {
+  const { data: session } = useSession(); // Retrieve session state
   const {
     data: result,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["examResult"],
+    queryKey: ["examResult", session?.user?.id || session?.user?.email], // Ensures cache isolation
     queryFn: async () => apiClientRequest("/exam/result", { method: "GET" }),
   });
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-(--earist-primary)">
@@ -197,13 +200,15 @@ export default function ApplicantResultsPage() {
               </div>
               <div className="mt-1 flex items-center justify-between text-[11px] text-(--earist-body-text)">
                 <span>0</span>
-                <span>
-                  Passing:{" "}
-                  {Math.round(
-                    (result.passingScore / result.totalPossible) * 100,
-                  )}
-                  %
-                </span>
+                {result.totalPossible > 0 && (
+                  <span>
+                    Passing:{" "}
+                    {Math.round(
+                      (result.passingScore / result.totalPossible) * 100,
+                    )}
+                    %
+                  </span>
+                )}
                 <span>100%</span>
               </div>
             </div>
