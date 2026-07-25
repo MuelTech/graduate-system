@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   XCircle,
@@ -10,24 +13,40 @@ import {
   FileText,
   Upload,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
 
 export default function ApplicantResultsPage() {
-  const result = {
-    status: "passed" as "passed" | "failed",
-    mcqScore: 38,
-    mcqTotal: 50,
-    essayScore: 28,
-    essayTotal: 30,
-    totalScore: 66,
-    totalPossible: 80,
-    passingScore: 48,
-    examDate: "June 15, 2026",
-  };
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["examResult"],
+    queryFn: async () => apiClientRequest("/exam/result", { method: "GET" }),
+  });
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-(--earist-primary)">
+        Loading your results...
+      </div>
+    );
+  }
+  if (error || !result) {
+    const errorMsg =
+      error instanceof Error ? error.message : "No results found.";
+    return <div className="p-8 text-center text-red-600">{errorMsg}</div>;
+  }
+  // We safe-guard division by zero if totalPossible is 0
+  const percentage =
+    result.totalPossible > 0
+      ? Math.round((result.totalScore / result.totalPossible) * 100)
+      : 0;
 
-  const percentage = Math.round(
-    (result.totalScore / result.totalPossible) * 100,
-  );
-
+  const formattedDate = new Date(result.examDate).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
   return (
     <div className="space-y-4">
       {/* Page Header */}
@@ -39,7 +58,7 @@ export default function ApplicantResultsPage() {
           Examination Results
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Exam taken on {result.examDate}
+          Exam taken on {formattedDate}
         </p>
       </div>
 
@@ -163,9 +182,7 @@ export default function ApplicantResultsPage() {
             {/* Score Bar */}
             <div>
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-(--earist-body-text)">
-                  Your Score
-                </span>
+                <span className="text-(--earist-body-text)">Your Score</span>
                 <span className="font-medium text-(--earist-primary)">
                   {percentage}%
                 </span>

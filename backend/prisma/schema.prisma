@@ -136,6 +136,9 @@ model Program {
   requirementsChecklist     RequirementsChecklist[]
   studentsAsPreviousMasters Student[]                 @relation("PreviousMastersProgram")
   students                  Student[]
+  examMcqTotal              Int?                      @map("exam_mcq_total")
+  examEssayTotal            Int?                      @map("exam_essay_total")
+  examPassingScore          Int?                      @map("exam_passing_score")
 
   @@map("programs")
 }

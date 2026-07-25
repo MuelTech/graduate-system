@@ -35,4 +35,7 @@ router.get('/appeals', authenticateJWT, requireRole(['ADMIN']), examController.g
 router.patch('/appeals/:id/approve', authenticateJWT, requireRole(['ADMIN']), examController.approveAppeal);
 router.patch('/appeals/:id/reject', authenticateJWT, requireRole(['ADMIN']), examController.rejectAppeal);
 
+// APPLICANT ONLY: Exam Result
+router.get('/result', authenticateJWT, requireRole(['APPLICANT']), examController.getExamResult);
+
 export default router;

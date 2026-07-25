@@ -177,4 +177,30 @@ export class ExamService {
   async rejectAppeal(applicationId: string) {
     return this.examRepo.rejectAppeal(applicationId);
   }
+
+  async getExamResult(userId: string) {
+    const app = await this.examRepo.getLatestResult(userId);
+
+    if (!app || !app.score) {
+      throw new Error("No exam found. Your exam is either pending grading or you have not taken it.");
+    }
+
+    const mcqTotal = app.program?.examMcqTotal;
+    const essayTotal = app.program?.examEssayTotal;
+    const passingScore = app.program?.examPassingScore;
+
+    const totalPossible = (mcqTotal || 0) + (essayTotal || 0);
+
+    return {
+      status: app.score.status.toLowerCase(),
+      mcqScore: Number(app.score.multipleChoiceScore || 0),
+      mcqTotal: mcqTotal,
+      essayScore: Number(app.score.essayScore || 0),
+      essayTotal: essayTotal,
+      totalScore: Number(app.score.totalScore || 0),
+      totalPossible: totalPossible,
+      passingScore: passingScore,
+      examDate: app.slot?.examDate,
+    };
+  }
 }

@@ -148,4 +148,19 @@ export class ExamRepository {
             });
         });
     }
+
+    async getLatestResult(userId: string) {
+        return prisma.entranceExamApplication.findFirst({
+            where: {
+                student: { userId: userId },
+                score: { isNot: null } // Only fetch if graded
+            },
+            include: {
+                score: true,
+                slot: true,
+                program: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
 }
