@@ -227,4 +227,37 @@ export class ExamService {
       examDate: app.slot?.examDate,
     };
   }
+
+  async getGradingQueue() {
+    return this.examRepo.getGradingQueue();
+  }
+
+  async gradeEssay(
+    applicationId: string,
+    essayScore: number,
+    adminId: string
+  ) {
+    if (essayScore === undefined || essayScore === null) throw new Error("Essay score is required.");
+
+    return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
+  }
+
+  async getScoreReview() {
+    return this.examRepo.getScoreReview();
+  }
+
+  async confirmResultAndEmail(applicationId: string) {
+    const application = await this.examRepo.getApplicationDetailsForEmail(applicationId);
+    if (!application) throw new Error("Application not found.");
+
+    const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
+
+    // MOCK EMAIL DISPATCH
+    console.log(`[EMAIL DISPATCH] Sending '${template}' to ${application.student.user.email}`);
+
+    return {
+      success: true,
+      message: `Result email dispatched to ${application.student.user.email}`
+    };
+  }
 }

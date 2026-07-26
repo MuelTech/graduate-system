@@ -150,7 +150,7 @@ export class ExamRepository {
     }
 
     async getLatestResult(userId: string) {
-        return prisma.entranceExamApplication.findFirst({
+        const app = await prisma.entranceExamApplication.findFirst({
             where: {
                 student: { userId: userId },
                 score: { isNot: null } // Only fetch if graded
@@ -161,6 +161,156 @@ export class ExamRepository {
                 program: true
             },
             orderBy: { createdAt: 'desc' }
+        });
+
+        if (!app) return null;
+
+        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
+        
+        return {
+            ...app,
+            program: {
+                ...app.program,
+                examMcqTotal: mcqTotal,
+                examEssayTotal: 30, // Default max essay score
+                examPassingScore: Math.floor((mcqTotal + 30) * 0.75) // 75% dynamic passing score
+            }
+        };
+    }
+
+    async getGradingQueue() {
+        const applications = await prisma.entranceExamApplication.findMany({
+            where: {
+                status: 'TAKEN' // Only fetch exams that are submitted and needed grading
+            },
+            include: {
+                student: {
+                    include: {
+                        user: true
+                    }
+                },
+                program: true,
+                score: true,
+                answers: {
+                    where: {
+                        question: {
+                            type: 'ESSAY'
+                        }
+                    },
+                    include: {
+                        question: true
+                    }
+                }
+            },
+            orderBy: { examDate: 'asc' }
+        });
+
+        // Make MCQ total dynamic based on current questions
+        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
+        
+        return applications.map(app => ({
+            ...app,
+            program: {
+                ...app.program,
+                examMcqTotal: mcqTotal
+            }
+        }));
+    }
+
+    async gradeEssay(
+        applicationId: string,
+        essayScore: number,
+        adminId: string
+    ) {
+        return prisma.$transaction(async (tx) => {
+            const application = await tx.entranceExamApplication.findUnique({
+                where: {
+                    id: applicationId
+                },
+                include: {
+                    score: true,
+                    program: true
+                }
+            });
+
+            if (!application || !application.score) throw new Error("Application or pending score not found.");
+
+            // Dynamically calculate passing score (e.g., 75% of total possible points)
+            const mcqTotal = await tx.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
+            const essayTotal = 30; // Assuming 30 is the max essay score
+            const dynamicPassingScore = Math.floor((mcqTotal + essayTotal) * 0.75);
+
+            const mcqScore = Number(application.score.multipleChoiceScore || 0);
+            const totalScore = mcqScore + essayScore;
+            const finalStatus = totalScore >= dynamicPassingScore ? 'PASSED' : 'FAILED';
+
+            // Update the score record with the admin's grade and ID
+            await tx.entranceExamScore.update({
+                where: { applicationId },
+                data: {
+                    essayScore,
+                    totalScore,
+                    status: finalStatus,
+                    gradedById: adminId
+                }
+            });
+
+            // Update the application status
+            return tx.entranceExamApplication.update({
+                where: { id: applicationId },
+                data: { status: finalStatus }
+            });
+        });
+    }
+
+    async getScoreReview() {
+        const applications = await prisma.entranceExamApplication.findMany({
+            where: {
+                status: {
+                    in: ['PASSED', 'FAILED']
+                }
+            },
+            include: {
+                student: {
+                    include: {
+                        user: true
+                    }
+                },
+                program: true,
+                score: {
+                    include: {
+                        gradedBy: true
+                    }
+                },
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Make MCQ total dynamic based on current questions
+        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
+
+        return applications.map(app => ({
+            ...app,
+            program: {
+                ...app.program,
+                examMcqTotal: mcqTotal
+            }
+        }));
+    }
+
+    async getApplicationDetailsForEmail(applicationId: string) {
+        return prisma.entranceExamApplication.findUnique({
+            where: {
+                id: applicationId
+            },
+            include: {
+                student: {
+                    include: {
+                        user: true
+                    }
+                },
+                program: true
+            }
         });
     }
 }

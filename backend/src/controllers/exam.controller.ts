@@ -233,4 +233,52 @@ export class ExamController {
       }
     }
   };
+
+  getGradingQueue = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const queue = await this.examService.getGradingQueue();
+
+      res.status(200).json(queue);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  gradeEssay = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const applicationId = req.params.id as string;
+      const { essayScore } = req.body;
+      const adminId = req.user!.userId; // We capture who graded it for the audit log
+
+      const result = await this.examService.gradeEssay(applicationId, Number(essayScore), adminId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  getScoreReview = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const review = await this.examService.getScoreReview();
+      
+      res.status(200).json(review);
+    } catch (error: any) {
+      res.status(500).json({
+        error: error.message
+      });
+    }
+  }
+
+  confirmResultAndEmail = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const applicationId = req.params.id as string;
+      const result = await this.examService.confirmResultAndEmail(applicationId);
+
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({
+        error: error.message
+      });
+    }
+  }
 }

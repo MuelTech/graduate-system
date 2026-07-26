@@ -280,14 +280,14 @@ model EntranceExamApplication {
 model EntranceExamScore {
   id                  String                  @id @default(uuid()) @map("score_id")
   applicationId       String                  @unique @map("application_id")
-  gradedById          String                  @map("graded_by")
+  gradedById          String?                 @map("graded_by")
   multipleChoiceScore Decimal?                @map("multiple_choice_score")
   essayScore          Decimal?                @map("essay_score")
   totalScore          Decimal?                @map("total_score")
   status              ExamResult
   createdAt           DateTime                @default(now()) @map("created_at")
   application         EntranceExamApplication @relation(fields: [applicationId], references: [id])
-  gradedBy            User                    @relation("ExamScoreGradedBy", fields: [gradedById], references: [id])
+  gradedBy            User?                   @relation("ExamScoreGradedBy", fields: [gradedById], references: [id])
 
   @@index([gradedById], map: "entrance_exam_scores_graded_by_fkey")
   @@map("entrance_exam_scores")
@@ -1025,6 +1025,7 @@ enum ExamAppStatus {
 enum ExamResult {
   PASSED
   FAILED
+  PENDING
 
   @@map("exam_result")
 }
