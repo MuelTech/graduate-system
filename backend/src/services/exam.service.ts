@@ -237,7 +237,9 @@ export class ExamService {
     essayScore: number,
     adminId: string
   ) {
-    if (essayScore === undefined || essayScore === null) throw new Error("Essay score is required.");
+    if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > 30) {
+      throw new Error("Essay score must be a valid number between 0 and 30.");
+    }
 
     return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
   }
@@ -252,12 +254,12 @@ export class ExamService {
 
     const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
 
-    // MOCK EMAIL DISPATCH
-    console.log(`[EMAIL DISPATCH] Sending '${template}' to ${application.student.user.email}`);
+    // TODO: Integrate actual email provider (e.g. SendGrid/AWS SES)
+    console.log(`[EMAIL DISPATCH] Triggered '${template}' template for Application ID: ${applicationId}`);
 
     return {
       success: true,
-      message: `Result email dispatched to ${application.student.user.email}`
+      message: "Grade confirmed. Email provider is currently pending integration."
     };
   }
 }

@@ -39,13 +39,13 @@ export default function AdminExamScoresPage() {
   const pageSize = 10;
 
   // FETCH: Grading Queue
-  const { data: queueData, isLoading: queueLoading } = useQuery({
+  const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
     queryKey: ["gradingQueue"],
     queryFn: () => apiClientRequest("/exam/scores/queue", { method: "GET" }),
   });
 
   // FETCH: Score Review
-  const { data: reviewData, isLoading: reviewLoading } = useQuery({
+  const { data: reviewData, isLoading: reviewLoading, isError: reviewError } = useQuery({
     queryKey: ["scoreReview"],
     queryFn: () => apiClientRequest("/exam/scores/review", { method: "GET" }),
   });
@@ -128,7 +128,7 @@ export default function AdminExamScoresPage() {
   );
   // Calculate dynamic passing score as 75% of total points for the selected app
   const passingScore = selectedApp
-    ? Math.floor((selectedApp.mcqTotal + 30) * 0.75)
+    ? Math.floor((selectedApp.mcqTotal + selectedApp.essayTotal) * 0.75)
     : 0;
 
   const handleSaveScore = () => {
@@ -138,6 +138,9 @@ export default function AdminExamScoresPage() {
       essayScore: Number(essayScore),
     });
   };
+
+  if (queueLoading || reviewLoading) return <div className="p-8 text-center text-gray-500">Loading exam data...</div>;
+  if (queueError || reviewError) return <div className="p-8 text-center text-red-500">Failed to load exam data. Please refresh.</div>;
 
   return (
     <div className="space-y-4">
@@ -328,13 +331,13 @@ export default function AdminExamScoresPage() {
                         Essay Score
                       </label>
                       <span className="text-xs text-(--earist-body-text)">
-                        max 30
+                        max {selectedApp.essayTotal}
                       </span>
                     </div>
                     <input
                       type="number"
                       min={0}
-                      max={30}
+                      max={selectedApp.essayTotal}
                       value={essayScore}
                       onChange={(e) => setEssayScore(e.target.value)}
                       placeholder="0"
@@ -353,7 +356,7 @@ export default function AdminExamScoresPage() {
                           {selectedApp.mcqScore + parseInt(essayScore || "0")}
                           <span className="text-sm font-normal text-(--earist-body-text)">
                             {" "}
-                            / {selectedApp.mcqTotal + 30}
+                            / {selectedApp.mcqTotal + selectedApp.essayTotal}
                           </span>
                         </span>
                       </div>

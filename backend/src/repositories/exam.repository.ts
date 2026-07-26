@@ -235,9 +235,13 @@ export class ExamRepository {
 
             if (!application || !application.score) throw new Error("Application or pending score not found.");
 
+            const essayTotal = application.program?.examEssayTotal || 30; // Dynamic fallback instead of hardcoded 30
+            if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > essayTotal) {
+                 throw new Error(`Invalid essay score. Must be a number between 0 and ${essayTotal}.`);
+            }
+
             // Dynamically calculate passing score (e.g., 75% of total possible points)
             const mcqTotal = await tx.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-            const essayTotal = 30; // Assuming 30 is the max essay score
             const dynamicPassingScore = Math.floor((mcqTotal + essayTotal) * 0.75);
 
             const mcqScore = Number(application.score.multipleChoiceScore || 0);

@@ -36,6 +36,11 @@ export class ExamEngineRepository {
 
   async submitAnswers(applicationId: string, answers: any[]) {
     return prisma.$transaction(async (tx) => {
+      const existingApp = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
+      if (!existingApp || ['TAKEN', 'PASSED', 'FAILED'].includes(existingApp.status)) {
+         throw new Error("This exam has already been submitted and cannot be overwritten.");
+      }
+
       let mcqCorrect = 0;
 
       // 1. Upsert all answers and calculate MCQ Score
@@ -128,29 +133,31 @@ export class ExamEngineRepository {
   }
 
   async updateQuestion(id: string, data: any) {
-    if (data.options) {
-      await prisma.examOption.deleteMany({
-        where: { questionId: id },
-      });
-    }
+    return prisma.$transaction(async (tx) => {
+      if (data.options) {
+        await tx.examOption.deleteMany({
+          where: { questionId: id },
+        });
+      }
 
-    return prisma.examQuestion.update({
-      where: { id },
-      data: {
-        questionText: data.questionText,
-        type: data.type,
-        order: data.order,
-        options: data.options
-          ? {
-              create: data.options.map((opt: any, index: number) => ({
-                optionText: opt.optionText,
-                isCorrect: opt.isCorrect,
-                order: index,
-              })),
-            }
-          : undefined,
-      },
-      include: { options: true },
+      return tx.examQuestion.update({
+        where: { id },
+        data: {
+          questionText: data.questionText,
+          type: data.type,
+          order: data.order,
+          options: data.options
+            ? {
+                create: data.options.map((opt: any, index: number) => ({
+                  optionText: opt.optionText,
+                  isCorrect: opt.isCorrect,
+                  order: index,
+                })),
+              }
+            : undefined,
+        },
+        include: { options: true },
+      });
     });
   }
 
