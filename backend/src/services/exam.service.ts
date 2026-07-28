@@ -35,11 +35,20 @@ export class ExamService {
 
       const previousApps = student.examApplications;
 
-      const pendingApp = previousApps.find(
-        (app: any) => ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+      const pendingApp = previousApps.find((app: any) =>
+        [
+          "PENDING",
+          "APPROVED",
+          "TAKEN",
+          "PASSED",
+          "APPEALED",
+          "DISQUALIFIED",
+        ].includes(app.status),
       );
       if (pendingApp)
-        throw new Error(`You already have an application with status: ${pendingApp.status}`);
+        throw new Error(
+          `You already have an application with status: ${pendingApp.status}`,
+        );
 
       const slot = await this.examRepo.getSlotById(slotId, tx);
       if (!slot) throw new Error("Exam slot not found.");
@@ -76,7 +85,14 @@ export class ExamService {
 
     // Find the active confirmed slot if it exists
     const activeApp = applications.find((app: any) =>
-      ["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"].includes(app.status),
+      [
+        "PENDING",
+        "APPROVED",
+        "TAKEN",
+        "PASSED",
+        "APPEALED",
+        "DISQUALIFIED",
+      ].includes(app.status),
     );
 
     let confirmedSlot = null;
@@ -176,5 +192,74 @@ export class ExamService {
 
   async rejectAppeal(applicationId: string) {
     return this.examRepo.rejectAppeal(applicationId);
+  }
+
+  async getExamResult(userId: string) {
+    const app = await this.examRepo.getLatestResult(userId);
+
+    if (!app || !app.score) {
+      throw new Error(
+        "No exam found. Your exam is either pending grading or you have not taken it.",
+      );
+    }
+
+    const mcqTotal = app.program?.examMcqTotal ?? 0;
+    const essayTotal = app.program?.examEssayTotal ?? 0;
+    const passingScore = app.program?.examPassingScore ?? 0;
+
+    const totalPossible = mcqTotal + essayTotal;
+
+    if (totalPossible <= 0) {
+      throw new Error(
+        "Exam scoring configuration is incomplete. Total possible score must be greater than zero.",
+      );
+    }
+
+    return {
+      status: app.score.status.toLowerCase(),
+      mcqScore: Number(app.score.multipleChoiceScore || 0),
+      mcqTotal: mcqTotal,
+      essayScore: Number(app.score.essayScore || 0),
+      essayTotal: essayTotal,
+      totalScore: Number(app.score.totalScore || 0),
+      totalPossible: totalPossible,
+      passingScore: passingScore,
+      examDate: app.slot?.examDate,
+    };
+  }
+
+  async getGradingQueue() {
+    return this.examRepo.getGradingQueue();
+  }
+
+  async gradeEssay(
+    applicationId: string,
+    essayScore: number,
+    adminId: string
+  ) {
+    if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > 30) {
+      throw new Error("Essay score must be a valid number between 0 and 30.");
+    }
+
+    return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
+  }
+
+  async getScoreReview() {
+    return this.examRepo.getScoreReview();
+  }
+
+  async confirmResultAndEmail(applicationId: string) {
+    const application = await this.examRepo.getApplicationDetailsForEmail(applicationId);
+    if (!application) throw new Error("Application not found.");
+
+    const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
+
+    // TODO: Integrate actual email provider (e.g. SendGrid/AWS SES)
+    console.log(`[EMAIL DISPATCH] Triggered '${template}' template for Application ID: ${applicationId}`);
+
+    return {
+      success: true,
+      message: "Grade confirmed. Email provider is currently pending integration."
+    };
   }
 }

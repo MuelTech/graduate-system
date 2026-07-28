@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ExamAppResponse } from "@/types";
 import {
   FileText,
   CheckCircle2,
@@ -13,6 +17,7 @@ import {
   X,
   Save,
   Eye,
+  Loader2,
 } from "lucide-react";
 import {
   Pagination,
@@ -24,105 +29,118 @@ import {
 } from "@/components/ui/pagination";
 
 export default function AdminExamScoresPage() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"queue" | "review">("queue");
-  const [selectedApplicant, setSelectedApplicant] = useState<number | null>(
+  const [selectedApplicant, setSelectedApplicant] = useState<string | null>(
     null,
-  );
+  ); // Changed to string for UUID
   const [essayScore, setEssayScore] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const essayQueue = [
-    {
-      id: 1,
-      name: "Juan Dela Cruz",
-      email: "juan.delacruz@gmail.com",
-      pinnacleId: "PIN-2026-001",
-      program: "MSCS",
-      examDate: "June 15, 2026",
-      mcqScore: 38,
-      mcqTotal: 50,
-      essayResponse:
-        "Research ethics is fundamental to graduate studies as it ensures the integrity and credibility of academic work. Maintaining academic integrity contributes to the advancement of knowledge by establishing trust among researchers and the public. For example, proper citation practices prevent plagiarism and give credit to original authors, while honest data reporting ensures that findings can be replicated and verified by other researchers. In the field of Computer Science, ethical considerations in AI development, such as bias prevention and transparency, are crucial for building responsible systems that benefit society...",
-    },
-    {
-      id: 2,
-      name: "Ana Garcia",
-      email: "ana.garcia@gmail.com",
-      pinnacleId: "PIN-2026-004",
-      program: "MAED",
-      examDate: "June 15, 2026",
-      mcqScore: 42,
-      mcqTotal: 50,
-      essayResponse:
-        "Academic integrity forms the cornerstone of graduate education. In educational research, maintaining ethical standards ensures that findings are valid and reliable. For instance, when conducting surveys or experiments, researchers must obtain informed consent from participants and protect their privacy. This not only upholds moral standards but also enhances the credibility of the research. Furthermore, institutions benefit from a culture of integrity as it attracts quality researchers and fosters an environment of intellectual growth...",
-    },
-  ];
+  // FETCH: Grading Queue
+  const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
+    queryKey: ["gradingQueue"],
+    queryFn: () => apiClientRequest("/exam/scores/queue", { method: "GET" }),
+  });
 
-  const scoreReview = [
-    {
-      id: 101,
-      name: "Maria Santos",
-      pinnacleId: "PIN-2026-002",
-      program: "MSCS",
-      mcqScore: 38,
-      mcqTotal: 50,
-      essayScore: 28,
-      essayTotal: 30,
-      totalScore: 66,
-      totalPossible: 80,
-      status: "passed" as "passed" | "failed",
-      gradedBy: "Dr. Roberto Reyes",
-      date: "June 16, 2026",
-    },
-    {
-      id: 102,
-      name: "Carlos Luna",
-      pinnacleId: "PIN-2026-005",
-      program: "PhD Education",
-      mcqScore: 24,
-      mcqTotal: 50,
-      essayScore: 18,
-      essayTotal: 30,
-      totalScore: 42,
-      totalPossible: 80,
-      status: "failed" as "passed" | "failed",
-      gradedBy: "Dr. Roberto Reyes",
-      date: "June 16, 2026",
-    },
-    {
-      id: 103,
-      name: "Roberto Lim",
-      pinnacleId: "PIN-2026-007",
-      program: "DIT",
-      mcqScore: 40,
-      mcqTotal: 50,
-      essayScore: 26,
-      essayTotal: 30,
-      totalScore: 66,
-      totalPossible: 80,
-      status: "passed" as "passed" | "failed",
-      gradedBy: "Dr. Ana Garcia",
-      date: "June 15, 2026",
-    },
-  ];
+  // FETCH: Score Review
+  const { data: reviewData, isLoading: reviewLoading, isError: reviewError } = useQuery({
+    queryKey: ["scoreReview"],
+    queryFn: () => apiClientRequest("/exam/scores/review", { method: "GET" }),
+  });
 
-  const passingScore = 48;
+  // MUTATION: Save Grade
+  const gradeMutation = useMutation({
+    mutationFn: (data: { applicationId: string; essayScore: number }) =>
+      apiClientRequest(`/exam/scores/${data.applicationId}/grade`, {
+        method: "POST",
+        body: JSON.stringify({ essayScore: data.essayScore }),
+      }),
+    onSuccess: () => {
+      toast.success("Score saved successfully!");
+      queryClient.invalidateQueries({ queryKey: ["gradingQueue"] });
+      queryClient.invalidateQueries({ queryKey: ["scoreReview"] });
+      setSelectedApplicant(null);
+      setEssayScore("");
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to save score"),
+  });
 
+  // MUTATION: Send Email
+  const emailMutation = useMutation({
+    mutationFn: (applicationId: string) =>
+      apiClientRequest(`/exam/scores/${applicationId}/send-email`, {
+        method: "POST",
+      }),
+    onSuccess: (data: { message?: string }) =>
+      toast.success(data.message || "Email dispatched!"),
+    onError: (err: Error) => toast.error(err.message || "Failed to send email"),
+  });
+
+  // TRANSFORM DATA FOR UI
+  const essayQueue = ((queueData as ExamAppResponse[]) || []).map((app) => ({
+    id: app.id,
+    name: `${app.student.user.firstName} ${app.student.user.lastName}`,
+    email: app.student.user.email,
+    pinnacleId: app.student.user.username || "N/A",
+    program: app.program.programName,
+    examDate: new Date(app.examDate || app.createdAt).toLocaleDateString(),
+    mcqScore: Number(app.score?.multipleChoiceScore || 0),
+    mcqTotal: app.program.examMcqTotal || 50,
+    essayResponse: app.answers?.[0]?.essayAnswer || "No essay submitted.",
+    essayTotal: app.program.examEssayTotal || 30,
+  }));
+
+  const scoreReview = ((reviewData as ExamAppResponse[]) || []).map((app) => ({
+    id: app.id,
+    name: `${app.student.user.firstName} ${app.student.user.lastName}`,
+    pinnacleId: app.student.user.username || "N/A",
+    program: app.program.programName,
+    mcqScore: Number(app.score?.multipleChoiceScore || 0),
+    mcqTotal: app.program.examMcqTotal || 50,
+    essayScore: Number(app.score?.essayScore || 0),
+    essayTotal: app.program.examEssayTotal || 30,
+    totalScore: Number(app.score?.totalScore || 0),
+    totalPossible:
+      (app.program.examMcqTotal || 50) + (app.program.examEssayTotal || 30),
+    status: app.score?.status?.toLowerCase(),
+    gradedBy: app.score?.gradedBy
+      ? `${app.score.gradedBy.firstName} ${app.score.gradedBy.lastName}`
+      : "System Admin",
+    date: new Date(app.createdAt).toLocaleDateString(),
+  }));
+
+  // RESTORE PAGINATION VARIABLES
   const queueTotalPages = Math.ceil(essayQueue.length / pageSize);
   const queueStart = (page - 1) * pageSize;
   const paginatedQueue = essayQueue.slice(queueStart, queueStart + pageSize);
 
   const reviewTotalPages = Math.ceil(scoreReview.length / pageSize);
   const reviewStart = (page - 1) * pageSize;
-  const paginatedReview = scoreReview.slice(reviewStart, reviewStart + pageSize);
+  const paginatedReview = scoreReview.slice(
+    reviewStart,
+    reviewStart + pageSize,
+  );
 
-  const selectedApp = essayQueue.find((a) => a.id === selectedApplicant);
+  const selectedApp = essayQueue.find(
+    (a: { id: string }) => a.id === selectedApplicant,
+  );
+  // Calculate dynamic passing score as 75% of total points for the selected app
+  const passingScore = selectedApp
+    ? Math.floor((selectedApp.mcqTotal + selectedApp.essayTotal) * 0.75)
+    : 0;
 
   const handleSaveScore = () => {
-    setSelectedApplicant(null);
-    setEssayScore("");
+    if (!selectedApplicant || !essayScore) return;
+    gradeMutation.mutate({
+      applicationId: selectedApplicant,
+      essayScore: Number(essayScore),
+    });
   };
+
+  if (queueLoading || reviewLoading) return <div className="p-8 text-center text-gray-500">Loading exam data...</div>;
+  if (queueError || reviewError) return <div className="p-8 text-center text-red-500">Failed to load exam data. Please refresh.</div>;
 
   return (
     <div className="space-y-4">
@@ -142,7 +160,10 @@ export default function AdminExamScoresPage() {
       {/* Tabs */}
       <div className="flex gap-2">
         <button
-          onClick={() => { setActiveTab("queue"); setPage(1); }}
+          onClick={() => {
+            setActiveTab("queue");
+            setPage(1);
+          }}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "queue"
               ? "bg-(--earist-primary) text-white"
@@ -152,7 +173,10 @@ export default function AdminExamScoresPage() {
           Essay Grading Queue ({essayQueue.length})
         </button>
         <button
-          onClick={() => { setActiveTab("review"); setPage(1); }}
+          onClick={() => {
+            setActiveTab("review");
+            setPage(1);
+          }}
           className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "review"
               ? "bg-(--earist-primary) text-white"
@@ -209,26 +233,43 @@ export default function AdminExamScoresPage() {
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
-                      onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
-                      className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setPage(page - 1);
+                      }}
+                      className={
+                        page <= 1 ? "pointer-events-none opacity-50" : ""
+                      }
                     />
                   </PaginationItem>
-                  {Array.from({ length: queueTotalPages }, (_, i) => i + 1).map((p) => (
-                    <PaginationItem key={p}>
-                      <PaginationLink
-                        href="#"
-                        isActive={p === page}
-                        onClick={(e) => { e.preventDefault(); setPage(p); }}
-                      >
-                        {p}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
+                  {Array.from({ length: queueTotalPages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <PaginationItem key={p}>
+                        <PaginationLink
+                          href="#"
+                          isActive={p === page}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(p);
+                          }}
+                        >
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                  )}
                   <PaginationItem>
                     <PaginationNext
                       href="#"
-                      onClick={(e) => { e.preventDefault(); if (page < queueTotalPages) setPage(page + 1); }}
-                      className={page >= queueTotalPages ? "pointer-events-none opacity-50" : ""}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < queueTotalPages) setPage(page + 1);
+                      }}
+                      className={
+                        page >= queueTotalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -290,13 +331,13 @@ export default function AdminExamScoresPage() {
                         Essay Score
                       </label>
                       <span className="text-xs text-(--earist-body-text)">
-                        max 30
+                        max {selectedApp.essayTotal}
                       </span>
                     </div>
                     <input
                       type="number"
                       min={0}
-                      max={30}
+                      max={selectedApp.essayTotal}
                       value={essayScore}
                       onChange={(e) => setEssayScore(e.target.value)}
                       placeholder="0"
@@ -315,7 +356,7 @@ export default function AdminExamScoresPage() {
                           {selectedApp.mcqScore + parseInt(essayScore || "0")}
                           <span className="text-sm font-normal text-(--earist-body-text)">
                             {" "}
-                            / {selectedApp.mcqTotal + 30}
+                            / {selectedApp.mcqTotal + selectedApp.essayTotal}
                           </span>
                         </span>
                       </div>
@@ -343,7 +384,7 @@ export default function AdminExamScoresPage() {
 
                   {/* Save Button */}
                   <Button
-                    disabled={!essayScore}
+                    disabled={!essayScore || gradeMutation.isPending}
                     onClick={handleSaveScore}
                     className={`w-full ${
                       essayScore
@@ -351,8 +392,12 @@ export default function AdminExamScoresPage() {
                         : "cursor-not-allowed bg-gray-200 text-gray-400"
                     }`}
                   >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Score
+                    {gradeMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {gradeMutation.isPending ? "Saving..." : "Save Score"}
                   </Button>
                 </div>
               </CardContent>
@@ -488,8 +533,10 @@ export default function AdminExamScoresPage() {
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
-                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+                              className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray) disabled:opacity-50"
                               title="Send Result Email"
+                              onClick={() => emailMutation.mutate(result.id)}
+                              disabled={emailMutation.isPending}
                             >
                               <Send className="h-4 w-4" />
                             </button>
@@ -508,16 +555,27 @@ export default function AdminExamScoresPage() {
                     <PaginationItem>
                       <PaginationPrevious
                         href="#"
-                        onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
-                        className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (page > 1) setPage(page - 1);
+                        }}
+                        className={
+                          page <= 1 ? "pointer-events-none opacity-50" : ""
+                        }
                       />
                     </PaginationItem>
-                    {Array.from({ length: reviewTotalPages }, (_, i) => i + 1).map((p) => (
+                    {Array.from(
+                      { length: reviewTotalPages },
+                      (_, i) => i + 1,
+                    ).map((p) => (
                       <PaginationItem key={p}>
                         <PaginationLink
                           href="#"
                           isActive={p === page}
-                          onClick={(e) => { e.preventDefault(); setPage(p); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(p);
+                          }}
                         >
                           {p}
                         </PaginationLink>
@@ -526,8 +584,15 @@ export default function AdminExamScoresPage() {
                     <PaginationItem>
                       <PaginationNext
                         href="#"
-                        onClick={(e) => { e.preventDefault(); if (page < reviewTotalPages) setPage(page + 1); }}
-                        className={page >= reviewTotalPages ? "pointer-events-none opacity-50" : ""}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (page < reviewTotalPages) setPage(page + 1);
+                        }}
+                        className={
+                          page >= reviewTotalPages
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>

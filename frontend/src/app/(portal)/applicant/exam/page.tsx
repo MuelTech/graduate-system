@@ -55,6 +55,7 @@ export default function ApplicantExamPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10800); // 3 Hours in seconds
   const [showEssay, setShowEssay] = useState(false);
+  const [isExamTime, setIsExamTime] = useState(false);
 
   // 1. FETCH SCHEDULE AND STATUS
   useEffect(() => {
@@ -104,20 +105,10 @@ export default function ApplicantExamPage() {
           return;
         }
 
-        // If exam start time has arrived, fetch questions
-        const questionsRes = await apiClientRequest("/exam-engine/questions", {
-          method: "GET",
-        });
-
-        setMcqQuestions(
-          questionsRes.filter(
-            (q: ExamQuestion) => q.type === "MULTIPLE_CHOICE",
-          ),
-        );
-        setEssayQuestion(
-          questionsRes.find((q: ExamQuestion) => q.type === "ESSAY") || null,
-        );
-        setExamState("in_progress");
+        // If exam start time has arrived, show the gateway screen with unlocked button
+        setUpcomingExamStart(examStart);
+        setExamState("countdown");
+        setIsExamTime(true);
       } catch (error: unknown) {
         if (error instanceof Error) {
           setErrorMsg(error.message);
@@ -140,7 +131,8 @@ export default function ApplicantExamPage() {
 
       if (diff <= 0) {
         clearInterval(timer);
-        window.location.reload(); // Reload page to start exam automatically!
+        setIsExamTime(true);
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       } else {
         const d = Math.floor(diff / (1000 * 60 * 60 * 24));
         const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -236,7 +228,9 @@ export default function ApplicantExamPage() {
           setErrorMsg(error.message);
           setExamState("no_schedule"); // We will repurpose this state
         } else {
-          alert(`Submission failed: ${error.message}. Please check your connection and try again.`);
+          alert(
+            `Submission failed: ${error.message}. Please check your connection and try again.`,
+          );
         }
       } else {
         alert("Failed to submit examination. Please try again.");
@@ -492,14 +486,46 @@ export default function ApplicantExamPage() {
           </Card>
         </div>
 
-        {/* Disabled Start Button */}
+        {/* Start Button */}
         <div className="text-center pt-2">
-          <Button
-            disabled
-            className="w-full md:w-auto px-8 py-3 bg-gray-300 text-gray-600 cursor-not-allowed"
-          >
-            Start Examination (Locked until scheduled time)
-          </Button>
+          {isExamTime ? (
+            <Button
+              className="w-full md:w-auto px-8 py-3 bg-(--earist-primary) hover:bg-red-900 text-white font-bold"
+              onClick={async () => {
+                try {
+                  const questionsRes = await apiClientRequest(
+                    "/exam-engine/questions",
+                    {
+                      method: "GET",
+                    },
+                  );
+                  setMcqQuestions(
+                    questionsRes.filter(
+                      (q: ExamQuestion) => q.type === "MULTIPLE_CHOICE",
+                    ),
+                  );
+                  setEssayQuestion(
+                    questionsRes.find(
+                      (q: ExamQuestion) => q.type === "ESSAY",
+                    ) || null,
+                  );
+                  setExamState("in_progress");
+                } catch (error: unknown) {
+                  const errorMessage = error instanceof Error ? error.message : "Failed to start examination.";
+                  alert(errorMessage);
+                }
+              }}
+            >
+              Start Examination
+            </Button>
+          ) : (
+            <Button
+              disabled
+              className="w-full md:w-auto px-8 py-3 bg-gray-300 text-gray-600 cursor-not-allowed"
+            >
+              Start Examination (Locked until scheduled time)
+            </Button>
+          )}
         </div>
       </div>
     );

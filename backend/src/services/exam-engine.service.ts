@@ -11,16 +11,20 @@ export class ExamEngineService {
     // Validates if the current server time is within the applicant's scheduled 3-hour slot
     private async validateExamTime(applicationId: string) {
         const application = await prisma.entranceExamApplication.findUnique({
-            where: { id: applicationId }
+            where: { id: applicationId },
+            include: { slot: true }
         });
 
-        if (!application || !application.examDate || !application.examTime) {
+        const dateToUse = application?.slot?.examDate || application?.examDate;
+        const timeToUse = application?.slot?.examTime || application?.examTime;
+
+        if (!application || !dateToUse || !timeToUse) {
             throw new Error("No scheduled exam found.");
         }
 
         const now = new Date();
-        const scheduledDate = new Date(application.examDate);
-        const scheduledTime = new Date(application.examTime);
+        const scheduledDate = new Date(dateToUse);
+        const scheduledTime = new Date(timeToUse);
 
         // Combine date and time for start boundary
         const examStart = new Date(
@@ -33,8 +37,11 @@ export class ExamEngineService {
 
         const examEnd = new Date(examStart.getTime() + 3 * 60 * 60 * 1000);
 
-        if (now < examStart) {
-            throw new Error("Your exam window has not started yet.");
+        // Add a 60-second grace period for minor clock drift between frontend and backend
+        const gracePeriodStart = new Date(examStart.getTime() - 60000);
+
+        if (now < gracePeriodStart) {
+            throw new Error(`Your exam window has not started yet. (Server Time: ${now.toLocaleString()}, Exam Start: ${examStart.toLocaleString()})`);
         }
 
         if (now > examEnd) {
