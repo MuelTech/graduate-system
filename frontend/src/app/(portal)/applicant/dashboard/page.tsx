@@ -159,10 +159,11 @@ export default async function ApplicantDashboard() {
               {applicant.alignmentStatus === "ALIGNED"
                 ? "Your undergraduate program is aligned. You may proceed to schedule your exam."
                 : applicant.alignmentStatus === "PENDING_WAIVER"
-                  ? "Exam scheduling is locked until your waiver is submitted and validated."
-                  : "Your waiver has been cleared. You may schedule your exam."}
+                  ? "Your waiver has been cleared. You may schedule your exam."
+                  : "Exam scheduling is locked until your waiver is submitted and validated."}
             </p>
-                        {applicant.alignmentStatus === "ALIGNED" || applicant.alignmentStatus === "CLEARED" ? (
+            {applicant.alignmentStatus === "ALIGNED" ||
+            applicant.alignmentStatus === "CLEARED" ? (
               <Link
                 href="/applicant/schedule"
                 className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
@@ -189,19 +190,65 @@ export default async function ApplicantDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
-                <Clock className="h-5 w-5 text-(--earist-primary)" />
+            {applicant.currentStep === 2 ? (
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                  <CheckCircle2 className="h-5 w-5 text-green-700" />
+                </div>
+                <div>
+                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                    Exam Passed
+                  </Badge>
+                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                    Congratulations! You may now upload your COR.
+                  </p>
+                </div>
               </div>
-              <div>
-                <Badge className="bg-(--earist-accent) text-(--earist-primary)">
-                  Exam Scheduled
-                </Badge>
-                <p className="mt-1 text-xs text-(--earist-body-text)">
-                  Your entrance exam is scheduled
-                </p>
+            ) : applicant.currentStep === 1 ? (
+              applicant.examDate ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-(--earist-surface-light-red)">
+                    <Clock className="h-5 w-5 text-(--earist-primary)" />
+                  </div>
+                  <div>
+                    <Badge className="bg-(--earist-accent) text-(--earist-primary) hover:bg-(--earist-accent)">
+                      Exam Scheduled
+                    </Badge>
+                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                      Your entrance exam is scheduled.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                    <CalendarClock className="h-5 w-5 text-blue-700" />
+                  </div>
+                  <div>
+                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                      Ready to Schedule
+                    </Badge>
+                    <p className="mt-1 text-xs text-(--earist-body-text)">
+                      You may now select your exam schedule.
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                  <AlertTriangle className="h-5 w-5 text-amber-700" />
+                </div>
+                <div>
+                  <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                    Pending Alignment
+                  </Badge>
+                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                    Waiting for program alignment validation.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
