@@ -45,7 +45,7 @@ export default async function StudentDashboard() {
       | "final_defense"
       | "repository",
     compExamStatus: (journey.compExamRecords?.[0]?.status?.toLowerCase() ||
-      "pending") as "pending" | "passed" | "failed",
+      "not_taken") as "pending" | "passed" | "failed" | "not_taken" | "approved",
     activeApplication: {
       stage: "Proposal Defense",
       dateSubmitted: "May 28, 2026",
@@ -196,14 +196,14 @@ export default async function StudentDashboard() {
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  student.compExamStatus === "passed"
+                  student.compExamStatus === "passed" || student.compExamStatus === "approved"
                     ? "bg-green-50"
                     : student.compExamStatus === "failed"
                       ? "bg-red-50"
                       : "bg-gray-50"
                 }`}
               >
-                {student.compExamStatus === "passed" ? (
+                {student.compExamStatus === "passed" || student.compExamStatus === "approved" ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : student.compExamStatus === "failed" ? (
                   <AlertCircle className="h-5 w-5 text-red-600" />
@@ -212,14 +212,17 @@ export default async function StudentDashboard() {
                 )}
               </div>
               <div>
-                {student.compExamStatus === "passed" && (
+                {(student.compExamStatus === "passed" || student.compExamStatus === "approved") && (
                   <Badge className="bg-green-100 text-green-700">Passed</Badge>
                 )}
                 {student.compExamStatus === "failed" && (
                   <Badge className="bg-red-100 text-red-700">Failed</Badge>
                 )}
                 {student.compExamStatus === "pending" && (
-                  <Badge className="bg-gray-100 text-gray-500">Pending</Badge>
+                  <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
+                )}
+                {student.compExamStatus === "not_taken" && (
+                  <Badge className="bg-gray-100 text-gray-500">Not Taken</Badge>
                 )}
                 <p className="mt-1 text-xs text-(--earist-body-text)">
                   For academic tracking only. Not administered through the

@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 async function getJourneyData(token: string) {
   const res = await fetch("http://localhost:5000/api/student/journey", {
@@ -132,7 +132,7 @@ export default async function StudentJourneyPage() {
       status:
         data.adviserAssignments?.length > 0
           ? "PASSED"
-          : comprehensiveExamStatus === "PASSED"
+          : (comprehensiveExamStatus === "PASSED" || comprehensiveExamStatus === "APPROVED")
             ? "READY"
             : "NOT_TAKEN",
       icon: Users,
@@ -227,13 +227,11 @@ export default async function StudentJourneyPage() {
                     <div className="shrink-0 flex items-center gap-3">
                       {step.title === "Thesis Adviser Assignment" &&
                         step.status === "READY" && (
-                          <Link href="/student/thesis/adviser-request">
-                            <Button
-                              size="sm"
-                              className="bg-(--earist-primary) hover:bg-(--earist-primary)/90 text-white"
-                            >
-                              Request Adviser
-                            </Button>
+                          <Link 
+                            href="/student/thesis/adviser-request"
+                            className={buttonVariants({ size: "sm", className: "bg-(--earist-primary) hover:bg-(--earist-primary)/90 text-white" })}
+                          >
+                            Request Adviser
                           </Link>
                         )}
                       {getExamBadge(step.status)}

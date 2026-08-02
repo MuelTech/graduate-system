@@ -41,7 +41,7 @@ export default function ApplicantResultsPage() {
     const errorMsg =
       error instanceof Error ? error.message : "No results found.";
       
-    const isExpectedEmptyState = errorMsg.includes("pending") || errorMsg.includes("not taken") || errorMsg.includes("No exam found");
+    const isExpectedEmptyState = (!error && !result) || errorMsg.includes("pending") || errorMsg.includes("not taken") || errorMsg.includes("No exam found");
 
     return (
       <div className="space-y-4">
