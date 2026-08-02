@@ -156,14 +156,14 @@ export default async function ApplicantDashboard() {
               </Alert>
             )}
             <p className="mb-4 text-sm text-(--earist-body-text)">
-              {applicant.alignmentStatus === "ALIGNED"
+              {applicant.alignmentStatus === "aligned"
                 ? "Your undergraduate program is aligned. You may proceed to schedule your exam."
-                : applicant.alignmentStatus === "PENDING_WAIVER"
+                : applicant.alignmentStatus === "cleared"
                   ? "Your waiver has been cleared. You may schedule your exam."
                   : "Exam scheduling is locked until your waiver is submitted and validated."}
             </p>
-            {applicant.alignmentStatus === "ALIGNED" ||
-            applicant.alignmentStatus === "CLEARED" ? (
+            {applicant.alignmentStatus === "aligned" ||
+            applicant.alignmentStatus === "cleared" ? (
               <Link
                 href="/applicant/schedule"
                 className="inline-flex items-center gap-1 text-sm font-bold text-(--earist-primary) transition-colors hover:text-(--earist-primary)/80 bg-(--earist-surface-gray) px-4 py-2 rounded-lg border border-(--earist-border-gray)"
