@@ -1,7 +1,17 @@
 import { auth } from "@/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Award, CheckCircle2, XCircle, Clock, GraduationCap, Users } from "lucide-react";
+import {
+  BookOpen,
+  Award,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  GraduationCap,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 async function getJourneyData(token: string) {
   const res = await fetch("http://localhost:5000/api/student/journey", {
@@ -64,15 +74,12 @@ export default async function StudentJourneyPage() {
         );
       case "READY":
         return (
-          <Badge className="bg-blue-100 text-blue-700">
-            Action Required
-          </Badge>
+          <Badge className="bg-blue-100 text-blue-700">Action Required</Badge>
         );
       default:
         return <Badge className="bg-gray-100 text-gray-500">Not Taken</Badge>;
     }
   };
-
 
   const getThesisStepStatus = (targetStage: string) => {
     if (!thesisPipeline?.currentStage) return "NOT_TAKEN";
@@ -82,9 +89,12 @@ export default async function StudentJourneyPage() {
     const targetIndex = stageOrder.indexOf(targetStage);
 
     if (targetIndex < currentIndex) return "PASSED"; // Past stages are implicitly passed
-    
+
     if (targetIndex === currentIndex) {
-      if (thesisPipeline.status === "PASSED" || thesisPipeline.status === "APPROVED") {
+      if (
+        thesisPipeline.status === "PASSED" ||
+        thesisPipeline.status === "APPROVED"
+      ) {
         return "PASSED";
       }
       return thesisPipeline.status || "PENDING";
@@ -92,7 +102,10 @@ export default async function StudentJourneyPage() {
 
     // If we are looking at the immediate next stage, and the current stage is passed, it is READY
     if (targetIndex === currentIndex + 1) {
-      if (thesisPipeline.status === "PASSED" || thesisPipeline.status === "APPROVED") {
+      if (
+        thesisPipeline.status === "PASSED" ||
+        thesisPipeline.status === "APPROVED"
+      ) {
         return "READY";
       }
     }
@@ -116,9 +129,12 @@ export default async function StudentJourneyPage() {
     {
       title: "Thesis Adviser Assignment",
       description: "Request and get assigned an official thesis adviser.",
-      status: data.adviserAssignments?.length > 0 
-        ? "PASSED" 
-        : (comprehensiveExamStatus === "PASSED" ? "NOT_TAKEN" : "NOT_TAKEN"),
+      status:
+        data.adviserAssignments?.length > 0
+          ? "PASSED"
+          : comprehensiveExamStatus === "PASSED"
+            ? "READY"
+            : "NOT_TAKEN",
       icon: Users,
     },
     {
@@ -138,7 +154,7 @@ export default async function StudentJourneyPage() {
       description: "Defend your final, complete manuscript.",
       status: getThesisStepStatus("FINAL"),
       icon: Award,
-    }
+    },
   ];
 
   return (
@@ -159,8 +175,10 @@ export default async function StudentJourneyPage() {
       <div className="relative ml-4 mt-8 border-l-2 border-(--earist-border-gray) pb-4 md:ml-6">
         <div className="space-y-8">
           {steps.map((step, i) => {
-            const isPassed = step.status === "PASSED" || step.status === "APPROVED";
-            const isActive = step.status === "PENDING" || step.status === "SCHEDULED";
+            const isPassed =
+              step.status === "PASSED" || step.status === "APPROVED";
+            const isActive =
+              step.status === "PENDING" || step.status === "SCHEDULED";
             const isReady = step.status === "READY";
             const isFailed = step.status === "FAILED";
             const isFuture = step.status === "NOT_TAKEN";
@@ -194,7 +212,9 @@ export default async function StudentJourneyPage() {
                 </div>
 
                 {/* Content Card */}
-                <Card className={`transition-all ${isFuture ? "opacity-60 grayscale" : "shadow-sm hover:shadow-md"}`}>
+                <Card
+                  className={`transition-all ${isFuture ? "opacity-60 grayscale" : "shadow-sm hover:shadow-md"}`}
+                >
                   <CardContent className="flex flex-col justify-between gap-4 p-4 md:flex-row md:items-center">
                     <div>
                       <h3 className={`font-semibold ${titleColor}`}>
@@ -204,7 +224,18 @@ export default async function StudentJourneyPage() {
                         {step.description}
                       </p>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-3">
+                      {step.title === "Thesis Adviser Assignment" &&
+                        step.status === "READY" && (
+                          <Link href="/student/thesis/adviser-request">
+                            <Button
+                              size="sm"
+                              className="bg-(--earist-primary) hover:bg-(--earist-primary)/90 text-white"
+                            >
+                              Request Adviser
+                            </Button>
+                          </Link>
+                        )}
                       {getExamBadge(step.status)}
                     </div>
                   </CardContent>

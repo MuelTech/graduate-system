@@ -11,8 +11,11 @@ import {
   Mail,
   ExternalLink,
   ArrowRight,
+  ArrowLeft,
   FileText,
   Upload,
+  ClipboardList,
+  AlertTriangle
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 
@@ -37,7 +40,55 @@ export default function ApplicantResultsPage() {
   if (error || !result) {
     const errorMsg =
       error instanceof Error ? error.message : "No results found.";
-    return <div className="p-8 text-center text-red-600">{errorMsg}</div>;
+      
+    const isExpectedEmptyState = errorMsg.includes("pending") || errorMsg.includes("not taken") || errorMsg.includes("No exam found");
+
+    return (
+      <div className="space-y-4">
+        {/* Page Header (preserved for consistency) */}
+        <div>
+          <h2
+            className="text-2xl font-bold text-(--earist-primary)"
+            style={{ fontFamily: '"Calibri", sans-serif' }}
+          >
+            Examination Results
+          </h2>
+          <p className="text-sm text-(--earist-body-text)">
+            View your entrance examination results
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-(--earist-border-gray) bg-white p-8 text-center">
+          <div
+            className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+              isExpectedEmptyState
+                ? "bg-(--earist-surface-light-red)"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
+            {isExpectedEmptyState ? (
+              <ClipboardList className="h-8 w-8 text-(--earist-primary)" />
+            ) : (
+              <AlertTriangle className="h-8 w-8" />
+            )}
+          </div>
+          <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
+            {isExpectedEmptyState
+              ? "Results Not Available"
+              : "Error Loading Results"}
+          </h3>
+          <p className="mb-4 text-sm text-(--earist-body-text)">{errorMsg}</p>
+          {isExpectedEmptyState && (
+            <Link
+              href="/applicant/dashboard"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+            </Link>
+          )}
+        </div>
+      </div>
+    );
   }
   // We safe-guard division by zero if totalPossible is 0
   const percentage =
