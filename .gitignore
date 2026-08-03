@@ -12,7 +12,6 @@ CONTEXT.md
 ehthumbs.db
 Thumbs.db
 .agents/
-docs/
 backend/uploads
 frontend/public/images/
 node_modules
