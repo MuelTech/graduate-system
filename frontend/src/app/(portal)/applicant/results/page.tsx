@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import {
   CheckCircle2,
   XCircle,
@@ -10,24 +14,42 @@ import {
   FileText,
   Upload,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
 
 export default function ApplicantResultsPage() {
-  const result = {
-    status: "passed" as "passed" | "failed",
-    mcqScore: 38,
-    mcqTotal: 50,
-    essayScore: 28,
-    essayTotal: 30,
-    totalScore: 66,
-    totalPossible: 80,
-    passingScore: 48,
-    examDate: "June 15, 2026",
-  };
+  const { data: session } = useSession(); // Retrieve session state
+  const {
+    data: result,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["examResult", session?.user?.id || session?.user?.email], // Ensures cache isolation
+    queryFn: async () => apiClientRequest("/exam/result", { method: "GET" }),
+  });
 
-  const percentage = Math.round(
-    (result.totalScore / result.totalPossible) * 100,
-  );
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-(--earist-primary)">
+        Loading your results...
+      </div>
+    );
+  }
+  if (error || !result) {
+    const errorMsg =
+      error instanceof Error ? error.message : "No results found.";
+    return <div className="p-8 text-center text-red-600">{errorMsg}</div>;
+  }
+  // We safe-guard division by zero if totalPossible is 0
+  const percentage =
+    result.totalPossible > 0
+      ? Math.round((result.totalScore / result.totalPossible) * 100)
+      : 0;
 
+  const formattedDate = new Date(result.examDate).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
   return (
     <div className="space-y-4">
       {/* Page Header */}
@@ -39,7 +61,7 @@ export default function ApplicantResultsPage() {
           Examination Results
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Exam taken on {result.examDate}
+          Exam taken on {formattedDate}
         </p>
       </div>
 
@@ -163,9 +185,7 @@ export default function ApplicantResultsPage() {
             {/* Score Bar */}
             <div>
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-(--earist-body-text)">
-                  Your Score
-                </span>
+                <span className="text-(--earist-body-text)">Your Score</span>
                 <span className="font-medium text-(--earist-primary)">
                   {percentage}%
                 </span>
@@ -180,13 +200,15 @@ export default function ApplicantResultsPage() {
               </div>
               <div className="mt-1 flex items-center justify-between text-[11px] text-(--earist-body-text)">
                 <span>0</span>
-                <span>
-                  Passing:{" "}
-                  {Math.round(
-                    (result.passingScore / result.totalPossible) * 100,
-                  )}
-                  %
-                </span>
+                {result.totalPossible > 0 && (
+                  <span>
+                    Passing:{" "}
+                    {Math.round(
+                      (result.passingScore / result.totalPossible) * 100,
+                    )}
+                    %
+                  </span>
+                )}
                 <span>100%</span>
               </div>
             </div>

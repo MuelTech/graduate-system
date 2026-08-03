@@ -35,4 +35,13 @@ router.get('/appeals', authenticateJWT, requireRole(['ADMIN']), examController.g
 router.patch('/appeals/:id/approve', authenticateJWT, requireRole(['ADMIN']), examController.approveAppeal);
 router.patch('/appeals/:id/reject', authenticateJWT, requireRole(['ADMIN']), examController.rejectAppeal);
 
+// APPLICANT ONLY: Exam Result
+router.get('/result', authenticateJWT, requireRole(['APPLICANT']), examController.getExamResult);
+
+// ADMIN ONLY: Exam Scores Management
+router.get('/scores/queue', authenticateJWT, requireRole(['ADMIN']), examController.getGradingQueue);
+router.post('/scores/:id/grade', authenticateJWT, requireRole(['ADMIN']), examController.gradeEssay);
+router.get('/scores/review', authenticateJWT, requireRole(['ADMIN']), examController.getScoreReview);
+router.post('/scores/:id/send-email', authenticateJWT, requireRole(['ADMIN']), examController.confirmResultAndEmail);
+
 export default router;
