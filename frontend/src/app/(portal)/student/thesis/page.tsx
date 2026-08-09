@@ -194,7 +194,7 @@ export default async function ThesisPipelinePage() {
           const requirementsMet = stage.requirements.every((r) => r.met);
 
           return (
-            <Card key={stage.key} className={`flex flex-col ${isLocked ? "opacity-60" : ""}`}>
+            <Card key={stage.key} className={`flex flex-col ${isLocked && stage.key !== "title_defense" ? "opacity-60" : ""}`}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
