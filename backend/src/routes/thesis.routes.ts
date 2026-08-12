@@ -61,11 +61,11 @@ router.get(
   thesisController.getActiveAssignments,
 );
 
-// ADMIN: Get available advisers (panelists)
+// ADMIN & STUDENTS: Get available advisers (panelists)
 router.get(
   "/adviser/available",
   authenticateJWT,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "STUDENT"]),
   thesisController.getAvailableAdvisers,
 );
 
