@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import prisma from "./config/database";
 import masterRouter from "./routes";
+import "./workers/email.worker";
+import { startCronJobs } from "./workers/cron.worker";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,5 +44,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });
+
+startCronJobs();
 
 export { prisma };

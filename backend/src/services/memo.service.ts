@@ -2,6 +2,7 @@ import { MemoRepository } from "../repositories/memo.repository";
 import { NotificationRepository } from "../repositories/notification.repository";
 import { MemoAudience, NotificationType } from "@prisma/client";
 import prisma from "../config/database";
+import { EmailService } from "./email.service";
 
 export class MemoService {
     private memoRepo = new MemoRepository();
@@ -67,17 +68,16 @@ export class MemoService {
             }));
             await this.notifRepo.createMany(notifs);
 
-            // Trigger Email Broadcast
-            // We will return to this once we setup the Email Module
-            // This is a temporary alert response
-            console.log(`[EMAIL DISPATCH] Sent 'memo_broadcast' template to ${targetUsers.length} users.`);
-            /*
-        EmailService.sendBatch(targetUsers.map(u => u.email), 'memo_broadcast', { 
-           title, 
-           content, 
-           portalLink: 'http://localhost:3000/portal' 
-        });
-      */
+            // Trigger actual Email Broadcast via BullMQ Job Queue
+            const emails = targetUsers.map(user => user.email);
+
+            // Note: Since sendBatch compiles HTML once for speed, we use a generic greeting
+            await EmailService.sendBatch(emails, "memo_broadcast", {
+                student_name: "Student",
+                memo_title: title,
+                memo_content: content,
+                portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
+            });
         }
 
         return memo;

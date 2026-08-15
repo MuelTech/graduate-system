@@ -1,5 +1,6 @@
 import { ThesisRepository } from '../repositories/thesis.repository';
 import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
+import { EmailService } from "./email.service";
 
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
@@ -94,21 +95,6 @@ export class ThesisService {
 
   async scheduleDefense(thesisId: string, adminId: string, data: any) {
     const schedule = await this.thesisRepo.scheduleDefense(thesisId, adminId, data);
-    
-    // MOCK EMAIL NOTIFICATION SYSTEM
-    console.log(`\n=========================================`);
-    console.log(`[EMAIL SYSTEM] Generating Panel Invitations`);
-    console.log(`=========================================`);
-    
-    const panelistIds = [data.chairmanId, data.leadPanelistId, data.externalPanelistId].filter(Boolean);
-    
-    console.log(`To: Panelist IDs ${panelistIds.join(', ')}`);
-    console.log(`Subject: New Defense Schedule Assignment`);
-    console.log(`Message: You have been assigned to a ${data.defenseType} as a Panelist.`);
-    console.log(`Date: ${new Date(data.defenseDate).toDateString()}`);
-    console.log(`Time: ${data.defenseTime}`);
-    console.log(`Location/Link: ${data.venueOrLink}`);
-    console.log(`=========================================\n`);
 
     return schedule;
   }

@@ -953,6 +953,30 @@ model EmailTemplate {
   @@map("email_templates")
 }
 
+model EmailLog {
+  id           String      @id @default(uuid()) @map("log_id")
+  recipient    String
+  subject      String
+  templateKey  String?     @map("template_key")
+  status       EmailStatus @default(QUEUED)
+  errorMessage String?     @map("error_message") @db.Text
+  sentAt       DateTime?   @map("sent_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@index([recipient], map: "email_logs_recipient_idx")
+  @@index([status], map: "email_logs_status_idx")
+  @@index([templateKey], map: "email_logs_template_key_idx")
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+
+  @@map("email_status")
+}
+
 enum UserRole {
   ADMIN
   STUDENT
