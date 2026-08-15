@@ -1,44 +1,129 @@
-import prisma from '../src/config/database';
-import bcrypt from 'bcryptjs';
+import prisma from "../src/config/database";
+import bcrypt from "bcryptjs";
 
 async function main() {
-  console.log('Seeding programs...');
+  console.log("Seeding programs...");
 
-   // Graduate Programs
+  // Graduate Programs
   const programs = [
     // DOCTORAL PROGRAMS
-    { programName: 'Doctor of Philosophy in Industrial Psychology', programType: 'DOCTORAL', department: 'College of Arts and Sciences', maxResidencyYears: 7 },
-    { programName: 'Doctor of Education Major in Educational Management', programType: 'DOCTORAL', department: 'College of Education', maxResidencyYears: 7 },
-    { programName: 'Doctor in Business Administration', programType: 'DOCTORAL', department: 'College of Business Administration', maxResidencyYears: 7 },
-    { programName: 'Doctor in Public Administration', programType: 'DOCTORAL', department: 'College of Public Administration', maxResidencyYears: 7 },
-    
+    {
+      programName: "Doctor of Philosophy in Industrial Psychology",
+      programType: "DOCTORAL",
+      department: "College of Arts and Sciences",
+      maxResidencyYears: 7,
+    },
+    {
+      programName: "Doctor of Education Major in Educational Management",
+      programType: "DOCTORAL",
+      department: "College of Education",
+      maxResidencyYears: 7,
+    },
+    {
+      programName: "Doctor in Business Administration",
+      programType: "DOCTORAL",
+      department: "College of Business Administration",
+      maxResidencyYears: 7,
+    },
+    {
+      programName: "Doctor in Public Administration",
+      programType: "DOCTORAL",
+      department: "College of Public Administration",
+      maxResidencyYears: 7,
+    },
+
     // MASTERS PROGRAMS
-    { programName: 'Master of Science in Mathematics', programType: 'MASTERS', department: 'College of Arts and Sciences', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Industrial Psychology', programType: 'MASTERS', department: 'College of Arts and Sciences', maxResidencyYears: 5 },
-    { programName: 'Master in Business Administration', programType: 'MASTERS', department: 'College of Business Administration', maxResidencyYears: 5 },
-    { programName: 'Master in Public Administration', programType: 'MASTERS', department: 'College of Public Administration', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Industrial Education Major in: Hotel and Restaurant Management', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    
+    {
+      programName: "Master of Science in Mathematics",
+      programType: "MASTERS",
+      department: "College of Arts and Sciences",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master of Arts in Industrial Psychology",
+      programType: "MASTERS",
+      department: "College of Arts and Sciences",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master in Business Administration",
+      programType: "MASTERS",
+      department: "College of Business Administration",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master in Public Administration",
+      programType: "MASTERS",
+      department: "College of Public Administration",
+      maxResidencyYears: 5,
+    },
+    {
+      programName:
+        "Master of Arts in Industrial Education Major in: Hotel and Restaurant Management",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+
     // Master of Arts in Education
-    { programName: 'Master of Arts in Education Major in: Administration and Supervision', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Education Major in: Guidance and Counseling', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Education Major in: Special Education', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    
+    {
+      programName:
+        "Master of Arts in Education Major in: Administration and Supervision",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+    {
+      programName:
+        "Master of Arts in Education Major in: Guidance and Counseling",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master of Arts in Education Major in: Special Education",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+
     // Master of Arts in Teaching (MAT)
-    { programName: 'Master of Arts in Teaching (MAT) Major in: Electronics Technology', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Teaching (MAT) Major in: Electrical Technology', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Teaching (MAT) Major in: Mathematics', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 },
-    { programName: 'Master of Arts in Teaching (MAT) Major in: Science', programType: 'MASTERS', department: 'College of Education', maxResidencyYears: 5 }
+    {
+      programName:
+        "Master of Arts in Teaching (MAT) Major in: Electronics Technology",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+    {
+      programName:
+        "Master of Arts in Teaching (MAT) Major in: Electrical Technology",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master of Arts in Teaching (MAT) Major in: Mathematics",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
+    {
+      programName: "Master of Arts in Teaching (MAT) Major in: Science",
+      programType: "MASTERS",
+      department: "College of Education",
+      maxResidencyYears: 5,
+    },
   ];
 
   for (const p of programs) {
     const existing = await prisma.program.findFirst({
-      where: { programName: p.programName }
+      where: { programName: p.programName },
     });
 
     if (!existing) {
       await prisma.program.create({
-        data: p as any
+        data: p as any,
       });
       console.log(`Created graduate program: ${p.programName}`);
     } else {
@@ -46,75 +131,244 @@ async function main() {
     }
   }
 
-    // Undergraduate Programs
+  // Undergraduate Programs
   const ugPrograms = [
     // College of Accountancy and Finance (CAF)
-    { programName: 'Bachelor of Science in Accountancy', acronym: 'BSA', college: 'College of Accountancy and Finance (CAF)' },
-    { programName: 'Bachelor of Science in Management Accounting', acronym: 'BSMA', college: 'College of Accountancy and Finance (CAF)' },
-    { programName: 'Bachelor of Science in Business Administration: Major in Financial Management', acronym: 'BSBAFM', college: 'College of Accountancy and Finance (CAF)' },
+    {
+      programName: "Bachelor of Science in Accountancy",
+      acronym: "BSA",
+      college: "College of Accountancy and Finance (CAF)",
+    },
+    {
+      programName: "Bachelor of Science in Management Accounting",
+      acronym: "BSMA",
+      college: "College of Accountancy and Finance (CAF)",
+    },
+    {
+      programName:
+        "Bachelor of Science in Business Administration: Major in Financial Management",
+      acronym: "BSBAFM",
+      college: "College of Accountancy and Finance (CAF)",
+    },
 
     // College of Architecture, Design and the Built Environment (CADBE)
-    { programName: 'Bachelor of Science in Architecture', acronym: 'BS-ARCH', college: 'College of Architecture, Design and the Built Environment (CADBE)' },
-    { programName: 'Bachelor of Science in Interior Design', acronym: 'BSID', college: 'College of Architecture, Design and the Built Environment (CADBE)' },
-    { programName: 'Bachelor of Science in Environmental Planning', acronym: 'BSEP', college: 'College of Architecture, Design and the Built Environment (CADBE)' },
+    {
+      programName: "Bachelor of Science in Architecture",
+      acronym: "BS-ARCH",
+      college:
+        "College of Architecture, Design and the Built Environment (CADBE)",
+    },
+    {
+      programName: "Bachelor of Science in Interior Design",
+      acronym: "BSID",
+      college:
+        "College of Architecture, Design and the Built Environment (CADBE)",
+    },
+    {
+      programName: "Bachelor of Science in Environmental Planning",
+      acronym: "BSEP",
+      college:
+        "College of Architecture, Design and the Built Environment (CADBE)",
+    },
 
     // College of Arts and Letters (CAL)
-    { programName: 'Bachelor of Arts in English Language Studies', acronym: 'ABELS', college: 'College of Arts and Letters (CAL)' },
-    { programName: 'Bachelor of Arts in Filipinology', acronym: 'ABF', college: 'College of Arts and Letters (CAL)' },
-    { programName: 'Bachelor of Arts in Literary and Cultural Studies', acronym: 'ABLCS', college: 'College of Arts and Letters (CAL)' },
-    { programName: 'Bachelor of Arts in Philosophy', acronym: 'AB-PHILO', college: 'College of Arts and Letters (CAL)' },
-    { programName: 'Bachelor of Performing Arts: Major in Theater Arts', acronym: 'BPEA', college: 'College of Arts and Letters (CAL)' },
+    {
+      programName: "Bachelor of Arts in English Language Studies",
+      acronym: "ABELS",
+      college: "College of Arts and Letters (CAL)",
+    },
+    {
+      programName: "Bachelor of Arts in Filipinology",
+      acronym: "ABF",
+      college: "College of Arts and Letters (CAL)",
+    },
+    {
+      programName: "Bachelor of Arts in Literary and Cultural Studies",
+      acronym: "ABLCS",
+      college: "College of Arts and Letters (CAL)",
+    },
+    {
+      programName: "Bachelor of Arts in Philosophy",
+      acronym: "AB-PHILO",
+      college: "College of Arts and Letters (CAL)",
+    },
+    {
+      programName: "Bachelor of Performing Arts: Major in Theater Arts",
+      acronym: "BPEA",
+      college: "College of Arts and Letters (CAL)",
+    },
 
     // College of Business Administration (CBA)
-    { programName: 'Bachelor of Science in Business Administration: Major in Human Resource Management', acronym: 'BSBAHRM', college: 'College of Business Administration (CBA)' },
-    { programName: 'Bachelor of Science in Business Administration: Major in Marketing Management', acronym: 'BSBA-MM', college: 'College of Business Administration (CBA)' },
-    { programName: 'Bachelor of Science in Entrepreneurship', acronym: 'BSENTREP', college: 'College of Business Administration (CBA)' },
-    { programName: 'Bachelor of Science in Office Administration', acronym: 'BSOA', college: 'College of Business Administration (CBA)' },
+    {
+      programName:
+        "Bachelor of Science in Business Administration: Major in Human Resource Management",
+      acronym: "BSBAHRM",
+      college: "College of Business Administration (CBA)",
+    },
+    {
+      programName:
+        "Bachelor of Science in Business Administration: Major in Marketing Management",
+      acronym: "BSBA-MM",
+      college: "College of Business Administration (CBA)",
+    },
+    {
+      programName: "Bachelor of Science in Entrepreneurship",
+      acronym: "BSENTREP",
+      college: "College of Business Administration (CBA)",
+    },
+    {
+      programName: "Bachelor of Science in Office Administration",
+      acronym: "BSOA",
+      college: "College of Business Administration (CBA)",
+    },
 
     // College of Communication (COC)
-    { programName: 'Bachelor in Advertising and Public Relations', acronym: 'BADPR', college: 'College of Communication (COC)' },
-    { programName: 'Bachelor of Arts in Broadcasting', acronym: 'BA Broadcasting', college: 'College of Communication (COC)' },
-    { programName: 'Bachelor of Arts in Communication Research', acronym: 'BACR', college: 'College of Communication (COC)' },
-    { programName: 'Bachelor of Arts in Journalism', acronym: 'BAJ', college: 'College of Communication (COC)' },
+    {
+      programName: "Bachelor in Advertising and Public Relations",
+      acronym: "BADPR",
+      college: "College of Communication (COC)",
+    },
+    {
+      programName: "Bachelor of Arts in Broadcasting",
+      acronym: "BA Broadcasting",
+      college: "College of Communication (COC)",
+    },
+    {
+      programName: "Bachelor of Arts in Communication Research",
+      acronym: "BACR",
+      college: "College of Communication (COC)",
+    },
+    {
+      programName: "Bachelor of Arts in Journalism",
+      acronym: "BAJ",
+      college: "College of Communication (COC)",
+    },
 
     // College of Computer and Information Sciences (CCIS)
-    { programName: 'Bachelor of Science in Computer Science', acronym: 'BSCS', college: 'College of Computer and Information Sciences (CCIS)' },
-    { programName: 'Bachelor of Science in Information Technology', acronym: 'BSIT', college: 'College of Computer and Information Sciences (CCIS)' },
+    {
+      programName: "Bachelor of Science in Computer Science",
+      acronym: "BSCS",
+      college: "College of Computer and Information Sciences (CCIS)",
+    },
+    {
+      programName: "Bachelor of Science in Information Technology",
+      acronym: "BSIT",
+      college: "College of Computer and Information Sciences (CCIS)",
+    },
 
     // College of Education (COED)
-    { programName: 'Bachelor of Business Technology and Livelihood Education: Major in Home Economics', acronym: 'BBTLEHE', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Business Technology and Livelihood Education: Major in Industrial Arts', acronym: 'BBTLEIA', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Business Technology and Livelihood Education: Major in Information and Communication Technology', acronym: 'BBTLEDICT', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Early Childhood Education', acronym: 'BECED', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Elementary Education', acronym: 'BEED', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Secondary Education: Major in English', acronym: 'BSEDEN', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Secondary Education: Major in Filipino', acronym: 'BSEDFL', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Secondary Education: Major in Mathematics', acronym: 'BSEDMT', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Secondary Education: Major in Science', acronym: 'BSEDSC', college: 'College of Education (COED)' },
-    { programName: 'Bachelor of Secondary Education: Major in Social Studies', acronym: 'BSEDSS', college: 'College of Education (COED)' },
+    {
+      programName:
+        "Bachelor of Business Technology and Livelihood Education: Major in Home Economics",
+      acronym: "BBTLEHE",
+      college: "College of Education (COED)",
+    },
+    {
+      programName:
+        "Bachelor of Business Technology and Livelihood Education: Major in Industrial Arts",
+      acronym: "BBTLEIA",
+      college: "College of Education (COED)",
+    },
+    {
+      programName:
+        "Bachelor of Business Technology and Livelihood Education: Major in Information and Communication Technology",
+      acronym: "BBTLEDICT",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Early Childhood Education",
+      acronym: "BECED",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Elementary Education",
+      acronym: "BEED",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Secondary Education: Major in English",
+      acronym: "BSEDEN",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Secondary Education: Major in Filipino",
+      acronym: "BSEDFL",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Secondary Education: Major in Mathematics",
+      acronym: "BSEDMT",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Secondary Education: Major in Science",
+      acronym: "BSEDSC",
+      college: "College of Education (COED)",
+    },
+    {
+      programName: "Bachelor of Secondary Education: Major in Social Studies",
+      acronym: "BSEDSS",
+      college: "College of Education (COED)",
+    },
 
     // College of Engineering (CE)
-    { programName: 'Bachelor of Science in Civil Engineering', acronym: 'BSCE', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Computer Engineering', acronym: 'BSCOE', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Electrical Engineering', acronym: 'BSEE', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Electronics Engineering', acronym: 'BS-ECE', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Industrial Engineering', acronym: 'BSIE', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Mechanical Engineering', acronym: 'BSME', college: 'College of Engineering (CE)' },
-    { programName: 'Bachelor of Science in Railway Engineering', acronym: 'BSRE', college: 'College of Engineering (CE)' },
+    {
+      programName: "Bachelor of Science in Civil Engineering",
+      acronym: "BSCE",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Computer Engineering",
+      acronym: "BSCOE",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Electrical Engineering",
+      acronym: "BSEE",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Electronics Engineering",
+      acronym: "BS-ECE",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Industrial Engineering",
+      acronym: "BSIE",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Mechanical Engineering",
+      acronym: "BSME",
+      college: "College of Engineering (CE)",
+    },
+    {
+      programName: "Bachelor of Science in Railway Engineering",
+      acronym: "BSRE",
+      college: "College of Engineering (CE)",
+    },
 
     // College of Human Kinetics (CHK)
-    { programName: 'Bachelor of Physical Education', acronym: 'BPE', college: 'College of Human Kinetics (CHK)' },
-    { programName: 'Bachelor of Science in Exercises and Sports', acronym: 'BSESS', college: 'College of Human Kinetics (CHK)' }
+    {
+      programName: "Bachelor of Physical Education",
+      acronym: "BPE",
+      college: "College of Human Kinetics (CHK)",
+    },
+    {
+      programName: "Bachelor of Science in Exercises and Sports",
+      acronym: "BSESS",
+      college: "College of Human Kinetics (CHK)",
+    },
   ];
 
   for (const ug of ugPrograms) {
     const existingUG = await prisma.undergraduateProgram.findFirst({
-      where: { programName: ug.programName }
+      where: { programName: ug.programName },
     });
 
     if (!existingUG) {
       await prisma.undergraduateProgram.create({
-        data: ug
+        data: ug,
       });
       console.log(`Created undergraduate program: ${ug.programName}`);
     } else {
@@ -122,513 +376,861 @@ async function main() {
     }
   }
 
-  console.log('All programs seeded successfully!');
+  console.log("All programs seeded successfully!");
 
-  console.log('Seeding test accounts...');
-  const passwordHash = await bcrypt.hash('password123', 10);
+  console.log("Seeding test accounts...");
+  const passwordHash = await bcrypt.hash("password123", 10);
 
+//   // 1. Admin Test Account
+//   await prisma.user.upsert({
+//     where: { email: "admin@earist.edu.ph" },
+//     update: {},
+//     create: {
+//       email: "admin@earist.edu.ph",
+//       passwordHash,
+//       firstName: "System",
+//       lastName: "Admin",
+//       role: "ADMIN",
+//     },
+//   });
+//   console.log("Created Admin test account");
+
+//   // 2. Panelists Test Account
+//   await prisma.user.upsert({
+//     where: { email: "panelist1@earist.edu.ph" },
+//     update: {},
+//     create: {
+//       email: "panelist1@earist.edu.ph",
+//       passwordHash,
+//       firstName: "Dr. John",
+//       lastName: "Doe",
+//       role: "PANELIST",
+//       panelist: {
+//         create: {
+//           isExternal: false,
+//           isAvailableAsAdviser: true,
+//         },
+//       },
+//     },
+//   });
+//   console.log("Created Panelist1 test account");
+
+//   await prisma.user.upsert({
+//     where: { email: "panelist2@earist.edu.ph" },
+//     update: {},
+//     create: {
+//       email: "panelist2@earist.edu.ph",
+//       passwordHash,
+//       firstName: "Prof. William",
+//       lastName: "Marcial",
+//       role: "PANELIST",
+//       panelist: {
+//         create: {
+//           isExternal: false,
+//           isAvailableAsAdviser: true,
+//         },
+//       },
+//     },
+//   });
+//   console.log("Created Panelist2 test account");
+
+//   await prisma.user.upsert({
+//     where: { email: "panelist3@earist.edu.ph" },
+//     update: {},
+//     create: {
+//       email: "panelist3@earist.edu.ph",
+//       passwordHash,
+//       firstName: "Prof. Hanna Mae",
+//       lastName: "Perdido",
+//       role: "PANELIST",
+//       panelist: {
+//         create: {
+//           isExternal: false,
+//           isAvailableAsAdviser: true,
+//         },
+//       },
+//     },
+//   });
+//   console.log("Created Panelist3 test account");
+
+//   // 3. Enrolled Student Test Accounts
+//   const firstProgram = await prisma.program.findFirst();
+//   const panelist1 = await prisma.user.findUnique({
+//     where: { email: "panelist1@earist.edu.ph" },
+//   });
+
+//   if (firstProgram && panelist1) {
+//     // Student 1 - Jane Smith (enrolled, comp exam passed, thesis in progress)
+//     const student1 = await prisma.user.upsert({
+//       where: { email: "student@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "student@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Jane",
+//         lastName: "Smith",
+//         role: "STUDENT",
+//         student: {
+//           create: {
+//             studentNumber: "2026-0001",
+//             dateOfBirth: new Date("1995-05-15T00:00:00.000Z"),
+//             programId: firstProgram.id,
+//             admissionStatus: "ENROLLED",
+//             enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
+//             residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+//             curriculumType: "NEW",
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Student 1 (Jane Smith)");
+
+//     // Add comprehensive exam record for Student 1
+//     const student1Record = await prisma.student.findUnique({
+//       where: { userId: student1.id },
+//     });
+//     if (student1Record) {
+//       await prisma.compExamRecord.create({
+//         data: {
+//           studentId: student1Record.id,
+//           status: "PASSED",
+//         },
+//       });
+//       console.log("Created Comp Exam record for Student 1 (PASSED)");
+
+//       // Add thesis record for Student 1
+//       const adviserAssignment = await prisma.adviserAssignment.create({
+//         data: {
+//           studentId: student1Record.id,
+//           adviserId: panelist1.id,
+//           assignedDate: new Date("2026-06-15T00:00:00.000Z"),
+//           isActive: true,
+//         },
+//       });
+
+//       await prisma.thesisRecord.create({
+//         data: {
+//           studentId: student1Record.id,
+//           assignmentId: adviserAssignment.id,
+//           stage: "PROPOSAL",
+//           status: "PENDING",
+//         },
+//       });
+//       console.log("Created Thesis record for Student 1 (Proposal Defense)");
+
+//       // Add residency tracking
+//       await prisma.residencyTracking.create({
+//         data: {
+//           studentId: student1Record.id,
+//           startDate: new Date("2026-06-01T00:00:00.000Z"),
+//           maxYears: 5,
+//         },
+//       });
+//       console.log("Created Residency Tracking for Student 1");
+//     }
+
+//     // Student 2 - Juan Dela Cruz (enrolled, comp exam failed once)
+//     const student2 = await prisma.user.upsert({
+//       where: { email: "student2@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "student2@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Juan",
+//         lastName: "Dela Cruz",
+//         role: "STUDENT",
+//         student: {
+//           create: {
+//             studentNumber: "2026-0002",
+//             dateOfBirth: new Date("1998-03-20T00:00:00.000Z"),
+//             programId: firstProgram.id,
+//             admissionStatus: "ENROLLED",
+//             enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
+//             residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+//             curriculumType: "OLD",
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Student 2 (Juan Dela Cruz)");
+
+//     // Add comprehensive exam record for Student 2 (1 strike)
+//     const student2Record = await prisma.student.findUnique({
+//       where: { userId: student2.id },
+//     });
+//     if (student2Record) {
+//       await prisma.compExamRecord.create({
+//         data: {
+//           studentId: student2Record.id,
+//           status: "FAILED",
+//         },
+//       });
+//       console.log("Created Comp Exam record for Student 2 (FAILED - 1 strike)");
+//     }
+
+//     // Student 3 - Maria Santos (enrolled, no comp exam yet)
+//     await prisma.user.upsert({
+//       where: { email: "student3@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "student3@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Maria",
+//         lastName: "Santos",
+//         role: "STUDENT",
+//         student: {
+//           create: {
+//             studentNumber: "2026-0003",
+//             dateOfBirth: new Date("1999-07-10T00:00:00.000Z"),
+//             programId: firstProgram.id,
+//             admissionStatus: "ENROLLED",
+//             enrollmentDate: new Date("2026-06-15T00:00:00.000Z"),
+//             residencyStartDate: new Date("2026-06-15T00:00:00.000Z"),
+//             curriculumType: "NEW",
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Student 3 (Maria Santos)");
+
+//     // Student 4 - Pedro Reyes (enrolled, comp exam failed twice - dismissed)
+//     const student4 = await prisma.user.upsert({
+//       where: { email: "student4@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "student4@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Pedro",
+//         lastName: "Reyes",
+//         role: "STUDENT",
+//         student: {
+//           create: {
+//             studentNumber: "2026-0004",
+//             dateOfBirth: new Date("1997-11-25T00:00:00.000Z"),
+//             programId: firstProgram.id,
+//             admissionStatus: "DISMISSED",
+//             enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
+//             residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+//             curriculumType: "NEW",
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Student 4 (Pedro Reyes - Dismissed)");
+
+//     // Add 2 failed comp exam records for Student 4
+//     const student4Record = await prisma.student.findUnique({
+//       where: { userId: student4.id },
+//     });
+//     if (student4Record) {
+//       await prisma.compExamRecord.create({
+//         data: {
+//           studentId: student4Record.id,
+//           status: "FAILED",
+//         },
+//       });
+//       await prisma.compExamRecord.create({
+//         data: {
+//           studentId: student4Record.id,
+//           status: "FAILED",
+//         },
+//       });
+//       console.log(
+//         "Created 2 Comp Exam records for Student 4 (2 strikes - dismissed)",
+//       );
+//     }
+
+//     console.log("Created all Student test accounts");
+//   }
+
+//   // 4. Applicant Test Accounts
+//   const allPrograms = await prisma.program.findMany();
+//   const allUndergradPrograms = await prisma.undergraduateProgram.findMany();
+
+//   if (allPrograms.length > 0 && allUndergradPrograms.length > 0) {
+//     // Applicant 1 - Aligned, Exam Passed, COR Verified (eligible for promotion)
+//     await prisma.user.upsert({
+//       where: { email: "applicant1@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "applicant1@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Juan",
+//         lastName: "Dela Cruz",
+//         role: "APPLICANT",
+//         student: {
+//           create: {
+//             cellphone: "+639171234567",
+//             dateOfBirth: new Date("1998-01-15T00:00:00.000Z"),
+//             pinnacleApplicantId: "PIN-2026-001",
+//             programId: allPrograms[0].id,
+//             undergraduateProgramId: allUndergradPrograms[0].id,
+//             admissionStatus: "APPLICANT",
+//             isProgramAligned: true,
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Applicant 1 (Aligned, eligible)");
+
+//     // Applicant 2 - Pending Waiver
+//     await prisma.user.upsert({
+//       where: { email: "applicant2@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "applicant2@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Maria",
+//         lastName: "Santos",
+//         role: "APPLICANT",
+//         student: {
+//           create: {
+//             cellphone: "+639181234567",
+//             dateOfBirth: new Date("1999-03-20T00:00:00.000Z"),
+//             pinnacleApplicantId: "PIN-2026-002",
+//             programId: allPrograms[0].id,
+//             undergraduateProgramId:
+//               allUndergradPrograms.length > 1
+//                 ? allUndergradPrograms[1].id
+//                 : allUndergradPrograms[0].id,
+//             admissionStatus: "APPLICANT",
+//             isProgramAligned: false,
+//             alignmentStatus: "PENDING_WAIVER",
+//             bridgingWaiver: {
+//               create: {
+//                 intendedProgramId: allPrograms[0].id,
+//                 undergraduateProgramId:
+//                   allUndergradPrograms.length > 1
+//                     ? allUndergradPrograms[1].id
+//                     : allUndergradPrograms[0].id,
+//                 status: "PENDING",
+//                 waiverFormDownloadedAt: new Date(),
+//               },
+//             },
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Applicant 2 (Pending Waiver)");
+
+//     // Applicant 3 - Aligned, Exam Scheduled
+//     await prisma.user.upsert({
+//       where: { email: "applicant3@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "applicant3@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Pedro",
+//         lastName: "Reyes",
+//         role: "APPLICANT",
+//         student: {
+//           create: {
+//             cellphone: "+639191234567",
+//             dateOfBirth: new Date("2000-06-10T00:00:00.000Z"),
+//             pinnacleApplicantId: "PIN-2026-003",
+//             programId:
+//               allPrograms.length > 1 ? allPrograms[1].id : allPrograms[0].id,
+//             undergraduateProgramId: allUndergradPrograms[0].id,
+//             admissionStatus: "APPLICANT",
+//             isProgramAligned: true,
+//             alignmentStatus: "ALIGNED",
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Applicant 3 (Aligned, Exam Scheduled)");
+
+//     // Applicant 4 - Cleared (waiver validated)
+//     await prisma.user.upsert({
+//       where: { email: "applicant4@earist.edu.ph" },
+//       update: {},
+//       create: {
+//         email: "applicant4@earist.edu.ph",
+//         passwordHash,
+//         firstName: "Ana",
+//         lastName: "Garcia",
+//         role: "APPLICANT",
+//         student: {
+//           create: {
+//             cellphone: "+639201234567",
+//             dateOfBirth: new Date("1997-09-25T00:00:00.000Z"),
+//             pinnacleApplicantId: "PIN-2026-004",
+//             programId: allPrograms[0].id,
+//             undergraduateProgramId:
+//               allUndergradPrograms.length > 2
+//                 ? allUndergradPrograms[2].id
+//                 : allUndergradPrograms[0].id,
+//             admissionStatus: "APPLICANT",
+//             isProgramAligned: false,
+//             alignmentStatus: "CLEARED",
+//             bridgingWaiver: {
+//               create: {
+//                 intendedProgramId: allPrograms[0].id,
+//                 undergraduateProgramId:
+//                   allUndergradPrograms.length > 2
+//                     ? allUndergradPrograms[2].id
+//                     : allUndergradPrograms[0].id,
+//                 status: "VALIDATED",
+//                 validatedAt: new Date(),
+//               },
+//             },
+//           },
+//         },
+//       },
+//     });
+//     console.log("Created Applicant 4 (Cleared)");
+
+//     // Applicants 5-12 for pagination testing
+//     const additionalApplicants = [
+//       {
+//         email: "applicant5@earist.edu.ph",
+//         firstName: "Carlos",
+//         lastName: "Mendoza",
+//         alignment: "ALIGNED" as const,
+//       },
+//       {
+//         email: "applicant6@earist.edu.ph",
+//         firstName: "Rosa",
+//         lastName: "Lim",
+//         alignment: "PENDING_WAIVER" as const,
+//       },
+//       {
+//         email: "applicant7@earist.edu.ph",
+//         firstName: "Miguel",
+//         lastName: "Torres",
+//         alignment: "ALIGNED" as const,
+//       },
+//       {
+//         email: "applicant8@earist.edu.ph",
+//         firstName: "Elena",
+//         lastName: "Cruz",
+//         alignment: "CLEARED" as const,
+//       },
+//       {
+//         email: "applicant9@earist.edu.ph",
+//         firstName: "Ricardo",
+//         lastName: "Villanueva",
+//         alignment: "ALIGNED" as const,
+//       },
+//       {
+//         email: "applicant10@earist.edu.ph",
+//         firstName: "Sofia",
+//         lastName: "Aquino",
+//         alignment: "PENDING_WAIVER" as const,
+//       },
+//       {
+//         email: "applicant11@earist.edu.ph",
+//         firstName: "Andres",
+//         lastName: "Ramos",
+//         alignment: "ALIGNED" as const,
+//       },
+//       {
+//         email: "applicant12@earist.edu.ph",
+//         firstName: "Isabel",
+//         lastName: "Fernandez",
+//         alignment: "CLEARED" as const,
+//       },
+//     ];
+
+//     for (let i = 0; i < additionalApplicants.length; i++) {
+//       const app = additionalApplicants[i];
+//       const progIndex = i % allPrograms.length;
+//       const undergradIndex = i % allUndergradPrograms.length;
+
+//       await prisma.user.upsert({
+//         where: { email: app.email },
+//         update: {},
+//         create: {
+//           email: app.email,
+//           passwordHash,
+//           firstName: app.firstName,
+//           lastName: app.lastName,
+//           role: "APPLICANT",
+//           student: {
+//             create: {
+//               cellphone: `+63917${String(1000000 + i).slice(0, 7)}`,
+//               dateOfBirth: new Date(
+//                 `199${5 + (i % 5)}-0${(i % 9) + 1}-15T00:00:00.000Z`,
+//               ),
+//               pinnacleApplicantId: `PIN-2026-${String(i + 5).padStart(3, "0")}`,
+//               programId: allPrograms[progIndex].id,
+//               undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
+//               admissionStatus: "APPLICANT",
+//               isProgramAligned: app.alignment !== "PENDING_WAIVER",
+//               alignmentStatus: app.alignment,
+//               ...(app.alignment !== "ALIGNED"
+//                 ? {
+//                     bridgingWaiver: {
+//                       create: {
+//                         intendedProgramId: allPrograms[progIndex].id,
+//                         undergraduateProgramId:
+//                           allUndergradPrograms[undergradIndex].id,
+//                         status:
+//                           app.alignment === "CLEARED" ? "VALIDATED" : "PENDING",
+//                         ...(app.alignment === "CLEARED"
+//                           ? { validatedAt: new Date() }
+//                           : { waiverFormDownloadedAt: new Date() }),
+//                       },
+//                     },
+//                   }
+//                 : {}),
+//             },
+//           },
+//         },
+//       });
+//     }
+//     console.log("Created Applicants 5-12 for pagination testing");
+//   }
+
+//   // 5. Exam Slots
+//   console.log("Seeding exam slots...");
+//   const examSlots = [
+//     {
+//       programId: allPrograms[0].id,
+//       examDate: new Date("2026-08-01T00:00:00.000Z"),
+//       examTime: new Date("2026-08-01T09:00:00.000Z"),
+//       maxSlots: 30,
+//     },
+//     {
+//       programId: allPrograms[0].id,
+//       examDate: new Date("2026-08-15T00:00:00.000Z"),
+//       examTime: new Date("2026-08-15T09:00:00.000Z"),
+//       maxSlots: 30,
+//     },
+//     {
+//       programId: allPrograms[1].id,
+//       examDate: new Date("2026-08-02T00:00:00.000Z"),
+//       examTime: new Date("2026-08-02T14:00:00.000Z"),
+//       maxSlots: 25,
+//     },
+//     {
+//       programId: allPrograms[4].id,
+//       examDate: new Date("2026-08-05T00:00:00.000Z"),
+//       examTime: new Date("2026-08-05T10:00:00.000Z"),
+//       maxSlots: 20,
+//     },
+//   ];
+
+//   const createdSlots = [];
+//   for (const slot of examSlots) {
+//     const existing = await prisma.examSlot.findFirst({
+//       where: { programId: slot.programId, examDate: slot.examDate },
+//     });
+//     if (!existing) {
+//       const created = await prisma.examSlot.create({ data: slot as any });
+//       createdSlots.push(created);
+//       console.log(`Created exam slot: ${slot.examDate.toLocaleDateString()}`);
+//     } else {
+//       createdSlots.push(existing);
+//       console.log(
+//         `Exam slot already exists: ${slot.examDate.toLocaleDateString()}`,
+//       );
+//     }
+//   }
+
+//   // 6. Exam Applications (for applicants with ALIGNED status)
+//   console.log("Seeding exam applications...");
+//   const applicantsToSchedule = [
+//     { email: "applicant1@earist.edu.ph", slotIndex: 0, status: "PASSED" },
+//     { email: "applicant3@earist.edu.ph", slotIndex: 0, status: "SCHEDULED" },
+//     { email: "applicant5@earist.edu.ph", slotIndex: 1, status: "PENDING" },
+//     { email: "applicant7@earist.edu.ph", slotIndex: 2, status: "PASSED" },
+//     { email: "applicant9@earist.edu.ph", slotIndex: 3, status: "FAILED" },
+//   ];
+
+//   for (const app of applicantsToSchedule) {
+//     try {
+//       const user = await prisma.user.findUnique({
+//         where: { email: app.email },
+//         include: { student: true },
+//       });
+
+//       if (user?.student) {
+//         const existing = await prisma.entranceExamApplication.findFirst({
+//           where: { studentId: user.student.id },
+//         });
+
+//         if (!existing && createdSlots[app.slotIndex]) {
+//           const slot = createdSlots[app.slotIndex];
+//           await prisma.entranceExamApplication.create({
+//             data: {
+//               studentId: user.student.id,
+//               programId: user.student.programId,
+//               slotId: slot.id,
+//               examDate: slot.examDate,
+//               examTime: slot.examTime,
+//               status: app.status as any,
+//               createdAt: new Date(),
+//             },
+//           });
+//           console.log(
+//             `Created exam application for ${app.email} - ${app.status}`,
+//           );
+//         }
+//       }
+
+//       // 7. Email Templates (v8 System Notification Inventory)
+//       console.log("Seeding Email Templates...");
+
+//       const emailTemplates = [
+//         {
+//           templateKey: "ecat_result_pass",
+//           subject: "ECAT Result: PASSED",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Congratulations! You passed the ECAT. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "ecat_result_fail",
+//           subject: "ECAT Result: FAILED",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>We regret to inform you that you failed the ECAT. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "credential_dispatch",
+//           subject: "Welcome! Your Student Credentials",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Congratulations, you are now officially enrolled.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Your Default Password is: <strong>{{default_password}}</strong> (Your Last Name in ALL CAPS)</p><p>Please login to your portal immediately to change your password: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "defense_schedule",
+//           subject: "Defense Schedule",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your defense is scheduled on {{defense_date}} at {{defense_time}} in {{venue}}.</p>",
+//         },
+//         {
+//           templateKey: "cor_verified",
+//           subject: "COR Verified",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your Certificate of Registration has been verified. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "bridging_waiver_validated",
+//           subject: "Bridging Waiver Validated",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your bridging waiver has been validated. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "bridging_waiver_rejected",
+//           subject: "Bridging Waiver Rejected",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your bridging waiver has been rejected. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "memo_broadcast",
+//           subject: "{{memo_title}}",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><div>{{memo_content}}</div><p>Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "residency_warning",
+//           subject: "Residency Warning",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>This is a warning regarding your residency: {{warning_details}}.</p><p>Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "alignment_aligned",
+//           subject: "Program Alignment: ALIGNED",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your undergraduate course is aligned. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "alignment_misaligned",
+//           subject: "Program Alignment: MISALIGNED",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your undergraduate course is misaligned. Please login to download your bridging waiver: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "exam_reminder_24h",
+//           subject: "Reminder: Exam Tomorrow",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>This is a 24-hour reminder for your scheduled exam on {{exam_date}}. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "rap_distributed",
+//           subject: "RAP Report E-signature Requested",
+//           bodyHtml:
+//             "<p>Dear {{panelist_name}},</p><p>Please review and e-sign the RAP Report here: {{rap_link}}</p>",
+//         },
+//         {
+//           templateKey: "rap_finalized",
+//           subject: "RAP Report Finalized",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your RAP Report has been finalized by all panelists. View it here: {{rap_link}}</p>",
+//         },
+//         {
+//           templateKey: "strike_result",
+//           subject: "Plagiarism Strike Result",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your submission received a similarity percentage of {{similarity_percentage}}%.</p><div>Instructions: {{instructions}}</div>",
+//         },
+//         {
+//           templateKey: "adviser_assigned",
+//           subject: "Adviser Assigned",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your assigned adviser is {{adviser_name}}. Login to your portal: {{portal_link}}</p>",
+//         },
+//         {
+//           templateKey: "comp_exam_recorded",
+//           subject: "Comprehensive Exam Result Recorded",
+//           bodyHtml:
+//             "<p>Dear {{student_name}},</p><p>Your comprehensive exam result ({{result}}) has been recorded. Login to your portal: {{portal_link}}</p>",
+//         },
+//       ];
+
+//       for (const tpl of emailTemplates) {
+//         const existing = await prisma.emailTemplate.findUnique({
+//           where: { templateKey: tpl.templateKey },
+//         });
+//         if (!existing) {
+//           await prisma.emailTemplate.create({
+//             data: {
+//               templateKey: tpl.templateKey,
+//               subject: tpl.subject,
+//               bodyHtml: tpl.bodyHtml,
+//             },
+//           });
+//           console.log(`Created Email Template: ${tpl.templateKey}`);
+//         }
+//       }
+//     } catch (e: any) {
+//       console.log(`Skipping ${app.email}: ${e.message}`);
+//     }
+//   }
+// }
+
+// main()
+//   .catch((e) => {
+//     console.error(e);
+//     process.exit(1);
+//   })
+//   .finally(async () => {
+//     await prisma.$disconnect();
+//   });
   // 1. Admin Test Account
   await prisma.user.upsert({
-    where: { email: 'admin@earist.edu.ph' },
+    where: { email: "dottedone23@gmail.com" },
     update: {},
     create: {
-      email: 'admin@earist.edu.ph',
+      email: "dottedone23@gmail.com",
       passwordHash,
-      firstName: 'System',
-      lastName: 'Admin',
-      role: 'ADMIN',
-    }
+      firstName: "System",
+      lastName: "Admin",
+      role: "ADMIN",
+    },
   });
-  console.log('Created Admin test account');
+  console.log("Created Admin test account");
 
-  // 2. Panelists Test Account
-  await prisma.user.upsert({
-    where: { email: 'panelist1@earist.edu.ph' },
-    update: {},
-    create: {
-      email: 'panelist1@earist.edu.ph',
-      passwordHash,
-      firstName: 'Dr. John',
-      lastName: 'Doe',
-      role: 'PANELIST',
-      panelist: {
-        create: {
-          isExternal: false,
-          isAvailableAsAdviser: true,
-        }
-      }
-    }
-  });
-  console.log('Created Panelist1 test account');
 
-  await prisma.user.upsert({
-    where: { email: 'panelist2@earist.edu.ph' },
-    update: {},
-    create: {
-      email: 'panelist2@earist.edu.ph',
-      passwordHash,
-      firstName: 'Prof. William',
-      lastName: 'Marcial',
-      role: 'PANELIST',
-      panelist: {
-        create: {
-          isExternal: false,
-          isAvailableAsAdviser: true,
-        }
-      }
-    }
-  });
-  console.log('Created Panelist2 test account');
-
-  await prisma.user.upsert({
-    where: { email: 'panelist3@earist.edu.ph' },
-    update: {},
-    create: {
-      email: 'panelist3@earist.edu.ph',
-      passwordHash,
-      firstName: 'Prof. Hanna Mae',
-      lastName: 'Perdido',
-      role: 'PANELIST',
-      panelist: {
-        create: {
-          isExternal: false,
-          isAvailableAsAdviser: true,
-        }
-      }
-    }
-  });
-  console.log('Created Panelist3 test account');
-
-  // 3. Enrolled Student Test Accounts
-  const firstProgram = await prisma.program.findFirst();
-  const panelist1 = await prisma.user.findUnique({ where: { email: 'panelist1@earist.edu.ph' } });
-
-  if (firstProgram && panelist1) {
-    // Student 1 - Jane Smith (enrolled, comp exam passed, thesis in progress)
-    const student1 = await prisma.user.upsert({
-      where: { email: 'student@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'student@earist.edu.ph',
-        passwordHash,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        role: 'STUDENT',
-        student: {
-          create: {
-            studentNumber: '2026-0001',
-            dateOfBirth: new Date('1995-05-15T00:00:00.000Z'),
-            programId: firstProgram.id,
-            admissionStatus: 'ENROLLED',
-            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
-            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
-            curriculumType: 'NEW',
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Student 1 (Jane Smith)');
-
-    // Add comprehensive exam record for Student 1
-    const student1Record = await prisma.student.findUnique({ where: { userId: student1.id } });
-    if (student1Record) {
-      await prisma.compExamRecord.create({
-        data: {
-          studentId: student1Record.id,
-          status: 'PASSED',
-        }
-      });
-      console.log('Created Comp Exam record for Student 1 (PASSED)');
-
-      // Add thesis record for Student 1
-      const adviserAssignment = await prisma.adviserAssignment.create({
-        data: {
-          studentId: student1Record.id,
-          adviserId: panelist1.id,
-          assignedDate: new Date('2026-06-15T00:00:00.000Z'),
-          isActive: true,
-        }
-      });
-
-      await prisma.thesisRecord.create({
-        data: {
-          studentId: student1Record.id,
-          assignmentId: adviserAssignment.id,
-          stage: 'PROPOSAL',
-          status: 'PENDING',
-        }
-      });
-      console.log('Created Thesis record for Student 1 (Proposal Defense)');
-
-      // Add residency tracking
-      await prisma.residencyTracking.create({
-        data: {
-          studentId: student1Record.id,
-          startDate: new Date('2026-06-01T00:00:00.000Z'),
-          maxYears: 5,
-        }
-      });
-      console.log('Created Residency Tracking for Student 1');
-    }
-
-    // Student 2 - Juan Dela Cruz (enrolled, comp exam failed once)
-    const student2 = await prisma.user.upsert({
-      where: { email: 'student2@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'student2@earist.edu.ph',
-        passwordHash,
-        firstName: 'Juan',
-        lastName: 'Dela Cruz',
-        role: 'STUDENT',
-        student: {
-          create: {
-            studentNumber: '2026-0002',
-            dateOfBirth: new Date('1998-03-20T00:00:00.000Z'),
-            programId: firstProgram.id,
-            admissionStatus: 'ENROLLED',
-            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
-            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
-            curriculumType: 'OLD',
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Student 2 (Juan Dela Cruz)');
-
-    // Add comprehensive exam record for Student 2 (1 strike)
-    const student2Record = await prisma.student.findUnique({ where: { userId: student2.id } });
-    if (student2Record) {
-      await prisma.compExamRecord.create({
-        data: {
-          studentId: student2Record.id,
-          status: 'FAILED',
-        }
-      });
-      console.log('Created Comp Exam record for Student 2 (FAILED - 1 strike)');
-    }
-
-    // Student 3 - Maria Santos (enrolled, no comp exam yet)
-    await prisma.user.upsert({
-      where: { email: 'student3@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'student3@earist.edu.ph',
-        passwordHash,
-        firstName: 'Maria',
-        lastName: 'Santos',
-        role: 'STUDENT',
-        student: {
-          create: {
-            studentNumber: '2026-0003',
-            dateOfBirth: new Date('1999-07-10T00:00:00.000Z'),
-            programId: firstProgram.id,
-            admissionStatus: 'ENROLLED',
-            enrollmentDate: new Date('2026-06-15T00:00:00.000Z'),
-            residencyStartDate: new Date('2026-06-15T00:00:00.000Z'),
-            curriculumType: 'NEW',
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Student 3 (Maria Santos)');
-
-    // Student 4 - Pedro Reyes (enrolled, comp exam failed twice - dismissed)
-    const student4 = await prisma.user.upsert({
-      where: { email: 'student4@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'student4@earist.edu.ph',
-        passwordHash,
-        firstName: 'Pedro',
-        lastName: 'Reyes',
-        role: 'STUDENT',
-        student: {
-          create: {
-            studentNumber: '2026-0004',
-            dateOfBirth: new Date('1997-11-25T00:00:00.000Z'),
-            programId: firstProgram.id,
-            admissionStatus: 'DISMISSED',
-            enrollmentDate: new Date('2026-06-01T00:00:00.000Z'),
-            residencyStartDate: new Date('2026-06-01T00:00:00.000Z'),
-            curriculumType: 'NEW',
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Student 4 (Pedro Reyes - Dismissed)');
-
-    // Add 2 failed comp exam records for Student 4
-    const student4Record = await prisma.student.findUnique({ where: { userId: student4.id } });
-    if (student4Record) {
-      await prisma.compExamRecord.create({
-        data: {
-          studentId: student4Record.id,
-          status: 'FAILED',
-        }
-      });
-      await prisma.compExamRecord.create({
-        data: {
-          studentId: student4Record.id,
-          status: 'FAILED',
-        }
-      });
-      console.log('Created 2 Comp Exam records for Student 4 (2 strikes - dismissed)');
-    }
-
-    console.log('Created all Student test accounts');
-  }
-
-  // 4. Applicant Test Accounts
-  const allPrograms = await prisma.program.findMany();
-  const allUndergradPrograms = await prisma.undergraduateProgram.findMany();
-
-  if (allPrograms.length > 0 && allUndergradPrograms.length > 0) {
-    // Applicant 1 - Aligned, Exam Passed, COR Verified (eligible for promotion)
-    await prisma.user.upsert({
-      where: { email: 'applicant1@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'applicant1@earist.edu.ph',
-        passwordHash,
-        firstName: 'Juan',
-        lastName: 'Dela Cruz',
-        role: 'APPLICANT',
-        student: {
-          create: {
-            cellphone: '+639171234567',
-            dateOfBirth: new Date('1998-01-15T00:00:00.000Z'),
-            pinnacleApplicantId: 'PIN-2026-001',
-            programId: allPrograms[0].id,
-            undergraduateProgramId: allUndergradPrograms[0].id,
-            admissionStatus: 'APPLICANT',
-            isProgramAligned: true,
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Applicant 1 (Aligned, eligible)');
-
-    // Applicant 2 - Pending Waiver
-    await prisma.user.upsert({
-      where: { email: 'applicant2@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'applicant2@earist.edu.ph',
-        passwordHash,
-        firstName: 'Maria',
-        lastName: 'Santos',
-        role: 'APPLICANT',
-        student: {
-          create: {
-            cellphone: '+639181234567',
-            dateOfBirth: new Date('1999-03-20T00:00:00.000Z'),
-            pinnacleApplicantId: 'PIN-2026-002',
-            programId: allPrograms[0].id,
-            undergraduateProgramId: allUndergradPrograms.length > 1 ? allUndergradPrograms[1].id : allUndergradPrograms[0].id,
-            admissionStatus: 'APPLICANT',
-            isProgramAligned: false,
-            alignmentStatus: 'PENDING_WAIVER',
-            bridgingWaiver: {
-              create: {
-                intendedProgramId: allPrograms[0].id,
-                undergraduateProgramId: allUndergradPrograms.length > 1 ? allUndergradPrograms[1].id : allUndergradPrograms[0].id,
-                status: 'PENDING',
-                waiverFormDownloadedAt: new Date()
-              }
-            }
-          }
-        }
-      }
-    });
-    console.log('Created Applicant 2 (Pending Waiver)');
-
-    // Applicant 3 - Aligned, Exam Scheduled
-    await prisma.user.upsert({
-      where: { email: 'applicant3@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'applicant3@earist.edu.ph',
-        passwordHash,
-        firstName: 'Pedro',
-        lastName: 'Reyes',
-        role: 'APPLICANT',
-        student: {
-          create: {
-            cellphone: '+639191234567',
-            dateOfBirth: new Date('2000-06-10T00:00:00.000Z'),
-            pinnacleApplicantId: 'PIN-2026-003',
-            programId: allPrograms.length > 1 ? allPrograms[1].id : allPrograms[0].id,
-            undergraduateProgramId: allUndergradPrograms[0].id,
-            admissionStatus: 'APPLICANT',
-            isProgramAligned: true,
-            alignmentStatus: 'ALIGNED',
-          }
-        }
-      }
-    });
-    console.log('Created Applicant 3 (Aligned, Exam Scheduled)');
-
-    // Applicant 4 - Cleared (waiver validated)
-    await prisma.user.upsert({
-      where: { email: 'applicant4@earist.edu.ph' },
-      update: {},
-      create: {
-        email: 'applicant4@earist.edu.ph',
-        passwordHash,
-        firstName: 'Ana',
-        lastName: 'Garcia',
-        role: 'APPLICANT',
-        student: {
-          create: {
-            cellphone: '+639201234567',
-            dateOfBirth: new Date('1997-09-25T00:00:00.000Z'),
-            pinnacleApplicantId: 'PIN-2026-004',
-            programId: allPrograms[0].id,
-            undergraduateProgramId: allUndergradPrograms.length > 2 ? allUndergradPrograms[2].id : allUndergradPrograms[0].id,
-            admissionStatus: 'APPLICANT',
-            isProgramAligned: false,
-            alignmentStatus: 'CLEARED',
-            bridgingWaiver: {
-              create: {
-                intendedProgramId: allPrograms[0].id,
-                undergraduateProgramId: allUndergradPrograms.length > 2 ? allUndergradPrograms[2].id : allUndergradPrograms[0].id,
-                status: 'VALIDATED',
-                validatedAt: new Date()
-              }
-            }
-          }
-        }
-      }
-    });
-    console.log('Created Applicant 4 (Cleared)');
-
-    // Applicants 5-12 for pagination testing
-    const additionalApplicants = [
-      { email: 'applicant5@earist.edu.ph', firstName: 'Carlos', lastName: 'Mendoza', alignment: 'ALIGNED' as const },
-      { email: 'applicant6@earist.edu.ph', firstName: 'Rosa', lastName: 'Lim', alignment: 'PENDING_WAIVER' as const },
-      { email: 'applicant7@earist.edu.ph', firstName: 'Miguel', lastName: 'Torres', alignment: 'ALIGNED' as const },
-      { email: 'applicant8@earist.edu.ph', firstName: 'Elena', lastName: 'Cruz', alignment: 'CLEARED' as const },
-      { email: 'applicant9@earist.edu.ph', firstName: 'Ricardo', lastName: 'Villanueva', alignment: 'ALIGNED' as const },
-      { email: 'applicant10@earist.edu.ph', firstName: 'Sofia', lastName: 'Aquino', alignment: 'PENDING_WAIVER' as const },
-      { email: 'applicant11@earist.edu.ph', firstName: 'Andres', lastName: 'Ramos', alignment: 'ALIGNED' as const },
-      { email: 'applicant12@earist.edu.ph', firstName: 'Isabel', lastName: 'Fernandez', alignment: 'CLEARED' as const },
-    ];
-
-    for (let i = 0; i < additionalApplicants.length; i++) {
-      const app = additionalApplicants[i];
-      const progIndex = i % allPrograms.length;
-      const undergradIndex = i % allUndergradPrograms.length;
-
-      await prisma.user.upsert({
-        where: { email: app.email },
-        update: {},
-        create: {
-          email: app.email,
-          passwordHash,
-          firstName: app.firstName,
-          lastName: app.lastName,
-          role: 'APPLICANT',
-          student: {
-            create: {
-              cellphone: `+63917${String(1000000 + i).slice(0, 7)}`,
-              dateOfBirth: new Date(`199${5 + (i % 5)}-0${(i % 9) + 1}-15T00:00:00.000Z`),
-              pinnacleApplicantId: `PIN-2026-${String(i + 5).padStart(3, '0')}`,
-              programId: allPrograms[progIndex].id,
-              undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
-              admissionStatus: 'APPLICANT',
-              isProgramAligned: app.alignment !== 'PENDING_WAIVER',
-              alignmentStatus: app.alignment,
-              ...(app.alignment !== 'ALIGNED' ? {
-                bridgingWaiver: {
-                  create: {
-                    intendedProgramId: allPrograms[progIndex].id,
-                    undergraduateProgramId: allUndergradPrograms[undergradIndex].id,
-                    status: app.alignment === 'CLEARED' ? 'VALIDATED' : 'PENDING',
-                    ...(app.alignment === 'CLEARED' ? { validatedAt: new Date() } : { waiverFormDownloadedAt: new Date() })
-                  }
-                }
-              } : {})
-            }
-          }
-        }
-      });
-    }
-    console.log('Created Applicants 5-12 for pagination testing');
-  }
-
-  // 5. Exam Slots
-  console.log('Seeding exam slots...');
-  const examSlots = [
-    { programId: allPrograms[0].id, examDate: new Date('2026-08-01T00:00:00.000Z'), examTime: new Date('2026-08-01T09:00:00.000Z'), maxSlots: 30 },
-    { programId: allPrograms[0].id, examDate: new Date('2026-08-15T00:00:00.000Z'), examTime: new Date('2026-08-15T09:00:00.000Z'), maxSlots: 30 },
-    { programId: allPrograms[1].id, examDate: new Date('2026-08-02T00:00:00.000Z'), examTime: new Date('2026-08-02T14:00:00.000Z'), maxSlots: 25 },
-    { programId: allPrograms[4].id, examDate: new Date('2026-08-05T00:00:00.000Z'), examTime: new Date('2026-08-05T10:00:00.000Z'), maxSlots: 20 },
+  // 2. Email Templates
+  console.log("Seeding Email Templates...");
+  const emailTemplates = [
+    {
+      templateKey: "ecat_result_pass",
+      subject: "ECAT Result: PASSED",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Congratulations! You passed the ECAT. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "ecat_result_fail",
+      subject: "ECAT Result: FAILED",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>We regret to inform you that you failed the ECAT. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "credential_dispatch",
+      subject: "Welcome! Your Student Credentials",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Congratulations, you are now officially enrolled.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Your Default Password is: <strong>{{default_password}}</strong> (Your Last Name in ALL CAPS)</p><p>Please login to your portal immediately to change your password: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "defense_schedule",
+      subject: "Defense Schedule",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your defense is scheduled on {{defense_date}} at {{defense_time}} in {{venue}}.</p>",
+    },
+    {
+      templateKey: "cor_verified",
+      subject: "COR Verified",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your Certificate of Registration has been verified. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "bridging_waiver_validated",
+      subject: "Bridging Waiver Validated",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your bridging waiver has been validated. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "bridging_waiver_rejected",
+      subject: "Bridging Waiver Rejected",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your bridging waiver has been rejected. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "memo_broadcast",
+      subject: "{{memo_title}}",
+      bodyHtml: "<p>Dear {{student_name}},</p><div>{{memo_content}}</div><p>Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "residency_warning",
+      subject: "Residency Warning",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>This is a warning regarding your residency: {{warning_details}}.</p><p>Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "alignment_aligned",
+      subject: "Program Alignment: ALIGNED",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your undergraduate course is aligned. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "alignment_misaligned",
+      subject: "Program Alignment: MISALIGNED",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your undergraduate course is misaligned. Please login to download your bridging waiver: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "exam_reminder_24h",
+      subject: "Reminder: Exam Tomorrow",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>This is a 24-hour reminder for your scheduled exam on {{exam_date}}. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "rap_distributed",
+      subject: "RAP Report E-signature Requested",
+      bodyHtml: "<p>Dear {{panelist_name}},</p><p>Please review and e-sign the RAP Report here: {{rap_link}}</p>",
+    },
+    {
+      templateKey: "rap_finalized",
+      subject: "RAP Report Finalized",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your RAP Report has been finalized by all panelists. View it here: {{rap_link}}</p>",
+    },
+    {
+      templateKey: "strike_result",
+      subject: "Plagiarism Strike Result",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your submission received a similarity percentage of {{similarity_percentage}}%.</p><div>Instructions: {{instructions}}</div>",
+    },
+    {
+      templateKey: "adviser_assigned",
+      subject: "Adviser Assigned",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your assigned adviser is {{adviser_name}}. Login to your portal: {{portal_link}}</p>",
+    },
+    {
+      templateKey: "comp_exam_recorded",
+      subject: "Comprehensive Exam Result Recorded",
+      bodyHtml: "<p>Dear {{student_name}},</p><p>Your comprehensive exam result ({{result}}) has been recorded. Login to your portal: {{portal_link}}</p>",
+    },
   ];
 
-  const createdSlots = [];
-  for (const slot of examSlots) {
-    const existing = await prisma.examSlot.findFirst({
-      where: { programId: slot.programId, examDate: slot.examDate }
+  for (const tpl of emailTemplates) {
+    const existing = await prisma.emailTemplate.findUnique({
+      where: { templateKey: tpl.templateKey },
     });
     if (!existing) {
-      const created = await prisma.examSlot.create({ data: slot as any });
-      createdSlots.push(created);
-      console.log(`Created exam slot: ${slot.examDate.toLocaleDateString()}`);
-    } else {
-      createdSlots.push(existing);
-      console.log(`Exam slot already exists: ${slot.examDate.toLocaleDateString()}`);
-    }
-  }
-
-  // 6. Exam Applications (for applicants with ALIGNED status)
-  console.log('Seeding exam applications...');
-  const applicantsToSchedule = [
-    { email: 'applicant1@earist.edu.ph', slotIndex: 0, status: 'PASSED' },
-    { email: 'applicant3@earist.edu.ph', slotIndex: 0, status: 'SCHEDULED' },
-    { email: 'applicant5@earist.edu.ph', slotIndex: 1, status: 'PENDING' },
-    { email: 'applicant7@earist.edu.ph', slotIndex: 2, status: 'PASSED' },
-    { email: 'applicant9@earist.edu.ph', slotIndex: 3, status: 'FAILED' },
-  ];
-
-  for (const app of applicantsToSchedule) {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { email: app.email },
-        include: { student: true }
+      await prisma.emailTemplate.create({
+        data: {
+          templateKey: tpl.templateKey,
+          subject: tpl.subject,
+          bodyHtml: tpl.bodyHtml,
+        },
       });
-
-      if (user?.student) {
-        const existing = await prisma.entranceExamApplication.findFirst({
-          where: { studentId: user.student.id }
-        });
-
-        if (!existing && createdSlots[app.slotIndex]) {
-          const slot = createdSlots[app.slotIndex];
-          await prisma.entranceExamApplication.create({
-            data: {
-              studentId: user.student.id,
-              programId: user.student.programId,
-              slotId: slot.id,
-              examDate: slot.examDate,
-              examTime: slot.examTime,
-              status: app.status as any,
-              createdAt: new Date(),
-            }
-          });
-          console.log(`Created exam application for ${app.email} - ${app.status}`);
-        }
-      }
-    } catch (e: any) {
-      console.log(`Skipping ${app.email}: ${e.message}`);
+      console.log(`Created Email Template: ${tpl.templateKey}`);
     }
   }
-
 }
 
 main()

@@ -70,6 +70,12 @@ export class AuthService {
 
 
     async register(data: RegisterInput): Promise<UserResponse> {
+
+        // Strict Gmail Exclusivity Rule
+        if (!data.email.toLowerCase().endsWith("@gmail.com")) {
+            throw new AppError("Invalid email domain. Only @gmail.com account are permitted for applicants.", 400);
+        }
+
         // 1. Check existing records
         const existingUser = await this.authRepository.findUserByEmail(data.email);
         if (existingUser) {

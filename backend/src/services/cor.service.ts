@@ -1,7 +1,7 @@
 import { CorRepository } from "../repositories/cor.repository";
 import { AppError } from "../utils/AppError";
 import { sendMockEmail } from "../utils/email.mock";
-import fs from "fs";
+import { EmailService } from "./email.service";
 
 export class CorService {
   private corRepository = new CorRepository();
@@ -81,24 +81,13 @@ export class CorService {
       ? student.dateOfBirth.toISOString().split("T")[0]
       : "DefaultPass123!";
 
-    const emailMessage = `
-Dear ${student.user.firstName},
-
-Congratulations! Your Certificate of Registration has been verified.
-You are now officially ENROLLED in the Graduate System.
-
-Your Portal Credentials:
-Username (Student No.): ${data.studentNumber}
-Password: ${dobStr}
-
-Please log in and change your password immediately.
-        `;
-
-    sendMockEmail(
-      student.user.email,
-      "Welcome to EARIST Graduate School!",
-      emailMessage,
-    );
+    // Dispatch real credential email via BullMQ
+    await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
+        student_name: student.user.firstName,
+        student_number: data.studentNumber,
+        default_password: student.user.lastName.toUpperCase(), // Using ALL CAPS lastname as requested
+        portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
+    });
 
     return result;
   }

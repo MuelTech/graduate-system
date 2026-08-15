@@ -1,5 +1,6 @@
 import { ExamRepository } from "../repositories/exam.repository";
 import { ExamAppStatus } from "@prisma/client";
+import { EmailService } from "./email.service";
 
 export class ExamService {
   private examRepo = new ExamRepository();
@@ -254,12 +255,16 @@ export class ExamService {
 
     const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
 
-    // TODO: Integrate actual email provider (e.g. SendGrid/AWS SES)
-    console.log(`[EMAIL DISPATCH] Triggered '${template}' template for Application ID: ${applicationId}`);
+     // Dispatch actual email via BullMQ
+    await EmailService.sendTemplateEmail(application.student.user.email, template, {
+        student_name: application.student.user.firstName,
+        portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
+    });
 
     return {
       success: true,
-      message: "Grade confirmed. Email provider is currently pending integration."
+      message: "Grade confirmed and email successfully dispatched to the queue."
     };
+    
   }
 }

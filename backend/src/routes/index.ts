@@ -17,6 +17,7 @@ import adminApplicantRoutes from './admin-applicant.routes';
 import adminPanelistRoutes from './admin-panelist.routes';
 import examEngineRoutes from './exam-engine.routes';
 import adminStudentRoutes from './admin-student.routes';
+import emailRoutes from './email.routes';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/admin/applicants', adminApplicantRoutes);
 router.use('/admin/panelists', adminPanelistRoutes);
 router.use('/admin/students', adminStudentRoutes);
 router.use('/exam-engine', examEngineRoutes);
+router.use('/admin/email-logs', emailRoutes);
 
 export default router;
