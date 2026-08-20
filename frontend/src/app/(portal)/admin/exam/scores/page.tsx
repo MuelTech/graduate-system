@@ -38,6 +38,14 @@ export default function AdminExamScoresPage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [programFilter, setProgramFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [gradedByFilter, setGradedByFilter] = useState("all");
+
   // FETCH: Grading Queue
   const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
     queryKey: ["gradingQueue"],
