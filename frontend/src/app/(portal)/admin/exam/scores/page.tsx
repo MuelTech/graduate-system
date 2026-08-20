@@ -14,11 +14,20 @@ import {
   XCircle,
   Clock,
   Send,
+  Search,
   X,
   Save,
   Eye,
   Loader2,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -504,6 +513,85 @@ export default function AdminExamScoresPage() {
 
       {/* Score Review Table */}
       {activeTab === "review" && (
+        <>
+          {/* Filter Bar */}
+          <div className="flex items-center gap-3 mb-4">
+            {/* Search input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or ID..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={(v) => { if (v) { setStatusFilter(v); setPage(1); } }}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="PASSED">Passed</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Program filter */}
+            <Select value={programFilter} onValueChange={(v) => { if (v) { setProgramFilter(v); setPage(1); } }}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Program" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Programs</SelectItem>
+                {uniquePrograms.map((prog) => (
+                  <SelectItem key={prog} value={prog}>{prog}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Date From */}
+            <Input
+              type="date"
+              className="w-[150px]"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+            />
+
+            {/* Date To */}
+            <Input
+              type="date"
+              className="w-[150px]"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+            />
+
+            {/* Graded By filter */}
+            <Select value={gradedByFilter} onValueChange={(v) => { if (v) { setGradedByFilter(v); setPage(1); } }}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Graded By" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Graders</SelectItem>
+                {uniqueGraders.map((grader) => (
+                  <SelectItem key={grader} value={grader}>{grader}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Clear button */}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" /> Clear
+              </Button>
+            )}
+          </div>
+
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -681,6 +769,7 @@ export default function AdminExamScoresPage() {
             )}
           </CardContent>
         </Card>
+        </>
       )}
     </div>
   );
