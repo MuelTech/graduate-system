@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { toast } from "sonner";
@@ -14,11 +14,14 @@ import {
   XCircle,
   Clock,
   Send,
+  Search,
   X,
   Save,
   Eye,
   Loader2,
+  Filter,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -38,6 +41,13 @@ export default function AdminExamScoresPage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [programFilter, setProgramFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   // FETCH: Grading Queue
   const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
     queryKey: ["gradingQueue"],
@@ -49,6 +59,60 @@ export default function AdminExamScoresPage() {
     queryKey: ["scoreReview"],
     queryFn: () => apiClientRequest("/exam/scores/review", { method: "GET" }),
   });
+
+  // Filtered scores based on active filters
+  const filteredScores = useMemo(() => {
+    return ((reviewData as ExamAppResponse[]) || []).filter((score) => {
+      // Search filter (name + Pinnacle ID)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const name = `${score.student.user.firstName} ${score.student.user.lastName}`.toLowerCase();
+        const username = score.student.user.username?.toLowerCase() || "";
+        if (!name.includes(query) && !username.includes(query)) return false;
+      }
+      // Status filter
+      if (statusFilter !== "" && score.score?.status !== statusFilter) return false;
+      // Program filter
+      if (programFilter !== "" && score.program.programName !== programFilter) return false;
+      // Date range filter
+      if (dateFrom && new Date(score.createdAt) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999); // Include the entire "To" day
+        if (new Date(score.createdAt) > to) return false;
+      }
+      return true;
+    });
+  }, [reviewData, searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
+
+  // Computed unique values for filter dropdowns
+  const uniquePrograms = useMemo(() => {
+    const programs = new Set(
+      ((reviewData as ExamAppResponse[]) || []).map((s) => s.program.programName),
+    );
+    return Array.from(programs).sort();
+  }, [reviewData]);
+
+  // Check if any filter is active (non-default)
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      statusFilter !== "" ||
+      programFilter !== "" ||
+      dateFrom !== "" ||
+      dateTo !== ""
+    );
+  }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
+
+  // Clear all filters and reset to first page
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("");
+    setProgramFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
 
   // MUTATION: Save Grade
   const gradeMutation = useMutation({
@@ -92,7 +156,7 @@ export default function AdminExamScoresPage() {
     essayTotal: app.program.examEssayTotal || 30,
   }));
 
-  const scoreReview = ((reviewData as ExamAppResponse[]) || []).map((app) => ({
+  const scoreReview = filteredScores.map((app) => ({
     id: app.id,
     name: `${app.student.user.firstName} ${app.student.user.lastName}`,
     pinnacleId: app.student.user.username || "N/A",
@@ -424,6 +488,78 @@ export default function AdminExamScoresPage() {
 
       {/* Score Review Table */}
       {activeTab === "review" && (
+        <>
+          {/* Search & Filters */}
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Search by name or Pinnacle ID..."
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Filter className="h-4 w-4 text-(--earist-body-text)" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                  >
+                    <option value="">All Status</option>
+                    <option value="PASSED">Passed</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+                  <select
+                    value={programFilter}
+                    onChange={(e) => {
+                      setProgramFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                  >
+                    <option value="">All Programs</option>
+                    {uniquePrograms.map((prog) => (
+                      <option key={prog} value={prog}>{prog}</option>
+                    ))}
+                  </select>
+                  <Input
+                    type="date"
+                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    type="date"
+                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
+                    value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  />
+                  {hasActiveFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="rounded-lg border border-(--earist-border-gray) text-sm"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -601,6 +737,7 @@ export default function AdminExamScoresPage() {
             )}
           </CardContent>
         </Card>
+        </>
       )}
     </div>
   );
