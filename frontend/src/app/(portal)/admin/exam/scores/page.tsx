@@ -45,8 +45,6 @@ export default function AdminExamScoresPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [programFilter, setProgramFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
   // FETCH: Grading Queue
   const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
@@ -74,16 +72,9 @@ export default function AdminExamScoresPage() {
       if (statusFilter !== "" && score.score?.status !== statusFilter) return false;
       // Program filter
       if (programFilter !== "" && score.program.programName !== programFilter) return false;
-      // Date range filter
-      if (dateFrom && new Date(score.createdAt) < new Date(dateFrom)) return false;
-      if (dateTo) {
-        const to = new Date(dateTo);
-        to.setHours(23, 59, 59, 999); // Include the entire "To" day
-        if (new Date(score.createdAt) > to) return false;
-      }
       return true;
     });
-  }, [reviewData, searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
+  }, [reviewData, searchQuery, statusFilter, programFilter]);
 
   // Computed unique values for filter dropdowns
   const uniquePrograms = useMemo(() => {
@@ -98,19 +89,15 @@ export default function AdminExamScoresPage() {
     return (
       searchQuery !== "" ||
       statusFilter !== "" ||
-      programFilter !== "" ||
-      dateFrom !== "" ||
-      dateTo !== ""
+      programFilter !== ""
     );
-  }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
+  }, [searchQuery, statusFilter, programFilter]);
 
   // Clear all filters and reset to first page
   const clearFilters = () => {
     setSearchQuery("");
     setStatusFilter("");
     setProgramFilter("");
-    setDateFrom("");
-    setDateTo("");
     setPage(1);
   };
 
@@ -533,18 +520,6 @@ export default function AdminExamScoresPage() {
                       <option key={prog} value={prog}>{prog}</option>
                     ))}
                   </select>
-                  <Input
-                    type="date"
-                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
-                    value={dateFrom}
-                    onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                  />
-                  <Input
-                    type="date"
-                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
-                    value={dateTo}
-                    onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                  />
                   {hasActiveFilters && (
                     <Button
                       variant="outline"
