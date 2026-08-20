@@ -58,6 +58,36 @@ export default function AdminExamScoresPage() {
     queryFn: () => apiClientRequest("/exam/scores/review", { method: "GET" }),
   });
 
+  // Filtered scores based on active filters
+  const filteredScores = useMemo(() => {
+    return ((reviewData as ExamAppResponse[]) || []).filter((score) => {
+      // Search filter (name + Pinnacle ID)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const name = `${score.student.user.firstName} ${score.student.user.lastName}`.toLowerCase();
+        const username = score.student.user.username?.toLowerCase() || "";
+        if (!name.includes(query) && !username.includes(query)) return false;
+      }
+      // Status filter
+      if (statusFilter !== "all" && score.score?.status !== statusFilter) return false;
+      // Program filter
+      if (programFilter !== "all" && score.program.programName !== programFilter) return false;
+      // Date range filter
+      if (dateFrom && new Date(score.createdAt) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999); // Include the entire "To" day
+        if (new Date(score.createdAt) > to) return false;
+      }
+      // Graded By filter
+      if (gradedByFilter !== "all") {
+        const graderName = `${score.score?.gradedBy?.firstName} ${score.score?.gradedBy?.lastName}`;
+        if (graderName !== gradedByFilter) return false;
+      }
+      return true;
+    });
+  }, [reviewData, searchQuery, statusFilter, programFilter, dateFrom, dateTo, gradedByFilter]);
+
   // Computed unique values for filter dropdowns
   const uniquePrograms = useMemo(() => {
     const programs = new Set(
@@ -119,7 +149,7 @@ export default function AdminExamScoresPage() {
     essayTotal: app.program.examEssayTotal || 30,
   }));
 
-  const scoreReview = ((reviewData as ExamAppResponse[]) || []).map((app) => ({
+  const scoreReview = filteredScores.map((app) => ({
     id: app.id,
     name: `${app.student.user.firstName} ${app.student.user.lastName}`,
     pinnacleId: app.student.user.username || "N/A",
