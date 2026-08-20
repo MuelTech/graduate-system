@@ -19,15 +19,9 @@ import {
   Save,
   Eye,
   Loader2,
+  Filter,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -49,11 +43,11 @@ export default function AdminExamScoresPage() {
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [programFilter, setProgramFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [programFilter, setProgramFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [gradedByFilter, setGradedByFilter] = useState("all");
+  const [gradedByFilter, setGradedByFilter] = useState("");
 
   // FETCH: Grading Queue
   const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
@@ -78,9 +72,9 @@ export default function AdminExamScoresPage() {
         if (!name.includes(query) && !username.includes(query)) return false;
       }
       // Status filter
-      if (statusFilter !== "all" && score.score?.status !== statusFilter) return false;
+      if (statusFilter !== "" && score.score?.status !== statusFilter) return false;
       // Program filter
-      if (programFilter !== "all" && score.program.programName !== programFilter) return false;
+      if (programFilter !== "" && score.program.programName !== programFilter) return false;
       // Date range filter
       if (dateFrom && new Date(score.createdAt) < new Date(dateFrom)) return false;
       if (dateTo) {
@@ -89,7 +83,7 @@ export default function AdminExamScoresPage() {
         if (new Date(score.createdAt) > to) return false;
       }
       // Graded By filter
-      if (gradedByFilter !== "all") {
+      if (gradedByFilter !== "") {
         const graderName = `${score.score?.gradedBy?.firstName} ${score.score?.gradedBy?.lastName}`;
         if (graderName !== gradedByFilter) return false;
       }
@@ -120,22 +114,22 @@ export default function AdminExamScoresPage() {
   const hasActiveFilters = useMemo(() => {
     return (
       searchQuery !== "" ||
-      statusFilter !== "all" ||
-      programFilter !== "all" ||
+      statusFilter !== "" ||
+      programFilter !== "" ||
       dateFrom !== "" ||
       dateTo !== "" ||
-      gradedByFilter !== "all"
+      gradedByFilter !== ""
     );
   }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo, gradedByFilter]);
 
   // Clear all filters and reset to first page
   const clearFilters = () => {
     setSearchQuery("");
-    setStatusFilter("all");
-    setProgramFilter("all");
+    setStatusFilter("");
+    setProgramFilter("");
     setDateFrom("");
     setDateTo("");
-    setGradedByFilter("all");
+    setGradedByFilter("");
     setPage(1);
   };
 
@@ -514,83 +508,89 @@ export default function AdminExamScoresPage() {
       {/* Score Review Table */}
       {activeTab === "review" && (
         <>
-          {/* Filter Bar */}
-          <div className="flex items-center gap-3 mb-4">
-            {/* Search input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or ID..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            {/* Status filter */}
-            <Select value={statusFilter} onValueChange={(v) => { if (v) { setStatusFilter(v); setPage(1); } }}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PASSED">Passed</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Program filter */}
-            <Select value={programFilter} onValueChange={(v) => { if (v) { setProgramFilter(v); setPage(1); } }}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Program" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Programs</SelectItem>
-                {uniquePrograms.map((prog) => (
-                  <SelectItem key={prog} value={prog}>{prog}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Date From */}
-            <Input
-              type="date"
-              className="w-[150px]"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-            />
-
-            {/* Date To */}
-            <Input
-              type="date"
-              className="w-[150px]"
-              value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-            />
-
-            {/* Graded By filter */}
-            <Select value={gradedByFilter} onValueChange={(v) => { if (v) { setGradedByFilter(v); setPage(1); } }}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Graded By" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Graders</SelectItem>
-                {uniqueGraders.map((grader) => (
-                  <SelectItem key={grader} value={grader}>{grader}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Clear button */}
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4 mr-1" /> Clear
-              </Button>
-            )}
-          </div>
+          {/* Search & Filters */}
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Search by name or Pinnacle ID..."
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Filter className="h-4 w-4 text-(--earist-body-text)" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                  >
+                    <option value="">All Status</option>
+                    <option value="PASSED">Passed</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+                  <select
+                    value={programFilter}
+                    onChange={(e) => {
+                      setProgramFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                  >
+                    <option value="">All Programs</option>
+                    {uniquePrograms.map((prog) => (
+                      <option key={prog} value={prog}>{prog}</option>
+                    ))}
+                  </select>
+                  <Input
+                    type="date"
+                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    type="date"
+                    className="w-[150px] rounded-lg border border-(--earist-border-gray) text-sm"
+                    value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  />
+                  <select
+                    value={gradedByFilter}
+                    onChange={(e) => {
+                      setGradedByFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
+                  >
+                    <option value="">All Graders</option>
+                    {uniqueGraders.map((grader) => (
+                      <option key={grader} value={grader}>{grader}</option>
+                    ))}
+                  </select>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="rounded-lg border border-(--earist-border-gray) text-sm"
+                    >
+                      <X className="h-4 w-4 mr-1" /> Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
         <Card>
           <CardContent className="p-0">
