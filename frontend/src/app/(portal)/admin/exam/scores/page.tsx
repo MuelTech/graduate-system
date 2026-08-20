@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { toast } from "sonner";
@@ -57,6 +57,25 @@ export default function AdminExamScoresPage() {
     queryKey: ["scoreReview"],
     queryFn: () => apiClientRequest("/exam/scores/review", { method: "GET" }),
   });
+
+  // Computed unique values for filter dropdowns
+  const uniquePrograms = useMemo(() => {
+    const programs = new Set(
+      ((reviewData as ExamAppResponse[]) || []).map((s) => s.program.programName),
+    );
+    return Array.from(programs).sort();
+  }, [reviewData]);
+
+  const uniqueGraders = useMemo(() => {
+    const graders = new Set(
+      ((reviewData as ExamAppResponse[]) || [])
+        .filter((s) => s.score?.gradedBy)
+        .map(
+          (s) => `${s.score!.gradedBy!.firstName} ${s.score!.gradedBy!.lastName}`,
+        ),
+    );
+    return Array.from(graders).sort();
+  }, [reviewData]);
 
   // MUTATION: Save Grade
   const gradeMutation = useMutation({
