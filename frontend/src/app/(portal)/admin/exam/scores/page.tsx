@@ -107,6 +107,29 @@ export default function AdminExamScoresPage() {
     return Array.from(graders).sort();
   }, [reviewData]);
 
+  // Check if any filter is active (non-default)
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      statusFilter !== "all" ||
+      programFilter !== "all" ||
+      dateFrom !== "" ||
+      dateTo !== "" ||
+      gradedByFilter !== "all"
+    );
+  }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo, gradedByFilter]);
+
+  // Clear all filters and reset to first page
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setProgramFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    setGradedByFilter("all");
+    setPage(1);
+  };
+
   // MUTATION: Save Grade
   const gradeMutation = useMutation({
     mutationFn: (data: { applicationId: string; essayScore: number }) =>
