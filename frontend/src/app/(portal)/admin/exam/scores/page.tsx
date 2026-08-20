@@ -47,7 +47,6 @@ export default function AdminExamScoresPage() {
   const [programFilter, setProgramFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [gradedByFilter, setGradedByFilter] = useState("");
 
   // FETCH: Grading Queue
   const { data: queueData, isLoading: queueLoading, isError: queueError } = useQuery({
@@ -82,14 +81,9 @@ export default function AdminExamScoresPage() {
         to.setHours(23, 59, 59, 999); // Include the entire "To" day
         if (new Date(score.createdAt) > to) return false;
       }
-      // Graded By filter
-      if (gradedByFilter !== "") {
-        const graderName = `${score.score?.gradedBy?.firstName} ${score.score?.gradedBy?.lastName}`;
-        if (graderName !== gradedByFilter) return false;
-      }
       return true;
     });
-  }, [reviewData, searchQuery, statusFilter, programFilter, dateFrom, dateTo, gradedByFilter]);
+  }, [reviewData, searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
 
   // Computed unique values for filter dropdowns
   const uniquePrograms = useMemo(() => {
@@ -99,17 +93,6 @@ export default function AdminExamScoresPage() {
     return Array.from(programs).sort();
   }, [reviewData]);
 
-  const uniqueGraders = useMemo(() => {
-    const graders = new Set(
-      ((reviewData as ExamAppResponse[]) || [])
-        .filter((s) => s.score?.gradedBy)
-        .map(
-          (s) => `${s.score!.gradedBy!.firstName} ${s.score!.gradedBy!.lastName}`,
-        ),
-    );
-    return Array.from(graders).sort();
-  }, [reviewData]);
-
   // Check if any filter is active (non-default)
   const hasActiveFilters = useMemo(() => {
     return (
@@ -117,10 +100,9 @@ export default function AdminExamScoresPage() {
       statusFilter !== "" ||
       programFilter !== "" ||
       dateFrom !== "" ||
-      dateTo !== "" ||
-      gradedByFilter !== ""
+      dateTo !== ""
     );
-  }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo, gradedByFilter]);
+  }, [searchQuery, statusFilter, programFilter, dateFrom, dateTo]);
 
   // Clear all filters and reset to first page
   const clearFilters = () => {
@@ -129,7 +111,6 @@ export default function AdminExamScoresPage() {
     setProgramFilter("");
     setDateFrom("");
     setDateTo("");
-    setGradedByFilter("");
     setPage(1);
   };
 
@@ -564,19 +545,6 @@ export default function AdminExamScoresPage() {
                     value={dateTo}
                     onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
                   />
-                  <select
-                    value={gradedByFilter}
-                    onChange={(e) => {
-                      setGradedByFilter(e.target.value);
-                      setPage(1);
-                    }}
-                    className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
-                  >
-                    <option value="">All Graders</option>
-                    {uniqueGraders.map((grader) => (
-                      <option key={grader} value={grader}>{grader}</option>
-                    ))}
-                  </select>
                   {hasActiveFilters && (
                     <Button
                       variant="outline"
