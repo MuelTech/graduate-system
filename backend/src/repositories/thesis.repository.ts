@@ -510,4 +510,90 @@ export class ThesisRepository {
       return signed;
     });
   }
+
+  // Get current lobby state
+  async getLobbyStatus(scheduleId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        panelAssignments: true,
+        oralExamScores: {
+          select: { panelId: true, recommendations: true } // We do NOT fetch the actual score values for blind scoring!
+        },
+        oralExamSummary: true // To check if concluded
+      }
+    });
+
+    if (!schedule) throw new Error("Schedule not found");
+
+    return {
+      secretariatNotes: schedule.secretariatNotes,
+      isConcluded: !!schedule.oralExamSummary,
+      panelStatuses: schedule.panelAssignments.map(panel => {
+        const hasScored = schedule.oralExamScores.some(score => score.panelId === panel.id);
+        return {
+          panelId: panel.id,
+          userId: panel.userId,
+          role: panel.role,
+          status: hasScored ? 'Ready' : 'Scoring...'
+        };
+      })
+    };
+  }
+
+  // Update Secretariat Notes
+  async updateSecretariatNotes(scheduleId: string, notes: string) {
+    return prisma.defenseSchedule.update({
+      where: { id: scheduleId },
+      data: { secretariatNotes: notes }
+    });
+  }
+
+  // Conclude Defense (Generates RAP)
+  async concludeDefense(scheduleId: string, generatedById: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: { oralExamScores: true, panelAssignments: true, thesis: { include: { thesisTitles: { where: { isSelected: true } } } } }
+    });
+
+    if (!schedule) throw new Error("Schedule not found");
+
+    // Aggregate recommendations
+    const panelRecommendations = schedule.oralExamScores.map(s => s.recommendations).filter(Boolean).join("\n\n");
+    const finalDecisions = `=== SECRETARIAT NOTES ===\n${schedule.secretariatNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
+
+    // Dummy overall average calculation for now
+    const finalAverage = 1.0; 
+
+    // Create Summary
+    await prisma.oralExamSummary.create({
+      data: {
+        scheduleId,
+        overallAverage: finalAverage,
+        finalRating: "S", 
+        finalRemarks: "Automatically generated from Defense Lobby",
+        attestedById: generatedById
+      }
+    });
+
+    // Generate Draft RAP
+    const rapReport = await prisma.rapReport.create({
+      data: {
+        scheduleId,
+        thesisId: schedule.thesisId,
+        defenseType: schedule.defenseType,
+        reportDate: new Date(),
+        decisionsAndRecommendations: finalDecisions,
+        selectedTitle: schedule.thesis.thesisTitles[0]?.titleText || "No Title",
+        status: "DRAFT",
+        generatedById,
+      }
+    });
+
+    // Create Signature slots
+    const signatures = schedule.panelAssignments.map(panel => ({ rapId: rapReport.id, userId: panel.userId }));
+    await prisma.rapReportSignature.createMany({ data: signatures });
+
+    return rapReport;
+  }
 }

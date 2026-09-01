@@ -201,4 +201,32 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   };
+
+    public getLobbyStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const data = await this.thesisService.getLobbyStatus(req.params.scheduleId as string);
+      res.status(200).json(data);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  public updateSecretariatNotes = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const data = await this.thesisService.updateSecretariatNotes(req.params.scheduleId as string, req.body.notes);
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  public concludeDefense = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = (req as any).user?.userId; // Adjust based on your auth middleware
+      const rapReport = await this.thesisService.concludeDefense(req.params.scheduleId as string, userId);
+      res.status(200).json({ message: "Defense concluded.", rapReport });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
 }

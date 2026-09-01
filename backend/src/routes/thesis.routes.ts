@@ -180,4 +180,9 @@ router.post(
   thesisController.signRapReport,
 );
 
+// LOBBY POLLING ROUTES
+router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
+router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateSecretariatNotes);
+router.post("/defense/:scheduleId/conclude", authenticateJWT, thesisController.concludeDefense);
+
 export default router;

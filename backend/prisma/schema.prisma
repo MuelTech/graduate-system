@@ -509,6 +509,7 @@ model DefenseSchedule {
   venueOrLink             String?                  @map("venue_or_link")
   defenseType             DefenseType              @map("defense_type")
   setById                 String                   @map("set_by")
+  secretariatNotes        String?                  @map("secretariat_notes") @db.Text
   createdAt               DateTime                 @default(now()) @map("created_at")
   acknowledgementReceipts AcknowledgementReceipt[]
   setBy                   User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
