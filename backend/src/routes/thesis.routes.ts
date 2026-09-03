@@ -185,4 +185,26 @@ router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLo
 router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateSecretariatNotes);
 router.post("/defense/:scheduleId/conclude", authenticateJWT, thesisController.concludeDefense);
 
+// ADMIN: Manage RAP Reports
+router.get(
+  "/defense/rap-reports/all",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAllRapReports,
+);
+
+router.post(
+  "/defense/rap-reports/:rapId/distribute",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.distributeRapReport,
+);
+
+router.post(
+  "/defense/rap-reports/:rapId/remind",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.remindRapReportPanelists,
+);
+
 export default router;

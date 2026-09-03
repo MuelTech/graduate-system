@@ -126,4 +126,16 @@ export class ThesisService {
   async concludeDefense(scheduleId: string, adminId: string) {
     return this.thesisRepo.concludeDefense(scheduleId, adminId);
   }
+
+  async getAllRapReports() {
+    return this.thesisRepo.getAllRapReports();
+  }
+
+  async distributeRapReport(rapId: string) {
+    return this.thesisRepo.distributeRapReport(rapId);
+  }
+
+  async getMissingSignaturesForRap(rapId: string) {
+    return this.thesisRepo.getMissingSignaturesForRap(rapId);
+  }
 }

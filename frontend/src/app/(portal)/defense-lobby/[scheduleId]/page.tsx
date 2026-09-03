@@ -1,4 +1,3 @@
-// frontend/src/app/defense-lobby/[scheduleId]/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -16,8 +15,19 @@ export default function DefenseLobbyPage() {
   const params = useParams();
   const scheduleId = params.scheduleId as string;
 
+  useEffect(() => {
+    // Frontend guard
+    const role = localStorage.getItem("role") || "";
+
+    if (role === "STUDENT" || role === "APPLICANT") {
+      window.location.href = "/student/dashboard";
+    }
+  }, []);
+
   const [status, setStatus] = useState("Waiting for Panel...");
   const [liveNotes, setLiveNotes] = useState("");
+
+  const [lobbyTitle, setLobbyTitle] = useState("Defense Lobby");
 
   // 1. The Polling Mechanism (Every 3 seconds)
   useEffect(() => {
@@ -27,6 +37,11 @@ export default function DefenseLobbyPage() {
         const res = await fetch(`${API_URL}/api/defense/${scheduleId}/lobby`);
         if (res.ok) {
           const data = await res.json();
+
+          // Dynamically set the Lobby Title based on the fetched data!
+          setLobbyTitle(
+            `${data.studentName}'s ${data.defenseType.replace("_", " ")} Lobby`,
+          );
 
           // Update the UI with fresh data from the database
           // Note: If you are actively typing, we don't want to overwrite your cursor,
@@ -98,7 +113,7 @@ export default function DefenseLobbyPage() {
       {/* 1. TOP HEADER: Match Info */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center shadow-sm z-10">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Defense Lobby</h1>
+          <h1 className="text-2xl font-bold text-primary">{lobbyTitle}</h1>
           <p className="text-sm text-muted-foreground">
             Schedule ID: {scheduleId}
           </p>

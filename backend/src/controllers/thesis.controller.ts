@@ -152,8 +152,28 @@ export class ThesisController {
     try {
       if (!req.user) throw new Error('Unauthorized');
       const id = req.params.id as string; // thesisId
-      const result = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);
-      res.status(201).json({ message: 'Defense scheduled and panelists notified', result });
+      const schedule = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);
+      
+      // Email each panelist asynchronously via BullMQ
+      if (schedule && schedule.panelAssignments) {
+        for (const panel of schedule.panelAssignments) {
+          if (panel.user && panel.user.email) {
+            await import("../services/email.service").then(module => {
+              module.EmailService.sendTemplateEmail(
+                panel.user.email,
+                "defense_scheduled",
+                {
+                  panelist_name: `${panel.user.firstName} ${panel.user.lastName}`,
+                  defense_date: schedule.defenseDate.toDateString(),
+                  lobby_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/defense-lobby/${schedule.id}`
+                }
+              ).catch(err => console.error("Failed to queue email:", err));
+            });
+          }
+        }
+      }
+
+      res.status(201).json({ message: 'Defense scheduled and panelists notified', result: schedule });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -225,6 +245,66 @@ export class ThesisController {
       const userId = (req as any).user?.userId; // Adjust based on your auth middleware
       const rapReport = await this.thesisService.concludeDefense(req.params.scheduleId as string, userId);
       res.status(200).json({ message: "Defense concluded.", rapReport });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  public getAllRapReports = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const reports = await this.thesisService.getAllRapReports();
+      res.status(200).json(reports);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  public distributeRapReport = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const rapId = req.params.rapId as string;
+      const rap = await this.thesisService.distributeRapReport(rapId);
+      
+      // Email each panelist asynchronously via BullMQ
+      for (const sig of rap.signatures) {
+        if (!sig.isSigned) {
+          await import("../services/email.service").then(module => {
+            module.EmailService.sendTemplateEmail(
+              sig.user.email,
+              "rap_distributed",
+              {
+                panelist_name: `${sig.user.firstName} ${sig.user.lastName}`,
+                rap_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/panelist/rap-reports`
+              }
+            ).catch(err => console.error("Failed to queue email:", err));
+          });
+        }
+      }
+      
+      res.status(200).json({ success: true, rapReport: rap });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  public remindRapReportPanelists = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const rapId = req.params.rapId as string;
+      const missingSignatures = await this.thesisService.getMissingSignaturesForRap(rapId);
+      
+      for (const sig of missingSignatures) {
+        await import("../services/email.service").then(module => {
+          module.EmailService.sendTemplateEmail(
+            sig.user.email,
+            "rap_distributed",
+            {
+              panelist_name: `${sig.user.firstName} ${sig.user.lastName}`,
+              rap_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/panelist/rap-reports`
+            }
+          ).catch(err => console.error("Failed to queue email:", err));
+        });
+      }
+
+      res.status(200).json({ success: true, remindedCount: missingSignatures.length });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -525,14 +526,15 @@ model DefenseSchedule {
 }
 
 model PanelAssignment {
-  id             String          @id @default(uuid()) @map("panel_id")
-  scheduleId     String          @map("schedule_id")
-  userId         String          @map("user_id")
-  role           PanelRole
-  createdAt      DateTime        @default(now()) @map("created_at")
-  oralExamScores OralExamScore[]
-  schedule       DefenseSchedule @relation(fields: [scheduleId], references: [id])
-  user           User            @relation(fields: [userId], references: [id])
+  id                 String          @id @default(uuid()) @map("panel_id")
+  scheduleId         String          @map("schedule_id")
+  userId             String          @map("user_id")
+  role               PanelRole
+  temporaryLobbyRole String?         @map("temporary_lobby_role") // <-- Add this line
+  createdAt          DateTime        @default(now()) @map("created_at")
+  oralExamScores     OralExamScore[]
+  schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  user               User            @relation(fields: [userId], references: [id])
 
   @@index([scheduleId], map: "panel_assignments_schedule_id_fkey")
   @@index([userId], map: "panel_assignments_user_id_fkey")

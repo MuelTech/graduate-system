@@ -17,6 +17,9 @@ export default function AdminSchedulingPage() {
   const [chairmanId, setChairmanId] = useState("");
   const [leadPanelistId, setLeadPanelistId] = useState("");
   const [externalPanelistId, setExternalPanelistId] = useState("");
+  const [chairmanLobbyRole, setChairmanLobbyRole] = useState("Chairman");
+  const [leadPanelistLobbyRole, setLeadPanelistLobbyRole] = useState("Lead Questioner");
+  const [externalPanelistLobbyRole, setExternalPanelistLobbyRole] = useState("External Evaluator");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -50,8 +53,11 @@ export default function AdminSchedulingPage() {
         venueOrLink: string;
         defenseType: string;
         chairmanId: string;
+        chairmanLobbyRole: string;
         leadPanelistId: string;
+        leadPanelistLobbyRole: string;
         externalPanelistId: string;
+        externalPanelistLobbyRole: string;
       };
     }) => {
       return await apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
@@ -66,6 +72,9 @@ export default function AdminSchedulingPage() {
       setChairmanId("");
       setLeadPanelistId("");
       setExternalPanelistId("");
+      setChairmanLobbyRole("Chairman");
+      setLeadPanelistLobbyRole("Lead Questioner");
+      setExternalPanelistLobbyRole("External Evaluator");
       setDefenseDate("");
       setDefenseTime("");
       setTeamsLink("");
@@ -235,24 +244,33 @@ export default function AdminSchedulingPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Chairman</label>
-                    <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select Chairman...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select Chairman...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <input type="text" value={chairmanLobbyRole} onChange={(e) => setChairmanLobbyRole(e.target.value)} placeholder="Lobby Role" className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Lead Panelist</label>
-                    <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select Lead Panelist...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select Lead Panelist...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <input type="text" value={leadPanelistLobbyRole} onChange={(e) => setLeadPanelistLobbyRole(e.target.value)} placeholder="Lobby Role" className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">External Panelist</label>
-                    <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select External Panelist...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select External Panelist...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <input type="text" value={externalPanelistLobbyRole} onChange={(e) => setExternalPanelistLobbyRole(e.target.value)} placeholder="Lobby Role" className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none" />
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -521,8 +539,11 @@ export default function AdminSchedulingPage() {
                       venueOrLink: teamsLink,
                       defenseType: selectedAppData.stage,
                       chairmanId,
+                      chairmanLobbyRole,
                       leadPanelistId,
+                      leadPanelistLobbyRole,
                       externalPanelistId,
+                      externalPanelistLobbyRole,
                     },
                   });
                 }}
