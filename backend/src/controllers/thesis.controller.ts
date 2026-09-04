@@ -222,14 +222,6 @@ export class ThesisController {
     }
   };
 
-    public getLobbyStatus = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const data = await this.thesisService.getLobbyStatus(req.params.scheduleId as string);
-      res.status(200).json(data);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  };
 
   public updateSecretariatNotes = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -305,6 +297,40 @@ export class ThesisController {
       }
 
       res.status(200).json({ success: true, remindedCount: missingSignatures.length });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+  public getLobbyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const scheduleId = req.params.scheduleId as string;
+      const userId = req.user?.userId;
+      const role = req.user?.role;
+
+      if (!userId || !role) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      // Fetch the lobby status first to check panel assignments
+      const lobbyData = await this.thesisService.getLobbyStatus(scheduleId);
+
+      // 1. Must be a panelist account
+      if (role !== "PANELIST") {
+        res.status(403).json({ error: "Forbidden: The lobby is restricted to Panelists only." });
+        return;
+      }
+
+      // 2. Must be officially assigned to this specific defense
+      const isAssigned = lobbyData.panelStatuses.some(
+        (panel: any) => panel.userId === userId
+      );
+      if (!isAssigned) {
+        res.status(403).json({ error: "Forbidden: You are not assigned to this defense panel." });
+        return;
+      }
+
+      res.status(200).json(lobbyData);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

@@ -124,6 +124,13 @@ router.post(
   thesisController.scheduleDefense,
 );
 
+router.get(
+  "/defense/:scheduleId/lobby",
+  authenticateJWT,
+  // Let the controller handle exact role validation (Admin/Secretariat/Assigned Panelist)
+  thesisController.getLobbyStatus,
+);
+
 // STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
 router.post(
   "/defense/proposal",

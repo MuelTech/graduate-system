@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,8 +47,8 @@ export default function DefenseLobbyPage() {
     // Frontend guard
     const role = localStorage.getItem("role") || "";
 
-    if (role === "STUDENT" || role === "APPLICANT") {
-      window.location.href = "/student/dashboard";
+    if (role !== "PANELIST") {
+      window.location.href = "/";
     }
   }, []);
 
@@ -60,10 +61,8 @@ export default function DefenseLobbyPage() {
   useEffect(() => {
     const fetchLobbyData = async () => {
       try {
-        // We will build this backend API route next!
-        const res = await fetch(`${API_URL}/api/defense/${scheduleId}/lobby`);
-        if (res.ok) {
-          const data = await res.json();
+        const data = await apiClientRequest(`/thesis/defense/${scheduleId}/lobby`);
+        if (data) {
           setLobby(data);
 
           // Dynamically set the Lobby Title based on the fetched data!
@@ -135,6 +134,17 @@ export default function DefenseLobbyPage() {
     }
     setStatus("Error Concluding");
   };
+
+  const currentUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+  
+  // Find the logged in user's specific panelist record
+  const myPanelistRecord = lobby?.panelStatuses?.find((p: any) => p.userId === currentUserId);
+  
+  // Check if they have permission to type
+  const canEditNotes = 
+    myPanelistRecord?.role === "CHAIRMAN" || 
+    myPanelistRecord?.role === "PANELIST" || 
+    myPanelistRecord?.role === "RAPPORTEUR";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -209,9 +219,10 @@ export default function DefenseLobbyPage() {
             <CardContent className="flex-1 p-0">
               <Textarea
                 className="w-full h-full min-h-full border-0 focus-visible:ring-0 resize-none font-mono text-sm leading-relaxed p-6 rounded-none bg-background"
-                placeholder="Live notes will appear here. Everything typed here will be broadcasted to the panel in real-time..."
+                placeholder={canEditNotes ? "Live notes will appear here. Everything typed here will be broadcasted to the panel in real-time..." : "Live notes will appear here..."}
                 value={liveNotes}
                 onChange={handleNotesChange}
+                disabled={!canEditNotes}
               />
             </CardContent>
           </Card>

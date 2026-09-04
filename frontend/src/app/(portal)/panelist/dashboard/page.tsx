@@ -177,7 +177,7 @@ export default function PanelistDashboard() {
                       </div>
                     </div>
 
-                    <Link href={`/defense-lobby/${schedule.id}`}>
+                    <Link href={`/panelist/defense-lobby/${schedule.id}`}>
                       <Button variant="outline" className="w-full mb-2 border-(--earist-primary) text-(--earist-primary) hover:bg-(--earist-primary)/10">
                         Enter Defense Lobby
                       </Button>
