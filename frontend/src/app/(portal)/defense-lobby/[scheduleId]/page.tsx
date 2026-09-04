@@ -11,6 +11,33 @@ import { Separator } from "@/components/ui/separator";
 const API_URL =
   process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
 
+const getLobbyTitle = (role: string) => {
+  switch (role) {
+    case "CHAIRMAN": return "Chairman";
+    case "PANELIST": return "Panelist";
+    case "ADVISER": return "Thesis Adviser";
+    case "RAPPORTEUR": return "Rapporteur";
+    case "FACILITATOR": return "Facilitator";
+    default: return "Panelist";
+  }
+};
+
+interface PanelStatus {
+  panelId: string;
+  userId: string;
+  panelistName: string;
+  role: string;
+  status: string;
+}
+
+interface LobbyData {
+  studentName: string;
+  defenseType: string;
+  secretariatNotes: string;
+  isConcluded: boolean;
+  panelStatuses: PanelStatus[];
+}
+
 export default function DefenseLobbyPage() {
   const params = useParams();
   const scheduleId = params.scheduleId as string;
@@ -26,8 +53,8 @@ export default function DefenseLobbyPage() {
 
   const [status, setStatus] = useState("Waiting for Panel...");
   const [liveNotes, setLiveNotes] = useState("");
-
   const [lobbyTitle, setLobbyTitle] = useState("Defense Lobby");
+  const [lobby, setLobby] = useState<LobbyData | null>(null); // Store the full lobby data
 
   // 1. The Polling Mechanism (Every 3 seconds)
   useEffect(() => {
@@ -37,6 +64,7 @@ export default function DefenseLobbyPage() {
         const res = await fetch(`${API_URL}/api/defense/${scheduleId}/lobby`);
         if (res.ok) {
           const data = await res.json();
+          setLobby(data);
 
           // Dynamically set the Lobby Title based on the fetched data!
           setLobbyTitle(
@@ -146,31 +174,22 @@ export default function DefenseLobbyPage() {
           </h2>
 
           <div className="space-y-3">
-            <Card className="shadow-sm">
-              <CardContent className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-sm">Dr. Smith</p>
-                  <p className="text-xs text-primary">Chairman</p>
-                </div>
-                <div
-                  className="h-3 w-3 rounded-full bg-yellow-500"
-                  title="Scoring..."
-                ></div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardContent className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-sm">Prof. Doe</p>
-                  <p className="text-xs text-muted-foreground">Panelist</p>
-                </div>
-                <div
-                  className="h-3 w-3 rounded-full bg-green-500"
-                  title="Ready"
-                ></div>
-              </CardContent>
-            </Card>
+            {lobby?.panelStatuses?.map((panel: PanelStatus) => (
+              <Card key={panel.panelId} className="shadow-sm">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">{panel.panelistName}</p>
+                    <p className={`text-xs ${panel.role === "CHAIRMAN" ? "text-primary" : "text-muted-foreground"}`}>
+                      {getLobbyTitle(panel.role)}
+                    </p>
+                  </div>
+                  <div
+                    className={`h-3 w-3 rounded-full ${panel.status === "Ready" ? "bg-green-500" : "bg-yellow-500"}`}
+                    title={panel.status}
+                  ></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </aside>
 

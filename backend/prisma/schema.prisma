@@ -530,7 +530,6 @@ model PanelAssignment {
   scheduleId         String          @map("schedule_id")
   userId             String          @map("user_id")
   role               PanelRole
-  temporaryLobbyRole String?         @map("temporary_lobby_role") // <-- Add this line
   createdAt          DateTime        @default(now()) @map("created_at")
   oralExamScores     OralExamScore[]
   schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])

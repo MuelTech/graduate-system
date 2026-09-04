@@ -288,8 +288,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.chairmanId,
-            role: "CHAIRMAN",
-            temporaryLobbyRole: data.chairmanLobbyRole || null,
+            role: data.chairmanRole || "CHAIRMAN",
           },
         });
       }
@@ -299,8 +298,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.leadPanelistId,
-            role: "PANELIST",
-            temporaryLobbyRole: data.leadPanelistLobbyRole || null,
+            role: data.leadPanelistRole || "PANELIST",
           },
         });
       }
@@ -310,8 +308,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.externalPanelistId,
-            role: "PANELIST",
-            temporaryLobbyRole: data.externalPanelistLobbyRole || null,
+            role: data.externalPanelistRole || "PANELIST",
           },
         });
       }
@@ -527,7 +524,11 @@ export class ThesisRepository {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
-        panelAssignments: true,
+        panelAssignments: {
+          include: {
+            user: true,
+          }
+        },
         oralExamScores: {
           select: { panelId: true, recommendations: true },
         },
@@ -549,15 +550,15 @@ export class ThesisRepository {
       defenseType: schedule.defenseType,
       secretariatNotes: schedule.secretariatNotes,
       isConcluded: !!schedule.oralExamSummary,
-      panelStatuses: schedule.panelAssignments.map((panel) => {
+      panelStatuses: schedule.panelAssignments.map((panel: any) => {
         const hasScored = schedule.oralExamScores.some(
           (score) => score.panelId === panel.id,
         );
         return {
           panelId: panel.id,
           userId: panel.userId,
+          panelistName: `${panel.user.firstName} ${panel.user.lastName}`,
           role: panel.role,
-          temporaryLobbyRole: panel.temporaryLobbyRole, // <--- New Role mapping
           status: hasScored ? "Ready" : "Scoring...",
         };
       }),
