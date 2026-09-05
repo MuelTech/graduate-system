@@ -359,9 +359,6 @@ export interface CorRecordDetail {
   semester: string;
   extractedProgramName: string;
   extractedYearLevel: string;
-  totalAssessment: number;
-  netAssessed: number;
-  outstandingBalance: number;
   isVerified: boolean;
   verificationMethod: string | null;
   verifiedBy: { firstName: string; lastName: string } | null;

@@ -481,8 +481,6 @@ export default function ApplicantDetailPage() {
                       <p><span className="text-gray-500">Academic Year:</span> {applicant.corUploads[0].corRecord.academicYear}</p>
                       <p><span className="text-gray-500">Semester:</span> {applicant.corUploads[0].corRecord.semester}</p>
                       <p><span className="text-gray-500">Program:</span> {applicant.corUploads[0].corRecord.extractedProgramName}</p>
-                      <p><span className="text-gray-500">Total Assessment:</span> ₱{applicant.corUploads[0].corRecord.totalAssessment.toLocaleString()}</p>
-                      <p><span className="text-gray-500">Outstanding:</span> ₱{applicant.corUploads[0].corRecord.outstandingBalance.toLocaleString()}</p>
                       {applicant.corUploads[0].corRecord.verifiedBy && (
                         <p><span className="text-gray-500">Verified By:</span> {applicant.corUploads[0].corRecord.verifiedBy.firstName} {applicant.corUploads[0].corRecord.verifiedBy.lastName}</p>
                       )}
