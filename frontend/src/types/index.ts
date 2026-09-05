@@ -157,6 +157,7 @@ export interface AdminThesisApplication {
 }
 
 export interface ThesisDocument {
+  id: string;
   docType: string;
   filePath: string;
 }
@@ -176,6 +177,7 @@ export interface MappedApplication {
   dateSubmitted: string;
   status: string;
   requirements: {
+    id: string;
     name: string;
     met: boolean;
     path: string;
