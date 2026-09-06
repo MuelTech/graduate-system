@@ -84,10 +84,8 @@ export default function AdminCORValidationPage() {
     email: u.student.user.email,
     program: u.student.programId || "N/A",
     uploadDate: new Date(u.createdAt).toLocaleDateString(),
-    ocrStatus: "pending" as const, // Currently manual verification
-    extractedData: null,
+    ocrStatus: "pending" as const,
     originalFilename: u.originalFilename,
-    filePath: u.filePath,
   }));
 
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);

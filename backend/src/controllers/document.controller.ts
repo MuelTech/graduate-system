@@ -22,8 +22,11 @@ export class DocumentController {
       const { filePath, mimeType, originalFilename } =
         await this.documentService.resolveDocument(modelType, id, userId, userRole);
 
+      // Sanitize filename to prevent Content-Disposition header issues
+      const safeFilename = originalFilename.replace(/[^a-zA-Z0-9._-]/g, "_").substring(0, 255);
+
       res.setHeader("Content-Type", mimeType);
-      res.setHeader("Content-Disposition", `inline; filename="${originalFilename}"`);
+      res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
       res.setHeader("Cache-Control", "private, no-store");
 
       const stream = fs.createReadStream(filePath);

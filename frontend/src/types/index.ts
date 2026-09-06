@@ -29,7 +29,6 @@ export interface Program {
 export interface PendingCorUpload {
   id: string;
   originalFilename: string;
-  filePath: string;
   createdAt: string;
   student: {
     programId: string;

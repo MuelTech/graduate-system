@@ -1,7 +1,6 @@
-// frontend/src/components/ui/document-viewer.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
@@ -21,6 +20,12 @@ interface DocumentViewerProps {
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Failed to load document";
+}
+
 export function DocumentViewer({
   open,
   onOpenChange,
@@ -30,13 +35,13 @@ export function DocumentViewer({
   const { data: session } = useSession();
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState<string>("");
+  const [mimeType, setMimeType] = useState("");
   const [zoom, setZoom] = useState(100);
   const [errorMessage, setErrorMessage] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const blobRef = useRef<string | null>(null);
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
@@ -44,65 +49,80 @@ export function DocumentViewer({
     if (blobRef.current) {
       URL.revokeObjectURL(blobRef.current);
       blobRef.current = null;
-      setBlobUrl(null);
     }
-  };
+  }, []);
 
+  // Reset state on open→close transition
+  const prevOpenRef = useRef(open);
   useEffect(() => {
-    if (!open || !fetchUrl) {
+    if (prevOpenRef.current && !open) {
       cleanup();
       setLoadState("idle");
+      setBlobUrl(null);
       setMimeType("");
       setZoom(100);
       setErrorMessage("");
-      return;
     }
+    prevOpenRef.current = open;
+  }, [open, cleanup]);
 
-    const fetchDocument = async () => {
-      cleanup();
+  // Set loading state when dialog opens (or URL changes while open) with a valid URL
+  const prevFetchUrlRef = useRef(fetchUrl);
+  const wasOpenRef = useRef(open);
+  useEffect(() => {
+    const urlChanged = fetchUrl !== prevFetchUrlRef.current;
+    const justOpened = open && !wasOpenRef.current;
+    if (open && fetchUrl && fetchUrl.startsWith("/api/") && (justOpened || urlChanged)) {
       setLoadState("loading");
       setZoom(100);
       setErrorMessage("");
+    }
+    prevFetchUrlRef.current = fetchUrl;
+    wasOpenRef.current = open;
+  }, [open, fetchUrl]);
 
-      const controller = new AbortController();
-      abortRef.current = controller;
+  // Fetch the document
+  useEffect(() => {
+    if (!open || !fetchUrl || !fetchUrl.startsWith("/api/")) return;
 
-      try {
-        const token = (session as any)?.user?.accessToken;
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const token = session?.user?.accessToken;
 
-        const response = await fetch(fetchUrl, {
-          headers,
-          signal: controller.signal,
-        });
-
+    fetch(fetchUrl, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      signal: controller.signal,
+    })
+      .then((response) => {
         if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.error || `Failed to load document (${response.status})`);
+          return response.json().catch(() => null).then((data: Record<string, unknown> | null) => {
+            throw new Error(
+              (typeof data?.error === "string" ? data.error : null) ||
+              `Failed to load document (${response.status})`
+            );
+          });
         }
 
         const ct = response.headers.get("Content-Type") || "";
-        setMimeType(ct);
-
-        const blob = await response.blob();
+        return response.blob().then((blob) => ({ ct, blob }));
+      })
+      .then(({ ct, blob }) => {
         const url = URL.createObjectURL(blob);
         blobRef.current = url;
         setBlobUrl(url);
+        setMimeType(ct);
         setLoadState("loaded");
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setLoadState("error");
-        setErrorMessage(err.message || "Failed to load document");
-      }
+        setErrorMessage(extractErrorMessage(err));
+      });
+
+    return () => {
+      cleanup();
     };
-
-    fetchDocument();
-
-    return cleanup;
-  }, [open, fetchUrl, session]);
+  }, [open, fetchUrl, session, cleanup]);
 
   const isPdf = mimeType.includes("application/pdf");
   const isImage = mimeType.includes("image/jpeg") || mimeType.includes("image/png");
@@ -113,7 +133,7 @@ export function DocumentViewer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-[min(92vw,1600px)] h-[85vh] flex flex-col p-0">
         <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
           <DialogTitle className="text-lg font-semibold truncate pr-4">
             {title || "Document"}
@@ -159,6 +179,7 @@ export function DocumentViewer({
 
           {loadState === "loaded" && isImage && blobUrl && (
             <div className="w-full h-full overflow-auto flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={blobUrl}
                 alt={title || "Document"}

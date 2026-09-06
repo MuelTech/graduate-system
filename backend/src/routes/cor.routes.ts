@@ -13,5 +13,6 @@ router.get('/my-upload', authenticateJWT, requireRole(['APPLICANT']), corControl
 // Admin Routes
 router.get('/pending', authenticateJWT, requireRole(['ADMIN']), corController.getPendingUploads);
 router.post('/verify/:id', authenticateJWT, requireRole(['ADMIN']), corController.verifyCor);
+router.post('/reject/:id', authenticateJWT, requireRole(['ADMIN']), corController.rejectCor);
 
 export default router;

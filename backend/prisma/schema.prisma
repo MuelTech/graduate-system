@@ -321,17 +321,19 @@ model Notification {
 }
 
 model CorUpload {
-  id               String     @id @default(uuid()) @map("cor_upload_id")
-  studentId        String     @map("student_id")
-  filePath         String     @map("file_path")
-  originalFilename String?    @map("original_filename")
-  ocrStatus        OcrStatus  @default(PENDING) @map("ocr_status")
-  ocrErrorMessage  String?    @map("ocr_error_message")
-  uploadedAt       DateTime   @map("uploaded_at")
-  processedAt      DateTime?  @map("processed_at")
-  createdAt        DateTime   @default(now()) @map("created_at")
+  id               String          @id @default(uuid()) @map("cor_upload_id")
+  studentId        String          @map("student_id")
+  filePath         String          @map("file_path")
+  originalFilename String?         @map("original_filename")
+  detectedMimeType String?         @map("detected_mime_type")
+  status           CorUploadStatus @default(PENDING) @map("status")
+  ocrStatus        OcrStatus       @default(PENDING) @map("ocr_status")
+  ocrErrorMessage  String?         @map("ocr_error_message")
+  uploadedAt       DateTime        @map("uploaded_at")
+  processedAt      DateTime?       @map("processed_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
   corRecord        CorRecord?
-  student          Student    @relation(fields: [studentId], references: [id])
+  student          Student         @relation(fields: [studentId], references: [id])
 
   @@index([studentId], map: "cor_uploads_student_id_fkey")
   @@map("cor_uploads")
@@ -1071,6 +1073,14 @@ enum OcrStatus {
   FAILED
 
   @@map("ocr_status")
+}
+
+enum CorUploadStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("cor_upload_status")
 }
 
 enum CorSemester {
