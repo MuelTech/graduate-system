@@ -124,6 +124,13 @@ router.post(
   thesisController.scheduleDefense,
 );
 
+router.get(
+  "/defense/:scheduleId/lobby",
+  authenticateJWT,
+  // Let the controller handle exact role validation (Admin/Secretariat/Assigned Panelist)
+  thesisController.getLobbyStatus,
+);
+
 // STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
 router.post(
   "/defense/proposal",
@@ -178,6 +185,33 @@ router.post(
   authenticateJWT,
   requireRole(["PANELIST"]),
   thesisController.signRapReport,
+);
+
+// LOBBY POLLING ROUTES
+router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
+router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateSecretariatNotes);
+router.post("/defense/:scheduleId/conclude", authenticateJWT, thesisController.concludeDefense);
+
+// ADMIN: Manage RAP Reports
+router.get(
+  "/defense/rap-reports/all",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAllRapReports,
+);
+
+router.post(
+  "/defense/rap-reports/:rapId/distribute",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.distributeRapReport,
+);
+
+router.post(
+  "/defense/rap-reports/:rapId/remind",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.remindRapReportPanelists,
 );
 
 export default router;

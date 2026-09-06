@@ -288,7 +288,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.chairmanId,
-            role: "CHAIRMAN",
+            role: data.chairmanRole || "CHAIRMAN",
           },
         });
       }
@@ -298,7 +298,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.leadPanelistId,
-            role: "PANELIST",
+            role: data.leadPanelistRole || "PANELIST",
           },
         });
       }
@@ -308,7 +308,7 @@ export class ThesisRepository {
           data: {
             scheduleId: schedule.id,
             userId: data.externalPanelistId,
-            role: "PANELIST",
+            role: data.externalPanelistRole || "PANELIST",
           },
         });
       }
@@ -318,8 +318,15 @@ export class ThesisRepository {
         where: { id: thesisId },
         data: { status: "SCHEDULED" },
       });
-
-      return schedule;
+      // 4. Return the fully populated schedule
+      return tx.defenseSchedule.findUnique({
+        where: { id: schedule.id },
+        include: {
+          panelAssignments: {
+            include: { user: true }
+          }
+        }
+      });
     });
   }
 
@@ -336,7 +343,7 @@ export class ThesisRepository {
                     user: true,
                   },
                 },
-                thesisDocuments: true
+                thesisDocuments: true,
               },
             },
           },
@@ -454,7 +461,7 @@ export class ThesisRepository {
     return prisma.rapReportSignature.findMany({
       where: {
         userId,
-        isSigned: false
+        isSigned: false,
       },
       include: {
         rapReport: {
@@ -463,25 +470,26 @@ export class ThesisRepository {
               include: {
                 student: {
                   include: {
-                    user: true
-                  }
-                }
-              }
+                    user: true,
+                  },
+                },
+              },
             },
             schedule: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
   // Securely save the Base64 signature and server timestamp
   async signRapReport(sigId: string, userId: string, signatureData: string) {
     const signature = await prisma.rapReportSignature.findFirst({
-      where: { id: sigId, userId, isSigned: false }
+      where: { id: sigId, userId, isSigned: false },
     });
 
-    if (!signature) throw new Error("Signature request not found or already signed!");
+    if (!signature)
+      throw new Error("Signature request not found or already signed!");
 
     return prisma.$transaction(async (tx) => {
       // Update the signature record
@@ -490,24 +498,183 @@ export class ThesisRepository {
         data: {
           isSigned: true,
           signatureData,
-          signedAt: new Date() // Secure server-side timestamp
-        }
+          signedAt: new Date(), // Secure server-side timestamp
+        },
       });
 
       // Check if all panelists have signed the RAP report
       const pendingSignatures = await tx.rapReportSignature.count({
-        where: { rapId: signature.rapId, isSigned: false }
+        where: { rapId: signature.rapId, isSigned: false },
       });
 
       // If everyone has signed, move the report status from DRAFT to FINALIZED
       if (pendingSignatures === 0) {
         await tx.rapReport.update({
           where: { id: signature.rapId },
-          data: { status: "FINALIZED" }
+          data: { status: "FINALIZED" },
         });
       }
 
       return signed;
+    });
+  }
+
+  // Get current lobby state
+  async getLobbyStatus(scheduleId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        panelAssignments: {
+          include: {
+            user: true,
+          }
+        },
+        oralExamScores: {
+          select: { panelId: true, recommendations: true },
+        },
+        oralExamSummary: true,
+        thesis: {
+          include: {
+            student: {
+              include: { user: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!schedule) throw new Error("Schedule not found");
+
+    return {
+      studentName: `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`,
+      defenseType: schedule.defenseType,
+      secretariatNotes: schedule.secretariatNotes,
+      isConcluded: !!schedule.oralExamSummary,
+      panelStatuses: schedule.panelAssignments.map((panel: any) => {
+        const hasScored = schedule.oralExamScores.some(
+          (score) => score.panelId === panel.id,
+        );
+        return {
+          panelId: panel.id,
+          userId: panel.userId,
+          panelistName: `${panel.user.firstName} ${panel.user.lastName}`,
+          role: panel.role,
+          status: hasScored ? "Ready" : "Scoring...",
+        };
+      }),
+    };
+  }
+
+  // Update Secretariat Notes
+  async updateSecretariatNotes(scheduleId: string, notes: string) {
+    return prisma.defenseSchedule.update({
+      where: { id: scheduleId },
+      data: { secretariatNotes: notes },
+    });
+  }
+
+  // Conclude Defense (Generates RAP)
+  async concludeDefense(scheduleId: string, generatedById: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        oralExamScores: true,
+        panelAssignments: true,
+        thesis: { include: { thesisTitles: { where: { isSelected: true } } } },
+      },
+    });
+
+    if (!schedule) throw new Error("Schedule not found");
+
+    // Aggregate recommendations
+    const panelRecommendations = schedule.oralExamScores
+      .map((s) => s.recommendations)
+      .filter(Boolean)
+      .join("\n\n");
+    const finalDecisions = `=== SECRETARIAT NOTES ===\n${schedule.secretariatNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
+
+    // Dummy overall average calculation for now
+    const finalAverage = 1.0;
+
+    // Create Summary
+    await prisma.oralExamSummary.create({
+      data: {
+        scheduleId,
+        overallAverage: finalAverage,
+        finalRating: "S",
+        finalRemarks: "Automatically generated from Defense Lobby",
+        attestedById: generatedById,
+      },
+    });
+
+    // Generate Draft RAP
+    const rapReport = await prisma.rapReport.create({
+      data: {
+        scheduleId,
+        thesisId: schedule.thesisId,
+        defenseType: schedule.defenseType,
+        reportDate: new Date(),
+        decisionsAndRecommendations: finalDecisions,
+        selectedTitle: schedule.thesis.thesisTitles[0]?.titleText || "No Title",
+        status: "DRAFT",
+        generatedById,
+      },
+    });
+
+    // Create Signature slots
+    const signatures = schedule.panelAssignments.map((panel) => ({
+      rapId: rapReport.id,
+      userId: panel.userId,
+    }));
+    await prisma.rapReportSignature.createMany({ data: signatures });
+
+    return rapReport;
+  }
+
+  // Fetch ALL RAP Reports for Admin Management Page
+  async getAllRapReports() {
+    return prisma.rapReport.findMany({
+      include: {
+        thesis: {
+          include: {
+            student: {
+              include: { user: true, program: true },
+            },
+          },
+        },
+        schedule: {
+          include: {
+            panelAssignments: {
+              include: { user: true },
+            },
+          },
+        },
+        signatures: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  // Update RAP Report status to DISTRIBUTED
+  async distributeRapReport(rapId: string) {
+    return prisma.rapReport.update({
+      where: { id: rapId },
+      data: { status: "DISTRIBUTED" },
+      include: {
+        signatures: { include: { user: true } },
+      },
+    });
+  }
+
+  // Fetch missing signatures to remind them
+  async getMissingSignaturesForRap(rapId: string) {
+    return prisma.rapReportSignature.findMany({
+      where: { rapId, isSigned: false },
+      include: { user: true, rapReport: true },
     });
   }
 }

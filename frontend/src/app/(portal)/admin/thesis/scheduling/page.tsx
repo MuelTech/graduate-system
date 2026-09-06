@@ -15,8 +15,11 @@ export default function AdminSchedulingPage() {
   const [defenseTime, setDefenseTime] = useState("");
   const [teamsLink, setTeamsLink] = useState("");
   const [chairmanId, setChairmanId] = useState("");
+  const [chairmanRole, setChairmanRole] = useState("CHAIRMAN");
   const [leadPanelistId, setLeadPanelistId] = useState("");
+  const [leadPanelistRole, setLeadPanelistRole] = useState("PANELIST");
   const [externalPanelistId, setExternalPanelistId] = useState("");
+  const [externalPanelistRole, setExternalPanelistRole] = useState("PANELIST");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -50,8 +53,11 @@ export default function AdminSchedulingPage() {
         venueOrLink: string;
         defenseType: string;
         chairmanId: string;
+        chairmanRole: string;
         leadPanelistId: string;
+        leadPanelistRole: string;
         externalPanelistId: string;
+        externalPanelistRole: string;
       };
     }) => {
       return await apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
@@ -64,8 +70,11 @@ export default function AdminSchedulingPage() {
       setShowConfirm(false);
       setSelectedApp(null);
       setChairmanId("");
+      setChairmanRole("CHAIRMAN");
       setLeadPanelistId("");
+      setLeadPanelistRole("PANELIST");
       setExternalPanelistId("");
+      setExternalPanelistRole("PANELIST");
       setDefenseDate("");
       setDefenseTime("");
       setTeamsLink("");
@@ -235,24 +244,51 @@ export default function AdminSchedulingPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Chairman</label>
-                    <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select Chairman...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select Chairman...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <select value={chairmanRole} onChange={(e) => setChairmanRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
+                        <option value="CHAIRMAN">Chairman</option>
+                        <option value="PANELIST">Panelist</option>
+                        <option value="ADVISER">Adviser</option>
+                        <option value="RAPPORTEUR">Rapporteur</option>
+                        <option value="FACILITATOR">Facilitator</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Lead Panelist</label>
-                    <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select Lead Panelist...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select Lead Panelist...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <select value={leadPanelistRole} onChange={(e) => setLeadPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
+                        <option value="CHAIRMAN">Chairman</option>
+                        <option value="PANELIST">Panelist</option>
+                        <option value="ADVISER">Adviser</option>
+                        <option value="RAPPORTEUR">Rapporteur</option>
+                        <option value="FACILITATOR">Facilitator</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">External Panelist</label>
-                    <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                      <option value="">Select External Panelist...</option>
-                      {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
+                        <option value="">Select External Panelist...</option>
+                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
+                      </select>
+                      <select value={externalPanelistRole} onChange={(e) => setExternalPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
+                        <option value="CHAIRMAN">Chairman</option>
+                        <option value="PANELIST">Panelist</option>
+                        <option value="ADVISER">Adviser</option>
+                        <option value="RAPPORTEUR">Rapporteur</option>
+                        <option value="FACILITATOR">Facilitator</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -521,8 +557,11 @@ export default function AdminSchedulingPage() {
                       venueOrLink: teamsLink,
                       defenseType: selectedAppData.stage,
                       chairmanId,
+                      chairmanRole,
                       leadPanelistId,
+                      leadPanelistRole,
                       externalPanelistId,
+                      externalPanelistRole,
                     },
                   });
                 }}

@@ -497,6 +497,7 @@ model DefenseSchedule {
   venueOrLink             String?                  @map("venue_or_link")
   defenseType             DefenseType              @map("defense_type")
   setById                 String                   @map("set_by")
+  secretariatNotes        String?                  @map("secretariat_notes") @db.Text
   createdAt               DateTime                 @default(now()) @map("created_at")
   acknowledgementReceipts AcknowledgementReceipt[]
   setBy                   User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
@@ -512,14 +513,14 @@ model DefenseSchedule {
 }
 
 model PanelAssignment {
-  id             String          @id @default(uuid()) @map("panel_id")
-  scheduleId     String          @map("schedule_id")
-  userId         String          @map("user_id")
-  role           PanelRole
-  createdAt      DateTime        @default(now()) @map("created_at")
-  oralExamScores OralExamScore[]
-  schedule       DefenseSchedule @relation(fields: [scheduleId], references: [id])
-  user           User            @relation(fields: [userId], references: [id])
+  id                 String          @id @default(uuid()) @map("panel_id")
+  scheduleId         String          @map("schedule_id")
+  userId             String          @map("user_id")
+  role               PanelRole
+  createdAt          DateTime        @default(now()) @map("created_at")
+  oralExamScores     OralExamScore[]
+  schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  user               User            @relation(fields: [userId], references: [id])
 
   @@index([scheduleId], map: "panel_assignments_schedule_id_fkey")
   @@index([userId], map: "panel_assignments_user_id_fkey")

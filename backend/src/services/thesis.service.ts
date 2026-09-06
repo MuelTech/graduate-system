@@ -114,4 +114,28 @@ export class ThesisService {
   async signRapReport(sigId: string, userId: string, signatureData: string) {
     return this.thesisRepo.signRapReport(sigId, userId, signatureData);
   }
+
+    async getLobbyStatus(scheduleId: string) {
+    return this.thesisRepo.getLobbyStatus(scheduleId);
+  }
+
+  async updateSecretariatNotes(scheduleId: string, notes: string) {
+    return this.thesisRepo.updateSecretariatNotes(scheduleId, notes);
+  }
+
+  async concludeDefense(scheduleId: string, adminId: string) {
+    return this.thesisRepo.concludeDefense(scheduleId, adminId);
+  }
+
+  async getAllRapReports() {
+    return this.thesisRepo.getAllRapReports();
+  }
+
+  async distributeRapReport(rapId: string) {
+    return this.thesisRepo.distributeRapReport(rapId);
+  }
+
+  async getMissingSignaturesForRap(rapId: string) {
+    return this.thesisRepo.getMissingSignaturesForRap(rapId);
+  }
 }

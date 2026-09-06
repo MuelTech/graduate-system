@@ -12,7 +12,8 @@ const globalForPrisma = globalThis as unknown as {
 let prisma: PrismaClient;
 
 if (!globalForPrisma.prisma) {
-  const adapter = new PrismaMariaDb(process.env.DATABASE_URL as string);
+  const connectionString = (process.env.DATABASE_URL as string).replace('mysql://', 'mariadb://');
+  const adapter = new PrismaMariaDb(connectionString);
   globalForPrisma.prisma = new PrismaClient({ adapter });
   
   // Verify database connectivity only on initial load
