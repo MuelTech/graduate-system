@@ -20,6 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { PendingCorUpload as PendingUpload} from "@/types";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 
 export default function AdminCORValidationPage() {
   const queryClient = useQueryClient();
@@ -40,6 +41,8 @@ export default function AdminCORValidationPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
 
   const [formData, setFormData] = useState({
     studentNumber: "",
@@ -81,10 +84,8 @@ export default function AdminCORValidationPage() {
     email: u.student.user.email,
     program: u.student.programId || "N/A",
     uploadDate: new Date(u.createdAt).toLocaleDateString(),
-    ocrStatus: "pending" as const, // Currently manual verification
-    extractedData: null,
+    ocrStatus: "pending" as const,
     originalFilename: u.originalFilename,
-    filePath: u.filePath,
   }));
 
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);
@@ -207,12 +208,13 @@ export default function AdminCORValidationPage() {
                     <Button
                       variant="link"
                       className="mt-2"
-                      onClick={() =>
-                        window.open(
-                          `${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000"}/${selectedCorData.filePath.replace(/\\/g, "/")}`,
-                          "_blank",
-                        )
-                      }
+                      onClick={() => {
+                        setSelectedDoc({
+                          url: `/api/documents/cor-upload/${selectedCorData.id}/file`,
+                          title: `${selectedCorData.name} — COR`,
+                        });
+                        setViewerOpen(true);
+                      }}
                     >
                       <Eye className="mr-2 h-4 w-4" /> View Document
                     </Button>
@@ -482,6 +484,15 @@ export default function AdminCORValidationPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedDoc && (
+        <DocumentViewer
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          fetchUrl={selectedDoc.url}
+          title={selectedDoc.title}
+        />
       )}
     </div>
   );

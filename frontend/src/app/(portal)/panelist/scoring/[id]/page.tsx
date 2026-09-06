@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 import { CheckCircle2, ArrowLeft, Send } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 import { DefenseData } from "@/types";
@@ -21,6 +22,8 @@ export default function PanelistScoringPage() {
   const [submissionState, setSubmissionState] = useState<"form" | "submitted">(
     "form",
   );
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
 
   const groupA = [
     { id: "timelinessRelevance", name: "Timeliness & Relevance", max: 10 },
@@ -179,15 +182,21 @@ export default function PanelistScoringPage() {
               {defenseData.thesis?.thesisDocuments &&
               defenseData.thesis.thesisDocuments.length > 0 ? (
                 defenseData.thesis.thesisDocuments.map((doc) => (
-                  <a
+                  <Button
                     key={doc.id}
-                    href={`${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000"}/${doc.filePath.replace(/\\/g, "/")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-[11px] font-bold uppercase tracking-wider"
+                    onClick={() => {
+                      setSelectedDoc({
+                        url: `/api/documents/thesis-document/${doc.id}/file`,
+                        title: doc.docType.replace(/_/g, " "),
+                      });
+                      setViewerOpen(true);
+                    }}
                   >
                     View {doc.docType.replace("_", " ")}
-                  </a>
+                  </Button>
                 ))
               ) : (
                 <span className="text-xs text-gray-400 italic">
@@ -326,6 +335,15 @@ export default function PanelistScoringPage() {
           )}
         </div>
       </div>
+
+      {selectedDoc && (
+        <DocumentViewer
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          fetchUrl={selectedDoc.url}
+          title={selectedDoc.title}
+        />
+      )}
     </div>
   );
 }

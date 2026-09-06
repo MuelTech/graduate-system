@@ -19,6 +19,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { ThesisDocument, ThesisTitle, AdminThesisApplication as ThesisApplication, MappedApplication} from "@/types";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 
 export default function AdminDefenseApplicationsPage() {
   const [stageFilter, setStageFilter] = useState("all");
@@ -31,6 +32,9 @@ export default function AdminDefenseApplicationsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedAppForView, setSelectedAppForView] =
     useState<MappedApplication | null>(null);
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
 
   const queryClient = useQueryClient();
   const apiUrl =
@@ -100,6 +104,7 @@ export default function AdminDefenseApplicationsPage() {
       status: app.status.toLowerCase(),
       requirements:
         app.thesisDocuments?.map((doc: ThesisDocument) => ({
+          id: doc.id,
           name: doc.docType,
           met: true,
           path: doc.filePath,
@@ -655,15 +660,21 @@ export default function AdminDefenseApplicationsPage() {
                             {req.name.replace(/_/g, " ")}
                           </span>
                         </div>
-                        <a
-                          href={`${apiUrl}/${req.path.replace(/\\/g, "/")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 text-xs font-medium text-blue-600 hover:text-blue-800"
+                          onClick={() => {
+                            setSelectedDoc({
+                              url: `/api/documents/thesis-document/${req.id}/file`,
+                              title: req.name.replace(/_/g, " "),
+                            });
+                            setViewerOpen(true);
+                          }}
                         >
                           <Eye className="mr-1 h-3 w-3" />
                           View File
-                        </a>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -688,6 +699,15 @@ export default function AdminDefenseApplicationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedDoc && (
+        <DocumentViewer
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          fetchUrl={selectedDoc.url}
+          title={selectedDoc.title}
+        />
       )}
     </div>
   );

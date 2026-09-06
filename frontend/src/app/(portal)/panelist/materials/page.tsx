@@ -1,13 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
 import { PanelistAssignmentData as AssignmentData, DocumentData } from "@/types";
 
 export default function PanelistMaterialsPage() {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
+
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["panelistAssignments"],
     queryFn: async () => {
@@ -113,15 +119,19 @@ export default function PanelistMaterialsPage() {
                               {new Date(doc.uploadedAt || new Date()).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                             </p>
                           </div>
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000"}/${doc.filePath.replace(/\\/g, "/")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <Button
+                            onClick={() => {
+                              setSelectedDoc({
+                                url: `/api/documents/thesis-document/${doc.id}/file`,
+                                title: doc.docType.replace(/_/g, " "),
+                              });
+                              setViewerOpen(true);
+                            }}
                             className="flex shrink-0 items-center gap-1.5 rounded-lg bg-(--earist-primary) px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-(--earist-primary)/90 shadow-sm"
                           >
                             <Download className="h-3.5 w-3.5" />
                             View
-                          </a>
+                          </Button>
                         </div>
                       ))
                     ) : (
@@ -135,6 +145,15 @@ export default function PanelistMaterialsPage() {
             );
           })}
         </div>
+      )}
+
+      {selectedDoc && (
+        <DocumentViewer
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          fetchUrl={selectedDoc.url}
+          title={selectedDoc.title}
+        />
       )}
     </div>
   );
