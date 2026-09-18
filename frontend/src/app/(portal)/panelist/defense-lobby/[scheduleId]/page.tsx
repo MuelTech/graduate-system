@@ -138,7 +138,7 @@ export default function DefenseLobbyPage() {
   const currentUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
   
   // Find the logged in user's specific panelist record
-  const myPanelistRecord = lobby?.panelStatuses?.find((p: any) => p.userId === currentUserId);
+  const myPanelistRecord = lobby?.panelStatuses?.find((p: PanelStatus) => p.userId === currentUserId);
   
   // Check if they have permission to type
   const canEditNotes = 
