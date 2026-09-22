@@ -1559,7 +1559,7 @@ ResearchStageProgressionService
 
 ## 24. Issues Already Identified in `refactor/defense-workflow`
 
-### P0 — Committee policy does not enforce client-confirmed program counts
+### P0 — Committee policy does not enforce confirmed session composition
 
 Current behavior:
 
@@ -1569,11 +1569,13 @@ Current behavior:
 
 Required correction:
 
-- Master's evaluator count = 5,
-- Doctoral evaluator count = 6,
-- Facilitator = exactly 1,
-- Rapporteur = exactly 1,
-- use real student's `programType`.
+- Master's defense session must follow the confirmed 7-participant composition. Current GS-006 shows Adviser + 4 Panelists + 1 Facilitator + 1 Rapporteur.
+- Do not hard-code 5 Master's scoring evaluators until the Adviser / Chairman / evaluator mapping is confirmed by the client.
+- Doctoral defense session uses 6 Panelist positions + 1 Facilitator + 1 Rapporteur = 8 participants.
+- Facilitator = exactly 1.
+- Rapporteur = exactly 1.
+- Use the student's actual `programType`.
+- Evaluator eligibility must be derived from confirmed role policy, not from total participant count.
 
 ### P0 — Score submission can prematurely conclude/pass the defense
 
