@@ -32,6 +32,7 @@ export const STATUS_LABELS: Record<ThesisStatusName | string, string> = {
 };
 
 export const DEFENSE_REQUIREMENT_LABELS: Record<string, string> = {
+  TITLE_PROPOSAL: "Title Defense Proposal Package",
   COR: "Certificate of Registration",
   RECEIPT: "Proof of Payment",
   PROPOSAL_CHAPTERS: "Proposal Chapters 1–3",
@@ -43,6 +44,66 @@ export const DEFENSE_REQUIREMENT_LABELS: Record<string, string> = {
 
 export function requirementLabel(code: string): string {
   return DEFENSE_REQUIREMENT_LABELS[code] ?? code.replace(/_/g, " ");
+}
+
+export const SESSION_STATUS_LABELS: Record<string, string> = {
+  UNSCHEDULED: "Unscheduled",
+  SCHEDULED: "Scheduled",
+  RESCHEDULED: "Rescheduled",
+  IN_PROGRESS: "In Progress",
+  AWAITING_CONCLUSION: "Awaiting Conclusion",
+  CONCLUDED: "Concluded",
+  CANCELLED: "Cancelled",
+};
+
+export const ROLE_LABELS: Record<string, string> = {
+  CHAIRMAN: "Chairman",
+  PANELIST: "Panelist",
+  FACILITATOR: "Facilitator",
+  RAPPORTEUR: "Rapporteur",
+  ADVISER: "Adviser",
+};
+
+export function sessionStatusLabel(status?: string | null): string {
+  if (!status) return "—";
+  return SESSION_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+}
+
+export function dialogTitleForStatus(status: string): string {
+  if (status === "PENDING") return "Review Defense Application";
+  if (status === "SCHEDULED") return "View Defense Details";
+  return "View Application";
+}
+
+export function committeeLine(label: string, names: string[]): string | null {
+  if (!names.length) return null;
+  const max = 3;
+  const shown =
+    names.length <= max
+      ? names.join(", ")
+      : `${names.slice(0, max).join(", ")} +${names.length - max} more`;
+  return `${label} — ${shown}`;
+}
+
+export function formatDefenseDate(value?: string | Date | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function formatDefenseTime(value?: string | Date | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export const HISTORY_STATUSES: ThesisStatusName[] = [

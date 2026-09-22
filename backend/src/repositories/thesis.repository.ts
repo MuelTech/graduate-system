@@ -1,5 +1,11 @@
 import prisma from "../config/database";
 import {
+  pickCurrentDefenseSchedule,
+  summarizeCommittee,
+  type CommitteeSummary,
+  type PanelSeatForSummary,
+} from "../services/defense-application-session";
+import {
   rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
 } from "../services/rap-signature.policy";
@@ -286,7 +292,7 @@ export class ThesisRepository {
       };
     }
 
-    const [data, total] = await prisma.$transaction([
+    const [rows, total] = await prisma.$transaction([
       prisma.thesisRecord.findMany({
         where,
         skip: (page - 1) * pageSize,
@@ -320,11 +326,59 @@ export class ThesisRepository {
               },
             },
           },
+          defenseSchedules: {
+            orderBy: { createdAt: "desc" as const },
+            select: {
+              id: true,
+              defenseType: true,
+              sessionStatus: true,
+              defenseDate: true,
+              defenseTime: true,
+              venueOrLink: true,
+              createdAt: true,
+              panelAssignments: {
+                select: {
+                  role: true,
+                  user: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.thesisRecord.count({ where }),
     ]);
+
+    // Attach the CURRENT stage's session + committee (not defenseSchedules[0]).
+    const data = rows.map((row) => {
+      const currentSchedule = pickCurrentDefenseSchedule(row.stage, row.defenseSchedules);
+      const seats = (currentSchedule?.panelAssignments ?? []) as PanelSeatForSummary[];
+      const committeeSummary: CommitteeSummary = summarizeCommittee(seats);
+      const { defenseSchedules, ...rest } = row;
+      return {
+        ...rest,
+        currentSchedule: currentSchedule
+          ? {
+              id: currentSchedule.id,
+              defenseType: currentSchedule.defenseType,
+              sessionStatus: currentSchedule.sessionStatus,
+              defenseDate: currentSchedule.defenseDate,
+              defenseTime: currentSchedule.defenseTime,
+              venueOrLink: currentSchedule.venueOrLink,
+              panelAssignments: currentSchedule.panelAssignments,
+              committeeSummary,
+            }
+          : null,
+      };
+    });
 
     return { data, total, page, pageSize };
   }

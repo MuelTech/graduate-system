@@ -10,12 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, Users, MapPin, Clock3 } from "lucide-react";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import {
   STAGE_LABELS,
   STATUS_LABELS,
   requirementLabel,
+  sessionStatusLabel,
+  dialogTitleForStatus,
+  committeeLine,
+  formatDefenseDate,
+  formatDefenseTime,
 } from "./labels";
 import type { DefenseApplicationDto } from "./application-card";
 
@@ -40,9 +45,10 @@ export function DefenseApplicationReviewDialog({
 }: Props) {
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
-  const [viewerDoc, setViewerDoc] = useState<{ fetchUrl: string; title: string } | null>(
-    null,
-  );
+  const [viewerDoc, setViewerDoc] = useState<{
+    fetchUrl: string;
+    title: string;
+  } | null>(null);
 
   if (!app) return null;
   const student = app.student;
@@ -52,13 +58,15 @@ export function DefenseApplicationReviewDialog({
   const selectedTitle = app.thesisTitles.find((t) => t.isSelected) ?? null;
   const adviser = app.assignment?.adviser;
   const canDecide = app.status === "PENDING";
+  const session = app.currentSchedule ?? null;
+  const committee = session?.committeeSummary;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Review Defense Application</DialogTitle>
+            <DialogTitle>{dialogTitleForStatus(app.status)}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 text-sm">
@@ -86,6 +94,68 @@ export function DefenseApplicationReviewDialog({
                 </Badge>
               </div>
             </div>
+
+            {session && (
+              <div className="rounded-md border border-blue-100 bg-blue-50/40 p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-semibold text-(--earist-secondary)">
+                    Defense Session
+                  </p>
+                  <Badge variant="outline">
+                    {sessionStatusLabel(session.sessionStatus)}
+                  </Badge>
+                </div>
+                <ul className="space-y-1 text-(--earist-body-text)">
+                  <li className="flex items-center gap-1">
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                    Date: {formatDefenseDate(session.defenseDate)}
+                  </li>
+                  <li className="flex items-center gap-1">
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                    Time: {formatDefenseTime(session.defenseTime)}
+                  </li>
+                  <li className="flex min-w-0 items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      Venue / Teams: {session.venueOrLink || "Not set"}
+                    </span>
+                  </li>
+                </ul>
+
+                <p className="mb-1 mt-3 flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
+                  <Users className="h-3.5 w-3.5" />
+                  Assigned Committee
+                </p>
+                {committee ? (
+                  <ul className="space-y-1 text-(--earist-body-text)">
+                    {[
+                      committeeLine("Chairman", committee.chairman),
+                      committeeLine("Panelists", committee.panelists),
+                      committeeLine("Facilitator", committee.facilitator),
+                      committeeLine("Rapporteur", committee.rapporteur),
+                      // Adviser only when explicitly assigned as a defense seat
+                      committee.adviser.length
+                        ? committeeLine("Adviser", committee.adviser)
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    {!committee.adviser.length && (
+                      <li className="text-xs italic">
+                        Adviser seat: not assigned to this session (relationship
+                        alone does not create a seat)
+                      </li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-(--earist-body-text)">
+                    No participants assigned yet.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
@@ -150,18 +220,19 @@ export function DefenseApplicationReviewDialog({
                 </p>
                 <p>{selectedTitle?.titleText || "Not selected yet"}</p>
                 <p className="mt-2 text-xs font-semibold text-(--earist-secondary)">
-                  Thesis Adviser
+                  Thesis Adviser (relationship)
                 </p>
                 {adviser ? (
                   <p>
-                    Dr. {adviser.firstName} {adviser.lastName}
+                    {adviser.firstName} {adviser.lastName}
                   </p>
                 ) : (
                   <div className="rounded-md bg-amber-50 p-2 text-amber-800">
                     <p>Not assigned</p>
                     <p className="text-xs">
-                      ⚠ This application cannot proceed until an active Thesis
-                      Adviser is assigned.
+                      Proposal/Final scheduling requires an active Thesis Adviser
+                      relationship. The adviser is not auto-added as a defense
+                      seat.
                     </p>
                   </div>
                 )}
@@ -171,7 +242,8 @@ export function DefenseApplicationReviewDialog({
             {isFinal && (
               <p className="text-xs text-(--earist-body-text)">
                 Final Defense covers the complete manuscript. Rapporteur Report
-                is only created after the defense is conducted and concluded.
+                is only created after the defense is conducted and formally
+                concluded.
               </p>
             )}
 

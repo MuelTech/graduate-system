@@ -147,6 +147,37 @@ export interface ApprovedApplicationDto {
   assignment?: {
     adviser?: { id: string; firstName: string; lastName: string } | null;
   } | null;
+  /** Current-stage defense session (stage-matched), when scheduled. */
+  currentSchedule?: DefenseSessionDto | null;
+}
+
+export interface DefenseCommitteeSummary {
+  chairman: string[];
+  panelists: string[];
+  facilitator: string[];
+  rapporteur: string[];
+  adviser: string[];
+}
+
+export interface DefensePanelSeatDto {
+  role: DefensePanelRole | string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+  } | null;
+}
+
+export interface DefenseSessionDto {
+  id: string;
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE" | string;
+  sessionStatus: string;
+  defenseDate: string | Date | null;
+  defenseTime: string | Date | null;
+  venueOrLink: string | null;
+  panelAssignments: DefensePanelSeatDto[];
+  committeeSummary: DefenseCommitteeSummary;
 }
 
 export interface CommitteePolicyDto {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
@@ -83,6 +83,20 @@ function AdminSchedulingPageInner() {
       return res as PaginatedResponse<ApprovedApplicationDto>;
     },
   });
+
+  // Deep-link: /admin/thesis/scheduling?thesisId=... must actually select
+  // the application once the approved list is loaded (not only style it).
+  useEffect(() => {
+    if (!thesisIdFromQuery || !data?.data?.length) return;
+    if (selected?.id === thesisIdFromQuery) return;
+    const match = data.data.find((a) => a.id === thesisIdFromQuery);
+    if (match) {
+      setSelected(match);
+      setCommittee([]);
+      setSchedule({ defenseDate: "", defenseTime: "", meetingLink: "" });
+      setMissingItems([]);
+    }
+  }, [thesisIdFromQuery, data, selected?.id]);
 
   const defenseType = selected
     ? defenseTypeFromStage(selected.stage)
