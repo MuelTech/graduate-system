@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,182 +10,140 @@ import {
   CheckCircle2,
   Download,
   Send,
-  Eye,
   PenTool,
   Users,
   Filter,
-  X,
-  FileCheck2,
 } from "lucide-react";
+
+interface RapReportData {
+  id: string;
+  studentName: string;
+  studentNumber: string;
+  program: string;
+  stage: string;
+  defenseDate: string;
+  status: string;
+  generatedAt: string | null;
+  panelists: {
+    name: string;
+    role: string;
+    signed: boolean;
+    signedAt: string | null;
+  }[];
+}
+
+interface BackendRapReport {
+  id: string;
+  status: string;
+  generatedAt: string | null;
+  thesis: {
+    student: {
+      user: { firstName: string; lastName: string };
+      studentNumber: string | null;
+      program?: { code?: string; name?: string };
+    }
+  };
+  schedule: {
+    defenseType: string;
+    defenseDate: string;
+    panelAssignments: { userId: string; role: string }[];
+  };
+  signatures: {
+    userId: string;
+    isSigned: boolean;
+    signedAt: string | null;
+    user: { firstName: string; lastName: string };
+  }[];
+}
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
 
 export default function AdminRAPReportsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedReport, setSelectedReport] = useState<number | null>(null);
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
+  const [rapReports, setRapReports] = useState<RapReportData[]>([]);
+  // isLoading is kept in case we want to show a spinner later, otherwise we can remove it.
 
-  const rapReports = [
-    {
-      id: 1,
-      studentName: "Maria Santos",
-      studentNumber: "2026-GS-00456",
-      program: "MSCS",
-      stage: "title_defense",
-      defenseDate: "May 20, 2026",
-      status: "finalized" as
-        | "pending"
-        | "distributed"
-        | "partial"
-        | "finalized",
-      panelists: [
-        {
-          name: "Dr. Roberto Reyes",
-          role: "Chairperson",
-          signed: true,
-          signedAt: "May 21, 2026 at 10:30 AM",
-        },
-        {
-          name: "Dr. Ana Garcia",
-          role: "Member",
-          signed: true,
-          signedAt: "May 21, 2026 at 2:15 PM",
-        },
-        {
-          name: "Dr. Juan Dela Cruz",
-          role: "Member",
-          signed: true,
-          signedAt: "May 22, 2026 at 9:00 AM",
-        },
-      ],
-      generatedAt: "May 20, 2026",
-    },
-    {
-      id: 2,
-      studentName: "Carlos Luna",
-      studentNumber: "2025-GS-00289",
-      program: "PhD Education",
-      stage: "final_defense",
-      defenseDate: "May 28, 2026",
-      status: "finalized" as
-        | "pending"
-        | "distributed"
-        | "partial"
-        | "finalized",
-      panelists: [
-        {
-          name: "Dr. Pedro Lim",
-          role: "Chairperson",
-          signed: true,
-          signedAt: "May 29, 2026 at 11:00 AM",
-        },
-        {
-          name: "Dr. Roberto Reyes",
-          role: "Member",
-          signed: true,
-          signedAt: "May 29, 2026 at 3:45 PM",
-        },
-        {
-          name: "Dr. Juan Dela Cruz",
-          role: "Member",
-          signed: true,
-          signedAt: "May 30, 2026 at 8:30 AM",
-        },
-      ],
-      generatedAt: "May 28, 2026",
-    },
-    {
-      id: 3,
-      studentName: "Elena Torres",
-      studentNumber: "2026-GS-00460",
-      program: "MSCS",
-      stage: "title_defense",
-      defenseDate: "June 5, 2026",
-      status: "partial" as "pending" | "distributed" | "partial" | "finalized",
-      panelists: [
-        {
-          name: "Dr. Roberto Reyes",
-          role: "Chairperson",
-          signed: true,
-          signedAt: "June 6, 2026 at 9:00 AM",
-        },
-        {
-          name: "Dr. Ana Garcia",
-          role: "Member",
-          signed: false,
-          signedAt: null,
-        },
-        {
-          name: "Dr. Maria Santos",
-          role: "Member",
-          signed: true,
-          signedAt: "June 6, 2026 at 1:30 PM",
-        },
-      ],
-      generatedAt: "June 5, 2026",
-    },
-    {
-      id: 4,
-      studentName: "Ana Garcia",
-      studentNumber: "2026-GS-00459",
-      program: "MAED",
-      stage: "proposal_defense",
-      defenseDate: "June 8, 2026",
-      status: "distributed" as
-        | "pending"
-        | "distributed"
-        | "partial"
-        | "finalized",
-      panelists: [
-        {
-          name: "Dr. Pedro Lim",
-          role: "Chairperson",
-          signed: false,
-          signedAt: null,
-        },
-        {
-          name: "Dr. Roberto Reyes",
-          role: "Member",
-          signed: false,
-          signedAt: null,
-        },
-        {
-          name: "Dr. Juan Dela Cruz",
-          role: "Member",
-          signed: false,
-          signedAt: null,
-        },
-      ],
-      generatedAt: "June 8, 2026",
-    },
-    {
-      id: 5,
-      studentName: "Roberto Lim",
-      studentNumber: "2026-GS-00461",
-      program: "DIT",
-      stage: "final_defense",
-      defenseDate: "June 10, 2026",
-      status: "pending" as "pending" | "distributed" | "partial" | "finalized",
-      panelists: [
-        {
-          name: "Dr. Juan Dela Cruz",
-          role: "Chairperson",
-          signed: false,
-          signedAt: null,
-        },
-        {
-          name: "Dr. Ana Garcia",
-          role: "Member",
-          signed: false,
-          signedAt: null,
-        },
-        {
-          name: "Dr. Pedro Lim",
-          role: "Member",
-          signed: false,
-          signedAt: null,
-        },
-      ],
-      generatedAt: null,
-    },
-  ];
+  // Fetch Reports Data
+  const fetchReportsData = async (): Promise<RapReportData[]> => {
+    const token = localStorage.getItem("token") || "";
+    const res = await fetch(`${API_URL}/api/defense/rap-reports/all`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    if (!res.ok) throw new Error("Failed to fetch");
+    const data: BackendRapReport[] = await res.json();
+    
+    return data.map((rap) => {
+      let uiStatus = "pending";
+      if (rap.status === "DRAFT") uiStatus = "pending";
+      else if (rap.status === "DISTRIBUTED") {
+         const signedCount = rap.signatures.filter((s) => s.isSigned).length;
+         if (signedCount === 0) uiStatus = "distributed";
+         else if (signedCount < rap.signatures.length) uiStatus = "partial";
+         else uiStatus = "finalized";
+      }
+      else if (rap.status === "ALL_SIGNED" || rap.status === "FINALIZED") uiStatus = "finalized";
+  
+      return {
+        id: rap.id,
+        studentName: `${rap.thesis.student.user.firstName} ${rap.thesis.student.user.lastName}`,
+        studentNumber: rap.thesis.student.studentNumber || "N/A",
+        program: rap.thesis.student.program?.code || rap.thesis.student.program?.name || "Program",
+        stage: rap.schedule.defenseType.toLowerCase(),
+        defenseDate: new Date(rap.schedule.defenseDate).toLocaleDateString(),
+        status: uiStatus,
+        generatedAt: rap.generatedAt ? new Date(rap.generatedAt).toLocaleDateString() : null,
+        panelists: rap.signatures.map((sig) => {
+          const assignment = rap.schedule.panelAssignments.find((p) => p.userId === sig.userId);
+          return {
+            name: `${sig.user.firstName} ${sig.user.lastName}`,
+            role: assignment?.role || "Panelist",
+            signed: sig.isSigned,
+            signedAt: sig.signedAt ? new Date(sig.signedAt).toLocaleString() : null
+          };
+        })
+      };
+    });
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    fetchReportsData()
+      .then(data => {
+        if (mounted) setRapReports(data);
+      })
+      .catch(console.error);
+    return () => { mounted = false; };
+  }, []);
+
+  const handleDistribute = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      await fetch(`${API_URL}/api/defense/rap-reports/${id}/distribute`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchReportsData().then(setRapReports).catch(console.error); // Refresh data
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemind = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      await fetch(`${API_URL}/api/defense/rap-reports/${id}/remind`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Reminders queued successfully!");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  // (Deleted static mock data)
 
   const filteredReports = rapReports.filter((r) => {
     if (statusFilter === "all") return true;
@@ -494,7 +452,7 @@ export default function AdminRAPReportsPage() {
             {/* Actions */}
             <div className="flex gap-2">
               {selectedReportData.status === "pending" && (
-                <Button className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
+                <Button onClick={() => handleDistribute(selectedReportData.id)} className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
                   <Send className="mr-2 h-4 w-4" />
                   Generate & Distribute
                 </Button>
@@ -513,7 +471,7 @@ export default function AdminRAPReportsPage() {
               )}
               {(selectedReportData.status === "distributed" ||
                 selectedReportData.status === "partial") && (
-                <Button variant="outline" className="flex-1">
+                <Button onClick={() => handleRemind(selectedReportData.id)} variant="outline" className="flex-1">
                   <Send className="mr-2 h-4 w-4" />
                   Resend Reminder
                 </Button>

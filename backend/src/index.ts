@@ -3,8 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import prisma from "./config/database";
 import masterRouter from "./routes";
-import "./workers/email.worker";
-import { startCronJobs } from "./workers/cron.worker";
+// import "./workers/email.worker";
+// import { startCronJobs } from "./workers/cron.worker";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,6 +47,6 @@ app.listen(PORT, () => {
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });
 
-startCronJobs();
+// startCronJobs();
 
 export { prisma };

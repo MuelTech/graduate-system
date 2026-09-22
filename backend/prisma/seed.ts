@@ -1116,6 +1116,289 @@ async function main() {
       console.log(`Skipping ${app.email}: ${e.message}`);
     }
   }
+
+  // ── Defense Lobby fixtures (idempotent) ────────────────────────────
+  // Live lobby + concluded/RAP lobby so /panelist/defense-lobby and
+  // /admin/thesis/rap-reports can be exercised after `prisma db seed`.
+  console.log("Seeding defense lobby fixtures...");
+  const adminUser = await prisma.user.findUnique({
+    where: { email: "admin@earist.edu.ph" },
+  });
+  const panelUser1 = await prisma.user.findUnique({
+    where: { email: "panelist1@earist.edu.ph" },
+  });
+  const panelUser2 = await prisma.user.findUnique({
+    where: { email: "panelist2@earist.edu.ph" },
+  });
+  const panelUser3 = await prisma.user.findUnique({
+    where: { email: "panelist3@earist.edu.ph" },
+  });
+  const lobbyStudentUser = await prisma.user.findUnique({
+    where: { email: "student@earist.edu.ph" },
+  });
+  const lobbyStudent = lobbyStudentUser
+    ? await prisma.student.findUnique({ where: { userId: lobbyStudentUser.id } })
+    : null;
+  const lobbyThesis = lobbyStudent
+    ? await prisma.thesisRecord.findFirst({
+        where: { studentId: lobbyStudent.id, stage: "PROPOSAL" },
+      })
+    : null;
+
+  if (
+    lobbyThesis &&
+    adminUser &&
+    panelUser1 &&
+    panelUser2 &&
+    panelUser3
+  ) {
+    const existingSelectedTitle = await prisma.thesisTitle.findFirst({
+      where: { thesisId: lobbyThesis.id, isSelected: true },
+    });
+    if (!existingSelectedTitle) {
+      await prisma.thesisTitle.create({
+        data: {
+          thesisId: lobbyThesis.id,
+          titleText:
+            "AI-Assisted Academic Advisement Practices in Graduate Education",
+          isSelected: true,
+        },
+      });
+      console.log("Created selected ThesisTitle for defense lobby");
+    }
+
+    const ensurePanel = async (
+      scheduleId: string,
+      userId: string,
+      role: "CHAIRMAN" | "PANELIST" | "ADVISER" | "RAPPORTEUR" | "FACILITATOR",
+    ) => {
+      const existing = await prisma.panelAssignment.findFirst({
+        where: { scheduleId, userId },
+      });
+      if (existing) return existing;
+      const created = await prisma.panelAssignment.create({
+        data: { scheduleId, userId, role },
+      });
+      console.log(`Assigned panelist ${userId} as ${role} on schedule ${scheduleId}`);
+      return created;
+    };
+
+    const ensureScore = async (
+      panelId: string,
+      scheduleId: string,
+      data: {
+        overallAverage: number;
+        rating: "E" | "HS" | "VS" | "S" | "BS" | "F";
+        recommendations: string;
+      },
+    ) => {
+      const existing = await prisma.oralExamScore.findFirst({
+        where: { panelId },
+      });
+      if (existing) return existing;
+      const created = await prisma.oralExamScore.create({
+        data: {
+          panelId,
+          scheduleId,
+          timelinessRelevance: 1.25,
+          organization: 1.5,
+          depthComprehensiveness: 1.75,
+          relevanceConclusions: 1.5,
+          evidenceOriginalThinking: 1.25,
+          groupAAverage: 1.45,
+          presentation: 1.5,
+          masterySubject: 1.25,
+          communicationSkill: 1.5,
+          attitude: 1.0,
+          groupBAverage: 1.31,
+          overallAverage: data.overallAverage,
+          rating: data.rating,
+          recommendations: data.recommendations,
+          scoredAt: new Date(),
+        },
+      });
+      console.log(`Created OralExamScore for panel ${panelId}`);
+      return created;
+    };
+
+    // 1) LIVE lobby — PROPOSAL_DEFENSE, notes filled, 2/3 scored
+    let liveSchedule = await prisma.defenseSchedule.findFirst({
+      where: {
+        thesisId: lobbyThesis.id,
+        defenseType: "PROPOSAL_DEFENSE",
+      },
+    });
+    if (!liveSchedule) {
+      liveSchedule = await prisma.defenseSchedule.create({
+        data: {
+          thesisId: lobbyThesis.id,
+          defenseDate: new Date("2026-09-15T00:00:00.000Z"),
+          defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+          venueOrLink:
+            "https://teams.microsoft.com/l/meetup-join/defense-lobby-demo",
+          defenseType: "PROPOSAL_DEFENSE",
+          setById: adminUser.id,
+          rapporteurNotes:
+            "Student presented Chapters 1-3.\nPanel suggested tightening the sampling section.\nAwaiting final vote on 'Approved with revisions'.",
+        },
+      });
+      console.log("Created live DefenseSchedule (PROPOSAL_DEFENSE) for Student 1");
+    }
+
+    const liveChair = await ensurePanel(liveSchedule.id, panelUser2.id, "CHAIRMAN");
+    const liveRapporteur = await ensurePanel(
+      liveSchedule.id,
+      panelUser3.id,
+      "RAPPORTEUR",
+    );
+    await ensurePanel(liveSchedule.id, panelUser1.id, "ADVISER");
+
+    // CHAIRMAN + RAPPORTEUR scored ("Ready"); ADVISER still "Scoring..."
+    await ensureScore(liveChair.id, liveSchedule.id, {
+      overallAverage: 1.38,
+      rating: "HS",
+      recommendations: "Revise sampling rationale before final defense.",
+    });
+    await ensureScore(liveRapporteur.id, liveSchedule.id, {
+      overallAverage: 1.5,
+      rating: "S",
+      recommendations: "Acceptable proposal; minor edits on Chapter 2.",
+    });
+
+    // 2) CONCLUDED lobby — TITLE_DEFENSE with summary + draft RAP
+    let concludedSchedule = await prisma.defenseSchedule.findFirst({
+      where: {
+        thesisId: lobbyThesis.id,
+        defenseType: "TITLE_DEFENSE",
+      },
+    });
+    if (!concludedSchedule) {
+      concludedSchedule = await prisma.defenseSchedule.create({
+        data: {
+          thesisId: lobbyThesis.id,
+          defenseDate: new Date("2026-07-10T00:00:00.000Z"),
+          defenseTime: new Date("1970-01-01T13:00:00.000Z"),
+          venueOrLink: "GS Conference Room B",
+          defenseType: "TITLE_DEFENSE",
+          setById: adminUser.id,
+          rapporteurNotes:
+            "Title defense concluded. Panel selected Title A with minor wording edits.",
+        },
+      });
+      console.log("Created concluded DefenseSchedule (TITLE_DEFENSE) for Student 1");
+    }
+
+    const concludedChair = await ensurePanel(
+      concludedSchedule.id,
+      panelUser2.id,
+      "CHAIRMAN",
+    );
+    const concludedPanelist = await ensurePanel(
+      concludedSchedule.id,
+      panelUser3.id,
+      "PANELIST",
+    );
+    const concludedAdviser = await ensurePanel(
+      concludedSchedule.id,
+      panelUser1.id,
+      "ADVISER",
+    );
+
+    await ensureScore(concludedChair.id, concludedSchedule.id, {
+      overallAverage: 1.25,
+      rating: "HS",
+      recommendations: "Approved title; align Chapter 1 framing with selected title.",
+    });
+    await ensureScore(concludedPanelist.id, concludedSchedule.id, {
+      overallAverage: 1.5,
+      rating: "S",
+      recommendations: "Title is feasible. Proceed to proposal defense.",
+    });
+    await ensureScore(concludedAdviser.id, concludedSchedule.id, {
+      overallAverage: 1.0,
+      rating: "E",
+      recommendations: "Strong title; supervise literature mapping closely.",
+    });
+
+    const existingSummary = await prisma.oralExamSummary.findFirst({
+      where: { scheduleId: concludedSchedule.id },
+    });
+    if (!existingSummary) {
+      await prisma.oralExamSummary.create({
+        data: {
+          scheduleId: concludedSchedule.id,
+          overallAverage: 1.25,
+          finalRating: "HS",
+          finalRemarks: "Seeded from Defense Lobby fixtures",
+          attestedById: adminUser.id,
+        },
+      });
+      console.log("Created OralExamSummary for concluded defense");
+    }
+
+    const existingRap = await prisma.rapReport.findFirst({
+      where: { scheduleId: concludedSchedule.id },
+    });
+    if (!existingRap) {
+      const selectedTitle = await prisma.thesisTitle.findFirst({
+        where: { thesisId: lobbyThesis.id, isSelected: true },
+      });
+      const rap = await prisma.rapReport.create({
+        data: {
+          scheduleId: concludedSchedule.id,
+          thesisId: lobbyThesis.id,
+          defenseType: "TITLE_DEFENSE",
+          reportDate: new Date("2026-07-10T00:00:00.000Z"),
+          venue: "GS Conference Room B",
+          decisionsAndRecommendations:
+            "=== RAPPORTEUR NOTES ===\nTitle defense concluded. Panel selected Title A with minor wording edits.\n\n=== PANEL ===\nApproved title; align Chapter 1 framing with selected title.\n\nTitle is feasible. Proceed to proposal defense.\n\nStrong title; supervise literature mapping closely.",
+          selectedTitle: selectedTitle?.titleText || "No Title",
+          status: "DRAFT",
+          generatedById: adminUser.id,
+          generatedAt: new Date(),
+        },
+      });
+      await prisma.rapReportSignature.createMany({
+        data: [
+          { rapId: rap.id, userId: panelUser2.id },
+          { rapId: rap.id, userId: panelUser3.id },
+          { rapId: rap.id, userId: panelUser1.id },
+        ],
+      });
+      console.log("Created draft RapReport + signature slots for concluded defense");
+    } else {
+      const sigCount = await prisma.rapReportSignature.count({
+        where: { rapId: existingRap.id },
+      });
+      if (sigCount === 0) {
+        await prisma.rapReportSignature.createMany({
+          data: [
+            { rapId: existingRap.id, userId: panelUser2.id },
+            { rapId: existingRap.id, userId: panelUser3.id },
+            { rapId: existingRap.id, userId: panelUser1.id },
+          ],
+        });
+        console.log("Created missing RapReportSignature slots");
+      }
+    }
+
+    await prisma.thesisRecord.update({
+      where: { id: lobbyThesis.id },
+      data: { status: "SCHEDULED" },
+    });
+
+    console.log("Defense lobby fixtures ready:");
+    console.log(
+      `  LIVE      → /panelist/defense-lobby/${liveSchedule.id} (PROPOSAL_DEFENSE)`,
+    );
+    console.log(
+      `  CONCLUDED → /panelist/defense-lobby/${concludedSchedule.id} (TITLE_DEFENSE + draft RAP)`,
+    );
+  } else {
+    console.log(
+      "Skipping defense lobby fixtures (missing admin, panelists, or Student 1 thesis)",
+    );
+  }
 }
 
 main()
