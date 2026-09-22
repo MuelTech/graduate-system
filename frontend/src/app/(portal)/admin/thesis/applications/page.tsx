@@ -1,221 +1,196 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import type { MissingRequirement, PaginatedResponse } from "@/types";
+import { DefenseApplicationCard, type DefenseApplicationDto } from "@/components/admin/defense-applications/application-card";
+import { DefenseApplicationReviewDialog } from "@/components/admin/defense-applications/review-dialog";
+import { DefenseApplicationFilters } from "@/components/admin/defense-applications/filters";
 import {
-  FileCheck2,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  Filter,
-  X,
-  AlertTriangle,
-  Check,
-  Calendar,
-} from "lucide-react";
-import { ThesisDocument, ThesisTitle, AdminThesisApplication as ThesisApplication, MappedApplication, MissingRequirement } from "@/types";
-import { DocumentViewer } from "@/components/ui/document-viewer";
+  HISTORY_STATUSES,
+  STATUS_LABELS,
+  statusFilterForView,
+  type WorkflowView,
+} from "@/components/admin/defense-applications/labels";
+
+const WORKFLOW_TABS: Array<{ id: WorkflowView; label: string }> = [
+  { id: "NEEDS_REVIEW", label: "Needs Review" },
+  { id: "READY", label: "Ready for Scheduling" },
+  { id: "SCHEDULED", label: "Scheduled" },
+  { id: "HISTORY", label: "History" },
+];
 
 export default function AdminDefenseApplicationsPage() {
-  const [stageFilter, setStageFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedApp, setSelectedApp] = useState<string | null>(null);
-  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedAppForView, setSelectedAppForView] =
-    useState<MappedApplication | null>(null);
-
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
-
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
-  const [winningTitleId, setWinningTitleId] = useState<string>("");
 
-  const { data: dbApplications = [] } = useQuery<ThesisApplication[]>({
-    queryKey: ["thesisApplications"],
+  const [view, setView] = useState<WorkflowView>("NEEDS_REVIEW");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [stage, setStage] = useState("ALL");
+  const [programId, setProgramId] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [reviewApp, setReviewApp] = useState<DefenseApplicationDto | null>(null);
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/all");
+      const res = await apiClientRequest("/programs");
       return Array.isArray(res) ? res : [];
     },
   });
 
-  const approveMutation = useMutation({
-    mutationFn: async ({
-      thesisId,
-      titleId,
-    }: {
-      thesisId: string;
-      titleId: string;
-    }) => {
-      return await apiClientRequest(`/thesis/defense/${thesisId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({
-          status: titleId ? "APPROVED" : "PASSED",
-          approvedTitleId: titleId,
+  // Status is driven by the workflow tab unless the Admin overrides the filter.
+  const effectiveStatus = useMemo(() => {
+    if (statusFilter !== "ALL") return statusFilter;
+    return statusFilterForView(view);
+  }, [statusFilter, view]);
+
+  const historyMode = view === "HISTORY" && statusFilter === "ALL";
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [
+      "defenseApplications",
+      page,
+      search,
+      stage,
+      effectiveStatus,
+      historyMode,
+      programId,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: "10",
+        search,
+        stage,
+        programId,
+        status: historyMode ? "HISTORY" : effectiveStatus,
+      });
+      const res = await apiClientRequest(
+        `/thesis/defense/applications?${params.toString()}`,
+      );
+      return res as PaginatedResponse<DefenseApplicationDto>;
+    },
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: ["defenseApplicationStats"],
+    queryFn: async () => {
+      const statuses = [
+        "PENDING",
+        "APPROVED",
+        "SCHEDULED",
+        "REJECTED",
+        "PASSED",
+        "REVISION",
+        "FAILED",
+      ] as const;
+      const results = await Promise.all(
+        statuses.map(async (status) => {
+          const res = await apiClientRequest(
+            `/thesis/defense/applications?page=1&pageSize=1&status=${status}`,
+          );
+          return [status, (res as { total: number }).total] as const;
         }),
+      );
+      return Object.fromEntries(results) as Record<string, number>;
+    },
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["defenseApplications"] });
+    queryClient.invalidateQueries({ queryKey: ["defenseApplicationStats"] });
+  };
+
+  const approveMutation = useMutation({
+    mutationFn: async (thesisId: string) => {
+      return apiClientRequest(`/thesis/defense/${thesisId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "APPROVED" }),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["thesisApplications"] });
-      setShowApproveConfirm(false);
-      setWinningTitleId("");
-      alert("Thesis Application Approved!");
+      invalidate();
+      setReviewApp(null);
+      alert(
+        "Application approved. The student is ready for panel assignment and scheduling.",
+      );
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
-      console.error("Approval failed: " + error.message);
-      if (error.missing?.length) {
-        alert(
-          "Requirements not met:\n" +
-            error.missing.map((m) => `• ${m.message}`).join("\n"),
-        );
-      } else {
-        alert(error.message || "Approval failed");
-      }
+      alert(
+        error.missing?.length
+          ? error.missing.map((m) => m.message).join("\n")
+          : error.message || "The application could not be approved.",
+      );
     },
   });
 
-  const handleConfirmApprove = () => {
-    if (!selectedApp) return;
-    const app = dbApplications.find(
-      (a: ThesisApplication) => a.id === selectedApp,
-    );
-    if (app?.stage === "TITLE" && !winningTitleId) {
-      alert("Please select a winning title.");
-      return;
-    }
-    approveMutation.mutate({ thesisId: selectedApp, titleId: winningTitleId });
-  };
-
-  const applications: MappedApplication[] = dbApplications.map(
-    (app: ThesisApplication) => ({
-      id: app.id,
-      studentName: `${app.student.user.firstName} ${app.student.user.lastName}`,
-      studentNumber: app.student.user.email,
-      program: app.student.programId || "N/A",
-      stage:
-        app.stage === "TITLE"
-          ? "title_defense"
-          : app.stage === "PROPOSAL"
-            ? "proposal_defense"
-            : "final_defense",
-      dateSubmitted: new Date(app.createdAt).toLocaleDateString(),
-      status: app.status.toLowerCase(),
-      requirements:
-        app.thesisDocuments?.map((doc: ThesisDocument) => ({
-          id: doc.id,
-          name: doc.docType,
-          // Uploaded documents are present; admin still verifies business rules
-          // via the eligibility service before schedule.
-          met: true,
-          path: doc.filePath,
-        })) || [],
-      proposedTitles: app.thesisTitles || null,
-      adviser: app.assignment?.adviser?.firstName || "Pending",
-    }),
-  );
-
-  const filteredApplications = applications.filter((app: MappedApplication) => {
-    if (stageFilter !== "all" && app.stage !== stageFilter) return false;
-    if (statusFilter !== "all" && app.status !== statusFilter) return false;
-    return true;
+  const rejectMutation = useMutation({
+    mutationFn: async ({
+      thesisId,
+      reason,
+    }: {
+      thesisId: string;
+      reason: string;
+    }) => {
+      return apiClientRequest(`/thesis/defense/${thesisId}/reject`, {
+        method: "PUT",
+        body: JSON.stringify({ reason }),
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setReviewApp(null);
+      alert("Application rejected. The student can correct and resubmit.");
+    },
+    onError: (error: Error) => {
+      alert(error.message || "The application could not be rejected.");
+    },
   });
 
-  const selectedAppData = applications.find(
-    (a: MappedApplication) => a.id === selectedApp,
-  );
+  const items = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const pageSize = data?.pageSize ?? 10;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
 
-  const pendingCount = applications.filter(
-    (a: MappedApplication) => a.status === "pending",
-  ).length;
-  const approvedCount = applications.filter(
-    (a: MappedApplication) => a.status === "approved",
-  ).length;
-  const scheduledCount = applications.filter(
-    (a: MappedApplication) => a.status === "scheduled",
-  ).length;
-  const completedCount = applications.filter(
-    (a: MappedApplication) => a.status === "completed",
-  ).length;
-  const rejectedCount = applications.filter(
-    (a: MappedApplication) => a.status === "rejected",
-  ).length;
-
-  const getStageBadge = (stage: string) => {
-    switch (stage) {
-      case "title_defense":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>
-        );
-      case "proposal_defense":
-        return (
-          <Badge className="bg-purple-100 text-purple-700">
-            Proposal Defense
-          </Badge>
-        );
-      case "final_defense":
-        return (
-          <Badge className="bg-green-100 text-green-700">Final Defense</Badge>
-        );
-      default:
-        return null;
+  const emptyMessage = (() => {
+    if (search || stage !== "ALL" || programId !== "ALL" || statusFilter !== "ALL") {
+      return "No defense applications match the selected filters.";
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-amber-100 text-amber-700">
-            <Clock className="mr-1 h-3 w-3" />
-            Pending Review
-          </Badge>
-        );
-      case "approved":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            Approved
-          </Badge>
-        );
-      case "scheduled":
-        return (
-          <Badge className="bg-purple-100 text-purple-700">
-            <Calendar className="mr-1 h-3 w-3" />
-            Scheduled
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            Completed
-          </Badge>
-        );
-      case "rejected":
-        return (
-          <Badge className="bg-red-100 text-red-700">
-            <XCircle className="mr-1 h-3 w-3" />
-            Rejected
-          </Badge>
-        );
-      default:
-        return null;
+    if (view === "NEEDS_REVIEW") {
+      return "No defense applications are waiting for review.";
     }
-  };
+    if (view === "READY") {
+      return "No approved applications are waiting for scheduling.";
+    }
+    if (view === "SCHEDULED") {
+      return "No scheduled defenses found.";
+    }
+    return "No historical defense applications found.";
+  })();
+
+  const primaryStats = [
+    { key: "PENDING", label: STATUS_LABELS.PENDING, count: summary?.PENDING ?? 0 },
+    { key: "APPROVED", label: STATUS_LABELS.APPROVED, count: summary?.APPROVED ?? 0 },
+    { key: "SCHEDULED", label: STATUS_LABELS.SCHEDULED, count: summary?.SCHEDULED ?? 0 },
+    { key: "REJECTED", label: STATUS_LABELS.REJECTED, count: summary?.REJECTED ?? 0 },
+  ];
+
+  const historyStats = HISTORY_STATUSES.map((s) => ({
+    key: s,
+    label: STATUS_LABELS[s],
+    count: summary?.[s] ?? 0,
+  }));
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"
@@ -224,501 +199,165 @@ export default function AdminDefenseApplicationsPage() {
           Defense Application Review
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Review Title, Proposal, and Final Defense applications
+          Review Title, Proposal, and Final Defense applications. Approve only
+          when requirements are complete — approval is not a passed defense.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Pending</p>
-            <p className="text-lg font-bold text-amber-600">{pendingCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Approved</p>
-            <p className="text-lg font-bold text-blue-600">{approvedCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Scheduled</p>
-            <p className="text-lg font-bold text-purple-600">{scheduledCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Completed</p>
-            <p className="text-lg font-bold text-green-600">{completedCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Rejected</p>
-            <p className="text-lg font-bold text-red-600">{rejectedCount}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {primaryStats.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => {
+              setView(
+                s.key === "PENDING"
+                  ? "NEEDS_REVIEW"
+                  : s.key === "APPROVED"
+                    ? "READY"
+                    : s.key === "SCHEDULED"
+                      ? "SCHEDULED"
+                      : "HISTORY",
+              );
+              setStatusFilter(s.key === "REJECTED" ? "REJECTED" : "ALL");
+              setPage(1);
+            }}
+            className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-left"
+          >
+            <p className="text-xs text-(--earist-body-text)">{s.label}</p>
+            <p className="text-xl font-bold text-(--earist-primary)">{s.count}</p>
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-(--earist-body-text)">
+        <span className="font-semibold">History:</span>
+        {historyStats.map((s) => (
+          <span key={s.key}>
+            {s.label} {s.count}
+          </span>
+        ))}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-(--earist-body-text)" />
-              <span className="text-xs text-(--earist-body-text)">
-                Stage:
-              </span>
-              <div className="flex gap-1">
-                {[
-                  { value: "all", label: "All" },
-                  { value: "title_defense", label: "Title" },
-                  { value: "proposal_defense", label: "Proposal" },
-                  { value: "final_defense", label: "Final" },
-                ].map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setStageFilter(f.value)}
-                    className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                      stageFilter === f.value
-                        ? "bg-(--earist-primary) text-white"
-                        : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-(--earist-body-text)">
-                Status:
-              </span>
-              <div className="flex gap-1">
-                {[
-                  { value: "all", label: "All" },
-                  { value: "pending", label: "Pending" },
-                  { value: "approved", label: "Approved" },
-                  { value: "scheduled", label: "Scheduled" },
-                  { value: "completed", label: "Completed" },
-                  { value: "rejected", label: "Rejected" },
-                ].map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setStatusFilter(f.value)}
-                    className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                      statusFilter === f.value
-                        ? "bg-(--earist-primary) text-white"
-                        : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap gap-2 border-b border-(--earist-border-gray) pb-2">
+        {WORKFLOW_TABS.map((tab) => (
+          <Button
+            key={tab.id}
+            type="button"
+            variant={view === tab.id ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setView(tab.id);
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className={
+              view === tab.id
+                ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                : ""
+            }
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
 
-      {/* Applications List */}
+      <DefenseApplicationFilters
+        search={search}
+        stage={stage}
+        status={statusFilter}
+        programId={programId}
+        programs={programs}
+        onSearchChange={(v) => {
+          setSearch(v);
+          setPage(1);
+        }}
+        onStageChange={(v) => {
+          setStage(v);
+          setPage(1);
+        }}
+        onStatusChange={(v) => {
+          setStatusFilter(v);
+          setPage(1);
+        }}
+        onProgramChange={(v) => {
+          setProgramId(v);
+          setPage(1);
+        }}
+      />
+
       <div className="space-y-3">
-        {filteredApplications.map((app: MappedApplication) => {
-          return (
-            <Card key={app.id}>
-              <CardContent className="p-0">
-                <div className="flex flex-col lg:flex-row">
-                  {/* Application Info */}
-                  <div className="flex-1 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      {getStageBadge(app.stage)}
-                      {getStatusBadge(app.status)}
-                    </div>
-                    <div className="mb-2">
-                      <p className="text-sm font-semibold text-(--earist-primary)">
-                        {app.studentName}
-                      </p>
-                      <p className="text-xs text-(--earist-body-text)">
-                        {app.studentNumber} &middot; {app.program}
-                        {app.adviser && ` · Adviser: ${app.adviser}`}
-                      </p>
-                      <p className="text-xs text-(--earist-body-text)">
-                        Submitted: {app.dateSubmitted}
-                      </p>
-                    </div>
-
-                    {/* Requirements Checklist */}
-                    <div>
-                      <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                        Requirements
-                      </p>
-                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                        {app.requirements.map(
-                          (req: { name: string; met: boolean }, i: number) => (
-                            <div key={i} className="flex items-center gap-1.5">
-                              {req.met ? (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                              ) : (
-                                <XCircle className="h-3.5 w-3.5 text-red-500" />
-                              )}
-                              <span
-                                className={`text-xs ${
-                                  req.met
-                                    ? "text-(--earist-body-text)"
-                                    : "text-red-600"
-                                }`}
-                              >
-                                {req.name}
-                              </span>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Proposed Titles (Title Defense) */}
-                    {app.proposedTitles && app.proposedTitles.length > 0 && (
-                      <div className="mt-2">
-                        <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                          Proposed Titles
-                        </p>
-                        <div className="space-y-0.5">
-                          {app.proposedTitles.map(
-                            (title: ThesisTitle, i: number) => (
-                              <p
-                                key={title.id}
-                                className="text-xs text-(--earist-body-text)"
-                              >
-                                {i + 1}. {title.titleText}{" "}
-                                {title.isSelected && (
-                                  <Badge
-                                    variant="outline"
-                                    className="ml-2 text-green-600"
-                                  >
-                                    Approved
-                                  </Badge>
-                                )}
-                              </p>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 border-t border-(--earist-border-gray) p-4 lg:flex-col lg:border-t-0 lg:border-l lg:px-4">
-                    {app.status === "pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedApp(app.id);
-                            setShowApproveConfirm(true);
-                          }}
-                          className="bg-green-600 text-white hover:bg-green-700"
-                        >
-                          <Check className="mr-1 h-3 w-3" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setShowRejectModal(true)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          <XCircle className="mr-1 h-3 w-3" />
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                    {app.status === "approved" && (
-                      <Button size="sm" variant="outline">
-                        <FileCheck2 className="mr-1 h-3 w-3" />
-                        Assign Panel
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedAppForView(app);
-                        setShowViewModal(true);
-                      }}
-                    >
-                      <Eye className="mr-1 h-3 w-3" />
-                      View
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {isLoading && (
+          <p className="py-10 text-center text-sm text-(--earist-body-text)">
+            Loading defense applications...
+          </p>
+        )}
+        {isError && (
+          <p className="py-10 text-center text-sm text-red-600">
+            Unable to load defense applications.
+          </p>
+        )}
+        {!isLoading && !isError && items.length === 0 && (
+          <p className="py-10 text-center text-sm text-(--earist-body-text)">
+            {emptyMessage}
+          </p>
+        )}
+        {!isLoading &&
+          items.map((app) => (
+            <DefenseApplicationCard
+              key={app.id}
+              app={app}
+              onView={() => setReviewApp(app)}
+              onAssignSchedule={() =>
+                router.push(`/admin/thesis/scheduling?thesisId=${app.id}`)
+              }
+            />
+          ))}
       </div>
 
-      {/* Approve Confirmation Modal */}
-      {showApproveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Approve Application
-              </h3>
-              <button
-                onClick={() => setShowApproveConfirm(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="mb-4 space-y-3">
-              <div className="rounded-lg bg-green-50 p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <p className="text-sm font-semibold text-green-700">
-                    Approve Defense Application
-                  </p>
-                </div>
-                <p className="mt-2 text-xs text-green-600">
-                  The student will be notified. You can then assign panelists
-                  and schedule the defense.
-                </p>
-              </div>
-
-              {selectedAppData?.stage === "title_defense" &&
-                selectedAppData.proposedTitles && (
-                  <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      Select Winning Title{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={winningTitleId}
-                      onChange={(e) => setWinningTitleId(e.target.value)}
-                      className="w-full rounded-md border border-(--earist-border-gray) px-3 py-2 text-sm"
-                    >
-                      <option value="">-- Choose Approved Title --</option>
-                      {selectedAppData.proposedTitles.map((t: ThesisTitle) => (
-                        <option key={t.id} value={t.id}>
-                          {t.titleText}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-              <p className="text-xs font-medium text-red-600">
-                This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowApproveConfirm(false)}
-                className="flex-1"
-                disabled={approveMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmApprove}
-                disabled={
-                  approveMutation.isPending ||
-                  (selectedAppData?.stage === "title_defense" &&
-                    !winningTitleId)
-                }
-                className="flex-1 bg-green-600 text-white hover:bg-green-700"
-              >
-                {approveMutation.isPending ? (
-                  "Approving..."
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Approve
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--earist-border-gray) pt-3 text-xs text-(--earist-body-text)">
+        <span>
+          Showing {from}–{to} of {total}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={page <= 1 || isLoading}
+            onClick={() => setPage(page - 1)}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            Previous
+          </Button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => setPage(page + 1)}
+            aria-label="Next page"
+          >
+            Next
+            <ChevronRight className="h-3 w-3" />
+          </Button>
         </div>
-      )}
+      </div>
 
-      {/* Reject Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Reject Application
-              </h3>
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason("");
-                }}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="mb-4 space-y-3">
-              <div className="rounded-lg bg-red-50 p-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                  <p className="text-sm font-semibold text-red-700">
-                    Reject Defense Application
-                  </p>
-                </div>
-                <p className="mt-2 text-xs text-red-600">
-                  The student will be notified and can resubmit after fixing
-                  issues.
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Reason for Rejection <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Enter reason for rejection..."
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                  rows={3}
-                />
-              </div>
-              <p className="text-xs font-medium text-red-600">
-                This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason("");
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={!rejectReason.trim()}
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason("");
-                }}
-                className={`flex-1 ${
-                  rejectReason.trim()
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Confirm Reject
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Modal */}
-      {showViewModal && selectedAppForView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Application Documents
-              </h3>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedAppForView(null);
-                }}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedAppForView.studentName}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  {selectedAppForView.studentNumber} &middot;{" "}
-                  {selectedAppForView.program}
-                </p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-semibold text-(--earist-secondary)">
-                  Submitted Requirements
-                </p>
-                {selectedAppForView.requirements.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedAppForView.requirements.map((req, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between rounded-lg border border-(--earist-border-gray) p-3"
-                      >
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-medium text-(--earist-primary)">
-                            {req.name.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 text-xs font-medium text-blue-600 hover:text-blue-800"
-                          onClick={() => {
-                            setSelectedDoc({
-                              url: `/api/documents/thesis-document/${req.id}/file`,
-                              title: req.name.replace(/_/g, " "),
-                            });
-                            setViewerOpen(true);
-                          }}
-                        >
-                          <Eye className="mr-1 h-3 w-3" />
-                          View File
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-(--earist-body-text)">
-                    No documents uploaded.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedAppForView(null);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedDoc && (
-        <DocumentViewer
-          open={viewerOpen}
-          onOpenChange={setViewerOpen}
-          fetchUrl={selectedDoc.url}
-          title={selectedDoc.title}
-        />
-      )}
+      <DefenseApplicationReviewDialog
+        open={!!reviewApp}
+        onOpenChange={(open) => {
+          if (!open) setReviewApp(null);
+        }}
+        app={reviewApp}
+        onApprove={(id) => approveMutation.mutate(id)}
+        onReject={(id, reason) => rejectMutation.mutate({ thesisId: id, reason })}
+        isApproving={approveMutation.isPending}
+        isRejecting={rejectMutation.isPending}
+      />
     </div>
   );
 }
