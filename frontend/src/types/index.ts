@@ -92,6 +92,74 @@ export interface MissingRequirement {
   stage: string;
 }
 
+export type DefensePanelRole =
+  | "CHAIRMAN"
+  | "PANELIST"
+  | "ADVISER"
+  | "FACILITATOR"
+  | "RAPPORTEUR";
+
+export interface CommitteeAssignment {
+  userId: string;
+  role: DefensePanelRole;
+}
+
+export interface ScheduleDefensePayload {
+  defenseDate: string;
+  defenseTime: string;
+  venueOrLink: string;
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
+  assignments: CommitteeAssignment[];
+}
+
+export interface ActivePanelistCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  panelist?: {
+    isAvailableAsAdviser?: boolean;
+    isExternal?: boolean;
+    specialization?: string | null;
+    officeAffiliation?: string | null;
+  } | null;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ApprovedApplicationDto {
+  id: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  status: string;
+  createdAt: string;
+  student: {
+    studentNumber?: string | null;
+    user: { id: string; firstName: string; lastName: string; email: string };
+    program?: { id: string; programName: string; programType?: string } | null;
+    programId?: string;
+  };
+  thesisTitles: Array<{ id: string; titleText: string; isSelected: boolean }>;
+  assignment?: {
+    adviser?: { id: string; firstName: string; lastName: string } | null;
+  } | null;
+}
+
+export interface CommitteePolicyDto {
+  allowedRoles: DefensePanelRole[];
+  requiredRoles: DefensePanelRole[];
+  minimumPanelists: number | null;
+  maximumPanelists: number | null;
+  maximumRoleCount: Partial<Record<DefensePanelRole, number | null>>;
+  evaluatorRoles: DefensePanelRole[];
+  rapporteurRequired: boolean;
+  facilitatorRequired: boolean;
+}
+
 export interface RapReportSignatureDoc {
   id: string;
   rapReport: {
