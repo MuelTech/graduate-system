@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarClock, X, Send, Mail, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { AdminThesisApplication as ThesisApplication, Panelist } from "@/types";
+import { AdminThesisApplication as ThesisApplication, Panelist, MissingRequirement } from "@/types";
 
 export default function AdminSchedulingPage() {
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
@@ -22,6 +22,7 @@ export default function AdminSchedulingPage() {
   const [externalPanelistRole, setExternalPanelistRole] = useState("PANELIST");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [missingItems, setMissingItems] = useState<MissingRequirement[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -78,10 +79,21 @@ export default function AdminSchedulingPage() {
       setDefenseDate("");
       setDefenseTime("");
       setTeamsLink("");
+      setMissingItems([]);
       alert("Defense scheduled successfully!");
     },
-    onError: (error: Error) => {
+    onError: (error: Error & { missing?: MissingRequirement[] }) => {
       console.error("Scheduling failed: " + error.message);
+      const missing = error.missing ?? [];
+      setMissingItems(missing);
+      if (missing.length) {
+        alert(
+          "Cannot schedule — requirements not met:\n" +
+            missing.map((m) => `• ${m.message}`).join("\n"),
+        );
+      } else {
+        alert(error.message || "Scheduling failed");
+      }
     },
   });
 
@@ -141,6 +153,16 @@ export default function AdminSchedulingPage() {
         </h2>
         <p className="text-sm text-(--earist-body-text)">
           Assign panelists and schedule defense sessions
+          {missingItems.length > 0 && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <p className="font-semibold">Requirements not met</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {missingItems.map((m) => (
+                  <li key={m.code}>{m.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </p>
       </div>
 

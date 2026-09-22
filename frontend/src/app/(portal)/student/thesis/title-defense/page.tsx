@@ -146,7 +146,7 @@ export default function TitleDefensePage() {
     );
   }
 
-  if (!passedCompExam || !hasAdviser) {
+  if (!passedCompExam) {
     return (
       <div className="mx-auto max-w-3xl py-8">
         <Card className="border-red-100 shadow-sm">
@@ -166,7 +166,7 @@ export default function TitleDefensePage() {
               </h3>
               <p className="max-w-md text-gray-600">
                 You cannot file a Title Defense Application until the following
-                requirements are fulfilled:
+                requirement is fulfilled:
               </p>
               <ul className="w-full max-w-md space-y-3 rounded-lg bg-gray-50 p-4 text-left">
                 <li className="flex items-start gap-3">
@@ -186,24 +186,11 @@ export default function TitleDefensePage() {
                     </p>
                   </div>
                 </li>
-                <li className="flex items-start gap-3">
-                  {hasAdviser ? (
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
-                  ) : (
-                    <X className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
-                  )}
-                  <div>
-                    <span
-                      className={`font-semibold ${hasAdviser ? "text-green-700" : "text-red-700"}`}
-                    >
-                      Thesis Adviser Assignment
-                    </span>
-                    <p className="mt-1 text-xs text-gray-500">
-                      You must have an official Thesis Adviser assigned.
-                    </p>
-                  </div>
-                </li>
               </ul>
+              <p className="max-w-md text-xs text-gray-500">
+                A Thesis Adviser is not required for Title Defense. Adviser
+                assignment is needed for Proposal Defense.
+              </p>
               <Button
                 variant="outline"
                 onClick={() => router.push("/student/thesis")}

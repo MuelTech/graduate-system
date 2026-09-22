@@ -153,8 +153,8 @@ export default function AdviserRequestPage() {
           Request Thesis Adviser
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          You must secure an approved faculty adviser before you can apply for
-          your Title Defense.
+          You may request a faculty adviser for Proposal and Final Defense.
+          Title Defense does not require an adviser.
         </p>
       </div>
 

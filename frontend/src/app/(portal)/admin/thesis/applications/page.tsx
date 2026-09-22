@@ -18,7 +18,7 @@ import {
   Check,
   Calendar,
 } from "lucide-react";
-import { ThesisDocument, ThesisTitle, AdminThesisApplication as ThesisApplication, MappedApplication} from "@/types";
+import { ThesisDocument, ThesisTitle, AdminThesisApplication as ThesisApplication, MappedApplication, MissingRequirement } from "@/types";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 
 export default function AdminDefenseApplicationsPage() {
@@ -71,8 +71,16 @@ export default function AdminDefenseApplicationsPage() {
       setWinningTitleId("");
       alert("Thesis Application Approved!");
     },
-    onError: (error: Error) => {
+    onError: (error: Error & { missing?: MissingRequirement[] }) => {
       console.error("Approval failed: " + error.message);
+      if (error.missing?.length) {
+        alert(
+          "Requirements not met:\n" +
+            error.missing.map((m) => `• ${m.message}`).join("\n"),
+        );
+      } else {
+        alert(error.message || "Approval failed");
+      }
     },
   });
 
@@ -106,6 +114,8 @@ export default function AdminDefenseApplicationsPage() {
         app.thesisDocuments?.map((doc: ThesisDocument) => ({
           id: doc.id,
           name: doc.docType,
+          // Uploaded documents are present; admin still verifies business rules
+          // via the eligibility service before schedule.
           met: true,
           path: doc.filePath,
         })) || [],

@@ -78,11 +78,10 @@ export default async function ThesisPipelinePage() {
       status: getStageStatus(
         "TITLE",
         !!isTitleCompleted,
-        !hasAdviser || !passedCompExam,
-      ), // Locked if no adviser OR failed Comp Exam
+        !passedCompExam,
+      ), // Title Defense does not require an adviser (client rule)
       requirements: [
         { name: "Passed Comprehensive Exam", met: passedCompExam },
-        { name: "Must have an Assigned Adviser", met: hasAdviser },
         {
           name: "Three Proposed Titles",
           met: currentThesis?.stage === "TITLE" || isTitleCompleted,
@@ -101,6 +100,7 @@ export default async function ThesisPipelinePage() {
       ), // Locked until Title is Passed
       requirements: [
         { name: "Passed Title Defense", met: !!isTitleCompleted },
+        { name: "Assigned Thesis Adviser", met: hasAdviser },
         {
           name: "Requirement Checklists and Chapters 1-3 Uploaded",
           met: currentThesis?.stage === "PROPOSAL" || isProposalCompleted,
@@ -230,7 +230,7 @@ export default async function ThesisPipelinePage() {
                   <div className="mt-auto border-t border-(--earist-border-gray) pt-3">
                     <div className="pt-1">
                       {stage.key === "title_defense" &&
-                      (!hasAdviser || !passedCompExam) ? (
+                      (!passedCompExam) ? (
                         <div className="flex flex-col gap-2">
                           {!passedCompExam && (
                             <p className="text-xs font-medium text-red-500">

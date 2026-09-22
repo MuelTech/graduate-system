@@ -86,6 +86,12 @@ export interface DocumentData {
   uploadedAt: string;
 }
 
+export interface MissingRequirement {
+  code: string;
+  message: string;
+  stage: string;
+}
+
 export interface RapReportSignatureDoc {
   id: string;
   rapReport: {
