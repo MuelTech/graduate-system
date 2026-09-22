@@ -1399,6 +1399,74 @@ async function main() {
       "Skipping defense lobby fixtures (missing admin, panelists, or Student 1 thesis)",
     );
   }
+
+  // ── Defense eligibility fixtures (pass / fail cases) ───────────────
+  console.log("Seeding defense eligibility fixtures...");
+  const eligStudentUser = await prisma.user.findUnique({
+    where: { email: "student@earist.edu.ph" },
+  });
+  const eligStudent = eligStudentUser
+    ? await prisma.student.findUnique({ where: { userId: eligStudentUser.id } })
+    : null;
+
+  if (eligStudent && lobbyThesis) {
+    const titleTexts = [
+      "AI-Assisted Academic Advisement Practices in Graduate Education",
+      "Graduate Thesis Pipeline Digitization in State Universities",
+      "Panel Scoring Reliability in Oral Defense Evaluation",
+    ];
+    for (const titleText of titleTexts) {
+      const existingTitle = await prisma.thesisTitle.findFirst({
+        where: { thesisId: lobbyThesis.id, titleText },
+      });
+      if (!existingTitle) {
+        await prisma.thesisTitle.create({
+          data: { thesisId: lobbyThesis.id, titleText },
+        });
+        console.log(`Created ThesisTitle: ${titleText}`);
+      }
+    }
+
+    const requiredDocs: Array<{
+      docType:
+        | "PROPOSAL_CHAPTERS"
+        | "COR"
+        | "RECEIPT"
+        | "FINAL_MANUSCRIPT"
+        | "INSTRUMENTS";
+    }> = [{ docType: "PROPOSAL_CHAPTERS" }, { docType: "COR" }, { docType: "RECEIPT" }];
+    for (const doc of requiredDocs) {
+      const existingDoc = await prisma.thesisDocument.findFirst({
+        where: { thesisId: lobbyThesis.id, docType: doc.docType },
+      });
+      if (!existingDoc) {
+        await prisma.thesisDocument.create({
+          data: {
+            thesisId: lobbyThesis.id,
+            docType: doc.docType,
+            filePath: `uploads/seed-${doc.docType.toLowerCase()}.pdf`,
+            uploadedAt: new Date(),
+          },
+        });
+        console.log(`Created ThesisDocument: ${doc.docType}`);
+      }
+    }
+
+    console.log("Eligibility fixtures:");
+    console.log(
+      "  student@earist.edu.ph → Title apply should SUCCEED (no adviser required; comp exam PASSED)",
+    );
+    console.log(
+      "  student2@earist.edu.ph → Title apply should FAIL (comp exam not PASSED / strikes)",
+    );
+    console.log(
+      "  Scheduling requires ThesisRecord.status=APPROVED + stage requirements (hard gate).",
+    );
+  } else {
+    console.log(
+      "Skipping defense eligibility fixtures (missing Student 1 or thesis)",
+    );
+  }
 }
 
 main()
