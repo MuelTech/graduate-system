@@ -127,7 +127,7 @@ router.post(
 router.get(
   "/defense/:scheduleId/lobby",
   authenticateJWT,
-  // Let the controller handle exact role validation (Admin/Secretariat/Assigned Panelist)
+  // Let the controller handle exact role validation (Assigned Panelist only)
   thesisController.getLobbyStatus,
 );
 
@@ -189,7 +189,7 @@ router.post(
 
 // LOBBY POLLING ROUTES
 router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
-router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateSecretariatNotes);
+router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateRapporteurNotes);
 router.post("/defense/:scheduleId/conclude", authenticateJWT, thesisController.concludeDefense);
 
 // ADMIN: Manage RAP Reports

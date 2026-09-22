@@ -119,8 +119,8 @@ export class ThesisService {
     return this.thesisRepo.getLobbyStatus(scheduleId);
   }
 
-  async updateSecretariatNotes(scheduleId: string, notes: string) {
-    return this.thesisRepo.updateSecretariatNotes(scheduleId, notes);
+  async updateRapporteurNotes(scheduleId: string, notes: string) {
+    return this.thesisRepo.updateRapporteurNotes(scheduleId, notes);
   }
 
   async concludeDefense(scheduleId: string, adminId: string) {

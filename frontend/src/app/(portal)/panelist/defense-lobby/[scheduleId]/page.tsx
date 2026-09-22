@@ -34,7 +34,7 @@ interface PanelStatus {
 interface LobbyData {
   studentName: string;
   defenseType: string;
-  secretariatNotes: string;
+  rapporteurNotes: string;
   isConcluded: boolean;
   panelStatuses: PanelStatus[];
 }
@@ -72,8 +72,8 @@ export default function DefenseLobbyPage() {
 
           // Update the UI with fresh data from the database
           // Note: If you are actively typing, we don't want to overwrite your cursor,
-          // so we would normally add a check here to only update if it's NOT the Secretariat typing.
-          setLiveNotes(data.secretariatNotes || "");
+          // so we would normally add a check here to only update if it's NOT the Rapporteur typing.
+          setLiveNotes(data.rapporteurNotes || "");
 
           if (data.isConcluded) {
             setStatus("Concluded - Generating RAP...");
@@ -140,11 +140,12 @@ export default function DefenseLobbyPage() {
   // Find the logged in user's specific panelist record
   const myPanelistRecord = lobby?.panelStatuses?.find((p: PanelStatus) => p.userId === currentUserId);
   
-  // Check if they have permission to type
-  const canEditNotes = 
-    myPanelistRecord?.role === "CHAIRMAN" || 
-    myPanelistRecord?.role === "PANELIST" || 
-    myPanelistRecord?.role === "RAPPORTEUR";
+  // Only the assigned Rapporteur takes and edits live notes
+  const canEditNotes = myPanelistRecord?.role === "RAPPORTEUR";
+
+  const rapporteur = lobby?.panelStatuses?.find(
+    (p: PanelStatus) => p.role === "RAPPORTEUR",
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -207,7 +208,7 @@ export default function DefenseLobbyPage() {
         <main className="flex-1 p-6 flex flex-col bg-muted/30">
           <Card className="flex-1 flex flex-col overflow-hidden shadow-lg border-primary/20">
             <CardHeader className="border-b border-border p-4 flex flex-row justify-between items-center bg-card space-y-0">
-              <CardTitle className="text-lg">Secretariat Live Notes</CardTitle>
+              <CardTitle className="text-lg">Rapporteur Live Notes</CardTitle>
               <Button
                 onClick={handleConcludeDefense}
                 className="bg-primary hover:bg-secondary text-primary-foreground"
@@ -228,21 +229,25 @@ export default function DefenseLobbyPage() {
           </Card>
         </main>
 
-        {/* 4. RIGHT SIDEBAR: Secretariat/Extra Info */}
+        {/* 4. RIGHT SIDEBAR: Rapporteur/Extra Info */}
         <aside className="w-72 bg-card border-l border-border p-4">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-4 font-bold">
-            Secretariat
+            Rapporteur
           </h2>
 
           <Card className="shadow-sm">
             <CardContent className="p-3 flex items-center justify-between">
               <div>
-                <p className="font-semibold text-sm">Jane Roe</p>
+                <p className="font-semibold text-sm">
+                  {rapporteur?.panelistName || "Unassigned"}
+                </p>
                 <p className="text-xs text-secondary">Rapporteur</p>
               </div>
               <div
-                className="h-3 w-3 rounded-full bg-green-500"
-                title="Online"
+                className={`h-3 w-3 rounded-full ${
+                  rapporteur ? "bg-green-500" : "bg-yellow-500"
+                }`}
+                title={rapporteur ? "On panel" : "Not assigned"}
               ></div>
             </CardContent>
           </Card>

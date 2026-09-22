@@ -548,7 +548,7 @@ export class ThesisRepository {
     return {
       studentName: `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`,
       defenseType: schedule.defenseType,
-      secretariatNotes: schedule.secretariatNotes,
+      rapporteurNotes: schedule.rapporteurNotes,
       isConcluded: !!schedule.oralExamSummary,
       panelStatuses: schedule.panelAssignments.map((panel: any) => {
         const hasScored = schedule.oralExamScores.some(
@@ -565,11 +565,11 @@ export class ThesisRepository {
     };
   }
 
-  // Update Secretariat Notes
-  async updateSecretariatNotes(scheduleId: string, notes: string) {
+  // Update Rapporteur Notes
+  async updateRapporteurNotes(scheduleId: string, notes: string) {
     return prisma.defenseSchedule.update({
       where: { id: scheduleId },
-      data: { secretariatNotes: notes },
+      data: { rapporteurNotes: notes },
     });
   }
 
@@ -591,7 +591,7 @@ export class ThesisRepository {
       .map((s) => s.recommendations)
       .filter(Boolean)
       .join("\n\n");
-    const finalDecisions = `=== SECRETARIAT NOTES ===\n${schedule.secretariatNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
+    const finalDecisions = `=== RAPPORTEUR NOTES ===\n${schedule.rapporteurNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
 
     // Dummy overall average calculation for now
     const finalAverage = 1.0;
