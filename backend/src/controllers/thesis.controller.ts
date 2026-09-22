@@ -43,6 +43,25 @@ export class ThesisController {
     }
   };
 
+  getDefenseApplicationsPaginated = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.getDefenseApplicationsPaginated({
+        page: Number(req.query.page),
+        pageSize: Number(req.query.pageSize),
+        search: req.query.search as string | undefined,
+        stage: req.query.stage as string | undefined,
+        status: req.query.status as string | undefined,
+        programId: req.query.programId as string | undefined,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const result = await this.thesisService.getAllAdviserRequests();
@@ -152,8 +171,85 @@ export class ThesisController {
   updateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string; // thesisId
-      const result = await this.thesisService.updateDefenseStatus(id, req.body);
+      // Application review only — never selects a winning title (Title Defense conclusion owns that).
+      const result = await this.thesisService.updateDefenseStatus(id, {
+        status: req.body.status,
+      });
       res.status(200).json({ message: 'Thesis status updated', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  rejectApplication = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const result = await this.thesisService.rejectApplication(id, req.body.reason ?? '');
+      res.status(200).json({ message: 'Application rejected', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  resubmitApplication = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const id = req.params.id as string;
+      const result = await this.thesisService.resubmitApplication(req.user.userId, id);
+      res.status(200).json({ message: 'Application resubmitted for review', result });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getActivePanelistCandidates = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.getActivePanelistCandidates();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getApprovedApplicationsPaginated = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.getApprovedApplicationsPaginated({
+        page: Number(req.query.page),
+        pageSize: Number(req.query.pageSize),
+        search: req.query.search as string | undefined,
+        defenseType: req.query.defenseType as string | undefined,
+        programId: req.query.programId as string | undefined,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  searchActivePanelists = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.searchActivePanelists({
+        page: Number(req.query.page),
+        pageSize: Number(req.query.pageSize),
+        search: req.query.search as string | undefined,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getCommitteePolicy = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const defenseType = String(req.query.defenseType || "").toUpperCase();
+      const result = this.thesisService.getCommitteePolicy(defenseType);
+      res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -245,7 +341,14 @@ export class ThesisController {
   public concludeDefense = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as any).user?.userId; // Adjust based on your auth middleware
-      const rapReport = await this.thesisService.concludeDefense(req.params.scheduleId as string, userId);
+      const rapReport = await this.thesisService.concludeDefense(
+        req.params.scheduleId as string,
+        userId,
+        {
+          outcome: req.body?.outcome,
+          selectedTitleId: req.body?.selectedTitleId ?? null,
+        },
+      );
       res.status(200).json({ message: "Defense concluded.", rapReport });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

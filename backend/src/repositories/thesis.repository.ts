@@ -5,6 +5,21 @@ export class ThesisRepository {
     return prisma.student.findUnique({ where: { userId } });
   }
 
+  async getStudentById(studentId: string) {
+    return prisma.student.findUnique({ where: { id: studentId } });
+  }
+
+  async getThesisById(thesisId: string) {
+    return prisma.thesisRecord.findUnique({ where: { id: thesisId } });
+  }
+
+  async getDefenseScheduleForScoring(scheduleId: string) {
+    return prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: { id: true, defenseType: true },
+    });
+  }
+
   async getPendingDefenses() {
     return prisma.thesisRecord.findMany({
       where: {
@@ -20,13 +35,151 @@ export class ThesisRepository {
   }
 
   async getApprovedDefenses() {
+    // APPROVED != PASSED: these rows are ready for scheduling only.
+    // Titles stay unselected until Title Defense conclusion.
     return prisma.thesisRecord.findMany({
       where: {
         status: "APPROVED",
       },
       include: {
         student: { include: { user: true } },
-        thesisTitles: { where: { isSelected: true } },
+        thesisTitles: true,
+        thesisDocuments: true,
+        assignment: { include: { adviser: true } },
+      },
+    });
+  }
+
+  /**
+   * Server-side paginated approved applications for Scheduling & Panels.
+   * Search: student name, student number, email, program name.
+   */
+  async getApprovedApplicationsPaginated(params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    defenseType?: string;
+    programId?: string;
+  }) {
+    const { page, pageSize, search, defenseType, programId } = params;
+    const where: Record<string, unknown> = { status: "APPROVED" };
+
+    if (defenseType && defenseType !== "ALL") {
+      const stageMap: Record<string, string> = {
+        TITLE_DEFENSE: "TITLE",
+        PROPOSAL_DEFENSE: "PROPOSAL",
+        FINAL_DEFENSE: "FINAL",
+      };
+      const stage = stageMap[defenseType] ?? defenseType;
+      where.stage = stage;
+    }
+    if (programId && programId !== "ALL") {
+      where.student = { programId };
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.student = {
+        ...(where.student as object),
+        OR: [
+          { studentNumber: { contains: q } },
+          { user: { firstName: { contains: q } } },
+          { user: { lastName: { contains: q } } },
+          { user: { email: { contains: q } } },
+          { program: { programName: { contains: q } } },
+        ],
+      };
+    }
+
+    const [data, total] = await prisma.$transaction([
+      prisma.thesisRecord.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          student: {
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, email: true } },
+              program: { select: { id: true, programName: true, programType: true } },
+            },
+          },
+          thesisTitles: {
+            select: { id: true, titleText: true, isSelected: true },
+          },
+          assignment: {
+            include: {
+              adviser: { select: { id: true, firstName: true, lastName: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.thesisRecord.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize };
+  }
+
+  /**
+   * Server-backed panelist search for the committee combobox.
+   * Only active PANELIST accounts; small pages for "load more".
+   */
+  async searchActivePanelists(params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+  }) {
+    const { page, pageSize, search } = params;
+    const q = search?.trim();
+    const where = {
+      role: "PANELIST" as const,
+      isActive: true,
+      panelist: { isActive: true },
+      ...(q
+        ? {
+            OR: [
+              { firstName: { contains: q } },
+              { lastName: { contains: q } },
+              { email: { contains: q } },
+              { panelist: { specialization: { contains: q } } },
+              { panelist: { officeAffiliation: { contains: q } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [data, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          panelist: {
+            select: {
+              isExternal: true,
+              isAvailableAsAdviser: true,
+              specialization: true,
+              officeAffiliation: true,
+            },
+          },
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize };
+  }
+
+  async getRejectedDefenses() {
+    return prisma.thesisRecord.findMany({
+      where: { status: "REJECTED" },
+      include: {
+        student: { include: { user: true } },
+        thesisTitles: true,
         thesisDocuments: true,
         assignment: { include: { adviser: true } },
       },
@@ -43,6 +196,93 @@ export class ThesisRepository {
       },
       orderBy: { createdAt: "desc" },
     });
+  }
+
+  /**
+   * Server-side paginated defense applications for Admin review UI.
+   * Filters: stage, status, programId + search on name/number/email/program.
+   */
+  async getDefenseApplicationsPaginated(params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    stage?: string;
+    status?: string;
+    programId?: string;
+  }) {
+    const { page, pageSize, search, stage, status, programId } = params;
+    const where: Record<string, unknown> = {};
+
+    if (stage && stage !== "ALL") {
+      where.stage = stage;
+    }
+    if (status && status !== "ALL") {
+      if (status === "HISTORY") {
+        where.status = {
+          in: ["REJECTED", "PASSED", "REVISION", "FAILED"],
+        };
+      } else {
+        where.status = status;
+      }
+    }
+    if (programId && programId !== "ALL") {
+      where.student = { programId };
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.student = {
+        ...(where.student as object),
+        OR: [
+          { studentNumber: { contains: q } },
+          { user: { firstName: { contains: q } } },
+          { user: { lastName: { contains: q } } },
+          { user: { email: { contains: q } } },
+          { program: { programName: { contains: q } } },
+        ],
+      };
+    }
+
+    const [data, total] = await prisma.$transaction([
+      prisma.thesisRecord.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          student: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              program: {
+                select: { id: true, programName: true, programType: true },
+              },
+            },
+          },
+          thesisTitles: {
+            select: { id: true, titleText: true, isSelected: true },
+          },
+          thesisDocuments: {
+            select: { id: true, docType: true, filePath: true },
+          },
+          assignment: {
+            include: {
+              adviser: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.thesisRecord.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize };
   }
 
   async getActiveAdviserAssignment(studentId: string) {
@@ -74,9 +314,26 @@ export class ThesisRepository {
     });
   }
 
+  /**
+   * Candidate pool for defense participation: all active PANELIST accounts.
+   * Adviser availability (`isAvailableAsAdviser`) only affects adviser assignment,
+   * not eligibility to chair / evaluate / facilitate / report.
+   */
+  async getActivePanelistCandidates() {
+    return prisma.user.findMany({
+      where: {
+        role: "PANELIST",
+        isActive: true,
+        panelist: { isActive: true },
+      },
+      include: { panelist: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    });
+  }
+
   async getAvailableAdvisers() {
     return prisma.user.findMany({
-      where: { role: "PANELIST", panelist: { isAvailableAsAdviser: true } },
+      where: { role: "PANELIST", panelist: { isAvailableAsAdviser: true, isActive: true } },
       include: { panelist: true },
     });
   }
@@ -246,86 +503,86 @@ export class ThesisRepository {
     });
   }
 
+  /**
+   * Application review status only. Never selects a winning title here â€”
+   * title selection happens at Title Defense conclusion.
+   */
   async updateThesisStatus(
     thesisId: string,
-    status: any,
-    approvedTitleId?: string,
+    status: "PENDING" | "APPROVED" | "REJECTED" | "SCHEDULED" | "PASSED" | "FAILED" | "REVISION",
+    options?: { rejectionReason?: string | null },
   ) {
-    return prisma.$transaction(async (tx) => {
-      const thesis = await tx.thesisRecord.update({
-        where: { id: thesisId },
-        data: { status },
-      });
-
-      if (approvedTitleId && status === "APPROVED") {
-        await tx.thesisTitle.update({
-          where: { id: approvedTitleId },
-          data: { isSelected: true },
-        });
-      }
-
-      return thesis;
+    return prisma.thesisRecord.update({
+      where: { id: thesisId },
+      data: {
+        status,
+        rejectionReason:
+          status === "REJECTED" ? options?.rejectionReason ?? null : null,
+      },
     });
   }
 
-  async scheduleDefense(thesisId: string, adminId: string, data: any) {
+  /** REJECTED -> PENDING without creating a duplicate active thesis record. */
+  async resubmitApplication(thesisId: string) {
+    return prisma.thesisRecord.update({
+      where: { id: thesisId },
+      data: { status: "PENDING", rejectionReason: null },
+    });
+  }
+
+  async scheduleDefense(
+    thesisId: string,
+    adminId: string,
+    data: {
+      defenseDate: string;
+      defenseTime: string;
+      venueOrLink: string;
+      defenseType: string;
+      assignments: Array<{ userId: string; role: string }>;
+    },
+  ) {
     return prisma.$transaction(async (tx) => {
-      // 1. Create the schedule record
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,
           defenseDate: new Date(data.defenseDate),
           defenseTime: new Date(`1970-01-01T${data.defenseTime}:00.000Z`),
           venueOrLink: data.venueOrLink,
-          defenseType: data.defenseType.toUpperCase(),
+          defenseType: data.defenseType.toUpperCase() as
+            | "TITLE_DEFENSE"
+            | "PROPOSAL_DEFENSE"
+            | "FINAL_DEFENSE",
           setById: adminId,
         },
       });
 
-      // 2. Assign the specific panelists based on roles
-      if (data.chairmanId) {
-        await tx.panelAssignment.create({
-          data: {
-            scheduleId: schedule.id,
-            userId: data.chairmanId,
-            role: data.chairmanRole || "CHAIRMAN",
-          },
-        });
-      }
+      // Dynamic Defense Committee â€” validated before this transaction.
+      await tx.panelAssignment.createMany({
+        data: data.assignments.map((a) => ({
+          scheduleId: schedule.id,
+          userId: a.userId,
+          role: a.role as
+            | "CHAIRMAN"
+            | "PANELIST"
+            | "ADVISER"
+            | "RAPPORTEUR"
+            | "FACILITATOR",
+        })),
+      });
 
-      if (data.leadPanelistId) {
-        await tx.panelAssignment.create({
-          data: {
-            scheduleId: schedule.id,
-            userId: data.leadPanelistId,
-            role: data.leadPanelistRole || "PANELIST",
-          },
-        });
-      }
-
-      if (data.externalPanelistId) {
-        await tx.panelAssignment.create({
-          data: {
-            scheduleId: schedule.id,
-            userId: data.externalPanelistId,
-            role: data.externalPanelistRole || "PANELIST",
-          },
-        });
-      }
-
-      // 3. Update the ThesisRecord status to SCHEDULED
+      // APPROVED -> SCHEDULED (still not PASSED)
       await tx.thesisRecord.update({
         where: { id: thesisId },
         data: { status: "SCHEDULED" },
       });
-      // 4. Return the fully populated schedule
+
       return tx.defenseSchedule.findUnique({
         where: { id: schedule.id },
         include: {
           panelAssignments: {
-            include: { user: true }
-          }
-        }
+            include: { user: true },
+          },
+        },
       });
     });
   }
@@ -355,9 +612,26 @@ export class ThesisRepository {
     });
   }
 
-  async submitOralExamScore(panelId: string, scheduleId: string, data: any) {
+  async submitOralExamScore(
+    panelId: string,
+    scheduleId: string,
+    data: any,
+    evaluatorRoles: string[],
+  ) {
     return prisma.$transaction(async (tx) => {
-      // Save the individual panelist's score
+      const panel = await tx.panelAssignment.findUnique({
+        where: { id: panelId },
+      });
+      if (!panel || panel.scheduleId !== scheduleId) {
+        throw new Error("Panel assignment not found for this defense.");
+      }
+      if (!evaluatorRoles.includes(panel.role)) {
+        throw new Error(
+          `Role ${panel.role} cannot submit oral examination scores.`,
+        );
+      }
+
+      // Save the individual evaluator's score
       const score = await tx.oralExamScore.create({
         data: {
           panelId,
@@ -380,16 +654,16 @@ export class ThesisRepository {
         },
       });
 
-      // The Asynchronous Scoring Check (Race Condition)
+      // Completion is evaluator-only â€” Adviser/Facilitator/Rapporteur never block.
       const assignedCount = await tx.panelAssignment.count({
-        where: { scheduleId },
+        where: { scheduleId, role: { in: evaluatorRoles as any } },
       });
 
       const submittedCount = await tx.oralExamScore.count({
         where: { scheduleId },
       });
 
-      if (submittedCount === assignedCount) {
+      if (assignedCount > 0 && submittedCount >= assignedCount) {
         // All panelists have submitted
         // Calculate the grand final summary
         const allScores = await tx.oralExamScore.findMany({
@@ -538,6 +812,7 @@ export class ThesisRepository {
             student: {
               include: { user: true },
             },
+            thesisTitles: true,
           },
         },
       },
@@ -548,6 +823,11 @@ export class ThesisRepository {
     return {
       studentName: `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`,
       defenseType: schedule.defenseType,
+      proposedTitles: schedule.thesis.thesisTitles.map((t) => ({
+        id: t.id,
+        titleText: t.titleText,
+        isSelected: t.isSelected,
+      })),
       rapporteurNotes: schedule.rapporteurNotes,
       isConcluded: !!schedule.oralExamSummary,
       panelStatuses: schedule.panelAssignments.map((panel: any) => {
@@ -573,62 +853,120 @@ export class ThesisRepository {
     });
   }
 
-  // Conclude Defense (Generates RAP)
-  async concludeDefense(scheduleId: string, generatedById: string) {
-    const schedule = await prisma.defenseSchedule.findUnique({
-      where: { id: scheduleId },
-      include: {
-        oralExamScores: true,
-        panelAssignments: true,
-        thesis: { include: { thesisTitles: { where: { isSelected: true } } } },
-      },
+  /**
+   * Defense conclusion: records outcome, optionally selects the winning title
+   * (Title Defense only), and opens a DRAFT Rapporteur Report task.
+   * Only PASSED unlocks the next academic stage.
+   */
+  async concludeDefense(
+    scheduleId: string,
+    generatedById: string,
+    options?: {
+      outcome?: "PASSED" | "REVISION" | "FAILED";
+      selectedTitleId?: string | null;
+    },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const schedule = await tx.defenseSchedule.findUnique({
+        where: { id: scheduleId },
+        include: {
+          oralExamScores: true,
+          panelAssignments: true,
+          thesis: { include: { thesisTitles: true } },
+        },
+      });
+
+      if (!schedule) throw new Error("Schedule not found");
+
+      const outcome = options?.outcome ?? "PASSED";
+      const selectedTitleId = options?.selectedTitleId ?? null;
+
+      // Title Defense conclusion must pick one of the student's proposed titles.
+      if (schedule.defenseType === "TITLE_DEFENSE") {
+        if (!selectedTitleId) {
+          throw new Error(
+            "Title Defense conclusion requires selecting an approved research title.",
+          );
+        }
+        const title = schedule.thesis.thesisTitles.find(
+          (t) => t.id === selectedTitleId,
+        );
+        if (!title) {
+          throw new Error(
+            "Selected title must be one of the student's proposed titles.",
+          );
+        }
+        await tx.thesisTitle.updateMany({
+          where: { thesisId: schedule.thesisId },
+          data: { isSelected: false },
+        });
+        await tx.thesisTitle.update({
+          where: { id: selectedTitleId },
+          data: { isSelected: true },
+        });
+      }
+
+      const selectedTitle =
+        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
+        schedule.thesis.thesisTitles.find((t) => t.id === selectedTitleId)
+          ?.titleText ??
+        "No Title";
+
+      const panelRecommendations = schedule.oralExamScores
+        .map((s) => s.recommendations)
+        .filter(Boolean)
+        .join("\n\n");
+      const finalDecisions = `=== RAPPORTEUR NOTES ===\n${schedule.rapporteurNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
+
+      const scoreCount = schedule.oralExamScores.length;
+      const finalAverage = scoreCount
+        ? schedule.oralExamScores.reduce(
+            (acc, s) => acc + Number(s.overallAverage ?? 0),
+            0,
+          ) / scoreCount
+        : 0;
+
+      await tx.oralExamSummary.create({
+        data: {
+          scheduleId,
+          overallAverage: finalAverage,
+          finalRating:
+            outcome === "PASSED" ? "VS" : outcome === "REVISION" ? "S" : "BS",
+          finalRemarks: `Defense outcome: ${outcome}`,
+          attestedById: generatedById,
+        },
+      });
+
+      // Thesis stage status: only PASSED unlocks the next defense stage.
+      await tx.thesisRecord.update({
+        where: { id: schedule.thesisId },
+        data: { status: outcome },
+      });
+
+      // Draft RAP only â€” Rapporteur must submit post-defense summary before completion.
+      const rapReport = await tx.rapReport.create({
+        data: {
+          scheduleId,
+          thesisId: schedule.thesisId,
+          defenseType: schedule.defenseType,
+          reportDate: new Date(),
+          decisionsAndRecommendations: finalDecisions,
+          selectedTitle,
+          status: "DRAFT",
+          generatedById,
+        },
+      });
+
+      // Required defense participants get signature slots (not oral-score-dependent).
+      await tx.rapReportSignature.createMany({
+        data: schedule.panelAssignments.map((panel) => ({
+          rapId: rapReport.id,
+          userId: panel.userId,
+        })),
+      });
+
+      return rapReport;
     });
-
-    if (!schedule) throw new Error("Schedule not found");
-
-    // Aggregate recommendations
-    const panelRecommendations = schedule.oralExamScores
-      .map((s) => s.recommendations)
-      .filter(Boolean)
-      .join("\n\n");
-    const finalDecisions = `=== RAPPORTEUR NOTES ===\n${schedule.rapporteurNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
-
-    // Dummy overall average calculation for now
-    const finalAverage = 1.0;
-
-    // Create Summary
-    await prisma.oralExamSummary.create({
-      data: {
-        scheduleId,
-        overallAverage: finalAverage,
-        finalRating: "S",
-        finalRemarks: "Automatically generated from Defense Lobby",
-        attestedById: generatedById,
-      },
-    });
-
-    // Generate Draft RAP
-    const rapReport = await prisma.rapReport.create({
-      data: {
-        scheduleId,
-        thesisId: schedule.thesisId,
-        defenseType: schedule.defenseType,
-        reportDate: new Date(),
-        decisionsAndRecommendations: finalDecisions,
-        selectedTitle: schedule.thesis.thesisTitles[0]?.titleText || "No Title",
-        status: "DRAFT",
-        generatedById,
-      },
-    });
-
-    // Create Signature slots
-    const signatures = schedule.panelAssignments.map((panel) => ({
-      rapId: rapReport.id,
-      userId: panel.userId,
-    }));
-    await prisma.rapReportSignature.createMany({ data: signatures });
-
-    return rapReport;
   }
 
   // Fetch ALL RAP Reports for Admin Management Page

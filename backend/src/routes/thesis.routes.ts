@@ -77,12 +77,60 @@ router.post(
   thesisController.assignAdviser,
 );
 
-// ADMIN: Approve or reject a defense application (Update Status)
+// ADMIN: Approve application requirements only (does NOT select title / schedule)
 router.put(
   "/defense/:id/status",
   authenticateJWT,
   requireRole(["ADMIN"]),
   thesisController.updateStatus,
+);
+
+// ADMIN: Reject application with reason
+router.put(
+  "/defense/:id/reject",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.rejectApplication,
+);
+
+// STUDENT: Resubmit a rejected application (REJECTED -> PENDING)
+router.put(
+  "/defense/:id/resubmit",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.resubmitApplication,
+);
+
+// ADMIN: Active PANELIST candidates for defense committee
+router.get(
+  "/panelist-candidates",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getActivePanelistCandidates,
+);
+
+// ADMIN: Paginated approved applications (Scheduling & Panels)
+router.get(
+  "/defense/approved-applications",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getApprovedApplicationsPaginated,
+);
+
+// ADMIN: Server-backed panelist search (committee combobox)
+router.get(
+  "/panelist-search",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.searchActivePanelists,
+);
+
+// ADMIN: Committee policy (allowed roles, evaluators) for the builder UI
+router.get(
+  "/committee-policy",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getCommitteePolicy,
 );
 
 // ADMIN: Schedule a defense (Requires venueOrLink string)
@@ -107,6 +155,14 @@ router.get(
   authenticateJWT,
   requireRole(["ADMIN"]),
   thesisController.getApprovedDefenses,
+);
+
+// ADMIN: Paginated defense applications (review UI)
+router.get(
+  "/defense/applications",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseApplicationsPaginated,
 );
 
 // ADMIN: Get ALL applications (for full status view)

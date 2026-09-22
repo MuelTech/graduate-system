@@ -4,17 +4,31 @@ import {
   DefenseEligibilityService,
   type ApplyTitleEligibilityInput,
 } from './defense-eligibility.service';
+import { DefenseCommitteePolicy } from './defense-committee.policy';
 import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
 import type {
   DefenseTypeName,
   MissingRequirement,
 } from '../interfaces/defense-eligibility.interfaces';
+import type {
+  CommitteeAssignmentInput,
+  DefensePanelRole,
+} from '../interfaces/defense-committee.interfaces';
 import { AppError } from '../utils/AppError';
+
+export interface ScheduleDefenseInput {
+  defenseDate: string;
+  defenseTime: string;
+  venueOrLink: string;
+  defenseType: DefenseTypeName | string;
+  assignments: CommitteeAssignmentInput[];
+}
 
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
+  private committeePolicy = new DefenseCommitteePolicy();
 
   async getPendingDefenses() {
     return this.thesisRepo.getPendingDefenses();
@@ -24,8 +38,70 @@ export class ThesisService {
     return this.thesisRepo.getApprovedDefenses();
   }
 
+  async getApprovedApplicationsPaginated(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    defenseType?: string;
+    programId?: string;
+  }) {
+    const page = Math.max(1, Number(params.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
+    return this.thesisRepo.getApprovedApplicationsPaginated({
+      page,
+      pageSize,
+      search: params.search,
+      defenseType: params.defenseType,
+      programId: params.programId,
+    });
+  }
+
+  async searchActivePanelists(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }) {
+    const page = Math.max(1, Number(params.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 20));
+    return this.thesisRepo.searchActivePanelists({
+      page,
+      pageSize,
+      search: params.search,
+    });
+  }
+
+  /** Expose committee policy so the UI does not duplicate role rules. */
+  getCommitteePolicy(defenseType: string) {
+    if (
+      !["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"].includes(defenseType)
+    ) {
+      throw new AppError("Invalid defense type.", 400);
+    }
+    return this.committeePolicy.getPolicy(defenseType as DefenseTypeName);
+  }
+
   async getAllDefenses() {
     return this.thesisRepo.getAllDefenses();
+  }
+
+  async getDefenseApplicationsPaginated(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    stage?: string;
+    status?: string;
+    programId?: string;
+  }) {
+    const page = Math.max(1, Number(params.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
+    return this.thesisRepo.getDefenseApplicationsPaginated({
+      page,
+      pageSize,
+      search: params.search,
+      stage: params.stage,
+      status: params.status,
+      programId: params.programId,
+    });
   }
 
   async getAllAdviserRequests() {
@@ -38,6 +114,33 @@ export class ThesisService {
 
   async getAvailableAdvisers() {
     return this.thesisRepo.getAvailableAdvisers();
+  }
+
+  /** Defense committee candidates: active PANELIST users (not adviser-availability filtered). */
+  async getActivePanelistCandidates() {
+    return this.thesisRepo.getActivePanelistCandidates();
+  }
+
+  async rejectApplication(thesisId: string, reason: string) {
+    if (!reason || !reason.trim()) {
+      throw new AppError('Rejection reason is required.', 400);
+    }
+    return this.thesisRepo.updateThesisStatus(thesisId, 'REJECTED', {
+      rejectionReason: reason.trim(),
+    });
+  }
+
+  async resubmitApplication(userId: string, thesisId: string) {
+    const student = await this.thesisRepo.getStudentByUserId(userId);
+    if (!student) throw new AppError('Student profile not found.', 404);
+    const thesis = await this.thesisRepo.getThesisById(thesisId);
+    if (!thesis || thesis.studentId !== student.id) {
+      throw new AppError('Application not found.', 404);
+    }
+    if (thesis.status !== 'REJECTED') {
+      throw new AppError('Only rejected applications can be resubmitted.', 400);
+    }
+    return this.thesisRepo.resubmitApplication(thesisId);
   }
 
   async applyTitleDefense(
@@ -177,15 +280,21 @@ export class ThesisService {
     );
   }
 
-  async updateDefenseStatus(thesisId: string, data: any) {
+  async updateDefenseStatus(thesisId: string, data: { status: string }) {
+    const status = String(data.status || '').toUpperCase();
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+      throw new AppError(
+        'Application review may only set PENDING, APPROVED, or REJECTED. Defense outcomes are recorded at conclusion.',
+        400,
+      );
+    }
     return this.thesisRepo.updateThesisStatus(
       thesisId,
-      data.status,
-      data.approvedTitleId,
+      status as 'PENDING' | 'APPROVED' | 'REJECTED',
     );
   }
 
-  async scheduleDefense(thesisId: string, adminId: string, data: any) {
+  async scheduleDefense(thesisId: string, adminId: string, data: ScheduleDefenseInput) {
     const snap = await this.eligibilityRepo.loadForThesis(thesisId);
     const defenseType = String(data.defenseType || '').toUpperCase() as DefenseTypeName;
 
@@ -199,7 +308,54 @@ export class ThesisService {
       this.eligibility.evaluateSchedule(snap, defenseType),
     );
 
-    return this.thesisRepo.scheduleDefense(thesisId, adminId, data);
+    const assignments = Array.isArray(data.assignments) ? data.assignments : [];
+    const student = snap.studentId
+      ? await this.thesisRepo.getStudentById(snap.studentId)
+      : null;
+    const activeAdviser = snap.studentId
+      ? await this.thesisRepo.getActiveAdviserAssignment(snap.studentId)
+      : null;
+    const adviserUserId = activeAdviser?.adviserId ?? null;
+
+    // Proposal/Final require an active adviser relationship before scheduling.
+    if (
+      (defenseType === 'PROPOSAL_DEFENSE' || defenseType === 'FINAL_DEFENSE') &&
+      !adviserUserId
+    ) {
+      throw new AppError(
+        'Proposal/Final Defense cannot be scheduled without an active thesis adviser.',
+        400,
+      );
+    }
+
+    // Auto-derive ADVISER seat from AdviserAssignment when omitted on Proposal/Final.
+    let finalAssignments = assignments;
+    if (
+      (defenseType === 'PROPOSAL_DEFENSE' || defenseType === 'FINAL_DEFENSE') &&
+      adviserUserId &&
+      !assignments.some((a) => a.role === 'ADVISER')
+    ) {
+      finalAssignments = [
+        ...assignments,
+        { userId: adviserUserId, role: 'ADVISER' as DefensePanelRole },
+      ];
+    }
+
+    const validation = this.committeePolicy.validateAssignments(
+      defenseType,
+      'UNKNOWN',
+      finalAssignments,
+      { adviserUserId },
+    );
+    if (!validation.valid) {
+      throw new AppError(validation.errors.join(' '), 400);
+    }
+
+    return this.thesisRepo.scheduleDefense(thesisId, adminId, {
+      ...data,
+      defenseType,
+      assignments: finalAssignments,
+    });
   }
 
   async getPanelistAssignments(userId: string) {
@@ -207,7 +363,17 @@ export class ThesisService {
   }
 
   async submitOralExamScore(panelId: string, scheduleId: string, data: any) {
-    return this.thesisRepo.submitOralExamScore(panelId, scheduleId, data);
+    const schedule = await this.thesisRepo.getDefenseScheduleForScoring(scheduleId);
+    if (!schedule) throw new AppError('Defense schedule not found.', 404);
+    const evaluatorRoles = this.committeePolicy.getEvaluatorRoles(
+      schedule.defenseType as DefenseTypeName,
+    );
+    return this.thesisRepo.submitOralExamScore(
+      panelId,
+      scheduleId,
+      data,
+      evaluatorRoles,
+    );
   }
 
   async getPendingRapReports(userId: string) {
@@ -226,8 +392,15 @@ export class ThesisService {
     return this.thesisRepo.updateRapporteurNotes(scheduleId, notes);
   }
 
-  async concludeDefense(scheduleId: string, adminId: string) {
-    return this.thesisRepo.concludeDefense(scheduleId, adminId);
+  async concludeDefense(
+    scheduleId: string,
+    adminId: string,
+    options?: {
+      outcome?: 'PASSED' | 'REVISION' | 'FAILED';
+      selectedTitleId?: string | null;
+    },
+  ) {
+    return this.thesisRepo.concludeDefense(scheduleId, adminId, options);
   }
 
   async getAllRapReports() {
