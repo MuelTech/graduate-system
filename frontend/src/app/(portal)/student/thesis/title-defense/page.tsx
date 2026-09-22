@@ -49,7 +49,7 @@ export default function TitleDefensePage() {
 
   const isPassed =
     activeThesis &&
-    ((activeThesis.stage === "TITLE" && (activeThesis.status === "PASSED" || activeThesis.status === "APPROVED")) ||
+    ((activeThesis.stage === "TITLE" && activeThesis.status === "PASSED") ||
       activeThesis.stage === "PROPOSAL" ||
       activeThesis.stage === "FINAL");
 

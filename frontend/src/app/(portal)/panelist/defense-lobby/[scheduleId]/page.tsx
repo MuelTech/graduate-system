@@ -34,6 +34,7 @@ interface PanelStatus {
 interface LobbyData {
   studentName: string;
   defenseType: string;
+  proposedTitles?: Array<{ id: string; titleText: string; isSelected?: boolean }>;
   rapporteurNotes: string;
   isConcluded: boolean;
   panelStatuses: PanelStatus[];
@@ -114,25 +115,44 @@ export default function DefenseLobbyPage() {
     }
   };
 
+  const [defenseOutcome, setDefenseOutcome] = useState<
+    "PASSED" | "REVISION" | "FAILED"
+  >("PASSED");
+  const [selectedTitleId, setSelectedTitleId] = useState("");
+  const isTitleDefense =
+    lobby?.defenseType === "TITLE_DEFENSE" ||
+    lobbyTitle?.toLowerCase().includes("title");
+  const proposedTitles = lobby?.proposedTitles ?? [];
+
   const handleConcludeDefense = async () => {
-    // Add confirmation dialog here in the future
+    if (isTitleDefense && !selectedTitleId) {
+      setStatus("Select approved research title first");
+      return;
+    }
     setStatus("Concluding Defense...");
     try {
-      const res = await fetch(`${API_URL}/api/defense/${scheduleId}/conclude`, {
+      const res = await fetch(`${API_URL}/api/thesis/defense/${scheduleId}/conclude`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
+        body: JSON.stringify({
+          outcome: defenseOutcome,
+          selectedTitleId: selectedTitleId || null,
+        }),
       });
 
       if (res.ok) {
-        setStatus("Concluded - Generating RAP...");
-        // The polling loop will automatically pick up that the defense is concluded
+        setStatus("Concluded - Draft Rapporteur Report opened");
+        return;
       }
+      const err = await res.json().catch(() => ({}));
+      setStatus(err?.error || "Error Concluding");
     } catch (error) {
       console.error("Failed to conclude defense!", error);
+      setStatus("Error Concluding");
     }
-    setStatus("Error Concluding");
   };
 
   const currentUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
@@ -207,14 +227,72 @@ export default function DefenseLobbyPage() {
         {/* 3. CENTER CANVAS: The Interactive Zone */}
         <main className="flex-1 p-6 flex flex-col bg-muted/30">
           <Card className="flex-1 flex flex-col overflow-hidden shadow-lg border-primary/20">
-            <CardHeader className="border-b border-border p-4 flex flex-row justify-between items-center bg-card space-y-0">
-              <CardTitle className="text-lg">Rapporteur Live Notes</CardTitle>
-              <Button
-                onClick={handleConcludeDefense}
-                className="bg-primary hover:bg-secondary text-primary-foreground"
-              >
-                Conclude Defense
-              </Button>
+            <CardHeader className="border-b border-border p-4 flex flex-col gap-3 bg-card space-y-0">
+              <div className="flex flex-row justify-between items-center">
+                <CardTitle className="text-lg">Rapporteur Live Notes</CardTitle>
+                <Button
+                  onClick={handleConcludeDefense}
+                  className="bg-primary hover:bg-secondary text-primary-foreground"
+                >
+                  Conclude Defense
+                </Button>
+              </div>
+
+              {/* Title Defense conclusion: select approved research title + outcome */}
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <p className="text-sm font-semibold">Defense Conclusion</p>
+                {isTitleDefense && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                      Select Approved Research Title
+                    </p>
+                    <div className="space-y-1">
+                      {proposedTitles.map((t) => (
+                        <label
+                          key={t.id}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <input
+                            type="radio"
+                            name="approvedTitle"
+                            value={t.id}
+                            checked={selectedTitleId === t.id}
+                            onChange={() => setSelectedTitleId(t.id)}
+                          />
+                          <span>{t.titleText}</span>
+                        </label>
+                      ))}
+                      {proposedTitles.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No proposed titles loaded.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    Defense Outcome
+                  </p>
+                  <select
+                    value={defenseOutcome}
+                    onChange={(e) =>
+                      setDefenseOutcome(
+                        e.target.value as "PASSED" | "REVISION" | "FAILED",
+                      )
+                    }
+                    className="w-full rounded-md border border-border px-2 py-1 text-sm"
+                  >
+                    <option value="PASSED">Passed</option>
+                    <option value="REVISION">Revision</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Only PASSED unlocks the next defense stage. Rapporteur Report
+                  opens as a draft after conclusion.
+                </p>
+              </div>
             </CardHeader>
 
             <CardContent className="flex-1 p-0">

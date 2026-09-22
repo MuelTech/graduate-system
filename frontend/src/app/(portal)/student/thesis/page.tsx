@@ -43,17 +43,17 @@ export default async function ThesisPipelinePage() {
     data.compExamRecords[0].status === "PASSED";
   const currentThesis = data.thesisRecords?.[0] || null;
 
-  // Define the master states based on real database data
+  // APPROVED != PASSED. Only PASSED unlocks the next defense stage.
   const isTitleCompleted =
-    currentThesis &&
+    !!currentThesis &&
     (currentThesis.stage === "PROPOSAL" ||
       currentThesis.stage === "FINAL" ||
-      (currentThesis.stage === "TITLE" && (currentThesis.status === "PASSED" || currentThesis.status === "APPROVED")));
+      (currentThesis.stage === "TITLE" && currentThesis.status === "PASSED"));
   const isProposalCompleted =
-    currentThesis &&
+    !!currentThesis &&
     (currentThesis.stage === "FINAL" ||
       (currentThesis.stage === "PROPOSAL" &&
-        (currentThesis.status === "PASSED" || currentThesis.status === "APPROVED")));
+        currentThesis.status === "PASSED"));
 
   const getStageStatus = (
     stageName: string,
@@ -64,7 +64,10 @@ export default async function ThesisPipelinePage() {
     if (isCompleted) return "completed";
     if (currentThesis && currentThesis.stage === stageName) {
       if (currentThesis.status === "PENDING") return "pending";
+      if (currentThesis.status === "APPROVED") return "approved";
       if (currentThesis.status === "SCHEDULED") return "approved";
+      if (currentThesis.status === "REJECTED") return "failed";
+      if (currentThesis.status === "REVISION") return "pending";
       if (currentThesis.status === "FAILED") return "failed";
     }
     return "ready";
@@ -99,7 +102,7 @@ export default async function ThesisPipelinePage() {
         !isTitleCompleted,
       ), // Locked until Title is Passed
       requirements: [
-        { name: "Passed Title Defense", met: !!isTitleCompleted },
+        { name: "Passed Title Defense (not merely approved)", met: !!isTitleCompleted },
         { name: "Assigned Thesis Adviser", met: hasAdviser },
         {
           name: "Requirement Checklists and Chapters 1-3 Uploaded",
@@ -118,7 +121,7 @@ export default async function ThesisPipelinePage() {
         !isProposalCompleted,
       ), // Locked until Proposal Passed
       requirements: [
-        { name: "Passed Proposal Defense", met: !!isProposalCompleted },
+        { name: "Passed Proposal Defense (not merely approved)", met: !!isProposalCompleted },
         {
           name: "Final Manuscript Uploaded",
           met: currentThesis?.stage === "FINAL",
@@ -176,6 +179,22 @@ export default async function ThesisPipelinePage() {
 
   return (
     <div className="space-y-4">
+      {currentThesis?.status === "REJECTED" && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <p className="font-semibold text-red-700">Application rejected</p>
+            <p className="mt-1 text-sm text-red-700">
+              Reason:{" "}
+              {currentThesis.rejectionReason ||
+                "No reason provided. Contact the Graduate School office."}
+            </p>
+            <p className="mt-2 text-xs text-red-600">
+              Correct your materials and resubmit from the defense application
+              form. Status returns to Pending review (no duplicate record).
+            </p>
+          </CardContent>
+        </Card>
+      )}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"

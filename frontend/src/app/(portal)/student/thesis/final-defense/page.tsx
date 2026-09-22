@@ -50,7 +50,7 @@ export default function FinalDefensePage() {
     activeThesis &&
     ((activeThesis.stage === "PROPOSAL" &&
       (activeThesis.status === "PASSED" ||
-        activeThesis.status === "APPROVED")) ||
+        activeThesis.stage === "FINAL")) ||
       activeThesis.stage === "FINAL");
 
   const [requirements, setRequirements] = useState([
