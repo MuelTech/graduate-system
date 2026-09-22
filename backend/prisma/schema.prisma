@@ -440,6 +440,7 @@ model ThesisRecord {
   assignmentId              String?                    @map("assignment_id")
   stage                     ThesisStage                @default(TITLE)
   status                    ThesisStatus               @default(PENDING)
+  rejectionReason           String?                    @map("rejection_reason") @db.Text
   orNumber                  String?                    @map("or_number")
   amountPaid                Decimal?                   @map("amount_paid")
   createdAt                 DateTime                   @default(now()) @map("created_at")
@@ -522,6 +523,7 @@ model PanelAssignment {
   schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])
   user               User            @relation(fields: [userId], references: [id])
 
+  @@unique([scheduleId, userId])
   @@index([scheduleId], map: "panel_assignments_schedule_id_fkey")
   @@index([userId], map: "panel_assignments_user_id_fkey")
   @@map("panel_assignments")
@@ -1137,6 +1139,7 @@ enum ThesisStage {
 enum ThesisStatus {
   PENDING
   APPROVED
+  REJECTED
   SCHEDULED
   PASSED
   FAILED
