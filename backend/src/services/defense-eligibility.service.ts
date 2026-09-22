@@ -1,12 +1,19 @@
 import {
   DEFENSE_TYPE_STAGE,
+  type ApplicationUploadInput,
   type DefenseStage,
   type DefenseTypeName,
   type EligibilityResult,
   type EligibilitySnapshot,
   type MissingRequirement,
   type MissingRequirementCode,
+  type ResearchVariablesState,
 } from "../interfaces/defense-eligibility.interfaces";
+import {
+  DEFAULT_FINAL_OPTIONAL_GATES,
+  type FinalOptionalGateFlags,
+} from "./defense-gates.config";
+import { canUnlockFinal, canUnlockProposal } from "./stage-completion";
 import { AppError } from "../utils/AppError";
 
 export interface ApplyTitleEligibilityInput {
@@ -26,6 +33,13 @@ function miss(
   stage: DefenseStage,
 ): MissingRequirement {
   return { code, message, stage };
+}
+
+/** Research Variables: IF ANY — NOT_APPLICABLE satisfies (§10.3.1). */
+export function researchVariablesSatisfied(
+  state: ResearchVariablesState,
+): boolean {
+  return state === "APPROVED" || state === "NOT_APPLICABLE";
 }
 
 export class DefenseEligibilityService {
@@ -75,18 +89,28 @@ export class DefenseEligibilityService {
       );
     }
     if (!input.hasConceptPaper) {
-      missing.push(miss("CONCEPT_PAPER", "Concept paper is required.", stage));
+      missing.push(
+        miss(
+          "TITLE_PROPOSAL",
+          "Title Defense proposal package is required.",
+          stage,
+        ),
+      );
     }
     if (!input.hasCor) {
       missing.push(
-        miss("COR", "Certificate of Registration (COR) is required.", stage),
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for this Title application is required.",
+          stage,
+        ),
       );
     }
     if (!input.hasReceipt) {
       missing.push(
         miss(
           "RECEIPT",
-          "Application receipt / proof of payment is required.",
+          "Defense-fee proof of payment for this Title application is required.",
           stage,
         ),
       );
@@ -95,13 +119,22 @@ export class DefenseEligibilityService {
     return { eligible: missing.length === 0, missing };
   }
 
-  evaluateApplyProposal(snap: EligibilitySnapshot): EligibilityResult {
+  evaluateApplyProposal(
+    snap: EligibilitySnapshot,
+    upload: ApplicationUploadInput = {
+      manuscript: snap.evidence.proposalChapters,
+      cor: snap.evidence.corProposal,
+      receipt: snap.evidence.receiptProposal,
+    },
+  ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "PROPOSAL";
-    const titlePassed =
-      (snap.thesisStage === "TITLE" && snap.thesisStatus === "PASSED") ||
-      snap.thesisStage === "PROPOSAL" ||
-      snap.thesisStage === "FINAL";
+    const titlePassed = canUnlockProposal({
+      thesisStage: snap.thesisStage,
+      outcome: snap.thesisOutcome,
+      hasSelectedTitle: snap.hasSelectedTitle,
+      titleRapFinalized: snap.titleRapSigned,
+    });
 
     if (!snap.compExamPassed) {
       missing.push(
@@ -125,7 +158,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "THESIS_STAGE",
-          "Title Defense must be PASSED before Proposal application.",
+          "Title Defense must be PASSED (with selected title and finalized Title RAP) before Proposal application.",
           stage,
         ),
       );
@@ -139,11 +172,11 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!snap.adviserCertIssued) {
+    if (!snap.adviserCerts.proposal) {
       missing.push(
         miss(
           "ADVISER_CERT",
-          "Adviser certification must be issued for Proposal Defense.",
+          "Adviser certification for Proposal Defense must be issued.",
           stage,
         ),
       );
@@ -157,11 +190,38 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!snap.researchVariablesApproved) {
+    if (!researchVariablesSatisfied(snap.researchVariables)) {
       missing.push(
         miss(
           "RESEARCH_VARIABLES",
-          "Approved research variables (panel-signed) are required.",
+          "Research Variables approval is required when applicable (mark NOT_APPLICABLE if the study has no variables).",
+          stage,
+        ),
+      );
+    }
+    if (!upload.manuscript && !snap.evidence.proposalChapters) {
+      missing.push(
+        miss(
+          "PROPOSAL_CHAPTERS",
+          "Manuscript Chapters 1-3 for Proposal Defense is required.",
+          stage,
+        ),
+      );
+    }
+    if (!upload.cor && !snap.evidence.corProposal) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for this Proposal application is required.",
+          stage,
+        ),
+      );
+    }
+    if (!upload.receipt && !snap.evidence.receiptProposal) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for this Proposal application is required.",
           stage,
         ),
       );
@@ -170,12 +230,22 @@ export class DefenseEligibilityService {
     return { eligible: missing.length === 0, missing };
   }
 
-  evaluateApplyFinal(snap: EligibilitySnapshot): EligibilityResult {
+  evaluateApplyFinal(
+    snap: EligibilitySnapshot,
+    upload: ApplicationUploadInput = {
+      manuscript: snap.evidence.finalManuscript,
+      cor: snap.evidence.corFinal,
+      receipt: snap.evidence.receiptFinal,
+    },
+    gates: FinalOptionalGateFlags = DEFAULT_FINAL_OPTIONAL_GATES,
+  ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "FINAL";
-    const proposalPassed =
-      (snap.thesisStage === "PROPOSAL" && snap.thesisStatus === "PASSED") ||
-      snap.thesisStage === "FINAL";
+    const proposalPassed = canUnlockFinal({
+      thesisStage: snap.thesisStage,
+      outcome: snap.thesisOutcome,
+      proposalRapFinalized: snap.proposalRapSigned,
+    });
 
     if (!snap.compExamPassed) {
       missing.push(
@@ -195,7 +265,7 @@ export class DefenseEligibilityService {
       missing.push(
         miss(
           "THESIS_STAGE",
-          "Proposal Defense must be PASSED before Final application.",
+          "Proposal Defense must be PASSED (with finalized Proposal RAP) before Final application.",
           stage,
         ),
       );
@@ -209,11 +279,11 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!snap.adviserCertIssued) {
+    if (!snap.adviserCerts.final) {
       missing.push(
         miss(
           "ADVISER_CERT",
-          "Adviser certification must be issued for Final Defense.",
+          "Adviser certification for Final Defense must be issued.",
           stage,
         ),
       );
@@ -227,21 +297,54 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!snap.instruments) {
+    if (!upload.manuscript && !snap.evidence.finalManuscript) {
+      missing.push(
+        miss(
+          "FINAL_MANUSCRIPT",
+          "Complete manuscript (preliminaries through Chapters 1-5) is required.",
+          stage,
+        ),
+      );
+    }
+    if (!upload.cor && !snap.evidence.corFinal) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for this Final application is required.",
+          stage,
+        ),
+      );
+    }
+    if (!upload.receipt && !snap.evidence.receiptFinal) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for this Final application is required.",
+          stage,
+        ),
+      );
+    }
+
+    // CLIENT_CONFIRMATION_REQUIRED — gated, default OFF (§11.2–11.3).
+    if (gates.requireInstruments && !snap.evidence.instruments) {
       missing.push(
         miss("INSTRUMENTS", "Research instruments are required.", stage),
       );
     }
-    if (!snap.statisticianCert) {
+    if (gates.requireStatisticianCert && !snap.statisticianCert) {
       missing.push(
-        miss("STATISTICIAN_CERT", "Statistician certification is required.", stage),
+        miss(
+          "STATISTICIAN_CERT",
+          "Statistician certification is required.",
+          stage,
+        ),
       );
     }
-    if (!snap.plagiarismEligible) {
+    if (gates.requireStrike && !snap.plagiarismEligible) {
       missing.push(
         miss(
           "PLAGIARISM_ELIGIBLE",
-          "STRIKE plagiarism check must be below 20% similarity (eligible).",
+          "STRIKE plagiarism check must be eligible (below configured threshold).",
           stage,
         ),
       );
@@ -253,6 +356,7 @@ export class DefenseEligibilityService {
   evaluateSchedule(
     snap: EligibilitySnapshot,
     defenseType: DefenseTypeName,
+    gates: FinalOptionalGateFlags = DEFAULT_FINAL_OPTIONAL_GATES,
   ): EligibilityResult {
     const stage = DEFENSE_TYPE_STAGE[defenseType] as DefenseStage;
     const missing: MissingRequirement[] = [];
@@ -294,16 +398,59 @@ export class DefenseEligibilityService {
         miss("COMP_EXAM_PASSED", "Comprehensive Exam must be PASSED.", stage),
       );
     }
-    if (!snap.cor) {
+
+    // Stage-scoped COR + fee proof (Title receipt must not satisfy Proposal/Final).
+    if (stage === "TITLE" && !snap.evidence.corTitle) {
       missing.push(
-        miss("COR", "Certificate of Registration (COR) is required.", stage),
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for Title Defense is required.",
+          stage,
+        ),
       );
     }
-    if (!snap.receipt) {
+    if (stage === "PROPOSAL" && !snap.evidence.corProposal) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for Proposal Defense is required.",
+          stage,
+        ),
+      );
+    }
+    if (stage === "FINAL" && !snap.evidence.corFinal) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for Final Defense is required.",
+          stage,
+        ),
+      );
+    }
+
+    if (stage === "TITLE" && !snap.evidence.receiptTitle) {
       missing.push(
         miss(
           "RECEIPT",
-          "Application receipt / proof of payment is required.",
+          "Defense-fee proof of payment for Title Defense is required.",
+          stage,
+        ),
+      );
+    }
+    if (stage === "PROPOSAL" && !snap.evidence.receiptProposal) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for Proposal Defense is required.",
+          stage,
+        ),
+      );
+    }
+    if (stage === "FINAL" && !snap.evidence.receiptFinal) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for Final Defense is required.",
           stage,
         ),
       );
@@ -319,8 +466,14 @@ export class DefenseEligibilityService {
           ),
         );
       }
-      if (!snap.conceptPaper) {
-        missing.push(miss("CONCEPT_PAPER", "Concept paper is required.", stage));
+      if (!snap.evidence.titlePackage) {
+        missing.push(
+          miss(
+            "TITLE_PROPOSAL",
+            "Title Defense proposal package is required.",
+            stage,
+          ),
+        );
       }
     }
 
@@ -330,9 +483,13 @@ export class DefenseEligibilityService {
           miss("ACTIVE_ADVISER", "An active Thesis Adviser is required.", stage),
         );
       }
-      if (!snap.adviserCertIssued) {
+      if (!snap.adviserCerts.proposal) {
         missing.push(
-          miss("ADVISER_CERT", "Adviser certification is required.", stage),
+          miss(
+            "ADVISER_CERT",
+            "Adviser certification for Proposal Defense is required.",
+            stage,
+          ),
         );
       }
       if (!snap.titleRapSigned) {
@@ -340,20 +497,20 @@ export class DefenseEligibilityService {
           miss("PRIOR_RAP", "Signed Title Defense RAP is required.", stage),
         );
       }
-      if (!snap.researchVariablesApproved) {
+      if (!researchVariablesSatisfied(snap.researchVariables)) {
         missing.push(
           miss(
             "RESEARCH_VARIABLES",
-            "Approved research variables are required.",
+            "Research Variables approval is required when applicable (NOT_APPLICABLE is allowed).",
             stage,
           ),
         );
       }
-      if (!snap.proposalChapters) {
+      if (!snap.evidence.proposalChapters) {
         missing.push(
           miss(
             "PROPOSAL_CHAPTERS",
-            "Chapters 1–3 document is required.",
+            "Manuscript Chapters 1-3 for Proposal Defense is required.",
             stage,
           ),
         );
@@ -366,9 +523,13 @@ export class DefenseEligibilityService {
           miss("ACTIVE_ADVISER", "An active Thesis Adviser is required.", stage),
         );
       }
-      if (!snap.adviserCertIssued) {
+      if (!snap.adviserCerts.final) {
         missing.push(
-          miss("ADVISER_CERT", "Adviser certification is required.", stage),
+          miss(
+            "ADVISER_CERT",
+            "Adviser certification for Final Defense is required.",
+            stage,
+          ),
         );
       }
       if (!snap.proposalRapSigned) {
@@ -376,21 +537,21 @@ export class DefenseEligibilityService {
           miss("PRIOR_RAP", "Signed Proposal Defense RAP is required.", stage),
         );
       }
-      if (!snap.finalManuscript) {
+      if (!snap.evidence.finalManuscript) {
         missing.push(
           miss(
             "FINAL_MANUSCRIPT",
-            "Final manuscript (Chapters 1–5) is required.",
+            "Final manuscript (preliminaries through Chapters 1-5) is required.",
             stage,
           ),
         );
       }
-      if (!snap.instruments) {
+      if (gates.requireInstruments && !snap.evidence.instruments) {
         missing.push(
           miss("INSTRUMENTS", "Research instruments are required.", stage),
         );
       }
-      if (!snap.statisticianCert) {
+      if (gates.requireStatisticianCert && !snap.statisticianCert) {
         missing.push(
           miss(
             "STATISTICIAN_CERT",
@@ -399,11 +560,11 @@ export class DefenseEligibilityService {
           ),
         );
       }
-      if (!snap.plagiarismEligible) {
+      if (gates.requireStrike && !snap.plagiarismEligible) {
         missing.push(
           miss(
             "PLAGIARISM_ELIGIBLE",
-            "STRIKE plagiarism check must be eligible (below 20%).",
+            "STRIKE plagiarism check must be eligible (below configured threshold).",
             stage,
           ),
         );

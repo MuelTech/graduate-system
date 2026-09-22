@@ -43,17 +43,20 @@ export default async function ThesisPipelinePage() {
     data.compExamRecords[0].status === "PASSED";
   const currentThesis = data.thesisRecords?.[0] || null;
 
-  // APPROVED != PASSED. Only PASSED unlocks the next defense stage.
+  // APPROVED != PASSED. Only formal outcome PASSED (or already advanced) unlocks the next stage.
   const isTitleCompleted =
     !!currentThesis &&
     (currentThesis.stage === "PROPOSAL" ||
       currentThesis.stage === "FINAL" ||
-      (currentThesis.stage === "TITLE" && currentThesis.status === "PASSED"));
+      (currentThesis.stage === "TITLE" &&
+        (currentThesis.outcome === "PASSED" ||
+          (currentThesis.outcome == null && currentThesis.status === "PASSED"))));
   const isProposalCompleted =
     !!currentThesis &&
     (currentThesis.stage === "FINAL" ||
       (currentThesis.stage === "PROPOSAL" &&
-        currentThesis.status === "PASSED"));
+        (currentThesis.outcome === "PASSED" ||
+          (currentThesis.outcome == null && currentThesis.status === "PASSED"))));
 
   const getStageStatus = (
     stageName: string,
@@ -63,12 +66,15 @@ export default async function ThesisPipelinePage() {
     if (isLocked) return "locked";
     if (isCompleted) return "completed";
     if (currentThesis && currentThesis.stage === stageName) {
+      const outcome = currentThesis.outcome;
+      if (outcome === "REVISION_REQUIRED" || currentThesis.status === "REVISION")
+        return "pending";
+      if (outcome === "PASSED" || currentThesis.status === "PASSED") return "completed";
       if (currentThesis.status === "PENDING") return "pending";
       if (currentThesis.status === "APPROVED") return "approved";
       if (currentThesis.status === "SCHEDULED") return "approved";
       if (currentThesis.status === "REJECTED") return "failed";
-      if (currentThesis.status === "REVISION") return "pending";
-      if (currentThesis.status === "FAILED") return "failed";
+      if (currentThesis.status === "FAILED" || outcome === "FAILED") return "failed";
     }
     return "ready";
   };
@@ -102,10 +108,10 @@ export default async function ThesisPipelinePage() {
         !isTitleCompleted,
       ), // Locked until Title is Passed
       requirements: [
-        { name: "Passed Title Defense (not merely approved)", met: !!isTitleCompleted },
+        { name: "Passed Title Defense (formal outcome, not mere approval)", met: !!isTitleCompleted },
         { name: "Assigned Thesis Adviser", met: hasAdviser },
         {
-          name: "Requirement Checklists and Chapters 1-3 Uploaded",
+          name: "Stage-scoped Proposal uploads (Ch 1–3, COR, fee proof)",
           met: currentThesis?.stage === "PROPOSAL" || isProposalCompleted,
         },
       ],
@@ -121,9 +127,9 @@ export default async function ThesisPipelinePage() {
         !isProposalCompleted,
       ), // Locked until Proposal Passed
       requirements: [
-        { name: "Passed Proposal Defense (not merely approved)", met: !!isProposalCompleted },
+        { name: "Passed Proposal Defense (formal outcome, not mere approval)", met: !!isProposalCompleted },
         {
-          name: "Final Manuscript Uploaded",
+          name: "Stage-scoped Final uploads (Ch 1–5, COR, fee proof)",
           met: currentThesis?.stage === "FINAL",
         },
       ],

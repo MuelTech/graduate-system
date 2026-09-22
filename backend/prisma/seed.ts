@@ -1429,26 +1429,37 @@ async function main() {
 
     const requiredDocs: Array<{
       docType:
+        | "TITLE_PROPOSAL"
         | "PROPOSAL_CHAPTERS"
         | "COR"
         | "RECEIPT"
         | "FINAL_MANUSCRIPT"
         | "INSTRUMENTS";
-    }> = [{ docType: "PROPOSAL_CHAPTERS" }, { docType: "COR" }, { docType: "RECEIPT" }];
+      defenseStage: "TITLE" | "PROPOSAL" | "FINAL";
+    }> = [
+      { docType: "TITLE_PROPOSAL", defenseStage: "TITLE" },
+      { docType: "COR", defenseStage: "TITLE" },
+      { docType: "RECEIPT", defenseStage: "TITLE" },
+    ];
     for (const doc of requiredDocs) {
       const existingDoc = await prisma.thesisDocument.findFirst({
-        where: { thesisId: lobbyThesis.id, docType: doc.docType },
+        where: {
+          thesisId: lobbyThesis.id,
+          docType: doc.docType,
+          defenseStage: doc.defenseStage,
+        },
       });
       if (!existingDoc) {
         await prisma.thesisDocument.create({
           data: {
             thesisId: lobbyThesis.id,
             docType: doc.docType,
+            defenseStage: doc.defenseStage,
             filePath: `uploads/seed-${doc.docType.toLowerCase()}.pdf`,
             uploadedAt: new Date(),
           },
         });
-        console.log(`Created ThesisDocument: ${doc.docType}`);
+        console.log(`Created ThesisDocument: ${doc.docType} @ ${doc.defenseStage}`);
       }
     }
 
@@ -1467,137 +1478,763 @@ async function main() {
       "Skipping defense eligibility fixtures (missing Student 1 or thesis)",
     );
   }
+
+  // ── Defense workflow refactor fixtures (Phases B–G) ─────────────────────────
+  // Manual QA accounts for: Title apply, review, schedule (7/8), score ≠ outcome,
+  // formal conclusion, RAP, stage-scoped COR/receipt/certs, vars NOT_APPLICABLE.
+  console.log("Seeding defense workflow refactor fixtures...");
+  await seedDefenseWorkflowFixtures(passwordHash);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
+/** Idempotent fixtures for manual testing of the defense workflow refactor. */
+async function seedDefenseWorkflowFixtures(passwordHash: string) {
+  const masters =
+    (await prisma.program.findFirst({ where: { programType: "MASTERS" } })) ??
+    (await prisma.program.findFirst());
+  const doctoral = await prisma.program.findFirst({
+    where: { programType: "DOCTORAL" },
   });
-/*
-  // 1. Admin Test Account
-  await prisma.user.upsert({
-    where: { email: "dottedone23@gmail.com" },
-    update: {},
-    create: {
-      email: "dottedone23@gmail.com",
-      passwordHash,
-      firstName: "System",
-      lastName: "Admin",
-      role: "ADMIN",
-    },
+  if (!masters) {
+    console.error("No graduate program found — skipping workflow fixtures.");
+    return;
+  }
+  const admin = await prisma.user.findUnique({
+    where: { email: "admin@earist.edu.ph" },
   });
-  console.log("Created Admin test account");
+  if (!admin) {
+    console.error("admin@earist.edu.ph missing — skipping workflow fixtures.");
+    return;
+  }
 
-
-  // 2. Email Templates
-  console.log("Seeding Email Templates...");
-  const emailTemplates = [
-    {
-      templateKey: "ecat_result_pass",
-      subject: "ECAT Result: PASSED",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Congratulations! You passed the ECAT. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "ecat_result_fail",
-      subject: "ECAT Result: FAILED",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>We regret to inform you that you failed the ECAT. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "credential_dispatch",
-      subject: "Welcome! Your Student Credentials",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Congratulations, you are now officially enrolled.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Your Default Password is: <strong>{{default_password}}</strong> (Your Last Name in ALL CAPS)</p><p>Please login to your portal immediately to change your password: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "defense_schedule",
-      subject: "Defense Schedule",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your defense is scheduled on {{defense_date}} at {{defense_time}} in {{venue}}.</p>",
-    },
-    {
-      templateKey: "cor_verified",
-      subject: "COR Verified",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your Certificate of Registration has been verified. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "bridging_waiver_validated",
-      subject: "Bridging Waiver Validated",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your bridging waiver has been validated. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "bridging_waiver_rejected",
-      subject: "Bridging Waiver Rejected",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your bridging waiver has been rejected. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "memo_broadcast",
-      subject: "{{memo_title}}",
-      bodyHtml: "<p>Dear {{student_name}},</p><div>{{memo_content}}</div><p>Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "residency_warning",
-      subject: "Residency Warning",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>This is a warning regarding your residency: {{warning_details}}.</p><p>Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "alignment_aligned",
-      subject: "Program Alignment: ALIGNED",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your undergraduate course is aligned. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "alignment_misaligned",
-      subject: "Program Alignment: MISALIGNED",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your undergraduate course is misaligned. Please login to download your bridging waiver: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "exam_reminder_24h",
-      subject: "Reminder: Exam Tomorrow",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>This is a 24-hour reminder for your scheduled exam on {{exam_date}}. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "rap_distributed",
-      subject: "RAP Report E-signature Requested",
-      bodyHtml: "<p>Dear {{panelist_name}},</p><p>Please review and e-sign the RAP Report here: {{rap_link}}</p>",
-    },
-    {
-      templateKey: "rap_finalized",
-      subject: "RAP Report Finalized",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your RAP Report has been finalized by all panelists. View it here: {{rap_link}}</p>",
-    },
-    {
-      templateKey: "strike_result",
-      subject: "Plagiarism Strike Result",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your submission received a similarity percentage of {{similarity_percentage}}%.</p><div>Instructions: {{instructions}}</div>",
-    },
-    {
-      templateKey: "adviser_assigned",
-      subject: "Adviser Assigned",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your assigned adviser is {{adviser_name}}. Login to your portal: {{portal_link}}</p>",
-    },
-    {
-      templateKey: "comp_exam_recorded",
-      subject: "Comprehensive Exam Result Recorded",
-      bodyHtml: "<p>Dear {{student_name}},</p><p>Your comprehensive exam result ({{result}}) has been recorded. Login to your portal: {{portal_link}}</p>",
-    },
+  // Enough panelists for Master's session total 7 (and Doctoral 8).
+  const extraPanelists = [
+    { email: "panelist4@earist.edu.ph", first: "Dr. Ana", last: "Reyes" },
+    { email: "panelist5@earist.edu.ph", first: "Dr. Ben", last: "Santos" },
+    { email: "panelist6@earist.edu.ph", first: "Prof. Cara", last: "Lim" },
+    { email: "panelist7@earist.edu.ph", first: "Prof. Dan", last: "Cruz" },
+    { email: "panelist8@earist.edu.ph", first: "Dr. Elise", last: "Torres" },
+    { email: "panelist9@earist.edu.ph", first: "Dr. Finn", last: "Ng" },
+    { email: "panelist10@earist.edu.ph", first: "Prof. Gwen", last: "Uy" },
   ];
-
-  for (const tpl of emailTemplates) {
-    const existing = await prisma.emailTemplate.findUnique({
-      where: { templateKey: tpl.templateKey },
+  const panelistUsers: Record<string, string> = {};
+  for (const p of extraPanelists) {
+    const u = await prisma.user.upsert({
+      where: { email: p.email },
+      update: {},
+      create: {
+        email: p.email,
+        passwordHash,
+        firstName: p.first,
+        lastName: p.last,
+        role: "PANELIST",
+        panelist: {
+          create: { isExternal: false, isAvailableAsAdviser: true },
+        },
+      },
     });
-    if (!existing) {
-      await prisma.emailTemplate.create({
-        data: {
-          templateKey: tpl.templateKey,
-          subject: tpl.subject,
-          bodyHtml: tpl.bodyHtml,
+    panelistUsers[p.email] = u.id;
+    console.log(`  panelist ready: ${p.email}`);
+  }
+  // ADMIN is created above; reuse it (do not rely on a stale findUnique below).
+  for (const n of [1, 2, 3] as const) {
+    const u = await prisma.user.findUnique({
+      where: { email: `panelist${n}@earist.edu.ph` },
+    });
+    if (u) panelistUsers[`panelist${n}@earist.edu.ph`] = u.id;
+  }
+
+  async function ensureStudent(opts: {
+    email: string;
+    first: string;
+    last: string;
+    studentNumber: string;
+    programId: string;
+    compExam?: "PASSED" | "FAILED" | "PENDING";
+    strikes?: number;
+  }) {
+    const user = await prisma.user.upsert({
+      where: { email: opts.email },
+      update: {},
+      create: {
+        email: opts.email,
+        passwordHash,
+        firstName: opts.first,
+        lastName: opts.last,
+        role: "STUDENT",
+        student: {
+          create: {
+            studentNumber: opts.studentNumber,
+            dateOfBirth: new Date("1996-01-15T00:00:00.000Z"),
+            programId: opts.programId,
+            admissionStatus: "ENROLLED",
+            enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
+            residencyStartDate: new Date("2026-06-01T00:00:00.000Z"),
+            curriculumType: "NEW",
+            alignmentStatus: "ALIGNED",
+          },
+        },
+      },
+    });
+    const student = await prisma.student.findUniqueOrThrow({
+      where: { userId: user.id },
+    });
+    if (opts.compExam) {
+      const existing = await prisma.compExamRecord.findFirst({
+        where: { studentId: student.id, status: opts.compExam },
+      });
+      if (!existing) {
+        await prisma.compExamRecord.create({
+          data: { studentId: student.id, status: opts.compExam },
+        });
+      }
+    }
+    if (opts.strikes && opts.strikes > 0) {
+      const failedCount = await prisma.compExamRecord.count({
+        where: { studentId: student.id, status: "FAILED" },
+      });
+      for (let i = failedCount; i < opts.strikes; i++) {
+        await prisma.compExamRecord.create({
+          data: { studentId: student.id, status: "FAILED" },
+        });
+      }
+    }
+    return { user, student };
+  }
+
+  async function ensureTitleDocs(thesisId: string) {
+    const docs = [
+      { docType: "TITLE_PROPOSAL" as const, defenseStage: "TITLE" as const },
+      { docType: "COR" as const, defenseStage: "TITLE" as const },
+      { docType: "RECEIPT" as const, defenseStage: "TITLE" as const },
+    ];
+    for (const doc of docs) {
+      const existing = await prisma.thesisDocument.findFirst({
+        where: {
+          thesisId,
+          docType: doc.docType,
+          defenseStage: doc.defenseStage,
         },
       });
-      console.log(`Created Email Template: ${tpl.templateKey}`);
+      if (!existing) {
+        await prisma.thesisDocument.create({
+          data: {
+            thesisId,
+            docType: doc.docType,
+            defenseStage: doc.defenseStage,
+            filePath: `uploads/seed-${doc.defenseStage.toLowerCase()}-${doc.docType.toLowerCase()}.pdf`,
+            uploadedAt: new Date(),
+          },
+        });
+      }
     }
   }
+
+  async function ensureTitles(thesisId: string, selected?: string) {
+    const texts = [
+      selected && selected.length > 0
+        ? selected
+        : "Digital Inclusion Practices in Graduate Education",
+      "Panel Scoring Reliability in Oral Defense Evaluation",
+      "Stage-Aware Eligibility Gates for Thesis Defense Applications",
+    ];
+    for (const titleText of texts) {
+      const existing = await prisma.thesisTitle.findFirst({
+        where: { thesisId, titleText },
+      });
+      if (!existing) {
+        await prisma.thesisTitle.create({
+          data: {
+            thesisId,
+            titleText,
+            isSelected: selected ? titleText === selected : false,
+          },
+        });
+      } else if (selected && titleText === selected && !existing.isSelected) {
+        await prisma.thesisTitle.update({
+          where: { id: existing.id },
+          data: { isSelected: true },
+        });
+      }
+    }
+  }
+
+  const officialTitle =
+    "Digital Inclusion Practices in Graduate Education";
+
+  // A) title-ready@ — clean Title apply (comp PASSED, no active thesis block)
+  await ensureStudent({
+    email: "title-ready@earist.edu.ph",
+    first: "Tina",
+    last: "Ready",
+    studentNumber: "2026-1001",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  console.log("  scenario title-ready@earist.edu.ph → Title apply SUCCEEDS");
+
+  // B) title-blocked@ — comp not passed / strikes
+  await ensureStudent({
+    email: "title-blocked@earist.edu.ph",
+    first: "Toby",
+    last: "Blocked",
+    studentNumber: "2026-1002",
+    programId: masters.id,
+    compExam: "FAILED",
+    strikes: 2,
+  });
+  console.log("  scenario title-blocked@earist.edu.ph → Title apply FAILS (comp exam)");
+
+  // C) title-pending@ — application in admin review
+  const c = await ensureStudent({
+    email: "title-pending@earist.edu.ph",
+    first: "Pam",
+    last: "Pending",
+    studentNumber: "2026-1003",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  const cThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: c.student.id, stage: "TITLE" },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: c.student.id,
+        stage: "TITLE",
+        status: "PENDING",
+      },
+    }));
+  await ensureTitles(cThesis.id);
+  await ensureTitleDocs(cThesis.id);
+  console.log("  scenario title-pending@earist.edu.ph → admin review queue");
+
+  // D) title-approved@ — ready to schedule (needs 7-person Master's committee)
+  const d = await ensureStudent({
+    email: "title-approved@earist.edu.ph",
+    first: "Abe",
+    last: "Approved",
+    studentNumber: "2026-1004",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  const dThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: d.student.id, stage: "TITLE" },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: d.student.id,
+        stage: "TITLE",
+        status: "APPROVED",
+      },
+    }));
+  if (dThesis.status !== "APPROVED") {
+    await prisma.thesisRecord.update({
+      where: { id: dThesis.id },
+      data: { status: "APPROVED" },
+    });
+  }
+  await ensureTitles(dThesis.id);
+  await ensureTitleDocs(dThesis.id);
+  console.log(
+    "  scenario title-approved@earist.edu.ph → schedule (session total 7: Chair+4 Panelists+Fac+Rap)",
+  );
+
+  // E) proposal-ready@ — Title COMPLETE + adviser + Proposal cert + vars N/A
+  const e = await ensureStudent({
+    email: "proposal-ready@earist.edu.ph",
+    first: "Pia",
+    last: "Proposal",
+    studentNumber: "2026-1005",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  const adviser = await prisma.user.findUnique({
+    where: { email: "panelist1@earist.edu.ph" },
+  });
+  let eAssignment = await prisma.adviserAssignment.findFirst({
+    where: { studentId: e.student.id, isActive: true },
+  });
+  if (!eAssignment && adviser) {
+    eAssignment = await prisma.adviserAssignment.create({
+      data: {
+        studentId: e.student.id,
+        adviserId: adviser.id,
+        assignedDate: new Date("2026-07-01T00:00:00.000Z"),
+        isActive: true,
+      },
+    });
+  }
+  const eThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: e.student.id },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: e.student.id,
+        assignmentId: eAssignment?.id ?? null,
+        stage: "TITLE",
+        status: "APPROVED",
+        outcome: "PASSED",
+      },
+    }));
+  if (eThesis.outcome !== "PASSED") {
+    await prisma.thesisRecord.update({
+      where: { id: eThesis.id },
+      data: { stage: "TITLE", status: "APPROVED", outcome: "PASSED" },
+    });
+  }
+  await ensureTitles(eThesis.id, officialTitle);
+  await ensureTitleDocs(eThesis.id);
+  // Prior Title RAP finalized (internal ref — no student re-upload)
+  const eTitleRap = await prisma.rapReport.findFirst({
+    where: { thesisId: eThesis.id, defenseType: "TITLE_DEFENSE" },
+  });
+  if (!eTitleRap) {
+    await prisma.rapReport.create({
+      data: {
+        scheduleId: (
+          await prisma.defenseSchedule.create({
+            data: {
+              thesisId: eThesis.id,
+              defenseDate: new Date("2026-07-20T00:00:00.000Z"),
+              defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+              venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past",
+              defenseType: "TITLE_DEFENSE",
+              setById: admin.id,
+              sessionStatus: "CONCLUDED",
+            },
+          })
+        ).id,
+        thesisId: eThesis.id,
+        defenseType: "TITLE_DEFENSE",
+        status: "FINALIZED",
+        selectedTitle: officialTitle,
+        generatedById: admin.id,
+        generatedAt: new Date(),
+      },
+    });
+  }
+  // Proposal-scoped adviser cert
+  const eCert = await prisma.adviserCertification.findFirst({
+    where: { thesisId: eThesis.id, defenseStage: "PROPOSAL_DEFENSE" },
+  });
+  if (!eCert && adviser) {
+    await prisma.adviserCertification.create({
+      data: {
+        thesisId: eThesis.id,
+        adviserId: adviser.id,
+        defenseStage: "PROPOSAL_DEFENSE",
+        status: "ISSUED",
+        certifiedAt: new Date("2026-07-25T00:00:00.000Z"),
+      },
+    });
+  }
+  // Research Variables NOT_APPLICABLE (IF ANY)
+  const eVars = await prisma.researchVariableForm.findFirst({
+    where: { thesisId: eThesis.id },
+  });
+  if (!eVars) {
+    await prisma.researchVariableForm.create({
+      data: {
+        thesisId: eThesis.id,
+        status: "NOT_APPLICABLE",
+        hasAllSignatures: true,
+        approvedAt: new Date("2026-07-25T00:00:00.000Z"),
+      },
+    });
+  }
+  console.log(
+    "  scenario proposal-ready@earist.edu.ph → Proposal apply SUCCEEDS (vars NOT_APPLICABLE, Title RAP finalized)",
+  );
+
+  // F) proposal-blocked-vars@ — vars PENDING should block Proposal
+  const f = await ensureStudent({
+    email: "proposal-blocked-vars@earist.edu.ph",
+    first: "Vic",
+    last: "Vars",
+    studentNumber: "2026-1006",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  let fAssignment = await prisma.adviserAssignment.findFirst({
+    where: { studentId: f.student.id, isActive: true },
+  });
+  if (!fAssignment && adviser) {
+    fAssignment = await prisma.adviserAssignment.create({
+      data: {
+        studentId: f.student.id,
+        adviserId: adviser.id,
+        assignedDate: new Date("2026-07-01T00:00:00.000Z"),
+        isActive: true,
+      },
+    });
+  }
+  const fThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: f.student.id },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: f.student.id,
+        assignmentId: fAssignment?.id ?? null,
+        stage: "TITLE",
+        status: "APPROVED",
+        outcome: "PASSED",
+      },
+    }));
+  await prisma.thesisRecord.update({
+    where: { id: fThesis.id },
+    data: { stage: "TITLE", status: "APPROVED", outcome: "PASSED" },
+  });
+  await ensureTitles(fThesis.id, officialTitle);
+  await ensureTitleDocs(fThesis.id);
+  if (adviser) {
+    const fCert = await prisma.adviserCertification.findFirst({
+      where: { thesisId: fThesis.id, defenseStage: "PROPOSAL_DEFENSE" },
+    });
+    if (!fCert) {
+      await prisma.adviserCertification.create({
+        data: {
+          thesisId: fThesis.id,
+          adviserId: adviser.id,
+          defenseStage: "PROPOSAL_DEFENSE",
+          status: "ISSUED",
+          certifiedAt: new Date("2026-07-25T00:00:00.000Z"),
+        },
+      });
+    }
+  }
+  const fRap = await prisma.rapReport.findFirst({
+    where: { thesisId: fThesis.id, defenseType: "TITLE_DEFENSE" },
+  });
+  if (!fRap) {
+    const fSched = await prisma.defenseSchedule.create({
+      data: {
+        thesisId: fThesis.id,
+        defenseDate: new Date("2026-07-20T00:00:00.000Z"),
+        defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+        venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-2",
+        defenseType: "TITLE_DEFENSE",
+        setById: admin.id,
+        sessionStatus: "CONCLUDED",
+      },
+    });
+    await prisma.rapReport.create({
+      data: {
+        scheduleId: fSched.id,
+        thesisId: fThesis.id,
+        defenseType: "TITLE_DEFENSE",
+        status: "FINALIZED",
+        selectedTitle: officialTitle,
+        generatedById: admin.id,
+        generatedAt: new Date(),
+      },
+    });
+  }
+  const fVars = await prisma.researchVariableForm.findFirst({
+    where: { thesisId: fThesis.id },
+  });
+  if (!fVars) {
+    await prisma.researchVariableForm.create({
+      data: {
+        thesisId: fThesis.id,
+        status: "PENDING",
+        hasAllSignatures: false,
+      },
+    });
+  }
+  console.log(
+    "  scenario proposal-blocked-vars@earist.edu.ph → Proposal apply FAILS (RESEARCH_VARIABLES pending)",
+  );
+
+  // G) revision-blocked@ — REVISION_REQUIRED never unlocks next stage
+  const g = await ensureStudent({
+    email: "revision-blocked@earist.edu.ph",
+    first: "Ria",
+    last: "Revision",
+    studentNumber: "2026-1007",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  const gThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: g.student.id },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: g.student.id,
+        stage: "TITLE",
+        status: "REVISION",
+        outcome: "REVISION_REQUIRED",
+      },
+    }));
+  await prisma.thesisRecord.update({
+    where: { id: gThesis.id },
+    data: { stage: "TITLE", status: "REVISION", outcome: "REVISION_REQUIRED" },
+  });
+  await ensureTitles(gThesis.id);
+  await ensureTitleDocs(gThesis.id);
+  console.log(
+    "  scenario revision-blocked@earist.edu.ph → Proposal stays LOCKED (REVISION_REQUIRED)",
+  );
+
+  // H) final-ready@ — Proposal COMPLETE + Final cert (no STRIKE gate by default)
+  const h = await ensureStudent({
+    email: "final-ready@earist.edu.ph",
+    first: "Finn",
+    last: "Final",
+    studentNumber: "2026-1008",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  let hAssignment = await prisma.adviserAssignment.findFirst({
+    where: { studentId: h.student.id, isActive: true },
+  });
+  if (!hAssignment && adviser) {
+    hAssignment = await prisma.adviserAssignment.create({
+      data: {
+        studentId: h.student.id,
+        adviserId: adviser.id,
+        assignedDate: new Date("2026-07-01T00:00:00.000Z"),
+        isActive: true,
+      },
+    });
+  }
+  const hThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: h.student.id },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: h.student.id,
+        assignmentId: hAssignment?.id ?? null,
+        stage: "PROPOSAL",
+        status: "APPROVED",
+        outcome: "PASSED",
+      },
+    }));
+  await prisma.thesisRecord.update({
+    where: { id: hThesis.id },
+    data: { stage: "PROPOSAL", status: "APPROVED", outcome: "PASSED" },
+  });
+  await ensureTitles(hThesis.id, officialTitle);
+  // Stage-scoped Proposal evidence (must not be reused for Final)
+  for (const doc of [
+    { docType: "PROPOSAL_CHAPTERS" as const, defenseStage: "PROPOSAL" as const },
+    { docType: "COR" as const, defenseStage: "PROPOSAL" as const },
+    { docType: "RECEIPT" as const, defenseStage: "PROPOSAL" as const },
+  ]) {
+    const existing = await prisma.thesisDocument.findFirst({
+      where: {
+        thesisId: hThesis.id,
+        docType: doc.docType,
+        defenseStage: doc.defenseStage,
+      },
+    });
+    if (!existing) {
+      await prisma.thesisDocument.create({
+        data: {
+          thesisId: hThesis.id,
+          docType: doc.docType,
+          defenseStage: doc.defenseStage,
+          filePath: `uploads/seed-proposal-${doc.docType.toLowerCase()}.pdf`,
+          uploadedAt: new Date(),
+        },
+      });
+    }
+  }
+  const hPropRap = await prisma.rapReport.findFirst({
+    where: { thesisId: hThesis.id, defenseType: "PROPOSAL_DEFENSE" },
+  });
+  if (!hPropRap) {
+    const hSched = await prisma.defenseSchedule.create({
+      data: {
+        thesisId: hThesis.id,
+        defenseDate: new Date("2026-08-10T00:00:00.000Z"),
+        defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+        venueOrLink: "https://teams.microsoft.com/l/meetup-join/proposal-past",
+        defenseType: "PROPOSAL_DEFENSE",
+        setById: admin.id,
+        sessionStatus: "CONCLUDED",
+      },
+    });
+    await prisma.rapReport.create({
+      data: {
+        scheduleId: hSched.id,
+        thesisId: hThesis.id,
+        defenseType: "PROPOSAL_DEFENSE",
+        status: "FINALIZED",
+        selectedTitle: officialTitle,
+        generatedById: admin.id,
+        generatedAt: new Date(),
+      },
+    });
+  }
+  if (adviser) {
+    const hFinalCert = await prisma.adviserCertification.findFirst({
+      where: { thesisId: hThesis.id, defenseStage: "FINAL_DEFENSE" },
+    });
+    if (!hFinalCert) {
+      await prisma.adviserCertification.create({
+        data: {
+          thesisId: hThesis.id,
+          adviserId: adviser.id,
+          defenseStage: "FINAL_DEFENSE",
+          status: "ISSUED",
+          certifiedAt: new Date("2026-08-15T00:00:00.000Z"),
+        },
+      });
+    }
+  }
+  // NOTE: no STRIKE / statistician / instruments — default Final gates are OFF.
+  console.log(
+    "  scenario final-ready@earist.edu.ph → Final apply SUCCEEDS without STRIKE/statistician/instruments",
+  );
+
+  // I) scores-awaiting@ — all evaluator scores in, NOT concluded (score ≠ outcome)
+  const i = await ensureStudent({
+    email: "scores-awaiting@earist.edu.ph",
+    first: "Sam",
+    last: "Scores",
+    studentNumber: "2026-1009",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  const iThesis =
+    (await prisma.thesisRecord.findFirst({
+      where: { studentId: i.student.id },
+    })) ??
+    (await prisma.thesisRecord.create({
+      data: {
+        studentId: i.student.id,
+        stage: "TITLE",
+        status: "SCHEDULED",
+        outcome: null,
+      },
+    }));
+  await prisma.thesisRecord.update({
+    where: { id: iThesis.id },
+    data: { stage: "TITLE", status: "SCHEDULED", outcome: null },
+  });
+  await ensureTitles(iThesis.id);
+  await ensureTitleDocs(iThesis.id);
+  let iSched = await prisma.defenseSchedule.findFirst({
+    where: { thesisId: iThesis.id, defenseType: "TITLE_DEFENSE" },
+  });
+  if (!iSched) {
+    iSched = await prisma.defenseSchedule.create({
+      data: {
+        thesisId: iThesis.id,
+        defenseDate: new Date("2026-09-20T00:00:00.000Z"),
+        defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+        venueOrLink: "https://teams.microsoft.com/l/meetup-join/awaiting-conclude",
+        defenseType: "TITLE_DEFENSE",
+        setById: admin.id,
+        sessionStatus: "AWAITING_CONCLUSION",
+      },
+    });
+    // Master's full roster 7 (explicit adviser seat NOT used on Title)
+    const roster: Array<{
+      email: string;
+      role: "CHAIRMAN" | "PANELIST" | "FACILITATOR" | "RAPPORTEUR";
+    }> = [
+      { email: "panelist1@earist.edu.ph", role: "CHAIRMAN" },
+      { email: "panelist2@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist3@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist4@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist5@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist6@earist.edu.ph", role: "FACILITATOR" },
+      { email: "panelist7@earist.edu.ph", role: "RAPPORTEUR" },
+    ];
+    for (const seat of roster) {
+      const uid = panelistUsers[seat.email];
+      if (!uid) continue;
+      await prisma.panelAssignment.create({
+        data: { scheduleId: iSched.id, userId: uid, role: seat.role },
+      });
+      // Evaluators only (CHAIRMAN + PANELIST) have scores — Fac/Rap do not score
+      if (seat.role === "CHAIRMAN" || seat.role === "PANELIST") {
+        const panel = await prisma.panelAssignment.findFirst({
+          where: { scheduleId: iSched.id, userId: uid },
+        });
+        if (panel) {
+          await prisma.oralExamScore.create({
+            data: {
+              panelId: panel.id,
+              scheduleId: iSched.id,
+              timelinessRelevance: 1.25,
+              organization: 1.5,
+              depthComprehensiveness: 1.5,
+              relevanceConclusions: 1.5,
+              evidenceOriginalThinking: 1.25,
+              groupAAverage: 1.4,
+              presentation: 1.5,
+              masterySubject: 1.5,
+              communicationSkill: 1.5,
+              attitude: 1.0,
+              groupBAverage: 1.4,
+              overallAverage: 1.4,
+              rating: "HS",
+              recommendations: "Solid proposal direction.",
+              scoredAt: new Date(),
+            },
+          });
+        }
+      }
+    }
+  }
+  console.log(
+    "  scenario scores-awaiting@earist.edu.ph → scores complete, outcome NULL, no RAP yet (admin conclude next)",
+  );
+
+  // J) Doctoral student for session total 8 check
+  if (doctoral) {
+    await ensureStudent({
+      email: "doctoral-ready@earist.edu.ph",
+      first: "Doc",
+      last: "Toral",
+      studentNumber: "2026-1010",
+      programId: doctoral.id,
+      compExam: "PASSED",
+    });
+    const jUser = await prisma.user.findUnique({
+      where: { email: "doctoral-ready@earist.edu.ph" },
+    });
+    const jStudent = jUser
+      ? await prisma.student.findUnique({ where: { userId: jUser.id } })
+      : null;
+    if (jStudent) {
+      const jThesis =
+        (await prisma.thesisRecord.findFirst({
+          where: { studentId: jStudent.id },
+        })) ??
+        (await prisma.thesisRecord.create({
+          data: {
+            studentId: jStudent.id,
+            stage: "TITLE",
+            status: "APPROVED",
+          },
+        }));
+      await prisma.thesisRecord.update({
+        where: { id: jThesis.id },
+        data: { stage: "TITLE", status: "APPROVED", outcome: null },
+      });
+      await ensureTitles(jThesis.id);
+      await ensureTitleDocs(jThesis.id);
+    }
+    console.log(
+      "  scenario doctoral-ready@earist.edu.ph → schedule requires session total 8",
+    );
+  }
+
+  console.log("Defense workflow refactor fixtures ready.");
+  console.log("  Password for all fixtures: password123");
+  console.log("  Manual QA map:");
+  console.log("    title-ready@ / title-blocked@ / title-pending@ / title-approved@");
+  console.log("    proposal-ready@ / proposal-blocked-vars@ / revision-blocked@");
+  console.log("    final-ready@ / scores-awaiting@ / doctoral-ready@");
+  console.log("  Panelists panelist1@ … panelist10@ for full 7/8-person committees.");
 }
 
 main()
@@ -1608,4 +2245,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-*/

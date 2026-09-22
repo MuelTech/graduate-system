@@ -228,12 +228,12 @@ function AdminSchedulingPageInner() {
 
   const handleSubmit = () => {
     if (!selected || !isValid) return;
-    const assignments = [
-      ...(derivedAdviser
-        ? [{ userId: derivedAdviser.userId, role: "ADVISER" as DefensePanelRole }]
-        : []),
-      ...committee.map((c) => ({ userId: c.userId, role: c.role })),
-    ];
+    // Adviser relationship ≠ committee seat (source of truth §12.6).
+    // Only explicitly built committee members are submitted — never auto-inject ADVISER.
+    const assignments = committee.map((c) => ({
+      userId: c.userId,
+      role: c.role,
+    }));
     const payload: ScheduleDefensePayload = {
       defenseDate: schedule.defenseDate,
       defenseTime: schedule.defenseTime,
@@ -309,6 +309,7 @@ function AdminSchedulingPageInner() {
               <DefenseSummaryCard application={selected} />
               <DefenseCommitteeBuilder
                 allowedRoles={allowedRoles}
+                sessionTotal={policy?.sessionTotal}
                 committee={committee}
                 adviser={derivedAdviser}
                 onAdd={handleAddMember}

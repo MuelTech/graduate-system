@@ -38,6 +38,7 @@ model User {
   curriculumWaiversRecommended       CurriculumWaiver[]        @relation("WaiverRecommendedBy")
   customRolesCreated                 CustomRole[]              @relation("CustomRoleCreatedBy")
   defenseSchedulesSet                DefenseSchedule[]         @relation("ScheduleSetBy")
+  defenseConclusionsRecorded         DefenseConclusion[]       @relation("DefenseConclusionConcludedBy")
   elibraryEntriesApproved            ELibrary[]                @relation("ELibraryApprovedBy")
   emailTemplatesCreated              EmailTemplate[]           @relation("EmailTemplateCreatedBy")
   emailTemplatesUpdated              EmailTemplate[]           @relation("EmailTemplateUpdatedBy")
@@ -440,6 +441,7 @@ model ThesisRecord {
   assignmentId              String?                    @map("assignment_id")
   stage                     ThesisStage                @default(TITLE)
   status                    ThesisStatus               @default(PENDING)
+  outcome                   DefenseOutcome?
   rejectionReason           String?                    @map("rejection_reason") @db.Text
   orNumber                  String?                    @map("or_number")
   amountPaid                Decimal?                   @map("amount_paid")
@@ -453,6 +455,7 @@ model ThesisRecord {
   manuscriptSubmission      ManuscriptSubmission?
   plagiarismResults         PlagiarismResult[]
   rapReports                RapReport[]
+  defenseConclusions        DefenseConclusion[]
   researchVariableForms     ResearchVariableForm[]
   statisticianCertification StatisticianCertification?
   thesisDocuments           ThesisDocument[]
@@ -472,19 +475,22 @@ model ThesisTitle {
   isSelected Boolean      @default(false) @map("is_selected")
   createdAt  DateTime     @default(now()) @map("created_at")
   thesis     ThesisRecord @relation(fields: [thesisId], references: [id])
+  defenseConclusions DefenseConclusion[]
 
   @@index([thesisId], map: "thesis_titles_thesis_id_fkey")
   @@map("thesis_titles")
 }
 
 model ThesisDocument {
-  id         String        @id @default(uuid()) @map("document_id")
-  thesisId   String        @map("thesis_id")
-  docType    ThesisDocType @map("doc_type")
-  filePath   String        @map("file_path")
-  copyNumber Int?          @map("copy_number")
-  uploadedAt DateTime      @map("uploaded_at")
-  thesis     ThesisRecord  @relation(fields: [thesisId], references: [id])
+  id            String         @id @default(uuid()) @map("document_id")
+  thesisId      String         @map("thesis_id")
+  docType       ThesisDocType  @map("doc_type")
+  /** Stage this evidence belongs to. Null = legacy unscoped row. */
+  defenseStage  ThesisStage?   @map("defense_stage")
+  filePath      String         @map("file_path")
+  copyNumber    Int?           @map("copy_number")
+  uploadedAt    DateTime       @map("uploaded_at")
+  thesis        ThesisRecord   @relation(fields: [thesisId], references: [id])
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
   @@map("thesis_documents")
@@ -497,6 +503,7 @@ model DefenseSchedule {
   defenseTime             DateTime                 @map("defense_time") @db.Time(0)
   venueOrLink             String?                  @map("venue_or_link")
   defenseType             DefenseType              @map("defense_type")
+  sessionStatus           DefenseSessionStatus     @default(UNSCHEDULED) @map("session_status")
   setById                 String                   @map("set_by")
   rapporteurNotes         String?                  @map("rapporteur_notes") @db.Text
   createdAt               DateTime                 @default(now()) @map("created_at")
@@ -505,6 +512,7 @@ model DefenseSchedule {
   thesis                  ThesisRecord             @relation(fields: [thesisId], references: [id])
   oralExamScores          OralExamScore[]
   oralExamSummary         OralExamSummary?
+  conclusion              DefenseConclusion?
   panelAssignments        PanelAssignment[]
   rapReports              RapReport[]
 
@@ -680,17 +688,42 @@ model RapReport {
   @@map("rap_reports")
 }
 
+model DefenseConclusion {
+  id              String          @id @default(uuid()) @map("conclusion_id")
+  scheduleId      String          @unique @map("schedule_id")
+  thesisId        String          @map("thesis_id")
+  outcome         DefenseOutcome
+  selectedTitleId String?         @map("selected_title_id")
+  finalRemarks    String?         @map("final_remarks") @db.Text
+  concludedById   String          @map("concluded_by")
+  concludedAt     DateTime        @default(now()) @map("concluded_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  concludedBy     User            @relation("DefenseConclusionConcludedBy", fields: [concludedById], references: [id])
+  schedule        DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  selectedTitle   ThesisTitle?    @relation(fields: [selectedTitleId], references: [id])
+  thesis          ThesisRecord    @relation(fields: [thesisId], references: [id])
+
+  @@index([concludedById], map: "defense_conclusions_concluded_by_fkey")
+  @@index([selectedTitleId], map: "defense_conclusions_selected_title_id_fkey")
+  @@index([thesisId], map: "defense_conclusions_thesis_id_fkey")
+  @@map("defense_conclusions")
+}
+
 model RapReportSignature {
-  id            String    @id @default(uuid()) @map("sig_id")
-  rapId         String    @map("rap_id")
-  userId        String    @map("user_id")
-  isSigned      Boolean?  @map("is_signed")
-  signatureData String?   @map("signature_data")
-  signedAt      DateTime? @map("signed_at")
-  notifiedAt    DateTime? @map("notified_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  rapReport     RapReport @relation(fields: [rapId], references: [id])
-  user          User      @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid()) @map("sig_id")
+  rapId          String    @map("rap_id")
+  userId         String    @map("user_id")
+  /** Functional role at the defense session when the slot was created. */
+  roleAtDefense  String?   @map("role_at_defense")
+  /** Whether this signature blocks RAP finalization. Form-specific policy is UNRESOLVED. */
+  required       Boolean?  @default(true) @map("required")
+  isSigned       Boolean?  @map("is_signed")
+  signatureData  String?   @map("signature_data")
+  signedAt       DateTime? @map("signed_at")
+  notifiedAt     DateTime? @map("notified_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  rapReport      RapReport @relation(fields: [rapId], references: [id])
+  user           User      @relation(fields: [userId], references: [id])
 
   @@index([rapId], map: "rap_report_signatures_rap_id_fkey")
   @@index([userId], map: "rap_report_signatures_user_id_fkey")
@@ -1148,7 +1181,27 @@ enum ThesisStatus {
   @@map("thesis_status")
 }
 
+enum DefenseOutcome {
+  PASSED
+  REVISION_REQUIRED
+  FAILED
+
+  @@map("defense_outcome")
+}
+
+enum DefenseSessionStatus {
+  UNSCHEDULED
+  SCHEDULED
+  IN_PROGRESS
+  AWAITING_CONCLUSION
+  CONCLUDED
+  CANCELLED
+
+  @@map("defense_session_status")
+}
+
 enum ThesisDocType {
+  TITLE_PROPOSAL
   PROPOSAL_CHAPTERS
   FINAL_MANUSCRIPT
   PLAGIARISM_REPORT
@@ -1210,6 +1263,8 @@ enum Recipient {
 
 enum RapStatus {
   DRAFT
+  FOR_SIGNATURE
+  PARTIALLY_SIGNED
   DISTRIBUTED
   ALL_SIGNED
   FINALIZED
@@ -1234,6 +1289,7 @@ enum StatCertStatus {
 enum ResearchVarStatus {
   PENDING
   APPROVED_BY_PANEL
+  NOT_APPLICABLE
 
   @@map("research_var_status")
 }

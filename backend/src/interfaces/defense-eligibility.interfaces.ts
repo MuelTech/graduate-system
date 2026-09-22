@@ -10,6 +10,7 @@ export type MissingRequirementCode =
   | "THESIS_NOT_APPROVED"
   | "THREE_TITLES"
   | "CONCEPT_PAPER"
+  | "TITLE_PROPOSAL"
   | "PROPOSAL_CHAPTERS"
   | "FINAL_MANUSCRIPT"
   | "COR"
@@ -40,25 +41,59 @@ export const DEFENSE_TYPE_STAGE = {
 
 export type DefenseTypeName = keyof typeof DEFENSE_TYPE_STAGE;
 
+/**
+ * Research Variables are conditional (public Stage #2 guidance: "IF ANY").
+ * NOT_APPLICABLE satisfies the requirement when the study has no variables.
+ */
+export type ResearchVariablesState =
+  | "NONE"
+  | "PENDING"
+  | "APPROVED"
+  | "NOT_APPLICABLE";
+
+export interface StageEvidenceFlags {
+  titlePackage: boolean;
+  proposalChapters: boolean;
+  finalManuscript: boolean;
+  corTitle: boolean;
+  corProposal: boolean;
+  corFinal: boolean;
+  receiptTitle: boolean;
+  receiptProposal: boolean;
+  receiptFinal: boolean;
+  instruments: boolean;
+}
+
+export interface AdviserCertFlags {
+  proposal: boolean;
+  final: boolean;
+}
+
 export interface EligibilitySnapshot {
   studentId: string | null;
   thesisId: string | null;
   thesisStage: DefenseStage | null;
   thesisStatus: string | null;
+  /** Formal academic outcome from DefenseConclusion / conclusion flow. */
+  thesisOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+  hasSelectedTitle: boolean;
   compExamPassed: boolean;
   compExamDismissed: boolean;
   activeAdviser: boolean;
   titleCount: number;
-  conceptPaper: boolean;
-  proposalChapters: boolean;
-  finalManuscript: boolean;
-  cor: boolean;
-  receipt: boolean;
-  adviserCertIssued: boolean;
+  /** Stage-scoped uploads (never satisfied by a prior-stage file). */
+  evidence: StageEvidenceFlags;
+  adviserCerts: AdviserCertFlags;
   titleRapSigned: boolean;
   proposalRapSigned: boolean;
-  researchVariablesApproved: boolean;
-  instruments: boolean;
+  researchVariables: ResearchVariablesState;
   statisticianCert: boolean;
   plagiarismEligible: boolean;
+}
+
+/** User-provided files on the current application request. */
+export interface ApplicationUploadInput {
+  manuscript: boolean;
+  cor: boolean;
+  receipt: boolean;
 }

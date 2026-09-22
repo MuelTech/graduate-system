@@ -14,7 +14,7 @@ export interface AssignAdviserInput {
 }
 
 export interface UpdateDefenseStatusInput {
-  status: 'SCHEDULED' | 'PASSED' | 'FAILED' | 'REVISION';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
 export interface ScheduleDefenseInput {

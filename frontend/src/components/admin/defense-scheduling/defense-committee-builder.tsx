@@ -11,6 +11,7 @@ import { ROLE_LABELS, panelistToMember, type CommitteeMember } from "./types";
 
 type Props = {
   allowedRoles: DefensePanelRole[];
+  sessionTotal?: number;
   committee: CommitteeMember[];
   adviser?: CommitteeMember | null;
   onAdd: (m: CommitteeMember) => void;
@@ -20,6 +21,7 @@ type Props = {
 
 export function DefenseCommitteeBuilder({
   allowedRoles,
+  sessionTotal,
   committee,
   adviser,
   onAdd,
@@ -56,7 +58,9 @@ export function DefenseCommitteeBuilder({
           </Badge>
         </div>
         <p className="text-xs text-(--earist-body-text)">
-          Committee size is currently policy-configurable.
+          {sessionTotal
+            ? `Confirmed session total: ${sessionTotal} (Facilitator + Rapporteur required). Adviser seat is optional and never auto-added.`
+            : "Committee size is policy-configurable (session totals 7 Master's / 8 Doctoral)."}
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -69,7 +73,7 @@ export function DefenseCommitteeBuilder({
               <p className="font-semibold">{adviser.name}</p>
               <p className="text-xs text-(--earist-body-text)">{adviser.email}</p>
               <p className="text-xs text-(--earist-body-text)">
-                Automatically assigned from active adviser relationship
+                Active thesis adviser relationship (committee seat is optional — add explicitly if needed)
               </p>
               <Badge className="mt-2 bg-amber-100 text-amber-800">
                 {ROLE_LABELS.ADVISER}

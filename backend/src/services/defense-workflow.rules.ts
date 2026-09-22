@@ -1,10 +1,21 @@
 /**
  * Pure defense workflow status rules.
- * APPROVED != PASSED. Only PASSED unlocks the next stage.
+ * APPLICATION.APPROVED != DEFENSE.PASSED.
+ * Academic outcome is recorded only by formal conclusion (DefenseOutcome).
+ * Only PASSED unlocks the next stage. REVISION_REQUIRED does not.
  */
 
 export type ApplicationReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type DefenseOutcomeStatus = "PASSED" | "REVISION" | "FAILED";
+export type DefenseOutcomeStatus = "PASSED" | "REVISION_REQUIRED" | "FAILED";
+export type DefenseSessionStatusName =
+  | "UNSCHEDULED"
+  | "SCHEDULED"
+  | "IN_PROGRESS"
+  | "AWAITING_CONCLUSION"
+  | "CONCLUDED"
+  | "CANCELLED";
+
+/** Legacy overloaded ThesisStatus kept for compat/denormalized UI fields. */
 export type ThesisStatusName =
   | "PENDING"
   | "APPROVED"
@@ -23,12 +34,37 @@ export function isApplicationReviewStatus(
 export function isDefenseOutcomeStatus(
   status: string,
 ): status is DefenseOutcomeStatus {
-  return status === "PASSED" || status === "REVISION" || status === "FAILED";
+  return (
+    status === "PASSED" ||
+    status === "REVISION_REQUIRED" ||
+    status === "FAILED"
+  );
+}
+
+/** API conclusion body may use REVISION as alias of REVISION_REQUIRED. */
+export function normalizeDefenseOutcome(
+  raw: string | null | undefined,
+): DefenseOutcomeStatus | null {
+  if (!raw) return null;
+  const v = String(raw).toUpperCase();
+  if (v === "PASSED") return "PASSED";
+  if (v === "FAILED") return "FAILED";
+  if (v === "REVISION" || v === "REVISION_REQUIRED") return "REVISION_REQUIRED";
+  return null;
 }
 
 /** Never treat an approved application as a passed defense. */
-export function isStageUnlockedByPriorStatus(priorStatus: ThesisStatusName): boolean {
+export function isStageUnlockedByPriorStatus(
+  priorStatus: ThesisStatusName,
+): boolean {
   return priorStatus === "PASSED";
+}
+
+/** Preferred: unlock from formal outcome, not overloaded status. */
+export function isStageUnlockedByPriorOutcome(
+  priorOutcome: DefenseOutcomeStatus | null | undefined,
+): boolean {
+  return priorOutcome === "PASSED";
 }
 
 export function canResubmitApplication(status: ThesisStatusName): boolean {
@@ -43,6 +79,23 @@ export function canScheduleApplication(status: ThesisStatusName): boolean {
   return status === "APPROVED";
 }
 
+/**
+ * Application review may only write review statuses.
+ * Defense outcomes are recorded exclusively via formal conclusion.
+ */
+export function canSetApplicationReviewStatus(
+  next: string,
+): next is ApplicationReviewStatus {
+  return isApplicationReviewStatus(next);
+}
+
+export function canRecordDefenseOutcome(input: {
+  alreadyConcluded: boolean;
+  hasConclusionAuthority: boolean;
+}): boolean {
+  return !input.alreadyConcluded && input.hasConclusionAuthority;
+}
+
 export function validateTitleConclusionSelection(
   defenseType: string,
   selectedTitleId: string | null | undefined,
@@ -54,7 +107,8 @@ export function validateTitleConclusionSelection(
   if (!selectedTitleId) {
     return {
       valid: false,
-      error: "Title Defense conclusion requires selecting an approved research title.",
+      error:
+        "Title Defense conclusion requires selecting an approved research title.",
     };
   }
   if (!thesisTitleIds.includes(selectedTitleId)) {
@@ -81,9 +135,24 @@ export function isScoringComplete(
   evaluatorAssignments: number,
   submittedEvaluatorScores: number,
 ): boolean {
-  return evaluatorAssignments > 0 && submittedEvaluatorScores >= evaluatorAssignments;
+  return (
+    evaluatorAssignments > 0 && submittedEvaluatorScores >= evaluatorAssignments
+  );
 }
 
-export function canSubmitOralScore(role: string, evaluatorRoles: string[]): boolean {
+export function canSubmitOralScore(
+  role: string,
+  evaluatorRoles: string[],
+): boolean {
   return evaluatorRoles.includes(role);
+}
+
+/** Map legacy ThesisStatus outcome values to DefenseOutcome. */
+export function mapLegacyStatusToOutcome(
+  status: ThesisStatusName,
+): DefenseOutcomeStatus | null {
+  if (status === "PASSED") return "PASSED";
+  if (status === "FAILED") return "FAILED";
+  if (status === "REVISION") return "REVISION_REQUIRED";
+  return null;
 }

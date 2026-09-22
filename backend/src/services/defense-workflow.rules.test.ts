@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   applyWinningTitleFlags,
   canApproveApplication,
+  canRecordDefenseOutcome,
   canResubmitApplication,
   canScheduleApplication,
+  canSetApplicationReviewStatus,
   canSubmitOralScore,
   isApplicationReviewStatus,
   isScoringComplete,
+  isStageUnlockedByPriorOutcome,
   isStageUnlockedByPriorStatus,
+  normalizeDefenseOutcome,
   validateTitleConclusionSelection,
 } from "./defense-workflow.rules";
 
@@ -19,11 +23,50 @@ describe("APPROVED != PASSED", () => {
     expect(isStageUnlockedByPriorStatus("PASSED")).toBe(true);
   });
 
+  it("unlocks only from formal PASSED outcome", () => {
+    expect(isStageUnlockedByPriorOutcome("PASSED")).toBe(true);
+    expect(isStageUnlockedByPriorOutcome("REVISION_REQUIRED")).toBe(false);
+    expect(isStageUnlockedByPriorOutcome("FAILED")).toBe(false);
+    expect(isStageUnlockedByPriorOutcome(null)).toBe(false);
+  });
+
+  it("normalizes conclusion outcome aliases", () => {
+    expect(normalizeDefenseOutcome("PASSED")).toBe("PASSED");
+    expect(normalizeDefenseOutcome("REVISION")).toBe("REVISION_REQUIRED");
+    expect(normalizeDefenseOutcome("REVISION_REQUIRED")).toBe("REVISION_REQUIRED");
+    expect(normalizeDefenseOutcome("FAILED")).toBe("FAILED");
+    expect(normalizeDefenseOutcome("APPROVED")).toBe(null);
+    expect(normalizeDefenseOutcome(undefined)).toBe(null);
+  });
+
+  it("blocks double conclusion and unauthorized conclusion", () => {
+    expect(
+      canRecordDefenseOutcome({
+        alreadyConcluded: false,
+        hasConclusionAuthority: true,
+      }),
+    ).toBe(true);
+    expect(
+      canRecordDefenseOutcome({
+        alreadyConcluded: true,
+        hasConclusionAuthority: true,
+      }),
+    ).toBe(false);
+    expect(
+      canRecordDefenseOutcome({
+        alreadyConcluded: false,
+        hasConclusionAuthority: false,
+      }),
+    ).toBe(false);
+  });
+
   it("application review may only set review statuses", () => {
     expect(isApplicationReviewStatus("APPROVED")).toBe(true);
     expect(isApplicationReviewStatus("REJECTED")).toBe(true);
     expect(isApplicationReviewStatus("PASSED")).toBe(false);
     expect(isApplicationReviewStatus("SCHEDULED")).toBe(false);
+    expect(canSetApplicationReviewStatus("PASSED")).toBe(false);
+    expect(canSetApplicationReviewStatus("APPROVED")).toBe(true);
   });
 });
 

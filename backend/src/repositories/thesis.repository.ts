@@ -1,4 +1,8 @@
 import prisma from "../config/database";
+import {
+  rapStatusAfterSignatures,
+  resolveRapSignatureRequirements,
+} from "../services/rap-signature.policy";
 
 export class ThesisRepository {
   async getStudentByUserId(userId: string) {
@@ -6,7 +10,14 @@ export class ThesisRepository {
   }
 
   async getStudentById(studentId: string) {
-    return prisma.student.findUnique({ where: { id: studentId } });
+    return prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        program: {
+          select: { id: true, programName: true, programType: true },
+        },
+      },
+    });
   }
 
   async getThesisById(thesisId: string) {
@@ -18,6 +29,39 @@ export class ThesisRepository {
       where: { id: scheduleId },
       select: { id: true, defenseType: true },
     });
+  }
+
+  /** Read model for formal conclusion preconditions (scores complete, not already concluded). */
+  async getDefenseScheduleForConclude(scheduleId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        conclusion: { select: { id: true } },
+        thesis: {
+          include: {
+            thesisTitles: { select: { id: true } },
+          },
+        },
+        panelAssignments: {
+          select: { role: true },
+        },
+        oralExamScores: { select: { id: true } },
+      },
+    });
+    if (!schedule) return null;
+
+    const evaluatorRoles = new Set(["CHAIRMAN", "PANELIST"]);
+    const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+      evaluatorRoles.has(p.role),
+    ).length;
+
+    return {
+      defenseType: schedule.defenseType as string,
+      alreadyConcluded: !!schedule.conclusion,
+      evaluatorAssignments,
+      submittedEvaluatorScores: schedule.oralExamScores.length,
+      thesisTitleIds: schedule.thesis.thesisTitles.map((t) => t.id),
+    };
   }
 
   async getPendingDefenses() {
@@ -371,24 +415,27 @@ export class ThesisRepository {
         });
       }
 
-      // 3. Save the uploaded concept paper, cor, and receipt
+      // 3. Stage-scoped Title evidence (§16) — package + COR + fee proof
       await tx.thesisDocument.createMany({
         data: [
           {
             thesisId: thesis.id,
-            docType: "PROPOSAL_CHAPTERS",
+            docType: "TITLE_PROPOSAL",
+            defenseStage: "TITLE",
             filePath: conceptPaperPath,
             uploadedAt: new Date(),
           },
           {
             thesisId: thesis.id,
             docType: "COR",
+            defenseStage: "TITLE",
             filePath: corPath,
             uploadedAt: new Date(),
           },
           {
             thesisId: thesis.id,
             docType: "RECEIPT",
+            defenseStage: "TITLE",
             filePath: receiptPath,
             uploadedAt: new Date(),
           },
@@ -403,25 +450,38 @@ export class ThesisRepository {
     thesisId: string,
     filePath: string,
     corPath: string,
+    receiptPath: string,
   ) {
     return prisma.$transaction(async (tx) => {
+      // New stage application starts a fresh review cycle; clear prior outcome
+      // so Title PASSED cannot be mistaken for Proposal PASSED.
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
-        data: { stage: "PROPOSAL", status: "PENDING" },
+        data: { stage: "PROPOSAL", status: "PENDING", outcome: null },
       });
 
+      // Proposal-scoped evidence only (Title package/receipt never counts here).
       await tx.thesisDocument.createMany({
         data: [
           {
             thesisId,
             docType: "PROPOSAL_CHAPTERS",
+            defenseStage: "PROPOSAL",
             filePath: filePath,
             uploadedAt: new Date(),
           },
           {
             thesisId,
             docType: "COR",
+            defenseStage: "PROPOSAL",
             filePath: corPath,
+            uploadedAt: new Date(),
+          },
+          {
+            thesisId,
+            docType: "RECEIPT",
+            defenseStage: "PROPOSAL",
+            filePath: receiptPath,
             uploadedAt: new Date(),
           },
         ],
@@ -435,11 +495,12 @@ export class ThesisRepository {
     thesisId: string,
     filePath: string,
     corPath: string,
+    receiptPath: string,
   ) {
     return prisma.$transaction(async (tx) => {
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
-        data: { stage: "FINAL", status: "PENDING" },
+        data: { stage: "FINAL", status: "PENDING", outcome: null },
       });
 
       await tx.thesisDocument.createMany({
@@ -447,13 +508,22 @@ export class ThesisRepository {
           {
             thesisId,
             docType: "FINAL_MANUSCRIPT",
+            defenseStage: "FINAL",
             filePath: filePath,
             uploadedAt: new Date(),
           },
           {
             thesisId,
             docType: "COR",
+            defenseStage: "FINAL",
             filePath: corPath,
+            uploadedAt: new Date(),
+          },
+          {
+            thesisId,
+            docType: "RECEIPT",
+            defenseStage: "FINAL",
+            filePath: receiptPath,
             uploadedAt: new Date(),
           },
         ],
@@ -509,7 +579,7 @@ export class ThesisRepository {
    */
   async updateThesisStatus(
     thesisId: string,
-    status: "PENDING" | "APPROVED" | "REJECTED" | "SCHEDULED" | "PASSED" | "FAILED" | "REVISION",
+    status: "PENDING" | "APPROVED" | "REJECTED",
     options?: { rejectionReason?: string | null },
   ) {
     return prisma.thesisRecord.update({
@@ -575,6 +645,10 @@ export class ThesisRepository {
         where: { id: thesisId },
         data: { status: "SCHEDULED" },
       });
+      await tx.defenseSchedule.update({
+        where: { id: schedule.id },
+        data: { sessionStatus: "SCHEDULED" },
+      });
 
       return tx.defenseSchedule.findUnique({
         where: { id: schedule.id },
@@ -631,7 +705,7 @@ export class ThesisRepository {
         );
       }
 
-      // Save the individual evaluator's score
+      // Persist score only. Completing scores never mutates official outcome (§13.3–13.4).
       const score = await tx.oralExamScore.create({
         data: {
           panelId,
@@ -654,83 +728,31 @@ export class ThesisRepository {
         },
       });
 
-      // Completion is evaluator-only â€” Adviser/Facilitator/Rapporteur never block.
+      // Completion is evaluator-only — Adviser/Facilitator/Rapporteur never block.
       const assignedCount = await tx.panelAssignment.count({
         where: { scheduleId, role: { in: evaluatorRoles as any } },
       });
-
       const submittedCount = await tx.oralExamScore.count({
         where: { scheduleId },
       });
 
       if (assignedCount > 0 && submittedCount >= assignedCount) {
-        // All panelists have submitted
-        // Calculate the grand final summary
-        const allScores = await tx.oralExamScore.findMany({
-          where: { scheduleId },
-        });
-
-        const grandOverAllAverage =
-          allScores.reduce((acc, s) => acc + Number(s.overallAverage), 0) /
-          submittedCount;
-        let finalRating: any = "PASSED";
-        if (grandOverAllAverage >= 1.0 && grandOverAllAverage <= 1.25)
-          finalRating = "PASSED_WITH_MERIT";
-        else if (grandOverAllAverage >= 3.0) finalRating = "FAILED";
-
-        await tx.oralExamSummary.create({
-          data: {
-            scheduleId,
-            overallAverage: grandOverAllAverage,
-            finalRating,
-          },
-        });
-
-        const scheduleRecord = await tx.defenseSchedule.findUnique({
+        // All required evaluator scores are in → AWAITING_CONCLUSION only.
+        // Official outcome, OralExamSummary rating, and RAP are created solely by concludeDefense.
+        await tx.defenseSchedule.update({
           where: { id: scheduleId },
+          data: { sessionStatus: "AWAITING_CONCLUSION" },
         });
-
-        if (scheduleRecord) {
-          // Update the Thesis status to PASSED or FAILED
-          await tx.thesisRecord.update({
-            where: { id: scheduleRecord.thesisId },
-            data: { status: finalRating === "FAILED" ? "FAILED" : "PASSED" },
-          });
-
-          //Automated RAP Report Generation
-          const rapReport = await tx.rapReport.create({
-            data: {
-              scheduleId,
-              thesisId: scheduleRecord.thesisId,
-              defenseType: scheduleRecord.defenseType,
-              status: "DRAFT",
-
-              generatedAt: new Date(),
-            },
-          });
-
-          // Auto-assign all panelists to digitally sign this report
-          const assignments = await tx.panelAssignment.findMany({
-            where: { scheduleId },
-          });
-
-          for (const assignment of assignments) {
-            await tx.rapReportSignature.create({
-              data: {
-                rapId: rapReport.id,
-                userId: assignment.userId,
-                isSigned: false,
-              },
-            });
-          }
-        }
+      } else if (assignedCount > 0) {
+        await tx.defenseSchedule.update({
+          where: { id: scheduleId },
+          data: { sessionStatus: "IN_PROGRESS" },
+        });
       }
 
       return score;
     });
   }
-
-  // Fetch RAP Reports assigned to this panelist that still need their signature
   async getPendingRapReports(userId: string) {
     return prisma.rapReportSignature.findMany({
       where: {
@@ -766,28 +788,33 @@ export class ThesisRepository {
       throw new Error("Signature request not found or already signed!");
 
     return prisma.$transaction(async (tx) => {
-      // Update the signature record
       const signed = await tx.rapReportSignature.update({
         where: { id: sigId },
         data: {
           isSigned: true,
           signatureData,
-          signedAt: new Date(), // Secure server-side timestamp
+          signedAt: new Date(),
         },
       });
 
-      // Check if all panelists have signed the RAP report
-      const pendingSignatures = await tx.rapReportSignature.count({
-        where: { rapId: signature.rapId, isSigned: false },
+      const slots = await tx.rapReportSignature.findMany({
+        where: { rapId: signature.rapId },
+        select: { required: true, isSigned: true },
       });
 
-      // If everyone has signed, move the report status from DRAFT to FINALIZED
-      if (pendingSignatures === 0) {
-        await tx.rapReport.update({
-          where: { id: signature.rapId },
-          data: { status: "FINALIZED" },
-        });
-      }
+      // Only required signatories block finalization (form policy UNRESOLVED).
+      const nextStatus = rapStatusAfterSignatures(slots);
+      await tx.rapReport.update({
+        where: { id: signature.rapId },
+        data: {
+          status:
+            nextStatus === "FINALIZED"
+              ? "FINALIZED"
+              : nextStatus === "PARTIALLY_SIGNED"
+                ? "PARTIALLY_SIGNED"
+                : "FOR_SIGNATURE",
+        },
+      });
 
       return signed;
     });
@@ -862,7 +889,7 @@ export class ThesisRepository {
     scheduleId: string,
     generatedById: string,
     options?: {
-      outcome?: "PASSED" | "REVISION" | "FAILED";
+      outcome?: "PASSED" | "REVISION" | "REVISION_REQUIRED" | "FAILED";
       selectedTitleId?: string | null;
     },
   ) {
@@ -872,13 +899,25 @@ export class ThesisRepository {
         include: {
           oralExamScores: true,
           panelAssignments: true,
+          conclusion: true,
           thesis: { include: { thesisTitles: true } },
         },
       });
 
       if (!schedule) throw new Error("Schedule not found");
+      if (schedule.conclusion) {
+        throw new Error(
+          "Defense has already been concluded. A second conclusion is not allowed.",
+        );
+      }
 
-      const outcome = options?.outcome ?? "PASSED";
+      const rawOutcome = options?.outcome ?? "PASSED";
+      const outcome =
+        rawOutcome === "REVISION" || rawOutcome === "REVISION_REQUIRED"
+          ? ("REVISION_REQUIRED" as const)
+          : rawOutcome === "FAILED"
+            ? ("FAILED" as const)
+            : ("PASSED" as const);
       const selectedTitleId = options?.selectedTitleId ?? null;
 
       // Title Defense conclusion must pick one of the student's proposed titles.
@@ -931,16 +970,45 @@ export class ThesisRepository {
           scheduleId,
           overallAverage: finalAverage,
           finalRating:
-            outcome === "PASSED" ? "VS" : outcome === "REVISION" ? "S" : "BS",
+            outcome === "PASSED"
+              ? "VS"
+              : outcome === "REVISION_REQUIRED"
+                ? "S"
+                : "BS",
           finalRemarks: `Defense outcome: ${outcome}`,
           attestedById: generatedById,
         },
       });
 
-      // Thesis stage status: only PASSED unlocks the next defense stage.
+      // Formal conclusion record (sole source of academic outcome).
+      const conclusion = await tx.defenseConclusion.create({
+        data: {
+          scheduleId,
+          thesisId: schedule.thesisId,
+          outcome,
+          selectedTitleId:
+            schedule.defenseType === "TITLE_DEFENSE" ? selectedTitleId : null,
+          finalRemarks: `Defense outcome: ${outcome}`,
+          concludedById: generatedById,
+          concludedAt: new Date(),
+        },
+      });
+
+      // Persist formal outcome. Compat-mirror into ThesisStatus for existing UI (Phase G).
+      const legacyStatus =
+        outcome === "PASSED"
+          ? ("PASSED" as const)
+          : outcome === "FAILED"
+            ? ("FAILED" as const)
+            : ("REVISION" as const);
       await tx.thesisRecord.update({
         where: { id: schedule.thesisId },
-        data: { status: outcome },
+        data: { outcome, status: legacyStatus },
+      });
+
+      await tx.defenseSchedule.update({
+        where: { id: scheduleId },
+        data: { sessionStatus: "CONCLUDED" },
       });
 
       // Draft RAP only â€” Rapporteur must submit post-defense summary before completion.
@@ -952,20 +1020,29 @@ export class ThesisRepository {
           reportDate: new Date(),
           decisionsAndRecommendations: finalDecisions,
           selectedTitle,
-          status: "DRAFT",
+          status: "FOR_SIGNATURE",
           generatedById,
         },
       });
 
-      // Required defense participants get signature slots (not oral-score-dependent).
+      // Signature slots from policy (form-specific sets UNRESOLVED — interim all participants).
+      const signatureRequirements = resolveRapSignatureRequirements(
+        schedule.panelAssignments.map((p) => ({
+          userId: p.userId,
+          role: p.role as string,
+        })),
+        schedule.defenseType as string,
+      );
       await tx.rapReportSignature.createMany({
-        data: schedule.panelAssignments.map((panel) => ({
+        data: signatureRequirements.map((req) => ({
           rapId: rapReport.id,
-          userId: panel.userId,
+          userId: req.userId,
+          roleAtDefense: req.roleAtDefense,
+          required: req.required,
         })),
       });
 
-      return rapReport;
+      return { conclusion, rapReport };
     });
   }
 

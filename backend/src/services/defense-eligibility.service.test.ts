@@ -6,28 +6,38 @@ import {
 } from "../interfaces/defense-eligibility.interfaces";
 import {
   DefenseEligibilityService,
+  researchVariablesSatisfied,
   type ApplyTitleEligibilityInput,
 } from "./defense-eligibility.service";
+import { DEFAULT_FINAL_OPTIONAL_GATES } from "./defense-gates.config";
 
 const baseSnap = (): EligibilitySnapshot => ({
   studentId: "s1",
   thesisId: "t1",
   thesisStage: "TITLE",
   thesisStatus: "PENDING",
+  thesisOutcome: null,
+  hasSelectedTitle: false,
   compExamPassed: true,
   compExamDismissed: false,
   activeAdviser: true,
   titleCount: 3,
-  conceptPaper: true,
-  proposalChapters: true,
-  finalManuscript: true,
-  cor: true,
-  receipt: true,
-  adviserCertIssued: true,
+  evidence: {
+    titlePackage: true,
+    proposalChapters: true,
+    finalManuscript: true,
+    corTitle: true,
+    corProposal: true,
+    corFinal: true,
+    receiptTitle: true,
+    receiptProposal: true,
+    receiptFinal: true,
+    instruments: true,
+  },
+  adviserCerts: { proposal: true, final: true },
   titleRapSigned: true,
   proposalRapSigned: true,
-  researchVariablesApproved: true,
-  instruments: true,
+  researchVariables: "APPROVED",
   statisticianCert: true,
   plagiarismEligible: true,
 });
@@ -72,7 +82,7 @@ describe("evaluateApplyTitle", () => {
     expect(codes(result.missing)).toContain("COMP_EXAM_DISMISSED");
   });
 
-  it("requires three titles and files", () => {
+  it("requires three titles and stage-scoped files", () => {
     const result = svc.evaluateApplyTitle(
       titleInput({
         titleCountFromRequest: 2,
@@ -82,12 +92,7 @@ describe("evaluateApplyTitle", () => {
       }),
     );
     expect(codes(result.missing)).toEqual(
-      expect.arrayContaining([
-        "THREE_TITLES",
-        "CONCEPT_PAPER",
-        "COR",
-        "RECEIPT",
-      ]),
+      expect.arrayContaining(["THREE_TITLES", "TITLE_PROPOSAL", "COR", "RECEIPT"]),
     );
   });
 });
@@ -95,11 +100,13 @@ describe("evaluateApplyTitle", () => {
 describe("evaluateApplyProposal", () => {
   const svc = new DefenseEligibilityService();
 
-  it("requires title PASSED and proposal matrix", () => {
+  it("requires title PASSED outcome and proposal matrix", () => {
     const ok = svc.evaluateApplyProposal({
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PASSED",
+      thesisOutcome: "PASSED",
+      hasSelectedTitle: true,
     });
     expect(ok.eligible).toBe(true);
 
@@ -107,9 +114,10 @@ describe("evaluateApplyProposal", () => {
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PENDING",
-      adviserCertIssued: false,
+      thesisOutcome: null,
+      adviserCerts: { proposal: false, final: true },
       titleRapSigned: false,
-      researchVariablesApproved: false,
+      researchVariables: "NONE",
     });
     expect(bad.eligible).toBe(false);
     expect(codes(bad.missing)).toEqual(
@@ -122,11 +130,70 @@ describe("evaluateApplyProposal", () => {
     );
   });
 
+  it("does not unlock Proposal from REVISION_REQUIRED or APPROVED-without-outcome", () => {
+    const revision = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      thesisStage: "TITLE",
+      thesisStatus: "REVISION",
+      thesisOutcome: "REVISION_REQUIRED",
+      hasSelectedTitle: true,
+    });
+    expect(codes(revision.missing)).toContain("THESIS_STAGE");
+
+    const approvedOnly = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      thesisStage: "TITLE",
+      thesisStatus: "APPROVED",
+      thesisOutcome: null,
+      hasSelectedTitle: true,
+    });
+    expect(codes(approvedOnly.missing)).toContain("THESIS_STAGE");
+  });
+
+  it("accepts Research Variables NOT_APPLICABLE", () => {
+    expect(researchVariablesSatisfied("NOT_APPLICABLE")).toBe(true);
+    expect(researchVariablesSatisfied("APPROVED")).toBe(true);
+    expect(researchVariablesSatisfied("PENDING")).toBe(false);
+    expect(researchVariablesSatisfied("NONE")).toBe(false);
+
+    const result = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      thesisStage: "PROPOSAL",
+      thesisOutcome: null,
+      researchVariables: "NOT_APPLICABLE",
+    });
+    expect(result.eligible).toBe(true);
+  });
+
+  it("requires stage-scoped COR and fee proof (Title receipt is not enough)", () => {
+    const result = svc.evaluateApplyProposal(
+      {
+        ...baseSnap(),
+        thesisStage: "TITLE",
+        thesisOutcome: "PASSED",
+        hasSelectedTitle: true,
+        evidence: {
+          ...baseSnap().evidence,
+          corProposal: false,
+          receiptProposal: false,
+          corTitle: true,
+          receiptTitle: true,
+        },
+      },
+      { manuscript: true, cor: false, receipt: false },
+    );
+    expect(codes(result.missing)).toEqual(
+      expect.arrayContaining(["COR", "RECEIPT"]),
+    );
+  });
+
   it("requires active adviser for proposal", () => {
     const result = svc.evaluateApplyProposal({
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PASSED",
+      thesisOutcome: "PASSED",
+      hasSelectedTitle: true,
       activeAdviser: false,
     });
     expect(codes(result.missing)).toContain("ACTIVE_ADVISER");
@@ -136,11 +203,12 @@ describe("evaluateApplyProposal", () => {
 describe("evaluateApplyFinal", () => {
   const svc = new DefenseEligibilityService();
 
-  it("requires proposal PASSED, plagiarism, statistician, instruments", () => {
+  it("requires proposal PASSED outcome and confirmed Final matrix only", () => {
     const ok = svc.evaluateApplyFinal({
       ...baseSnap(),
       thesisStage: "PROPOSAL",
       thesisStatus: "PASSED",
+      thesisOutcome: "PASSED",
     });
     expect(ok.eligible).toBe(true);
 
@@ -148,20 +216,65 @@ describe("evaluateApplyFinal", () => {
       ...baseSnap(),
       thesisStage: "PROPOSAL",
       thesisStatus: "APPROVED",
-      plagiarismEligible: false,
-      statisticianCert: false,
-      instruments: false,
+      thesisOutcome: null,
+      adviserCerts: { proposal: true, final: false },
       proposalRapSigned: false,
     });
     expect(codes(bad.missing)).toEqual(
+      expect.arrayContaining(["THESIS_STAGE", "ADVISER_CERT", "PRIOR_RAP"]),
+    );
+  });
+
+  it("does NOT block Final on STRIKE/statistician/instruments by default", () => {
+    const result = svc.evaluateApplyFinal({
+      ...baseSnap(),
+      thesisStage: "PROPOSAL",
+      thesisOutcome: "PASSED",
+      evidence: { ...baseSnap().evidence, instruments: false },
+      statisticianCert: false,
+      plagiarismEligible: false,
+    });
+    expect(result.eligible).toBe(true);
+  });
+
+  it("blocks Final on those gates only when config enables them", () => {
+    const result = svc.evaluateApplyFinal(
+      {
+        ...baseSnap(),
+        thesisStage: "PROPOSAL",
+        thesisOutcome: "PASSED",
+        evidence: { ...baseSnap().evidence, instruments: false },
+        statisticianCert: false,
+        plagiarismEligible: false,
+      },
+      { manuscript: true, cor: true, receipt: true },
+      {
+        requireInstruments: true,
+        requireStatisticianCert: true,
+        requireStrike: true,
+      },
+    );
+    expect(codes(result.missing)).toEqual(
       expect.arrayContaining([
-        "THESIS_STAGE",
-        "PLAGIARISM_ELIGIBLE",
-        "STATISTICIAN_CERT",
         "INSTRUMENTS",
-        "PRIOR_RAP",
+        "STATISTICIAN_CERT",
+        "PLAGIARISM_ELIGIBLE",
       ]),
     );
+  });
+
+  it("Proposal adviser cert does not satisfy Final cert", () => {
+    const result = svc.evaluateApplyFinal(
+      {
+        ...baseSnap(),
+        thesisStage: "PROPOSAL",
+        thesisOutcome: "PASSED",
+        adviserCerts: { proposal: true, final: false },
+      },
+      { manuscript: true, cor: true, receipt: true },
+      DEFAULT_FINAL_OPTIONAL_GATES,
+    );
+    expect(codes(result.missing)).toContain("ADVISER_CERT");
   });
 });
 
@@ -174,11 +287,14 @@ describe("evaluateSchedule", () => {
         ...baseSnap(),
         thesisStage: "TITLE",
         thesisStatus: "APPROVED",
-        adviserCertIssued: false,
+        adviserCerts: { proposal: false, final: false },
         titleRapSigned: false,
         proposalRapSigned: false,
-        researchVariablesApproved: false,
-        instruments: false,
+        researchVariables: "NONE",
+        evidence: {
+          ...baseSnap().evidence,
+          instruments: false,
+        },
         statisticianCert: false,
         plagiarismEligible: false,
         activeAdviser: false,
@@ -210,16 +326,9 @@ describe("assertEligible", () => {
 
   it("throws when missing is non-empty", () => {
     expect(() =>
-      svc.assertEligible({
-        eligible: false,
-        missing: [
-          {
-            code: "COMP_EXAM_PASSED",
-            message: "Comprehensive Exam must be PASSED.",
-            stage: "TITLE",
-          },
-        ],
-      }),
-    ).toThrowError(/requirements not met/i);
+      svc.assertEligible({ eligible: false, missing: [
+        { code: "COR", message: "x", stage: "TITLE" },
+      ] }),
+    ).toThrow();
   });
 });

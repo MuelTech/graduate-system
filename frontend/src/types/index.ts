@@ -152,12 +152,15 @@ export interface ApprovedApplicationDto {
 export interface CommitteePolicyDto {
   allowedRoles: DefensePanelRole[];
   requiredRoles: DefensePanelRole[];
-  minimumPanelists: number | null;
-  maximumPanelists: number | null;
+  /** Confirmed session totals: Master's 7 / Doctoral 8 */
+  sessionTotal: number;
+  academicSeatCount: number;
   maximumRoleCount: Partial<Record<DefensePanelRole, number | null>>;
   evaluatorRoles: DefensePanelRole[];
   rapporteurRequired: boolean;
   facilitatorRequired: boolean;
+  /** Exact scorer counts remain client-pending */
+  scorerCountPolicy: "UNRESOLVED_DO_NOT_HARDCODE";
 }
 
 export interface RapReportSignatureDoc {

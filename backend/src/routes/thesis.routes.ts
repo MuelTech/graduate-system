@@ -19,21 +19,29 @@ router.post(
   thesisController.applyTitle,
 );
 
-// STUDENT ONLY: Proposal Defense (Expects file 'document')
+// STUDENT ONLY: Proposal Defense — stage-scoped document + cor + receipt
 router.post(
   "/defense/proposal",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.single("document"),
+  upload.fields([
+    { name: "document", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+    { name: "receipt", maxCount: 1 },
+  ]),
   thesisController.applyProposal,
 );
 
-// STUDENT ONLY: Final Defense (Expects file 'document')
+// STUDENT ONLY: Final Defense — stage-scoped document + cor + receipt
 router.post(
   "/defense/final",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.single("document"),
+  upload.fields([
+    { name: "document", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+    { name: "receipt", maxCount: 1 },
+  ]),
   thesisController.applyFinal,
 );
 
@@ -125,6 +133,13 @@ router.get(
   thesisController.searchActivePanelists,
 );
 
+// STUDENT/ADMIN: eligibility read model (same rules as apply/schedule gates)
+router.get(
+  "/eligibility/:defenseType",
+  authenticateJWT,
+  thesisController.getMyEligibility,
+);
+
 // ADMIN: Committee policy (allowed roles, evaluators) for the builder UI
 router.get(
   "/committee-policy",
@@ -173,44 +188,6 @@ router.get(
   thesisController.getAllDefenses,
 );
 
-router.post(
-  "/defense/:id/schedule",
-  authenticateJWT,
-  requireRole(["ADMIN"]),
-  thesisController.scheduleDefense,
-);
-
-router.get(
-  "/defense/:scheduleId/lobby",
-  authenticateJWT,
-  // Let the controller handle exact role validation (Assigned Panelist only)
-  thesisController.getLobbyStatus,
-);
-
-// STUDENT ONLY: Proposal Defense (Expects files 'document' and 'cor')
-router.post(
-  "/defense/proposal",
-  authenticateJWT,
-  requireRole(["STUDENT"]),
-  upload.fields([
-    { name: "document", maxCount: 1 },
-    { name: "cor", maxCount: 1 },
-  ]),
-  thesisController.applyProposal,
-);
-
-// STUDENT ONLY: Final Defense (Expects files 'document' and 'cor')
-router.post(
-  "/defense/final",
-  authenticateJWT,
-  requireRole(["STUDENT"]),
-  upload.fields([
-    { name: "document", maxCount: 1 },
-    { name: "cor", maxCount: 1 },
-  ]),
-  thesisController.applyFinal,
-);
-
 // PANELIST: Get assigned defenses
 router.get(
   "/defense/panelist/assignments",
@@ -246,7 +223,14 @@ router.post(
 // LOBBY POLLING ROUTES
 router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
 router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateRapporteurNotes);
-router.post("/defense/:scheduleId/conclude", authenticateJWT, thesisController.concludeDefense);
+// Formal conclusion — sole writer of academic outcome (interim: ADMIN until OPEN_QUESTION §14.4).
+// Score completion never concludes; RAP is created only here.
+router.post(
+  "/defense/:scheduleId/conclude",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.concludeDefense,
+);
 
 // ADMIN: Manage RAP Reports
 router.get(

@@ -5,6 +5,8 @@ import {
   type ApplyTitleEligibilityInput,
 } from './defense-eligibility.service';
 import { DefenseCommitteePolicy } from './defense-committee.policy';
+import { DefenseConclusionService } from './defense-conclusion.service';
+import { mapProgramType } from '../interfaces/defense-committee.interfaces';
 import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
 import type {
   DefenseTypeName,
@@ -12,7 +14,6 @@ import type {
 } from '../interfaces/defense-eligibility.interfaces';
 import type {
   CommitteeAssignmentInput,
-  DefensePanelRole,
 } from '../interfaces/defense-committee.interfaces';
 import { AppError } from '../utils/AppError';
 
@@ -29,6 +30,7 @@ export class ThesisService {
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
   private committeePolicy = new DefenseCommitteePolicy();
+  private conclusion = new DefenseConclusionService();
 
   async getPendingDefenses() {
     return this.thesisRepo.getPendingDefenses();
@@ -70,14 +72,62 @@ export class ThesisService {
     });
   }
 
+  /** Read model for student/admin UI — same rules the apply/schedule gates use (§17.6). */
+  async getMyEligibility(userId: string, defenseType: string) {
+    const type = String(defenseType || "").toUpperCase() as DefenseTypeName;
+    if (!["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"].includes(type)) {
+      throw new AppError("Invalid defense type.", 400);
+    }
+    const student = await this.thesisRepo.getStudentByUserId(userId);
+    if (!student) throw new AppError("Student profile not found.", 404);
+
+    const snap = await this.eligibilityRepo.loadForStudent(student.id);
+    let result;
+    if (type === "TITLE_DEFENSE") {
+      result = this.eligibility.evaluateApplyTitle({
+        studentExists: true,
+        compExamPassed: snap.compExamPassed,
+        compExamDismissed: snap.compExamDismissed,
+        hasActiveThesisBlocking: false,
+        titleCountFromRequest: snap.titleCount >= 3 ? 3 : snap.titleCount,
+        hasConceptPaper: snap.evidence.titlePackage,
+        hasCor: snap.evidence.corTitle,
+        hasReceipt: snap.evidence.receiptTitle,
+      });
+    } else if (type === "PROPOSAL_DEFENSE") {
+      result = this.eligibility.evaluateApplyProposal(snap);
+    } else {
+      result = this.eligibility.evaluateApplyFinal(snap);
+    }
+
+    return {
+      defenseType: type,
+      eligible: result.eligible,
+      missing: result.missing,
+      researchVariables: snap.researchVariables,
+      evidence: snap.evidence,
+      adviserCerts: snap.adviserCerts,
+      thesisOutcome: snap.thesisOutcome,
+      thesisStage: snap.thesisStage,
+      thesisStatus: snap.thesisStatus,
+      hasSelectedTitle: snap.hasSelectedTitle,
+      titleRapSigned: snap.titleRapSigned,
+      proposalRapSigned: snap.proposalRapSigned,
+    };
+  }
+
   /** Expose committee policy so the UI does not duplicate role rules. */
-  getCommitteePolicy(defenseType: string) {
+  getCommitteePolicy(defenseType: string, programType?: string) {
     if (
       !["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"].includes(defenseType)
     ) {
       throw new AppError("Invalid defense type.", 400);
     }
-    return this.committeePolicy.getPolicy(defenseType as DefenseTypeName);
+    const mapped = mapProgramType(programType);
+    return this.committeePolicy.getPolicy(
+      defenseType as DefenseTypeName,
+      mapped,
+    );
   }
 
   async getAllDefenses() {
@@ -192,29 +242,21 @@ export class ThesisService {
     );
   }
 
-  async applyProposalDefense(userId: string, filePath: string, corPath: string) {
+  async applyProposalDefense(
+    userId: string,
+    filePath: string,
+    corPath: string,
+    receiptPath: string,
+  ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const snap = await this.eligibilityRepo.loadForStudent(student.id);
-    const result = this.eligibility.evaluateApplyProposal(snap);
-
-    if (!filePath) {
-      result.missing.push({
-        code: 'PROPOSAL_CHAPTERS',
-        message: 'Chapters 1–3 document is required.',
-        stage: 'PROPOSAL',
-      });
-      result.eligible = false;
-    }
-    if (!corPath) {
-      result.missing.push({
-        code: 'COR',
-        message: 'Certificate of Registration (COR) is required.',
-        stage: 'PROPOSAL',
-      });
-      result.eligible = false;
-    }
+    const result = this.eligibility.evaluateApplyProposal(snap, {
+      manuscript: !!filePath,
+      cor: !!corPath,
+      receipt: !!receiptPath,
+    });
     this.eligibility.assertEligible(result);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
@@ -225,42 +267,42 @@ export class ThesisService {
       );
     }
 
-    return this.thesisRepo.updateThesisToProposal(thesis.id, filePath, corPath);
+    return this.thesisRepo.updateThesisToProposal(
+      thesis.id,
+      filePath,
+      corPath,
+      receiptPath,
+    );
   }
 
-  async applyFinalDefense(userId: string, filePath: string, corPath: string) {
+  async applyFinalDefense(
+    userId: string,
+    filePath: string,
+    corPath: string,
+    receiptPath: string,
+  ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const snap = await this.eligibilityRepo.loadForStudent(student.id);
-    const result = this.eligibility.evaluateApplyFinal({
-      ...snap,
-      finalManuscript: !!filePath,
+    const result = this.eligibility.evaluateApplyFinal(snap, {
+      manuscript: !!filePath,
+      cor: !!corPath,
+      receipt: !!receiptPath,
     });
-
-    if (!filePath) {
-      result.missing.push({
-        code: 'FINAL_MANUSCRIPT',
-        message: 'Final manuscript is required.',
-        stage: 'FINAL',
-      });
-      result.eligible = false;
-    }
-    if (!corPath) {
-      result.missing.push({
-        code: 'COR',
-        message: 'Certificate of Registration (COR) is required.',
-        stage: 'FINAL',
-      });
-      result.eligible = false;
-    }
     this.eligibility.assertEligible(result);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
     if (!thesis) throw new AppError('No active Thesis Record found.', 400);
 
-    return this.thesisRepo.updateThesisToFinal(thesis.id, filePath, corPath);
+    return this.thesisRepo.updateThesisToFinal(
+      thesis.id,
+      filePath,
+      corPath,
+      receiptPath,
+    );
   }
+
 
   async requestAdviser(userId: string, data: any) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
@@ -312,39 +354,28 @@ export class ThesisService {
     const student = snap.studentId
       ? await this.thesisRepo.getStudentById(snap.studentId)
       : null;
+    const programType = mapProgramType(student?.program?.programType);
     const activeAdviser = snap.studentId
       ? await this.thesisRepo.getActiveAdviserAssignment(snap.studentId)
       : null;
     const adviserUserId = activeAdviser?.adviserId ?? null;
 
-    // Proposal/Final require an active adviser relationship before scheduling.
+    // Adviser relationship is required for Proposal/Final eligibility, but does NOT
+    // auto-create a committee seat (source of truth §12.6). Seat is optional/explicit.
     if (
       (defenseType === 'PROPOSAL_DEFENSE' || defenseType === 'FINAL_DEFENSE') &&
       !adviserUserId
     ) {
       throw new AppError(
-        'Proposal/Final Defense cannot be scheduled without an active thesis adviser.',
+        'Proposal/Final Defense cannot be scheduled without an active thesis adviser relationship.',
         400,
       );
     }
 
-    // Auto-derive ADVISER seat from AdviserAssignment when omitted on Proposal/Final.
-    let finalAssignments = assignments;
-    if (
-      (defenseType === 'PROPOSAL_DEFENSE' || defenseType === 'FINAL_DEFENSE') &&
-      adviserUserId &&
-      !assignments.some((a) => a.role === 'ADVISER')
-    ) {
-      finalAssignments = [
-        ...assignments,
-        { userId: adviserUserId, role: 'ADVISER' as DefensePanelRole },
-      ];
-    }
-
     const validation = this.committeePolicy.validateAssignments(
       defenseType,
-      'UNKNOWN',
-      finalAssignments,
+      programType,
+      assignments,
       { adviserUserId },
     );
     if (!validation.valid) {
@@ -354,7 +385,7 @@ export class ThesisService {
     return this.thesisRepo.scheduleDefense(thesisId, adminId, {
       ...data,
       defenseType,
-      assignments: finalAssignments,
+      assignments,
     });
   }
 
@@ -395,12 +426,34 @@ export class ThesisService {
   async concludeDefense(
     scheduleId: string,
     adminId: string,
+    actorRole: string,
     options?: {
-      outcome?: 'PASSED' | 'REVISION' | 'FAILED';
+      outcome?: 'PASSED' | 'REVISION' | 'REVISION_REQUIRED' | 'FAILED';
       selectedTitleId?: string | null;
     },
   ) {
-    return this.thesisRepo.concludeDefense(scheduleId, adminId, options);
+    // Formal conclusion is the sole writer of academic outcome (Phase E).
+    // REVISION / REVISION_REQUIRED is stored but never unlocks the next stage.
+    const schedule = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
+    if (!schedule) throw new AppError('Defense schedule not found.', 404);
+
+    const outcome = this.conclusion.assertCanConclude(
+      {
+        alreadyConcluded: schedule.alreadyConcluded,
+        actorRole,
+        evaluatorAssignments: schedule.evaluatorAssignments,
+        submittedEvaluatorScores: schedule.submittedEvaluatorScores,
+        defenseType: schedule.defenseType,
+        selectedTitleId: options?.selectedTitleId ?? null,
+        thesisTitleIds: schedule.thesisTitleIds,
+      },
+      options?.outcome ?? 'PASSED',
+    );
+
+    return this.thesisRepo.concludeDefense(scheduleId, adminId, {
+      outcome,
+      selectedTitleId: options?.selectedTitleId ?? null,
+    });
   }
 
   async getAllRapReports() {

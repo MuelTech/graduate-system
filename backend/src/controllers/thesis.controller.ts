@@ -119,11 +119,18 @@ export class ThesisController {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       const document = files?.['document']?.[0];
       const cor = files?.['cor']?.[0];
+      const receipt = files?.['receipt']?.[0];
 
       if (!document) throw new Error('Chapters 1-3 document is required');
       if (!cor) throw new Error('COR is required');
+      if (!receipt) throw new Error('Defense-fee proof of payment is required');
 
-      const result = await this.thesisService.applyProposalDefense(req.user.userId, document.path, cor.path);
+      const result = await this.thesisService.applyProposalDefense(
+        req.user.userId,
+        document.path,
+        cor.path,
+        receipt.path,
+      );
       res.status(200).json({ message: 'Proposal Defense application submitted successfully', result });
     } catch (error: any) {
       sendEligibilityError(res, error);
@@ -137,11 +144,18 @@ export class ThesisController {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       const document = files?.['document']?.[0];
       const cor = files?.['cor']?.[0];
+      const receipt = files?.['receipt']?.[0];
 
       if (!document) throw new Error('Final Manuscript document is required');
       if (!cor) throw new Error('COR is required');
+      if (!receipt) throw new Error('Defense-fee proof of payment is required');
 
-      const result = await this.thesisService.applyFinalDefense(req.user.userId, document.path, cor.path);
+      const result = await this.thesisService.applyFinalDefense(
+        req.user.userId,
+        document.path,
+        cor.path,
+        receipt.path,
+      );
       res.status(200).json({ message: 'Final Defense application submitted successfully', result });
     } catch (error: any) {
       sendEligibilityError(res, error);
@@ -245,10 +259,26 @@ export class ThesisController {
     }
   };
 
+  getMyEligibility = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.getMyEligibility(
+        req.user.userId,
+        String(req.params.defenseType || req.query.defenseType || ''),
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
   getCommitteePolicy = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const defenseType = String(req.query.defenseType || "").toUpperCase();
-      const result = this.thesisService.getCommitteePolicy(defenseType);
+      const programType = req.query.programType
+        ? String(req.query.programType)
+        : undefined;
+      const result = this.thesisService.getCommitteePolicy(defenseType, programType);
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -340,10 +370,12 @@ export class ThesisController {
 
   public concludeDefense = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = (req as any).user?.userId; // Adjust based on your auth middleware
+      const userId = (req as any).user?.userId;
+      const actorRole = String((req as any).user?.role ?? "");
       const rapReport = await this.thesisService.concludeDefense(
         req.params.scheduleId as string,
         userId,
+        actorRole,
         {
           outcome: req.body?.outcome,
           selectedTitleId: req.body?.selectedTitleId ?? null,
@@ -351,7 +383,7 @@ export class ThesisController {
       );
       res.status(200).json({ message: "Defense concluded.", rapReport });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 

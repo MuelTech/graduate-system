@@ -289,8 +289,10 @@ export default function DefenseLobbyPage() {
                   </select>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Only PASSED unlocks the next defense stage. Rapporteur Report
-                  opens as a draft after conclusion.
+                  Only PASSED unlocks the next defense stage. RAP opens after
+                  formal conclusion. Recording the official outcome requires an
+                  authorized concluder (Graduate School Admin until policy is
+                  confirmed) — scores alone never pass a defense.
                 </p>
               </div>
             </CardHeader>

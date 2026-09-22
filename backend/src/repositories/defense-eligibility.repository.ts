@@ -1,13 +1,82 @@
 import prisma from "../config/database";
-import type { EligibilitySnapshot } from "../interfaces/defense-eligibility.interfaces";
+import type {
+  EligibilitySnapshot,
+  ResearchVariablesState,
+  StageEvidenceFlags,
+} from "../interfaces/defense-eligibility.interfaces";
 
 export type { EligibilitySnapshot };
 
-function hasDoc(
-  docs: { docType: string }[],
+type DocRow = { docType: string; defenseStage: string | null };
+
+/**
+ * Stage-scoped evidence (source of truth §16).
+ * A file only satisfies the stage it belongs to. Legacy rows with null stage
+ * count only for the thesis record's current stage (never silently for later stages).
+ */
+export function hasStageDoc(
+  docs: DocRow[],
   docType: string,
+  stage: "TITLE" | "PROPOSAL" | "FINAL",
+  currentStage: "TITLE" | "PROPOSAL" | "FINAL" | null,
 ): boolean {
-  return docs.some((d) => d.docType === docType);
+  return docs.some(
+    (d) =>
+      d.docType === docType &&
+      (d.defenseStage === stage ||
+        (d.defenseStage == null && stage === currentStage)),
+  );
+}
+
+function buildEvidence(
+  docs: DocRow[],
+  currentStage: "TITLE" | "PROPOSAL" | "FINAL" | null,
+): StageEvidenceFlags {
+  return {
+    titlePackage:
+      hasStageDoc(docs, "TITLE_PROPOSAL", "TITLE", currentStage) ||
+      hasStageDoc(docs, "PROPOSAL_CHAPTERS", "TITLE", currentStage),
+    proposalChapters: hasStageDoc(
+      docs,
+      "PROPOSAL_CHAPTERS",
+      "PROPOSAL",
+      currentStage,
+    ),
+    finalManuscript: hasStageDoc(
+      docs,
+      "FINAL_MANUSCRIPT",
+      "FINAL",
+      currentStage,
+    ),
+    corTitle: hasStageDoc(docs, "COR", "TITLE", currentStage),
+    corProposal: hasStageDoc(docs, "COR", "PROPOSAL", currentStage),
+    corFinal: hasStageDoc(docs, "COR", "FINAL", currentStage),
+    receiptTitle: hasStageDoc(docs, "RECEIPT", "TITLE", currentStage),
+    receiptProposal: hasStageDoc(docs, "RECEIPT", "PROPOSAL", currentStage),
+    receiptFinal: hasStageDoc(docs, "RECEIPT", "FINAL", currentStage),
+    instruments: hasStageDoc(docs, "INSTRUMENTS", "FINAL", currentStage),
+  };
+}
+
+function mapResearchVariables(rows: {
+  status: string;
+  hasAllSignatures: boolean | null;
+}[]): ResearchVariablesState {
+  if (
+    rows.some(
+      (r) => r.status === "APPROVED_BY_PANEL" && r.hasAllSignatures === true,
+    )
+  ) {
+    return "APPROVED";
+  }
+  if (rows.some((r) => r.status === "NOT_APPLICABLE")) {
+    return "NOT_APPLICABLE";
+  }
+  if (rows.some((r) => r.status === "APPROVED_BY_PANEL")) {
+    return "PENDING"; // approved flag without signatures still pending
+  }
+  if (rows.length > 0) return "PENDING";
+  return "NONE";
 }
 
 export class DefenseEligibilityRepository {
@@ -34,26 +103,45 @@ export class DefenseEligibilityRepository {
       id: string;
       stage: "TITLE" | "PROPOSAL" | "FINAL";
       status: string;
-      thesisDocuments: { docType: string }[];
-      thesisTitles: { id: string }[];
+      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+      thesisDocuments: DocRow[];
+      thesisTitles: { id: string; isSelected: boolean }[];
     } | null = null;
 
     if (thesisId) {
       thesis = await prisma.thesisRecord.findUnique({
         where: { id: thesisId },
         include: {
-          thesisDocuments: { select: { docType: true } },
-          thesisTitles: { select: { id: true } },
+          thesisDocuments: {
+            select: { docType: true, defenseStage: true },
+          },
+          thesisTitles: { select: { id: true, isSelected: true } },
         },
       });
     }
 
     const thesisIdForDocs = thesis?.id ?? null;
     const docs = thesis?.thesisDocuments ?? [];
+    const currentStage = thesis?.stage ?? null;
 
-    const adviserCertIssued = thesisIdForDocs
+    // Adviser certifications are stage-scoped (§16.3): Proposal cert ≠ Final cert.
+    const adviserCertProposal = thesisIdForDocs
       ? (await prisma.adviserCertification.count({
-          where: { thesisId: thesisIdForDocs, status: "ISSUED" },
+          where: {
+            thesisId: thesisIdForDocs,
+            status: "ISSUED",
+            defenseStage: "PROPOSAL_DEFENSE",
+          },
+        })) > 0
+      : false;
+
+    const adviserCertFinal = thesisIdForDocs
+      ? (await prisma.adviserCertification.count({
+          where: {
+            thesisId: thesisIdForDocs,
+            status: "ISSUED",
+            defenseStage: "FINAL_DEFENSE",
+          },
         })) > 0
       : false;
 
@@ -77,15 +165,12 @@ export class DefenseEligibilityRepository {
         })) > 0
       : false;
 
-    const researchVariablesApproved = thesisIdForDocs
-      ? (await prisma.researchVariableForm.count({
-          where: {
-            thesisId: thesisIdForDocs,
-            status: "APPROVED_BY_PANEL",
-            hasAllSignatures: true,
-          },
-        })) > 0
-      : false;
+    const researchVariableRows = thesisIdForDocs
+      ? await prisma.researchVariableForm.findMany({
+          where: { thesisId: thesisIdForDocs },
+          select: { status: true, hasAllSignatures: true },
+        })
+      : [];
 
     const statisticianCert = thesisIdForDocs
       ? (await prisma.statisticianCertification.findUnique({
@@ -104,20 +189,17 @@ export class DefenseEligibilityRepository {
       thesisId: thesis?.id ?? thesisId,
       thesisStage: thesis?.stage ?? null,
       thesisStatus: thesis?.status ?? null,
+      thesisOutcome: thesis?.outcome ?? null,
+      hasSelectedTitle: (thesis?.thesisTitles ?? []).some((t) => t.isSelected),
       compExamPassed,
       compExamDismissed: failedStrikes >= 2,
       activeAdviser: (student?.adviserAssignments ?? []).length > 0,
       titleCount: thesis?.thesisTitles.length ?? 0,
-      conceptPaper: hasDoc(docs, "PROPOSAL_CHAPTERS"),
-      proposalChapters: hasDoc(docs, "PROPOSAL_CHAPTERS"),
-      finalManuscript: hasDoc(docs, "FINAL_MANUSCRIPT"),
-      cor: hasDoc(docs, "COR"),
-      receipt: hasDoc(docs, "RECEIPT"),
-      instruments: hasDoc(docs, "INSTRUMENTS"),
-      adviserCertIssued,
+      evidence: buildEvidence(docs, currentStage),
+      adviserCerts: { proposal: adviserCertProposal, final: adviserCertFinal },
       titleRapSigned,
       proposalRapSigned,
-      researchVariablesApproved,
+      researchVariables: mapResearchVariables(researchVariableRows),
       statisticianCert,
       plagiarismEligible,
     };
