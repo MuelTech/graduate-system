@@ -1,46 +1,163 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarClock, X, Send, Mail, Eye } from "lucide-react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { AdminThesisApplication as ThesisApplication, Panelist, MissingRequirement } from "@/types";
+import type {
+  ActivePanelistCandidate,
+  ApprovedApplicationDto,
+  CommitteePolicyDto,
+  DefensePanelRole,
+  MissingRequirement,
+  PaginatedResponse,
+  ScheduleDefensePayload,
+} from "@/types";
+import { ApprovedApplicationsPanel } from "@/components/admin/defense-scheduling/approved-applications-panel";
+import { DefenseSummaryCard } from "@/components/admin/defense-scheduling/defense-summary-card";
+import { DefenseCommitteeBuilder } from "@/components/admin/defense-scheduling/defense-committee-builder";
+import { DefenseScheduleForm } from "@/components/admin/defense-scheduling/defense-schedule-form";
+import { DefenseReviewSummary } from "@/components/admin/defense-scheduling/defense-review-summary";
+import { EmailPreviewDialog } from "@/components/admin/defense-scheduling/email-preview-dialog";
+import {
+  defenseTypeFromStage,
+  panelistToMember,
+  type CommitteeMember,
+  type ScheduleFormState,
+} from "@/components/admin/defense-scheduling/types";
 
 export default function AdminSchedulingPage() {
-  const [selectedApp, setSelectedApp] = useState<string | null>(null);
-  const [defenseDate, setDefenseDate] = useState("");
-  const [defenseTime, setDefenseTime] = useState("");
-  const [teamsLink, setTeamsLink] = useState("");
-  const [chairmanId, setChairmanId] = useState("");
-  const [chairmanRole, setChairmanRole] = useState("CHAIRMAN");
-  const [leadPanelistId, setLeadPanelistId] = useState("");
-  const [leadPanelistRole, setLeadPanelistRole] = useState("PANELIST");
-  const [externalPanelistId, setExternalPanelistId] = useState("");
-  const [externalPanelistRole, setExternalPanelistRole] = useState("PANELIST");
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [missingItems, setMissingItems] = useState<MissingRequirement[]>([]);
+  return (
+    <Suspense fallback={<div className="p-4 text-sm">Loading scheduling…</div>}>
+      <AdminSchedulingPageInner />
+    </Suspense>
+  );
+}
 
+function AdminSchedulingPageInner() {
+  const searchParams = useSearchParams();
+  const thesisIdFromQuery = searchParams.get("thesisId");
   const queryClient = useQueryClient();
 
-  const { data: approvedDefenses = [] } = useQuery<ThesisApplication[]>({
-    queryKey: ["approvedDefenses"],
+  const [selected, setSelected] = useState<ApprovedApplicationDto | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [defenseTypeFilter, setDefenseTypeFilter] = useState("ALL");
+  const [programId, setProgramId] = useState("ALL");
+  const [committee, setCommittee] = useState<CommitteeMember[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleFormState>({
+    defenseDate: "",
+    defenseTime: "",
+    meetingLink: "",
+  });
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [missingItems, setMissingItems] = useState<MissingRequirement[]>([]);
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs"],
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/approved");
-      return res || [];
+      const res = await apiClientRequest("/programs");
+      return Array.isArray(res) ? res : [];
     },
   });
 
-  const { data: dbPanelists = [] } = useQuery<Panelist[]>({
-    queryKey: ["availablePanelists"],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [
+      "approvedDefenseApplications",
+      page,
+      search,
+      defenseTypeFilter,
+      programId,
+    ],
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/adviser/available");
-      return res || [];
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: "10",
+        search,
+        defenseType: defenseTypeFilter,
+        programId,
+      });
+      const res = await apiClientRequest(
+        `/thesis/defense/approved-applications?${params.toString()}`,
+      );
+      return res as PaginatedResponse<ApprovedApplicationDto>;
     },
   });
+
+  const defenseType = selected
+    ? defenseTypeFromStage(selected.stage)
+    : "TITLE_DEFENSE";
+
+  const { data: policy } = useQuery({
+    queryKey: ["committeePolicy", defenseType],
+    enabled: !!selected,
+    queryFn: async () => {
+      const res = await apiClientRequest(
+        `/thesis/committee-policy?defenseType=${defenseType}`,
+      );
+      return res as CommitteePolicyDto;
+    },
+  });
+
+  // Active adviser for Proposal/Final — derived, not hand-picked.
+  const { data: adviserCandidates = [] } = useQuery({
+    queryKey: ["activeAdviser", selected?.id],
+    enabled: !!selected && selected.stage !== "TITLE",
+    queryFn: async () => {
+      const res = await apiClientRequest("/thesis/adviser/available");
+      return (Array.isArray(res) ? res : []) as ActivePanelistCandidate[];
+    },
+  });
+
+  const derivedAdviser = useMemo<CommitteeMember | null>(() => {
+    if (!selected || selected.stage === "TITLE") return null;
+    const assignment = selected.assignment?.adviser;
+    if (assignment) {
+      const match = adviserCandidates.find((c) => c.id === assignment.id);
+      if (match) return panelistToMember(match, "ADVISER", true);
+      return {
+        userId: assignment.id,
+        role: "ADVISER",
+        name: `${assignment.firstName} ${assignment.lastName}`,
+        email: "",
+        affiliation: "Active thesis adviser",
+        isDerivedAdviser: true,
+      };
+    }
+    return null;
+  }, [selected, adviserCandidates]);
+
+  const allowedRoles: DefensePanelRole[] =
+    policy?.allowedRoles ?? ["CHAIRMAN", "PANELIST", "FACILITATOR", "RAPPORTEUR"];
+
+  const scheduleErrors = useMemo(() => {
+    const errors: { date?: string; time?: string; link?: string } = {};
+    if (!schedule.defenseDate) errors.date = "Defense date is required.";
+    if (!schedule.defenseTime) errors.time = "Defense time is required.";
+    if (!schedule.meetingLink) {
+      errors.link = "MS Teams link is required.";
+    } else {
+      try {
+        const u = new URL(schedule.meetingLink);
+        if (!/^https?:$/.test(u.protocol)) {
+          errors.link = "Enter a valid https:// Teams link.";
+        }
+      } catch {
+        errors.link = "Enter a valid https:// Teams link.";
+      }
+    }
+    return errors;
+  }, [schedule]);
+
+  const isValid = useMemo(() => {
+    if (!selected || !policy) return false;
+    const hasChairman = committee.some((c) => c.role === "CHAIRMAN");
+    const noDupes =
+      new Set(committee.map((c) => c.userId)).size === committee.length;
+    const scheduleOk =
+      !scheduleErrors.date && !scheduleErrors.time && !scheduleErrors.link;
+    return hasChairman && noDupes && committee.length >= 1 && scheduleOk;
+  }, [selected, policy, committee, scheduleErrors]);
 
   const scheduleMutation = useMutation({
     mutationFn: async ({
@@ -48,555 +165,185 @@ export default function AdminSchedulingPage() {
       payload,
     }: {
       thesisId: string;
-      payload: {
-        defenseDate: string;
-        defenseTime: string;
-        venueOrLink: string;
-        defenseType: string;
-        chairmanId: string;
-        chairmanRole: string;
-        leadPanelistId: string;
-        leadPanelistRole: string;
-        externalPanelistId: string;
-        externalPanelistRole: string;
-      };
+      payload: ScheduleDefensePayload;
     }) => {
-      return await apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
+      return apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["approvedDefenses"] });
-      setShowConfirm(false);
-      setSelectedApp(null);
-      setChairmanId("");
-      setChairmanRole("CHAIRMAN");
-      setLeadPanelistId("");
-      setLeadPanelistRole("PANELIST");
-      setExternalPanelistId("");
-      setExternalPanelistRole("PANELIST");
-      setDefenseDate("");
-      setDefenseTime("");
-      setTeamsLink("");
+      queryClient.invalidateQueries({ queryKey: ["approvedDefenseApplications"] });
+      setSelected(null);
+      setCommittee([]);
+      setSchedule({ defenseDate: "", defenseTime: "", meetingLink: "" });
       setMissingItems([]);
-      alert("Defense scheduled successfully!");
+      alert(
+        "Defense scheduled successfully! Status is SCHEDULED (not PASSED). Notifications queued.",
+      );
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
-      console.error("Scheduling failed: " + error.message);
       const missing = error.missing ?? [];
       setMissingItems(missing);
       if (missing.length) {
         alert(
-          "Cannot schedule — requirements not met:\n" +
+          "Defense could not be scheduled. No changes were saved.\n" +
             missing.map((m) => `• ${m.message}`).join("\n"),
         );
       } else {
-        alert(error.message || "Scheduling failed");
+        alert(error.message || "Defense could not be scheduled. No changes were saved.");
       }
     },
   });
 
-  const approvedApplications = approvedDefenses.map((app) => ({
-    id: app.id,
-    studentName: `${app.student.user.firstName} ${app.student.user.lastName}`,
-    studentNumber: app.student.user.email,
-    program: app.student.programId || "N/A",
-    stage:
-      app.stage === "TITLE"
-        ? "title_defense"
-        : app.stage === "PROPOSAL"
-          ? "proposal_defense"
-          : "final_defense",
-    dateApproved: new Date(app.createdAt).toLocaleDateString(),
-    proposedTitles:
-      app.thesisTitles?.filter((t) => t.isSelected).map((t) => t.titleText) ||
-      null,
-  }));
+  const handleSelect = (app: ApprovedApplicationDto) => {
+    setSelected(app);
+    setCommittee([]);
+    setMissingItems([]);
+  };
 
-  const availablePanelists = dbPanelists.map((p) => ({
-    id: p.id,
-    name: `${p.firstName} ${p.lastName}`,
-    type: "internal", // Mocked type since we only have one type in db right now
-    specialization: p.department || "Faculty",
-  }));
+  const handleAddMember = (m: CommitteeMember) => {
+    setCommittee((prev) => {
+      if (prev.some((c) => c.userId === m.userId)) {
+        alert(`${m.name} is already assigned to this defense.`);
+        return prev;
+      }
+      return [...prev, m];
+    });
+  };
 
-  const selectedAppData = approvedApplications.find(
-    (a) => a.id === selectedApp,
-  );
+  const handleRemoveMember = (userId: string) => {
+    setCommittee((prev) => prev.filter((c) => c.userId !== userId));
+  };
 
-  const canSchedule =
-    chairmanId && leadPanelistId && externalPanelistId && defenseDate && defenseTime && teamsLink;
-
-  const getStageLabel = (stage: string) => {
-    switch (stage) {
-      case "title_defense":
-        return "Title Defense";
-      case "proposal_defense":
-        return "Proposal Defense";
-      case "final_defense":
-        return "Final Defense";
-      default:
-        return stage;
+  const handleEditRole = (userId: string, role: DefensePanelRole) => {
+    if (selected?.stage === "TITLE" && role === "ADVISER") {
+      alert("Adviser cannot be assigned to a Title Defense.");
+      return;
     }
+    setCommittee((prev) =>
+      prev.map((c) => (c.userId === userId ? { ...c, role } : c)),
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!selected || !isValid) return;
+    const assignments = [
+      ...(derivedAdviser
+        ? [{ userId: derivedAdviser.userId, role: "ADVISER" as DefensePanelRole }]
+        : []),
+      ...committee.map((c) => ({ userId: c.userId, role: c.role })),
+    ];
+    const payload: ScheduleDefensePayload = {
+      defenseDate: schedule.defenseDate,
+      defenseTime: schedule.defenseTime,
+      venueOrLink: schedule.meetingLink,
+      defenseType: defenseTypeFromStage(selected.stage),
+      assignments,
+    };
+    scheduleMutation.mutate({ thesisId: selected.id, payload });
   };
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
-          Panel Assignment & Defense Scheduling
+          Panel Assignment &amp; Defense Scheduling
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Assign panelists and schedule defense sessions
-          {missingItems.length > 0 && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-              <p className="font-semibold">Requirements not met</p>
-              <ul className="mt-1 list-disc space-y-1 pl-5">
-                {missingItems.map((m) => (
-                  <li key={m.code}>{m.message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          Build the defense committee, set the schedule, review, then notify.
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Approved Applications List */}
-        <div className="space-y-2 lg:col-span-1">
-          <p className="text-xs font-semibold text-(--earist-secondary)">
-            Approved Applications ({approvedApplications.length})
-          </p>
-          {approvedApplications.map((app) => (
-            <button
-              key={app.id}
-              onClick={() => {
-                setSelectedApp(app.id);
-                setChairmanId("");
-                setLeadPanelistId("");
-                setExternalPanelistId("");
-                setDefenseDate("");
-                setDefenseTime("");
-                setTeamsLink("");
-              }}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                selectedApp === app.id
-                  ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
-                  : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {app.studentName}
-                </p>
-                <Badge
-                  className={
-                    app.stage === "title_defense"
-                      ? "bg-blue-100 text-blue-700"
-                      : app.stage === "proposal_defense"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-green-100 text-green-700"
-                  }
-                >
-                  {getStageLabel(app.stage)}
-                </Badge>
-              </div>
-              <p className="text-xs text-(--earist-body-text)">
-                {app.studentNumber} &middot; {app.program}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Approved: {app.dateApproved}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        {/* Scheduling Form */}
-        {selectedAppData ? (
-          <div className="space-y-4 lg:col-span-2">
-            {/* Student Info */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  {getStageLabel(selectedAppData.stage)} —{" "}
-                  {selectedAppData.studentName}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                  <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedAppData.studentName}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {selectedAppData.studentNumber} &middot;{" "}
-                    {selectedAppData.program}
-                  </p>
-                  {selectedAppData.proposedTitles && (
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold text-(--earist-secondary)">
-                        Proposed Titles:
-                      </p>
-                      {selectedAppData.proposedTitles.map((title, i) => (
-                        <p
-                          key={i}
-                          className="text-xs text-(--earist-body-text)"
-                        >
-                          {i + 1}. {title}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Panel Assignment */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  Assign Panelists
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Chairman</label>
-                    <div className="flex gap-2">
-                      <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select Chairman...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={chairmanRole} onChange={(e) => setChairmanRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Lead Panelist</label>
-                    <div className="flex gap-2">
-                      <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select Lead Panelist...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={leadPanelistRole} onChange={(e) => setLeadPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">External Panelist</label>
-                    <div className="flex gap-2">
-                      <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select External Panelist...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={externalPanelistRole} onChange={(e) => setExternalPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Defense Schedule */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  Defense Schedule
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={defenseDate}
-                      onChange={(e) => setDefenseDate(e.target.value)}
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={defenseTime}
-                      onChange={(e) => setDefenseTime(e.target.value)}
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      MS Teams Link
-                    </label>
-                    <input
-                      type="url"
-                      value={teamsLink}
-                      onChange={(e) => setTeamsLink(e.target.value)}
-                      placeholder="https://teams.microsoft.com/l/meetup-join/..."
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Email Preview Button */}
-            <Button
-              variant="outline"
-              onClick={() => setShowEmailPreview(true)}
-              className="w-full"
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Preview Email Notification
-            </Button>
-
-            {/* Schedule Button */}
-            <Button
-              disabled={!canSchedule}
-              onClick={() => setShowConfirm(true)}
-              className={`w-full py-6 text-base font-semibold ${
-                canSchedule
-                  ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400"
-              }`}
-            >
-              <CalendarClock className="mr-2 h-5 w-5" />
-              Schedule Defense & Notify
-            </Button>
-            {!canSchedule && (
-              <p className="text-center text-xs text-(--earist-body-text)">
-                Select all 3 panelist roles and fill in date, time, and Teams
-                link.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="py-12">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-                    <CalendarClock className="h-8 w-8 text-(--earist-body-text)/40" />
-                  </div>
-                  <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                    Select an Application
-                  </h3>
-                  <p className="text-sm text-(--earist-body-text)">
-                    Click an approved application to assign panelists and
-                    schedule the defense.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+        {missingItems.length > 0 && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <p className="font-semibold">Requirements not met</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              {missingItems.map((m) => (
+                <li key={m.code}>{m.message}</li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
 
-      {/* Email Preview Modal */}
-      {showEmailPreview && selectedAppData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Email Preview
-              </h3>
-              <button
-                onClick={() => setShowEmailPreview(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {/* Recipients */}
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-xs font-semibold text-(--earist-secondary)">
-                  Recipients
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  <Badge variant="outline" className="text-xs">
-                    <Mail className="mr-1 h-3 w-3" />
-                    {selectedAppData.studentName}
-                  </Badge>
-                  {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id) => {
-                    const p = availablePanelists.find((ap) => ap.id === id);
-                    return p ? (
-                      <Badge key={id} variant="outline" className="text-xs">
-                        <Mail className="mr-1 h-3 w-3" />
-                        {p.name}
-                      </Badge>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-
-              {/* Email Content */}
-              <div className="rounded-lg border border-(--earist-border-gray) p-4">
-                <p className="mb-2 text-sm font-semibold text-(--earist-primary)">
-                  Subject: Defense Schedule —{" "}
-                  {getStageLabel(selectedAppData.stage)}
-                </p>
-                <div className="space-y-2 text-sm text-(--earist-body-text)">
-                  <p>Dear [Recipient],</p>
-                  <p>
-                    This is to inform you that a{" "}
-                    <span className="font-semibold">
-                      {getStageLabel(selectedAppData.stage)}
-                    </span>{" "}
-                    has been scheduled.
-                  </p>
-                  <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                    <p className="font-semibold text-(--earist-primary)">
-                      Defense Details
-                    </p>
-                    <p>Researcher: {selectedAppData.studentName}</p>
-                    <p>Program: {selectedAppData.program}</p>
-                    <p>
-                      Date: {defenseDate || "[Date]"} at{" "}
-                      {defenseTime || "[Time]"}
-                    </p>
-                    <p>MS Teams: {teamsLink || "[Link]"}</p>
-                  </div>
-                  {selectedAppData.proposedTitles && (
-                    <div>
-                      <p className="font-semibold text-(--earist-primary)">
-                        Proposed Titles:
-                      </p>
-                      {selectedAppData.proposedTitles.map((title, i) => (
-                        <p key={i}>
-                          {i + 1}. {title}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-(--earist-primary)">
-                      Panel Members:
-                    </p>
-                    {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id, i) => {
-                      const roles = ["Chairman", "Lead Panelist", "External Panelist"];
-                      const p = availablePanelists.find((ap) => ap.id === id);
-                      return p ? (
-                        <p key={id}>
-                          {i + 1}. {p.name} - {roles[i]} ({p.specialization})
-                        </p>
-                      ) : null;
-                    })}
-                  </div>
-                  <p>Please review the materials before the defense date.</p>
-                  <p>Thank you.</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowEmailPreview(false)}
-                className="w-full"
-              >
-                Close Preview
-              </Button>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <ApprovedApplicationsPanel
+            data={data}
+            isLoading={isLoading}
+            isError={isError}
+            page={page}
+            search={search}
+            defenseType={defenseTypeFilter}
+            programId={programId}
+            programs={programs}
+            selectedId={selected?.id ?? thesisIdFromQuery}
+            onSearchChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            onDefenseTypeChange={(v) => {
+              setDefenseTypeFilter(v);
+              setPage(1);
+            }}
+            onProgramChange={(v) => {
+              setProgramId(v);
+              setPage(1);
+            }}
+            onPageChange={setPage}
+            onSelect={handleSelect}
+          />
         </div>
-      )}
 
-      {/* Confirm Modal */}
-      {showConfirm && selectedAppData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Confirm Scheduling
-              </h3>
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
+        <div className="space-y-4 lg:col-span-2">
+          {!selected && (
+            <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center text-sm text-(--earist-body-text)">
+              Select an approved application to build the defense committee and
+              schedule the session.
             </div>
-            <div className="mb-4 space-y-3">
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {getStageLabel(selectedAppData.stage)} —{" "}
-                  {selectedAppData.studentName}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  {defenseDate} at {defenseTime}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  3 panelist(s) assigned
-                </p>
-              </div>
-              <p className="text-sm text-(--earist-body-text)">
-                Email notifications will be sent to the researcher and all
-                assigned panelists with the defense schedule and MS Teams link.
-              </p>
-              <p className="text-xs font-medium text-red-600">
-                This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowConfirm(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!selectedApp) return;
-                  scheduleMutation.mutate({
-                    thesisId: selectedApp,
-                    payload: {
-                      defenseDate,
-                      defenseTime,
-                      venueOrLink: teamsLink,
-                      defenseType: selectedAppData.stage,
-                      chairmanId,
-                      chairmanRole,
-                      leadPanelistId,
-                      leadPanelistRole,
-                      externalPanelistId,
-                      externalPanelistRole,
-                    },
-                  });
-                }}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {scheduleMutation.isPending
-                  ? "Scheduling..."
-                  : "Schedule & Notify"}
-              </Button>
-            </div>
-          </div>
+          )}
+          {selected && (
+            <>
+              <DefenseSummaryCard application={selected} />
+              <DefenseCommitteeBuilder
+                allowedRoles={allowedRoles}
+                committee={committee}
+                adviser={derivedAdviser}
+                onAdd={handleAddMember}
+                onRemove={handleRemoveMember}
+                onEditRole={handleEditRole}
+              />
+              <DefenseScheduleForm
+                value={schedule}
+                onChange={setSchedule}
+                errors={scheduleErrors}
+              />
+              <DefenseReviewSummary
+                application={selected}
+                committee={committee}
+                adviser={derivedAdviser}
+                schedule={schedule}
+                isValid={isValid}
+                isSubmitting={scheduleMutation.isPending}
+                onPreviewEmail={() => setShowEmailPreview(true)}
+                onSubmit={handleSubmit}
+              />
+            </>
+          )}
         </div>
+      </div>
+
+      {selected && (
+        <EmailPreviewDialog
+          open={showEmailPreview}
+          onOpenChange={setShowEmailPreview}
+          application={selected}
+          committee={committee}
+          adviser={derivedAdviser}
+          schedule={schedule}
+        />
       )}
     </div>
   );
