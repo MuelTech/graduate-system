@@ -1,9 +1,10 @@
 import multer from 'multer';
 import path from 'path';
+import crypto from 'crypto';
 import fs from 'fs';
-import { AppError } from '../utils/AppError';
+import { PRIVATE_UPLOAD_ROOT } from '../utils/file.utils';
 
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
+const uploadDir = PRIVATE_UPLOAD_ROOT;
 
 // Ensure upload directory exists
 if (!fs.existsSync(uploadDir)) {
@@ -11,28 +12,21 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
+    destination: (_req, _file, cb) => {
         cb(null, uploadDir);
     },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
+    filename: (_req, _file, cb) => {
+        // Cryptographically random filename — never derive from user input
+        const randomName = crypto.randomBytes(24).toString('hex');
+        cb(null, randomName);
     }
 });
-
-const fileFilter = (req: any, file: any, cb: any) => {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new AppError('Invalid file type. Only PDF, JPG, and PNG are allowed.', 400), false);
-    }
-};
 
 export const upload = multer({
     storage,
     limits: {
         fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10), // Default 5MB
     },
-    fileFilter
+    // No MIME-based fileFilter here — trust nothing from the client.
+    // Actual file-type validation happens in cor.service after upload.
 });

@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import path from "path";
 import prisma from "./config/database";
 import masterRouter from "./routes";
 import "./workers/email.worker";
@@ -15,6 +14,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
+    exposedHeaders: ["Content-Disposition", "Content-Type"],
   }),
 );
 
@@ -30,8 +30,10 @@ app.get("/api/health", (req: Request, res: Response) => {
 // Connect to master router
 app.use("/api", masterRouter);
 
-// Serve uploads directory statically
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Block direct file access — files only served through /api/documents
+app.use("/uploads", (_req, res) => {
+  res.status(403).json({ error: "Direct file access is not allowed. Use the documents API." });
+});
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

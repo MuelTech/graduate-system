@@ -19,6 +19,7 @@ import examEngineRoutes from './exam-engine.routes';
 import adminStudentRoutes from './admin-student.routes';
 import emailRoutes from './email.routes';
 import adminDashboardRoutes from './admin-dashboard.routes';
+import documentRoutes from './document.routes';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/admin/students', adminStudentRoutes);
 router.use('/exam-engine', examEngineRoutes);
 router.use('/admin/email-logs', emailRoutes);
 router.use('/admin/dashboard', adminDashboardRoutes);
+router.use('/documents', documentRoutes);
 
 export default router;
