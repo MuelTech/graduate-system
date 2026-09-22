@@ -437,7 +437,7 @@ model AdviserAssignment {
 model ThesisRecord {
   id                        String                     @id @default(uuid()) @map("thesis_id")
   studentId                 String                     @map("student_id")
-  assignmentId              String                     @map("assignment_id")
+  assignmentId              String?                    @map("assignment_id")
   stage                     ThesisStage                @default(TITLE)
   status                    ThesisStatus               @default(PENDING)
   orNumber                  String?                    @map("or_number")
@@ -455,7 +455,7 @@ model ThesisRecord {
   researchVariableForms     ResearchVariableForm[]
   statisticianCertification StatisticianCertification?
   thesisDocuments           ThesisDocument[]
-  assignment                AdviserAssignment          @relation(fields: [assignmentId], references: [id])
+  assignment                AdviserAssignment?         @relation(fields: [assignmentId], references: [id])
   student                   Student                    @relation(fields: [studentId], references: [id])
   thesisTitles              ThesisTitle[]
 

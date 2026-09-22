@@ -1,9 +1,20 @@
 import { ThesisRepository } from '../repositories/thesis.repository';
+import { DefenseEligibilityRepository } from '../repositories/defense-eligibility.repository';
+import {
+  DefenseEligibilityService,
+  type ApplyTitleEligibilityInput,
+} from './defense-eligibility.service';
 import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
-import { EmailService } from "./email.service";
+import type {
+  DefenseTypeName,
+  MissingRequirement,
+} from '../interfaces/defense-eligibility.interfaces';
+import { AppError } from '../utils/AppError';
 
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
+  private eligibilityRepo = new DefenseEligibilityRepository();
+  private eligibility = new DefenseEligibilityService();
 
   async getPendingDefenses() {
     return this.thesisRepo.getPendingDefenses();
@@ -29,36 +40,86 @@ export class ThesisService {
     return this.thesisRepo.getAvailableAdvisers();
   }
 
-  async applyTitleDefense(userId: string, data: ApplyTitleDefenseInput, conceptPaperPath: string, corPath: string, receiptPath: string) {
+  async applyTitleDefense(
+    userId: string,
+    data: ApplyTitleDefenseInput,
+    conceptPaperPath: string,
+    corPath: string,
+    receiptPath: string,
+  ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
-    if (!student) throw new Error("Student profile not found.");
-
-    // STRICT VALIDATION: Must have an adviser first!
-    const adviserAssignment = await this.thesisRepo.getActiveAdviserAssignment(student.id);
-    if (!adviserAssignment) {
-      throw new Error("You must have an approved Thesis Adviser before applying for a Title Defense.");
-    }
-
-    // Ensure they don't already have an active thesis
-    const existingThesis = await this.thesisRepo.getActiveThesis(student.id);
-    if (existingThesis && existingThesis.status !== 'FAILED') {
-      throw new Error("You already have an active Thesis Record in progress.");
-    }
+    const snap = student
+      ? await this.eligibilityRepo.loadForStudent(student.id)
+      : null;
 
     const titles = [data.title1, data.title2, data.title3];
-    return this.thesisRepo.createTitleDefense(student.id, adviserAssignment.id, titles, conceptPaperPath, corPath, receiptPath);
+    const existingThesis = student
+      ? await this.thesisRepo.getActiveThesis(student.id)
+      : null;
+
+    const input: ApplyTitleEligibilityInput = {
+      studentExists: !!student,
+      compExamPassed: snap?.compExamPassed ?? false,
+      compExamDismissed: snap?.compExamDismissed ?? false,
+      hasActiveThesisBlocking:
+        !!existingThesis && existingThesis.status !== 'FAILED',
+      titleCountFromRequest: titles.filter((t) => t && t.trim()).length,
+      hasConceptPaper: !!conceptPaperPath,
+      hasCor: !!corPath,
+      hasReceipt: !!receiptPath,
+    };
+
+    this.eligibility.assertEligible(this.eligibility.evaluateApplyTitle(input));
+
+    if (!student) throw new AppError('Student profile not found.', 404);
+
+    // Client: Title Defense has no adviser requirement.
+    // Link an active adviser when one already exists; otherwise leave null.
+    const adviserAssignment = await this.thesisRepo.getActiveAdviserAssignment(
+      student.id,
+    );
+
+    return this.thesisRepo.createTitleDefense(
+      student.id,
+      adviserAssignment?.id ?? null,
+      titles,
+      conceptPaperPath,
+      corPath,
+      receiptPath,
+    );
   }
 
   async applyProposalDefense(userId: string, filePath: string, corPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
-    if (!student) throw new Error("Student profile not found.");
+    if (!student) throw new AppError('Student profile not found.', 404);
+
+    const snap = await this.eligibilityRepo.loadForStudent(student.id);
+    const result = this.eligibility.evaluateApplyProposal(snap);
+
+    if (!filePath) {
+      result.missing.push({
+        code: 'PROPOSAL_CHAPTERS',
+        message: 'Chapters 1–3 document is required.',
+        stage: 'PROPOSAL',
+      });
+      result.eligible = false;
+    }
+    if (!corPath) {
+      result.missing.push({
+        code: 'COR',
+        message: 'Certificate of Registration (COR) is required.',
+        stage: 'PROPOSAL',
+      });
+      result.eligible = false;
+    }
+    this.eligibility.assertEligible(result);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
-    if (!thesis) throw new Error("No active Thesis Record found. Please apply for Title Defense first.");
-    
-    // STRICT VALIDATION: Can only move to Proposal if Title was PASSED
-    if (thesis.stage === 'TITLE' && thesis.status !== 'PASSED') {
-      throw new Error("Your Title Defense must be PASSED before applying for Proposal Defense.");
+    if (!thesis) {
+      throw new AppError(
+        'No active Thesis Record found. Please apply for Title Defense first.',
+        400,
+      );
     }
 
     return this.thesisRepo.updateThesisToProposal(thesis.id, filePath, corPath);
@@ -66,37 +127,79 @@ export class ThesisService {
 
   async applyFinalDefense(userId: string, filePath: string, corPath: string) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
-    if (!student) throw new Error("Student profile not found.");
+    if (!student) throw new AppError('Student profile not found.', 404);
+
+    const snap = await this.eligibilityRepo.loadForStudent(student.id);
+    const result = this.eligibility.evaluateApplyFinal({
+      ...snap,
+      finalManuscript: !!filePath,
+    });
+
+    if (!filePath) {
+      result.missing.push({
+        code: 'FINAL_MANUSCRIPT',
+        message: 'Final manuscript is required.',
+        stage: 'FINAL',
+      });
+      result.eligible = false;
+    }
+    if (!corPath) {
+      result.missing.push({
+        code: 'COR',
+        message: 'Certificate of Registration (COR) is required.',
+        stage: 'FINAL',
+      });
+      result.eligible = false;
+    }
+    this.eligibility.assertEligible(result);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
-    if (!thesis) throw new Error("No active Thesis Record found.");
-    
-    // STRICT VALIDATION: Can only move to Final if Proposal was PASSED
-    if (thesis.stage === 'PROPOSAL' && thesis.status !== 'PASSED') {
-      throw new Error("Your Proposal Defense must be PASSED before applying for Final Defense.");
-    }
+    if (!thesis) throw new AppError('No active Thesis Record found.', 400);
 
     return this.thesisRepo.updateThesisToFinal(thesis.id, filePath, corPath);
   }
 
   async requestAdviser(userId: string, data: any) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
-    if (!student) throw new Error("Student profile not found.");
-    return this.thesisRepo.createAdviserRequest(student.id, data.requestedAdviserId, data.reason);
+    if (!student) throw new Error('Student profile not found.');
+    return this.thesisRepo.createAdviserRequest(
+      student.id,
+      data.requestedAdviserId,
+      data.reason,
+    );
   }
 
   async assignAdviser(adminId: string, data: any) {
-    return this.thesisRepo.approveAdviserRequest(data.requestId, data.adviserId, adminId);
+    return this.thesisRepo.approveAdviserRequest(
+      data.requestId,
+      data.adviserId,
+      adminId,
+    );
   }
 
   async updateDefenseStatus(thesisId: string, data: any) {
-    return this.thesisRepo.updateThesisStatus(thesisId, data.status, data.approvedTitleId);
+    return this.thesisRepo.updateThesisStatus(
+      thesisId,
+      data.status,
+      data.approvedTitleId,
+    );
   }
 
   async scheduleDefense(thesisId: string, adminId: string, data: any) {
-    const schedule = await this.thesisRepo.scheduleDefense(thesisId, adminId, data);
+    const snap = await this.eligibilityRepo.loadForThesis(thesisId);
+    const defenseType = String(data.defenseType || '').toUpperCase() as DefenseTypeName;
 
-    return schedule;
+    if (
+      !['TITLE_DEFENSE', 'PROPOSAL_DEFENSE', 'FINAL_DEFENSE'].includes(defenseType)
+    ) {
+      throw new AppError('Invalid defense type.', 400);
+    }
+
+    this.eligibility.assertEligible(
+      this.eligibility.evaluateSchedule(snap, defenseType),
+    );
+
+    return this.thesisRepo.scheduleDefense(thesisId, adminId, data);
   }
 
   async getPanelistAssignments(userId: string) {
@@ -115,7 +218,7 @@ export class ThesisService {
     return this.thesisRepo.signRapReport(sigId, userId, signatureData);
   }
 
-    async getLobbyStatus(scheduleId: string) {
+  async getLobbyStatus(scheduleId: string) {
     return this.thesisRepo.getLobbyStatus(scheduleId);
   }
 
@@ -139,3 +242,5 @@ export class ThesisService {
     return this.thesisRepo.getMissingSignaturesForRap(rapId);
   }
 }
+
+export type { MissingRequirement };

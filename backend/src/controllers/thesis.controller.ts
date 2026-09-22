@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
 import { ThesisService } from '../services/thesis.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
+
+function sendEligibilityError(res: Response, error: any): void {
+  const missing = (error as { missing?: MissingRequirement[] }).missing;
+  const status = error?.statusCode || 400;
+  if (missing) {
+    res.status(status).json({ error: error.message, missing });
+    return;
+  }
+  res.status(status).json({ error: error.message });
+}
 
 export class ThesisController {
   private thesisService = new ThesisService();
@@ -78,7 +89,7 @@ export class ThesisController {
       res.status(201).json({ message: 'Title Defense application submitted successfully', result });
     } catch (error: any) {
       console.error("APPLY TITLE ERROR:", error);
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 
@@ -96,7 +107,7 @@ export class ThesisController {
       const result = await this.thesisService.applyProposalDefense(req.user.userId, document.path, cor.path);
       res.status(200).json({ message: 'Proposal Defense application submitted successfully', result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 
@@ -114,7 +125,7 @@ export class ThesisController {
       const result = await this.thesisService.applyFinalDefense(req.user.userId, document.path, cor.path);
       res.status(200).json({ message: 'Final Defense application submitted successfully', result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 
@@ -152,8 +163,7 @@ export class ThesisController {
     try {
       if (!req.user) throw new Error('Unauthorized');
       const id = req.params.id as string; // thesisId
-      const schedule = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);
-      
+      const schedule = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);      
       // Email each panelist asynchronously via BullMQ
       if (schedule && schedule.panelAssignments) {
         for (const panel of schedule.panelAssignments) {
@@ -175,7 +185,7 @@ export class ThesisController {
 
       res.status(201).json({ message: 'Defense scheduled and panelists notified', result: schedule });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 

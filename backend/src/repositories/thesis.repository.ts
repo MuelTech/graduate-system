@@ -90,7 +90,7 @@ export class ThesisRepository {
 
   async createTitleDefense(
     studentId: string,
-    assignmentId: string,
+    assignmentId: string | null,
     titles: string[],
     conceptPaperPath: string,
     corPath: string,
