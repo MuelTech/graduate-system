@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   Users,
   Filter,
 } from "lucide-react";
+import { apiClientRequest } from "@/lib/api.client";
 
 interface RapReportData {
   id: string;
@@ -56,94 +58,108 @@ interface BackendRapReport {
   }[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+function mapRapReport(rap: BackendRapReport): RapReportData {
+  let uiStatus = "pending";
+  if (rap.status === "DRAFT") uiStatus = "pending";
+  else if (rap.status === "DISTRIBUTED") {
+    const signedCount = rap.signatures.filter((s) => s.isSigned).length;
+    if (signedCount === 0) uiStatus = "distributed";
+    else if (signedCount < rap.signatures.length) uiStatus = "partial";
+    else uiStatus = "finalized";
+  } else if (rap.status === "ALL_SIGNED" || rap.status === "FINALIZED") {
+    uiStatus = "finalized";
+  }
+
+  return {
+    id: rap.id,
+    studentName: `${rap.thesis.student.user.firstName} ${rap.thesis.student.user.lastName}`,
+    studentNumber: rap.thesis.student.studentNumber || "N/A",
+    program:
+      rap.thesis.student.program?.code ||
+      rap.thesis.student.program?.name ||
+      "Program",
+    stage: rap.schedule.defenseType.toLowerCase(),
+    defenseDate: rap.schedule.defenseDate
+      ? new Date(rap.schedule.defenseDate).toLocaleDateString()
+      : "—",
+    status: uiStatus,
+    generatedAt: rap.generatedAt
+      ? new Date(rap.generatedAt).toLocaleDateString()
+      : null,
+    panelists: rap.signatures.map((sig) => {
+      const assignment = rap.schedule.panelAssignments.find(
+        (p) => p.userId === sig.userId,
+      );
+      return {
+        name: `${sig.user.firstName} ${sig.user.lastName}`,
+        role: assignment?.role || "Panelist",
+        signed: sig.isSigned,
+        signedAt: sig.signedAt
+          ? new Date(sig.signedAt).toLocaleString()
+          : null,
+      };
+    }),
+  };
+}
+
+async function fetchReportsData(): Promise<RapReportData[]> {
+  // Correct mount is /api/thesis/defense/... (see thesis.routes + /api router).
+  // Auth comes from the NextAuth session via apiClientRequest — not localStorage.
+  const data = await apiClientRequest("/thesis/defense/rap-reports/all");
+  const list: BackendRapReport[] = Array.isArray(data) ? data : [];
+  return list.map(mapRapReport);
+}
 
 export default function AdminRAPReportsPage() {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const [rapReports, setRapReports] = useState<RapReportData[]>([]);
-  // isLoading is kept in case we want to show a spinner later, otherwise we can remove it.
 
-  // Fetch Reports Data
-  const fetchReportsData = async (): Promise<RapReportData[]> => {
-    const token = localStorage.getItem("token") || "";
-    const res = await fetch(`${API_URL}/api/defense/rap-reports/all`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    if (!res.ok) throw new Error("Failed to fetch");
-    const data: BackendRapReport[] = await res.json();
-    
-    return data.map((rap) => {
-      let uiStatus = "pending";
-      if (rap.status === "DRAFT") uiStatus = "pending";
-      else if (rap.status === "DISTRIBUTED") {
-         const signedCount = rap.signatures.filter((s) => s.isSigned).length;
-         if (signedCount === 0) uiStatus = "distributed";
-         else if (signedCount < rap.signatures.length) uiStatus = "partial";
-         else uiStatus = "finalized";
-      }
-      else if (rap.status === "ALL_SIGNED" || rap.status === "FINALIZED") uiStatus = "finalized";
-  
-      return {
-        id: rap.id,
-        studentName: `${rap.thesis.student.user.firstName} ${rap.thesis.student.user.lastName}`,
-        studentNumber: rap.thesis.student.studentNumber || "N/A",
-        program: rap.thesis.student.program?.code || rap.thesis.student.program?.name || "Program",
-        stage: rap.schedule.defenseType.toLowerCase(),
-        defenseDate: new Date(rap.schedule.defenseDate).toLocaleDateString(),
-        status: uiStatus,
-        generatedAt: rap.generatedAt ? new Date(rap.generatedAt).toLocaleDateString() : null,
-        panelists: rap.signatures.map((sig) => {
-          const assignment = rap.schedule.panelAssignments.find((p) => p.userId === sig.userId);
-          return {
-            name: `${sig.user.firstName} ${sig.user.lastName}`,
-            role: assignment?.role || "Panelist",
-            signed: sig.isSigned,
-            signedAt: sig.signedAt ? new Date(sig.signedAt).toLocaleString() : null
-          };
-        })
-      };
-    });
-  };
+  const {
+    data: rapReports = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["adminRapReports"],
+    queryFn: fetchReportsData,
+  });
 
-  useEffect(() => {
-    let mounted = true;
-    fetchReportsData()
-      .then(data => {
-        if (mounted) setRapReports(data);
-      })
-      .catch(console.error);
-    return () => { mounted = false; };
-  }, []);
-
-  const handleDistribute = async (id: string) => {
-    try {
-      const token = localStorage.getItem("token") || "";
-      await fetch(`${API_URL}/api/defense/rap-reports/${id}/distribute`, {
+  const distributeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiClientRequest(`/thesis/defense/rap-reports/${id}/distribute`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
       });
-      fetchReportsData().then(setRapReports).catch(console.error); // Refresh data
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminRapReports"] });
+    },
+  });
 
-  const handleRemind = async (id: string) => {
-    try {
-      const token = localStorage.getItem("token") || "";
-      await fetch(`${API_URL}/api/defense/rap-reports/${id}/remind`, {
+  const remindMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiClientRequest(`/thesis/defense/rap-reports/${id}/remind`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
       });
+    },
+    onSuccess: () => {
       alert("Reminders queued successfully!");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  // (Deleted static mock data)
+    },
+  });
+
+  const handleDistribute = useCallback(
+    (id: string) => {
+      distributeMutation.mutate(id);
+    },
+    [distributeMutation],
+  );
+
+  const handleRemind = useCallback(
+    (id: string) => {
+      remindMutation.mutate(id);
+    },
+    [remindMutation],
+  );
 
   const filteredReports = rapReports.filter((r) => {
     if (statusFilter === "all") return true;
@@ -288,7 +304,27 @@ export default function AdminRAPReportsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Reports List */}
         <div className="space-y-2 lg:col-span-1">
-          {filteredReports.map((report) => (
+          {isLoading && (
+            <p className="py-8 text-center text-sm text-(--earist-body-text)">
+              Loading RAP reports...
+            </p>
+          )}
+          {isError && (
+            <p className="py-8 text-center text-sm text-red-600">
+              Unable to load RAP reports
+              {error instanceof Error && error.message
+                ? `: ${error.message}`
+                : "."}
+            </p>
+          )}
+          {!isLoading && !isError && filteredReports.length === 0 && (
+            <p className="py-8 text-center text-sm text-(--earist-body-text)">
+              No RAP reports match the selected filter.
+            </p>
+          )}
+          {!isLoading &&
+            !isError &&
+            filteredReports.map((report) => (
             <button
               key={report.id}
               onClick={() => setSelectedReport(report.id)}

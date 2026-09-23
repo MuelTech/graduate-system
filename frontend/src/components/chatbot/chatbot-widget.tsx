@@ -7,7 +7,7 @@ interface Message {
   id: string;
   role: "user" | "bot";
   content: string;
-  timestamp: Date;
+  timestamp: Date | null;
 }
 
 const botResponses: Record<string, string> = {
@@ -114,6 +114,7 @@ function getBotResponse(input: string): string {
 }
 
 function generateId(): string {
+  // Only for client-side user/bot messages after interaction — never for SSR output.
   return Math.random().toString(36).substring(2, 9);
 }
 
@@ -121,17 +122,28 @@ export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: generateId(),
+      // Stable across server/client so the closed/open shell can hydrate cleanly.
+      id: "welcome",
       role: "bot",
       content:
         "Hello! I'm the EARIST GS Assistant. How can I help you today? You can ask me about programs, admissions, exams, thesis defense, and more.",
-      timestamp: new Date(),
+      timestamp: null,
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const openChat = () => {
+    setIsOpen(true);
+    // Stamp the welcome message only after a user gesture (client-only).
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "welcome" && !m.timestamp ? { ...m, timestamp: new Date() } : m,
+      ),
+    );
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -188,7 +200,7 @@ export function ChatbotWidget() {
       {/* Floating Trigger Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={openChat}
           className="fixed right-6 bottom-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-(--earist-primary) text-white shadow-lg transition-all hover:scale-105 hover:bg-(--earist-primary)/90 hover:shadow-xl"
           aria-label="Open chatbot"
         >
@@ -243,16 +255,19 @@ export function ChatbotWidget() {
                   >
                     <p className="whitespace-pre-line">{message.content}</p>
                     <p
+                      suppressHydrationWarning
                       className={`mt-1 text-xs ${
                         message.role === "user"
                           ? "text-white/50"
                           : "text-(--earist-body-text)/50"
                       }`}
                     >
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {message.timestamp
+                        ? message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
                     </p>
                   </div>
                 </div>

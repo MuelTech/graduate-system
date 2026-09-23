@@ -87,7 +87,12 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-(--earist-surface-gray)">
+    <div
+      // Browser extensions (e.g. Definer) inject host nodes into the layout
+      // tree and break attribute/text hydration on this shell. Children stay strict.
+      suppressHydrationWarning
+      className="flex min-h-screen bg-(--earist-surface-gray)"
+    >
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -259,10 +264,11 @@ export default function AdminLayout({
           <div className="flex items-center gap-3">
             <NotificationBell role="ADMIN" />
             <div
+              suppressHydrationWarning
               className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white uppercase"
               title={session?.user?.email || "Admin"}
             >
-              {session?.user?.email?.charAt(0).toUpperCase()}
+              {session?.user?.email?.charAt(0).toUpperCase() || "A"}
             </div>
           </div>
         </header>
