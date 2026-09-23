@@ -639,64 +639,160 @@ async function main() {
         }`,
       );
 
-      // Optional: prior-stage history must not block READY (seed fixtures)
-      const readyAll = await req("GET", "/thesis/defense/applications?bucket=READY&page=1&pageSize=50", {
-        token: adminTok,
-      });
-      const rows = readyAll.json?.data || [];
-      const proposalReady = rows.find((r) => r.stage === "PROPOSAL" && r.workflowBucket === "READY");
-      const finalReady = rows.find((r) => r.stage === "FINAL" && r.workflowBucket === "READY");
-      log(
-        "Optional: Proposal READY with prior Title history",
-        proposalReady ? "PASS" : "WARN",
-        proposalReady ? `id=${proposalReady.id}` : "no PROPOSAL READY row (seed-dependent)",
-      );
-      log(
-        "Optional: Final READY with prior Title/Proposal history",
-        finalReady ? "PASS" : "WARN",
-        finalReady ? `id=${finalReady.id}` : "no FINAL READY row (seed-dependent)",
-      );
+      // --- Exact fixture identity (never mutate proposal-blocked-vars) ---
+      const findByEmail = (rows, email) =>
+        (rows || []).find((r) => r.student?.user?.email === email);
 
-      // Stage-scoped docs: Final row must not count Title+Proposal docs
-      if (finalReady) {
-        const stages = (finalReady.thesisDocuments || []).map((d) => d.defenseStage);
-        log(
-          "Optional: Final docs stage-scoped",
-          (finalReady.thesisDocuments || []).length > 0 &&
-            stages.every((s) => s === "FINAL")
-            ? "PASS"
-            : (finalReady.thesisDocuments || []).length === 0
-              ? "WARN"
-              : "FAIL",
-          `stages=${JSON.stringify(stages)}`,
-        );
-      }
-
-      // Regression: prior-stage CONCLUDED must not block current-stage review.
-      const needsReview2 = await req(
+      // Isolation: blocked fixture must stay PENDING (not READY / not approved by smoke)
+      const needsAll = await req(
         "GET",
         "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=50",
         { token: adminTok },
       );
-      const priorHistoryPend = (needsReview2.json?.data || []).find(
-        (r) => r.stage === "PROPOSAL" || r.stage === "FINAL",
+      const readyAll2 = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=READY&page=1&pageSize=50",
+        { token: adminTok },
       );
-      if (!priorHistoryPend) {
+      const activeAll2 = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=ACTIVE&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      const blockedVars =
+        findByEmail(needsAll.json?.data, "proposal-blocked-vars@earist.edu.ph") ||
+        findByEmail(readyAll2.json?.data, "proposal-blocked-vars@earist.edu.ph") ||
+        findByEmail(activeAll2.json?.data, "proposal-blocked-vars@earist.edu.ph");
+      log(
+        "ISOLATE proposal-blocked-vars not approved by smoke",
+        blockedVars && blockedVars.status === "PENDING" ? "PASS" : "FAIL",
+        blockedVars
+          ? `status=${blockedVars.status} bucket=${blockedVars.workflowBucket}`
+          : "fixture missing (reseed)",
+      );
+
+      // REG: proposal-review-pending@ — Title history must not block APPROVE
+      let proposalReview = findByEmail(
+        needsAll.json?.data,
+        "proposal-review-pending@earist.edu.ph",
+      );
+      if (!proposalReview) {
         log(
-          "REG prior-stage history does not block review",
-          "WARN",
-          "no PROPOSAL/FINAL PENDING fixture in NEEDS_REVIEW",
+          "REG proposal-review-pending PENDING→APPROVE",
+          "FAIL",
+          "fixture not in NEEDS_REVIEW (run npx prisma db seed)",
         );
       } else {
-        const approveNext = await req(
+        const apr = await req(
           "PUT",
-          `/thesis/defense/${priorHistoryPend.id}/status`,
+          `/thesis/defense/${proposalReview.id}/status`,
           { token: adminTok, body: { status: "APPROVED" } },
         );
+        const readyCheck = await req(
+          "GET",
+          "/thesis/defense/applications?bucket=READY&page=1&pageSize=50",
+          { token: adminTok },
+        );
+        const nowReady = findByEmail(
+          readyCheck.json?.data,
+          "proposal-review-pending@earist.edu.ph",
+        );
         log(
-          `REG approve ${priorHistoryPend.stage} PENDING with prior history`,
-          approveNext.ok ? "PASS" : "FAIL",
-          `id=${priorHistoryPend.id} ${JSON.stringify(approveNext.json)?.slice(0, 160)}`,
+          "REG proposal-review-pending PENDING→APPROVE",
+          apr.ok && nowReady ? "PASS" : "FAIL",
+          `approve=${apr.status} ready=${!!nowReady} ${JSON.stringify(apr.json)?.slice(0, 120)}`,
+        );
+      }
+
+      // REG: final-review-pending@ — Title+Proposal history must not block APPROVE
+      const needsAfter = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      let finalReview = findByEmail(
+        needsAfter.json?.data,
+        "final-review-pending@earist.edu.ph",
+      );
+      if (!finalReview) {
+        log(
+          "REG final-review-pending PENDING→APPROVE",
+          "FAIL",
+          "fixture not in NEEDS_REVIEW (run npx prisma db seed)",
+        );
+      } else {
+        const afr = await req(
+          "PUT",
+          `/thesis/defense/${finalReview.id}/status`,
+          { token: adminTok, body: { status: "APPROVED" } },
+        );
+        const readyCheck2 = await req(
+          "GET",
+          "/thesis/defense/applications?bucket=READY&page=1&pageSize=50",
+          { token: adminTok },
+        );
+        const nowReady2 = findByEmail(
+          readyCheck2.json?.data,
+          "final-review-pending@earist.edu.ph",
+        );
+        log(
+          "REG final-review-pending PENDING→APPROVE",
+          afr.ok && nowReady2 ? "PASS" : "FAIL",
+          `approve=${afr.status} ready=${!!nowReady2} ${JSON.stringify(afr.json)?.slice(0, 120)}`,
+        );
+      }
+
+      // Exact-fixture stage-scoped docs: final-ready@ (READY, not mutated by smoke)
+      const readyDocs = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=READY&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      const finalReadyExact = findByEmail(
+        readyDocs.json?.data,
+        "final-ready@earist.edu.ph",
+      );
+      if (!finalReadyExact) {
+        log("Final docs stage-scoped (final-ready@)", "FAIL", "fixture missing");
+      } else {
+        const docs = finalReadyExact.thesisDocuments || [];
+        const stages = docs.map((d) => d.defenseStage);
+        const types = docs.map((d) => d.docType).sort();
+        const expected = ["COR", "FINAL_MANUSCRIPT", "RECEIPT"];
+        const hasTypes = expected.every((t) => types.includes(t));
+        const stageOk = docs.length > 0 && stages.every((s) => s === "FINAL");
+        log(
+          "Final docs stage-scoped (final-ready@)",
+          stageOk && hasTypes ? "PASS" : "FAIL",
+          `count=${docs.length} stages=${JSON.stringify(stages)} types=${JSON.stringify(types)}`,
+        );
+      }
+
+      const proposalReadyExact = findByEmail(
+        readyDocs.json?.data,
+        "proposal-ready@earist.edu.ph",
+      );
+      if (!proposalReadyExact) {
+        log(
+          "Proposal docs stage-scoped (proposal-ready@)",
+          "WARN",
+          "fixture missing from READY (may be unused)",
+        );
+      } else {
+        const pdocs = proposalReadyExact.thesisDocuments || [];
+        const pstages = pdocs.map((d) => d.defenseStage);
+        const ptypes = pdocs.map((d) => d.docType).sort();
+        const pHas = ["COR", "PROPOSAL_CHAPTERS", "RECEIPT"].every((t) =>
+          ptypes.includes(t),
+        );
+        log(
+          "Proposal docs stage-scoped (proposal-ready@)",
+          pdocs.length > 0 &&
+            pstages.every((s) => s === "PROPOSAL") &&
+            pHas
+            ? "PASS"
+            : "FAIL",
+          `stages=${JSON.stringify(pstages)} types=${JSON.stringify(ptypes)}`,
         );
       }
     }
