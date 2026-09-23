@@ -158,18 +158,22 @@ export class CorService {
             adminId,
             "COR_VERIFY",
             corUploadId,
-            `COR verified and student enrolled: ${data.studentNumber}`,
+            `COR verified and student enrolled: ${data.studentNumber || result?.updatedStudent?.studentNumber || ""}`,
             JSON.stringify({ status: "PENDING" }),
             JSON.stringify({ status: "VERIFIED", studentNumber: data.studentNumber }),
         );
 
-        // Dispatch credential email
-        await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
-            student_name: student.user.firstName,
-            student_number: data.studentNumber || "",
-            default_password: student.user.lastName.toUpperCase(),
-            portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
-        });
+        // Dispatch credential email (non-blocking for verify success)
+        try {
+            await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
+                student_name: student.user.firstName,
+                student_number: data.studentNumber || result?.updatedStudent?.studentNumber || "",
+                default_password: student.user.lastName.toUpperCase(),
+                portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+            });
+        } catch (emailError) {
+            console.error("[COR verify] credential email failed:", emailError);
+        }
 
         return result;
     }
