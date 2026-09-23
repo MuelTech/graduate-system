@@ -625,12 +625,18 @@ async function main() {
       });
       const readyAfterCount = summaryAfter.json?.READY ?? 0;
       const activeAfterCount = summaryAfter.json?.ACTIVE ?? 0;
+      // Exact -1 READY / +1 ACTIVE when this app is the only concurrent change.
+      // Per-record READY→ACTIVE checks above remain authoritative if other rows move.
+      const exactReady = readyAfterCount === readyBeforeSchedule - 1;
+      const exactActive = activeAfterCount === activeBeforeSchedule + 1;
       log(
-        "Summary READY↓ ACTIVE↑ (before/after)",
-        readyAfterCount <= readyBeforeSchedule && activeAfterCount >= activeBeforeSchedule
-          ? "PASS"
-          : "FAIL",
-        `READY ${readyBeforeSchedule}→${readyAfterCount} ACTIVE ${activeBeforeSchedule}→${activeAfterCount}`,
+        "Summary READY-1 ACTIVE+1",
+        exactReady && exactActive ? "PASS" : "WARN",
+        `READY ${readyBeforeSchedule}→${readyAfterCount} ACTIVE ${activeBeforeSchedule}→${activeAfterCount}${
+          exactReady && exactActive
+            ? ""
+            : " (aggregate weaker; per-record READY/ACTIVE asserts are authoritative)"
+        }`,
       );
 
       // Optional: prior-stage history must not block READY (seed fixtures)
@@ -656,8 +662,41 @@ async function main() {
         const stages = (finalReady.thesisDocuments || []).map((d) => d.defenseStage);
         log(
           "Optional: Final docs stage-scoped",
-          stages.every((s) => s === "FINAL") ? "PASS" : "FAIL",
+          (finalReady.thesisDocuments || []).length > 0 &&
+            stages.every((s) => s === "FINAL")
+            ? "PASS"
+            : (finalReady.thesisDocuments || []).length === 0
+              ? "WARN"
+              : "FAIL",
           `stages=${JSON.stringify(stages)}`,
+        );
+      }
+
+      // Regression: prior-stage CONCLUDED must not block current-stage review.
+      const needsReview2 = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      const priorHistoryPend = (needsReview2.json?.data || []).find(
+        (r) => r.stage === "PROPOSAL" || r.stage === "FINAL",
+      );
+      if (!priorHistoryPend) {
+        log(
+          "REG prior-stage history does not block review",
+          "WARN",
+          "no PROPOSAL/FINAL PENDING fixture in NEEDS_REVIEW",
+        );
+      } else {
+        const approveNext = await req(
+          "PUT",
+          `/thesis/defense/${priorHistoryPend.id}/status`,
+          { token: adminTok, body: { status: "APPROVED" } },
+        );
+        log(
+          `REG approve ${priorHistoryPend.stage} PENDING with prior history`,
+          approveNext.ok ? "PASS" : "FAIL",
+          `id=${priorHistoryPend.id} ${JSON.stringify(approveNext.json)?.slice(0, 160)}`,
         );
       }
     }

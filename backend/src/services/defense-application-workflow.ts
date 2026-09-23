@@ -66,6 +66,24 @@ export function hasActiveCurrentStageSchedule(
 }
 
 /**
+ * True only when the CURRENT stage's defense session is concluded.
+ * Prior-stage conclusions (Title while on Proposal, etc.) must NOT lock review.
+ */
+export function hasCurrentStageConclusion(
+  stage: DefenseStage | null | undefined,
+  schedules: ScheduleForPick[] | null | undefined,
+): boolean {
+  if (!stage || !schedules?.length) return false;
+  const wanted = STAGE_DEFENSE_TYPE[stage];
+  return schedules.some(
+    (s) =>
+      s.defenseType === wanted &&
+      s.sessionStatus !== "CANCELLED" &&
+      isConcludedSessionStatus(s.sessionStatus),
+  );
+}
+
+/**
  * Any non-cancelled schedule for this defense type (current stage or re-defense).
  * Used to reject a second scheduling attempt — rescheduling is out of scope.
  */

@@ -372,7 +372,12 @@ export class DefenseApplicationsRepository {
               select: { id: true, titleText: true, isSelected: true },
             },
             thesisDocuments: {
-              select: { id: true, docType: true, filePath: true },
+              select: {
+                id: true,
+                docType: true,
+                filePath: true,
+                defenseStage: true,
+              },
             },
             assignment: {
               include: {
@@ -411,7 +416,11 @@ export class DefenseApplicationsRepository {
         concludedAt: c.concludedAt,
         student: c.thesis.student,
         thesisTitles: c.thesis.thesisTitles,
-        thesisDocuments: c.thesis.thesisDocuments,
+        // Scope to THIS history record's stage (not ThesisRecord.current stage).
+        thesisDocuments: filterDocumentsForStage(
+          c.thesis.thesisDocuments,
+          stageName,
+        ),
         assignment: c.thesis.assignment,
         currentSchedule: {
           id: c.schedule.id,

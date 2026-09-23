@@ -7,6 +7,7 @@ import {
   filterDocumentsForStage,
   findBlockingScheduleForScheduling,
   hasActiveCurrentStageSchedule,
+  hasCurrentStageConclusion,
   isHistoricalDefenseRecord,
   matchesStatusRefine,
   pickActiveCurrentStageSchedule,
@@ -269,26 +270,77 @@ describe("matchesStatusRefine", () => {
 });
 
 describe("filterDocumentsForStage", () => {
-  it("previous-stage documents do not inflate current requirement display", () => {
-    const docs = [
-      { id: "1", docType: "RECEIPT", defenseStage: "TITLE" },
-      { id: "2", docType: "RECEIPT", defenseStage: "PROPOSAL" },
-      { id: "3", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
-      { id: "4", docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" },
-      { id: "5", docType: "COR", defenseStage: "TITLE" },
-    ];
+  const docs = [
+    { id: "1", docType: "RECEIPT", defenseStage: "TITLE" },
+    { id: "2", docType: "RECEIPT", defenseStage: "PROPOSAL" },
+    { id: "3", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
+    { id: "4", docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" },
+    { id: "5", docType: "COR", defenseStage: "TITLE" },
+  ];
+
+  it("Title history row does not include Proposal or Final docs", () => {
+    const title = filterDocumentsForStage(docs, "TITLE");
+    expect(title.map((d) => d.id).sort()).toEqual(["1", "5"]);
+    expect(title.every((d) => d.defenseStage === "TITLE")).toBe(true);
+  });
+
+  it("Proposal history row does not include Title or Final docs", () => {
+    const proposal = filterDocumentsForStage(docs, "PROPOSAL");
+    expect(proposal.map((d) => d.id).sort()).toEqual(["2", "3"]);
+    expect(proposal.every((d) => d.defenseStage === "PROPOSAL")).toBe(true);
+  });
+
+  it("Final history row only has Final docs", () => {
+    const final = filterDocumentsForStage(docs, "FINAL");
+    expect(final.map((d) => d.id)).toEqual(["4"]);
+    expect(final.every((d) => d.defenseStage === "FINAL")).toBe(true);
+  });
+});
+
+describe("hasCurrentStageConclusion", () => {
+  const titleConcluded = {
+    id: "t",
+    defenseType: "TITLE_DEFENSE",
+    sessionStatus: "CONCLUDED",
+    createdAt: "2026-07-01T00:00:00Z",
+  };
+  const proposalConcluded = {
+    id: "p",
+    defenseType: "PROPOSAL_DEFENSE",
+    sessionStatus: "CONCLUDED",
+    createdAt: "2026-08-01T00:00:00Z",
+  };
+  const finalActive = {
+    id: "f",
+    defenseType: "FINAL_DEFENSE",
+    sessionStatus: "SCHEDULED",
+    createdAt: "2026-09-01T00:00:00Z",
+  };
+
+  it("PROPOSAL PENDING + prior Title CONCLUDED is not a current-stage conclusion", () => {
+    expect(hasCurrentStageConclusion("PROPOSAL", [titleConcluded])).toBe(false);
+  });
+
+  it("FINAL + prior Title/Proposal concluded is not a current-stage conclusion", () => {
     expect(
-      filterDocumentsForStage(docs, "PROPOSAL")
-        .map((d) => d.id)
-        .sort(),
-    ).toEqual(["2", "3"]);
+      hasCurrentStageConclusion("FINAL", [titleConcluded, proposalConcluded]),
+    ).toBe(false);
+  });
+
+  it("PROPOSAL + current PROPOSAL concluded blocks review", () => {
+    expect(hasCurrentStageConclusion("PROPOSAL", [proposalConcluded])).toBe(
+      true,
+    );
     expect(
-      filterDocumentsForStage(docs, "TITLE")
-        .map((d) => d.id)
-        .sort(),
-    ).toEqual(["1", "5"]);
-    expect(filterDocumentsForStage(docs, "FINAL").map((d) => d.id)).toEqual([
-      "4",
-    ]);
+      hasCurrentStageConclusion("PROPOSAL", [
+        titleConcluded,
+        proposalConcluded,
+      ]),
+    ).toBe(true);
+  });
+
+  it("FINAL active session is not concluded (active lock uses hasActiveCurrentStageSchedule)", () => {
+    expect(hasCurrentStageConclusion("FINAL", [finalActive])).toBe(false);
+    expect(hasActiveCurrentStageSchedule("FINAL", [finalActive])).toBe(true);
   });
 });

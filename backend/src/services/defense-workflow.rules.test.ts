@@ -203,4 +203,33 @@ describe("canApplyReviewTransition", () => {
       }).allowed,
     ).toBe(false);
   });
+
+  it("prior-stage conclusion alone does not block current-stage review (service maps stage)", () => {
+    // Service only sets hasConclusion for the CURRENT stage; this models
+    // PROPOSAL PENDING + Title CONCLUDED (hasConclusion=false).
+    expect(
+      canApplyReviewTransition({
+        currentStatus: "PENDING",
+        nextStatus: "APPROVED",
+        hasConclusion: false,
+        hasActiveCurrentSession: false,
+      }).allowed,
+    ).toBe(true);
+    // FINAL PENDING + Title/Proposal concluded — still allowed
+    expect(
+      canApplyReviewTransition({
+        currentStatus: "PENDING",
+        nextStatus: "APPROVED",
+        hasConclusion: false,
+      }).allowed,
+    ).toBe(true);
+    // Current-stage conclusion still blocks
+    expect(
+      canApplyReviewTransition({
+        currentStatus: "PENDING",
+        nextStatus: "APPROVED",
+        hasConclusion: true,
+      }).allowed,
+    ).toBe(false);
+  });
 });

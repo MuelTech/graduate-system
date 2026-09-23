@@ -20,7 +20,7 @@ import { AppError } from '../utils/AppError';
 import {
   canCreateDefenseSchedule,
   hasActiveCurrentStageSchedule,
-  isConcludedSessionStatus,
+  hasCurrentStageConclusion,
 } from './defense-application-workflow';
 import { canApplyReviewTransition } from './defense-workflow.rules';
 
@@ -364,16 +364,20 @@ export class ThesisService {
       thesis.stage,
       schedules,
     );
-    const hasConclusion =
-      Boolean(thesis.outcome) ||
-      schedules.some((s) => isConcludedSessionStatus(s.sessionStatus));
+    // Only the CURRENT stage's conclusion locks application review.
+    // Prior-stage Title/Proposal conclusions must not block the next stage.
+    const hasCurrentConclusion = hasCurrentStageConclusion(
+      thesis.stage,
+      schedules,
+    );
 
     const gate = canApplyReviewTransition({
       currentStatus: thesis.status,
       nextStatus: status,
       hasActiveCurrentSession,
-      hasConclusion,
-      outcome: thesis.outcome,
+      hasConclusion: hasCurrentConclusion,
+      // ThesisRecord.outcome can mirror an earlier stage; do not use it alone.
+      outcome: hasCurrentConclusion ? thesis.outcome : null,
     });
     if (!gate.allowed) {
       throw new AppError(gate.reason || 'Invalid application review transition.', 400);
