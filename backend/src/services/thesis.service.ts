@@ -17,7 +17,12 @@ import type {
   CommitteeAssignmentInput,
 } from '../interfaces/defense-committee.interfaces';
 import { AppError } from '../utils/AppError';
-import { canCreateDefenseSchedule } from './defense-application-workflow';
+import {
+  canCreateDefenseSchedule,
+  hasActiveCurrentStageSchedule,
+  isConcludedSessionStatus,
+} from './defense-application-workflow';
+import { canApplyReviewTransition } from './defense-workflow.rules';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -52,11 +57,22 @@ export class ThesisService {
   }) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
-    return this.thesisRepo.getApprovedApplicationsPaginated({
+    // Scheduling candidates share Defense Applications READY semantics.
+    const defenseTypeToStage: Record<string, string> = {
+      TITLE_DEFENSE: 'TITLE',
+      PROPOSAL_DEFENSE: 'PROPOSAL',
+      FINAL_DEFENSE: 'FINAL',
+    };
+    const stage =
+      params.defenseType && params.defenseType !== 'ALL'
+        ? defenseTypeToStage[params.defenseType] || params.defenseType
+        : undefined;
+    return this.defenseAppsRepo.getDefenseApplicationsPaginated({
       page,
       pageSize,
+      bucket: 'READY',
       search: params.search,
-      defenseType: params.defenseType,
+      stage,
       programId: params.programId,
     });
   }
@@ -338,12 +354,31 @@ export class ThesisService {
 
   async updateDefenseStatus(thesisId: string, data: { status: string }) {
     const status = String(data.status || '').toUpperCase();
-    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
-      throw new AppError(
-        'Application review may only set PENDING, APPROVED, or REJECTED. Defense outcomes are recorded at conclusion.',
-        400,
-      );
+    const thesis = await this.thesisRepo.getThesisById(thesisId);
+    if (!thesis) {
+      throw new AppError('Defense application not found.', 404);
     }
+
+    const schedules = await this.thesisRepo.findNonCancelledSchedules(thesisId);
+    const hasActiveCurrentSession = hasActiveCurrentStageSchedule(
+      thesis.stage,
+      schedules,
+    );
+    const hasConclusion =
+      Boolean(thesis.outcome) ||
+      schedules.some((s) => isConcludedSessionStatus(s.sessionStatus));
+
+    const gate = canApplyReviewTransition({
+      currentStatus: thesis.status,
+      nextStatus: status,
+      hasActiveCurrentSession,
+      hasConclusion,
+      outcome: thesis.outcome,
+    });
+    if (!gate.allowed) {
+      throw new AppError(gate.reason || 'Invalid application review transition.', 400);
+    }
+
     return this.thesisRepo.updateThesisStatus(
       thesisId,
       status as 'PENDING' | 'APPROVED' | 'REJECTED',

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyWinningTitleFlags,
+  canApplyReviewTransition,
   canApproveApplication,
   canRecordDefenseOutcome,
   canResubmitApplication,
@@ -137,5 +138,69 @@ describe("oral scoring completion", () => {
     expect(canSubmitOralScore("FACILITATOR", ["CHAIRMAN", "PANELIST"])).toBe(
       false,
     );
+  });
+});
+
+describe("canApplyReviewTransition", () => {
+  it("PENDING may become APPROVED or REJECTED only", () => {
+    expect(
+      canApplyReviewTransition({ currentStatus: "PENDING", nextStatus: "APPROVED" })
+        .allowed,
+    ).toBe(true);
+    expect(
+      canApplyReviewTransition({ currentStatus: "PENDING", nextStatus: "REJECTED" })
+        .allowed,
+    ).toBe(true);
+    expect(
+      canApplyReviewTransition({ currentStatus: "PENDING", nextStatus: "PASSED" })
+        .allowed,
+    ).toBe(false);
+  });
+
+  it("REJECTED cannot return to PENDING via review (resubmit only)", () => {
+    expect(
+      canApplyReviewTransition({ currentStatus: "REJECTED", nextStatus: "PENDING" })
+        .allowed,
+    ).toBe(false);
+  });
+
+  it("APPROVED is not rewritable through application review", () => {
+    expect(
+      canApplyReviewTransition({ currentStatus: "APPROVED", nextStatus: "PENDING" })
+        .allowed,
+    ).toBe(false);
+    expect(
+      canApplyReviewTransition({ currentStatus: "APPROVED", nextStatus: "REJECTED" })
+        .allowed,
+    ).toBe(false);
+  });
+
+  it("SCHEDULED / active session cannot be forced back to APPROVED", () => {
+    expect(
+      canApplyReviewTransition({ currentStatus: "SCHEDULED", nextStatus: "APPROVED" })
+        .allowed,
+    ).toBe(false);
+    expect(
+      canApplyReviewTransition({
+        currentStatus: "APPROVED",
+        nextStatus: "APPROVED",
+        hasActiveCurrentSession: true,
+      }).allowed,
+    ).toBe(false);
+  });
+
+  it("concluded outcome states cannot be mutated through review", () => {
+    expect(
+      canApplyReviewTransition({ currentStatus: "PASSED", nextStatus: "APPROVED" })
+        .allowed,
+    ).toBe(false);
+    expect(
+      canApplyReviewTransition({
+        currentStatus: "APPROVED",
+        nextStatus: "REJECTED",
+        hasConclusion: true,
+        outcome: "PASSED",
+      }).allowed,
+    ).toBe(false);
   });
 });

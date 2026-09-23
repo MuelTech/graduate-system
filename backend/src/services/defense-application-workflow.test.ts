@@ -4,6 +4,7 @@ import {
   canShowAssignSchedule,
   canShowCurrentSessionPanel,
   deriveApplicationWorkflowBucket,
+  filterDocumentsForStage,
   findBlockingScheduleForScheduling,
   hasActiveCurrentStageSchedule,
   isHistoricalDefenseRecord,
@@ -264,5 +265,30 @@ describe("matchesStatusRefine", () => {
     expect(matchesStatusRefine("PASSED", "REJECTED")).toBe(false);
     expect(matchesStatusRefine("PASSED", "ALL")).toBe(true);
     expect(matchesStatusRefine("PASSED", undefined)).toBe(true);
+  });
+});
+
+describe("filterDocumentsForStage", () => {
+  it("previous-stage documents do not inflate current requirement display", () => {
+    const docs = [
+      { id: "1", docType: "RECEIPT", defenseStage: "TITLE" },
+      { id: "2", docType: "RECEIPT", defenseStage: "PROPOSAL" },
+      { id: "3", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
+      { id: "4", docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" },
+      { id: "5", docType: "COR", defenseStage: "TITLE" },
+    ];
+    expect(
+      filterDocumentsForStage(docs, "PROPOSAL")
+        .map((d) => d.id)
+        .sort(),
+    ).toEqual(["2", "3"]);
+    expect(
+      filterDocumentsForStage(docs, "TITLE")
+        .map((d) => d.id)
+        .sort(),
+    ).toEqual(["1", "5"]);
+    expect(filterDocumentsForStage(docs, "FINAL").map((d) => d.id)).toEqual([
+      "4",
+    ]);
   });
 });

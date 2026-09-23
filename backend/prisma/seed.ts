@@ -1963,8 +1963,34 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       },
     });
   }
+  // Proposal application evidence (stage-scoped) + approved READY Proposal app.
+  for (const doc of [
+    { docType: "PROPOSAL_CHAPTERS" as const, defenseStage: "PROPOSAL" as const },
+    { docType: "COR" as const, defenseStage: "PROPOSAL" as const },
+    { docType: "RECEIPT" as const, defenseStage: "PROPOSAL" as const },
+  ]) {
+    const existing = await prisma.thesisDocument.findFirst({
+      where: {
+        thesisId: eThesis.id,
+        docType: doc.docType,
+        defenseStage: doc.defenseStage,
+      },
+    });
+    if (!existing) {
+      await prisma.thesisDocument.create({
+        data: {
+          thesisId: eThesis.id,
+          docType: doc.docType,
+          defenseStage: doc.defenseStage,
+          filePath: `uploads/seed-proposal-${doc.docType.toLowerCase()}.pdf`,
+          uploadedAt: new Date(),
+        },
+      });
+    }
+  }
+  await cancelNonCancelledSchedules(eThesis.id, "PROPOSAL_DEFENSE");
   console.log(
-    "  scenario proposal-ready@earist.edu.ph → Proposal apply SUCCEEDS (vars NOT_APPLICABLE, Title RAP finalized)",
+    "  scenario proposal-ready@earist.edu.ph → Proposal APP submitted + APPROVED READY (no Proposal schedule)",
   );
 
   // F) proposal-blocked-vars@ — vars PENDING should block Proposal
@@ -1998,7 +2024,8 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         studentId: f.student.id,
         assignmentId: fAssignment?.id ?? null,
         stage: "PROPOSAL",
-        status: "APPROVED",
+        // Submitted but NOT approved READY — vars still block a clean Proposal path.
+        status: "PENDING",
         outcome: null,
       },
     }));
@@ -2006,7 +2033,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     where: { id: fThesis.id },
     data: {
       stage: "PROPOSAL",
-      status: "APPROVED",
+      status: "PENDING",
       outcome: null,
       assignmentId: fAssignment?.id ?? fThesis.assignmentId,
     },
@@ -2227,8 +2254,34 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     }
   }
   // NOTE: no STRIKE / statistician / instruments — default Final gates are OFF.
+  // Final application evidence (stage-scoped) + approved READY Final app.
+  for (const doc of [
+    { docType: "FINAL_MANUSCRIPT" as const, defenseStage: "FINAL" as const },
+    { docType: "COR" as const, defenseStage: "FINAL" as const },
+    { docType: "RECEIPT" as const, defenseStage: "FINAL" as const },
+  ]) {
+    const existing = await prisma.thesisDocument.findFirst({
+      where: {
+        thesisId: hThesis.id,
+        docType: doc.docType,
+        defenseStage: doc.defenseStage,
+      },
+    });
+    if (!existing) {
+      await prisma.thesisDocument.create({
+        data: {
+          thesisId: hThesis.id,
+          docType: doc.docType,
+          defenseStage: doc.defenseStage,
+          filePath: `uploads/seed-final-${doc.docType.toLowerCase()}.pdf`,
+          uploadedAt: new Date(),
+        },
+      });
+    }
+  }
+  await cancelNonCancelledSchedules(hThesis.id, "FINAL_DEFENSE");
   console.log(
-    "  scenario final-ready@earist.edu.ph → Final apply SUCCEEDS without STRIKE/statistician/instruments",
+    "  scenario final-ready@earist.edu.ph → Final APP submitted + APPROVED READY (no Final schedule)",
   );
 
   // I) scores-awaiting@ — all evaluator scores in, NOT concluded (score ≠ outcome)

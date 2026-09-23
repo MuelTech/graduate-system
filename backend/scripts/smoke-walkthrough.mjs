@@ -427,22 +427,8 @@ async function main() {
     attachFile(titleForm, "cor", "title-cor.pdf");
     attachFile(titleForm, "receipt", "title-receipt.pdf");
 
-    // Negative first: cannot schedule before apply/approve — use dummy id
-    const badSched = await req("POST", "/thesis/defense/00000000-0000-0000-0000-000000000000/schedule", {
-      token: adminTok,
-      body: {
-        defenseDate: "2026-11-01",
-        defenseTime: "10:00",
-        venueOrLink: "https://teams.microsoft.com/l/meetup-join/smoke",
-        defenseType: "TITLE_DEFENSE",
-        assignments: [],
-      },
-    });
-    log(
-      "NEG schedule before valid app",
-      !badSched.ok ? "PASS" : "FAIL",
-      `status=${badSched.status} ${JSON.stringify(badSched.json)?.slice(0, 160)}`,
-    );
+    // Negative: a REAL PENDING application cannot be scheduled (not a fake UUID).
+    // Placeholder — replaced after apply with the real thesis id.
 
     const apply = await req("POST", "/thesis/defense/title", { token: studentTok, form: titleForm });
     log(
@@ -451,7 +437,7 @@ async function main() {
       JSON.stringify(apply.json)?.slice(0, 280),
     );
 
-    const needsReview = await req("GET", "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=20", {
+    const needsReview = await req("GET", "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=50", {
       token: adminTok,
     });
     const nrItems = needsReview.json?.data || [];
@@ -467,6 +453,23 @@ async function main() {
     );
 
     if (mine) {
+      // BEFORE approval: real PENDING id must not be schedulable
+      const badSched = await req("POST", `/thesis/defense/${mine.id}/schedule`, {
+        token: adminTok,
+        body: {
+          defenseDate: "2026-11-01",
+          defenseTime: "10:00",
+          venueOrLink: "https://teams.microsoft.com/l/meetup-join/smoke",
+          defenseType: "TITLE_DEFENSE",
+          assignments: [],
+        },
+      });
+      log(
+        "NEG schedule REAL pending application",
+        !badSched.ok ? "PASS" : "FAIL",
+        `status=${badSched.status} ${JSON.stringify(badSched.json)?.slice(0, 180)}`,
+      );
+
       // Ready should NOT include this yet
       const readyBefore = await req("GET", "/thesis/defense/applications?bucket=READY&page=1&pageSize=50", {
         token: adminTok,
@@ -477,6 +480,13 @@ async function main() {
         !inReadyBefore ? "PASS" : "FAIL",
         `found=${inReadyBefore}`,
       );
+
+      // Summary BEFORE scheduling (for before/after compare)
+      const summaryBefore = await req("GET", "/thesis/defense/applications/summary", {
+        token: adminTok,
+      });
+      const readyBeforeCount = summaryBefore.json?.READY ?? 0;
+      const activeBeforeCount = summaryBefore.json?.ACTIVE ?? 0;
 
       const approve = await req("PUT", `/thesis/defense/${mine.id}/status`, {
         token: adminTok,
@@ -495,8 +505,6 @@ async function main() {
           ? `bucket=${readyRow.workflowBucket} display=${readyRow.displayStatus} hasSchedule=${!!readyRow.currentSchedule}`
           : "row missing from READY",
       );
-
-      // Approve must not equal PASSED
       log(
         "Approve ≠ PASSED",
         readyRow && readyRow.displayStatus === "APPROVED" && readyRow.outcome == null
@@ -505,10 +513,153 @@ async function main() {
         `status=${readyRow?.displayStatus} outcome=${readyRow?.outcome}`,
       );
 
-      const summary = await req("GET", "/thesis/defense/applications/summary", {
+      // Scheduling candidates endpoint shares READY semantics
+      const approvedList = await req("GET", "/thesis/defense/approved-applications?page=1&pageSize=50", {
         token: adminTok,
       });
-      log("Workflow summary endpoint", summary.ok ? "PASS" : "FAIL", JSON.stringify(summary.json));
+      const inSchedulingList = (approvedList.json?.data || []).some((r) => r.id === mine.id);
+      log(
+        "Scheduling list includes READY app",
+        inSchedulingList ? "PASS" : "FAIL",
+        `found=${inSchedulingList}`,
+      );
+
+      // Snapshot AFTER approve / BEFORE schedule for READY→ACTIVE compare
+      const summaryBeforeSchedule = await req("GET", "/thesis/defense/applications/summary", {
+        token: adminTok,
+      });
+      const readyBeforeSchedule = summaryBeforeSchedule.json?.READY ?? 0;
+      const activeBeforeSchedule = summaryBeforeSchedule.json?.ACTIVE ?? 0;
+
+      // Build Master's Title roster: CHAIRMAN + 4 PANELIST + FAC + RAP = 7
+      const panelistsRes = await req("GET", "/thesis/panelist-candidates", { token: adminTok });
+      const panelists = Array.isArray(panelistsRes.json)
+        ? panelistsRes.json
+        : panelistsRes.json?.data || [];
+      log(
+        "Load panelist candidates",
+        panelists.length >= 7 ? "PASS" : "FAIL",
+        `count=${panelists.length}`,
+      );
+
+      const rosterRoles = [
+        "CHAIRMAN",
+        "PANELIST",
+        "PANELIST",
+        "PANELIST",
+        "PANELIST",
+        "FACILITATOR",
+        "RAPPORTEUR",
+      ];
+      const assignments = rosterRoles.map((role, i) => ({
+        userId: panelists[i]?.id,
+        role,
+      })).filter((a) => a.userId);
+
+      const scheduleDate = new Date();
+      scheduleDate.setDate(scheduleDate.getDate() + 7);
+      const scheduleBody = {
+        defenseDate: scheduleDate.toISOString().slice(0, 10),
+        defenseTime: "10:00",
+        venueOrLink: "https://teams.microsoft.com/l/meetup-join/smoke-title",
+        defenseType: "TITLE_DEFENSE",
+        assignments,
+      };
+
+      const sched1 = await req("POST", `/thesis/defense/${mine.id}/schedule`, {
+        token: adminTok,
+        body: scheduleBody,
+      });
+      log(
+        "Schedule real Title application",
+        sched1.ok ? "PASS" : "FAIL",
+        JSON.stringify(sched1.json)?.slice(0, 280),
+      );
+
+      const readyPost = await req("GET", "/thesis/defense/applications?bucket=READY&page=1&pageSize=50", {
+        token: adminTok,
+      });
+      const stillReady = (readyPost.json?.data || []).some((r) => r.id === mine.id);
+      log("GONE from READY after schedule", !stillReady ? "PASS" : "FAIL", `found=${stillReady}`);
+
+      const activePost = await req("GET", "/thesis/defense/applications?bucket=ACTIVE&page=1&pageSize=50", {
+        token: adminTok,
+      });
+      const activeRow = (activePost.json?.data || []).find((r) => r.id === mine.id);
+      log(
+        "Appears in ACTIVE with session + committee",
+        !!activeRow?.currentSchedule &&
+          activeRow.currentSchedule.sessionStatus === "SCHEDULED" &&
+          activeRow.currentSchedule.defenseType === "TITLE_DEFENSE" &&
+          (activeRow.currentSchedule.panelAssignments?.length ?? 0) > 0
+          ? "PASS"
+          : "FAIL",
+        activeRow
+          ? `bucket=${activeRow.workflowBucket} session=${activeRow.currentSchedule?.sessionStatus} type=${activeRow.currentSchedule?.defenseType} seats=${activeRow.currentSchedule?.panelAssignments?.length}`
+          : "missing from ACTIVE",
+      );
+
+      // Assign Panel & Schedule is not valid once ACTIVE
+      log(
+        "Assign Schedule not valid when ACTIVE",
+        activeRow && activeRow.workflowBucket === "ACTIVE" && !activeRow.currentSchedule?.id
+          ? "FAIL"
+          : activeRow && activeRow.workflowBucket === "ACTIVE"
+            ? "PASS"
+            : "FAIL",
+        `bucket=${activeRow?.workflowBucket}`,
+      );
+
+      const sched2 = await req("POST", `/thesis/defense/${mine.id}/schedule`, {
+        token: adminTok,
+        body: scheduleBody,
+      });
+      log(
+        "NEG duplicate schedule rejected",
+        !sched2.ok ? "PASS" : "FAIL",
+        `status=${sched2.status} ${JSON.stringify(sched2.json)?.slice(0, 180)}`,
+      );
+
+      const summaryAfter = await req("GET", "/thesis/defense/applications/summary", {
+        token: adminTok,
+      });
+      const readyAfterCount = summaryAfter.json?.READY ?? 0;
+      const activeAfterCount = summaryAfter.json?.ACTIVE ?? 0;
+      log(
+        "Summary READY↓ ACTIVE↑ (before/after)",
+        readyAfterCount <= readyBeforeSchedule && activeAfterCount >= activeBeforeSchedule
+          ? "PASS"
+          : "FAIL",
+        `READY ${readyBeforeSchedule}→${readyAfterCount} ACTIVE ${activeBeforeSchedule}→${activeAfterCount}`,
+      );
+
+      // Optional: prior-stage history must not block READY (seed fixtures)
+      const readyAll = await req("GET", "/thesis/defense/applications?bucket=READY&page=1&pageSize=50", {
+        token: adminTok,
+      });
+      const rows = readyAll.json?.data || [];
+      const proposalReady = rows.find((r) => r.stage === "PROPOSAL" && r.workflowBucket === "READY");
+      const finalReady = rows.find((r) => r.stage === "FINAL" && r.workflowBucket === "READY");
+      log(
+        "Optional: Proposal READY with prior Title history",
+        proposalReady ? "PASS" : "WARN",
+        proposalReady ? `id=${proposalReady.id}` : "no PROPOSAL READY row (seed-dependent)",
+      );
+      log(
+        "Optional: Final READY with prior Title/Proposal history",
+        finalReady ? "PASS" : "WARN",
+        finalReady ? `id=${finalReady.id}` : "no FINAL READY row (seed-dependent)",
+      );
+
+      // Stage-scoped docs: Final row must not count Title+Proposal docs
+      if (finalReady) {
+        const stages = (finalReady.thesisDocuments || []).map((d) => d.defenseStage);
+        log(
+          "Optional: Final docs stage-scoped",
+          stages.every((s) => s === "FINAL") ? "PASS" : "FAIL",
+          `stages=${JSON.stringify(stages)}`,
+        );
+      }
     }
   }
 

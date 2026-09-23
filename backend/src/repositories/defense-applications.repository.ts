@@ -9,6 +9,7 @@ import {
 } from "../services/defense-application-session";
 import {
   deriveApplicationWorkflowBucket,
+  filterDocumentsForStage,
   matchesStatusRefine,
   pickActiveCurrentStageSchedule,
   resolveDisplayStatus,
@@ -116,7 +117,12 @@ function applicationInclude() {
       select: { id: true, titleText: true, isSelected: true },
     },
     thesisDocuments: {
-      select: { id: true, docType: true, filePath: true },
+      select: {
+        id: true,
+        docType: true,
+        filePath: true,
+        defenseStage: true,
+      },
     },
     assignment: {
       include: {
@@ -162,7 +168,12 @@ function mapApplicationRow(row: {
   createdAt: Date;
   student: unknown;
   thesisTitles: unknown;
-  thesisDocuments: unknown;
+  thesisDocuments: Array<{
+    id: string;
+    docType: string;
+    filePath: string;
+    defenseStage?: string | null;
+  }>;
   assignment: unknown;
   defenseSchedules: SessionRow[];
 }) {
@@ -204,7 +215,7 @@ function mapApplicationRow(row: {
     createdAt: row.createdAt,
     student: row.student,
     thesisTitles: row.thesisTitles,
-    thesisDocuments: row.thesisDocuments,
+    thesisDocuments: filterDocumentsForStage(row.thesisDocuments, row.stage),
     assignment: row.assignment,
     currentSchedule: sessionForDisplay
       ? {

@@ -75,6 +75,92 @@ export function canApproveApplication(status: ThesisStatusName): boolean {
   return status === "PENDING";
 }
 
+/**
+ * Application review endpoint may only move PENDING → APPROVED | REJECTED.
+ * REJECTED → PENDING uses resubmit only. APPROVED / session / outcome states
+ * are not rewritable through application review.
+ */
+export function canApplyReviewTransition(input: {
+  currentStatus: string;
+  nextStatus: string;
+  hasActiveCurrentSession?: boolean;
+  hasConclusion?: boolean;
+  outcome?: string | null;
+}): { allowed: boolean; reason?: string } {
+  const current = String(input.currentStatus || "").toUpperCase();
+  const next = String(input.nextStatus || "").toUpperCase();
+
+  if (!canSetApplicationReviewStatus(next)) {
+    return {
+      allowed: false,
+      reason:
+        "Application review may only set PENDING, APPROVED, or REJECTED. Defense outcomes are recorded at conclusion.",
+    };
+  }
+
+  // Locked once a live session or formal conclusion exists.
+  if (input.hasConclusion || input.hasActiveCurrentSession) {
+    return {
+      allowed: false,
+      reason:
+        "Application review cannot change status after the defense is scheduled or concluded.",
+    };
+  }
+
+  if (current === "PASSED" || current === "FAILED" || current === "REVISION") {
+    return {
+      allowed: false,
+      reason:
+        "Concluded defense outcomes cannot be changed through application review.",
+    };
+  }
+  if (input.outcome) {
+    return {
+      allowed: false,
+      reason:
+        "Defense outcome is already recorded and cannot be changed through application review.",
+    };
+  }
+
+  if (current === "SCHEDULED") {
+    return {
+      allowed: false,
+      reason:
+        "Scheduled applications cannot be rewritten through application review.",
+    };
+  }
+
+  if (current === "PENDING") {
+    if (next === "APPROVED" || next === "REJECTED") return { allowed: true };
+    // PENDING → PENDING is a no-op rewrite; reject for strictness.
+    return {
+      allowed: false,
+      reason: "PENDING applications may only be approved or rejected.",
+    };
+  }
+
+  if (current === "REJECTED") {
+    return {
+      allowed: false,
+      reason:
+        "Rejected applications must use the resubmit endpoint to return to review.",
+    };
+  }
+
+  if (current === "APPROVED") {
+    return {
+      allowed: false,
+      reason:
+        "Approved applications enter scheduling and cannot be rewritten through application review.",
+    };
+  }
+
+  return {
+    allowed: false,
+    reason: `Invalid application review transition ${current} → ${next}.`,
+  };
+}
+
 export function canScheduleApplication(status: ThesisStatusName): boolean {
   return status === "APPROVED";
 }

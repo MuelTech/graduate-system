@@ -221,3 +221,23 @@ export function matchesStatusRefine(
   if (!s || s === "ALL") return true;
   return displayStatus.toUpperCase() === s;
 }
+
+type DocForScope = {
+  id?: string;
+  defenseStage?: string | null;
+  docType?: string;
+};
+
+/**
+ * Stage-scoped requirement evidence. Prior-stage uploads must not inflate
+ * the current application's requirement list/count.
+ */
+export function filterDocumentsForStage(
+  docs: DocForScope[] | null | undefined,
+  stage: DefenseStage | string | null | undefined,
+): DocForScope[] {
+  const wanted = String(stage || "").toUpperCase();
+  return (docs ?? []).filter(
+    (d) => String(d.defenseStage || "").toUpperCase() === wanted,
+  );
+}
