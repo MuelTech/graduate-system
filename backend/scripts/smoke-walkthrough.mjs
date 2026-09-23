@@ -795,6 +795,47 @@ async function main() {
           `stages=${JSON.stringify(pstages)} types=${JSON.stringify(ptypes)}`,
         );
       }
+
+      // Title PASSED conclusion must reference the selected ThesisTitle
+      const historyRes = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=HISTORY&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      const historyRows = historyRes.json?.data || [];
+      for (const email of [
+        "proposal-review-pending@earist.edu.ph",
+        "final-review-pending@earist.edu.ph",
+      ]) {
+        const titleHist = historyRows.find(
+          (r) =>
+            r.student?.user?.email === email &&
+            r.recordKind === "DEFENSE_HISTORY" &&
+            r.stage === "TITLE",
+        );
+        if (!titleHist) {
+          log(
+            `Title conclusion selectedTitleId (${email})`,
+            "FAIL",
+            "TITLE DEFENSE_HISTORY row missing",
+          );
+          continue;
+        }
+        const selectedId = titleHist.selectedTitleId;
+        const selected = (titleHist.thesisTitles || []).find(
+          (t) => t.id === selectedId,
+        );
+        const ok =
+          titleHist.outcome === "PASSED" &&
+          !!selectedId &&
+          !!selected &&
+          selected.isSelected === true;
+        log(
+          `Title conclusion selectedTitleId (${email})`,
+          ok ? "PASS" : "FAIL",
+          `outcome=${titleHist.outcome} selectedTitleId=${selectedId} titleFound=${!!selected} isSelected=${selected?.isSelected}`,
+        );
+      }
     }
   }
 

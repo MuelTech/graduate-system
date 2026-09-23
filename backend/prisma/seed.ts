@@ -1709,7 +1709,29 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     }
   }
 
-  /** Prior-stage history: concluded schedule + committee + DefenseConclusion. */
+  /** Selected ThesisTitle id for a thesis (and force isSelected = true). */
+  async function resolveSelectedTitleId(thesisId: string, titleText: string) {
+    const title = await prisma.thesisTitle.findFirst({
+      where: { thesisId, titleText },
+    });
+    if (!title) return null;
+    if (!title.isSelected) {
+      await prisma.thesisTitle.updateMany({
+        where: { thesisId },
+        data: { isSelected: false },
+      });
+      await prisma.thesisTitle.update({
+        where: { id: title.id },
+        data: { isSelected: true },
+      });
+    }
+    return title.id;
+  }
+
+  /**
+   * Prior-stage history: concluded schedule + committee + DefenseConclusion.
+   * Idempotent: repairs selectedTitleId on existing seeded conclusions.
+   */
   async function ensureConcludedPriorDefense(opts: {
     thesisId: string;
     defenseType:
@@ -1722,6 +1744,19 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     selectedTitleId?: string | null;
   }) {
     const outcome = opts.outcome ?? "PASSED";
+    // PASSED Title Defense must point at exactly one selected ThesisTitle.
+    let selectedTitleId = opts.selectedTitleId ?? null;
+    if (
+      !selectedTitleId &&
+      opts.defenseType === "TITLE_DEFENSE" &&
+      outcome === "PASSED"
+    ) {
+      const selected = await prisma.thesisTitle.findFirst({
+        where: { thesisId: opts.thesisId, isSelected: true },
+      });
+      selectedTitleId = selected?.id ?? null;
+    }
+
     let schedule = await prisma.defenseSchedule.findFirst({
       where: {
         thesisId: opts.thesisId,
@@ -1754,20 +1789,29 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     // History UI shows committee from PanelAssignment rows on this schedule.
     await ensureCommitteeRoster(schedule.id);
 
-    const conclusion = await prisma.defenseConclusion.findUnique({
+    let conclusion = await prisma.defenseConclusion.findUnique({
       where: { scheduleId: schedule.id },
     });
     if (!conclusion) {
-      await prisma.defenseConclusion.create({
+      conclusion = await prisma.defenseConclusion.create({
         data: {
           scheduleId: schedule.id,
           thesisId: opts.thesisId,
           outcome,
-          selectedTitleId: opts.selectedTitleId ?? null,
+          selectedTitleId,
           finalRemarks: `Seeded ${opts.defenseType} conclusion`,
           concludedById: adminId,
           concludedAt: new Date(opts.defenseDate),
         },
+      });
+    } else if (
+      selectedTitleId &&
+      conclusion.selectedTitleId !== selectedTitleId
+    ) {
+      // Repair stale/null selectedTitleId on existing seeded conclusion.
+      conclusion = await prisma.defenseConclusion.update({
+        where: { id: conclusion.id },
+        data: { selectedTitleId },
       });
     }
     return schedule;
@@ -1907,6 +1951,10 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   });
   await ensureTitles(eThesis.id, officialTitle);
   await ensureTitleDocs(eThesis.id);
+  const eSelectedTitleId = await resolveSelectedTitleId(
+    eThesis.id,
+    officialTitle,
+  );
   // Prior Title defense is historical only — must not block Proposal Ready.
   const eTitleSched = await ensureConcludedPriorDefense({
     thesisId: eThesis.id,
@@ -1914,6 +1962,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     defenseDate: "2026-07-20T00:00:00.000Z",
     venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past",
     outcome: "PASSED",
+    selectedTitleId: eSelectedTitleId,
   });
   // No PROPOSAL_DEFENSE schedule yet (Ready for Scheduling).
   await cancelNonCancelledSchedules(eThesis.id, "PROPOSAL_DEFENSE");
@@ -2040,6 +2089,10 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   });
   await ensureTitles(fThesis.id, officialTitle);
   await ensureTitleDocs(fThesis.id);
+  const fSelectedTitleId = await resolveSelectedTitleId(
+    fThesis.id,
+    officialTitle,
+  );
   if (adviser) {
     const fCert = await prisma.adviserCertification.findFirst({
       where: { thesisId: fThesis.id, defenseStage: "PROPOSAL_DEFENSE" },
@@ -2062,6 +2115,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     defenseDate: "2026-07-20T00:00:00.000Z",
     venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-2",
     outcome: "PASSED",
+    selectedTitleId: fSelectedTitleId,
   });
   await cancelNonCancelledSchedules(fThesis.id, "PROPOSAL_DEFENSE");
   const fRap = await prisma.rapReport.findFirst({
@@ -2206,12 +2260,17 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       });
     }
   }
+  const hSelectedTitleId = await resolveSelectedTitleId(
+    hThesis.id,
+    officialTitle,
+  );
   await ensureConcludedPriorDefense({
     thesisId: hThesis.id,
     defenseType: "TITLE_DEFENSE",
     defenseDate: "2026-06-15T00:00:00.000Z",
     venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-h",
     outcome: "PASSED",
+    selectedTitleId: hSelectedTitleId,
   });
   await cancelNonCancelledSchedules(hThesis.id, "FINAL_DEFENSE");
   const hPropRap = await prisma.rapReport.findFirst({
@@ -2332,12 +2391,17 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   });
   await ensureTitles(kThesis.id, officialTitle);
   await ensureTitleDocs(kThesis.id);
+  const kSelectedTitleId = await resolveSelectedTitleId(
+    kThesis.id,
+    officialTitle,
+  );
   const kTitleSched = await ensureConcludedPriorDefense({
     thesisId: kThesis.id,
     defenseType: "TITLE_DEFENSE",
     defenseDate: "2026-07-18T00:00:00.000Z",
     venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-k",
     outcome: "PASSED",
+    selectedTitleId: kSelectedTitleId,
   });
   await cancelNonCancelledSchedules(kThesis.id, "PROPOSAL_DEFENSE");
   const kTitleRap = await prisma.rapReport.findFirst({
@@ -2463,12 +2527,17 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     },
   });
   await ensureTitles(lThesis.id, officialTitle);
+  const lSelectedTitleId = await resolveSelectedTitleId(
+    lThesis.id,
+    officialTitle,
+  );
   const lTitleSched = await ensureConcludedPriorDefense({
     thesisId: lThesis.id,
     defenseType: "TITLE_DEFENSE",
     defenseDate: "2026-06-10T00:00:00.000Z",
     venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-l",
     outcome: "PASSED",
+    selectedTitleId: lSelectedTitleId,
   });
   const lPropSched = await ensureConcludedPriorDefense({
     thesisId: lThesis.id,

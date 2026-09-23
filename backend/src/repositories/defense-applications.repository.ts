@@ -411,6 +411,7 @@ export class DefenseApplicationsRepository {
         status: displayStatus,
         rawApplicationStatus: null as string | null,
         outcome: c.outcome,
+        selectedTitleId: c.selectedTitleId ?? null,
         rejectionReason: null as string | null,
         createdAt: c.concludedAt,
         concludedAt: c.concludedAt,
