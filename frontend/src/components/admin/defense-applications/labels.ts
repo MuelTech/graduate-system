@@ -12,6 +12,44 @@ export type ThesisStatusName =
 
 export type WorkflowView = "NEEDS_REVIEW" | "READY" | "SCHEDULED" | "HISTORY";
 
+/** Backend workflow bucket (authoritative). */
+export type ApplicationWorkflowBucket =
+  | "NEEDS_REVIEW"
+  | "READY"
+  | "ACTIVE"
+  | "HISTORY";
+
+export function workflowBucketParam(view: WorkflowView): string {
+  if (view === "NEEDS_REVIEW") return "NEEDS_REVIEW";
+  if (view === "READY") return "READY";
+  if (view === "SCHEDULED") return "ACTIVE";
+  return "HISTORY";
+}
+
+/** Assign Panel & Schedule only for Ready — never alongside an active session. */
+export function canShowAssignSchedule(
+  bucket: ApplicationWorkflowBucket | string | undefined,
+): boolean {
+  return bucket === "READY";
+}
+
+export function canShowSessionPanel(
+  bucket: ApplicationWorkflowBucket | string | undefined,
+  hasSchedule: boolean,
+): boolean {
+  if (!hasSchedule) return false;
+  return bucket === "ACTIVE" || bucket === "HISTORY";
+}
+
+export function viewButtonLabelForBucket(
+  status: string,
+  bucket?: ApplicationWorkflowBucket | string,
+): string {
+  if (bucket === "ACTIVE" || status === "SCHEDULED") return "View Defense Details";
+  if (bucket === "NEEDS_REVIEW" || status === "PENDING") return "Review Application";
+  return "View Application";
+}
+
 export const STAGE_LABELS: Record<ThesisStageName | string, string> = {
   TITLE: "Title Defense",
   PROPOSAL: "Proposal Defense",
@@ -69,14 +107,63 @@ export function sessionStatusLabel(status?: string | null): string {
   return SESSION_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
 }
 
-export function dialogTitleForStatus(status: string): string {
-  if (status === "PENDING") return "Review Application";
-  if (status === "SCHEDULED") return "View Defense Details";
-  return "View Application";
+export function dialogTitleForStatus(
+  status: string,
+  bucket?: ApplicationWorkflowBucket | string,
+): string {
+  return viewButtonLabelForBucket(status, bucket);
 }
 
-export function viewButtonLabel(status: string): string {
-  return dialogTitleForStatus(status);
+export function viewButtonLabel(
+  status: string,
+  bucket?: ApplicationWorkflowBucket | string,
+): string {
+  return viewButtonLabelForBucket(status, bucket);
+}
+
+/**
+ * Badge/status key for a row — always from workflow bucket (+ history outcome),
+ * never from overloaded ThesisRecord.status alone.
+ */
+export function displayStatusKey(app: {
+  workflowBucket?: string;
+  status?: string;
+  displayStatus?: string;
+  outcome?: string | null;
+  rawApplicationStatus?: string | null;
+}): string {
+  if (app.displayStatus) return String(app.displayStatus).toUpperCase();
+  const bucket = String(app.workflowBucket || "").toUpperCase();
+  const appStatus = String(
+    app.rawApplicationStatus ?? app.status ?? "",
+  ).toUpperCase();
+  const outcome = String(app.outcome || "").toUpperCase();
+
+  if (bucket === "NEEDS_REVIEW") return "PENDING";
+  if (bucket === "READY") return "APPROVED";
+  if (bucket === "ACTIVE") return "SCHEDULED";
+  if (bucket === "HISTORY") {
+    if (appStatus === "REJECTED" || app.status === "REJECTED") return "REJECTED";
+    if (outcome === "REVISION_REQUIRED" || appStatus === "REVISION" || app.status === "REVISION") {
+      return "REVISION";
+    }
+    if (outcome === "FAILED" || appStatus === "FAILED" || app.status === "FAILED") {
+      return "FAILED";
+    }
+    return "PASSED";
+  }
+  return appStatus || "PENDING";
+}
+
+export function displayStatusLabel(app: {
+  workflowBucket?: string;
+  status?: string;
+  displayStatus?: string;
+  outcome?: string | null;
+  rawApplicationStatus?: string | null;
+}): string {
+  const key = displayStatusKey(app);
+  return STATUS_LABELS[key] ?? key.replace(/_/g, " ");
 }
 
 export function committeeLine(label: string, names: string[]): string | null {

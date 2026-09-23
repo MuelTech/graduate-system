@@ -1,10 +1,5 @@
 import prisma from "../config/database";
-import {
-  pickCurrentDefenseSchedule,
-  summarizeCommittee,
-  type CommitteeSummary,
-  type PanelSeatForSummary,
-} from "../services/defense-application-session";
+import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
 import {
   rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
@@ -248,139 +243,16 @@ export class ThesisRepository {
     });
   }
 
-  /**
-   * Server-side paginated defense applications for Admin review UI.
-   * Filters: stage, status, programId + search on name/number/email/program.
-   */
-  async getDefenseApplicationsPaginated(params: {
-    page: number;
-    pageSize: number;
-    search?: string;
-    stage?: string;
-    status?: string;
-    programId?: string;
-  }) {
-    const { page, pageSize, search, stage, status, programId } = params;
-    const where: Record<string, unknown> = {};
-
-    if (stage && stage !== "ALL") {
-      where.stage = stage;
-    }
-    if (status && status !== "ALL") {
-      if (status === "HISTORY") {
-        where.status = {
-          in: ["REJECTED", "PASSED", "REVISION", "FAILED"],
-        };
-      } else {
-        where.status = status;
-      }
-    }
-    if (programId && programId !== "ALL") {
-      where.student = { programId };
-    }
-    if (search && search.trim()) {
-      const q = search.trim();
-      where.student = {
-        ...(where.student as object),
-        OR: [
-          { studentNumber: { contains: q } },
-          { user: { firstName: { contains: q } } },
-          { user: { lastName: { contains: q } } },
-          { user: { email: { contains: q } } },
-          { program: { programName: { contains: q } } },
-        ],
-      };
-    }
-
-    const [rows, total] = await prisma.$transaction([
-      prisma.thesisRecord.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: {
-          student: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                },
-              },
-              program: {
-                select: { id: true, programName: true, programType: true },
-              },
-            },
-          },
-          thesisTitles: {
-            select: { id: true, titleText: true, isSelected: true },
-          },
-          thesisDocuments: {
-            select: { id: true, docType: true, filePath: true },
-          },
-          assignment: {
-            include: {
-              adviser: {
-                select: { id: true, firstName: true, lastName: true },
-              },
-            },
-          },
-          defenseSchedules: {
-            orderBy: { createdAt: "desc" as const },
-            select: {
-              id: true,
-              defenseType: true,
-              sessionStatus: true,
-              defenseDate: true,
-              defenseTime: true,
-              venueOrLink: true,
-              createdAt: true,
-              panelAssignments: {
-                select: {
-                  role: true,
-                  user: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.thesisRecord.count({ where }),
-    ]);
-
-    // Attach the CURRENT stage's session + committee (not defenseSchedules[0]).
-    const data = rows.map((row) => {
-      const currentSchedule = pickCurrentDefenseSchedule(row.stage, row.defenseSchedules);
-      const seats = (currentSchedule?.panelAssignments ?? []) as PanelSeatForSummary[];
-      const committeeSummary: CommitteeSummary = summarizeCommittee(seats);
-      const { defenseSchedules, ...rest } = row;
-      return {
-        ...rest,
-        currentSchedule: currentSchedule
-          ? {
-              id: currentSchedule.id,
-              defenseType: currentSchedule.defenseType,
-              sessionStatus: currentSchedule.sessionStatus,
-              defenseDate: currentSchedule.defenseDate,
-              defenseTime: currentSchedule.defenseTime,
-              venueOrLink: currentSchedule.venueOrLink,
-              panelAssignments: currentSchedule.panelAssignments,
-              committeeSummary,
-            }
-          : null,
-      };
+  async findNonCancelledSchedules(thesisId: string) {
+    return prisma.defenseSchedule.findMany({
+      where: { thesisId, sessionStatus: { not: "CANCELLED" } },
+      select: {
+        id: true,
+        defenseType: true,
+        sessionStatus: true,
+        createdAt: true,
+      },
     });
-
-    return { data, total, page, pageSize };
   }
 
   async getActiveAdviserAssignment(studentId: string) {
@@ -666,6 +538,27 @@ export class ThesisRepository {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      // Hard guard: never create a second non-cancelled schedule for the same
+      // thesis + defense type (rescheduling is a separate, unimplemented workflow).
+      const existing = await tx.defenseSchedule.findMany({
+        where: {
+          thesisId,
+          defenseType: data.defenseType.toUpperCase() as
+            | "TITLE_DEFENSE"
+            | "PROPOSAL_DEFENSE"
+            | "FINAL_DEFENSE",
+          sessionStatus: { not: "CANCELLED" },
+        },
+        select: { id: true, defenseType: true, sessionStatus: true, createdAt: true },
+      });
+      const gate = canCreateDefenseSchedule({
+        defenseType: data.defenseType,
+        schedules: existing,
+      });
+      if (!gate.allowed) {
+        throw new Error(gate.reason);
+      }
+
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,

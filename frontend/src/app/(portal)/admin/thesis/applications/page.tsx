@@ -11,16 +11,14 @@ import { DefenseApplicationCard, type DefenseApplicationDto } from "@/components
 import { DefenseApplicationReviewDialog } from "@/components/admin/defense-applications/review-dialog";
 import { DefenseApplicationFilters } from "@/components/admin/defense-applications/filters";
 import {
-  HISTORY_STATUSES,
-  STATUS_LABELS,
-  statusFilterForView,
+  workflowBucketParam,
   type WorkflowView,
 } from "@/components/admin/defense-applications/labels";
 
 const WORKFLOW_TABS: Array<{ id: WorkflowView; label: string }> = [
   { id: "NEEDS_REVIEW", label: "Needs Review" },
   { id: "READY", label: "Ready for Scheduling" },
-  { id: "SCHEDULED", label: "Scheduled" },
+  { id: "SCHEDULED", label: "Scheduled / Active" },
   { id: "HISTORY", label: "History" },
 ];
 
@@ -44,13 +42,9 @@ export default function AdminDefenseApplicationsPage() {
     },
   });
 
-  // Status is driven by the workflow tab unless the Admin overrides the filter.
-  const effectiveStatus = useMemo(() => {
-    if (statusFilter !== "ALL") return statusFilter;
-    return statusFilterForView(view);
-  }, [statusFilter, view]);
-
-  const historyMode = view === "HISTORY" && statusFilter === "ALL";
+  // Always scope by the active tab's workflow bucket.
+  // statusFilter only refines inside that bucket (never re-buckets the query).
+  const listBucket = useMemo(() => workflowBucketParam(view), [view]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [
@@ -58,8 +52,8 @@ export default function AdminDefenseApplicationsPage() {
       page,
       search,
       stage,
-      effectiveStatus,
-      historyMode,
+      listBucket,
+      statusFilter,
       programId,
     ],
     queryFn: async () => {
@@ -69,8 +63,9 @@ export default function AdminDefenseApplicationsPage() {
         search,
         stage,
         programId,
-        status: historyMode ? "HISTORY" : effectiveStatus,
+        bucket: listBucket,
       });
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
       const res = await apiClientRequest(
         `/thesis/defense/applications?${params.toString()}`,
       );
@@ -79,32 +74,29 @@ export default function AdminDefenseApplicationsPage() {
   });
 
   const { data: summary } = useQuery({
-    queryKey: ["defenseApplicationStats"],
+    queryKey: ["defenseWorkflowSummary", search, stage, programId, statusFilter],
     queryFn: async () => {
-      const statuses = [
-        "PENDING",
-        "APPROVED",
-        "SCHEDULED",
-        "REJECTED",
-        "PASSED",
-        "REVISION",
-        "FAILED",
-      ] as const;
-      const results = await Promise.all(
-        statuses.map(async (status) => {
-          const res = await apiClientRequest(
-            `/thesis/defense/applications?page=1&pageSize=1&status=${status}`,
-          );
-          return [status, (res as { total: number }).total] as const;
-        }),
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (stage && stage !== "ALL") params.set("stage", stage);
+      if (programId && programId !== "ALL") params.set("programId", programId);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      const qs = params.toString();
+      const res = await apiClientRequest(
+        `/thesis/defense/applications/summary${qs ? `?${qs}` : ""}`,
       );
-      return Object.fromEntries(results) as Record<string, number>;
+      return res as {
+        NEEDS_REVIEW: number;
+        READY: number;
+        ACTIVE: number;
+        HISTORY: number;
+      };
     },
   });
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["defenseApplications"] });
-    queryClient.invalidateQueries({ queryKey: ["defenseApplicationStats"] });
+    queryClient.invalidateQueries({ queryKey: ["defenseWorkflowSummary"] });
   };
 
   const approveMutation = useMutation({
@@ -171,23 +163,17 @@ export default function AdminDefenseApplicationsPage() {
       return "No approved applications are waiting for scheduling.";
     }
     if (view === "SCHEDULED") {
-      return "No scheduled defenses found.";
+      return "No active scheduled defenses found.";
     }
     return "No historical defense applications found.";
   })();
 
   const primaryStats = [
-    { key: "PENDING", label: STATUS_LABELS.PENDING, count: summary?.PENDING ?? 0 },
-    { key: "APPROVED", label: STATUS_LABELS.APPROVED, count: summary?.APPROVED ?? 0 },
-    { key: "SCHEDULED", label: STATUS_LABELS.SCHEDULED, count: summary?.SCHEDULED ?? 0 },
-    { key: "REJECTED", label: STATUS_LABELS.REJECTED, count: summary?.REJECTED ?? 0 },
+    { key: "NEEDS_REVIEW", label: "Needs Review", count: summary?.NEEDS_REVIEW ?? 0 },
+    { key: "READY", label: "Ready for Scheduling", count: summary?.READY ?? 0 },
+    { key: "ACTIVE", label: "Scheduled / Active", count: summary?.ACTIVE ?? 0 },
+    { key: "HISTORY", label: "History", count: summary?.HISTORY ?? 0 },
   ];
-
-  const historyStats = HISTORY_STATUSES.map((s) => ({
-    key: s,
-    label: STATUS_LABELS[s],
-    count: summary?.[s] ?? 0,
-  }));
 
   return (
     <div className="space-y-4">
@@ -211,15 +197,15 @@ export default function AdminDefenseApplicationsPage() {
             type="button"
             onClick={() => {
               setView(
-                s.key === "PENDING"
+                s.key === "NEEDS_REVIEW"
                   ? "NEEDS_REVIEW"
-                  : s.key === "APPROVED"
+                  : s.key === "READY"
                     ? "READY"
-                    : s.key === "SCHEDULED"
+                    : s.key === "ACTIVE"
                       ? "SCHEDULED"
                       : "HISTORY",
               );
-              setStatusFilter(s.key === "REJECTED" ? "REJECTED" : "ALL");
+              setStatusFilter("ALL");
               setPage(1);
             }}
             className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-left"
@@ -227,14 +213,6 @@ export default function AdminDefenseApplicationsPage() {
             <p className="text-xs text-(--earist-body-text)">{s.label}</p>
             <p className="text-xl font-bold text-(--earist-primary)">{s.count}</p>
           </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2 text-xs text-(--earist-body-text)">
-        <span className="font-semibold">History:</span>
-        {historyStats.map((s) => (
-          <span key={s.key}>
-            {s.label} {s.count}
-          </span>
         ))}
       </div>
 

@@ -14,11 +14,14 @@ import {
 import type { ApprovedApplicationDto } from "@/types";
 import {
   STAGE_LABELS,
-  STATUS_LABELS,
   requirementLabel,
   sessionStatusLabel,
   compactNameList,
   parseVenueOrLink,
+  canShowAssignSchedule,
+  canShowSessionPanel,
+  displayStatusKey,
+  displayStatusLabel,
   viewButtonLabel,
   formatDefenseDate,
   formatDefenseTime,
@@ -117,8 +120,20 @@ export function DefenseApplicationCard({
   const selectedTitle = app.thesisTitles.find((t) => t.isSelected) ?? null;
   const docCount = app.thesisDocuments?.length ?? 0;
   const adviser = app.assignment?.adviser;
+  const workflowBucket = app.workflowBucket;
   const session = app.currentSchedule ?? null;
-  const committee = session?.committeeSummary;
+  // Session/committee only when the backend bucket says Active (or History detail).
+  // Ready must never show a current-stage committee alongside Assign Panel & Schedule.
+  const showSession = canShowSessionPanel(workflowBucket, !!session);
+  const showAssign = canShowAssignSchedule(workflowBucket);
+  const committee = showSession ? session?.committeeSummary : undefined;
+  const hasCommitteeNames = !!committee && (
+    committee.chairman.length > 0 ||
+    committee.panelists.length > 0 ||
+    committee.facilitator.length > 0 ||
+    committee.rapporteur.length > 0 ||
+    committee.adviser.length > 0
+  );
   const hasAdviserSeat = (committee?.adviser?.length ?? 0) > 0;
 
   return (
@@ -130,8 +145,8 @@ export function DefenseApplicationCard({
               <p className="text-base font-semibold text-(--earist-primary)">
                 {student.user.firstName} {student.user.lastName}
               </p>
-              <Badge className={statusBadgeClass(app.status)}>
-                {STATUS_LABELS[app.status] ?? app.status}
+              <Badge className={statusBadgeClass(displayStatusKey(app))}>
+                {displayStatusLabel(app)}
               </Badge>
             </div>
             <p className="text-sm text-(--earist-body-text)">
@@ -147,9 +162,9 @@ export function DefenseApplicationCard({
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
             <Button size="sm" variant="outline" onClick={onView}>
               <Eye className="mr-1 h-3 w-3" />
-              {viewButtonLabel(app.status)}
+              {viewButtonLabel(app.status, workflowBucket)}
             </Button>
-            {app.status === "APPROVED" && (
+            {showAssign && (
               <Button
                 size="sm"
                 onClick={onAssignSchedule}
@@ -162,7 +177,7 @@ export function DefenseApplicationCard({
           </div>
         </div>
 
-        {session && (
+        {showSession && session && (
           <div className="mt-3 grid grid-cols-1 gap-3 rounded-md border border-blue-100 bg-blue-50/40 p-3 text-sm lg:grid-cols-2">
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -195,9 +210,9 @@ export function DefenseApplicationCard({
                 <Users className="h-3.5 w-3.5" />
                 Committee
               </p>
-              {!committee ? (
+              {!hasCommitteeNames ? (
                 <p className="text-xs text-(--earist-body-text)">
-                  No participants assigned yet.
+                  No participants recorded for this session.
                 </p>
               ) : (
                 <dl className="space-y-1 text-xs text-(--earist-body-text)">

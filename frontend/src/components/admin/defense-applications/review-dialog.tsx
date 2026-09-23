@@ -27,6 +27,7 @@ import {
   sessionStatusLabel,
   dialogTitleForStatus,
   parseVenueOrLink,
+  canShowSessionPanel,
   formatDefenseDate,
   formatDefenseTime,
 } from "./labels";
@@ -127,7 +128,8 @@ export function DefenseApplicationReviewDialog({
   const adviser = app.assignment?.adviser;
   const canDecide = app.status === "PENDING";
   const session = app.currentSchedule ?? null;
-  const committee = session?.committeeSummary;
+  const showSession = canShowSessionPanel(app.workflowBucket, !!session);
+  const committee = showSession ? session?.committeeSummary : undefined;
   const hasAdviserSeat = (committee?.adviser?.length ?? 0) > 0;
 
   return (
@@ -170,7 +172,7 @@ export function DefenseApplicationReviewDialog({
             </div>
 
             {/* Defense Session */}
-            {session && (
+            {showSession && session && (
               <div className="rounded-md border border-blue-100 bg-blue-50/40 p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <SectionLabel
@@ -209,7 +211,7 @@ export function DefenseApplicationReviewDialog({
             )}
 
             {/* Assigned Committee — full names by role */}
-            {session && (
+            {showSession && session && (
               <div>
                 <SectionLabel icon={<Users className="h-3.5 w-3.5" />}>
                   Assigned Committee
@@ -221,7 +223,7 @@ export function DefenseApplicationReviewDialog({
                   !committee.rapporteur.length &&
                   !committee.adviser.length) ? (
                   <p className="text-(--earist-body-text)">
-                    No participants assigned yet.
+                    No participants recorded for this session.
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 rounded-md bg-(--earist-surface-gray) p-3 sm:grid-cols-2">

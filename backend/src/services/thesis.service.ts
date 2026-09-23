@@ -1,4 +1,5 @@
 import { ThesisRepository } from '../repositories/thesis.repository';
+import { DefenseApplicationsRepository } from '../repositories/defense-applications.repository';
 import { DefenseEligibilityRepository } from '../repositories/defense-eligibility.repository';
 import {
   DefenseEligibilityService,
@@ -16,6 +17,7 @@ import type {
   CommitteeAssignmentInput,
 } from '../interfaces/defense-committee.interfaces';
 import { AppError } from '../utils/AppError';
+import { canCreateDefenseSchedule } from './defense-application-workflow';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -27,6 +29,7 @@ export interface ScheduleDefenseInput {
 
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
+  private defenseAppsRepo = new DefenseApplicationsRepository();
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
   private committeePolicy = new DefenseCommitteePolicy();
@@ -140,18 +143,29 @@ export class ThesisService {
     search?: string;
     stage?: string;
     status?: string;
+    bucket?: string;
     programId?: string;
   }) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(params.pageSize) || 10));
-    return this.thesisRepo.getDefenseApplicationsPaginated({
+    return this.defenseAppsRepo.getDefenseApplicationsPaginated({
       page,
       pageSize,
       search: params.search,
       stage: params.stage,
       status: params.status,
+      bucket: params.bucket,
       programId: params.programId,
     });
+  }
+
+  async getDefenseWorkflowSummary(params: {
+    search?: string;
+    stage?: string;
+    programId?: string;
+    status?: string;
+  }) {
+    return this.defenseAppsRepo.getDefenseWorkflowSummary(params);
   }
 
   async getAllAdviserRequests() {
@@ -380,6 +394,18 @@ export class ThesisService {
     );
     if (!validation.valid) {
       throw new AppError(validation.errors.join(' '), 400);
+    }
+
+    // Reject a second non-cancelled schedule for this defense type.
+    const existingSchedules = await this.thesisRepo.findNonCancelledSchedules(
+      thesisId,
+    );
+    const gate = canCreateDefenseSchedule({
+      defenseType,
+      schedules: existingSchedules,
+    });
+    if (!gate.allowed) {
+      throw new AppError(gate.reason || 'Defense already scheduled.', 400);
     }
 
     return this.thesisRepo.scheduleDefense(thesisId, adminId, {

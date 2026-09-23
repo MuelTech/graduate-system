@@ -180,6 +180,14 @@ router.get(
   thesisController.getDefenseApplicationsPaginated,
 );
 
+// ADMIN: Workflow bucket counts (Needs Review / Ready / Active / History)
+router.get(
+  "/defense/applications/summary",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseWorkflowSummary,
+);
+
 // ADMIN: Get ALL applications (for full status view)
 router.get(
   "/defense/all",

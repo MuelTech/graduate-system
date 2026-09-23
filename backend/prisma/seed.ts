@@ -1505,6 +1505,8 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     console.error("admin@earist.edu.ph missing — skipping workflow fixtures.");
     return;
   }
+  // Capture a non-null id for nested helpers (TS does not keep narrowing in closures).
+  const adminId = admin.id;
 
   // Enough panelists for Master's session total 7 (and Doctoral 8).
   const extraPanelists = [
@@ -1658,6 +1660,119 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     }
   }
 
+  /** Ready-for-scheduling fixtures must not keep an active current-stage schedule. */
+  async function cancelNonCancelledSchedules(
+    thesisId: string,
+    defenseType:
+      | "TITLE_DEFENSE"
+      | "PROPOSAL_DEFENSE"
+      | "FINAL_DEFENSE",
+  ) {
+    await prisma.defenseSchedule.updateMany({
+      where: {
+        thesisId,
+        defenseType,
+        sessionStatus: { not: "CANCELLED" },
+      },
+      data: { sessionStatus: "CANCELLED" },
+    });
+  }
+
+  /**
+   * Master's session roster (7) for history sessions.
+   * History cards read committee from PanelAssignment — seed must create seats.
+   */
+  async function ensureCommitteeRoster(scheduleId: string) {
+    const roster: Array<{
+      email: string;
+      role: "CHAIRMAN" | "PANELIST" | "FACILITATOR" | "RAPPORTEUR";
+    }> = [
+      { email: "panelist1@earist.edu.ph", role: "CHAIRMAN" },
+      { email: "panelist2@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist3@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist4@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist5@earist.edu.ph", role: "PANELIST" },
+      { email: "panelist6@earist.edu.ph", role: "FACILITATOR" },
+      { email: "panelist7@earist.edu.ph", role: "RAPPORTEUR" },
+    ];
+    for (const seat of roster) {
+      const uid = panelistUsers[seat.email];
+      if (!uid) continue;
+      const existing = await prisma.panelAssignment.findFirst({
+        where: { scheduleId, userId: uid },
+      });
+      if (!existing) {
+        await prisma.panelAssignment.create({
+          data: { scheduleId, userId: uid, role: seat.role },
+        });
+      }
+    }
+  }
+
+  /** Prior-stage history: concluded schedule + committee + DefenseConclusion. */
+  async function ensureConcludedPriorDefense(opts: {
+    thesisId: string;
+    defenseType:
+      | "TITLE_DEFENSE"
+      | "PROPOSAL_DEFENSE"
+      | "FINAL_DEFENSE";
+    defenseDate: string;
+    venueOrLink: string;
+    outcome?: "PASSED" | "REVISION_REQUIRED" | "FAILED";
+    selectedTitleId?: string | null;
+  }) {
+    const outcome = opts.outcome ?? "PASSED";
+    let schedule = await prisma.defenseSchedule.findFirst({
+      where: {
+        thesisId: opts.thesisId,
+        defenseType: opts.defenseType,
+        sessionStatus: "CONCLUDED",
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!schedule) {
+      // Drop any leftover non-concluded rows so Ready cannot look Scheduled.
+      await cancelNonCancelledSchedules(opts.thesisId, opts.defenseType);
+      schedule = await prisma.defenseSchedule.create({
+        data: {
+          thesisId: opts.thesisId,
+          defenseDate: new Date(opts.defenseDate),
+          defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+          venueOrLink: opts.venueOrLink,
+          defenseType: opts.defenseType,
+          setById: adminId,
+          sessionStatus: "CONCLUDED",
+        },
+      });
+    } else if (schedule.sessionStatus !== "CONCLUDED") {
+      await prisma.defenseSchedule.update({
+        where: { id: schedule.id },
+        data: { sessionStatus: "CONCLUDED" },
+      });
+    }
+
+    // History UI shows committee from PanelAssignment rows on this schedule.
+    await ensureCommitteeRoster(schedule.id);
+
+    const conclusion = await prisma.defenseConclusion.findUnique({
+      where: { scheduleId: schedule.id },
+    });
+    if (!conclusion) {
+      await prisma.defenseConclusion.create({
+        data: {
+          scheduleId: schedule.id,
+          thesisId: opts.thesisId,
+          outcome,
+          selectedTitleId: opts.selectedTitleId ?? null,
+          finalRemarks: `Seeded ${opts.defenseType} conclusion`,
+          concludedById: adminId,
+          concludedAt: new Date(opts.defenseDate),
+        },
+      });
+    }
+    return schedule;
+  }
+
   const officialTitle =
     "Digital Inclusion Practices in Graduate Education";
 
@@ -1728,12 +1843,14 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         status: "APPROVED",
       },
     }));
-  if (dThesis.status !== "APPROVED") {
+  if (dThesis.status !== "APPROVED" || dThesis.stage !== "TITLE") {
     await prisma.thesisRecord.update({
       where: { id: dThesis.id },
-      data: { status: "APPROVED" },
+      data: { stage: "TITLE", status: "APPROVED", outcome: null },
     });
   }
+  // Ready for Scheduling: APPROVED + NO active current-stage schedule/committee.
+  await cancelNonCancelledSchedules(dThesis.id, "TITLE_DEFENSE");
   await ensureTitles(dThesis.id);
   await ensureTitleDocs(dThesis.id);
   console.log(
@@ -1773,19 +1890,33 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       data: {
         studentId: e.student.id,
         assignmentId: eAssignment?.id ?? null,
-        stage: "TITLE",
+        stage: "PROPOSAL",
         status: "APPROVED",
-        outcome: "PASSED",
+        outcome: null,
       },
     }));
-  if (eThesis.outcome !== "PASSED") {
-    await prisma.thesisRecord.update({
-      where: { id: eThesis.id },
-      data: { stage: "TITLE", status: "APPROVED", outcome: "PASSED" },
-    });
-  }
+  // Current stage is Proposal (Title already complete historically).
+  await prisma.thesisRecord.update({
+    where: { id: eThesis.id },
+    data: {
+      stage: "PROPOSAL",
+      status: "APPROVED",
+      outcome: null,
+      assignmentId: eAssignment?.id ?? eThesis.assignmentId,
+    },
+  });
   await ensureTitles(eThesis.id, officialTitle);
   await ensureTitleDocs(eThesis.id);
+  // Prior Title defense is historical only — must not block Proposal Ready.
+  const eTitleSched = await ensureConcludedPriorDefense({
+    thesisId: eThesis.id,
+    defenseType: "TITLE_DEFENSE",
+    defenseDate: "2026-07-20T00:00:00.000Z",
+    venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past",
+    outcome: "PASSED",
+  });
+  // No PROPOSAL_DEFENSE schedule yet (Ready for Scheduling).
+  await cancelNonCancelledSchedules(eThesis.id, "PROPOSAL_DEFENSE");
   // Prior Title RAP finalized (internal ref — no student re-upload)
   const eTitleRap = await prisma.rapReport.findFirst({
     where: { thesisId: eThesis.id, defenseType: "TITLE_DEFENSE" },
@@ -1793,24 +1924,12 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   if (!eTitleRap) {
     await prisma.rapReport.create({
       data: {
-        scheduleId: (
-          await prisma.defenseSchedule.create({
-            data: {
-              thesisId: eThesis.id,
-              defenseDate: new Date("2026-07-20T00:00:00.000Z"),
-              defenseTime: new Date("1970-01-01T09:00:00.000Z"),
-              venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past",
-              defenseType: "TITLE_DEFENSE",
-              setById: admin.id,
-              sessionStatus: "CONCLUDED",
-            },
-          })
-        ).id,
+        scheduleId: eTitleSched.id,
         thesisId: eThesis.id,
         defenseType: "TITLE_DEFENSE",
         status: "FINALIZED",
         selectedTitle: officialTitle,
-        generatedById: admin.id,
+        generatedById: adminId,
         generatedAt: new Date(),
       },
     });
@@ -1878,14 +1997,19 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       data: {
         studentId: f.student.id,
         assignmentId: fAssignment?.id ?? null,
-        stage: "TITLE",
+        stage: "PROPOSAL",
         status: "APPROVED",
-        outcome: "PASSED",
+        outcome: null,
       },
     }));
   await prisma.thesisRecord.update({
     where: { id: fThesis.id },
-    data: { stage: "TITLE", status: "APPROVED", outcome: "PASSED" },
+    data: {
+      stage: "PROPOSAL",
+      status: "APPROVED",
+      outcome: null,
+      assignmentId: fAssignment?.id ?? fThesis.assignmentId,
+    },
   });
   await ensureTitles(fThesis.id, officialTitle);
   await ensureTitleDocs(fThesis.id);
@@ -1905,29 +2029,26 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       });
     }
   }
+  const fTitleSched = await ensureConcludedPriorDefense({
+    thesisId: fThesis.id,
+    defenseType: "TITLE_DEFENSE",
+    defenseDate: "2026-07-20T00:00:00.000Z",
+    venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-2",
+    outcome: "PASSED",
+  });
+  await cancelNonCancelledSchedules(fThesis.id, "PROPOSAL_DEFENSE");
   const fRap = await prisma.rapReport.findFirst({
     where: { thesisId: fThesis.id, defenseType: "TITLE_DEFENSE" },
   });
   if (!fRap) {
-    const fSched = await prisma.defenseSchedule.create({
-      data: {
-        thesisId: fThesis.id,
-        defenseDate: new Date("2026-07-20T00:00:00.000Z"),
-        defenseTime: new Date("1970-01-01T09:00:00.000Z"),
-        venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-2",
-        defenseType: "TITLE_DEFENSE",
-        setById: admin.id,
-        sessionStatus: "CONCLUDED",
-      },
-    });
     await prisma.rapReport.create({
       data: {
-        scheduleId: fSched.id,
+        scheduleId: fTitleSched.id,
         thesisId: fThesis.id,
         defenseType: "TITLE_DEFENSE",
         status: "FINALIZED",
         selectedTitle: officialTitle,
-        generatedById: admin.id,
+        generatedById: adminId,
         generatedAt: new Date(),
       },
     });
@@ -1975,6 +2096,14 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
   });
   await ensureTitles(gThesis.id);
   await ensureTitleDocs(gThesis.id);
+  // History must come from DefenseConclusion, not only mutable ThesisRecord.status.
+  await ensureConcludedPriorDefense({
+    thesisId: gThesis.id,
+    defenseType: "TITLE_DEFENSE",
+    defenseDate: "2026-07-22T00:00:00.000Z",
+    venueOrLink: "https://teams.microsoft.com/l/meetup-join/revision",
+    outcome: "REVISION_REQUIRED",
+  });
   console.log(
     "  scenario revision-blocked@earist.edu.ph → Proposal stays LOCKED (REVISION_REQUIRED)",
   );
@@ -2009,14 +2138,20 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       data: {
         studentId: h.student.id,
         assignmentId: hAssignment?.id ?? null,
-        stage: "PROPOSAL",
+        stage: "FINAL",
         status: "APPROVED",
-        outcome: "PASSED",
+        outcome: null,
       },
     }));
+  // Current stage is Final; Title/Proposal remain as prior-stage history only.
   await prisma.thesisRecord.update({
     where: { id: hThesis.id },
-    data: { stage: "PROPOSAL", status: "APPROVED", outcome: "PASSED" },
+    data: {
+      stage: "FINAL",
+      status: "APPROVED",
+      outcome: null,
+      assignmentId: hAssignment?.id ?? hThesis.assignmentId,
+    },
   });
   await ensureTitles(hThesis.id, officialTitle);
   // Stage-scoped Proposal evidence (must not be reused for Final)
@@ -2044,29 +2179,33 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       });
     }
   }
+  await ensureConcludedPriorDefense({
+    thesisId: hThesis.id,
+    defenseType: "TITLE_DEFENSE",
+    defenseDate: "2026-06-15T00:00:00.000Z",
+    venueOrLink: "https://teams.microsoft.com/l/meetup-join/title-past-h",
+    outcome: "PASSED",
+  });
+  await cancelNonCancelledSchedules(hThesis.id, "FINAL_DEFENSE");
   const hPropRap = await prisma.rapReport.findFirst({
     where: { thesisId: hThesis.id, defenseType: "PROPOSAL_DEFENSE" },
   });
+  const hPropSched = await ensureConcludedPriorDefense({
+    thesisId: hThesis.id,
+    defenseType: "PROPOSAL_DEFENSE",
+    defenseDate: "2026-08-10T00:00:00.000Z",
+    venueOrLink: "https://teams.microsoft.com/l/meetup-join/proposal-past",
+    outcome: "PASSED",
+  });
   if (!hPropRap) {
-    const hSched = await prisma.defenseSchedule.create({
-      data: {
-        thesisId: hThesis.id,
-        defenseDate: new Date("2026-08-10T00:00:00.000Z"),
-        defenseTime: new Date("1970-01-01T09:00:00.000Z"),
-        venueOrLink: "https://teams.microsoft.com/l/meetup-join/proposal-past",
-        defenseType: "PROPOSAL_DEFENSE",
-        setById: admin.id,
-        sessionStatus: "CONCLUDED",
-      },
-    });
     await prisma.rapReport.create({
       data: {
-        scheduleId: hSched.id,
+        scheduleId: hPropSched.id,
         thesisId: hThesis.id,
         defenseType: "PROPOSAL_DEFENSE",
         status: "FINALIZED",
         selectedTitle: officialTitle,
-        generatedById: admin.id,
+        generatedById: adminId,
         generatedAt: new Date(),
       },
     });
@@ -2117,6 +2256,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     where: { id: iThesis.id },
     data: { stage: "TITLE", status: "SCHEDULED", outcome: null },
   });
+  // Active session fixture: only one non-cancelled TITLE schedule (AWAITING_CONCLUSION).
   await ensureTitles(iThesis.id);
   await ensureTitleDocs(iThesis.id);
   let iSched = await prisma.defenseSchedule.findFirst({
@@ -2130,7 +2270,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         defenseTime: new Date("1970-01-01T09:00:00.000Z"),
         venueOrLink: "https://teams.microsoft.com/l/meetup-join/awaiting-conclude",
         defenseType: "TITLE_DEFENSE",
-        setById: admin.id,
+        setById: adminId,
         sessionStatus: "AWAITING_CONCLUSION",
       },
     });
@@ -2220,6 +2360,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         where: { id: jThesis.id },
         data: { stage: "TITLE", status: "APPROVED", outcome: null },
       });
+      await cancelNonCancelledSchedules(jThesis.id, "TITLE_DEFENSE");
       await ensureTitles(jThesis.id);
       await ensureTitleDocs(jThesis.id);
     }

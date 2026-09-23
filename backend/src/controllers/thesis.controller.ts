@@ -54,7 +54,25 @@ export class ThesisController {
         search: req.query.search as string | undefined,
         stage: req.query.stage as string | undefined,
         status: req.query.status as string | undefined,
+        bucket: req.query.bucket as string | undefined,
         programId: req.query.programId as string | undefined,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  getDefenseWorkflowSummary = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.getDefenseWorkflowSummary({
+        search: req.query.search as string | undefined,
+        stage: req.query.stage as string | undefined,
+        programId: req.query.programId as string | undefined,
+        status: req.query.status as string | undefined,
       });
       res.status(200).json(result);
     } catch (error: any) {

@@ -133,6 +133,10 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ApprovedApplicationDto {
+  workflowBucket?: "NEEDS_REVIEW" | "READY" | "ACTIVE" | "HISTORY" | string;
+  recordKind?: "APPLICATION" | "DEFENSE_HISTORY" | string;
+  displayStatus?: string;
+  rawApplicationStatus?: string | null;
   id: string;
   stage: "TITLE" | "PROPOSAL" | "FINAL";
   status: string;
