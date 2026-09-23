@@ -17,7 +17,9 @@ import {
   STATUS_LABELS,
   requirementLabel,
   sessionStatusLabel,
-  committeeLine,
+  compactNameList,
+  parseVenueOrLink,
+  viewButtonLabel,
   formatDefenseDate,
   formatDefenseTime,
 } from "./labels";
@@ -72,6 +74,37 @@ function sessionStatusBadgeClass(status?: string | null) {
   }
 }
 
+function VenueLine({
+  value,
+  emptyText = "Venue / link not set",
+}: {
+  value?: string | null;
+  emptyText?: string;
+}) {
+  const venue = parseVenueOrLink(value);
+  if (venue.kind === "empty") {
+    return <span className="text-(--earist-body-text)">{emptyText}</span>;
+  }
+  if (venue.kind === "url") {
+    return (
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="truncate">{venue.label}</span>
+        <a
+          href={venue.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-(--earist-secondary) underline underline-offset-2"
+        >
+          Open meeting link
+        </a>
+      </span>
+    );
+  }
+  return (
+    <span className="break-words text-(--earist-body-text)">{venue.text}</span>
+  );
+}
+
 export function DefenseApplicationCard({
   app,
   onView,
@@ -86,15 +119,7 @@ export function DefenseApplicationCard({
   const adviser = app.assignment?.adviser;
   const session = app.currentSchedule ?? null;
   const committee = session?.committeeSummary;
-  const committeeLines = committee
-    ? [
-        committeeLine("Chairman", committee.chairman),
-        committeeLine("Panelists", committee.panelists),
-        committeeLine("Facilitator", committee.facilitator),
-        committeeLine("Rapporteur", committee.rapporteur),
-        committeeLine("Adviser", committee.adviser),
-      ].filter(Boolean)
-    : [];
+  const hasAdviserSeat = (committee?.adviser?.length ?? 0) > 0;
 
   return (
     <Card className="overflow-hidden">
@@ -122,9 +147,7 @@ export function DefenseApplicationCard({
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
             <Button size="sm" variant="outline" onClick={onView}>
               <Eye className="mr-1 h-3 w-3" />
-              {app.status === "SCHEDULED"
-                ? "View Defense Details"
-                : "View Application"}
+              {viewButtonLabel(app.status)}
             </Button>
             {app.status === "APPROVED" && (
               <Button
@@ -140,48 +163,91 @@ export function DefenseApplicationCard({
         </div>
 
         {session && (
-          <div className="mt-3 rounded-md border border-blue-100 bg-blue-50/40 p-3 text-sm">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <p className="text-xs font-semibold text-(--earist-secondary)">
-                Defense Session
-              </p>
-              <Badge className={sessionStatusBadgeClass(session.sessionStatus)}>
-                {sessionStatusLabel(session.sessionStatus)}
-              </Badge>
+          <div className="mt-3 grid grid-cols-1 gap-3 rounded-md border border-blue-100 bg-blue-50/40 p-3 text-sm lg:grid-cols-2">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold text-(--earist-secondary)">
+                  Defense Session
+                </p>
+                <Badge className={sessionStatusBadgeClass(session.sessionStatus)}>
+                  {sessionStatusLabel(session.sessionStatus)}
+                </Badge>
+              </div>
+              <div className="space-y-1 text-(--earist-body-text)">
+                <p className="flex items-start gap-1">
+                  <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    {formatDefenseDate(session.defenseDate)} ·{" "}
+                    {formatDefenseTime(session.defenseTime)}
+                  </span>
+                </p>
+                <p className="flex min-w-0 items-start gap-1">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0">
+                    <VenueLine value={session.venueOrLink} />
+                  </span>
+                </p>
+              </div>
             </div>
-            <div className="grid gap-1 text-(--earist-body-text) sm:grid-cols-2">
-              <p className="flex items-center gap-1">
-                <Clock3 className="h-3.5 w-3.5 shrink-0" />
-                {formatDefenseDate(session.defenseDate)} ·{" "}
-                {formatDefenseTime(session.defenseTime)}
-              </p>
-              <p className="flex min-w-0 items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">
-                  {session.venueOrLink || "Venue / link not set"}
-                </span>
-              </p>
-            </div>
-            <div className="mt-2 border-t border-blue-100 pt-2">
-              <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
+
+            <div className="min-w-0 lg:border-l lg:border-blue-100 lg:pl-3">
+              <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
                 <Users className="h-3.5 w-3.5" />
                 Committee
               </p>
-              {committeeLines.length === 0 ? (
+              {!committee ? (
                 <p className="text-xs text-(--earist-body-text)">
                   No participants assigned yet.
                 </p>
               ) : (
-                <ul className="space-y-0.5 text-xs text-(--earist-body-text)">
-                  {committeeLines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
+                <dl className="space-y-1 text-xs text-(--earist-body-text)">
+                  <div className="flex gap-2">
+                    <dt className="w-20 shrink-0 font-medium text-(--earist-secondary)">
+                      Chairman
+                    </dt>
+                    <dd className="min-w-0 break-words">
+                      {compactNameList(committee.chairman)}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="w-20 shrink-0 font-medium text-(--earist-secondary)">
+                      Panelists
+                    </dt>
+                    <dd className="min-w-0 break-words">
+                      {compactNameList(committee.panelists)}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="w-20 shrink-0 font-medium text-(--earist-secondary)">
+                      Facilitator
+                    </dt>
+                    <dd className="min-w-0 break-words">
+                      {compactNameList(committee.facilitator)}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="w-20 shrink-0 font-medium text-(--earist-secondary)">
+                      Rapporteur
+                    </dt>
+                    <dd className="min-w-0 break-words">
+                      {compactNameList(committee.rapporteur)}
+                    </dd>
+                  </div>
+                  {hasAdviserSeat && (
+                    <div className="flex gap-2">
+                      <dt className="w-20 shrink-0 font-medium text-(--earist-secondary)">
+                        Adviser
+                      </dt>
+                      <dd className="min-w-0 break-words">
+                        {compactNameList(committee.adviser)}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
               )}
             </div>
           </div>
         )}
-
 
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-(--earist-border-gray) pt-3 text-sm sm:grid-cols-2">
           <div>
@@ -219,15 +285,9 @@ export function DefenseApplicationCard({
                   : "Official approved research title not selected yet"}
               </p>
             )}
-            {isTitle ? null : (
+            {(isProposal || isFinal) && adviser && (
               <p className="mt-1 text-xs text-(--earist-body-text)">
-                Adviser relationship:{" "}
-                {adviser
-                  ? `${adviser.firstName} ${adviser.lastName}`
-                  : "Not assigned"}
-                {session && !(committee?.adviser?.length ?? 0)
-                  ? " (not a defense seat)"
-                  : ""}
+                Adviser: {adviser.firstName} {adviser.lastName}
               </p>
             )}
           </div>

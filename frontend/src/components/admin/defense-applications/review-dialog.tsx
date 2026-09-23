@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Eye, Users, MapPin, Clock3 } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Eye,
+  Users,
+  MapPin,
+  Clock3,
+  CalendarDays,
+} from "lucide-react";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import {
   STAGE_LABELS,
@@ -18,7 +26,7 @@ import {
   requirementLabel,
   sessionStatusLabel,
   dialogTitleForStatus,
-  committeeLine,
+  parseVenueOrLink,
   formatDefenseDate,
   formatDefenseTime,
 } from "./labels";
@@ -33,6 +41,66 @@ type Props = {
   isApproving: boolean;
   isRejecting: boolean;
 };
+
+function SectionLabel({
+  icon,
+  children,
+}: {
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
+      {icon}
+      {children}
+    </p>
+  );
+}
+
+function RoleList({
+  label,
+  names,
+}: {
+  label: string;
+  names: string[];
+}) {
+  if (!names.length) return null;
+  return (
+    <div>
+      <p className="text-xs font-medium text-(--earist-secondary)">{label}</p>
+      <ul className="mt-0.5 space-y-0.5 text-(--earist-body-text)">
+        {names.map((name) => (
+          <li key={`${label}-${name}`} className="break-words">
+            {name}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function VenueDisplay({ value }: { value?: string | null }) {
+  const venue = parseVenueOrLink(value);
+  if (venue.kind === "empty") {
+    return <span>Not set</span>;
+  }
+  if (venue.kind === "url") {
+    return (
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span>{venue.label}</span>
+        <a
+          href={venue.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-(--earist-secondary) underline underline-offset-2"
+        >
+          Open meeting link
+        </a>
+      </span>
+    );
+  }
+  return <span className="break-words">{venue.text}</span>;
+}
 
 export function DefenseApplicationReviewDialog({
   open,
@@ -60,19 +128,23 @@ export function DefenseApplicationReviewDialog({
   const canDecide = app.status === "PENDING";
   const session = app.currentSchedule ?? null;
   const committee = session?.committeeSummary;
+  const hasAdviserSeat = (committee?.adviser?.length ?? 0) > 0;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-2xl lg:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{dialogTitleForStatus(app.status)}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Student</p>
+          <div className="space-y-5 text-sm">
+            {/* Student / Defense summary */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-(--earist-secondary)">
+                  Student
+                </p>
                 <p className="font-semibold">
                   {student.user.firstName} {student.user.lastName}
                 </p>
@@ -83,8 +155,10 @@ export function DefenseApplicationReviewDialog({
                   {student.program?.programName || "N/A"}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-(--earist-body-text)">Defense</p>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-(--earist-secondary)">
+                  Defense
+                </p>
                 <p className="font-semibold">{STAGE_LABELS[app.stage]}</p>
                 <p className="text-xs text-(--earist-body-text)">
                   Submitted {new Date(app.createdAt).toLocaleDateString()}
@@ -95,79 +169,90 @@ export function DefenseApplicationReviewDialog({
               </div>
             </div>
 
+            {/* Defense Session */}
             {session && (
               <div className="rounded-md border border-blue-100 bg-blue-50/40 p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-semibold text-(--earist-secondary)">
+                  <SectionLabel
+                    icon={<CalendarDays className="h-3.5 w-3.5" />}
+                  >
                     Defense Session
-                  </p>
+                  </SectionLabel>
                   <Badge variant="outline">
                     {sessionStatusLabel(session.sessionStatus)}
                   </Badge>
                 </div>
-                <ul className="space-y-1 text-(--earist-body-text)">
-                  <li className="flex items-center gap-1">
-                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
-                    Date: {formatDefenseDate(session.defenseDate)}
+                <ul className="space-y-1.5 text-(--earist-body-text)">
+                  <li className="flex items-start gap-1.5">
+                    <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="font-medium">Date: </span>
+                      {formatDefenseDate(session.defenseDate)}
+                    </span>
                   </li>
-                  <li className="flex items-center gap-1">
-                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
-                    Time: {formatDefenseTime(session.defenseTime)}
+                  <li className="flex items-start gap-1.5">
+                    <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="font-medium">Time: </span>
+                      {formatDefenseTime(session.defenseTime)}
+                    </span>
                   </li>
-                  <li className="flex min-w-0 items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">
-                      Venue / Teams: {session.venueOrLink || "Not set"}
+                  <li className="flex min-w-0 items-start gap-1.5">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="font-medium">Venue / Teams: </span>
+                      <VenueDisplay value={session.venueOrLink} />
                     </span>
                   </li>
                 </ul>
+              </div>
+            )}
 
-                <p className="mb-1 mt-3 flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
-                  <Users className="h-3.5 w-3.5" />
+            {/* Assigned Committee — full names by role */}
+            {session && (
+              <div>
+                <SectionLabel icon={<Users className="h-3.5 w-3.5" />}>
                   Assigned Committee
-                </p>
-                {committee ? (
-                  <ul className="space-y-1 text-(--earist-body-text)">
-                    {[
-                      committeeLine("Chairman", committee.chairman),
-                      committeeLine("Panelists", committee.panelists),
-                      committeeLine("Facilitator", committee.facilitator),
-                      committeeLine("Rapporteur", committee.rapporteur),
-                      // Adviser only when explicitly assigned as a defense seat
-                      committee.adviser.length
-                        ? committeeLine("Adviser", committee.adviser)
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    {!committee.adviser.length && (
-                      <li className="text-xs italic">
-                        Adviser seat: not assigned to this session (relationship
-                        alone does not create a seat)
-                      </li>
-                    )}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-(--earist-body-text)">
+                </SectionLabel>
+                {!committee ||
+                (!committee.chairman.length &&
+                  !committee.panelists.length &&
+                  !committee.facilitator.length &&
+                  !committee.rapporteur.length &&
+                  !committee.adviser.length) ? (
+                  <p className="text-(--earist-body-text)">
                     No participants assigned yet.
                   </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 rounded-md bg-(--earist-surface-gray) p-3 sm:grid-cols-2">
+                    <RoleList label="Chairman" names={committee.chairman} />
+                    <RoleList label="Panelists" names={committee.panelists} />
+                    <RoleList
+                      label="Facilitator"
+                      names={committee.facilitator}
+                    />
+                    <RoleList
+                      label="Rapporteur"
+                      names={committee.rapporteur}
+                    />
+                    {hasAdviserSeat && (
+                      <RoleList label="Adviser" names={committee.adviser} />
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
+            {/* Requirements */}
             <div>
-              <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                Requirements
-              </p>
+              <SectionLabel>Requirements</SectionLabel>
               <ul className="space-y-1">
                 {(app.thesisDocuments ?? []).map((d) => (
                   <li
                     key={d.id}
-                    className="flex items-center justify-between rounded-md bg-(--earist-surface-gray) px-3 py-2"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-(--earist-surface-gray) px-3 py-2"
                   >
-                    <span>
+                    <span className="min-w-0 break-words">
                       <CheckCircle2 className="mr-1 inline h-3.5 w-3.5 text-green-600" />
                       {requirementLabel(d.docType)}
                     </span>
@@ -196,59 +281,62 @@ export function DefenseApplicationReviewDialog({
               </ul>
             </div>
 
-            {isTitle && (
-              <div>
-                <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                  Proposed Research Titles (all remain proposals)
-                </p>
-                <ol className="list-decimal space-y-1 pl-5">
-                  {app.thesisTitles.map((t) => (
-                    <li key={t.id}>{t.titleText}</li>
-                  ))}
-                </ol>
-                <p className="mt-2 text-[11px] text-(--earist-body-text)">
-                  Winning title is selected only at Title Defense conclusion.
-                  Application approval does not select a title.
-                </p>
-              </div>
-            )}
-
-            {(isProposal || isFinal) && (
-              <div>
-                <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
-                  Official Approved Research Title
-                </p>
-                <p>{selectedTitle?.titleText || "Not selected yet"}</p>
-                <p className="mt-2 text-xs font-semibold text-(--earist-secondary)">
-                  Thesis Adviser (relationship)
-                </p>
-                {adviser ? (
-                  <p>
-                    {adviser.firstName} {adviser.lastName}
+            {/* Research Details */}
+            <div>
+              <SectionLabel>Research Details</SectionLabel>
+              {isTitle && (
+                <div>
+                  <p className="text-xs font-medium text-(--earist-secondary)">
+                    Proposed Research Titles (all remain proposals)
                   </p>
-                ) : (
-                  <div className="rounded-md bg-amber-50 p-2 text-amber-800">
-                    <p>Not assigned</p>
-                    <p className="text-xs">
-                      Proposal/Final scheduling requires an active Thesis Adviser
-                      relationship. The adviser is not auto-added as a defense
-                      seat.
+                  <ol className="mt-1 list-decimal space-y-1 pl-5">
+                    {app.thesisTitles.map((t) => (
+                      <li key={t.id} className="break-words">
+                        {t.titleText}
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="mt-2 text-[11px] text-(--earist-body-text)">
+                    Winning title is selected only at Title Defense conclusion.
+                    Application approval does not select a title.
+                  </p>
+                </div>
+              )}
+
+              {(isProposal || isFinal) && (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs font-medium text-(--earist-secondary)">
+                      Official Approved Research Title
+                    </p>
+                    <p className="break-words">
+                      {selectedTitle?.titleText || "Not selected yet"}
                     </p>
                   </div>
-                )}
-              </div>
-            )}
+                  {adviser && (
+                    <div>
+                      <p className="text-xs font-medium text-(--earist-secondary)">
+                        Thesis Adviser (relationship)
+                      </p>
+                      <p className="break-words">
+                        {adviser.firstName} {adviser.lastName}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {isFinal && (
-              <p className="text-xs text-(--earist-body-text)">
-                Final Defense covers the complete manuscript. Rapporteur Report
-                is only created after the defense is conducted and formally
-                concluded.
-              </p>
-            )}
+              {isFinal && (
+                <p className="mt-2 text-xs text-(--earist-body-text)">
+                  Final Defense covers the complete manuscript. Rapporteur Report
+                  is only created after the defense is conducted and formally
+                  concluded.
+                </p>
+              )}
+            </div>
 
             {app.status === "REJECTED" && app.rejectionReason && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+              <p className="rounded-md bg-red-50 px-3 py-2 text-xs break-words text-red-700">
                 Rejection reason: {app.rejectionReason}
               </p>
             )}

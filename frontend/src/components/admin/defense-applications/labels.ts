@@ -70,9 +70,13 @@ export function sessionStatusLabel(status?: string | null): string {
 }
 
 export function dialogTitleForStatus(status: string): string {
-  if (status === "PENDING") return "Review Defense Application";
+  if (status === "PENDING") return "Review Application";
   if (status === "SCHEDULED") return "View Defense Details";
   return "View Application";
+}
+
+export function viewButtonLabel(status: string): string {
+  return dialogTitleForStatus(status);
 }
 
 export function committeeLine(label: string, names: string[]): string | null {
@@ -83,6 +87,33 @@ export function committeeLine(label: string, names: string[]): string | null {
       ? names.join(", ")
       : `${names.slice(0, max).join(", ")} +${names.length - max} more`;
   return `${label} — ${shown}`;
+}
+
+/** Compact name list for cards: "Dr. A, Dr. B +2 more". */
+export function compactNameList(names: string[], maxVisible = 3): string {
+  if (!names.length) return "—";
+  if (names.length <= maxVisible) return names.join(", ");
+  return `${names.slice(0, maxVisible).join(", ")} +${names.length - maxVisible} more`;
+}
+
+export type VenueDisplay =
+  | { kind: "empty" }
+  | { kind: "url"; href: string; label: string }
+  | { kind: "text"; text: string };
+
+/** Parse venue/Teams so long URLs never force horizontal scroll. */
+export function parseVenueOrLink(value?: string | null): VenueDisplay {
+  if (!value || !value.trim()) return { kind: "empty" };
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    const isTeams = /teams\.(microsoft|live)\.com/i.test(trimmed);
+    return {
+      kind: "url",
+      href: trimmed,
+      label: isTeams ? "Microsoft Teams" : "Meeting link",
+    };
+  }
+  return { kind: "text", text: trimmed };
 }
 
 export function formatDefenseDate(value?: string | Date | null): string {
