@@ -1863,6 +1863,12 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         status: "PENDING",
       },
     }));
+  // One state only: submitted / needs review (reset if smoke mutated it).
+  await prisma.thesisRecord.update({
+    where: { id: cThesis.id },
+    data: { stage: "TITLE", status: "PENDING", outcome: null },
+  });
+  await cancelNonCancelledSchedules(cThesis.id, "TITLE_DEFENSE");
   await ensureTitles(cThesis.id);
   await ensureTitleDocs(cThesis.id);
   console.log("  scenario title-pending@earist.edu.ph → admin review queue");
@@ -1939,7 +1945,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         outcome: null,
       },
     }));
-  // Current stage is Proposal (Title already complete historically).
+  // One state only: PROPOSAL application APPROVED + READY (no Proposal schedule).
   await prisma.thesisRecord.update({
     where: { id: eThesis.id },
     data: {
@@ -2042,7 +2048,9 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     "  scenario proposal-ready@earist.edu.ph → Proposal APP submitted + APPROVED READY (no Proposal schedule)",
   );
 
-  // F) proposal-blocked-vars@ — vars PENDING should block Proposal
+  // F) proposal-blocked-vars@ — ELIGIBILITY BLOCK only (not a review application).
+  //    Purpose: Proposal apply FAILS because Research Variables = PENDING.
+  //    Must never look like READY / an approved Proposal application.
   const f = await ensureStudent({
     email: "proposal-blocked-vars@earist.edu.ph",
     first: "Vic",
@@ -2072,18 +2080,18 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
       data: {
         studentId: f.student.id,
         assignmentId: fAssignment?.id ?? null,
-        stage: "PROPOSAL",
-        // Submitted but NOT approved READY — vars still block a clean Proposal path.
-        status: "PENDING",
-        outcome: null,
+        stage: "TITLE",
+        status: "PASSED",
+        outcome: "PASSED",
       },
     }));
+  // Title is complete (historical); there is NO Proposal review application.
   await prisma.thesisRecord.update({
     where: { id: fThesis.id },
     data: {
-      stage: "PROPOSAL",
-      status: "PENDING",
-      outcome: null,
+      stage: "TITLE",
+      status: "PASSED",
+      outcome: "PASSED",
       assignmentId: fAssignment?.id ?? fThesis.assignmentId,
     },
   });
@@ -2147,7 +2155,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     });
   }
   console.log(
-    "  scenario proposal-blocked-vars@earist.edu.ph → Proposal apply FAILS (RESEARCH_VARIABLES pending)",
+    "  scenario proposal-blocked-vars@earist.edu.ph → ELIGIBILITY BLOCK (vars PENDING; no Proposal review app)",
   );
 
   // G) revision-blocked@ — REVISION_REQUIRED never unlocks next stage
@@ -2224,7 +2232,7 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         outcome: null,
       },
     }));
-  // Current stage is Final; Title/Proposal remain as prior-stage history only.
+  // One state only: FINAL application APPROVED + READY (no Final schedule).
   await prisma.thesisRecord.update({
     where: { id: hThesis.id },
     data: {
@@ -2644,15 +2652,29 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
         outcome: null,
       },
     }));
+  // One state only: ACTIVE session awaiting formal conclusion (score ≠ outcome).
   await prisma.thesisRecord.update({
     where: { id: iThesis.id },
     data: { stage: "TITLE", status: "SCHEDULED", outcome: null },
   });
-  // Active session fixture: only one non-cancelled TITLE schedule (AWAITING_CONCLUSION).
+  // Cancel any extra TITLE sessions so only AWAITING_CONCLUSION remains active.
+  await prisma.defenseSchedule.updateMany({
+    where: {
+      thesisId: iThesis.id,
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: { notIn: ["AWAITING_CONCLUSION", "CANCELLED"] },
+    },
+    data: { sessionStatus: "CANCELLED" },
+  });
   await ensureTitles(iThesis.id);
   await ensureTitleDocs(iThesis.id);
   let iSched = await prisma.defenseSchedule.findFirst({
-    where: { thesisId: iThesis.id, defenseType: "TITLE_DEFENSE" },
+    where: {
+      thesisId: iThesis.id,
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "AWAITING_CONCLUSION",
+    },
+    orderBy: { createdAt: "desc" },
   });
   if (!iSched) {
     iSched = await prisma.defenseSchedule.create({

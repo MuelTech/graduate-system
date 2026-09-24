@@ -643,7 +643,7 @@ async function main() {
       const findByEmail = (rows, email) =>
         (rows || []).find((r) => r.student?.user?.email === email);
 
-      // Isolation: blocked fixture must stay PENDING (not READY / not approved by smoke)
+      // Isolation: eligibility-blocked fixture must never look READY/ACTIVE.
       const needsAll = await req(
         "GET",
         "/thesis/defense/applications?bucket=NEEDS_REVIEW&page=1&pageSize=50",
@@ -659,16 +659,25 @@ async function main() {
         "/thesis/defense/applications?bucket=ACTIVE&page=1&pageSize=50",
         { token: adminTok },
       );
-      const blockedVars =
-        findByEmail(needsAll.json?.data, "proposal-blocked-vars@earist.edu.ph") ||
-        findByEmail(readyAll2.json?.data, "proposal-blocked-vars@earist.edu.ph") ||
-        findByEmail(activeAll2.json?.data, "proposal-blocked-vars@earist.edu.ph");
+      const historyAll2 = await req(
+        "GET",
+        "/thesis/defense/applications?bucket=HISTORY&page=1&pageSize=50",
+        { token: adminTok },
+      );
+      const blockedEmail = "proposal-blocked-vars@earist.edu.ph";
+      const blockedInReady = findByEmail(readyAll2.json?.data, blockedEmail);
+      const blockedInActive = findByEmail(activeAll2.json?.data, blockedEmail);
+      const blockedAnywhere =
+        findByEmail(needsAll.json?.data, blockedEmail) ||
+        blockedInReady ||
+        blockedInActive ||
+        findByEmail(historyAll2.json?.data, blockedEmail);
       log(
-        "ISOLATE proposal-blocked-vars not approved by smoke",
-        blockedVars && blockedVars.status === "PENDING" ? "PASS" : "FAIL",
-        blockedVars
-          ? `status=${blockedVars.status} bucket=${blockedVars.workflowBucket}`
-          : "fixture missing (reseed)",
+        "ISOLATE proposal-blocked-vars never READY/ACTIVE",
+        !blockedInReady && !blockedInActive ? "PASS" : "FAIL",
+        blockedAnywhere
+          ? `bucket=${blockedAnywhere.workflowBucket} status=${blockedAnywhere.status}`
+          : "not in open buckets (history-only eligibility block)",
       );
 
       // REG: proposal-review-pending@ — Title history must not block APPROVE

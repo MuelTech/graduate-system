@@ -11,7 +11,6 @@ const ADMIN_PASSWORD = "password123";
 const PROPOSAL_REVIEW = { name: "Pat Review", studentNumber: "2026-1011", email: "proposal-review-pending@earist.edu.ph" };
 const PROPOSAL_READY = { name: "Pia Proposal", studentNumber: "2026-1005", email: "proposal-ready@earist.edu.ph" };
 const FINAL_READY = { name: "Finn Final", studentNumber: "2026-1008", email: "final-ready@earist.edu.ph" };
-const BLOCKED_VARS = { name: "Vic Vars", studentNumber: "2026-1006", email: "proposal-blocked-vars@earist.edu.ph" };
 
 const failedRequests: string[] = [];
 const consoleErrors: string[] = [];
@@ -228,14 +227,6 @@ test.describe("Admin Thesis/Dissertation application workflow", () => {
     await expect(fDialog.getByText(/Proposal Chapters/)).toHaveCount(0);
     await expect(fDialog.getByText(/Title Defense Proposal Package/)).toHaveCount(0);
     await fDialog.getByRole("button", { name: "Close" }).first().click();
-
-    // Isolation: blocked fixture stays needs-review style, not READY assign
-    await openTab(page, "Needs Review");
-    await searchDefenseApplications(page, BLOCKED_VARS.studentNumber);
-    await expectCardVisible(page, BLOCKED_VARS.studentNumber);
-    await expect(
-      page.getByRole("button", { name: "Assign Panel & Schedule" }),
-    ).toHaveCount(0);
 
     // Flow D: History rows from seeded conclusions
     await openTab(page, "History");
