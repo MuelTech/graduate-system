@@ -6,8 +6,8 @@
 **Scope:** Graduate Student Thesis / Dissertation workflow  
 **Target Implementation Branch:** `refactor/defense-workflow`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.3-draft  
-**Last Updated:** 2026-09-22  
+**Version:** 1.4-draft  
+**Last Updated:** 2026-09-24  
 
 ---
 
@@ -88,9 +88,17 @@ The current client clarification used by the project is:
 
 > **Title Defense application does not require an adviser.**
 
-An adviser relationship becomes relevant after the Title stage and is required for Proposal/Final eligibility under the current design.
+After a Title Defense is formally concluded as `PASSED` and one official title is selected, the student may begin the Adviser Request process. The current client further clarified that the student's adviser must be chosen from the student's own Title Defense panel rather than from the full faculty/adviser directory.
 
-**Status:** CONFIRMED_CLIENT in project clarification.
+For current GS-IS terminology:
+
+- **Defense Committee** means the complete assigned defense roster, including evaluators and session-support roles.
+- **Oral Defense Panel (ODP)** means the evaluative subset used for academic evaluation and, under the adviser-selection rule, the adviser candidate pool.
+- The working role mapping is **Chairman + evaluator Panelists** for the ODP, with Facilitator and Rapporteur excluded from adviser candidacy. The exact current role-label mapping remains subject to explicit client confirmation.
+
+An active adviser is required before Proposal/Final eligibility under the current design, but adviser selection itself may begin after a passed Title Defense and official-title selection; it does not need to wait for every later Title post-defense artifact.
+
+**Status:** Adviser not required for Title and adviser must come from the student's own Title Defense panel are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
 
 ### 3.3 Committee size
 
@@ -140,8 +148,8 @@ flowchart TD
     A[Student Enrolled] --> B[Comprehensive Examination]
     B -->|PASSED| C[Title Defense]
     B -->|Not Passed| B1[Title Application Locked]
-    C -->|PASSED + required post-defense records| D[Adviser / Research Development]
-    D --> E[Proposal Defense]
+    C -->|PASSED + official title selected| D[Adviser Selection / Title Post-Defense]
+    D -->|Title completion requirements satisfied| E[Proposal Defense]
     E -->|PASSED + required post-defense records| F[Research / Data Gathering / Analysis]
     F --> G[Final Defense]
     G -->|PASSED| H[Post-Defense Corrections]
@@ -163,17 +171,18 @@ flowchart TD
 8. Evaluator scores and session notes are completed.
 9. Authorized conclusion records the official defense outcome.
 10. For a passed Title Defense, one of the three proposed titles is selected as the official research title.
-11. Required Title post-defense records/RAP are completed.
-12. Adviser relationship and Proposal requirements are completed.
-13. Student files Proposal Defense application.
-14. Proposal is reviewed, scheduled, conducted, and formally concluded.
-15. Proposal post-defense requirements/RAP are completed.
-16. Student completes research/data gathering/analysis and Final requirements.
-17. Student files Final Defense application.
-18. Final is reviewed, scheduled, conducted, and formally concluded.
-19. Student completes post-defense corrections and final certifications.
-20. Approved final research is submitted to the databank.
-21. Admin approves repository publication.
+11. Adviser Request becomes available; the student selects an eligible adviser candidate from the student's own Title Defense ODP.
+12. Adviser CONFORME/acceptance and Dean approval are completed before an active `AdviserAssignment` is created.
+13. Required Title post-defense records/RAP and remaining Proposal prerequisites are completed.
+14. Student files Proposal Defense application.
+15. Proposal is reviewed, scheduled, conducted, and formally concluded.
+16. Proposal post-defense requirements/RAP are completed.
+17. Student completes research/data gathering/analysis and Final requirements.
+18. Student files Final Defense application.
+19. Final is reviewed, scheduled, conducted, and formally concluded.
+20. Student completes post-defense corrections and final certifications.
+21. Approved final research is submitted to the databank.
+22. Admin approves repository publication.
 
 ---
 
@@ -316,6 +325,8 @@ These are engineering rules, not UI suggestions.
 11. The same person must not be assigned twice to the same defense unless the client explicitly permits multiple functional roles for one person.
 12. Scheduling must validate committee composition server-side.
 13. Frontend requirement badges are informational; backend/domain rules are authoritative.
+14. Adviser Request after Title Defense must derive candidates from the student's own passed Title Defense ODP, not from the unrestricted faculty directory.
+15. A requested adviser must not become an active `AdviserAssignment` until the required Adviser CONFORME/acceptance and Dean approval sequence is complete.
 
 ---
 
@@ -463,60 +474,159 @@ At minimum:
 
 Only then should Proposal readiness be evaluated.
 
+**Adviser-selection timing:** Adviser Request may unlock earlier than full Title-stage completion once the Title Defense has been formally concluded as `PASSED` and an official title is selected. This does **not** unlock Proposal by itself; Proposal still requires the active approved adviser relationship plus the remaining Title completion requirements.
+
 ---
 
-## 9. Adviser Assignment Between Title and Proposal
+## 9. Adviser Selection / GS-020 Between Title and Proposal
 
+The adviser relationship begins after the student's Title Defense has been formally passed; it is not a prerequisite for filing Title Defense.
 
-The adviser relationship is separate from committee membership.
+### 9.1 Confirmed system rules
 
-### 9.1 Confirmed system rule
+- Adviser is not required to file Title Defense. **CONFIRMED_CLIENT**
+- Adviser selection becomes available after the student's Title Defense is formally `PASSED` and one official title has been selected. **CONFIRMED_CLIENT**
+- The adviser must be selected from the student's own Title Defense panel, not from the unrestricted faculty/adviser directory. **CONFIRMED_CLIENT**, also consistent with legacy EARIST adviser-selection material.
+- The current Adviser Request form, **EARIST-QSF-GS-020 Rev. 00 (06.20.25)**, represents Student request → Adviser **CONFORME** → Dean, Graduate School approval. **SUPPORTED_CURRENT_FORM**
+- `AdviserAssignment` becomes active only after the configured Adviser acceptance/conforme and Dean approval sequence succeeds. **PROPOSED_SYSTEM_DESIGN**
+- An active adviser remains required for Proposal and Final eligibility under the current design.
 
-- Adviser is not required to file Title Defense.
-- An active adviser is required by the current design for Proposal and Final eligibility.
-- The current Adviser Request form, **EARIST-QSF-GS-020 Rev. 00 (06.20.25)**, shows Student request → Adviser **CONFORME** → Dean, Graduate School approval.
+### 9.2 Defense Committee and Oral Defense Panel terminology
 
-### 9.2 Canonical adviser-request flow
+GS-IS should distinguish the full session roster from the evaluative adviser-candidate group.
 
 ```text
-Title Defense PASSED / adviser-request stage available
+Defense Committee
+├── Oral Defense Panel (ODP) / evaluators
+│   ├── Chairman
+│   └── Panelist / evaluator members
+├── Facilitator
+└── Rapporteur
+```
+
+For current system wording:
+
+- **Defense Committee** — umbrella term for all formally assigned participants in the defense session.
+- **Oral Defense Panel (ODP)** — evaluative subset of the Defense Committee used for academic evaluation and adviser candidacy after Title Defense.
+- **Working role mapping:** `CHAIRMAN` + evaluator `PANELIST` assignments belong to the ODP; `FACILITATOR` and `RAPPORTEUR` do not.
+- The client has confirmed that adviser selection is restricted to the student's Title Defense panel. The exact mapping of the current role labels to ODP membership should still be explicitly reconfirmed before treating the Chairman/Panelist split as institutional policy.
+
+**Status:** Adviser-candidate restriction to the student's own Title Defense panel is **CONFIRMED_CLIENT**. ODP = Chairman + evaluator Panelists, excluding Facilitator/Rapporteur, is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION** pending exact role confirmation.
+
+### 9.3 Adviser candidate eligibility and data source
+
+The adviser-selection screen must derive its candidates from the student's actual passed Title Defense session.
+
+```text
+DefenseConclusion
+├── defenseType = TITLE_DEFENSE
+├── outcome = PASSED
+└── selectedTitleId exists
+        ↓
+Title DefenseSchedule / DefenseSession
+        ↓
+DefenseParticipantAssignment / PanelAssignment
+        ↓
+Filter to configured ODP/evaluator roles
+        ↓
+Eligible adviser candidates for this student
+```
+
+Rules:
+
+1. Do not query the full faculty directory as the student's adviser-choice list.
+2. Candidate users must come from the same Title Defense session that produced the passed conclusion.
+3. Candidate accounts must still be active/eligible system users when the request is made.
+4. Facilitator and Rapporteur are excluded under the current evaluator-only working design unless the client explicitly changes the rule.
+5. The student may view useful faculty profile information already owned by GS-IS, such as name, specialization, and office/affiliation, before making the request.
+6. Adviser-load or general `isAvailableAsAdviser` restrictions must not be silently hard-coded as institutional policy unless the current client confirms them.
+
+### 9.4 Canonical adviser-request flow
+
+```text
+Title Defense formally PASSED
       ↓
-Official Title Recorded
+Official Title selected
       ↓
-Student requests a named Adviser + reason
+Adviser Selection unlocked
+      ↓
+Student views eligible Title Defense ODP members
+      ↓
+Student selects one candidate and submits GS-020 Adviser Request
       ↓
 Requested Adviser reviews request
-      ├── Declines / returns → student selects another Adviser
+      ├── DECLINES / returns → student may select another eligible ODP member
       └── CONFORMS / ACCEPTS
                 ↓
 Dean, Graduate School reviews
-      ├── Rejects / returns
+      ├── REJECTS / returns
       └── APPROVES
                 ↓
-AdviserAssignment becomes active
+AdviserAssignment becomes ACTIVE
                 ↓
 Student + Adviser notified
                 ↓
 Proposal preparation / stage-specific Adviser Certification
 ```
 
-**Refactor implication:** the current implementation's Student Request → Admin Assign flow is incomplete if GS-020 is to be represented faithfully. Add Adviser acceptance/conforme before Dean approval, or explicitly track that acceptance as an external wet-signature step.
+The Dean/Admin approval step must not silently substitute for Adviser CONFORME. Requested adviser and active adviser are different states.
 
-### 9.3 Critical modeling rule
+### 9.5 GS-020 as system-native workflow + generated official document
+
+GS-020 should be implemented as structured system workflow data first, with an official generated/downloadable form as its document output.
+
+```text
+Student request data
+      ↓
+Adviser CONFORME / decline
+      ↓
+Dean approval / rejection
+      ↓
+Final adviser-request record
+      ↓
+Generate current GS-020 from authoritative system data
+      ↓
+Preview / Download / Print official copy
+```
+
+Recommended behavior:
+
+- The student should not be required to download a blank GS-020, fill it manually, and re-upload it as the primary workflow.
+- GS-IS should prefill the official GS-020 from authoritative records: student identity, program, official title/research context when present, requested adviser, request date, Adviser CONFORME status/date, Dean approval status/date, and other confirmed form fields.
+- A draft/pending preview may be shown while the request is incomplete.
+- After final approval, the system should provide a finalized downloadable/printable GS-020 snapshot.
+- Wet, digital, or mixed signature handling should follow the cross-cutting official-document architecture in Section 34 and the signature mode approved by EARIST.
+- Finalized generated copies must remain immutable/reproducible for audit.
+
+### 9.6 Critical modeling rules
+
+> `AdviserRequest` / nomination is not the same record as an active `AdviserAssignment`.
 
 > `AdviserAssignment` does not automatically mean `DefenseParticipantAssignment`.
 
-The student may have an adviser relationship without the adviser necessarily consuming an additional defense committee seat.
+The system should therefore keep:
 
-Whether the adviser is:
+```text
+AdviserRequest
+├── studentId
+├── requestedAdviserId
+├── sourceTitleDefenseSessionId / source ODP context
+├── request status
+├── adviserResponse / conformedAt
+├── deanDecision / approvedAt
+└── audit metadata
 
-- one of the 5/6 committee members,
-- a non-scoring defense participant,
-- an observer,
-- a signatory/concurrer only, or
-- not part of a given defense session
+AdviserAssignment
+├── studentId
+├── adviserId
+├── activatedFromRequestId
+├── assignedDate
+└── isActive
+```
 
-must be confirmed separately.
+The exact Prisma shape may differ, but the domain distinction is required.
+
+A later Proposal/Final defense may include the adviser in a different participant/signatory capacity according to that stage's confirmed committee/form rules. The prior Title ODP membership only determines adviser candidacy; it does not automatically assign the adviser to future defense sessions.
 
 ## 10. Stage B — Proposal Defense
 
@@ -1612,6 +1722,19 @@ Required correction:
 - Research Variables must support `NOT_APPLICABLE` instead of blocking every Proposal application, and
 - STRIKE / Statistician Certification / Research Instruments must not remain unconditional Final gates until the current client reconfirms them.
 
+### P1 — Adviser Request semantics are incomplete
+
+Current implementation still contains older Student Request → Admin Assign behavior and does not yet enforce the newly confirmed post-Title adviser-candidate rule.
+
+Required correction:
+
+- unlock adviser selection only after formal Title `PASSED` + official-title selection,
+- derive candidates from the student's own Title Defense ODP/evaluator assignments,
+- keep requested adviser separate from active adviser assignment,
+- require Adviser CONFORME/acceptance before Dean approval is finalized,
+- create/activate `AdviserAssignment` only after the approval sequence is complete,
+- generate GS-020 from authoritative workflow data rather than requiring a blank-form upload.
+
 ### P1 — Revision lifecycle is incomplete
 
 Required correction:
@@ -1698,7 +1821,17 @@ Required correction:
 - Title selection in conclusion,
 - result + RAP created atomically.
 
-### Phase 6 — RAP / signatures
+### Phase 6 — Adviser Request / GS-020 + RAP / signatures
+
+Adviser Request / GS-020:
+
+- unlock adviser selection after passed Title Defense + official-title selection,
+- derive adviser candidates from the student's own Title Defense ODP,
+- implement Student Request → Adviser CONFORME/Decline → Dean Approve/Reject,
+- create active AdviserAssignment only after final approval,
+- generate a versioned/downloadable GS-020 from the completed workflow record.
+
+RAP / signatures:
 
 - configurable required signatories,
 - finalized prior-stage RAP used directly by next-stage eligibility,
@@ -1807,6 +1940,8 @@ These are the highest-priority questions.
 7. Are Facilitator and Rapporteur always mandatory for all three defense stages?
 8. Can one person hold two roles in one defense?
 
+**Adviser-selection role mapping still to confirm:** when the client says the adviser must be chosen from the student's Title Defense panel, should the current ODP candidate pool be exactly Chairman + evaluator Panelists, with Facilitator and Rapporteur excluded? The working system design assumes yes.
+
 ### Scoring and conclusion
 
 9. Who has authority to record the official outcome: Chairman, Dean/Admin, Rapporteur, or another role?
@@ -1867,7 +2002,7 @@ These provide valuable process context but are **not automatically current polic
 1. **Progressive disclosure** — only show actions valid for the current stage.
 2. **No ambiguous status labels** — distinguish approved, scheduled, concluded, passed, and complete.
 3. **Requirements have provenance** — users should know whether a requirement is system-verified, uploaded, pending review, or missing.
-4. **Roles are functional** — do not call Facilitator/Rapporteur generic panelists in screens where responsibilities differ.
+4. **Roles are functional** — use **Defense Committee** for the full session roster and **Oral Defense Panel (ODP)** for the evaluator subset; do not call Facilitator/Rapporteur generic panelists in screens where responsibilities differ.
 5. **Counts are visible** — committee builder shows required and assigned evaluator/session-role counts.
 6. **No duplicate uploads for internal records** — RAP, selected title, adviser assignment, and system-verified COR should be referenced internally.
 7. **Server truth** — UI cannot declare eligibility independently.
@@ -1889,12 +2024,17 @@ Every workflow-policy update should add an entry below.
 | 1.1-draft | 2026-09-22 | Integrated current EARIST 2025 forms, printable-form placement, adviser conforme/dean approval flow, formal defense approval chain, form-specific signatories, and revised committee interpretation. | Current EARIST forms supplied by client |
 | 1.2-draft | 2026-09-22 | Moved Expert Evaluation outside the core defense workflow; introduced official document classification plus separate print/e-signature architecture and immutable generated-document snapshots. | Project scope review + current EARIST forms |
 | 1.3-draft | 2026-09-22 | Reconciled current EARIST Graduate School Stage #1/#2/#3 public requirement guides: Title supporting content stays in uploaded proposal package; Cashier payment is external with stage-specific proof; Proposal variables are conditional `IF ANY`; physical packaging remains manual; Application Form/Process Flow generation is deferred; unlisted legacy Final gates are marked for client reconfirmation. | Current EARIST Graduate School public guidance supplied by project + project scope decisions |
+| 1.4-draft | 2026-09-24 | Defined the post-Title Adviser Request / GS-020 workflow: adviser selection unlocks after formal Title PASS + official title; candidates come from the student's own Title Defense panel; GS-IS distinguishes full Defense Committee from the evaluative ODP; Adviser CONFORME precedes Dean approval; GS-020 is generated from structured workflow data. | Current client confirmation + GS-020 + legacy EARIST adviser-selection material |
 
 ### Decision Log
 
 | Date | Decision | Status / Source |
 |---|---|---|
 | 2026-09-22 | Title application does not require adviser. | Current client/project clarification — CONFIRMED_CLIENT |
+| 2026-09-24 | After formal Title Defense PASS and official-title selection, the student may begin Adviser Request. | Current client clarification — CONFIRMED_CLIENT |
+| 2026-09-24 | Adviser candidates are restricted to members of the student's own Title Defense panel rather than the unrestricted faculty directory. | Current client clarification, corroborated by legacy EARIST adviser-selection material — CONFIRMED_CLIENT |
+| 2026-09-24 | GS-IS uses **Defense Committee** for the full roster and **Oral Defense Panel (ODP)** for the evaluator/adviser-candidate subset. Working mapping is Chairman + evaluator Panelists; Facilitator/Rapporteur excluded pending exact client role confirmation. | PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION |
+| 2026-09-24 | GS-020 is a system-native adviser-request workflow with a generated/downloadable official document output; active AdviserAssignment is created only after Adviser CONFORME and Dean approval. | Current GS-020 form + project design — SUPPORTED_CURRENT_FORM / PROPOSED_SYSTEM_DESIGN |
 | 2026-09-22 | Master's has 5 panelists + 1 facilitator + 1 rapporteur. | Client — CONFIRMED_CLIENT |
 | 2026-09-22 | Doctoral has 6 panelists + 1 facilitator + 1 rapporteur. | Client — CONFIRMED_CLIENT |
 | 2026-09-22 | Application `APPROVED` does not equal defense `PASSED`. | Canonical system rule |
@@ -1935,6 +2075,7 @@ These documents remain useful references but are superseded by this specificatio
 4. EARIST official online payment information showing separate Master's/Doctoral Comprehensive fees and defense-fee categories for Pre-Oral and Final.
 5. Publicly available copy of the EARIST *Manual for Thesis and Dissertation Writing, 2nd Edition* (legacy/historical), used only to understand the established three-stage defense process and not as authority over newer client-confirmed rules.
 6. EARIST Graduate School public Stage #1 Title Defense, Stage #2 Proposal Defense, and Stage #3 Final Defense requirement guides supplied to the project from the official EARIST Graduate School Facebook page (`facebook.com/earistgraduateschool`). These are used as current public operational guidance for requirement interpretation, while unresolved conflicts still require client confirmation.
+7. Publicly available EARIST adviser/orientation material supplied to the project, used as supporting/legacy evidence for candidate adviser nomination, adviser conformity, and Dean approval. Current client confirmation remains authoritative where newer practice is more specific.
 
 ---
 
@@ -1974,7 +2115,7 @@ The current forms supplied by the client are dated/revised **06.20.25** and are 
 |---|---|---|---|---|
 | **Application for Title / Proposal / Final Defense — Master's** — EARIST-QSF-GS-006 Rev. 01 | Student/application data, payment fields, defense schedule, Examination Committee, Dean/VPAA/President approvals | Student Defense Application + Admin Application Review + Committee/Scheduling | Starts at filing; completed after committee/schedule are drafted; finalized through institutional approval | Prefill student/program/payment data; populate committee/date/time/link from system; generate printable official PDF; track approval status/signatures or wet-signature completion. **Implementation deferred until after the core workflow refactor.** |
 | **Application for Title / Proposal / Final Defense — Doctoral** — EARIST-QSF-GS-007 Rev. 01 | Same as Master's with Doctoral committee layout | Same as above | Same as above | Same template workflow, program-specific committee section |
-| **Adviser Request** — EARIST-QSF-GS-020 Rev. 00 | Student requests named adviser; Adviser conforms; Dean approves | Student Thesis → Adviser Request; Adviser task; Dean/Admin approval | After Title stage when adviser is needed, or other client-approved point | Digital request + Adviser accept/decline + Dean approve; printable version available for wet signature if required |
+| **Adviser Request** — EARIST-QSF-GS-020 Rev. 00 | Student requests an eligible adviser; Adviser conforms; Dean approves | Student Thesis → Adviser Selection/Request; Adviser task; Dean/Admin approval | After formal Title Defense `PASSED` + official-title selection | Candidate list is derived from the student's own Title Defense ODP; digital request + Adviser accept/decline + Dean approve; create active AdviserAssignment only after approval; generate finalized downloadable/printable GS-020 from system data |
 | **Thesis/Dissertation Adviser's Certification** — EARIST-QSF-GS-017 Rev. 01 | Adviser certifies manuscript eligibility for **Proposal or Final Defense** | Adviser Portal / Student Defense Requirements | Before Proposal/Final application can become eligible | Generate from project title/student/program; Adviser signs; store `defenseStage`; system references certification internally rather than requiring duplicate student upload |
 | **GS Form 2b — Adviser's Certification** | Older form wording certifying eligibility for Final Defense only | Legacy/reference template | Only if client confirms it remains in use | Do not implement as a second active rule when GS-017 is the current form; retain as historical reference/version if needed |
 | **Oral Examination Criteria** | Individual examiner ratings for Group I/II, recommendations, rating, signature | Panelist Portal → Live Defense Scoring | During Proposal/Final and any other stage the client confirms uses oral criteria | Implement as structured scoring UI; calculate Group A/B averages; persist evaluator recommendation + signature; printable facsimile/output |
@@ -1993,6 +2134,7 @@ The user completes the form directly inside GS-IS and the authoritative data liv
 
 Examples:
 
+- GS-020 Adviser Request business workflow (request, Adviser CONFORME/decline, Dean decision)
 - Oral Examination Criteria / evaluator scoring
 - RAP workflow where already modeled
 - Other forms explicitly approved for direct in-system entry
@@ -2013,6 +2155,7 @@ No user should retype data that already exists in the system. GS-IS generates th
 
 Examples:
 
+- Generated/finalized GS-020 Adviser Request output
 - GS-006 / GS-007 Defense Application
 - GS-011 Oral Examination Summary Sheet
 - GS-022 Acknowledgement Receipt of Manuscript
@@ -2313,7 +2456,7 @@ Canonical system behavior should therefore use **GS-017 as the active stage-awar
 STUDENT PORTAL
 ├── Thesis Pipeline
 │   ├── Title Defense Application → GS-006/GS-007 data source
-│   ├── Adviser Request → GS-020
+│   ├── Adviser Selection / Request → eligible Title Defense ODP → GS-020
 │   ├── Proposal Defense Application → GS-006/GS-007 + GS-017 status
 │   ├── Final Defense Application → GS-006/GS-007 + GS-017 status
 │   └── Official Documents
@@ -2324,7 +2467,7 @@ STUDENT PORTAL
     └── External/manual documents such as completed GS-021 may be stored here if required
 
 ADVISER / PANELIST PORTAL
-├── Adviser Requests → Accept/Decline / CONFORME (GS-020) when digitized
+├── Adviser Requests → Accept/Decline / CONFORME (GS-020)
 ├── Adviser Certifications → Proposal/Final (GS-017)
 ├── Assigned Defenses
 │   ├── Defense materials
@@ -2391,4 +2534,11 @@ ADMIN / GRADUATE SCHOOL PORTAL
 71. Physical envelope/folder/ring-binding instructions can be shown or office-tracked without requiring meaningless file uploads.
 72. Application Form / Process Flow PDF generation can be absent during the core refactor without blocking eligibility, scheduling, scoring, conclusion, or RAP.
 73. STRIKE, Statistician Certification, and Research Instruments do not remain unconditional Final application gates unless current client confirmation enables those rules.
+74. Adviser Selection is unavailable before a formal Title Defense `PASSED` conclusion with an official selected title.
+75. Adviser candidates are derived only from the student's own passed Title Defense session and never from an unrestricted faculty directory.
+76. Only roles configured as current ODP/evaluator roles are offered as adviser candidates; Facilitator and Rapporteur remain excluded under the current working design unless the client explicitly changes the rule.
+77. Submitting an Adviser Request does not create an active AdviserAssignment.
+78. Dean approval cannot silently stand in for Adviser CONFORME/acceptance; the configured acceptance/approval sequence must be satisfied.
+79. After final approval, GS-IS creates/activates the AdviserAssignment and makes the approved GS-020 available as a generated downloadable/printable official document.
+80. A declined/rejected Adviser Request creates no active AdviserAssignment and the student may select another eligible candidate from the same Title Defense ODP.
 
