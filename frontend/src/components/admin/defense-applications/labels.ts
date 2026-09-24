@@ -45,7 +45,9 @@ export function viewButtonLabelForBucket(
   status: string,
   bucket?: ApplicationWorkflowBucket | string,
 ): string {
-  if (bucket === "ACTIVE" || status === "SCHEDULED") return "View Defense Details";
+  if (bucket === "ACTIVE" || bucket === "HISTORY" || status === "SCHEDULED") {
+    return "View Defense Details";
+  }
   if (bucket === "NEEDS_REVIEW" || status === "PENDING") return "Review Application";
   return "View Application";
 }
