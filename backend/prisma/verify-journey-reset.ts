@@ -152,6 +152,63 @@ async function main() {
     `  after mutation currentStep=${mutated.currentStep} title=${mutated.steps.find((s) => s.key === "TITLE_DEFENSE")?.state}`,
   );
 
+  // ── D. ResearchVariableForm + ResearchVarSignature (RESTRICT) ───
+  console.log("D) ResearchVariableForm + signature mutation → reseed");
+  const varThesis = await prisma.thesisRecord.findFirstOrThrow({
+    where: { studentId: proposalStudent.id },
+  });
+  const varForm = await prisma.researchVariableForm.create({
+    data: {
+      thesisId: varThesis.id,
+      variableContent: "WP6 FK fixture variable",
+      status: "PENDING",
+    },
+  });
+  await prisma.researchVarSignature.create({
+    data: {
+      varFormId: varForm.id,
+      userId: admin.id,
+      isSigned: true,
+      signedAt: new Date(),
+    },
+  });
+
+  // ── E. ManuscriptSubmission + ManuscriptDistribution (RESTRICT) ─
+  console.log("E) ManuscriptSubmission + distribution mutation → reseed");
+  const msThesis = await prisma.thesisRecord.findFirstOrThrow({
+    where: { studentId: finalStudent.id },
+  });
+  const submission = await prisma.manuscriptSubmission.create({
+    data: {
+      thesisId: msThesis.id,
+      submissionDate: new Date(),
+      numberOfCopies: 2,
+    },
+  });
+  await prisma.manuscriptDistribution.create({
+    data: {
+      submissionId: submission.id,
+      recipient: "ADVISER",
+      recipientName: "WP6 FK Fixture",
+    },
+  });
+
+  // ── F. ThesisRecord.assignmentId linked to active AdviserAssignment ─
+  console.log("F) assignmentId link mutation → reseed");
+  const approvedUser = await prisma.user.findUniqueOrThrow({
+    where: { email: "journey-adviser-approved@earist.edu.ph" },
+  });
+  const approvedStudent = await prisma.student.findUniqueOrThrow({
+    where: { userId: approvedUser.id },
+  });
+  const approvedAssignment = await prisma.adviserAssignment.findFirstOrThrow({
+    where: { studentId: approvedStudent.id, isActive: true },
+  });
+  await prisma.thesisRecord.updateMany({
+    where: { studentId: approvedStudent.id },
+    data: { assignmentId: approvedAssignment.id },
+  });
+
   // ── Reseed and assert restoration ───────────────────────────────
   console.log("\nReseeding journey fixtures...");
   const passwordHash =
@@ -163,6 +220,7 @@ async function main() {
     "TITLE_READY",
     "PROPOSAL_READY",
     "FINAL_READY",
+    "ADVISER_APPROVED",
   ] as JourneyFixtureKey[]) {
     const email = meta.find((m) => m.key === key)!.email;
     const journey = await journeyOf(email);

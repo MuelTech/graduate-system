@@ -101,26 +101,66 @@ async function clearDefenseSchedulesForThesis(prisma: Prisma, thesisId: string) 
   });
 }
 
-/** Full fixture-owned ThesisRecord graph reset (FK-safe). */
+/** Full fixture-owned ThesisRecord graph reset (FK-safe child-first order). */
 async function clearThesisGraph(prisma: Prisma, thesisId: string) {
   await clearDefenseSchedulesForThesis(prisma, thesisId);
+
+  // ResearchVariableForm children (RESTRICT): signatures first.
+  const varForms = await prisma.researchVariableForm.findMany({
+    where: { thesisId },
+    select: { id: true },
+  });
+  const varFormIds = varForms.map((f) => f.id);
+  if (varFormIds.length > 0) {
+    await prisma.researchVarSignature.deleteMany({
+      where: { varFormId: { in: varFormIds } },
+    });
+    await prisma.researchVariableForm.deleteMany({
+      where: { id: { in: varFormIds } },
+    });
+  }
+
+  // ManuscriptSubmission children (RESTRICT): distributions first.
+  const submissions = await prisma.manuscriptSubmission.findMany({
+    where: { thesisId },
+    select: { id: true },
+  });
+  const submissionIds = submissions.map((s) => s.id);
+  if (submissionIds.length > 0) {
+    await prisma.manuscriptDistribution.deleteMany({
+      where: { submissionId: { in: submissionIds } },
+    });
+    await prisma.manuscriptSubmission.deleteMany({
+      where: { id: { in: submissionIds } },
+    });
+  }
+
   await prisma.plagiarismResult.deleteMany({ where: { thesisId } });
   await prisma.thesisTitle.deleteMany({ where: { thesisId } });
   await prisma.thesisDocument.deleteMany({ where: { thesisId } });
   await prisma.adviserCertification.deleteMany({ where: { thesisId } });
   await prisma.grammarianCertification.deleteMany({ where: { thesisId } });
   await prisma.statisticianCertification.deleteMany({ where: { thesisId } });
-  await prisma.researchVariableForm.deleteMany({ where: { thesisId } });
   await prisma.expertEvaluation.deleteMany({ where: { thesisId } });
   await prisma.expertEvaluationRequest.deleteMany({ where: { thesisId } });
-  await prisma.manuscriptSubmission.deleteMany({ where: { thesisId } });
   await prisma.eLibrary.deleteMany({ where: { thesisId } });
   await prisma.rapReport.deleteMany({ where: { thesisId } });
   await prisma.defenseConclusion.deleteMany({ where: { thesisId } });
+
+  // ThesisRecord.assignmentId → AdviserAssignment is ON DELETE RESTRICT.
+  await prisma.thesisRecord.updateMany({
+    where: { id: thesisId },
+    data: { assignmentId: null },
+  });
   await prisma.thesisRecord.delete({ where: { id: thesisId } });
 }
 
 async function clearAdviserWorkflow(prisma: Prisma, studentId: string) {
+  // Clear ThesisRecord.assignmentId refs before deleting assignments (RESTRICT).
+  await prisma.thesisRecord.updateMany({
+    where: { studentId, assignmentId: { not: null } },
+    data: { assignmentId: null },
+  });
   await prisma.adviserRequest.deleteMany({ where: { studentId } });
   await prisma.adviserAssignment.deleteMany({ where: { studentId } });
 }
