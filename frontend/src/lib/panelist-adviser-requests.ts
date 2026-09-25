@@ -29,7 +29,9 @@ export type PanelistRequestUiState =
   | "CONFORMED_WAITING_DEAN"
   | "DECLINED"
   | "CONFORMED_DEAN_APPROVED"
-  | "CONFORMED_DEAN_REJECTED";
+  | "CONFORMED_DEAN_REJECTED"
+  /** Legacy/contradictory closed row — never actionable. */
+  | "CLOSED";
 
 export const panelistAdviserRequestsQueryKey = [
   "panelist",
@@ -37,21 +39,40 @@ export const panelistAdviserRequestsQueryKey = [
   "requests",
 ] as const;
 
+/**
+ * GS-020 UI-state priority:
+ * canonical Adviser/Dean terminals first, then ACTIONABLE only when overall
+ * status is still PENDING. Closed/legacy/unknown rows fail to CLOSED.
+ */
 export function resolvePanelistRequestUiState(
-  row: Pick<PanelistAdviserRequestDto, "adviserStatus" | "deanStatus">,
+  row: Pick<
+    PanelistAdviserRequestDto,
+    "status" | "adviserStatus" | "deanStatus"
+  >,
 ): PanelistRequestUiState {
-  if (row.adviserStatus === "PENDING") return "ACTIONABLE";
+  // Canonical explicit terminals win over compatibility status.
   if (row.adviserStatus === "DECLINED") return "DECLINED";
-  if (row.adviserStatus === "CONFORMED" && row.deanStatus === "PENDING") {
-    return "CONFORMED_WAITING_DEAN";
-  }
   if (row.adviserStatus === "CONFORMED" && row.deanStatus === "APPROVED") {
     return "CONFORMED_DEAN_APPROVED";
   }
   if (row.adviserStatus === "CONFORMED" && row.deanStatus === "REJECTED") {
     return "CONFORMED_DEAN_REJECTED";
   }
-  return "CONFORMED_WAITING_DEAN";
+  if (row.adviserStatus === "CONFORMED" && row.deanStatus === "PENDING") {
+    return "CONFORMED_WAITING_DEAN";
+  }
+
+  // Legacy closed rows may still look PENDING on new fields.
+  if (row.status === "APPROVED" || row.status === "REJECTED") {
+    return "CLOSED";
+  }
+
+  if (row.adviserStatus === "PENDING" && row.status === "PENDING") {
+    return "ACTIONABLE";
+  }
+
+  // Unknown/contradictory combinations fail closed.
+  return "CLOSED";
 }
 
 export function titleDefenseRoleLabel(role: string | null): string {
@@ -72,5 +93,7 @@ export function requestStatusLabel(state: PanelistRequestUiState): string {
       return "Approved by Dean";
     case "CONFORMED_DEAN_REJECTED":
       return "Rejected by Dean";
+    case "CLOSED":
+      return "Request closed";
   }
 }

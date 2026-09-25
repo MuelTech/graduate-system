@@ -178,7 +178,9 @@ export default function PanelistAdviserRequestsPage() {
                             ? "bg-emerald-100 text-emerald-800"
                             : state === "CONFORMED_DEAN_REJECTED"
                               ? "bg-red-100 text-red-800"
-                              : "bg-sky-100 text-sky-800"
+                              : state === "CLOSED"
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-sky-100 text-sky-800"
                     }
                   >
                     {state === "ACTIONABLE" && (
@@ -267,6 +269,12 @@ export default function PanelistAdviserRequestsPage() {
                   <p className="text-xs text-(--earist-body-text)">
                     You declined this request. The student may submit another
                     valid adviser request.
+                  </p>
+                )}
+                {state === "CLOSED" && (
+                  <p className="text-xs text-(--earist-body-text)">
+                    This adviser request is already closed and cannot be
+                    changed.
                   </p>
                 )}
 
