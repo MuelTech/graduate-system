@@ -4,10 +4,10 @@
 **System:** EARIST Graduate School Information System (GS-IS)  
 **Campus Context:** Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST), Manila Campus  
 **Scope:** Graduate Student Thesis / Dissertation workflow  
-**Target Implementation Branch:** `refactor/defense-workflow`  
+**Target Implementation Branch:** `refactor/defense-workflow` (parent); Student Thesis Journey implementation is isolated on `refactor/student-thesis-journey`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.4-draft  
-**Last Updated:** 2026-09-24  
+**Version:** 1.5-draft  
+**Last Updated:** 2026-09-25  
 
 ---
 
@@ -344,6 +344,108 @@ Every defense requirement must be classified before implementation so the system
 | **CLIENT_CONFIRMATION_REQUIRED** | Conflicting/current evidence is insufficient | STRIKE/statistician/instruments as Final gate | Do not hard-code as canonical eligibility until reconfirmed |
 
 **Canonical rule:** the system models the decision/evidence EARIST needs, not the physical container used to carry that evidence.
+
+---
+
+## 7.2 Student Portal Thesis Journey Presentation
+
+The Student Portal must present the thesis/dissertation workflow as one ordered **Thesis Journey** instead of a set of unrelated pages.
+
+Working navigation:
+
+```text
+Thesis Journey
+├── Title Defense
+├── Adviser Request
+├── Proposal Defense
+├── STRIKE / Plagiarism
+└── Final Defense
+```
+
+The parent navigation item is a toggle/group label rather than a competing overview destination. The legacy `/student/thesis` route must not become a second source of truth for progression; it should redirect to the student's current relevant journey step once the centralized read model is available.
+
+### 7.2.1 Student-facing step states
+
+Each journey child exposes one derived presentation state:
+
+- `COMPLETED` — the milestone is complete but remains viewable for history/details.
+- `CURRENT` — the primary current step.
+- `AVAILABLE` — the page is accessible, although application submission may still depend on server eligibility.
+- `WAITING` — the student has completed the current action and another actor/event is pending.
+- `LOCKED` — the page is not yet available; the system must provide a reason.
+
+Frontend state is descriptive only. Backend/domain rules remain authoritative, including when a student manually enters a route URL.
+
+### 7.2.2 Authoritative progression inputs
+
+Journey progression must not be inferred from mutable `ThesisRecord.stage/status` alone.
+
+At minimum, the derived state must distinguish and use:
+
+- formal `DefenseConclusion` outcomes;
+- selected official Title;
+- Adviser Request state;
+- active `AdviserAssignment`;
+- Proposal formal outcome;
+- STRIKE/plagiarism evidence when the current policy enables that gate; and
+- Final formal outcome.
+
+Application approval, scheduling, score completion, and formal academic outcome remain separate concepts.
+
+### 7.2.3 Canonical Student Journey sequence
+
+The working Student Portal sequence is:
+
+```text
+Comprehensive Examination PASSED
+        ↓
+Title Defense
+        ↓
+formal PASSED + official selected title
+        ↓
+Adviser Request
+        ↓
+Adviser CONFORME + Dean approval
+        ↓
+active AdviserAssignment
+        ↓
+Proposal Defense
+        ↓
+formal PASSED
+        ↓
+research / manuscript completion
+        ↓
+STRIKE / Plagiarism, if required by current policy
+        ↓
+Final Defense
+        ↓
+post-defense corrections / final approved manuscript
+        ↓
+repository completion
+```
+
+**CONFIRMED_CLIENT:** There is no separate formal “Proposal Corrections” workflow state. Proposal feedback/recommendations may exist, but current client direction does not create a distinct Proposal-correction clearance stage.
+
+**CONFIRMED_PROJECT_SCOPE:** Research/Data Gathering/Data Analysis are academic activities, not standalone Student Portal workflow modules.
+
+**CONFIRMED_PROJECT_SCOPE:** Instrument Validation / Expert Evaluation is external/manual for the current core scope. Existing expert-evaluation tables do not authorize rebuilding the legacy in-system expert assignment/scoring workflow.
+
+**OPEN_QUESTION / PROPOSED_SYSTEM_DESIGN:** STRIKE / Plagiarism is provisionally shown between Proposal and Final for the Student Thesis Journey. The rule must be centralized and configurable because current public Final requirements do not yet establish it as an unconditional gate.
+
+### 7.2.4 Academic Journey separation
+
+The high-level Academic Journey should summarize graduate progress without duplicating the detailed Thesis Journey:
+
+```text
+Admissions / Enrollment
+→ Coursework / Curriculum
+→ Comprehensive Examination
+→ Thesis / Dissertation Phase
+→ Research Completion
+→ Graduation / Completion
+```
+
+The Academic Journey must not reintroduce the obsolete Adviser-before-Title ordering.
 
 ---
 
@@ -2541,4 +2643,20 @@ ADMIN / GRADUATE SCHOOL PORTAL
 78. Dean approval cannot silently stand in for Adviser CONFORME/acceptance; the configured acceptance/approval sequence must be satisfied.
 79. After final approval, GS-IS creates/activates the AdviserAssignment and makes the approved GS-020 available as a generated downloadable/printable official document.
 80. A declined/rejected Adviser Request creates no active AdviserAssignment and the student may select another eligible candidate from the same Title Defense ODP.
+
+81. Student Thesis Journey progression is derived from formal domain records and not from `ThesisRecord.stage/status` alone.
+82. A formally PASSED Title Defense with a selected official title makes Adviser Request available even when Proposal has not started.
+83. Proposal remains locked until an active AdviserAssignment exists.
+84. An Adviser Request waiting for adviser response or Dean review is represented as WAITING and does not unlock Proposal.
+85. Rejected/declined Adviser Requests do not create an active assignment and permit another eligible request.
+86. Completed Thesis Journey steps remain viewable rather than becoming inaccessible.
+87. Direct navigation to a locked Student Thesis Journey page is rejected or rendered inaccessible by authoritative server/domain state.
+88. The legacy `/student/thesis` route does not maintain a second independent progression model.
+89. The Student sidebar, individual stage pages, and current-step redirect consume the same centralized journey state.
+90. No formal Proposal-corrections milestone is added unless the canonical SOT is changed by later client confirmation.
+91. Research/Data Gathering/Data Analysis are not added as standalone Student Thesis Journey sidebar modules.
+92. Instrument Validation / Expert Evaluation is not implemented as an in-system assignment/scoring stage under current scope.
+93. STRIKE-before-Final behavior is controlled from one policy location and can be changed without rewriting each Student Portal page.
+94. Test fixtures used to validate journey UI must represent internally consistent domain states; one overloaded legacy student record must not be treated as proof of every workflow state.
+95. End-to-end validation includes deterministic fixtures for the major Title → Adviser → Proposal → STRIKE → Final transitions.
 
