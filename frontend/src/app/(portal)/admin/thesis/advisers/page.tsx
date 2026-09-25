@@ -1,767 +1,343 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import {
+  adminDeanReviewQueryKey,
+  titleDefenseRoleLabel,
+  type DeanAdviserReviewDto,
+} from "@/lib/admin-adviser-review";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Users, CheckCircle2, UserPlus, Eye, X } from "lucide-react";
-import { useSession } from "next-auth/react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { AdviserRequestUI, ActiveAssignmentUI, AvailableAdviserUI } from "@/types";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Inbox,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 
-export default function AdminAdviseesPage() {
-  const { data: session } = useSession();
+type PendingDecision = {
+  requestId: string;
+  decision: "APPROVED" | "REJECTED";
+  adviserName: string;
+} | null;
+
+/**
+ * WP10 — Adviser Request Review (Dean decision).
+ * No adviser picker: Student already selected the requested adviser and
+ * that adviser CONFORMED. Dean only Approves or Rejects.
+ */
+export default function AdminAdviserRequestReviewPage() {
   const queryClient = useQueryClient();
+  const [remarks, setRemarks] = useState("");
+  const [pendingDecision, setPendingDecision] = useState<PendingDecision>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"requests" | "assignments">(
-    "requests",
-  );
-  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedAdviser, setSelectedAdviser] = useState("");
-  const [requestsPage, setRequestsPage] = useState(1);
-  const [assignmentsPage, setAssignmentsPage] = useState(1);
-  const pageSize = 10;
-
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
-
-  // Fetch Requests
-  const { data: fetchedRequests = [] } = useQuery({
-    queryKey: ["adviserRequests"],
+  const {
+    data: requests = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: adminDeanReviewQueryKey,
     queryFn: async () => {
-      const res = await fetch(`${apiUrl}/api/thesis/adviser/requests`, {
-        headers: { Authorization: `Bearer ${session?.user?.accessToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load requests");
-      return res.json();
+      const res = await apiClientRequest(
+        "/thesis/adviser/requests/dean-review",
+      );
+      return (Array.isArray(res) ? res : []) as DeanAdviserReviewDto[];
     },
-    enabled: !!session?.user?.accessToken,
   });
 
-  // Fetch Assignments
-  const { data: fetchedAssignments = [] } = useQuery({
-    queryKey: ["activeAssignments"],
-    queryFn: async () => {
-      const res = await fetch(`${apiUrl}/api/thesis/adviser/assignments`, {
-        headers: { Authorization: `Bearer ${session?.user?.accessToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load assignments");
-      return res.json();
-    },
-    enabled: !!session?.user?.accessToken,
-  });
-
-  // Fetch Available Advisers
-  const { data: fetchedAdvisers = [] } = useQuery({
-    queryKey: ["availableAdvisers"],
-    queryFn: async () => {
-      const res = await fetch(`${apiUrl}/api/thesis/adviser/available`, {
-        headers: { Authorization: `Bearer ${session?.user?.accessToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load available advisers");
-      return res.json();
-    },
-    enabled: !!session?.user?.accessToken,
-  });
-
-  const assignAdviserMutation = useMutation({
+  const decide = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${apiUrl}/api/thesis/adviser/assign`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.user?.accessToken}`,
+      if (!pendingDecision) throw new Error("No request selected.");
+      return apiClientRequest(
+        `/thesis/adviser/requests/${pendingDecision.requestId}/dean-response`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            decision: pendingDecision.decision,
+            remarks: remarks.trim() ? remarks.trim() : undefined,
+          }),
         },
-        body: JSON.stringify({
-          requestId: selectedRequest,
-          adviserId: selectedAdviser,
-        }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to assign adviser");
-      }
-      return res.json();
+      );
     },
-    onSuccess: () => {
-      toast.success("Adviser assigned successfully!");
-      queryClient.invalidateQueries({ queryKey: ["adviserRequests"] });
-      queryClient.invalidateQueries({ queryKey: ["activeAssignments"] });
-      setShowAssignModal(false);
-      setSelectedAdviser("");
-      setSelectedRequest(null);
+    onSuccess: async () => {
+      setActionError(null);
+      setPendingDecision(null);
+      setRemarks("");
+      await queryClient.invalidateQueries({
+        queryKey: adminDeanReviewQueryKey,
+      });
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      setActionError(error.message || "Unable to record the Dean decision.");
+      setPendingDecision(null);
+      setRemarks("");
+      void queryClient.invalidateQueries({
+        queryKey: adminDeanReviewQueryKey,
+      });
+      void refetch();
     },
   });
-
-  // Map Backend Data to UI structures
-  const adviserRequests: AdviserRequestUI[] = fetchedRequests.map(
-    (r: {
-      id: string;
-      student: {
-        user: { firstName: string; lastName: string };
-        studentNumber: string;
-        program?: { programName: string };
-      };
-      requestDate: string;
-      requestedAdviser?: { lastName: string };
-      reason?: string;
-      status: string;
-    }) => ({
-      id: r.id,
-      studentName: `${r.student.user.firstName} ${r.student.user.lastName}`,
-      studentNumber: r.student.studentNumber,
-      program: r.student.program?.programName || "Program",
-      requestDate: new Date(r.requestDate).toLocaleDateString(),
-      preferredAdviser: r.requestedAdviser
-        ? `Dr. ${r.requestedAdviser.lastName}`
-        : null,
-      researchInterest: r.reason || "N/A",
-      status: r.status.toLowerCase(),
-    }),
-  );
-
-  const activeAssignments: ActiveAssignmentUI[] = fetchedAssignments.map(
-    (a: {
-      id: string;
-      student: {
-        user: { firstName: string; lastName: string };
-        studentNumber: string;
-        program?: { programName: string };
-      };
-      adviser: { lastName: string };
-      assignedDate: string;
-      thesisRecords?: Array<{ stage: string; status: string }>;
-    }) => {
-      const latestRecord = a.thesisRecords?.[0];
-      let mappedStage = "title_defense";
-      let prog = 25;
-
-      if (latestRecord) {
-        if (latestRecord.stage === "TITLE") {
-          mappedStage = "title_defense";
-          prog = 25;
-        } else if (latestRecord.stage === "PROPOSAL") {
-          mappedStage = "proposal_defense";
-          prog = 50;
-        } else if (latestRecord.stage === "FINAL") {
-          mappedStage =
-            latestRecord.status === "APPROVED" ? "completed" : "final_defense";
-          prog = latestRecord.status === "APPROVED" ? 100 : 75;
-        }
-      }
-
-      return {
-        id: a.id,
-        studentName: `${a.student.user.firstName} ${a.student.user.lastName}`,
-        studentNumber: a.student.studentNumber,
-        program: a.student.program?.programName || "Program",
-        adviserName: `Dr. ${a.adviser.lastName}`,
-        adviserType: "internal",
-        assignedDate: new Date(a.assignedDate).toLocaleDateString(),
-        thesisStage: mappedStage,
-        lastActivity: "Recent",
-        progress: prog,
-      };
-    },
-  );
-
-  const availableAdvisers: AvailableAdviserUI[] = fetchedAdvisers.map(
-    (adv: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      panelist?: { maxAdvisees: number; specialization?: string };
-    }) => ({
-      id: adv.id,
-      name: `Dr. ${adv.firstName} ${adv.lastName}`,
-      advisees: 0, // Mock for now until counted
-      maxAdvisees: adv.panelist?.maxAdvisees || 5,
-      specialization: adv.panelist?.specialization || "General",
-    }),
-  );
-
-  const pendingRequestCount = adviserRequests.filter(
-    (r: AdviserRequestUI) => r.status === "pending",
-  ).length;
-  const totalAssignments = activeAssignments.length;
-  const completedCount = activeAssignments.filter(
-    (a: ActiveAssignmentUI) => a.thesisStage === "completed",
-  ).length;
-
-  // Pagination calculations
-  const requestsTotalPages = Math.ceil(adviserRequests.length / pageSize);
-  const paginatedRequests = adviserRequests.slice(
-    (requestsPage - 1) * pageSize,
-    requestsPage * pageSize,
-  );
-  const assignmentsTotalPages = Math.ceil(activeAssignments.length / pageSize);
-  const paginatedAssignments = activeAssignments.slice(
-    (assignmentsPage - 1) * pageSize,
-    assignmentsPage * pageSize,
-  );
-
-  const selectedRequestData = adviserRequests.find(
-    (r: AdviserRequestUI) => r.id === selectedRequest,
-  );
-
-  const getThesisStageBadge = (stage: string) => {
-    switch (stage) {
-      case "title_defense":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>
-        );
-      case "proposal_defense":
-        return (
-          <Badge className="bg-purple-100 text-purple-700">
-            Proposal Defense
-          </Badge>
-        );
-      case "final_defense":
-        return (
-          <Badge className="bg-green-100 text-green-700">Final Defense</Badge>
-        );
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            Completed
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Manage Advisees
+        <h2 className="text-2xl font-bold text-(--earist-primary)">
+          Adviser Request Review
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Assign advisees to thesis advisers and monitor progress
+          Review adviser requests that have received the requested
+          adviser&apos;s CONFORME and are waiting for Dean decision.
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Pending Requests
-            </p>
-            <p className="text-lg font-bold text-amber-600">
-              {pendingRequestCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Active Assignments
-            </p>
-            <p className="text-lg font-bold text-blue-600">
-              {totalAssignments}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Completed</p>
-            <p className="text-lg font-bold text-green-600">{completedCount}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {actionError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Decision failed</AlertTitle>
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab("requests")}
-          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "requests" ? "bg-(--earist-primary) text-white" : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"}`}
-        >
-          Adviser Requests ({adviserRequests.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("assignments")}
-          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === "assignments" ? "bg-(--earist-primary) text-white" : "bg-(--earist-surface-gray) text-(--earist-body-text) hover:bg-(--earist-border-gray)"}`}
-        >
-          Active Assignments ({activeAssignments.length})
-        </button>
-      </div>
+      {isLoading && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+            Loading adviser requests…
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Adviser Requests Tab */}
-      {activeTab === "requests" && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="space-y-2 lg:col-span-1">
-            {paginatedRequests.map((request: AdviserRequestUI) => (
-              <button
-                key={request.id}
-                onClick={() => setSelectedRequest(request.id)}
-                className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedRequest === request.id ? "border-(--earist-primary) bg-(--earist-surface-light-red)" : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-(--earist-primary)">
-                    {request.studentName}
-                  </p>
-                  <Badge
-                    className={
-                      request.status === "pending"
-                        ? "bg-amber-100 text-amber-700"
-                        : request.status === "approved"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                    }
-                  >
-                    {request.status === "pending"
-                      ? "Pending"
-                      : request.status === "approved"
-                        ? "Approved"
-                        : "Rejected"}
-                  </Badge>
+      {isError && (
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <p className="text-sm text-red-600">
+              Unable to load adviser requests for Dean review.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !isError && requests.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 pt-8 pb-8 text-center">
+            <Inbox className="h-8 w-8 text-(--earist-body-text)/40" />
+            <p className="text-sm text-(--earist-body-text)">
+              No adviser requests are currently waiting for Dean review.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        {requests.map((row) => (
+          <Card key={row.id}>
+            <CardHeader>
+              <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-semibold text-(--earist-primary)">
+                  {row.student.name}
+                </span>
+                <Badge variant="outline">
+                  {row.student.studentNumber || "—"}
+                </Badge>
+                <Badge className="bg-amber-100 text-amber-800">
+                  Waiting for Dean review
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">Program</p>
+                  <p>{row.student.program || "—"}</p>
                 </div>
-                <p className="text-xs text-(--earist-body-text)">
-                  {request.program} &middot; {request.studentNumber}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  Requested: {request.requestDate}
-                </p>
-              </button>
-            ))}
-            {requestsTotalPages > 1 && (
-              <div className="pt-2">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          setRequestsPage((p) => Math.max(1, p - 1))
-                        }
-                        className={
-                          requestsPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: requestsTotalPages }, (_, i) => i + 1)
-                      .filter(
-                        (p) =>
-                          p === 1 ||
-                          p === requestsTotalPages ||
-                          Math.abs(p - requestsPage) <= 1,
-                      )
-                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                        if (idx > 0 && p - (arr[idx - 1] as number) > 1)
-                          acc.push("...");
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, idx) =>
-                        p === "..." ? (
-                          <PaginationItem key={`ellipsis-${idx}`}>
-                            <span className="px-2 text-sm text-(--earist-body-text)">
-                              ...
-                            </span>
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              onClick={() => setRequestsPage(p as number)}
-                              isActive={requestsPage === p}
-                              className="cursor-pointer"
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ),
-                      )}
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          setRequestsPage((p) =>
-                            Math.min(requestsTotalPages, p + 1),
-                          )
-                        }
-                        className={
-                          requestsPage === requestsTotalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                <div>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Request date
+                  </p>
+                  <p>
+                    {row.requestDate
+                      ? new Date(row.requestDate).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Official selected title
+                  </p>
+                  <p className="font-medium text-(--earist-primary)">
+                    {row.officialTitle || "—"}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Requested adviser
+                  </p>
+                  <p className="font-medium">
+                    {row.requestedAdviser.name}
+                    <span className="ml-2 font-normal text-(--earist-body-text)">
+                      {titleDefenseRoleLabel(row.titleDefenseRole)}
+                      {row.requestedAdviser.specialization
+                        ? ` · ${row.requestedAdviser.specialization}`
+                        : ""}
+                      {row.requestedAdviser.officeAffiliation
+                        ? ` · ${row.requestedAdviser.officeAffiliation}`
+                        : ""}
+                    </span>
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Student remarks
+                  </p>
+                  <p>{row.reason || "—"}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-(--earist-body-text)">
+                    Adviser response
+                  </p>
+                  <p>
+                    CONFORME recorded
+                    {row.adviserRespondedAt
+                      ? ` · ${new Date(row.adviserRespondedAt).toLocaleDateString()}`
+                      : ""}
+                    {row.adviserRemarks ? ` — ${row.adviserRemarks}` : ""}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
 
-          {selectedRequestData ? (
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                      Request Details
-                    </CardTitle>
-                    <button
-                      onClick={() => setSelectedRequest(null)}
-                      className="rounded p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                      <p className="text-sm font-semibold text-(--earist-primary)">
-                        {selectedRequestData.studentName}
-                      </p>
-                      <p className="text-xs text-(--earist-body-text)">
-                        {selectedRequestData.studentNumber} &middot;{" "}
-                        {selectedRequestData.program}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-(--earist-body-text)">
-                          Request Date
-                        </p>
-                        <p className="text-sm font-medium text-(--earist-primary)">
-                          {selectedRequestData.requestDate}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-(--earist-body-text)">
-                          Preferred Adviser
-                        </p>
-                        <p className="text-sm font-medium text-(--earist-primary)">
-                          {selectedRequestData.preferredAdviser ||
-                            "No preference"}
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-xs text-(--earist-body-text)">
-                          Research Interest
-                        </p>
-                        <p className="text-sm font-medium text-(--earist-primary)">
-                          {selectedRequestData.researchInterest}
-                        </p>
-                      </div>
-                    </div>
-                    {selectedRequestData.status === "pending" && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => setShowAssignModal(true)}
-                          className="flex-1 bg-green-600 text-white hover:bg-green-700"
-                        >
-                          <UserPlus className="mr-1 h-3 w-3" />
-                          Assign Adviser
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1 text-red-600 hover:bg-red-50"
-                        >
-                          <X className="mr-1 h-3 w-3" />
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-                      <Users className="h-8 w-8 text-(--earist-body-text)/40" />
-                    </div>
-                    <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                      Select a Request
-                    </h3>
-                    <p className="text-sm text-(--earist-body-text)">
-                      Click a request from the queue to view details and assign
-                      an adviser.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Active Assignments Tab */}
-      {activeTab === "assignments" && (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Student
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Adviser
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Thesis Stage
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                      Progress
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                      Last Activity
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAssignments.map((assignment: ActiveAssignmentUI) => (
-                    <tr
-                      key={assignment.id}
-                      className="border-b border-(--earist-border-gray) last:border-0"
-                    >
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-(--earist-primary)">
-                            {assignment.studentName}
-                          </p>
-                          <p className="text-xs text-(--earist-body-text)">
-                            {assignment.studentNumber} &middot;{" "}
-                            {assignment.program}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-(--earist-primary)">
-                          {assignment.adviserName}
-                        </p>
-                        <p className="text-xs text-(--earist-body-text)">
-                          Since {assignment.assignedDate}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {getThesisStageBadge(assignment.thesisStage)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-xs font-medium text-(--earist-primary)">
-                            {assignment.progress}%
-                          </span>
-                          <div className="h-2 w-16 overflow-hidden rounded-full bg-(--earist-border-gray)">
-                            <div
-                              className="h-full rounded-full bg-green-500"
-                              style={{ width: `${assignment.progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-(--earist-body-text)">
-                        {assignment.lastActivity}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Reassign Adviser"
-                          >
-                            <UserPlus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {assignmentsTotalPages > 1 && (
-              <div className="border-t border-(--earist-border-gray) px-4 py-3">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          setAssignmentsPage((p) => Math.max(1, p - 1))
-                        }
-                        className={
-                          assignmentsPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                    {Array.from(
-                      { length: assignmentsTotalPages },
-                      (_, i) => i + 1,
-                    )
-                      .filter(
-                        (p) =>
-                          p === 1 ||
-                          p === assignmentsTotalPages ||
-                          Math.abs(p - assignmentsPage) <= 1,
-                      )
-                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                        if (idx > 0 && p - (arr[idx - 1] as number) > 1)
-                          acc.push("...");
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, idx) =>
-                        p === "..." ? (
-                          <PaginationItem key={`ellipsis-${idx}`}>
-                            <span className="px-2 text-sm text-(--earist-body-text)">
-                              ...
-                            </span>
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              onClick={() => setAssignmentsPage(p as number)}
-                              isActive={assignmentsPage === p}
-                              className="cursor-pointer"
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ),
-                      )}
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          setAssignmentsPage((p) =>
-                            Math.min(assignmentsTotalPages, p + 1),
-                          )
-                        }
-                        className={
-                          assignmentsPage === assignmentsTotalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Assign Adviser Modal */}
-      {showAssignModal && selectedRequestData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Assign Adviser
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAssignModal(false);
-                  setSelectedAdviser("");
-                }}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedRequestData.studentName}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  {selectedRequestData.studentNumber} &middot;{" "}
-                  {selectedRequestData.program}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  Research: {selectedRequestData.researchInterest}
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Select Adviser
-                </label>
-                <select
-                  value={selectedAdviser}
-                  onChange={(e) => setSelectedAdviser(e.target.value)}
-                  className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={() =>
+                    setPendingDecision({
+                      requestId: row.id,
+                      decision: "APPROVED",
+                      adviserName: row.requestedAdviser.name,
+                    })
+                  }
                 >
-                  <option value="">Choose an adviser...</option>
-                  {availableAdvisers.map((adviser: AvailableAdviserUI) => (
-                    <option key={adviser.id} value={adviser.id}>
-                      {adviser.name} ({adviser.advisees}/{adviser.maxAdvisees}{" "}
-                      advisees) — {adviser.specialization}
-                    </option>
-                  ))}
-                </select>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Approve Request
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-red-600"
+                  onClick={() =>
+                    setPendingDecision({
+                      requestId: row.id,
+                      decision: "REJECTED",
+                      adviserName: row.requestedAdviser.name,
+                    })
+                  }
+                >
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Reject
+                </Button>
               </div>
-              {selectedAdviser && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                  <p className="text-xs font-semibold text-green-700">
-                    Assignment Confirmation
-                  </p>
-                  <p className="text-xs text-green-600">
-                    Both the student and adviser will be notified via email.
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAssignModal(false);
-                  setSelectedAdviser("");
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={!selectedAdviser || assignAdviserMutation.isPending}
-                onClick={() => assignAdviserMutation.mutate()}
-                className={`flex-1 ${selectedAdviser ? "bg-green-600 text-white hover:bg-green-700" : "cursor-not-allowed bg-gray-200 text-gray-400"}`}
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                {assignAdviserMutation.isPending
-                  ? "Assigning..."
-                  : "Assign Adviser"}
-              </Button>
-            </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog
+        open={pendingDecision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDecision(null);
+            setRemarks("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingDecision?.decision === "APPROVED"
+                ? "Approve this adviser request?"
+                : "Reject this adviser request?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingDecision?.decision === "APPROVED"
+                ? `The requested adviser has already recorded CONFORME. Approval will officially assign ${pendingDecision.adviserName} as the student's adviser.`
+                : "No AdviserAssignment will be created. The student may submit another valid adviser request."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label
+              className="text-xs font-medium text-(--earist-body-text)"
+              htmlFor="dean-remarks"
+            >
+              Dean Remarks (Optional)
+            </label>
+            <Textarea
+              id="dean-remarks"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              rows={3}
+              placeholder="Optional remarks for this decision"
+            />
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPendingDecision(null);
+                setRemarks("");
+              }}
+              disabled={decide.isPending}
+            >
+              Go Back
+            </Button>
+            <Button
+              type="button"
+              disabled={decide.isPending}
+              onClick={() => decide.mutate()}
+              className={
+                pendingDecision?.decision === "REJECTED"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-green-600 text-white hover:bg-green-700"
+              }
+            >
+              {decide.isPending
+                ? "Saving…"
+                : pendingDecision?.decision === "APPROVED"
+                  ? "Approve Request"
+                  : "Reject Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
