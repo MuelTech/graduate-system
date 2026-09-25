@@ -335,29 +335,44 @@ export class AdviserRequestService {
     const now = new Date();
     const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
 
-    if (gate.decision === "CONFORMED") {
-      // Waiting for Dean — overall status stays PENDING. No assignment.
-      return prisma.adviserRequest.update({
-        where: { id: requestId },
-        data: {
-          adviserStatus: "CONFORMED",
-          adviserRespondedAt: now,
-          adviserRemarks: remarks,
-          deanStatus: "PENDING",
-          status: "PENDING",
-        },
-      });
+    // Atomic write-once transition: only succeeds if the row is still pre-response.
+    // Prevents concurrent CONFORME/Decline from overwriting each other.
+    const expectedPreState = {
+      id: requestId,
+      requestedAdviserId: adviserUserId,
+      status: "PENDING" as const,
+      adviserStatus: "PENDING" as const,
+      deanStatus: "PENDING" as const,
+    };
+
+    const data =
+      gate.decision === "CONFORMED"
+        ? {
+            // Waiting for Dean — overall status stays PENDING. No assignment.
+            adviserStatus: "CONFORMED" as const,
+            adviserRespondedAt: now,
+            adviserRemarks: remarks,
+          }
+        : {
+            // DECLINED — closed + retryable. Do not mutate Dean fields.
+            adviserStatus: "DECLINED" as const,
+            adviserRespondedAt: now,
+            adviserRemarks: remarks,
+            status: mapAdviserResponseToOverallStatus("DECLINED"),
+          };
+
+    const result = await prisma.adviserRequest.updateMany({
+      where: expectedPreState,
+      data,
+    });
+
+    if (result.count === 0) {
+      throw new AppError(
+        "Adviser request state changed or has already been responded to.",
+        409,
+      );
     }
 
-    // DECLINED — closed + retryable. Do not mutate Dean fields.
-    return prisma.adviserRequest.update({
-      where: { id: requestId },
-      data: {
-        adviserStatus: "DECLINED",
-        adviserRespondedAt: now,
-        adviserRemarks: remarks,
-        status: mapAdviserResponseToOverallStatus("DECLINED"),
-      },
-    });
+    return prisma.adviserRequest.findUnique({ where: { id: requestId } });
   }
 }

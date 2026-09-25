@@ -12,6 +12,7 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
 }));
 
@@ -253,9 +254,15 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.adviserAssignment.create.mockClear();
-    prismaMock.adviserRequest.update.mockImplementation(async (args: any) => ({
+    prismaMock.adviserRequest.updateMany.mockImplementation(async (args: any) => ({
+      count: 1,
+    }));
+    prismaMock.adviserRequest.findUnique.mockImplementation(async (args: any) => ({
       id: args.where.id,
-      ...args.data,
+      requestedAdviserId: "adv-user",
+      status: "PENDING",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
     }));
   });
 
@@ -305,16 +312,27 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
       remarks: "Happy to advise",
     });
 
-    expect(prismaMock.adviserRequest.update).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(prismaMock.adviserRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "req-1",
+        requestedAdviserId: "adv-user",
+        status: "PENDING",
+        adviserStatus: "PENDING",
+        deanStatus: "PENDING",
+      },
       data: expect.objectContaining({
         adviserStatus: "CONFORMED",
         adviserRemarks: "Happy to advise",
-        deanStatus: "PENDING",
-        status: "PENDING",
         adviserRespondedAt: expect.any(Date),
       }),
     });
+    // Dean fields must not be written on CONFORME.
+    const call = prismaMock.adviserRequest.updateMany.mock.calls[0]?.[0];
+    expect(call?.data).not.toHaveProperty("deanStatus");
+    expect(call?.data).not.toHaveProperty("deanReviewedById");
+    expect(call?.data).not.toHaveProperty("deanReviewedAt");
+    expect(call?.data).not.toHaveProperty("deanRemarks");
+    expect(call?.data).not.toHaveProperty("approvedById");
     expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
   });
 
@@ -325,8 +343,14 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
       remarks: "Unavailable",
     });
 
-    expect(prismaMock.adviserRequest.update).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(prismaMock.adviserRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "req-1",
+        requestedAdviserId: "adv-user",
+        status: "PENDING",
+        adviserStatus: "PENDING",
+        deanStatus: "PENDING",
+      },
       data: {
         adviserStatus: "DECLINED",
         adviserRespondedAt: expect.any(Date),
@@ -334,6 +358,23 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
         status: "REJECTED",
       },
     });
+    const call = prismaMock.adviserRequest.updateMany.mock.calls[0]?.[0];
+    expect(call?.data).not.toHaveProperty("deanReviewedById");
+    expect(call?.data).not.toHaveProperty("deanRemarks");
+    expect(call?.data).not.toHaveProperty("approvedById");
+    expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("conditional update count=0 returns 409 (stale/concurrent cannot overwrite)", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(inboxRow());
+    prismaMock.adviserRequest.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", { decision: "CONFORMED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", { decision: "DECLINED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
     expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
   });
 
