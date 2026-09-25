@@ -69,6 +69,22 @@ router.get(
   thesisController.getAdviserRequests,
 );
 
+// PANELIST/ADVISER: own GS-020 inbox only (never the Admin-wide list)
+router.get(
+  "/adviser/requests/mine",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getMyAdviserRequests,
+);
+
+// PANELIST/ADVISER: CONFORME / Decline (does not create AdviserAssignment)
+router.post(
+  "/adviser/requests/:id/adviser-response",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.respondAdviserRequest,
+);
+
 // ADMIN: Get all active assignments
 router.get(
   "/adviser/assignments",

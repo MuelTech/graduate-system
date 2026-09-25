@@ -213,6 +213,41 @@ export class ThesisController {
     }
   };
 
+  /** PANELIST: own GS-020 inbox only (requestedAdviserId === me). */
+  getMyAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.listMyAdviserRequests(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  /** PANELIST: CONFORME / Decline for own requested-Adviser requests. */
+  respondAdviserRequest = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const decision = String(req.body?.decision || "").toUpperCase();
+      const result = await this.thesisService.respondAdviserRequest(
+        req.user.userId,
+        String(req.params.id),
+        { decision, remarks: req.body?.remarks },
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   assignAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVISER_CANDIDATE_ROLES,
+  evaluateAdviserResponseTransition,
   evaluateCandidateEligibility,
   evaluateTitleDefenseGate,
   isAdviserCandidateRole,
   isOpenAdviserRequest,
   isRetryableClosedRequest,
+  isFinalApprovedRequest,
+  mapAdviserResponseToOverallStatus,
 } from "./adviser-request.rules";
 
 const validPanelist = {
@@ -166,14 +169,15 @@ describe("request path open / retry (including legacy RequestStatus)", () => {
     expect(isRetryableClosedRequest(row)).toBe(true);
   });
 
-  it("legacy status=APPROVED with default PENDING statuses is not open", () => {
+  it("legacy status=APPROVED with default PENDING statuses is not open and not retryable", () => {
     const row = {
       status: "APPROVED",
       adviserStatus: "PENDING",
       deanStatus: "PENDING",
     };
     expect(isOpenAdviserRequest(row)).toBe(false);
-    expect(isRetryableClosedRequest(row)).toBe(true);
+    expect(isRetryableClosedRequest(row)).toBe(false);
+    expect(isFinalApprovedRequest(row)).toBe(true);
   });
 
   it("allows retry after Adviser DECLINED or Dean REJECTED", () => {
@@ -198,5 +202,96 @@ describe("request path open / retry (including legacy RequestStatus)", () => {
         deanStatus: "REJECTED",
       }),
     ).toBe(false);
+  });
+
+  it("legacy APPROVED is closed but NOT retryable", () => {
+    const row = {
+      status: "APPROVED",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+    };
+    expect(isOpenAdviserRequest(row)).toBe(false);
+    expect(isRetryableClosedRequest(row)).toBe(false);
+    expect(isFinalApprovedRequest(row)).toBe(true);
+  });
+});
+
+describe("evaluateAdviserResponseTransition", () => {
+  const base = {
+    requestedAdviserId: "adv-1",
+    authenticatedUserId: "adv-1",
+    adviserStatus: "PENDING",
+    deanStatus: "PENDING",
+    overallStatus: "PENDING",
+  };
+
+  it("rejects another adviser with 403", () => {
+    const r = evaluateAdviserResponseTransition({
+      ...base,
+      authenticatedUserId: "other",
+      decision: "CONFORMED",
+    });
+    expect(r.allowed).toBe(false);
+    if (!r.allowed) expect(r.statusCode).toBe(403);
+  });
+
+  it("rejects invalid decision with 400", () => {
+    const r = evaluateAdviserResponseTransition({
+      ...base,
+      decision: "MAYBE",
+    });
+    expect(r.allowed).toBe(false);
+    if (!r.allowed) expect(r.statusCode).toBe(400);
+  });
+
+  it("allows PENDING → CONFORMED and PENDING → DECLINED", () => {
+    expect(
+      evaluateAdviserResponseTransition({ ...base, decision: "CONFORMED" })
+        .allowed,
+    ).toBe(true);
+    expect(
+      evaluateAdviserResponseTransition({ ...base, decision: "DECLINED" })
+        .allowed,
+    ).toBe(true);
+  });
+
+  it("rejects repeat response after CONFORMED or DECLINED", () => {
+    expect(
+      evaluateAdviserResponseTransition({
+        ...base,
+        adviserStatus: "CONFORMED",
+        decision: "DECLINED",
+      }).allowed,
+    ).toBe(false);
+    expect(
+      evaluateAdviserResponseTransition({
+        ...base,
+        adviserStatus: "DECLINED",
+        decision: "CONFORMED",
+      }).allowed,
+    ).toBe(false);
+  });
+
+  it("rejects response after Dean finalized request", () => {
+    const approved = evaluateAdviserResponseTransition({
+      ...base,
+      deanStatus: "APPROVED",
+      decision: "DECLINED",
+    });
+    expect(approved.allowed).toBe(false);
+    if (!approved.allowed) expect(approved.statusCode).toBe(409);
+
+    const rejected = evaluateAdviserResponseTransition({
+      ...base,
+      overallStatus: "REJECTED",
+      decision: "CONFORMED",
+    });
+    expect(rejected.allowed).toBe(false);
+    if (!rejected.allowed) expect(rejected.statusCode).toBe(409);
+  });
+
+  it("maps CONFORMED to overall PENDING and DECLINED to overall REJECTED", () => {
+    expect(mapAdviserResponseToOverallStatus("CONFORMED")).toBe("PENDING");
+    expect(mapAdviserResponseToOverallStatus("DECLINED")).toBe("REJECTED");
   });
 });

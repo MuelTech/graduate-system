@@ -347,6 +347,23 @@ export class ThesisService {
     return this.adviserRequestService.listOdpCandidates(userId);
   }
 
+  /** WP3: requested-Adviser inbox (scoped to authenticated user). */
+  async listMyAdviserRequests(userId: string) {
+    return this.adviserRequestService.listMyAdviserRequests(userId);
+  }
+
+  /** WP3: CONFORME / Decline only. */
+  async respondAdviserRequest(
+    userId: string,
+    requestId: string,
+    input: { decision: string; remarks?: string },
+  ) {
+    return this.adviserRequestService.respondAsAdviser(userId, requestId, {
+      decision: input.decision as "CONFORMED" | "DECLINED",
+      remarks: input.remarks,
+    });
+  }
+
   async assignAdviser(adminId: string, data: any) {
     return this.thesisRepo.approveAdviserRequest(
       data.requestId,

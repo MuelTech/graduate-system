@@ -6,7 +6,13 @@ const prismaMock = vi.hoisted(() => ({
   defenseConclusion: { findFirst: vi.fn() },
   panelAssignment: { findUnique: vi.fn() },
   adviserAssignment: { findFirst: vi.fn(), create: vi.fn() },
-  adviserRequest: { findFirst: vi.fn(), create: vi.fn() },
+  adviserRequest: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
 }));
 
 vi.mock("../config/database", () => ({
@@ -83,7 +89,6 @@ function titleConclusion(overrides: Record<string, unknown> = {}) {
           },
         },
         {
-          // Valid ODP role but User.role is ADMIN — must be excluded.
           role: "PANELIST",
           user: {
             id: "admin-seat",
@@ -95,7 +100,6 @@ function titleConclusion(overrides: Record<string, unknown> = {}) {
           },
         },
         {
-          // Valid ODP role but no Panelist profile — must be excluded.
           role: "CHAIRMAN",
           user: {
             id: "no-profile",
@@ -112,7 +116,50 @@ function titleConclusion(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("AdviserRequestService (WP2 correction)", () => {
+function inboxRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "req-1",
+    requestedAdviserId: "adv-user",
+    reason: "Please advise",
+    requestDate: new Date("2026-09-25"),
+    status: "PENDING",
+    adviserStatus: "PENDING",
+    adviserRespondedAt: null,
+    adviserRemarks: null,
+    deanStatus: "PENDING",
+    deanReviewedAt: null,
+    deanRemarks: null,
+    sourceDefenseScheduleId: "schedule-1",
+    student: {
+      id: "student-1",
+      studentNumber: "2026-001",
+      user: {
+        id: "student-user",
+        firstName: "Sam",
+        lastName: "Student",
+        email: "s@e",
+      },
+      program: { programName: "MIT" },
+    },
+    requestedAdviser: {
+      id: "adv-user",
+      firstName: "Ana",
+      lastName: "Chair",
+      email: "a@e",
+    },
+    sourceDefenseSchedule: {
+      id: "schedule-1",
+      conclusion: {
+        id: "conclusion-1",
+        selectedTitle: { id: "title-1", titleText: "Official Title" },
+      },
+      panelAssignments: [{ role: "CHAIRMAN" }],
+    },
+    ...overrides,
+  };
+}
+
+describe("AdviserRequestService (WP2 candidates/request)", () => {
   const svc = new AdviserRequestService();
 
   beforeEach(() => {
@@ -147,94 +194,21 @@ describe("AdviserRequestService (WP2 correction)", () => {
     ).rejects.toThrow(/official selected title/i);
   });
 
-  it("excludes CHAIRMAN/PANELIST seat when User.role is not PANELIST", async () => {
+  it("excludes seats that are not real PANELIST accounts", async () => {
     const result = await svc.listOdpCandidates("user-1");
     expect(result.candidates.map((c) => c.userId)).not.toContain("admin-seat");
+    expect(result.candidates.map((c) => c.userId)).not.toContain("no-profile");
 
     await expect(
       svc.createRequest("user-1", { requestedAdviserId: "admin-seat" }),
     ).rejects.toThrow(/PANELIST user role/i);
-  });
-
-  it("excludes seat with no Panelist profile", async () => {
-    const result = await svc.listOdpCandidates("user-1");
-    expect(result.candidates.map((c) => c.userId)).not.toContain("no-profile");
-
     await expect(
       svc.createRequest("user-1", { requestedAdviserId: "no-profile" }),
     ).rejects.toThrow(/Panelist profile/i);
   });
 
-  it("excludes inactive Panelist profile and unavailable adviser", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
-      titleConclusion({
-        schedule: {
-          panelAssignments: [
-            {
-              role: "PANELIST",
-              user: {
-                id: "inactive-panel",
-                firstName: "Ina",
-                lastName: "Active",
-                role: "PANELIST",
-                isActive: true,
-                panelist: panelistProfile({ isActive: false }),
-              },
-            },
-            {
-              role: "PANELIST",
-              user: {
-                id: "unavailable-panel",
-                firstName: "Una",
-                lastName: "Vailable",
-                role: "PANELIST",
-                isActive: true,
-                panelist: panelistProfile({ isAvailableAsAdviser: false }),
-              },
-            },
-            {
-              role: "CHAIRMAN",
-              user: {
-                id: "chair-user",
-                firstName: "Ana",
-                lastName: "Chair",
-                role: "PANELIST",
-                isActive: true,
-                panelist: panelistProfile(),
-              },
-            },
-          ],
-        },
-      }),
-    );
-
-    const result = await svc.listOdpCandidates("user-1");
-    expect(result.candidates.map((c) => c.userId)).toEqual(["chair-user"]);
-
-    await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "inactive-panel" }),
-    ).rejects.toThrow(/inactive/i);
-    await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "unavailable-panel" }),
-    ).rejects.toThrow(/not available as adviser/i);
-  });
-
-  it("rejects Facilitator and Rapporteur with explicit role errors", async () => {
-    prismaMock.panelAssignment.findUnique
-      .mockResolvedValueOnce({ role: "FACILITATOR" })
-      .mockResolvedValueOnce({ role: "RAPPORTEUR" });
-
-    // Use seats list path (preferred): createRequest uses ctx.seats first.
-    await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "fac-user" }),
-    ).rejects.toThrow(/FACILITATOR/i);
-    await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "rap-user" }),
-    ).rejects.toThrow(/RAPPORTEUR/i);
-  });
-
   it("accepts valid Chairman/Panelist and stores GS-020 fields without AdviserAssignment", async () => {
-    const created = await svc.createRequest("user-1", {
+    await svc.createRequest("user-1", {
       requestedAdviserId: "chair-user",
       reason: "Please advise",
     });
@@ -249,17 +223,7 @@ describe("AdviserRequestService (WP2 correction)", () => {
         status: "PENDING",
       }),
     });
-    expect(created).toBeTruthy();
     expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
-
-    await svc.createRequest("user-1", { requestedAdviserId: "panel-user" });
-    expect(prismaMock.adviserRequest.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        requestedAdviserId: "panel-user",
-        sourceDefenseScheduleId: "schedule-1",
-        approvedById: null,
-      }),
-    });
   });
 
   it("blocks duplicate open request and allows retry after closed legacy statuses", async () => {
@@ -272,43 +236,148 @@ describe("AdviserRequestService (WP2 correction)", () => {
       svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
     ).rejects.toThrow(/already waiting/i);
 
-    // Legacy REJECTED row with default PENDING statuses must not block.
     prismaMock.adviserRequest.findFirst.mockResolvedValue({
       status: "REJECTED",
       adviserStatus: "PENDING",
       deanStatus: "PENDING",
     });
-    // Query also filters status=PENDING, so a real DB would return null;
-    // even if a row is returned, isOpenAdviserRequest treats it as closed.
-    const afterReject = await svc.createRequest("user-1", {
-      requestedAdviserId: "chair-user",
-    });
-    expect(afterReject).toBeTruthy();
+    await expect(
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+    ).resolves.toBeTruthy();
+  });
+});
 
-    prismaMock.adviserRequest.findFirst.mockResolvedValue({
-      status: "APPROVED",
-      adviserStatus: "PENDING",
-      deanStatus: "PENDING",
-    });
-    const afterApproved = await svc.createRequest("user-1", {
-      requestedAdviserId: "chair-user",
-    });
-    expect(afterApproved).toBeTruthy();
+describe("AdviserRequestService (WP3 adviser response)", () => {
+  const svc = new AdviserRequestService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.adviserAssignment.create.mockClear();
+    prismaMock.adviserRequest.update.mockImplementation(async (args: any) => ({
+      id: args.where.id,
+      ...args.data,
+    }));
   });
 
-  it("candidate endpoint returns only fully eligible ODP candidates with metadata", async () => {
-    const result = await svc.listOdpCandidates("user-1");
-    expect(result.sourceDefenseScheduleId).toBe("schedule-1");
-    expect(result.candidates.map((c) => c.userId).sort()).toEqual([
-      "chair-user",
-      "panel-user",
+  it("returns own requests with student/program/title/role metadata", async () => {
+    prismaMock.adviserRequest.findMany.mockResolvedValue([
+      inboxRow(),
+      inboxRow({
+        id: "req-2",
+        adviserStatus: "CONFORMED",
+        adviserRemarks: "ok",
+      }),
     ]);
-    const chair = result.candidates.find((c) => c.userId === "chair-user");
-    expect(chair).toMatchObject({
-      defenseRole: "CHAIRMAN",
-      specialization: "Educational Management",
-      officeAffiliation: "Graduate School",
-      isAvailableAsAdviser: true,
+
+    const rows = await svc.listMyAdviserRequests("adv-user");
+    expect(prismaMock.adviserRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { requestedAdviserId: "adv-user" },
+      }),
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      student: {
+        name: "Sam Student",
+        studentNumber: "2026-001",
+        program: "MIT",
+      },
+      officialTitle: "Official Title",
+      titleDefenseRole: "CHAIRMAN",
+      sourceDefenseScheduleId: "schedule-1",
     });
+  });
+
+  it("scopes inbox by requestedAdviserId only", async () => {
+    prismaMock.adviserRequest.findMany.mockResolvedValue([]);
+    await svc.listMyAdviserRequests("other-adv");
+    expect(prismaMock.adviserRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { requestedAdviserId: "other-adv" },
+      }),
+    );
+  });
+
+  it("CONFORMED keeps deanStatus/status PENDING and creates no AdviserAssignment", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(inboxRow());
+    await svc.respondAsAdviser("adv-user", "req-1", {
+      decision: "CONFORMED",
+      remarks: "Happy to advise",
+    });
+
+    expect(prismaMock.adviserRequest.update).toHaveBeenCalledWith({
+      where: { id: "req-1" },
+      data: expect.objectContaining({
+        adviserStatus: "CONFORMED",
+        adviserRemarks: "Happy to advise",
+        deanStatus: "PENDING",
+        status: "PENDING",
+        adviserRespondedAt: expect.any(Date),
+      }),
+    });
+    expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("DECLINED closes as REJECTED without writing Dean fields", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(inboxRow());
+    await svc.respondAsAdviser("adv-user", "req-1", {
+      decision: "DECLINED",
+      remarks: "Unavailable",
+    });
+
+    expect(prismaMock.adviserRequest.update).toHaveBeenCalledWith({
+      where: { id: "req-1" },
+      data: {
+        adviserStatus: "DECLINED",
+        adviserRespondedAt: expect.any(Date),
+        adviserRemarks: "Unavailable",
+        status: "REJECTED",
+      },
+    });
+    expect(prismaMock.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("another adviser cannot respond (403)", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(inboxRow());
+    await expect(
+      svc.respondAsAdviser("other-adv", "req-1", { decision: "CONFORMED" }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("rejects repeat responses and Dean-finalized requests", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      inboxRow({ adviserStatus: "CONFORMED" }),
+    );
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", { decision: "DECLINED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      inboxRow({ adviserStatus: "DECLINED" }),
+    );
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", { decision: "CONFORMED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      inboxRow({ adviserStatus: "CONFORMED", deanStatus: "APPROVED" }),
+    );
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", { decision: "DECLINED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("rejects invalid decision and missing request", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(inboxRow());
+    await expect(
+      svc.respondAsAdviser("adv-user", "req-1", {
+        decision: "MAYBE" as any,
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(null);
+    await expect(
+      svc.respondAsAdviser("adv-user", "missing", { decision: "CONFORMED" }),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

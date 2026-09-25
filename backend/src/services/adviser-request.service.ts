@@ -13,8 +13,11 @@ import type { RequestAdviserInput } from "../interfaces/thesis.interfaces";
 import {
   evaluateCandidateEligibility,
   evaluateTitleDefenseGate,
+  evaluateAdviserResponseTransition,
   isOpenAdviserRequest,
+  mapAdviserResponseToOverallStatus,
 } from "./adviser-request.rules";
+import type { AdviserResponseInput } from "../interfaces/thesis.interfaces";
 
 export interface OdpCandidateDto {
   userId: string;
@@ -230,6 +233,130 @@ export class AdviserRequestService {
         deanStatus: "PENDING",
         approvedById: null,
         requestDate: new Date(),
+      },
+    });
+  }
+
+  /**
+   * WP3: requested Adviser inbox — server-scoped to authenticated userId only.
+   * Never uses the Admin-wide request list.
+   */
+  async listMyAdviserRequests(adviserUserId: string) {
+    const rows = await prisma.adviserRequest.findMany({
+      where: { requestedAdviserId: adviserUserId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            program: { select: { programName: true } },
+          },
+        },
+        requestedAdviser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        sourceDefenseSchedule: {
+          select: {
+            id: true,
+            conclusion: {
+              select: {
+                id: true,
+                selectedTitle: { select: { id: true, titleText: true } },
+              },
+            },
+            panelAssignments: {
+              where: { userId: adviserUserId },
+              select: { role: true },
+            },
+          },
+        },
+      },
+      orderBy: { requestDate: "desc" },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      student: {
+        id: row.student.id,
+        name: `${row.student.user.firstName} ${row.student.user.lastName}`,
+        studentNumber: row.student.studentNumber,
+        program: row.student.program?.programName ?? null,
+      },
+      officialTitle:
+        row.sourceDefenseSchedule?.conclusion?.selectedTitle?.titleText ?? null,
+      sourceDefenseScheduleId: row.sourceDefenseScheduleId,
+      titleDefenseRole:
+        row.sourceDefenseSchedule?.panelAssignments?.[0]?.role ?? null,
+      reason: row.reason,
+      requestDate: row.requestDate,
+      status: row.status,
+      adviserStatus: row.adviserStatus,
+      adviserRespondedAt: row.adviserRespondedAt,
+      adviserRemarks: row.adviserRemarks,
+      deanStatus: row.deanStatus,
+      deanReviewedAt: row.deanReviewedAt,
+      deanRemarks: row.deanRemarks,
+    }));
+  }
+
+  /**
+   * WP3: CONFORME / Decline only. Does not write Dean fields or create AdviserAssignment.
+   */
+  async respondAsAdviser(
+    adviserUserId: string,
+    requestId: string,
+    input: AdviserResponseInput,
+  ) {
+    const request = await prisma.adviserRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!request) {
+      throw new AppError("Adviser request not found.", 404);
+    }
+
+    const gate = evaluateAdviserResponseTransition({
+      requestedAdviserId: request.requestedAdviserId,
+      authenticatedUserId: adviserUserId,
+      decision: String(input.decision || ""),
+      adviserStatus: String(request.adviserStatus),
+      deanStatus: String(request.deanStatus),
+      overallStatus: String(request.status),
+    });
+    if (!gate.allowed) {
+      throw new AppError(gate.reason, gate.statusCode);
+    }
+
+    const now = new Date();
+    const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
+
+    if (gate.decision === "CONFORMED") {
+      // Waiting for Dean — overall status stays PENDING. No assignment.
+      return prisma.adviserRequest.update({
+        where: { id: requestId },
+        data: {
+          adviserStatus: "CONFORMED",
+          adviserRespondedAt: now,
+          adviserRemarks: remarks,
+          deanStatus: "PENDING",
+          status: "PENDING",
+        },
+      });
+    }
+
+    // DECLINED — closed + retryable. Do not mutate Dean fields.
+    return prisma.adviserRequest.update({
+      where: { id: requestId },
+      data: {
+        adviserStatus: "DECLINED",
+        adviserRespondedAt: now,
+        adviserRemarks: remarks,
+        status: mapAdviserResponseToOverallStatus("DECLINED"),
       },
     });
   }

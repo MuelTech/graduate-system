@@ -42,11 +42,110 @@ export function isOpenAdviserRequest(row: AdviserRequestRowLike): boolean {
   return false;
 }
 
+/**
+ * Closed + retryable by Student (DECLINED / Dean REJECTED / legacy REJECTED).
+ * status APPROVED is closed but NOT retryable.
+ */
 export function isRetryableClosedRequest(row: AdviserRequestRowLike): boolean {
-  if (row.status === "REJECTED" || row.status === "APPROVED") {
-    return true;
-  }
+  if (row.status === "APPROVED") return false;
+  if (row.status === "REJECTED") return true;
   return row.adviserStatus === "DECLINED" || row.deanStatus === "REJECTED";
+}
+
+/** Closed and not retryable (legacy/current overall APPROVED, or Dean APPROVED). */
+export function isFinalApprovedRequest(row: AdviserRequestRowLike): boolean {
+  return row.status === "APPROVED" || row.deanStatus === "APPROVED";
+}
+
+export type AdviserResponseDecision = "CONFORMED" | "DECLINED";
+
+export function isAdviserResponseDecision(
+  value: unknown,
+): value is AdviserResponseDecision {
+  return value === "CONFORMED" || value === "DECLINED";
+}
+
+export type AdviserTransitionInput = {
+  requestedAdviserId: string;
+  authenticatedUserId: string;
+  decision: string;
+  adviserStatus: string;
+  deanStatus: string;
+  overallStatus?: string;
+};
+
+export type AdviserTransitionResult =
+  | { allowed: true; decision: AdviserResponseDecision }
+  | {
+      allowed: false;
+      reason: string;
+      statusCode: number;
+    };
+
+/**
+ * WP3: requested Adviser may respond only while adviserStatus is PENDING
+ * and the request is not already closed by Adviser/Dean/overall status.
+ */
+export function evaluateAdviserResponseTransition(
+  input: AdviserTransitionInput,
+): AdviserTransitionResult {
+  if (input.requestedAdviserId !== input.authenticatedUserId) {
+    return {
+      allowed: false,
+      reason: "Only the requested adviser may respond to this request.",
+      statusCode: 403,
+    };
+  }
+
+  if (!isAdviserResponseDecision(input.decision)) {
+    return {
+      allowed: false,
+      reason: "decision must be CONFORMED or DECLINED",
+      statusCode: 400,
+    };
+  }
+
+  if (
+    input.deanStatus === "APPROVED" ||
+    input.deanStatus === "REJECTED" ||
+    input.overallStatus === "APPROVED" ||
+    input.overallStatus === "REJECTED"
+  ) {
+    return {
+      allowed: false,
+      reason: "This adviser request is already closed and cannot be changed.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.adviserStatus === "CONFORMED" || input.adviserStatus === "DECLINED") {
+    return {
+      allowed: false,
+      reason: "Adviser has already responded to this request.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.adviserStatus !== "PENDING") {
+    return {
+      allowed: false,
+      reason: "Invalid adviser response transition.",
+      statusCode: 409,
+    };
+  }
+
+  return { allowed: true, decision: input.decision };
+}
+
+/**
+ * Compatibility RequestStatus after an Adviser response.
+ * CONFORMED → still PENDING (waiting for Dean).
+ * DECLINED → REJECTED (closed + retryable; Dean fields untouched).
+ */
+export function mapAdviserResponseToOverallStatus(
+  decision: AdviserResponseDecision,
+): "PENDING" | "REJECTED" {
+  return decision === "DECLINED" ? "REJECTED" : "PENDING";
 }
 
 export type TitleDefenseGateInput = {

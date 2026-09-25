@@ -9,6 +9,13 @@ export interface RequestAdviserInput {
   reason?: string;
 }
 
+export type AdviserResponseDecision = "CONFORMED" | "DECLINED";
+
+export interface AdviserResponseInput {
+  decision: AdviserResponseDecision;
+  remarks?: string;
+}
+
 export interface AssignAdviserInput {
   requestId: string;
 }
