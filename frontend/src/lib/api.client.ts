@@ -21,7 +21,12 @@ export const apiClientRequest = async (
   const token = session?.user?.accessToken;
 
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  // FormData must let the browser set multipart boundary — do not force JSON.
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

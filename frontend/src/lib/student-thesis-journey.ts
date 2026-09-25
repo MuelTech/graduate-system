@@ -4,7 +4,11 @@
  * Later packages (WP8–WP12) should invalidate with:
  *   queryClient.invalidateQueries({ queryKey: studentThesisJourneyQueryKey })
  */
-import type { JourneyStepKey } from "@/types/student-thesis-journey";
+import type {
+  JourneyStepKey,
+  JourneyStepView,
+  StudentThesisJourney,
+} from "@/types/student-thesis-journey";
 
 export const studentThesisJourneyQueryKey = [
   "student",
@@ -46,6 +50,13 @@ export function journeyLabelFor(
 
 export function journeyRouteFor(key: JourneyStepKey): string {
   return JOURNEY_STEP_ROUTES[key];
+}
+
+export function journeyStepFor(
+  journey: StudentThesisJourney | undefined,
+  key: JourneyStepKey,
+): JourneyStepView | undefined {
+  return journey?.steps.find((s) => s.key === key);
 }
 
 /** Completed journey destination (Final remains viewable). */

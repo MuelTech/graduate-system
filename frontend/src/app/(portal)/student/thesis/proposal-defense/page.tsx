@@ -1,20 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
+  studentThesisJourneyQueryKey,
+  journeyRouteFor,
+  journeyStepFor,
+} from "@/lib/student-thesis-journey";
+import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Clock,
   FileText,
   Lock,
   Send,
   Upload,
+  UserCheck,
   X,
 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
 
 type MissingRequirement = {
   code: string;
@@ -22,44 +32,109 @@ type MissingRequirement = {
   stage: string;
 };
 
+function FileSlot({
+  label,
+  file,
+  inputRef,
+  accept,
+  hint,
+  onPick,
+  onRemove,
+}: {
+  label: string;
+  file: File | null;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  accept: string;
+  hint: string;
+  onPick: (f: File) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!file ? (
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-6 transition-colors hover:border-(--earist-primary) hover:bg-(--earist-surface-gray)">
+            <Upload className="mb-2 h-8 w-8 text-(--earist-body-text)/40" />
+            <p className="text-center text-sm font-medium text-(--earist-primary)">
+              Upload
+            </p>
+            <p className="text-xs text-(--earist-body-text)">{hint}</p>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={accept}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onPick(f);
+              }}
+              className="hidden"
+            />
+          </label>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-lg border border-(--earist-border-gray) p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded bg-(--earist-surface-gray)">
+                <FileText className="h-4 w-4 text-(--earist-primary)" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-(--earist-primary)">
+                  {file.name}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="flex w-full items-center justify-center rounded p-2 text-xs text-red-500 hover:bg-red-50"
+            >
+              <X className="mr-1 h-4 w-4" /> Remove
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * WP11 — Proposal Defense integrated with centralized Journey.
+ * Journey = academic access. Eligibility endpoint = submit-time requirements.
+ */
 export default function ProposalDefensePage() {
   const queryClient = useQueryClient();
+  const {
+    data: journey,
+    isLoading,
+    isError,
+    refetch,
+  } = useStudentThesisJourney();
+
+  const proposalStep = journeyStepFor(journey, "PROPOSAL_DEFENSE");
+  const state = proposalStep?.state;
+  const activeAdviser = journey?.activeAdviser ?? null;
+
   const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const [corFile, setCorFile] = useState<File | null>(null);
+  const corInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const { data: studentJourney } = useQuery({
-    queryKey: ["studentJourney"],
-    queryFn: async () => (await apiClientRequest("/student/journey")) || null,
-  });
-
-  const activeThesis = studentJourney?.thesisRecords?.[0];
-  const isTitlePassed =
-    !!activeThesis &&
-    ((activeThesis.stage === "TITLE" && activeThesis.outcome === "PASSED") ||
-      (activeThesis.stage === "TITLE" &&
-        activeThesis.status === "PASSED" &&
-        activeThesis.outcome == null) ||
-      activeThesis.stage === "PROPOSAL" ||
-      activeThesis.stage === "FINAL");
-
-  const applicationState =
-    activeThesis?.stage === "PROPOSAL" && activeThesis?.status === "PENDING"
-      ? "submitted"
-      : "form";
-
-  // Server eligibility (same rules as apply gate) — no mock "verified" flags.
   const { data: eligibility, isLoading: eligibilityLoading } = useQuery({
     queryKey: ["thesisEligibility", "PROPOSAL_DEFENSE"],
     queryFn: async () =>
       (await apiClientRequest("/thesis/eligibility/PROPOSAL_DEFENSE")) as {
         eligible: boolean;
         missing: MissingRequirement[];
-        researchVariables: string;
-        adviserCerts: { proposal: boolean; final: boolean };
-        titleRapSigned: boolean;
       },
-    enabled: isTitlePassed,
+    enabled: state === "CURRENT" || state === "AVAILABLE",
   });
 
   const systemGaps = useMemo(
@@ -72,114 +147,183 @@ export default function ProposalDefensePage() {
   );
 
   const canSubmit =
-    !!documentFile && !!corFile && !!receiptFile && isTitlePassed;
+    !!documentFile &&
+    !!corFile &&
+    !!receiptFile &&
+    (state === "CURRENT" || state === "AVAILABLE") &&
+    systemGaps.length === 0;
 
-  const submitMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      return await apiClientRequest("/thesis/defense/proposal", {
+  const submitProposal = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      formData.append("document", documentFile!);
+      formData.append("cor", corFile!);
+      formData.append("receipt", receiptFile!);
+      return apiClientRequest("/thesis/defense/proposal", {
         method: "POST",
         body: formData,
       });
     },
-    onSuccess: () => {
-      alert("Proposal Defense application submitted successfully!");
-      queryClient.invalidateQueries({ queryKey: ["studentJourney"] });
-      queryClient.invalidateQueries({ queryKey: ["thesisEligibility"] });
+    onSuccess: async () => {
+      setSubmitError(null);
+      setSubmitSuccess(true);
+      await queryClient.invalidateQueries({
+        queryKey: studentThesisJourneyQueryKey,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["thesisEligibility", "PROPOSAL_DEFENSE"],
+      });
     },
-    onError: (error: Error & { missing?: MissingRequirement[] }) => {
-      const detail = error.missing?.map((m) => m.message).join("\n");
-      alert("Failed to submit: " + error.message + (detail ? `\n${detail}` : ""));
+    onError: (error: Error) => {
+      const extra =
+        error instanceof ApiError && error.missing?.length
+          ? ` ${error.missing.map((m) => m.message).join(" ")}`
+          : "";
+      setSubmitError((error.message || "Failed to submit application") + extra);
+      setSubmitSuccess(false);
     },
   });
 
-  const handleSubmit = () => {
-    if (!canSubmit || !documentFile || !corFile || !receiptFile) return;
-    const formData = new FormData();
-    formData.append("document", documentFile);
-    formData.append("cor", corFile);
-    formData.append("receipt", receiptFile);
-    submitMutation.mutate(formData);
-  };
-
-  const FileRow = ({
-    label,
-    file,
-    onPick,
-    onClear,
-  }: {
-    label: string;
-    file: File | null;
-    onPick: (f: File) => void;
-    onClear: () => void;
-  }) => (
-    <div className="flex items-center justify-between border-b border-gray-100 py-3 last:border-0">
-      <div className="flex items-center gap-3">
-        <FileText className="h-4 w-4 text-(--earist-secondary)" />
-        <div>
-          <p className="text-sm font-medium text-gray-900">{label}</p>
-          <p className="text-xs text-gray-500">
-            {file ? file.name : "Stage-scoped upload — prior-stage files do not count"}
-          </p>
-        </div>
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-(--earist-primary)" />
       </div>
-      <div className="flex items-center gap-2">
-        {file ? (
-          <>
-            <Badge className="bg-amber-100 text-amber-700">Uploaded</Badge>
-            <Button variant="ghost" size="sm" onClick={onClear}>
-              <X className="h-4 w-4" />
-            </Button>
-          </>
-        ) : (
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPick(f);
-              }}
-            />
-            <span className="inline-flex items-center rounded-md border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50">
-              <Upload className="mr-1 h-3 w-3" /> Upload
-            </span>
-          </label>
-        )}
-      </div>
-    </div>
-  );
-
-  if (!studentJourney) {
-    return <div className="p-8 text-center text-gray-500">Loading...</div>;
+    );
   }
 
-  if (!isTitlePassed) {
+  if (isError || !journey) {
+    return (
+      <div className="mx-auto max-w-md space-y-3 p-8 text-center">
+        <p className="text-sm text-red-600">
+          Unable to load Proposal Defense status.
+        </p>
+        <Button type="button" variant="outline" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (state === "LOCKED") {
     return (
       <div className="mx-auto max-w-3xl py-8">
-        <Card className="border-red-200 shadow-sm">
-          <CardHeader className="border-b border-red-100 bg-red-50/50">
-            <CardTitle className="text-red-700">Locked</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 text-center">
-            <Lock className="mx-auto mb-2 h-8 w-8 text-red-400" />
-            <p className="text-gray-700">
-              Title Defense must be formally PASSED (selected title + finalized
-              Title RAP) before Proposal application. Application approval alone
-              is not enough.
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <div className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-(--earist-secondary)" />
+              <p className="font-semibold">Proposal Defense is locked</p>
+            </div>
+            <p className="text-sm text-(--earist-body-text)">
+              {proposalStep?.lockReason || "This step is currently unavailable."}
             </p>
+            <Link
+              href={journeyRouteFor("ADVISER_REQUEST")}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Go to Adviser Request
+            </Link>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  if (state === "COMPLETED") {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold text-(--earist-primary)">
+            Proposal Defense
+          </h2>
+        </div>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <CheckCircle2 className="h-5 w-5" />
+              <p className="font-semibold">Proposal Defense completed</p>
+            </div>
+            {proposalStep?.nextAction && (
+              <p className="text-sm text-(--earist-body-text)">
+                {proposalStep.nextAction}
+              </p>
+            )}
+            <Link href="/student/thesis" className={buttonVariants()}>
+              Continue in Thesis Journey
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (state === "WAITING") {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold text-(--earist-primary)">
+            Proposal Defense
+          </h2>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Clock className="h-5 w-5 text-amber-600" />
+              Application in progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p className="text-(--earist-body-text)">
+              {proposalStep?.detail ||
+                proposalStep?.lockReason ||
+                "Your Proposal Defense application is under review."}
+            </p>
+            {proposalStep?.nextAction && (
+              <p className="text-(--earist-body-text)">{proposalStep.nextAction}</p>
+            )}
+            <Link
+              href="/student/thesis"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Continue in Thesis Journey
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const rejectedHint = (proposalStep?.detail || "")
+    .toLowerCase()
+    .includes("reject");
+  if (rejectedHint) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold text-(--earist-primary)">
+            Proposal Defense
+          </h2>
+        </div>
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Application returned</AlertTitle>
+          <AlertDescription>
+            {proposalStep?.detail ||
+              "Your Proposal Defense application was rejected."}{" "}
+            Update your requirements and resubmit when instructed. A new
+            application form is not shown here to avoid creating a duplicate
+            request.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // CURRENT / AVAILABLE
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
+        <h2 className="text-2xl font-bold text-(--earist-primary)">
           Proposal Defense Application
         </h2>
         <p className="text-sm text-(--earist-body-text)">
@@ -188,80 +332,100 @@ export default function ProposalDefensePage() {
         </p>
       </div>
 
-      {systemGaps.length > 0 && (
-        <Card className="border-amber-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm text-amber-800">
-              <AlertTriangle className="h-4 w-4" />
-              System requirements not met
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-amber-900">
-              {systemGaps.map((m) => (
-                <li key={m.code}>{m.message}</li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-gray-500">
-              Research Variables:{" "}
-              {eligibility?.researchVariables === "NOT_APPLICABLE"
-                ? "Not applicable (accepted)"
-                : eligibility?.researchVariables === "APPROVED"
-                  ? "Approved"
-                  : "Pending — approve or mark NOT_APPLICABLE"}
-            </p>
+      {activeAdviser && (
+        <Card>
+          <CardContent className="pt-6 text-sm">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-emerald-600" />
+              <span className="text-(--earist-body-text)">Active Adviser:</span>
+              <span className="font-semibold">{activeAdviser.name}</span>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {applicationState === "submitted" ? (
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-green-600" />
-            <p className="font-medium">Submitted for review</p>
-            <p className="text-sm text-gray-500">
-              Admin review may approve, reject, or return for compliance. This
-              is not a defense result.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Required uploads (Proposal stage)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FileRow
-              label="Manuscript Chapters 1–3"
-              file={documentFile}
-              onPick={setDocumentFile}
-              onClear={() => setDocumentFile(null)}
-            />
-            <FileRow
-              label="Certificate of Registration (COR) — this application"
-              file={corFile}
-              onPick={setCorFile}
-              onClear={() => setCorFile(null)}
-            />
-            <FileRow
-              label="Defense-fee proof of payment (Cashier) — this application"
-              file={receiptFile}
-              onPick={setReceiptFile}
-              onClear={() => setReceiptFile(null)}
-            />
-            <Button
-              className="mt-4 w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90"
-              disabled={!canSubmit || submitMutation.isPending || eligibilityLoading}
-              onClick={handleSubmit}
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Submit Proposal Defense Application
-            </Button>
-          </CardContent>
-        </Card>
+      {submitError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Submission failed</AlertTitle>
+          <AlertDescription>{submitError}</AlertDescription>
+        </Alert>
       )}
+      {submitSuccess && (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertTitle>Application submitted</AlertTitle>
+          <AlertDescription>
+            Your Proposal Defense application was submitted. Status will update
+            from the Thesis Journey.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {systemGaps.length > 0 && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>System requirements not met</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc space-y-1 pl-5">
+              {systemGaps.map((m) => (
+                <li key={m.code}>{m.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <FileSlot
+          label="Manuscript Chapters 1–3"
+          file={documentFile}
+          inputRef={documentInputRef}
+          accept=".pdf,.doc,.docx"
+          hint="Stage-scoped upload"
+          onPick={setDocumentFile}
+          onRemove={() => {
+            setDocumentFile(null);
+            if (documentInputRef.current) documentInputRef.current.value = "";
+          }}
+        />
+        <FileSlot
+          label="Certificate of Registration (COR)"
+          file={corFile}
+          inputRef={corInputRef}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="This application"
+          onPick={setCorFile}
+          onRemove={() => {
+            setCorFile(null);
+            if (corInputRef.current) corInputRef.current.value = "";
+          }}
+        />
+        <FileSlot
+          label="Defense-fee proof of payment"
+          file={receiptFile}
+          inputRef={receiptInputRef}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Cashier proof"
+          onPick={setReceiptFile}
+          onRemove={() => {
+            setReceiptFile(null);
+            if (receiptInputRef.current) receiptInputRef.current.value = "";
+          }}
+        />
+      </div>
+
+      <Button
+        type="button"
+        disabled={!canSubmit || submitProposal.isPending || eligibilityLoading}
+        onClick={() => submitProposal.mutate()}
+        className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto"
+      >
+        <Send className="mr-2 h-4 w-4" />
+        {submitProposal.isPending
+          ? "Submitting…"
+          : "Submit Proposal Defense Application"}
+      </Button>
     </div>
   );
 }
