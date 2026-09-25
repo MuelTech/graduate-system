@@ -127,7 +127,12 @@ export default function ProposalDefensePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const { data: eligibility, isLoading: eligibilityLoading } = useQuery({
+  const {
+    data: eligibility,
+    isLoading: eligibilityLoading,
+    isError: eligibilityError,
+    refetch: refetchEligibility,
+  } = useQuery({
     queryKey: ["thesisEligibility", "PROPOSAL_DEFENSE"],
     queryFn: async () =>
       (await apiClientRequest("/thesis/eligibility/PROPOSAL_DEFENSE")) as {
@@ -135,6 +140,7 @@ export default function ProposalDefensePage() {
         missing: MissingRequirement[];
       },
     enabled: state === "CURRENT" || state === "AVAILABLE",
+    retry: 1,
   });
 
   const systemGaps = useMemo(
@@ -146,7 +152,11 @@ export default function ProposalDefensePage() {
     [eligibility],
   );
 
+  // Fail closed: submit only when eligibility actually loaded successfully.
+  const eligibilityReady = eligibility != null && !eligibilityError;
+
   const canSubmit =
+    eligibilityReady &&
     !!documentFile &&
     !!corFile &&
     !!receiptFile &&
@@ -358,6 +368,26 @@ export default function ProposalDefensePage() {
           <AlertDescription>
             Your Proposal Defense application was submitted. Status will update
             from the Thesis Journey.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {eligibilityError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Requirements unavailable</AlertTitle>
+          <AlertDescription>
+            Application requirements could not be loaded. Submission is
+            disabled until requirements load successfully.
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-2"
+              onClick={() => refetchEligibility()}
+            >
+              Retry
+            </Button>
           </AlertDescription>
         </Alert>
       )}
