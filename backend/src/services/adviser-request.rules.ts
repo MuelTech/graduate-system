@@ -148,6 +148,88 @@ export function mapAdviserResponseToOverallStatus(
   return decision === "DECLINED" ? "REJECTED" : "PENDING";
 }
 
+export type DeanDecision = "APPROVED" | "REJECTED";
+
+export function isDeanDecision(value: unknown): value is DeanDecision {
+  return value === "APPROVED" || value === "REJECTED";
+}
+
+export type DeanTransitionInput = {
+  decision: string;
+  adviserStatus: string;
+  deanStatus: string;
+  overallStatus?: string;
+};
+
+export type DeanTransitionResult =
+  | { allowed: true; decision: DeanDecision }
+  | { allowed: false; reason: string; statusCode: number };
+
+/**
+ * WP4: Dean may decide only after Adviser CONFORMED while Dean review is pending.
+ * Does not allow bypassing CONFORME or repeating a Dean decision.
+ */
+export function evaluateDeanResponseTransition(
+  input: DeanTransitionInput,
+): DeanTransitionResult {
+  if (!isDeanDecision(input.decision)) {
+    return {
+      allowed: false,
+      reason: "decision must be APPROVED or REJECTED",
+      statusCode: 400,
+    };
+  }
+
+  if (input.deanStatus === "APPROVED" || input.deanStatus === "REJECTED") {
+    return {
+      allowed: false,
+      reason: "Dean has already decided this request.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.overallStatus === "APPROVED" || input.overallStatus === "REJECTED") {
+    return {
+      allowed: false,
+      reason: "This adviser request is already closed and cannot be changed.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.adviserStatus === "PENDING") {
+    return {
+      allowed: false,
+      reason: "Adviser CONFORME is required before Dean decision.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.adviserStatus === "DECLINED") {
+    return {
+      allowed: false,
+      reason: "Adviser declined this request; Dean decision is not applicable.",
+      statusCode: 409,
+    };
+  }
+
+  if (input.adviserStatus !== "CONFORMED") {
+    return {
+      allowed: false,
+      reason: "Invalid Dean decision transition.",
+      statusCode: 409,
+    };
+  }
+
+  return { allowed: true, decision: input.decision };
+}
+
+/** Compatibility RequestStatus after Dean decision. */
+export function mapDeanDecisionToOverallStatus(
+  decision: DeanDecision,
+): "APPROVED" | "REJECTED" {
+  return decision === "APPROVED" ? "APPROVED" : "REJECTED";
+}
+
 export type TitleDefenseGateInput = {
   hasPassedTitleConclusion: boolean;
   hasOfficialSelectedTitle: boolean;

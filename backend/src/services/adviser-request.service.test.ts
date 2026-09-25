@@ -1,20 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../utils/AppError";
 
-const prismaMock = vi.hoisted(() => ({
-  student: { findUnique: vi.fn() },
-  defenseConclusion: { findFirst: vi.fn() },
-  panelAssignment: { findUnique: vi.fn() },
-  adviserAssignment: { findFirst: vi.fn(), create: vi.fn() },
-  adviserRequest: {
-    findFirst: vi.fn(),
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    updateMany: vi.fn(),
-  },
-}));
+const prismaMock = vi.hoisted(() => {
+  const tx = {
+    adviserRequest: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    adviserAssignment: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  return {
+    student: { findUnique: vi.fn() },
+    defenseConclusion: { findFirst: vi.fn() },
+    panelAssignment: { findUnique: vi.fn() },
+    adviserAssignment: { findFirst: vi.fn(), create: vi.fn() },
+    adviserRequest: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    $transaction: vi.fn(async (fn: any) => fn(tx)),
+    __tx: tx,
+  };
+});
 
 vi.mock("../config/database", () => ({
   default: prismaMock,
@@ -420,5 +434,196 @@ describe("AdviserRequestService (WP3 adviser response)", () => {
     await expect(
       svc.respondAsAdviser("adv-user", "missing", { decision: "CONFORMED" }),
     ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe("AdviserRequestService (WP4 Dean decision)", () => {
+  const svc = new AdviserRequestService();
+  const tx = prismaMock.__tx;
+
+  function conformedRequest(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "req-1",
+      studentId: "student-1",
+      requestedAdviserId: "adv-user",
+      status: "PENDING",
+      adviserStatus: "CONFORMED",
+      deanStatus: "PENDING",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.adviserAssignment.create.mockClear();
+    prismaMock.$transaction.mockImplementation(async (fn: any) => fn(tx));
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(conformedRequest());
+    tx.adviserRequest.findUnique.mockResolvedValue(conformedRequest());
+    tx.adviserRequest.updateMany.mockResolvedValue({ count: 1 });
+    tx.adviserAssignment.findFirst.mockResolvedValue(null);
+    tx.adviserAssignment.create.mockResolvedValue({ id: "asg-1" });
+  });
+
+  it("Dean review list filters CONFORMED + Dean PENDING with metadata", async () => {
+    prismaMock.adviserRequest.findMany.mockResolvedValue([
+      {
+        ...inboxRow({ adviserStatus: "CONFORMED" }),
+        requestedAdviser: {
+          id: "adv-user",
+          firstName: "Ana",
+          lastName: "Chair",
+          email: "a@e",
+          panelist: {
+            specialization: "EdM",
+            officeAffiliation: "GS",
+          },
+        },
+        sourceDefenseSchedule: {
+          id: "schedule-1",
+          conclusion: {
+            selectedTitle: { id: "title-1", titleText: "Official Title" },
+          },
+          panelAssignments: [{ userId: "adv-user", role: "CHAIRMAN" }],
+        },
+      },
+    ]);
+
+    const rows = await svc.listDeanReviewRequests();
+    expect(prismaMock.adviserRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "PENDING",
+          adviserStatus: "CONFORMED",
+          deanStatus: "PENDING",
+        },
+      }),
+    );
+    expect(rows[0]).toMatchObject({
+      officialTitle: "Official Title",
+      titleDefenseRole: "CHAIRMAN",
+      requestedAdviser: {
+        userId: "adv-user",
+        name: "Ana Chair",
+        specialization: "EdM",
+        officeAffiliation: "GS",
+      },
+    });
+  });
+
+  it("APPROVE writes Dean audit fields and creates assignment for requested adviser only", async () => {
+    await svc.deanDecideAdviserRequest("dean-1", "req-1", {
+      decision: "APPROVED",
+      remarks: "Approved",
+    });
+
+    expect(tx.adviserRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "req-1",
+        status: "PENDING",
+        adviserStatus: "CONFORMED",
+        deanStatus: "PENDING",
+      },
+      data: expect.objectContaining({
+        deanStatus: "APPROVED",
+        deanReviewedById: "dean-1",
+        deanReviewedAt: expect.any(Date),
+        deanRemarks: "Approved",
+        status: "APPROVED",
+      }),
+    });
+    expect(tx.adviserAssignment.create).toHaveBeenCalledWith({
+      data: {
+        studentId: "student-1",
+        adviserId: "adv-user",
+        assignedDate: expect.any(Date),
+        isActive: true,
+      },
+    });
+  });
+
+  it("REJECT stores Dean audit fields and creates no assignment", async () => {
+    await svc.deanDecideAdviserRequest("dean-1", "req-1", {
+      decision: "REJECTED",
+      remarks: "Not now",
+    });
+
+    expect(tx.adviserRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "req-1",
+        status: "PENDING",
+        adviserStatus: "CONFORMED",
+        deanStatus: "PENDING",
+      },
+      data: expect.objectContaining({
+        deanStatus: "REJECTED",
+        deanReviewedById: "dean-1",
+        status: "REJECTED",
+      }),
+    });
+    expect(tx.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks APPROVE before CONFORME / after Decline / after Dean decided", async () => {
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      conformedRequest({ adviserStatus: "PENDING" }),
+    );
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      conformedRequest({ adviserStatus: "DECLINED", status: "REJECTED" }),
+    );
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(
+      conformedRequest({ deanStatus: "APPROVED", status: "APPROVED" }),
+    );
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "REJECTED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("blocks duplicate active AdviserAssignment with 409", async () => {
+    tx.adviserAssignment.findFirst.mockResolvedValue({ id: "existing" });
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("stale concurrent Dean transition count=0 returns 409 and creates no assignment", async () => {
+    tx.adviserRequest.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx.adviserAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it("invalid Dean decision and missing request", async () => {
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", {
+        decision: "MAYBE" as any,
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    prismaMock.adviserRequest.findUnique.mockResolvedValue(null);
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "missing", {
+        decision: "APPROVED",
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("legacy approveAdviserRequest bypass is retired", async () => {
+    const { ThesisRepository } = await import(
+      "../repositories/thesis.repository"
+    );
+    const repo = new ThesisRepository();
+    await expect(
+      repo.approveAdviserRequest("req-1", "any-adviser", "admin"),
+    ).rejects.toThrow(/retired|GS-020/i);
   });
 });

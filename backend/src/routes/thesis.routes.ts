@@ -85,6 +85,22 @@ router.post(
   thesisController.respondAdviserRequest,
 );
 
+// ADMIN/DEAN: review queue (CONFORMED + Dean PENDING)
+router.get(
+  "/adviser/requests/dean-review",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDeanReviewRequests,
+);
+
+// ADMIN/DEAN: APPROVE / REJECT after Adviser CONFORME (creates AdviserAssignment only on APPROVED)
+router.post(
+  "/adviser/requests/:id/dean-response",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.deanRespondAdviserRequest,
+);
+
 // ADMIN: Get all active assignments
 router.get(
   "/adviser/assignments",

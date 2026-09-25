@@ -1,23 +1,30 @@
 /**
- * Student-side GS-020 Adviser Request domain (WP2 only).
+ * GS-020 Adviser Request domain (WP2–WP4).
  *
  * Implements:
- *  - ODP adviser candidates from the passed Title Defense session
- *  - Student adviser request creation
+ *  - Student ODP adviser candidates + request creation (WP2)
+ *  - Requested Adviser CONFORME / Decline (WP3, write-once)
+ *  - Dean review + APPROVE/REJECT with transactional AdviserAssignment (WP4)
  *
- * Does NOT implement CONFORME/Decline, Dean decisions, or AdviserAssignment.
+ * Canonical assignment path: Student request → Adviser CONFORME → Dean APPROVED
+ * → AdviserAssignment. Assignment is never created outside that path.
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
-import type { RequestAdviserInput } from "../interfaces/thesis.interfaces";
+import type {
+  DeanResponseInput,
+  RequestAdviserInput,
+  AdviserResponseInput,
+} from "../interfaces/thesis.interfaces";
 import {
   evaluateCandidateEligibility,
   evaluateTitleDefenseGate,
   evaluateAdviserResponseTransition,
+  evaluateDeanResponseTransition,
   isOpenAdviserRequest,
   mapAdviserResponseToOverallStatus,
+  mapDeanDecisionToOverallStatus,
 } from "./adviser-request.rules";
-import type { AdviserResponseInput } from "../interfaces/thesis.interfaces";
 
 export interface OdpCandidateDto {
   userId: string;
@@ -374,5 +381,199 @@ export class AdviserRequestService {
     }
 
     return prisma.adviserRequest.findUnique({ where: { id: requestId } });
+  }
+
+  /**
+   * WP4: Dean/Admin review queue — CONFORMED + Dean PENDING only.
+   * Shows the actual requested adviser; no replacement picker data.
+   */
+  async listDeanReviewRequests() {
+    const rows = await prisma.adviserRequest.findMany({
+      where: {
+        status: "PENDING",
+        adviserStatus: "CONFORMED",
+        deanStatus: "PENDING",
+      },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            program: { select: { programName: true } },
+          },
+        },
+        requestedAdviser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            panelist: {
+              select: { specialization: true, officeAffiliation: true },
+            },
+          },
+        },
+        sourceDefenseSchedule: {
+          select: {
+            id: true,
+            conclusion: {
+              select: {
+                selectedTitle: { select: { id: true, titleText: true } },
+              },
+            },
+            panelAssignments: {
+              select: { userId: true, role: true },
+            },
+          },
+        },
+      },
+      orderBy: { requestDate: "desc" },
+    });
+
+    return rows.map((row) => {
+      const role =
+        row.sourceDefenseSchedule?.panelAssignments.find(
+          (p) => p.userId === row.requestedAdviserId,
+        )?.role ?? null;
+      return {
+        id: row.id,
+        student: {
+          id: row.student.id,
+          name: `${row.student.user.firstName} ${row.student.user.lastName}`,
+          studentNumber: row.student.studentNumber,
+          program: row.student.program?.programName ?? null,
+        },
+        officialTitle:
+          row.sourceDefenseSchedule?.conclusion?.selectedTitle?.titleText ??
+          null,
+        requestedAdviser: {
+          userId: row.requestedAdviser.id,
+          name: `${row.requestedAdviser.firstName} ${row.requestedAdviser.lastName}`,
+          specialization: row.requestedAdviser.panelist?.specialization ?? null,
+          officeAffiliation:
+            row.requestedAdviser.panelist?.officeAffiliation ?? null,
+        },
+        titleDefenseRole: role,
+        reason: row.reason,
+        requestDate: row.requestDate,
+        status: row.status,
+        adviserStatus: row.adviserStatus,
+        adviserRespondedAt: row.adviserRespondedAt,
+        adviserRemarks: row.adviserRemarks,
+        deanStatus: row.deanStatus,
+        deanReviewedAt: row.deanReviewedAt,
+        deanRemarks: row.deanRemarks,
+        sourceDefenseScheduleId: row.sourceDefenseScheduleId,
+      };
+    });
+  }
+
+  /**
+   * WP4: Dean APPROVE / REJECT — transactional write-once.
+   * APPROVE creates AdviserAssignment for request.requestedAdviserId only.
+   * REJECT creates no assignment; Student may retry later.
+   */
+  async deanDecideAdviserRequest(
+    deanUserId: string,
+    requestId: string,
+    input: DeanResponseInput,
+  ) {
+    const existing = await prisma.adviserRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!existing) {
+      throw new AppError("Adviser request not found.", 404);
+    }
+
+    const gate = evaluateDeanResponseTransition({
+      decision: String(input.decision || ""),
+      adviserStatus: String(existing.adviserStatus),
+      deanStatus: String(existing.deanStatus),
+      overallStatus: String(existing.status),
+    });
+    if (!gate.allowed) {
+      throw new AppError(gate.reason, gate.statusCode);
+    }
+
+    const now = new Date();
+    const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
+
+    return prisma.$transaction(async (tx) => {
+      // Re-read + conditional state protection inside the transaction.
+      const current = await tx.adviserRequest.findUnique({
+        where: { id: requestId },
+      });
+      if (!current) {
+        throw new AppError("Adviser request not found.", 404);
+      }
+      if (
+        current.status !== "PENDING" ||
+        current.adviserStatus !== "CONFORMED" ||
+        current.deanStatus !== "PENDING"
+      ) {
+        throw new AppError(
+          "Adviser request state changed or has already been decided.",
+          409,
+        );
+      }
+
+      if (gate.decision === "APPROVED") {
+        const active = await tx.adviserAssignment.findFirst({
+          where: { studentId: current.studentId, isActive: true },
+        });
+        if (active) {
+          throw new AppError(
+            "An active adviser assignment already exists for this student.",
+            409,
+          );
+        }
+      }
+
+      const expectedPreState = {
+        id: requestId,
+        status: "PENDING" as const,
+        adviserStatus: "CONFORMED" as const,
+        deanStatus: "PENDING" as const,
+      };
+
+      const updated = await tx.adviserRequest.updateMany({
+        where: expectedPreState,
+        data: {
+          deanStatus: gate.decision,
+          deanReviewedById: deanUserId,
+          deanReviewedAt: now,
+          deanRemarks: remarks,
+          status: mapDeanDecisionToOverallStatus(gate.decision),
+          // Compatibility mirror only — not authoritative for GS-020.
+          approvedById: deanUserId,
+        },
+      });
+      if (updated.count === 0) {
+        throw new AppError(
+          "Adviser request state changed or has already been decided.",
+          409,
+        );
+      }
+
+      // Assignment only after CONFORME + Dean APPROVED, same transaction.
+      if (gate.decision === "APPROVED") {
+        await tx.adviserAssignment.create({
+          data: {
+            studentId: current.studentId,
+            adviserId: current.requestedAdviserId,
+            assignedDate: now,
+            isActive: true,
+          },
+        });
+      }
+
+      return tx.adviserRequest.findUnique({ where: { id: requestId } });
+    });
   }
 }

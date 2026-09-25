@@ -364,11 +364,45 @@ export class ThesisService {
     });
   }
 
+  /** WP4: Dean review queue (CONFORMED + Dean PENDING). */
+  async listDeanReviewRequests() {
+    return this.adviserRequestService.listDeanReviewRequests();
+  }
+
+  /** WP4: Dean APPROVE / REJECT — only path that creates AdviserAssignment. */
+  async deanDecideAdviserRequest(
+    deanUserId: string,
+    requestId: string,
+    input: { decision: string; remarks?: string },
+  ) {
+    return this.adviserRequestService.deanDecideAdviserRequest(
+      deanUserId,
+      requestId,
+      {
+        decision: input.decision as "APPROVED" | "REJECTED",
+        remarks: input.remarks,
+      },
+    );
+  }
+
+  /**
+   * Legacy /adviser/assign — hardened compatibility wrapper.
+   * Does NOT accept arbitrary adviser replacement. Delegates to the same
+   * GS-020 Dean approval invariant (CONFORME required; assigned adviser is
+   * always request.requestedAdviserId).
+   * @deprecated Use deanDecideAdviserRequest instead.
+   */
   async assignAdviser(adminId: string, data: any) {
-    return this.thesisRepo.approveAdviserRequest(
-      data.requestId,
-      data.adviserId,
+    const requestId = String(data?.requestId || data?.id || "").trim();
+    if (!requestId) {
+      throw new AppError("requestId is required.", 400);
+    }
+    // Legacy body may include adviserId — ignored on purpose. Assignment always
+    // uses request.requestedAdviserId inside the Dean approval transaction.
+    return this.adviserRequestService.deanDecideAdviserRequest(
       adminId,
+      requestId,
+      { decision: "APPROVED", remarks: data?.remarks },
     );
   }
 

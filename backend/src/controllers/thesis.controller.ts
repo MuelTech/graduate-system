@@ -248,12 +248,50 @@ export class ThesisController {
     }
   };
 
+  /** ADMIN/Dean: review queue (CONFORMED + Dean PENDING). */
+  getDeanReviewRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const result = await this.thesisService.listDeanReviewRequests();
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  /** ADMIN/Dean: APPROVE / REJECT after Adviser CONFORME. */
+  deanRespondAdviserRequest = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const decision = String(req.body?.decision || "").toUpperCase();
+      const result = await this.thesisService.deanDecideAdviserRequest(
+        req.user.userId,
+        String(req.params.id),
+        { decision, remarks: req.body?.remarks },
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   assignAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
       const result = await this.thesisService.assignAdviser(req.user.userId, req.body);
       res.status(200).json({ message: 'Adviser officially assigned', result });
     } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       res.status(400).json({ error: error.message });
     }
   };

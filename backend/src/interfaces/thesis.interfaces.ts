@@ -16,6 +16,13 @@ export interface AdviserResponseInput {
   remarks?: string;
 }
 
+export type DeanDecision = "APPROVED" | "REJECTED";
+
+export interface DeanResponseInput {
+  decision: DeanDecision;
+  remarks?: string;
+}
+
 export interface AssignAdviserInput {
   requestId: string;
 }

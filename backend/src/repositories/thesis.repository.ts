@@ -479,26 +479,18 @@ export class ThesisRepository {
     });
   }
 
+  /**
+   * @deprecated Direct approval bypass is retired.
+   * Use AdviserRequestService.deanDecideAdviserRequest (GS-020 CONFORME → Dean).
+   */
   async approveAdviserRequest(
     requestId: string,
     adviserId: string,
     adminId: string,
   ) {
-    return prisma.$transaction(async (tx) => {
-      const request = await tx.adviserRequest.update({
-        where: { id: requestId },
-        data: { status: "APPROVED", approvedById: adminId },
-      });
-
-      const assignment = await tx.adviserAssignment.create({
-        data: {
-          studentId: request.studentId,
-          adviserId: adviserId,
-          assignedDate: new Date(),
-        },
-      });
-      return assignment;
-    });
+    throw new Error(
+      "Direct adviser assignment is retired. Use the GS-020 Dean decision endpoint (CONFORME → Dean APPROVED).",
+    );
   }
 
   /**

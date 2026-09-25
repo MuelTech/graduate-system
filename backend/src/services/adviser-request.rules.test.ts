@@ -3,12 +3,14 @@ import {
   ADVISER_CANDIDATE_ROLES,
   evaluateAdviserResponseTransition,
   evaluateCandidateEligibility,
+  evaluateDeanResponseTransition,
   evaluateTitleDefenseGate,
   isAdviserCandidateRole,
   isOpenAdviserRequest,
   isRetryableClosedRequest,
   isFinalApprovedRequest,
   mapAdviserResponseToOverallStatus,
+  mapDeanDecisionToOverallStatus,
 } from "./adviser-request.rules";
 
 const validPanelist = {
@@ -293,5 +295,72 @@ describe("evaluateAdviserResponseTransition", () => {
   it("maps CONFORMED to overall PENDING and DECLINED to overall REJECTED", () => {
     expect(mapAdviserResponseToOverallStatus("CONFORMED")).toBe("PENDING");
     expect(mapAdviserResponseToOverallStatus("DECLINED")).toBe("REJECTED");
+  });
+});
+
+describe("evaluateDeanResponseTransition", () => {
+  const conformed = {
+    adviserStatus: "CONFORMED",
+    deanStatus: "PENDING",
+    overallStatus: "PENDING",
+  };
+
+  it("allows APPROVED and REJECTED only after CONFORME", () => {
+    expect(
+      evaluateDeanResponseTransition({ ...conformed, decision: "APPROVED" })
+        .allowed,
+    ).toBe(true);
+    expect(
+      evaluateDeanResponseTransition({ ...conformed, decision: "REJECTED" })
+        .allowed,
+    ).toBe(true);
+  });
+
+  it("rejects before Adviser CONFORME", () => {
+    const r = evaluateDeanResponseTransition({
+      decision: "APPROVED",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+      overallStatus: "PENDING",
+    });
+    expect(r.allowed).toBe(false);
+    if (!r.allowed) expect(r.statusCode).toBe(409);
+  });
+
+  it("rejects when adviser DECLINED or Dean already decided", () => {
+    expect(
+      evaluateDeanResponseTransition({
+        decision: "APPROVED",
+        adviserStatus: "DECLINED",
+        deanStatus: "PENDING",
+        overallStatus: "REJECTED",
+      }).allowed,
+    ).toBe(false);
+    expect(
+      evaluateDeanResponseTransition({
+        ...conformed,
+        deanStatus: "APPROVED",
+        decision: "REJECTED",
+      }).allowed,
+    ).toBe(false);
+    expect(
+      evaluateDeanResponseTransition({
+        ...conformed,
+        deanStatus: "REJECTED",
+        decision: "APPROVED",
+      }).allowed,
+    ).toBe(false);
+  });
+
+  it("rejects invalid decision and maps overall status", () => {
+    const bad = evaluateDeanResponseTransition({
+      ...conformed,
+      decision: "MAYBE",
+    });
+    expect(bad.allowed).toBe(false);
+    if (!bad.allowed) expect(bad.statusCode).toBe(400);
+
+    expect(mapDeanDecisionToOverallStatus("APPROVED")).toBe("APPROVED");
+    expect(mapDeanDecisionToOverallStatus("REJECTED")).toBe("REJECTED");
   });
 });
