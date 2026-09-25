@@ -25,9 +25,16 @@ export type AdviserRequestRowLike = {
 
 /**
  * A request still waiting for Adviser response or Dean review blocks a new request.
- * DECLINED / Dean REJECTED allow retry.
+ *
+ * Legacy RequestStatus compatibility (WP1 default-filled rows):
+ * - status REJECTED is closed even if adviserStatus/deanStatus look PENDING
+ * - status APPROVED is closed (not an open request)
+ * - status PENDING (or missing) is evaluated using Adviser/Dean statuses
  */
 export function isOpenAdviserRequest(row: AdviserRequestRowLike): boolean {
+  if (row.status === "REJECTED" || row.status === "APPROVED") {
+    return false;
+  }
   if (row.adviserStatus === "PENDING") return true;
   if (row.adviserStatus === "CONFORMED" && row.deanStatus === "PENDING") {
     return true;
@@ -36,6 +43,9 @@ export function isOpenAdviserRequest(row: AdviserRequestRowLike): boolean {
 }
 
 export function isRetryableClosedRequest(row: AdviserRequestRowLike): boolean {
+  if (row.status === "REJECTED" || row.status === "APPROVED") {
+    return true;
+  }
   return row.adviserStatus === "DECLINED" || row.deanStatus === "REJECTED";
 }
 
@@ -73,8 +83,11 @@ export function evaluateTitleDefenseGate(
 
 export type CandidateEligibilityInput = {
   defenseRole: string;
+  /** Must be a real PANELIST user account. */
+  userRole: string;
   userIsActive: boolean;
-  /** Panelist profile may be missing for non-panelist seats. */
+  /** Missing Panelist profile is NOT implicitly active/available. */
+  hasPanelistProfile: boolean;
   panelistIsActive?: boolean | null;
   isAvailableAsAdviser?: boolean | null;
 };
@@ -84,8 +97,14 @@ export type CandidateEligibilityResult =
   | { eligible: false; reason: string };
 
 /**
- * ODP seat must be CHAIRMAN/PANELIST and still a valid adviser candidate
- * when panelist flags exist. Does not invent load caps.
+ * GS-020 adviser candidacy requires ALL of:
+ * - ODP role CHAIRMAN or PANELIST
+ * - User.role = PANELIST
+ * - User.isActive
+ * - Panelist profile exists
+ * - Panelist.isActive
+ * - Panelist.isAvailableAsAdviser
+ * No adviser load caps.
  */
 export function evaluateCandidateEligibility(
   input: CandidateEligibilityInput,
@@ -93,11 +112,23 @@ export function evaluateCandidateEligibility(
   if (!isAdviserCandidateRole(input.defenseRole)) {
     return {
       eligible: false,
-      reason: `Role ${input.defenseRole} is not eligible for adviser candidacy.`,
+      reason: `Role ${input.defenseRole} is not eligible for adviser candidacy. Only Chairman and Panelist may be requested.`,
+    };
+  }
+  if (input.userRole !== "PANELIST") {
+    return {
+      eligible: false,
+      reason: "Adviser candidate must have a PANELIST user role.",
     };
   }
   if (!input.userIsActive) {
     return { eligible: false, reason: "User account is inactive." };
+  }
+  if (!input.hasPanelistProfile) {
+    return {
+      eligible: false,
+      reason: "Adviser candidate requires an active Panelist profile.",
+    };
   }
   if (input.panelistIsActive === false) {
     return { eligible: false, reason: "Panelist profile is inactive." };

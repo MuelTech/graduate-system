@@ -8,6 +8,15 @@ import {
   isRetryableClosedRequest,
 } from "./adviser-request.rules";
 
+const validPanelist = {
+  defenseRole: "PANELIST",
+  userRole: "PANELIST",
+  userIsActive: true,
+  hasPanelistProfile: true,
+  panelistIsActive: true,
+  isAvailableAsAdviser: true,
+};
+
 describe("ADVISER_CANDIDATE_ROLES", () => {
   it("includes Chairman and Panelist only", () => {
     expect([...ADVISER_CANDIDATE_ROLES]).toEqual(["CHAIRMAN", "PANELIST"]);
@@ -54,96 +63,137 @@ describe("evaluateTitleDefenseGate", () => {
 });
 
 describe("evaluateCandidateEligibility", () => {
-  it("rejects Facilitator and Rapporteur", () => {
-    expect(
-      evaluateCandidateEligibility({
-        defenseRole: "FACILITATOR",
-        userIsActive: true,
-      }).eligible,
-    ).toBe(false);
-    expect(
-      evaluateCandidateEligibility({
-        defenseRole: "RAPPORTEUR",
-        userIsActive: true,
-      }).eligible,
-    ).toBe(false);
+  it("rejects Facilitator and Rapporteur with explicit role error", () => {
+    const fac = evaluateCandidateEligibility({
+      ...validPanelist,
+      defenseRole: "FACILITATOR",
+    });
+    expect(fac.eligible).toBe(false);
+    if (!fac.eligible) expect(fac.reason).toMatch(/FACILITATOR/);
+
+    const rap = evaluateCandidateEligibility({
+      ...validPanelist,
+      defenseRole: "RAPPORTEUR",
+    });
+    expect(rap.eligible).toBe(false);
+    if (!rap.eligible) expect(rap.reason).toMatch(/RAPPORTEUR/);
   });
 
-  it("accepts active Chairman and Panelist", () => {
-    expect(
-      evaluateCandidateEligibility({
-        defenseRole: "CHAIRMAN",
-        userIsActive: true,
-        panelistIsActive: true,
-        isAvailableAsAdviser: true,
-      }).eligible,
-    ).toBe(true);
-    expect(
-      evaluateCandidateEligibility({
-        defenseRole: "PANELIST",
-        userIsActive: true,
-      }).eligible,
-    ).toBe(true);
+  it("rejects CHAIRMAN/PANELIST seat when User.role is not PANELIST", () => {
+    const r = evaluateCandidateEligibility({
+      ...validPanelist,
+      defenseRole: "CHAIRMAN",
+      userRole: "ADMIN",
+    });
+    expect(r.eligible).toBe(false);
+    if (!r.eligible) expect(r.reason).toMatch(/PANELIST user role/i);
   });
 
-  it("rejects inactive user/panelist or unavailable adviser", () => {
+  it("rejects CHAIRMAN/PANELIST seat with no Panelist profile", () => {
+    const r = evaluateCandidateEligibility({
+      ...validPanelist,
+      hasPanelistProfile: false,
+      panelistIsActive: null,
+      isAvailableAsAdviser: null,
+    });
+    expect(r.eligible).toBe(false);
+    if (!r.eligible) expect(r.reason).toMatch(/Panelist profile/i);
+  });
+
+  it("rejects inactive Panelist profile and isAvailableAsAdviser=false", () => {
     expect(
       evaluateCandidateEligibility({
-        defenseRole: "PANELIST",
-        userIsActive: false,
-      }).eligible,
-    ).toBe(false);
-    expect(
-      evaluateCandidateEligibility({
-        defenseRole: "PANELIST",
-        userIsActive: true,
+        ...validPanelist,
         panelistIsActive: false,
       }).eligible,
     ).toBe(false);
     expect(
       evaluateCandidateEligibility({
-        defenseRole: "PANELIST",
-        userIsActive: true,
+        ...validPanelist,
         isAvailableAsAdviser: false,
       }).eligible,
     ).toBe(false);
   });
+
+  it("rejects inactive User", () => {
+    expect(
+      evaluateCandidateEligibility({
+        ...validPanelist,
+        userIsActive: false,
+      }).eligible,
+    ).toBe(false);
+  });
+
+  it("accepts valid active PANELIST profile as Chairman or Panelist", () => {
+    expect(
+      evaluateCandidateEligibility({
+        ...validPanelist,
+        defenseRole: "CHAIRMAN",
+      }).eligible,
+    ).toBe(true);
+    expect(evaluateCandidateEligibility(validPanelist).eligible).toBe(true);
+  });
 });
 
-describe("request path open / retry", () => {
-  it("open while waiting for Adviser or Dean", () => {
-    expect(
-      isOpenAdviserRequest({ adviserStatus: "PENDING", deanStatus: "PENDING" }),
-    ).toBe(true);
+describe("request path open / retry (including legacy RequestStatus)", () => {
+  it("blocks status=PENDING + adviser PENDING", () => {
     expect(
       isOpenAdviserRequest({
+        status: "PENDING",
+        adviserStatus: "PENDING",
+        deanStatus: "PENDING",
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks status=PENDING + CONFORMED waiting for Dean", () => {
+    expect(
+      isOpenAdviserRequest({
+        status: "PENDING",
         adviserStatus: "CONFORMED",
         deanStatus: "PENDING",
       }),
     ).toBe(true);
+  });
+
+  it("legacy status=REJECTED with default PENDING statuses allows retry", () => {
+    const row = {
+      status: "REJECTED",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+    };
+    expect(isOpenAdviserRequest(row)).toBe(false);
+    expect(isRetryableClosedRequest(row)).toBe(true);
+  });
+
+  it("legacy status=APPROVED with default PENDING statuses is not open", () => {
+    const row = {
+      status: "APPROVED",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+    };
+    expect(isOpenAdviserRequest(row)).toBe(false);
+    expect(isRetryableClosedRequest(row)).toBe(true);
   });
 
   it("allows retry after Adviser DECLINED or Dean REJECTED", () => {
     expect(
       isRetryableClosedRequest({
+        status: "REJECTED",
         adviserStatus: "DECLINED",
         deanStatus: "PENDING",
       }),
     ).toBe(true);
     expect(
-      isRetryableClosedRequest({
-        adviserStatus: "CONFORMED",
-        deanStatus: "REJECTED",
-      }),
-    ).toBe(true);
-    expect(
       isOpenAdviserRequest({
+        status: "PENDING",
         adviserStatus: "DECLINED",
         deanStatus: "PENDING",
       }),
     ).toBe(false);
     expect(
       isOpenAdviserRequest({
+        status: "PENDING",
         adviserStatus: "CONFORMED",
         deanStatus: "REJECTED",
       }),

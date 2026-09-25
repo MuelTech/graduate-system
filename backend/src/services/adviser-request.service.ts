@@ -26,12 +26,21 @@ export interface OdpCandidateDto {
   isAvailableAsAdviser: boolean;
 }
 
+export interface OdpSeatEvaluation {
+  userId: string;
+  role: string;
+  eligible: boolean;
+  reason: string | null;
+}
+
 export interface PassedTitleDefenseContext {
   scheduleId: string;
   conclusionId: string;
   selectedTitleId: string;
   selectedTitleText: string;
   candidates: OdpCandidateDto[];
+  /** Every ODP seat with eligibility reason — used for precise request errors. */
+  seats: OdpSeatEvaluation[];
 }
 
 export class AdviserRequestService {
@@ -63,6 +72,7 @@ export class AdviserRequestService {
                     id: true,
                     firstName: true,
                     lastName: true,
+                    role: true,
                     isActive: true,
                     panelist: {
                       select: {
@@ -97,15 +107,26 @@ export class AdviserRequestService {
     }
 
     const candidates: OdpCandidateDto[] = [];
+    const seats: OdpSeatEvaluation[] = [];
     for (const assignment of conclusion.schedule.panelAssignments) {
       const role = String(assignment.role);
       const panelist = assignment.user.panelist;
       const eligibility = evaluateCandidateEligibility({
         defenseRole: role,
+        userRole: String(assignment.user.role),
         userIsActive: assignment.user.isActive,
+        hasPanelistProfile: Boolean(panelist),
         panelistIsActive: panelist?.isActive ?? null,
         isAvailableAsAdviser: panelist?.isAvailableAsAdviser ?? null,
       });
+
+      seats.push({
+        userId: assignment.user.id,
+        role,
+        eligible: eligibility.eligible,
+        reason: eligibility.eligible ? null : eligibility.reason,
+      });
+
       if (!eligibility.eligible) continue;
 
       candidates.push({
@@ -115,7 +136,7 @@ export class AdviserRequestService {
         specialization: panelist?.specialization ?? null,
         officeAffiliation: panelist?.officeAffiliation ?? null,
         isExternal: panelist?.isExternal ?? false,
-        isAvailableAsAdviser: panelist?.isAvailableAsAdviser ?? true,
+        isAvailableAsAdviser: panelist?.isAvailableAsAdviser === true,
       });
     }
 
@@ -125,6 +146,7 @@ export class AdviserRequestService {
       selectedTitleId: conclusion.selectedTitleId,
       selectedTitleText: conclusion.selectedTitle.titleText,
       candidates,
+      seats,
     };
   }
 
@@ -164,9 +186,12 @@ export class AdviserRequestService {
       throw new AppError("An active adviser assignment already exists.", 409);
     }
 
+    // Legacy compatibility: only overall status PENDING can block.
+    // WP1 defaults left REJECTED/APPROVED rows with adviserStatus/deanStatus=PENDING.
     const open = await prisma.adviserRequest.findFirst({
       where: {
         studentId: student.id,
+        status: "PENDING",
         OR: [
           { adviserStatus: "PENDING" },
           { adviserStatus: "CONFORMED", deanStatus: "PENDING" },
@@ -183,22 +208,9 @@ export class AdviserRequestService {
     const ctx = await this.getPassedTitleDefenseContext(student.id);
     const candidate = ctx.candidates.find((c) => c.userId === requestedAdviserId);
     if (!candidate) {
-      // Distinguish excluded ODP seats from complete outsiders.
-      const rawAssignment = ctx.scheduleId
-        ? await prisma.panelAssignment.findUnique({
-            where: {
-              scheduleId_userId: {
-                scheduleId: ctx.scheduleId,
-                userId: requestedAdviserId,
-              },
-            },
-          })
-        : null;
-      if (rawAssignment) {
-        throw new AppError(
-          `Role ${rawAssignment.role} is not eligible for adviser candidacy. Only Chairman and Panelist may be requested.`,
-          400,
-        );
+      const seat = ctx.seats.find((s) => s.userId === requestedAdviserId);
+      if (seat && seat.reason) {
+        throw new AppError(seat.reason, 400);
       }
       throw new AppError(
         "Requested adviser must be an eligible member of your passed Title Defense ODP.",
