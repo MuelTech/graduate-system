@@ -413,14 +413,18 @@ model AdviserRequest {
   adviserStatus      AdviserResponseStatus @default(PENDING) @map("adviser_status")
   adviserRespondedAt DateTime?     @map("adviser_responded_at")
   adviserRemarks     String?       @map("adviser_remarks") @db.Text
-  /** GS-020: Dean review — must not bypass Adviser CONFORME. */
+  /**
+   * GS-020 Dean review — must not bypass Adviser CONFORME.
+   * deanReviewedById is the canonical GS-020 Dean reviewer field.
+   */
   deanStatus         DeanResponseStatus @default(PENDING) @map("dean_status")
   deanReviewedById   String?       @map("dean_reviewed_by_id")
   deanReviewedAt     DateTime?     @map("dean_reviewed_at")
   deanRemarks        String?       @map("dean_remarks") @db.Text
   /**
-   * Approving actor (Dean) after APPROVED only.
-   * Nullable on purpose — a pending Student request must not store a fake approver.
+   * Legacy compatibility field only — NOT authoritative for GS-020.
+   * Keep nullable; new AdviserRequest rows leave this null until old code is retired.
+   * Prefer deanReviewedById for Dean reviewer identity in GS-020 logic.
    */
   approvedById       String?       @map("approved_by")
   requestDate        DateTime      @map("request_date") @db.Date
