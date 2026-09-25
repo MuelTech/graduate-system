@@ -12,7 +12,6 @@ import {
   BookOpen,
   Milestone,
   FileText,
-  ShieldCheck,
   Bell,
   GraduationCap,
   Menu,
@@ -22,28 +21,85 @@ import {
   ChevronDown,
   Megaphone,
   Library,
+  CheckCircle2,
+  CircleDot,
+  Circle,
+  Clock,
+  Lock,
 } from "lucide-react";
+import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import {
+  JOURNEY_STEP_ORDER,
+  journeyRouteFor,
+} from "@/lib/student-thesis-journey";
+import type {
+  JourneyStepKey,
+  JourneyStepState,
+  JourneyStepView,
+} from "@/types/student-thesis-journey";
 
-const navItems = [
+const topNavItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/student/profile", label: "Profile", icon: User },
   { href: "/student/curriculum", label: "Curriculum", icon: BookOpen },
   { href: "/student/journey", label: "Academic Journey", icon: Milestone },
-  {
-    label: "Thesis Journey",
-    href: "/student/thesis",
-    icon: FileText,
-    children: [
-      { href: "/student/thesis/title-defense", label: "Title Defense" },
-      { href: "/student/thesis/proposal-defense", label: "Proposal Defense" },
-      { href: "/student/thesis/final-defense", label: "Final Defense" },
-    ],
-  },
-  { href: "/student/plagiarism", label: "STRIKE Check", icon: ShieldCheck },
   { href: "/student/repository", label: "Repository", icon: Library },
   { href: "/student/announcements", label: "Announcements", icon: Megaphone },
   { href: "/student/notifications", label: "Notifications", icon: Bell },
 ];
+
+function statusIcon(state: JourneyStepState | "LOADING" | "ERROR") {
+  switch (state) {
+    case "COMPLETED":
+      return (
+        <CheckCircle2 className="h-4 w-4 text-emerald-300" aria-hidden />
+      );
+    case "CURRENT":
+      return (
+        <CircleDot className="h-4 w-4 text-(--earist-accent)" aria-hidden />
+      );
+    case "AVAILABLE":
+      return <Circle className="h-4 w-4 text-sky-300" aria-hidden />;
+    case "WAITING":
+      return <Clock className="h-4 w-4 text-amber-300" aria-hidden />;
+    case "LOCKED":
+      return <Lock className="h-4 w-4 text-white/40" aria-hidden />;
+    default:
+      return (
+        <Circle
+          className="h-4 w-4 animate-pulse text-white/30"
+          aria-hidden
+        />
+      );
+  }
+}
+
+function statusExplanation(
+  step: JourneyStepView | undefined,
+  fallbackState: "LOADING" | "ERROR" = "LOADING",
+): string {
+  if (!step) {
+    return fallbackState === "ERROR"
+      ? "Journey status unavailable"
+      : "Loading journey status";
+  }
+  switch (step.state) {
+    case "COMPLETED":
+      return "Completed";
+    case "CURRENT":
+      return "Current step";
+    case "AVAILABLE":
+      return "Available";
+    case "WAITING":
+      return step.detail || step.lockReason || "Waiting";
+    case "LOCKED":
+      return step.lockReason
+        ? `${step.label} is locked. ${step.lockReason}`
+        : `${step.label} is locked`;
+    default:
+      return step.label;
+  }
+}
 
 export default function StudentLayout({
   children,
@@ -57,10 +113,19 @@ export default function StudentLayout({
   const [thesisOpen, setThesisOpen] = useState(
     pathname.startsWith("/student/thesis"),
   );
+  const {
+    data: journey,
+    isLoading: journeyLoading,
+    isError: journeyError,
+  } = useStudentThesisJourney();
+  void journeyLoading;
+
+  const stepByKey = new Map<JourneyStepKey, JourneyStepView>(
+    (journey?.steps ?? []).map((s) => [s.key, s]),
+  );
 
   return (
     <div className="flex min-h-screen bg-(--earist-surface-gray)">
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -68,7 +133,6 @@ export default function StudentLayout({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-(--earist-primary) transition-all duration-300 ${
           collapsed ? "w-17" : "w-65"
@@ -76,7 +140,6 @@ export default function StudentLayout({
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
           <Link href="/student/dashboard" className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-(--earist-accent)" />
@@ -99,67 +162,14 @@ export default function StudentLayout({
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-4">
           <ul className="space-y-1">
-            {navItems.map((item) => {
-              if ("children" in item) {
-                const isOpen = thesisOpen;
-                return (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href || "#"}
-                      onClick={() => setThesisOpen(!isOpen)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                        pathname.startsWith("/student/thesis")
-                          ? "bg-(--earist-accent) text-(--earist-primary)"
-                          : "text-white hover:bg-white/10 hover:text-(--earist-accent)"
-                      }`}
-                      title={collapsed ? item.label : undefined}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1 text-left">{item.label}</span>
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${
-                              isOpen ? "rotate-180" : ""
-                            }`}
-                          />
-                        </>
-                      )}
-                    </Link>
-                    {!collapsed && isOpen && (
-                      <ul className="mt-1 ml-6 space-y-1 border-l border-white/10 pl-3">
-                        {item.children?.map((child) => {
-                          const isChildActive = pathname === child.href;
-                          return (
-                            <li key={child.href}>
-                              <Link
-                                href={child.href}
-                                onClick={() => setSidebarOpen(false)}
-                                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                                  isChildActive
-                                    ? "bg-(--earist-accent) font-medium text-(--earist-primary)"
-                                    : "text-white/80 hover:bg-white/10 hover:text-(--earist-accent)"
-                                }`}
-                              >
-                                {child.label}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </li>
-                );
-              }
-
+            {topNavItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <li key={item.href}>
                   <Link
-                    href={item.href!}
+                    href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       isActive
@@ -174,10 +184,105 @@ export default function StudentLayout({
                 </li>
               );
             })}
+
+            {/* Thesis Journey parent: toggle only — never a Link */}
+            <li>
+              <button
+                type="button"
+                aria-expanded={thesisOpen}
+                onClick={() => setThesisOpen((v) => !v)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  pathname.startsWith("/student/thesis")
+                    ? "bg-(--earist-accent) text-(--earist-primary)"
+                    : "text-white hover:bg-white/10 hover:text-(--earist-accent)"
+                }`}
+                title={collapsed ? "Thesis Journey" : undefined}
+              >
+                <FileText className="h-5 w-5 shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 text-left">Thesis Journey</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${
+                        thesisOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </>
+                )}
+              </button>
+
+              {!collapsed && thesisOpen && (
+                <ul className="mt-1 ml-6 space-y-1 border-l border-white/10 pl-3">
+                  {JOURNEY_STEP_ORDER.map((key) => {
+                    const step = stepByKey.get(key);
+                    const href = journeyRouteFor(key);
+                    const isChildActive = pathname === href;
+                    const isCurrent = step?.state === "CURRENT";
+                    const isLocked = step?.state === "LOCKED";
+                    const tip = statusExplanation(
+                      step,
+                      journeyError ? "ERROR" : "LOADING",
+                    );
+                    const stateForIcon: JourneyStepState | "LOADING" | "ERROR" =
+                      step?.state ?? (journeyError ? "ERROR" : "LOADING");
+
+                    if (isLocked) {
+                      return (
+                        <li key={key}>
+                          <div
+                            role="link"
+                            aria-disabled="true"
+                            tabIndex={0}
+                            title={tip}
+                            className="block cursor-not-allowed rounded-lg px-3 py-2 text-sm text-white/40"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                              }
+                            }}
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span>{step?.label ?? key}</span>
+                              <span title={tip} aria-label={tip}>
+                                {statusIcon(stateForIcon)}
+                              </span>
+                            </span>
+                            <span className="sr-only">{tip}</span>
+                          </div>
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={key}>
+                        <Link
+                          href={href}
+                          title={tip}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                            isChildActive
+                              ? "bg-(--earist-accent) font-medium text-(--earist-primary)"
+                              : isCurrent
+                                ? "bg-white/10 font-medium text-white"
+                                : "text-white/80 hover:bg-white/10 hover:text-(--earist-accent)"
+                          }`}
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span>{step?.label ?? key}</span>
+                            <span title={tip} aria-label={tip}>
+                              {statusIcon(stateForIcon)}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
           </ul>
         </nav>
 
-        {/* Collapse Toggle (Desktop) */}
         <div className="hidden border-t border-white/10 p-2 lg:block">
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -189,7 +294,6 @@ export default function StudentLayout({
           </button>
         </div>
 
-        {/* Logout */}
         <div className="border-t border-white/10 p-2">
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
@@ -201,13 +305,11 @@ export default function StudentLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
       <div
         className={`flex flex-1 flex-col transition-all duration-300 ${
           collapsed ? "lg:ml-17" : "lg:ml-65"
         }`}
       >
-        {/* Top Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-(--earist-border-gray) bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -227,18 +329,16 @@ export default function StudentLayout({
             <NotificationBell role="STUDENT" />
             <div
               className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white uppercase"
-              title={session?.user?.email || "Admin"}
+              title={session?.user?.email || "Student"}
             >
               {session?.user?.email?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
 
-      {/* AI Chatbot Widget */}
       <ChatbotWidget />
     </div>
   );
