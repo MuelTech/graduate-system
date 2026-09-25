@@ -3,26 +3,12 @@ import {
   evaluateStudentThesisJourney,
   type JourneySnapshot,
 } from "./student-thesis-journey.rules";
+import {
+  JOURNEY_FIXTURE_EXPECTATIONS,
+  JOURNEY_FIXTURE_KEYS,
+  STRIKE_POLICY_ON_EXPECTATIONS,
+} from "./journey-fixture-expectations";
 
-const REQUIRED_SCENARIOS = [
-  "TITLE_READY",
-  "TITLE_PENDING",
-  "TITLE_PASSED_NO_ADVISER",
-  "ADVISER_PENDING",
-  "ADVISER_CONFORMED_WAITING_DEAN",
-  "ADVISER_APPROVED",
-  "PROPOSAL_READY",
-  "PROPOSAL_PASSED",
-  "STRIKE_READY",
-  "STRIKE_ELIGIBLE",
-  "FINAL_READY",
-  "FINAL_PASSED",
-] as const;
-
-/**
- * WP6 expected Journey states for the 12 required fixtures.
- * These assert the evaluator contract the seeded data must satisfy.
- */
 function snap(partial: Partial<JourneySnapshot>): JourneySnapshot {
   return {
     compExamPassed: true,
@@ -52,174 +38,88 @@ const adviserReady = {
   activeAdviser: { userId: "a", name: "Adviser" },
 } as const;
 
-describe("WP6 fixture Journey expectations", () => {
+const SNAPSHOT_BY_FIXTURE: Record<string, JourneySnapshot> = {
+  TITLE_READY: snap({ titleAdminState: "NONE" }),
+  TITLE_PENDING: snap({ titleAdminState: "SUBMITTED" }),
+  TITLE_PASSED_NO_ADVISER: snap({ ...titleReady }),
+  ADVISER_PENDING: snap({
+    ...titleReady,
+    adviserRequest: {
+      id: "r",
+      status: "PENDING",
+      adviserStatus: "PENDING",
+      deanStatus: "PENDING",
+      requestedAdviserId: "a",
+      requestedAdviserName: "A",
+    },
+  }),
+  ADVISER_CONFORMED_WAITING_DEAN: snap({
+    ...titleReady,
+    adviserRequest: {
+      id: "r",
+      status: "PENDING",
+      adviserStatus: "CONFORMED",
+      deanStatus: "PENDING",
+      requestedAdviserId: "a",
+      requestedAdviserName: "A",
+    },
+  }),
+  ADVISER_APPROVED: snap({ ...adviserReady }),
+  PROPOSAL_READY: snap({ ...adviserReady, proposalAdminState: "NONE" }),
+  PROPOSAL_PASSED: snap({
+    ...adviserReady,
+    proposalPassed: true,
+    strikeRequired: false,
+  }),
+  STRIKE_READY: snap({
+    ...adviserReady,
+    proposalPassed: true,
+    strikeRequired: false,
+    strikeEligible: false,
+  }),
+  STRIKE_ELIGIBLE: snap({
+    ...adviserReady,
+    proposalPassed: true,
+    strikeRequired: true,
+    strikeEligible: true,
+  }),
+  FINAL_READY: snap({
+    ...adviserReady,
+    proposalPassed: true,
+    strikeRequired: true,
+    strikeEligible: true,
+    finalAdminState: "NONE",
+  }),
+  FINAL_PASSED: snap({
+    ...adviserReady,
+    proposalPassed: true,
+    strikeRequired: true,
+    strikeEligible: true,
+    finalPassed: true,
+  }),
+};
+
+describe("WP6 fixture Journey expectations (shared manifest)", () => {
   it("defines all 12 required scenarios", () => {
-    expect([...REQUIRED_SCENARIOS]).toHaveLength(12);
+    expect(JOURNEY_FIXTURE_KEYS).toHaveLength(12);
   });
 
-  it("maps scenarios to expected currentStep/step states", () => {
-    const cases: Array<{
-      name: string;
-      snapshot: JourneySnapshot;
-      currentStep: string | null;
-      states: Record<string, string>;
-    }> = [
-      {
-        name: "TITLE_READY",
-        snapshot: snap({ titleAdminState: "NONE" }),
-        currentStep: "TITLE_DEFENSE",
-        states: { TITLE_DEFENSE: "CURRENT" },
-      },
-      {
-        name: "TITLE_PENDING",
-        snapshot: snap({ titleAdminState: "SUBMITTED" }),
-        currentStep: "TITLE_DEFENSE",
-        states: { TITLE_DEFENSE: "WAITING" },
-      },
-      {
-        name: "TITLE_PASSED_NO_ADVISER",
-        snapshot: snap({ ...titleReady }),
-        currentStep: "ADVISER_REQUEST",
-        states: {
-          TITLE_DEFENSE: "COMPLETED",
-          ADVISER_REQUEST: "CURRENT",
-        },
-      },
-      {
-        name: "ADVISER_PENDING",
-        snapshot: snap({
-          ...titleReady,
-          adviserRequest: {
-            id: "r",
-            status: "PENDING",
-            adviserStatus: "PENDING",
-            deanStatus: "PENDING",
-            requestedAdviserId: "a",
-            requestedAdviserName: "A",
-          },
-        }),
-        currentStep: "ADVISER_REQUEST",
-        states: { ADVISER_REQUEST: "WAITING" },
-      },
-      {
-        name: "ADVISER_CONFORMED_WAITING_DEAN",
-        snapshot: snap({
-          ...titleReady,
-          adviserRequest: {
-            id: "r",
-            status: "PENDING",
-            adviserStatus: "CONFORMED",
-            deanStatus: "PENDING",
-            requestedAdviserId: "a",
-            requestedAdviserName: "A",
-          },
-        }),
-        currentStep: "ADVISER_REQUEST",
-        states: { ADVISER_REQUEST: "WAITING" },
-      },
-      {
-        name: "ADVISER_APPROVED",
-        snapshot: snap({ ...adviserReady }),
-        currentStep: "PROPOSAL_DEFENSE",
-        states: {
-          ADVISER_REQUEST: "COMPLETED",
-          PROPOSAL_DEFENSE: "CURRENT",
-        },
-      },
-      {
-        name: "PROPOSAL_READY",
-        snapshot: snap({
-          ...adviserReady,
-          proposalAdminState: "NONE",
-        }),
-        currentStep: "PROPOSAL_DEFENSE",
-        states: { PROPOSAL_DEFENSE: "CURRENT" },
-      },
-      {
-        name: "PROPOSAL_PASSED",
-        snapshot: snap({
-          ...adviserReady,
-          proposalPassed: true,
-          strikeRequired: false,
-        }),
-        currentStep: "FINAL_DEFENSE",
-        states: {
-          PROPOSAL_DEFENSE: "COMPLETED",
-          STRIKE: "COMPLETED",
-          FINAL_DEFENSE: "CURRENT",
-        },
-      },
-      {
-        name: "STRIKE_READY",
-        snapshot: snap({
-          ...adviserReady,
-          proposalPassed: true,
-          strikeRequired: false,
-          strikeEligible: false,
-        }),
-        currentStep: "FINAL_DEFENSE",
-        states: { FINAL_DEFENSE: "CURRENT" },
-      },
-      {
-        name: "STRIKE_ELIGIBLE",
-        snapshot: snap({
-          ...adviserReady,
-          proposalPassed: true,
-          strikeRequired: true,
-          strikeEligible: true,
-        }),
-        currentStep: "FINAL_DEFENSE",
-        states: {
-          STRIKE: "COMPLETED",
-          FINAL_DEFENSE: "CURRENT",
-        },
-      },
-      {
-        name: "FINAL_READY",
-        snapshot: snap({
-          ...adviserReady,
-          proposalPassed: true,
-          strikeRequired: true,
-          strikeEligible: true,
-          finalAdminState: "NONE",
-        }),
-        currentStep: "FINAL_DEFENSE",
-        states: { FINAL_DEFENSE: "CURRENT" },
-      },
-      {
-        name: "FINAL_PASSED",
-        snapshot: snap({
-          ...adviserReady,
-          proposalPassed: true,
-          strikeRequired: true,
-          strikeEligible: true,
-          finalPassed: true,
-        }),
-        currentStep: null,
-        states: {
-          TITLE_DEFENSE: "COMPLETED",
-          ADVISER_REQUEST: "COMPLETED",
-          PROPOSAL_DEFENSE: "COMPLETED",
-          STRIKE: "COMPLETED",
-          FINAL_DEFENSE: "COMPLETED",
-        },
-      },
-    ];
-
-    for (const c of cases) {
-      const dto = evaluateStudentThesisJourney(c.snapshot);
-      expect(dto.currentStep, c.name).toBe(c.currentStep);
-      for (const [key, state] of Object.entries(c.states)) {
+  it("matches evaluator states for every required fixture", () => {
+    for (const key of JOURNEY_FIXTURE_KEYS) {
+      const expected = JOURNEY_FIXTURE_EXPECTATIONS[key];
+      const dto = evaluateStudentThesisJourney(SNAPSHOT_BY_FIXTURE[key]);
+      expect(dto.currentStep, key).toBe(expected.currentStep);
+      for (const [step, state] of Object.entries(expected.steps)) {
         expect(
-          dto.steps.find((s) => s.key === key)?.state,
-          `${c.name}.${key}`,
+          dto.steps.find((s) => s.key === step)?.state,
+          `${key}.${step}`,
         ).toBe(state);
       }
     }
   });
 
-  it("STRIKE_READY locks Final when policy is ON (without changing persisted data)", () => {
-    const dto = evaluateStudentThesisJourney(
+  it("STRIKE policy ON expectations", () => {
+    const ready = evaluateStudentThesisJourney(
       snap({
         ...adviserReady,
         proposalPassed: true,
@@ -227,10 +127,30 @@ describe("WP6 fixture Journey expectations", () => {
         strikeEligible: false,
       }),
     );
-    expect(dto.steps.find((s) => s.key === "STRIKE")?.state).toBe("CURRENT");
-    expect(dto.steps.find((s) => s.key === "FINAL_DEFENSE")?.state).toBe(
+    expect(ready.currentStep).toBe(
+      STRIKE_POLICY_ON_EXPECTATIONS.STRIKE_READY.currentStep,
+    );
+    expect(ready.steps.find((s) => s.key === "STRIKE")?.state).toBe("CURRENT");
+    expect(ready.steps.find((s) => s.key === "FINAL_DEFENSE")?.state).toBe(
       "LOCKED",
     );
-    expect(dto.currentStep).toBe("STRIKE");
+
+    const eligible = evaluateStudentThesisJourney(
+      snap({
+        ...adviserReady,
+        proposalPassed: true,
+        strikeRequired: true,
+        strikeEligible: true,
+      }),
+    );
+    expect(eligible.currentStep).toBe(
+      STRIKE_POLICY_ON_EXPECTATIONS.STRIKE_ELIGIBLE.currentStep,
+    );
+    expect(eligible.steps.find((s) => s.key === "STRIKE")?.state).toBe(
+      "COMPLETED",
+    );
+    expect(eligible.steps.find((s) => s.key === "FINAL_DEFENSE")?.state).toBe(
+      "CURRENT",
+    );
   });
 });
