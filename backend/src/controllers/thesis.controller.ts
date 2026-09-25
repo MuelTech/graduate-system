@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ThesisService } from '../services/thesis.service';
+import { StudentThesisJourneyService } from '../services/student-thesis-journey.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -16,6 +17,7 @@ function sendEligibilityError(res: Response, error: any): void {
 
 export class ThesisController {
   private thesisService = new ThesisService();
+  private journeyService = new StudentThesisJourneyService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -199,6 +201,21 @@ export class ThesisController {
   };
 
   /** STUDENT: ODP adviser candidates from the passed Title Defense session. */
+  /** STUDENT: central Thesis Journey read model (sidebar, locks, currentStep). */
+  getStudentThesisJourney = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.journeyService.getJourney(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   getAdviserCandidates = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');

@@ -45,6 +45,14 @@ router.post(
   thesisController.applyFinal,
 );
 
+// STUDENT: central Thesis Journey read model (authoritative progression)
+router.get(
+  "/journey",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentThesisJourney,
+);
+
 // STUDENT: ODP adviser candidates from passed Title Defense (GS-020)
 router.get(
   "/adviser/candidates",

@@ -10,9 +10,9 @@ import {
   type ResearchVariablesState,
 } from "../interfaces/defense-eligibility.interfaces";
 import {
-  DEFAULT_FINAL_OPTIONAL_GATES,
   type FinalOptionalGateFlags,
 } from "./defense-gates.config";
+import { getFinalOptionalGates } from "./strike-policy";
 import { canUnlockFinal, canUnlockProposal } from "./stage-completion";
 import { AppError } from "../utils/AppError";
 
@@ -237,7 +237,7 @@ export class DefenseEligibilityService {
       cor: snap.evidence.corFinal,
       receipt: snap.evidence.receiptFinal,
     },
-    gates: FinalOptionalGateFlags = DEFAULT_FINAL_OPTIONAL_GATES,
+    gates: FinalOptionalGateFlags = getFinalOptionalGates(),
   ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "FINAL";
@@ -356,7 +356,7 @@ export class DefenseEligibilityService {
   evaluateSchedule(
     snap: EligibilitySnapshot,
     defenseType: DefenseTypeName,
-    gates: FinalOptionalGateFlags = DEFAULT_FINAL_OPTIONAL_GATES,
+    gates: FinalOptionalGateFlags = getFinalOptionalGates(),
   ): EligibilityResult {
     const stage = DEFENSE_TYPE_STAGE[defenseType] as DefenseStage;
     const missing: MissingRequirement[] = [];
