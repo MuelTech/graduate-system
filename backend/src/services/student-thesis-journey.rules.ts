@@ -72,6 +72,7 @@ export type AdminSessionState =
   | "SUBMITTED"
   | "APPROVED_READY"
   | "SCHEDULED"
+  | "REJECTED"
   | "CONCLUDED_FAILED"
   | "CONCLUDED_PASSED"
   | "CONCLUDED_OTHER";
@@ -131,9 +132,47 @@ function adminWaitingText(
   }
 }
 
+function rejectedApplicationStep(
+  key: JourneyStepKey,
+  kind: "Title" | "Proposal" | "Final",
+): JourneyStepView {
+  return step(
+    key,
+    "CURRENT",
+    null,
+    "Update the application requirements and resubmit.",
+    `Your ${kind} Defense application was rejected. Review the feedback and resubmit.`,
+  );
+}
+
+function adminActionableStep(
+  key: JourneyStepKey,
+  admin: AdminSessionState,
+  kind: "Title" | "Proposal" | "Final",
+  defaultNext: string,
+): JourneyStepView {
+  if (admin === "REJECTED") {
+    return rejectedApplicationStep(key, kind);
+  }
+  if (admin === "NONE") {
+    return step(key, "CURRENT", null, defaultNext);
+  }
+  return step(
+    key,
+    "WAITING",
+    adminWaitingText(admin, kind) ?? `Waiting for ${kind} Defense completion.`,
+    admin === "SCHEDULED"
+      ? `Attend ${kind} Defense and await the formal conclusion.`
+      : `Await ${kind} Defense review and formal conclusion.`,
+  );
+}
+
 /**
- * Authoritative Journey evaluation.
+ * Authoritative Journey evaluation — cumulative sequence.
  * selectedTitle must come from DefenseConclusion.selectedTitleId, not isSelected alone.
+ *
+ * Downstream steps require ALL preceding academic prerequisites, so orphaned
+ * legacy evidence cannot unlock a later milestone early.
  */
 export function evaluateStudentThesisJourney(
   snap: JourneySnapshot,
@@ -142,42 +181,35 @@ export function evaluateStudentThesisJourney(
   const adviserCompleted = Boolean(snap.activeAdviser);
   const proposalCompleted = snap.proposalPassed;
   const strikeRequired = snap.strikeRequired;
-  const strikeCompleted = !strikeRequired || snap.strikeEligible;
+  const strikeSatisfied = !strikeRequired || snap.strikeEligible;
   const finalCompleted = snap.finalPassed;
 
+  // Cumulative academic gates (never skip an earlier milestone).
+  const titleReady = snap.compExamPassed;
+  const adviserReady = titleCompleted;
+  const proposalReady = titleCompleted && adviserCompleted;
+  const strikeReady = titleCompleted && adviserCompleted && proposalCompleted;
+  const finalReady =
+    titleCompleted && adviserCompleted && proposalCompleted && strikeSatisfied;
+
   // ── Title Defense ──────────────────────────────────────────────
-  const titleStep = !snap.compExamPassed
+  const titleStep = !titleReady
     ? step(
         "TITLE_DEFENSE",
         "LOCKED",
         "Pass the Comprehensive Examination before starting Title Defense.",
       )
     : titleCompleted
-      ? step(
+      ? step("TITLE_DEFENSE", "COMPLETED", null, "Continue to Adviser Request.")
+      : adminActionableStep(
           "TITLE_DEFENSE",
-          "COMPLETED",
-          null,
-          "Continue to Adviser Request.",
-        )
-      : snap.titleAdminState === "NONE"
-        ? step(
-            "TITLE_DEFENSE",
-            "CURRENT",
-            null,
-            "Submit Title Defense application.",
-          )
-        : step(
-            "TITLE_DEFENSE",
-            "WAITING",
-            adminWaitingText(snap.titleAdminState, "Title") ??
-              "Waiting for Title Defense completion.",
-            snap.titleAdminState === "SCHEDULED"
-              ? "Attend Title Defense and await the formal conclusion."
-              : "Await Title Defense review and formal conclusion.",
-          );
+          snap.titleAdminState,
+          "Title",
+          "Submit Title Defense application.",
+        );
 
   // ── Adviser Request ────────────────────────────────────────────
-  const adviserStep = !titleCompleted
+  const adviserStep = !adviserReady
     ? step(
         "ADVISER_REQUEST",
         "LOCKED",
@@ -217,11 +249,13 @@ export function evaluateStudentThesisJourney(
               );
 
   // ── Proposal Defense ───────────────────────────────────────────
-  const proposalStep = !adviserCompleted
+  const proposalStep = !proposalReady
     ? step(
         "PROPOSAL_DEFENSE",
         "LOCKED",
-        "Complete the Adviser Request process and obtain an approved adviser first.",
+        adviserCompleted
+          ? "Complete and pass Title Defense with an official selected title first."
+          : "Complete the Adviser Request process and obtain an approved adviser first.",
       )
     : proposalCompleted
       ? step(
@@ -232,27 +266,21 @@ export function evaluateStudentThesisJourney(
             ? "Continue to STRIKE / Plagiarism."
             : "Continue to Final Defense.",
         )
-      : snap.proposalAdminState === "NONE"
-        ? step(
-            "PROPOSAL_DEFENSE",
-            "CURRENT",
-            null,
-            "Submit Proposal Defense application.",
-          )
-        : step(
-            "PROPOSAL_DEFENSE",
-            "WAITING",
-            adminWaitingText(snap.proposalAdminState, "Proposal") ??
-              "Waiting for Proposal Defense completion.",
-            "Await Proposal Defense review and formal conclusion.",
-          );
+      : adminActionableStep(
+          "PROPOSAL_DEFENSE",
+          snap.proposalAdminState,
+          "Proposal",
+          "Submit Proposal Defense application.",
+        );
 
   // ── STRIKE / Plagiarism ────────────────────────────────────────
-  const strikeStep = !proposalCompleted
+  const strikeStep = !strikeReady
     ? step(
         "STRIKE",
         "LOCKED",
-        "Pass Proposal Defense before continuing.",
+        !proposalCompleted && adviserCompleted
+          ? "Pass Proposal Defense before continuing."
+          : "Complete Title Defense, Adviser Request, and Proposal Defense before continuing.",
       )
     : !strikeRequired
       ? step(
@@ -272,34 +300,24 @@ export function evaluateStudentThesisJourney(
           );
 
   // ── Final Defense ──────────────────────────────────────────────
-  const finalStep = !proposalCompleted
+  const finalStep = !finalReady
     ? step(
         "FINAL_DEFENSE",
         "LOCKED",
-        "Pass Proposal Defense before continuing.",
+        strikeRequired && proposalCompleted && !snap.strikeEligible
+          ? "Complete the required plagiarism / STRIKE check before Final Defense."
+          : !proposalCompleted
+            ? "Pass Proposal Defense before continuing."
+            : "Complete Title Defense, Adviser Request, and Proposal Defense before continuing.",
       )
-    : strikeRequired && !snap.strikeEligible
-      ? step(
+    : finalCompleted
+      ? step("FINAL_DEFENSE", "COMPLETED", null, "Thesis journey completed.")
+      : adminActionableStep(
           "FINAL_DEFENSE",
-          "LOCKED",
-          "Complete the required plagiarism / STRIKE check before Final Defense.",
-        )
-      : finalCompleted
-        ? step("FINAL_DEFENSE", "COMPLETED", null, "Thesis journey completed.")
-        : snap.finalAdminState === "NONE"
-          ? step(
-              "FINAL_DEFENSE",
-              "CURRENT",
-              null,
-              "Submit Final Defense application.",
-            )
-          : step(
-              "FINAL_DEFENSE",
-              "WAITING",
-              adminWaitingText(snap.finalAdminState, "Final") ??
-                "Waiting for Final Defense completion.",
-              "Await Final Defense review and formal conclusion.",
-            );
+          snap.finalAdminState,
+          "Final",
+          "Submit Final Defense application.",
+        );
 
   const steps: JourneyStepView[] = [
     titleStep,
@@ -309,9 +327,8 @@ export function evaluateStudentThesisJourney(
     finalStep,
   ];
 
-  // Earliest academically incomplete step the Student should address.
-  // Prefer CURRENT → WAITING → AVAILABLE → first LOCKED (so a fully locked
-  // journey still points at the step that needs a prerequisite).
+  // Earliest non-COMPLETED step in canonical order (STRIKE skipped when
+  // policy-not-required is already represented as COMPLETED).
   const order: JourneyStepKey[] = [
     "TITLE_DEFENSE",
     "ADVISER_REQUEST",
@@ -319,14 +336,9 @@ export function evaluateStudentThesisJourney(
     "STRIKE",
     "FINAL_DEFENSE",
   ];
-  const byState = (state: JourneyStepState) =>
-    order.find((k) => steps.find((s) => s.key === k)?.state === state) ?? null;
-
   const currentStep =
-    byState("CURRENT") ??
-    byState("WAITING") ??
-    byState("AVAILABLE") ??
-    byState("LOCKED");
+    order.find((k) => steps.find((s) => s.key === k)?.state !== "COMPLETED") ??
+    null;
 
   return {
     currentStep,

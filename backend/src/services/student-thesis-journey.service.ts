@@ -31,8 +31,9 @@ function toAdminState(row: {
       : "CONCLUDED_OTHER";
   }
   if (row.schedules.length > 0) return "SCHEDULED";
+  if (row.status === "REJECTED") return "REJECTED";
   if (row.status === "APPROVED") return "APPROVED_READY";
-  if (row.status === "PENDING" || row.status === "REJECTED") return "SUBMITTED";
+  if (row.status === "PENDING") return "SUBMITTED";
   return "NONE";
 }
 
@@ -122,29 +123,33 @@ export class StudentThesisJourneyService {
 
     const policy = resolveStrikePolicy();
 
+    // Stage-scoped admin context: ThesisRecord.stage/status only apply to the
+    // matching current stage. Prior-stage status must not make a later stage
+    // look submitted/approved.
     const adminFor = (
       defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE",
       stage: "TITLE" | "PROPOSAL" | "FINAL",
     ) => {
       const rows = schedules.filter((s) => s.defenseType === defenseType);
       const latest = rows[0] ?? null;
-      return toAdminState(
-        latest
-          ? {
-              status: thesis?.status ?? "PENDING",
-              stage: thesis?.stage ?? stage,
-              outcome: thesis?.outcome ?? null,
-              schedules: rows.map((s) => ({ conclusion: s.conclusion })),
-            }
-          : thesis
-            ? {
-                status: thesis.status,
-                stage: thesis.stage,
-                outcome: thesis.outcome,
-                schedules: [],
-              }
-            : null,
-      );
+      if (latest) {
+        return toAdminState({
+          status: thesis?.status ?? "PENDING",
+          stage: thesis?.stage ?? stage,
+          outcome: thesis?.outcome ?? null,
+          schedules: rows.map((s) => ({ conclusion: s.conclusion })),
+        });
+      }
+      // No session for this stage — only use ThesisRecord if it is the current stage.
+      if (thesis && thesis.stage === stage) {
+        return toAdminState({
+          status: thesis.status,
+          stage: thesis.stage,
+          outcome: thesis.outcome,
+          schedules: [],
+        });
+      }
+      return "NONE";
     };
 
     const snapshot: JourneySnapshot = {

@@ -271,12 +271,121 @@ describe("evaluateStudentThesisJourney — STRIKE policy", () => {
   });
 });
 
-describe("currentStep determinism", () => {
+describe("currentStep determinism and cumulative sequence", () => {
   it("does not jump ahead when ThesisRecord.stage is manually changed (snapshot-based)", () => {
-    // Snapshot has no formal Proposal/Final evidence — currentStep stays Title.
+    const dto = evaluateStudentThesisJourney(baseSnap({ compExamPassed: true }));
+    expect(dto.currentStep).toBe("TITLE_DEFENSE");
+  });
+
+  it("A: Title WAITING + active AdviserAssignment keeps currentStep at Title; Proposal not CURRENT", () => {
     const dto = evaluateStudentThesisJourney(
-      baseSnap({ compExamPassed: true }),
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: false,
+        titleAdminState: "SUBMITTED",
+        activeAdviser: { userId: "a", name: "Orphan Adviser" },
+      }),
     );
     expect(dto.currentStep).toBe("TITLE_DEFENSE");
+    expect(stateOf(dto, "TITLE_DEFENSE")).toBe("WAITING");
+    expect(stateOf(dto, "PROPOSAL_DEFENSE")).toBe("LOCKED");
+  });
+
+  it("B: Title incomplete + Proposal PASSED legacy evidence keeps STRIKE/Final locked", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: false,
+        proposalPassed: true,
+      }),
+    );
+    expect(dto.currentStep).toBe("TITLE_DEFENSE");
+    expect(stateOf(dto, "STRIKE")).toBe("LOCKED");
+    expect(stateOf(dto, "FINAL_DEFENSE")).toBe("LOCKED");
+  });
+
+  it("C: Title complete + no adviser + Proposal PASSED legacy keeps currentStep at Adviser", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        proposalPassed: true,
+      }),
+    );
+    expect(dto.currentStep).toBe("ADVISER_REQUEST");
+    expect(stateOf(dto, "PROPOSAL_DEFENSE")).toBe("LOCKED");
+    expect(stateOf(dto, "STRIKE")).toBe("LOCKED");
+    expect(stateOf(dto, "FINAL_DEFENSE")).toBe("LOCKED");
+  });
+
+  it("fully completed journey → currentStep null", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        activeAdviser: { userId: "a", name: "A" },
+        proposalPassed: true,
+        strikeRequired: true,
+        strikeEligible: true,
+        finalPassed: true,
+      }),
+    );
+    expect(dto.currentStep).toBeNull();
+    expect(dto.steps.every((s) => s.state === "COMPLETED")).toBe(true);
+  });
+});
+
+describe("rejected applications are actionable, not WAITING", () => {
+  const baseReady = {
+    compExamPassed: true,
+    titlePassed: true,
+    selectedTitleId: "t",
+    selectedTitleText: "T",
+    activeAdviser: { userId: "a", name: "A" },
+    proposalPassed: true,
+    strikeRequired: false,
+    finalPassed: false,
+  } as const;
+
+  it("Title application rejected → CURRENT with resubmit text", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "REJECTED",
+      }),
+    );
+    expect(stateOf(dto, "TITLE_DEFENSE")).toBe("CURRENT");
+    expect(dto.steps[0].detail).toMatch(/rejected/i);
+    expect(dto.steps[0].detail).not.toMatch(/under review/i);
+    expect(dto.steps[0].nextAction).toMatch(/resubmit/i);
+  });
+
+  it("Proposal application rejected → CURRENT, not WAITING", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        ...baseReady,
+        proposalPassed: false,
+        proposalAdminState: "REJECTED",
+      }),
+    );
+    expect(stateOf(dto, "PROPOSAL_DEFENSE")).toBe("CURRENT");
+    expect(dto.steps[2].detail).toMatch(/rejected/i);
+    expect(dto.steps[2].detail).not.toMatch(/under review/i);
+  });
+
+  it("Final application rejected → CURRENT, not WAITING", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        ...baseReady,
+        finalAdminState: "REJECTED",
+      }),
+    );
+    expect(stateOf(dto, "FINAL_DEFENSE")).toBe("CURRENT");
+    expect(dto.steps[4].detail).toMatch(/rejected/i);
+    expect(dto.steps[4].detail).not.toMatch(/under review/i);
   });
 });
