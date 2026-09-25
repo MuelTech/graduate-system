@@ -471,8 +471,10 @@ export class ThesisRepository {
         reason,
         status: "PENDING",
         requestDate: new Date(),
-        // Temporary placeholder until admin approves
-        approvedById: requestedAdviserId,
+        // Approver is the Dean only after approval — never a placeholder actor.
+        approvedById: null,
+        adviserStatus: "PENDING",
+        deanStatus: "PENDING",
       },
     });
   }

@@ -30,6 +30,7 @@ model User {
   adviserCertifications              AdviserCertification[]    @relation("AdviserCertIssuer")
   adviserRequestsApproved            AdviserRequest[]          @relation("AdviserRequestApprovedBy")
   adviserRequestsAsRequestedPanelist AdviserRequest[]          @relation("AdviserRequestedPanelist")
+  adviserRequestsDeansReviewed       AdviserRequest[]          @relation("AdviserRequestDean")
   bridgingWaiversValidated           ApplicantBridgingWaiver[] @relation("BridgingWaiverValidatedBy")
   auditLogsAsActor                   AuditLog[]                @relation("AuditLogActor")
   chatbotFaqsCreated                 ChatbotFaq[]              @relation("FaqCreatedBy")
@@ -406,15 +407,34 @@ model AdviserRequest {
   requestedAdviserId String        @map("requested_adviser_id")
   reason             String?
   status             RequestStatus @default(PENDING)
-  approvedById       String        @map("approved_by")
+  /** GS-020: passed Title Defense session that produced the ODP candidate pool. */
+  sourceDefenseScheduleId String?  @map("source_defense_schedule_id")
+  /** GS-020: Adviser CONFORME / Decline (distinct from Dean decision). */
+  adviserStatus      AdviserResponseStatus @default(PENDING) @map("adviser_status")
+  adviserRespondedAt DateTime?     @map("adviser_responded_at")
+  adviserRemarks     String?       @map("adviser_remarks") @db.Text
+  /** GS-020: Dean review — must not bypass Adviser CONFORME. */
+  deanStatus         DeanResponseStatus @default(PENDING) @map("dean_status")
+  deanReviewedById   String?       @map("dean_reviewed_by_id")
+  deanReviewedAt     DateTime?     @map("dean_reviewed_at")
+  deanRemarks        String?       @map("dean_remarks") @db.Text
+  /**
+   * Approving actor (Dean) after APPROVED only.
+   * Nullable on purpose — a pending Student request must not store a fake approver.
+   */
+  approvedById       String?       @map("approved_by")
   requestDate        DateTime      @map("request_date") @db.Date
   createdAt          DateTime      @default(now()) @map("created_at")
-  approvedBy         User          @relation("AdviserRequestApprovedBy", fields: [approvedById], references: [id])
+  approvedBy         User?         @relation("AdviserRequestApprovedBy", fields: [approvedById], references: [id])
   requestedAdviser   User          @relation("AdviserRequestedPanelist", fields: [requestedAdviserId], references: [id])
+  deanReviewedBy     User?         @relation("AdviserRequestDean", fields: [deanReviewedById], references: [id])
   student            Student       @relation(fields: [studentId], references: [id])
+  sourceDefenseSchedule DefenseSchedule? @relation(fields: [sourceDefenseScheduleId], references: [id])
 
   @@index([approvedById], map: "adviser_requests_approved_by_fkey")
+  @@index([deanReviewedById], map: "adviser_requests_dean_reviewed_by_id_fkey")
   @@index([requestedAdviserId], map: "adviser_requests_requested_adviser_id_fkey")
+  @@index([sourceDefenseScheduleId], map: "adviser_requests_source_defense_schedule_id_fkey")
   @@index([studentId], map: "adviser_requests_student_id_fkey")
   @@map("adviser_requests")
 }
@@ -515,6 +535,7 @@ model DefenseSchedule {
   conclusion              DefenseConclusion?
   panelAssignments        PanelAssignment[]
   rapReports              RapReport[]
+  adviserRequests         AdviserRequest[]
 
   @@index([setById], map: "defense_schedules_set_by_fkey")
   @@index([thesisId], map: "defense_schedules_thesis_id_fkey")
@@ -1159,6 +1180,22 @@ enum RequestStatus {
   REJECTED
 
   @@map("request_status")
+}
+
+enum AdviserResponseStatus {
+  PENDING
+  CONFORMED
+  DECLINED
+
+  @@map("adviser_response_status")
+}
+
+enum DeanResponseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("dean_response_status")
 }
 
 enum ThesisStage {
