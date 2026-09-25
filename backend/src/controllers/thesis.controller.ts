@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ThesisService } from '../services/thesis.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
+import { AppError } from '../utils/AppError';
 
 function sendEligibilityError(res: Response, error: any): void {
   const missing = (error as { missing?: MissingRequirement[] }).missing;
@@ -183,9 +184,31 @@ export class ThesisController {
   requestAdviser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      const result = await this.thesisService.requestAdviser(req.user.userId, req.body);
+      const result = await this.thesisService.requestAdviser(req.user.userId, {
+        requestedAdviserId: req.body?.requestedAdviserId,
+        reason: req.body?.reason,
+      });
       res.status(201).json({ message: 'Adviser request submitted', result });
     } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  /** STUDENT: ODP adviser candidates from the passed Title Defense session. */
+  getAdviserCandidates = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.listAdviserCandidates(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       res.status(400).json({ error: error.message });
     }
   };

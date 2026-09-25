@@ -23,6 +23,7 @@ import {
   hasCurrentStageConclusion,
 } from './defense-application-workflow';
 import { canApplyReviewTransition } from './defense-workflow.rules';
+import { AdviserRequestService } from './adviser-request.service';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -38,6 +39,7 @@ export class ThesisService {
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
   private committeePolicy = new DefenseCommitteePolicy();
+  private adviserRequestService = new AdviserRequestService();
   private conclusion = new DefenseConclusionService();
 
   async getPendingDefenses() {
@@ -335,13 +337,14 @@ export class ThesisService {
 
 
   async requestAdviser(userId: string, data: any) {
-    const student = await this.thesisRepo.getStudentByUserId(userId);
-    if (!student) throw new Error('Student profile not found.');
-    return this.thesisRepo.createAdviserRequest(
-      student.id,
-      data.requestedAdviserId,
-      data.reason,
-    );
+    return this.adviserRequestService.createRequest(userId, {
+      requestedAdviserId: data.requestedAdviserId,
+      reason: data.reason,
+    });
+  }
+
+  async listAdviserCandidates(userId: string) {
+    return this.adviserRequestService.listOdpCandidates(userId);
   }
 
   async assignAdviser(adminId: string, data: any) {

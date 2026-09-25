@@ -45,7 +45,15 @@ router.post(
   thesisController.applyFinal,
 );
 
-// STUDENT: Request an adviser
+// STUDENT: ODP adviser candidates from passed Title Defense (GS-020)
+router.get(
+  "/adviser/candidates",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getAdviserCandidates,
+);
+
+// STUDENT: Request an adviser (GS-020) — does NOT create AdviserAssignment
 router.post(
   "/adviser/request",
   authenticateJWT,
