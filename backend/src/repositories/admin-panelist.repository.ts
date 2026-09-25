@@ -2,6 +2,29 @@ import { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { UserRole } from "@prisma/client";
 
+/**
+ * Patch-safe panelist flag resolution.
+ * Omitted fields keep current values; external always forces availability off.
+ */
+export function resolvePanelistAdviserFlags(
+  data: {
+    isExternal?: boolean;
+    isAvailableAsAdviser?: boolean;
+  },
+  current: { isExternal: boolean; isAvailableAsAdviser: boolean },
+): { isExternal: boolean; isAvailableAsAdviser: boolean } {
+  const isExternal =
+    typeof data.isExternal === "boolean" ? data.isExternal : current.isExternal;
+  const requestedAvailability =
+    typeof data.isAvailableAsAdviser === "boolean"
+      ? data.isAvailableAsAdviser
+      : current.isAvailableAsAdviser;
+  return {
+    isExternal,
+    isAvailableAsAdviser: isExternal ? false : requestedAvailability,
+  };
+}
+
 const userSelect = {
     id: true,
     firstName: true,
@@ -93,14 +116,25 @@ export class AdminPanelistRepository {
 
             if (!panelistRecord) throw new Error("Panelist not found!");
 
-            const userData: any = {
-                firstName: data.firstName,
-                lastName: data.lastName,
-                title: data.title || null,
-                suffix: data.suffix || null,
-                isActive: data.isActive,
+            // Patch-safe user fields for status-only PUT { isActive }.
+            const userData: Record<string, unknown> = {
                 updatedById: adminId,
             };
+            if (typeof data.firstName === "string") {
+                userData.firstName = data.firstName;
+            }
+            if (typeof data.lastName === "string") {
+                userData.lastName = data.lastName;
+            }
+            if (data.title !== undefined) {
+                userData.title = data.title || null;
+            }
+            if (data.suffix !== undefined) {
+                userData.suffix = data.suffix || null;
+            }
+            if (typeof data.isActive === "boolean") {
+                userData.isActive = data.isActive;
+            }
             if (passwordHash) {
                 userData.passwordHash = passwordHash;
             }
@@ -110,18 +144,28 @@ export class AdminPanelistRepository {
                 data: userData,
             });
 
-            const isExternal = Boolean(data.isExternal);
-            // Backend invariant wins over crafted payloads.
-            const isAvailableAsAdviser = isExternal
-                ? false
-                : Boolean(data.isAvailableAsAdviser);
+            // Patch-safe flags + hard external invariant.
+            const { isExternal, isAvailableAsAdviser } =
+                resolvePanelistAdviserFlags(data, {
+                    isExternal: panelistRecord.isExternal,
+                    isAvailableAsAdviser: panelistRecord.isAvailableAsAdviser,
+                });
 
             return tx.panelist.update({
                 where: { id },
                 data: {
-                    highestEducationalAttainment: data.highestEducationalAttainment,
-                    officeAffiliation: data.officeAffiliation,
-                    specialization: data.specialization,
+                    highestEducationalAttainment:
+                        data.highestEducationalAttainment === undefined
+                            ? panelistRecord.highestEducationalAttainment
+                            : data.highestEducationalAttainment,
+                    officeAffiliation:
+                        data.officeAffiliation === undefined
+                            ? panelistRecord.officeAffiliation
+                            : data.officeAffiliation,
+                    specialization:
+                        data.specialization === undefined
+                            ? panelistRecord.specialization
+                            : data.specialization,
                     isExternal,
                     isAvailableAsAdviser,
                 },
