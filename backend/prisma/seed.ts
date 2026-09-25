@@ -1484,6 +1484,13 @@ async function main() {
   // formal conclusion, RAP, stage-scoped COR/receipt/certs, vars NOT_APPLICABLE.
   console.log("Seeding defense workflow refactor fixtures...");
   await seedDefenseWorkflowFixtures(passwordHash);
+
+  // WP6 — dedicated Student Thesis Journey scenario accounts
+  console.log("Seeding Student Thesis Journey fixtures...");
+  const { seedStudentThesisJourneyFixtures } = await import(
+    "./journey-fixtures"
+  );
+  await seedStudentThesisJourneyFixtures(prisma, passwordHash);
 }
 
 /** Idempotent fixtures for manual testing of the defense workflow refactor. */
