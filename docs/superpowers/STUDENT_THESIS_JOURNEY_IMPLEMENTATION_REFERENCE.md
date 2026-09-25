@@ -128,6 +128,8 @@ Candidate source:
 - student's actual passed Title Defense ODP;
 - working candidate mapping: Chairman + evaluator Panelists;
 - Facilitator and Rapporteur excluded;
+- **external panelists excluded from adviser candidacy** even if they served on the passed Title Defense panel;
+- new adviser requests require an internal Panelist with `isAvailableAsAdviser = true`;
 - unrestricted faculty directory is invalid for Student selection.
 
 Backend unlock requires:
@@ -149,6 +151,15 @@ A pending request is not an active assignment.
 Decline/rejection permits another valid request.
 
 Dean approval must not bypass Adviser CONFORME.
+
+Confirmed client invariant:
+
+- external panelists may serve on defense panels;
+- external panelists cannot receive a new GS-020 adviser request;
+- external panelists cannot become an active `AdviserAssignment`;
+- Admin Panelist management must force/keep adviser availability off while `isExternal = true`;
+- candidate listing/request creation and Dean assignment approval must enforce this on the backend;
+- the Panelist Adviser Requests inbox may remain accessible regardless of current adviser availability so historical/already-addressed requests remain viewable.
 
 ## 7. Three-actor GS-020 UI
 
@@ -329,6 +340,8 @@ WP7  Student Journey hook + sidebar + /student/thesis redirect
 WP8  Student Adviser Request UI
 ↓
 WP9  Panelist/Adviser Adviser Requests UI
+↓
+WP9.5 Internal-only adviser eligibility correction
 ↓
 WP10 Admin/Dean Adviser Review UI
 ↓

@@ -103,6 +103,8 @@ Candidates come only from the student's actual passed Title Defense ODP/evaluato
 
 Working mapping is Chairman + evaluator Panelists; Facilitator and Rapporteur are excluded pending exact client role-label confirmation.
 
+**Confirmed adviser-eligibility rule:** external panelists may serve on a defense panel but cannot become thesis/dissertation advisers. New GS-020 adviser candidates must therefore be internal Panelists (`isExternal = false`) with `isAvailableAsAdviser = true`. This must be enforced by the backend, not only by UI filtering. Admin Panelist management should force/keep adviser availability off while a Panelist is external, and Dean approval must defensively re-check the requested adviser before creating an active `AdviserAssignment`.
+
 Flow:
 
 ```text
@@ -362,7 +364,7 @@ Available actions for the requested adviser are **CONFORME / Accept** and **Decl
 
 After CONFORME, state clearly that Dean approval is still pending and no active AdviserAssignment exists yet.
 
-The Panelist/Adviser sidebar must include a discoverable Adviser Requests navigation item.
+The Panelist/Adviser sidebar must include a discoverable Adviser Requests navigation item. The inbox itself should not be hidden based on current adviser availability or external/internal status; historical/already-addressed requests may remain viewable, while backend eligibility prevents new invalid requests.
 
 ### 11.6 Admin/Dean Adviser Review UI
 

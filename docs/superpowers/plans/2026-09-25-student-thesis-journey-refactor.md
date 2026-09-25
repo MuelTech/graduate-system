@@ -131,7 +131,14 @@ Working candidate mapping:
 Exclude:
 
 - Facilitator;
-- Rapporteur.
+- Rapporteur;
+- **External panelists (`Panelist.isExternal = true`)**.
+
+Additional adviser eligibility:
+
+- candidate must be an internal Panelist;
+- `Panelist.isAvailableAsAdviser = true` is required for a new request;
+- external panelists may still serve on defense panels, but never as thesis/dissertation advisers.
 
 Unrestricted faculty/adviser directory is invalid for Student selection.
 
@@ -262,6 +269,7 @@ Approval transaction must re-check:
 - request exists;
 - `adviserStatus === CONFORMED`;
 - `deanStatus === PENDING`;
+- requested adviser is still an **internal Panelist** and is not external;
 - no conflicting active AdviserAssignment exists.
 
 Only then:
@@ -541,6 +549,31 @@ Add discoverable Adviser Requests navigation in the Panelist/Adviser portal.
 ### Stop condition
 
 STOP after WP9.
+
+---
+
+## WP9.5 — Internal-only adviser eligibility correction
+
+### Goal
+
+Apply the confirmed client rule that **external panelists may participate in defenses but can never become thesis/dissertation advisers**.
+
+### Required behavior
+
+- backend candidate eligibility excludes `Panelist.isExternal = true`;
+- request creation rejects an external requested adviser even if a client submits the ID manually;
+- Admin Panelist management keeps external status and adviser availability consistent: external → effective `isAvailableAsAdviser = false`, and the adviser-availability control is disabled/not applicable while external;
+- Dean approval defensively re-checks that the requested adviser is still internal before creating `AdviserAssignment`;
+- do not hide the Panelist Adviser Requests inbox solely because the current Panelist is unavailable/external; historical/already-addressed records may still need to be viewed;
+- add focused backend tests for external candidate exclusion, forged external request rejection, and Dean-assignment rejection.
+
+### Scope
+
+This is a narrow domain-correction package between WP9 and WP10. Do not start WP10 UI in this package.
+
+### Stop condition
+
+STOP after WP9.5.
 
 ---
 

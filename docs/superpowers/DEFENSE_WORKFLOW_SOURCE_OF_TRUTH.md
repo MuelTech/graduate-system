@@ -95,10 +95,12 @@ For current GS-IS terminology:
 - **Defense Committee** means the complete assigned defense roster, including evaluators and session-support roles.
 - **Oral Defense Panel (ODP)** means the evaluative subset used for academic evaluation and, under the adviser-selection rule, the adviser candidate pool.
 - The working role mapping is **Chairman + evaluator Panelists** for the ODP, with Facilitator and Rapporteur excluded from adviser candidacy. The exact current role-label mapping remains subject to explicit client confirmation.
+- **External panelists may participate in defense panels but are never eligible to become a thesis/dissertation adviser.** Adviser candidacy is limited to internal panelists.
+- `isAvailableAsAdviser` remains the explicit Admin-controlled eligibility flag for internal panelists. When a panelist is external, effective adviser availability must be false regardless of any legacy/default stored value.
 
 An active adviser is required before Proposal/Final eligibility under the current design, but adviser selection itself may begin after a passed Title Defense and official-title selection; it does not need to wait for every later Title post-defense artifact.
 
-**Status:** Adviser not required for Title and adviser must come from the student's own Title Defense panel are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
+**Status:** Adviser not required for Title, adviser must come from the student's own Title Defense panel, and external panelists cannot become advisers are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
 
 ### 3.3 Committee size
 
@@ -639,9 +641,11 @@ Rules:
 1. Do not query the full faculty directory as the student's adviser-choice list.
 2. Candidate users must come from the same Title Defense session that produced the passed conclusion.
 3. Candidate accounts must still be active/eligible system users when the request is made.
-4. Facilitator and Rapporteur are excluded under the current evaluator-only working design unless the client explicitly changes the rule.
-5. The student may view useful faculty profile information already owned by GS-IS, such as name, specialization, and office/affiliation, before making the request.
-6. Adviser-load or general `isAvailableAsAdviser` restrictions must not be silently hard-coded as institutional policy unless the current client confirms them.
+4. Candidate panelists must be **internal** (`isExternal = false`). External panelists may serve on a defense panel but must never appear as adviser candidates or become an `AdviserAssignment`.
+5. For an internal panelist, `isAvailableAsAdviser = true` is the explicit Admin-controlled eligibility flag for receiving a new adviser request. This is an eligibility control, not an adviser-load cap.
+6. Facilitator and Rapporteur are excluded under the current evaluator-only working design unless the client explicitly changes the rule.
+7. The student may view useful faculty profile information already owned by GS-IS, such as name, specialization, and office/affiliation, before making the request.
+8. The backend must enforce the internal-only adviser invariant when listing candidates/creating requests and again before Dean approval creates an `AdviserAssignment`; frontend filtering alone is insufficient.
 
 ### 9.4 Canonical adviser-request flow
 
@@ -672,6 +676,8 @@ Proposal preparation / stage-specific Adviser Certification
 ```
 
 The Dean/Admin approval step must not silently substitute for Adviser CONFORME. Requested adviser and active adviser are different states.
+
+**Internal-only adviser invariant:** an external panelist may remain a defense participant and may retain access to the Panelist portal, but the system must not create new GS-020 adviser requests for an external panelist and must never create an active `AdviserAssignment` to one. The Adviser Requests inbox does not need to be hidden solely because the current Panelist is external or currently unavailable as adviser, because historical/already-addressed requests may still need to be viewed.
 
 ### 9.5 GS-020 as system-native workflow + generated official document
 
