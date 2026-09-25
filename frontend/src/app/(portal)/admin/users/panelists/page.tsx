@@ -74,10 +74,10 @@ interface PanelistFormData {
   affiliation: string;
   specialization: string;
   isExternal: boolean;
+  isAvailableAsAdviser: boolean;
 }
 
 interface PanelistEditData extends PanelistFormData {
-  isAvailableAsAdviser: boolean;
   isActive: boolean;
   newPassword: string;
 }
@@ -92,6 +92,7 @@ const emptyCreateForm: PanelistFormData = {
   affiliation: "",
   specialization: "",
   isExternal: false,
+  isAvailableAsAdviser: true,
 };
 
 type PanelistRow = {
@@ -184,6 +185,9 @@ export default function AdminPanelistsPage() {
           highestEducationalAttainment: data.qualification,
           specialization: data.specialization,
           isExternal: data.isExternal,
+          isAvailableAsAdviser: data.isExternal
+            ? false
+            : data.isAvailableAsAdviser,
         }),
       });
     },
@@ -228,7 +232,9 @@ export default function AdminPanelistsPage() {
         highestEducationalAttainment: data.qualification,
         specialization: data.specialization,
         isExternal: data.isExternal,
-        isAvailableAsAdviser: data.isAvailableAsAdviser,
+        isAvailableAsAdviser: data.isExternal
+          ? false
+          : data.isAvailableAsAdviser,
         isActive: data.isActive,
       };
       if (data.newPassword.trim()) {
@@ -280,7 +286,9 @@ export default function AdminPanelistsPage() {
   const activeCount = panelists.filter((p) => p.isActive).length;
   const internalCount = panelists.filter((p) => !p.isExternal).length;
   const externalCount = panelists.filter((p) => p.isExternal).length;
-  const adviserCount = panelists.filter((p) => p.isAvailableAsAdviser).length;
+  const adviserCount = panelists.filter(
+    (p) => !p.isExternal && p.isAvailableAsAdviser,
+  ).length;
 
   function openViewModal(panelist: PanelistRow) {
     setSelectedPanelist(panelist);
@@ -752,12 +760,17 @@ export default function AdminPanelistsPage() {
                   type="checkbox"
                   id="create-isExternal"
                   checked={createForm.isExternal}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const isExternal = e.target.checked;
                     setCreateForm({
                       ...createForm,
-                      isExternal: e.target.checked,
-                    })
-                  }
+                      isExternal,
+                      // External panelists cannot serve as advisers.
+                      isAvailableAsAdviser: isExternal
+                        ? false
+                        : createForm.isAvailableAsAdviser,
+                    });
+                  }}
                   className="h-4 w-4 rounded border-(--earist-border-gray) text-(--earist-primary) focus:ring-(--earist-primary)"
                 />
                 <Label
@@ -766,6 +779,35 @@ export default function AdminPanelistsPage() {
                 >
                   External Panelist
                 </Label>
+              </div>
+
+              <div className="border-t border-(--earist-border-gray) pt-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-(--earist-body-text)">
+                    Available as Adviser
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={createForm.isAvailableAsAdviser}
+                      disabled={createForm.isExternal}
+                      onCheckedChange={(checked) =>
+                        setCreateForm({
+                          ...createForm,
+                          isAvailableAsAdviser: checked,
+                        })
+                      }
+                    />
+                    <span className="text-xs text-(--earist-body-text)">
+                      {createForm.isAvailableAsAdviser ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </div>
+                {createForm.isExternal && (
+                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                    External panelists cannot serve as thesis/dissertation
+                    advisers.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -957,9 +999,16 @@ export default function AdminPanelistsPage() {
                   type="checkbox"
                   id="edit-isExternal"
                   checked={editForm.isExternal}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, isExternal: e.target.checked })
-                  }
+                  onChange={(e) => {
+                    const isExternal = e.target.checked;
+                    setEditForm({
+                      ...editForm,
+                      isExternal,
+                      isAvailableAsAdviser: isExternal
+                        ? false
+                        : editForm.isAvailableAsAdviser,
+                    });
+                  }}
                   className="h-4 w-4 rounded border-(--earist-border-gray) text-(--earist-primary) focus:ring-(--earist-primary)"
                 />
                 <Label
@@ -977,6 +1026,7 @@ export default function AdminPanelistsPage() {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={editForm.isAvailableAsAdviser}
+                      disabled={editForm.isExternal}
                       onCheckedChange={(checked) => setEditForm({ ...editForm, isAvailableAsAdviser: checked })}
                     />
                     <span className="text-xs text-(--earist-body-text)">
@@ -984,6 +1034,12 @@ export default function AdminPanelistsPage() {
                     </span>
                   </div>
                 </div>
+                {editForm.isExternal && (
+                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                    External panelists cannot serve as thesis/dissertation
+                    advisers.
+                  </p>
+                )}
 
                 {/* Account Status */}
                 <div className="mt-3 flex items-center justify-between">

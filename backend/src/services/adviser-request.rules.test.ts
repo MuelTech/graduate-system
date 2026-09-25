@@ -120,6 +120,24 @@ describe("evaluateCandidateEligibility", () => {
     ).toBe(false);
   });
 
+  it("rejects external Panelists even when marked available as adviser", () => {
+    const external = evaluateCandidateEligibility({
+      ...validPanelist,
+      isExternal: true,
+    });
+    expect(external.eligible).toBe(false);
+    if (!external.eligible) {
+      expect(external.reason).toMatch(/External panelists/i);
+    }
+
+    const externalAvailable = evaluateCandidateEligibility({
+      ...validPanelist,
+      isExternal: true,
+      isAvailableAsAdviser: true,
+    });
+    expect(externalAvailable.eligible).toBe(false);
+  });
+
   it("rejects inactive User", () => {
     expect(
       evaluateCandidateEligibility({

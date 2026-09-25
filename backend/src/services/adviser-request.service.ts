@@ -128,6 +128,7 @@ export class AdviserRequestService {
         hasPanelistProfile: Boolean(panelist),
         panelistIsActive: panelist?.isActive ?? null,
         isAvailableAsAdviser: panelist?.isAvailableAsAdviser ?? null,
+        isExternal: panelist?.isExternal ?? null,
       });
 
       seats.push({
@@ -536,6 +537,18 @@ export class AdviserRequestService {
           if (active) {
             throw new AppError(
               "An active adviser assignment already exists for this student.",
+              409,
+            );
+          }
+
+          // Hard invariant: external panelists can never become advisers
+          // (request may predate Admin marking the panelist external).
+          const requestedPanelist = await tx.panelist.findUnique({
+            where: { userId: current.requestedAdviserId },
+          });
+          if (!requestedPanelist || requestedPanelist.isExternal === true) {
+            throw new AppError(
+              "External panelists cannot be assigned as thesis/dissertation advisers.",
               409,
             );
           }

@@ -63,14 +63,20 @@ export class AdminPanelistRepository {
                 },
             });
 
+            const isExternal = Boolean(data.isExternal);
+            // Hard invariant: external panelists cannot be adviser-available.
+            const isAvailableAsAdviser = isExternal
+                ? false
+                : data.isAvailableAsAdviser !== false;
+
             const panelist = await tx.panelist.create({
                 data: {
                     userId: user.id,
                     highestEducationalAttainment: data.highestEducationalAttainment,
                     officeAffiliation: data.officeAffiliation,
                     specialization: data.specialization,
-                    isExternal: data.isExternal,
-                    isAvailableAsAdviser: true,
+                    isExternal,
+                    isAvailableAsAdviser,
                 },
                 include: { user: { select: userSelect } },
             });
@@ -104,14 +110,20 @@ export class AdminPanelistRepository {
                 data: userData,
             });
 
+            const isExternal = Boolean(data.isExternal);
+            // Backend invariant wins over crafted payloads.
+            const isAvailableAsAdviser = isExternal
+                ? false
+                : Boolean(data.isAvailableAsAdviser);
+
             return tx.panelist.update({
                 where: { id },
                 data: {
                     highestEducationalAttainment: data.highestEducationalAttainment,
                     officeAffiliation: data.officeAffiliation,
                     specialization: data.specialization,
-                    isExternal: data.isExternal,
-                    isAvailableAsAdviser: data.isAvailableAsAdviser,
+                    isExternal,
+                    isAvailableAsAdviser,
                 },
                 include: { user: { select: userSelect } },
             });

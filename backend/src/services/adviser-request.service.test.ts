@@ -223,6 +223,50 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     ).rejects.toThrow(/Panelist profile/i);
   });
 
+  it("excludes external Panelists from candidates and rejects forged requests", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      titleConclusion({
+        schedule: {
+          panelAssignments: [
+            {
+              role: "CHAIRMAN",
+              user: {
+                id: "external-chair",
+                firstName: "Ext",
+                lastName: "Chair",
+                role: "PANELIST",
+                isActive: true,
+                panelist: panelistProfile({
+                  isExternal: true,
+                  isAvailableAsAdviser: true,
+                }),
+              },
+            },
+            {
+              role: "PANELIST",
+              user: {
+                id: "chair-user",
+                firstName: "Ana",
+                lastName: "Chair",
+                role: "PANELIST",
+                isActive: true,
+                panelist: panelistProfile(),
+              },
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await svc.listOdpCandidates("user-1");
+    expect(result.candidates.map((c) => c.userId)).toEqual(["chair-user"]);
+
+    await expect(
+      svc.createRequest("user-1", { requestedAdviserId: "external-chair" }),
+    ).rejects.toThrow(/External panelists/i);
+    expect(prismaMock.adviserRequest.create).not.toHaveBeenCalled();
+  });
+
   it("accepts valid Chairman/Panelist and stores GS-020 fields without AdviserAssignment", async () => {
     await svc.createRequest("user-1", {
       requestedAdviserId: "chair-user",
@@ -463,6 +507,11 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
     tx.adviserRequest.updateMany.mockResolvedValue({ count: 1 });
     tx.adviserAssignment.findFirst.mockResolvedValue(null);
     tx.adviserAssignment.create.mockResolvedValue({ id: "asg-1" });
+    (tx as any).panelist = {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ userId: "adv-user", isExternal: false }),
+    };
     tx.$queryRaw.mockResolvedValue([{ student_id: "student-1" }]);
   });
 
@@ -593,7 +642,25 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
+  it("blocks Dean APPROVE when requested adviser became external", async () => {
+    // Mock tx.panelist lookup used by the hard internal-only recheck.
+    (tx as any).panelist = { findUnique: vi.fn() };
+    (tx as any).panelist.findUnique.mockResolvedValue({
+      userId: "adv-user",
+      isExternal: true,
+    });
+
+    await expect(
+      svc.deanDecideAdviserRequest("dean-1", "req-1", { decision: "APPROVED" }),
+    ).rejects.toThrow(/External panelists/i);
+    expect(tx.adviserAssignment.create).not.toHaveBeenCalled();
+    expect(tx.adviserRequest.updateMany).not.toHaveBeenCalled();
+  });
+
   it("blocks duplicate active AdviserAssignment after per-student lock", async () => {
+    (tx as any).panelist = {
+      findUnique: vi.fn().mockResolvedValue({ userId: "adv-user", isExternal: false }),
+    };
     const order: string[] = [];
     tx.$queryRaw.mockImplementation(async () => {
       order.push("lock");

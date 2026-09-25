@@ -271,6 +271,8 @@ export type CandidateEligibilityInput = {
   hasPanelistProfile: boolean;
   panelistIsActive?: boolean | null;
   isAvailableAsAdviser?: boolean | null;
+  /** External panelists cannot serve as thesis/dissertation advisers. */
+  isExternal?: boolean | null;
 };
 
 export type CandidateEligibilityResult =
@@ -284,6 +286,7 @@ export type CandidateEligibilityResult =
  * - User.isActive
  * - Panelist profile exists
  * - Panelist.isActive
+ * - Panelist.isExternal === false (hard client invariant)
  * - Panelist.isAvailableAsAdviser
  * No adviser load caps.
  */
@@ -309,6 +312,14 @@ export function evaluateCandidateEligibility(
     return {
       eligible: false,
       reason: "Adviser candidate requires an active Panelist profile.",
+    };
+  }
+  // Hard invariant: external panelists never become thesis advisers.
+  if (input.isExternal === true) {
+    return {
+      eligible: false,
+      reason:
+        "External panelists are not eligible to serve as thesis/dissertation advisers.",
     };
   }
   if (input.panelistIsActive === false) {
