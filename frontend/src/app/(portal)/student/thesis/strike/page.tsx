@@ -86,11 +86,8 @@ export default function StudentStrikePage() {
             <p className="text-sm text-(--earist-body-text)">
               {strike.lockReason || "This step is currently unavailable."}
             </p>
-            <Link
-              href={journeyRouteFor("PROPOSAL_DEFENSE")}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Go to Proposal Defense
+            <Link href="/student/thesis" className={buttonVariants({ variant: "outline" })}>
+              Continue in Thesis Journey
             </Link>
           </CardContent>
         </Card>

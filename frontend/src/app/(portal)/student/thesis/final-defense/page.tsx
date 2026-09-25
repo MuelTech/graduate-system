@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   studentThesisJourneyQueryKey,
-  journeyRouteFor,
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
@@ -223,11 +222,8 @@ export default function FinalDefensePage() {
             <p className="text-sm text-(--earist-body-text)">
               {finalStep?.lockReason || "This step is currently unavailable."}
             </p>
-            <Link
-              href={journeyRouteFor("STRIKE")}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Go to STRIKE / Plagiarism
+            <Link href="/student/thesis" className={buttonVariants({ variant: "outline" })}>
+              Continue in Thesis Journey
             </Link>
           </CardContent>
         </Card>
@@ -254,9 +250,6 @@ export default function FinalDefensePage() {
                 {finalStep.nextAction}
               </p>
             )}
-            <Link href="/student/thesis" className={buttonVariants()}>
-              Continue in Thesis Journey
-            </Link>
           </CardContent>
         </Card>
       </div>
