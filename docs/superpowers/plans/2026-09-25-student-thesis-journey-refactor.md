@@ -4,439 +4,645 @@
 **Branch:** `refactor/student-thesis-journey`  
 **Parent branch:** `refactor/defense-workflow`  
 **Implementation owner:** Local coding agent  
-**Rule:** Start implementation from this clean branch based on `refactor/defense-workflow`. Do not copy implementation code, schema changes, migrations, seeds, or tests from `refactor/student-thesis-journey-rebuild`; use its reviewed documentation only as reference.
+**Execution rule:** One work package per agent session. Stop after the assigned package and report before continuing.
 
-## Phase 0 — Migration-chain cleanup
+## Baseline
 
-Before feature work, investigate the Prisma migration chain.
+The feature branch starts from `refactor/defense-workflow`.
 
-Known failure:
+The migration replay defect in the parent branch has already been repaired by:
 
-```text
-20260922183328_align_defense_conclusion_relations
-tries to MODIFY rap_report_signatures.required
+`63ce47149a6c9fdc660f62be8a4e75ab4aca4378` — `fix(prisma): repair fresh migration replay order`
 
-before
+Verified on 2026-09-25 against a newly created MySQL `graduate_system` database:
 
-20260923160000_rap_signature_policy
-creates rap_report_signatures.required
-```
+- all existing migrations replayed successfully through `20260923160000_rap_signature_policy`;
+- `npx prisma migrate dev` completed successfully;
+- Prisma reported the database/schema in sync.
 
-Agent requirements:
+Do not reopen the historical migration repair unless a new concrete defect is found.
 
-1. Inspect all migrations touching `rap_report_signatures`.
-2. Identify the smallest historically correct fix.
-3. Do not reset the current working database.
-4. Do not run `prisma migrate resolve` unless evidence shows a migration-metadata problem.
-5. Do not push a migration-history change before validating it.
-6. Use a fresh temporary MySQL database.
-7. Replay the full migration chain from zero.
-8. Verify `prisma migrate dev` succeeds on the clean database.
-9. Run seed.
-10. Run `prisma generate`, backend build, and backend tests.
-11. Report the exact migration change and validation results before destructive actions on the current dev DB.
+The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
 
-Acceptance:
-- a clean database can be built from migration history;
-- no permanent workaround depends on `migrate deploy` alone.
+## Working method
 
-## Phase 1 — Inspect current domain and seed architecture
+Every agent session must:
 
-Inspect:
-- `ThesisRecord`
-- `DefenseSchedule`
-- `DefenseConclusion`
-- `ThesisTitle`
-- `PanelAssignment`
-- `AdviserRequest`
-- `AdviserAssignment`
-- `PlagiarismResult`
-- RAP/certification records
-- current seed scenarios
+1. read the SOT, design spec, implementation reference, and this plan;
+2. verify it is on `refactor/student-thesis-journey`;
+3. work on **one work package only**;
+4. avoid unrelated cleanup/refactors;
+5. run only the validations required by that package;
+6. stop and produce a handoff report;
+7. wait for review before continuing to another package.
 
-Map the authoritative record for every Student Journey transition.
+Backend/domain contracts come first. Frontend presentation starts only after the corresponding backend contract is stable.
 
-Identify legacy pages/services that infer progression from `ThesisRecord.status` alone.
+Automated browser E2E is **not part of this feature plan**. It will be handled separately after the Student Thesis Journey flow is implemented and stable.
 
-## Phase 2 — Deterministic Student Journey fixtures
+---
 
-Create idempotent scenario data for:
+## WP1 — GS-020 schema and AdviserRequest model
 
-- Title eligible, not submitted;
-- Title application pending;
-- Title formally PASSED + selected title + no adviser request;
-- Adviser request waiting for adviser;
-- Adviser CONFORME waiting for Dean;
-- Adviser approved / active AdviserAssignment;
-- Proposal ready;
-- Proposal formally PASSED;
-- STRIKE ready;
-- STRIKE completed/eligible;
-- Final ready;
-- Final formally PASSED.
+### Goal
 
-Prefer dedicated scenario accounts instead of overloading `student@earist.edu.ph`.
-
-For each fixture, define:
-- records that must exist;
-- records that must be absent;
-- expected journey state;
-- expected accessible/locked routes.
-
-Run seed repeatedly to prove idempotency.
-
-## Phase 3 — Adviser Request domain correction
-
-Implement:
+Define a clean data model for:
 
 ```text
-Student Request
-→ Adviser CONFORME / Decline
-→ Dean Approve / Reject
-→ Active AdviserAssignment
+Student request
+→ Adviser response
+→ Dean decision
+→ active AdviserAssignment
 ```
 
-Required data should support:
-- student;
+### Inspect first
+
+Review:
+
+- current `AdviserRequest`;
+- `AdviserAssignment`;
+- `DefenseSchedule`;
+- `DefenseConclusion`;
+- `ThesisTitle`;
+- `PanelAssignment`;
+- existing request/approval enums and relations.
+
+### Required model capability
+
+The GS-020 request must support, at minimum:
+
+- Student;
 - requested adviser;
-- source passed Title Defense session;
-- request timestamp/reason;
-- adviser response/timestamp/remarks;
-- Dean review/reviewer/timestamp/remarks;
-- final request state.
+- source passed Title Defense schedule;
+- Student reason/remarks;
+- request date;
+- Adviser status;
+- Adviser response timestamp/remarks;
+- Dean status;
+- Dean reviewer;
+- Dean review timestamp/remarks;
+- final request state / compatibility status as needed.
 
-Rules:
-- no active assignment before Adviser CONFORME + Dean approval;
-- candidate must belong to the student's actual passed Title ODP;
-- unrestricted adviser directory is invalid for Student selection;
-- Facilitator/Rapporteur excluded under the current working mapping;
-- declined/rejected requests allow a new valid request.
+### Rules
 
-Schema changes happen only after Phase 0 proves migration health.
+- pending request must not require storing the Student as a fake approver;
+- approver/reviewer fields are nullable until that actor acts;
+- do not create AdviserAssignment in this package;
+- do not implement frontend;
+- create a **new feature migration** only if schema changes are required;
+- do not modify the already-repaired historical migrations.
 
-## Phase 4 — Central Student Thesis Journey read model
-
-Create one authenticated backend endpoint/service deriving:
-
-- Comprehensive Exam gate;
-- Title formal conclusion;
-- official selected title;
-- Adviser Request state;
-- active AdviserAssignment;
-- Proposal formal conclusion;
-- STRIKE/plagiarism state;
-- Final formal conclusion;
-- navigation state;
-- lock reason;
-- current step;
-- centralized STRIKE-before-Final policy.
-
-Do not use application `APPROVED` as a synonym for `PASSED`.
-
-Do not derive progression from `ThesisRecord.stage/status` alone.
-
-Add focused tests for each transition.
-
-## Phase 5 — Student sidebar and route behavior
-
-Target navigation:
-
-```text
-Thesis Journey ▼
-├── Title Defense
-├── Adviser Request
-├── Proposal Defense
-├── STRIKE / Plagiarism
-└── Final Defense
-```
-
-Requirements:
-- parent is toggle-only;
-- no competing Overview child;
-- render COMPLETED/CURRENT/AVAILABLE/WAITING/LOCKED;
-- locked items are non-navigable and show a reason;
-- completed items remain viewable;
-- direct route access remains backend/domain guarded;
-- `/student/thesis` redirects to the current relevant step.
-
-## Phase 6 — Student pages
-
-### Title Defense
-- consume centralized journey state;
-- rename Concept Paper to Title Defense Proposal Package;
-- after PASSED + selected title, CTA points to Adviser Request.
-
-### Adviser Request
-- use ODP-derived candidates;
-- show stored candidate metadata;
-- support ready / waiting adviser / declined / waiting Dean / rejected / approved states;
-- allow retry after decline/rejection;
-- never create assignment directly from Student action.
-
-### Proposal Defense
-- require active AdviserAssignment for page access;
-- keep application submission eligibility server-side;
-- no Proposal-corrections workflow state.
-
-### STRIKE / Plagiarism
-- follow centralized policy;
-- use persisted plagiarism infrastructure;
-- do not show mock data as real;
-- if submission backend is absent, represent that honestly.
-
-### Final Defense
-- consume centralized state;
-- require Proposal formal completion;
-- apply STRIKE only through centralized policy;
-- do not add Statistician/Instrument gates without SOT confirmation.
-
-## Phase 7 — Academic Journey cleanup
-
-Reduce Academic Journey to:
-
-```text
-Admissions / Enrollment
-→ Coursework / Curriculum
-→ Comprehensive Examination
-→ Thesis / Dissertation Phase
-→ Research Completion
-→ Graduation / Completion
-```
-
-Remove Adviser-before-Title ordering and avoid duplicating detailed Thesis Journey steps.
-
-## Phase 8 — Expert Evaluation scope protection
-
-Do not implement the legacy in-system expert assignment/scoring workflow.
-
-If evidence storage is needed:
-- treat it as external/manual supporting evidence;
-- prefer document uploads/records;
-- keep current expert-evaluation tables dormant unless client scope expands.
-
-## Phase 9 — Backend tests
-
-Add/adjust tests for:
-- Title PASSED from formal conclusion;
-- selected title required before Adviser Request unlock;
-- ODP candidate derivation;
-- Facilitator/Rapporteur exclusion under working mapping;
-- no assignment before Adviser CONFORME;
-- Dean cannot bypass Adviser CONFORME;
-- retry after decline/rejection;
-- Proposal locked before active adviser;
-- Proposal unlock after active assignment;
-- Proposal PASSED from formal conclusion;
-- STRIKE follows centralized policy;
-- Final follows centralized policy;
-- direct-route guards;
-- completed stages remain viewable.
-
-## Phase 10 — Build validation
+### Validation
 
 Run:
-- Prisma generate;
+
+- `npx prisma generate`;
+- migration validation on the current fresh dev database if a new migration is created;
 - backend TypeScript build;
-- backend tests;
-- available frontend lint/build/type checks.
+- focused schema/service tests if affected.
 
-A successful compile is not proof of correct workflow state.
+### Stop condition
 
-## Phase 11 — Deferred Playwright/E2E validation
+STOP after WP1. Report exact schema/migration changes and validation results.
 
-Playwright/E2E is **deferred for the current refactor pass**. Do not spend implementation time expanding or stabilizing browser tests until backend/frontend contracts are stable.
+---
 
-Keep the existing E2E files as reference unless a small compile-only adjustment is required by renamed routes/types. Do not treat Playwright as a completion gate for this pass.
+## WP2 — Student adviser candidate and request backend
 
-A later stabilization pass will cover the previously defined Student journey scenarios and full Student → Adviser → Dean GS-020 flow.
+### Goal
 
-## Phase 12 — Agent handoff report
+Implement only the Student-side GS-020 backend entry points.
 
-Before review/merge, report:
-- changed-file list;
-- schema/migration rationale;
-- clean DB migration replay result where applicable;
-- seed result;
-- backend build/test results;
-- frontend typecheck/lint/build results;
-- manual functional verification notes;
-- remaining OPEN_QUESTION items;
-- intentional differences from legacy code;
-- explicit note that Playwright/E2E was deferred for this pass.
+### Required behavior
 
-## Historical reference branch
+Eligible adviser candidates come only from the Student's actual passed Title Defense ODP.
 
-`refactor/student-thesis-journey-rebuild` is historical/reference only. Do not cherry-pick its implementation commits by default. If a specific idea is reused, re-derive it against the current SOT/spec and implement it cleanly on this branch.
+Backend request gate requires:
 
-## Current correction-pass priority — backend first
+- formal Title Defense conclusion = `PASSED`;
+- official selected title exists via the formal Title conclusion;
+- candidate belongs to that passed Title Defense ODP.
 
-Before continuing UI polish, resolve the known backend/frontend authority mismatches from the branch review.
+Working candidate mapping:
 
-Order of work:
+- Chairman;
+- evaluator Panelists.
 
-1. **Unify STRIKE policy authority**
-   - one shared policy/config must drive Student Thesis Journey state and Final application/scheduling eligibility;
-   - do not allow Final to be LOCKED in the journey while the backend application endpoint independently permits it.
+Exclude:
 
-2. **Harden Adviser Request domain gates**
-   - backend request creation requires formal Title Defense PASSED **and** official selected title;
-   - candidate must come from that passed Title Defense ODP under the working Chairman + Panelist mapping;
-   - do not rely on frontend locking as the security/domain gate.
+- Facilitator;
+- Rapporteur.
 
-3. **Scope Panelist/Adviser request reads**
-   - do not expose the Admin-wide adviser-request list to PANELIST;
-   - provide/read only requests where requestedAdviserId matches the authenticated adviser;
-   - return Student/program, official title, Title Defense role, request remarks/date, and adviser/dean state.
+Unrestricted faculty/adviser directory is invalid for Student selection.
 
-4. **Correct AdviserRequest audit semantics**
-   - pending Student request must not store the Student as a placeholder approver;
-   - approval/reviewer fields should be nullable until the correct actor acts;
-   - validate migration/schema FK/index consistency for Dean review fields.
+### Conceptual endpoints
 
-5. **Strengthen Dean approval transaction**
-   - re-check Adviser CONFORME, Dean PENDING, and absence of a conflicting active AdviserAssignment before creation;
-   - assignment remains transactional with Dean approval.
+Equivalent behavior to:
 
-6. **Complete the three-actor frontend**
-   - Student candidate selection/confirmation UX;
-   - Panelist/Adviser inbox with real CONFORME/Decline;
-   - Dean review with real Approve/Reject and no arbitrary adviser picker.
+```text
+GET  /thesis/adviser/candidates
+POST /thesis/adviser/request
+```
 
-7. **Restore application-state UX and query consistency**
-   - Proposal/Final must distinguish fresh form vs submitted/review/scheduled/concluded states without creating a competing academic progression model;
-   - remove hard-coded always-form or dead conditional placeholders;
-   - use one shared Student Thesis Journey React Query key and invalidate it consistently.
+Exact route naming may follow repository conventions.
 
-8. **Then polish sidebar/status presentation**
-   - text left, status icon right, accessible tooltip/focus/tap explanation;
-   - LOCKED remains non-navigable.
+### Request creation rules
 
-Validation for this correction pass: Prisma generate, backend build/tests, available frontend typecheck/lint/build, deterministic seed verification, and manual functional review. Playwright/E2E is deferred.
+- one valid active/pending request path at a time;
+- no AdviserAssignment creation;
+- no direct approval;
+- rejected/declined historical requests must not permanently block a future valid request.
 
-## Phase 13 — Frontend architecture audit before implementation
+### Validation
 
-Before implementing the Student Thesis Journey UI, audit the parent-branch frontend against the design specification and identify legacy progression logic that must be replaced or redirected.
+Add focused backend tests for:
 
-Inspect at minimum:
+- Title not passed → rejected;
+- no official selected title → rejected;
+- candidate outside ODP → rejected;
+- Facilitator/Rapporteur → rejected;
+- valid Chairman/Panelist → request created;
+- request creation does not create AdviserAssignment.
 
-- Student sidebar;
-- Title Defense page;
-- Adviser Request page;
-- Proposal Defense page;
-- STRIKE page;
-- Final Defense page;
-- Academic Journey page;
-- legacy `/student/plagiarism`;
-- Panelist layout and Adviser Requests page;
-- Admin/Dean adviser-management page;
-- Playwright Student Thesis Journey tests.
+### Stop condition
 
-For each page, identify and remove local progression rules that duplicate or contradict `GET /thesis/student/journey`.
+STOP after WP2. Report endpoints, service rules, tests, and changed files.
 
-Do not introduce frontend-local progression rules that duplicate backend authority. Schema/backend changes must follow the earlier backend phases and the canonical SOT.
+---
 
-## Phase 14 — Student Thesis Journey UI refactor
+## WP3 — Requested Adviser response backend
 
-### 14.1 Sidebar
+### Goal
 
-- consume centralized journey state;
-- render COMPLETED/CURRENT/AVAILABLE/WAITING/LOCKED;
-- keep each step label on the **left** and its status icon on the **right**;
-- use icon semantics: COMPLETED = check/check-circle, CURRENT = circle-dot/filled-dot with subtle row emphasis, AVAILABLE = hollow-circle/arrow, WAITING = clock, LOCKED = lock;
-- do not clutter rows with repeated text badges such as CURRENT/WAITING/LOCKED when the icon already conveys state;
-- provide tooltip/focus text for every status icon; on touch/mobile provide equivalent tap/focus access;
-- LOCKED tooltip/focus text must include the backend lockReason;
-- keep COMPLETED and WAITING pages viewable;
-- make LOCKED children genuinely non-navigable, not just aria-disabled Links;
-- keep Thesis Journey parent toggle-only.
+Implement only the requested Adviser's inbox/read and response behavior.
 
-### 14.2 Title Defense
+### Required behavior
 
-- completed Title remains viewable;
-- show official selected title;
-- completed-state CTA = **Continue to Adviser Request**;
-- remove any direct 'Proceed to Proposal Defense' action before active adviser assignment.
+A Panelist/eligible requested Adviser may retrieve only requests addressed to them.
 
-### 14.3 Adviser Request
+Do not expose the Admin-wide request collection to PANELIST.
 
-Replace minimum/basic selection UX with a clear ODP candidate experience.
+Conceptual behavior:
 
-Show candidate metadata: name, Title Defense role, specialization when available, and office affiliation when available.
+```text
+GET  /thesis/adviser/requests/mine
+POST /thesis/adviser/requests/:id/adviser-response
+```
 
-Support distinct ready, waiting-for-adviser, declined, waiting-for-Dean, Dean-rejected, and approved/active states.
+### Response states
 
-Do not expose unrestricted faculty selection.
+Allowed Adviser decisions:
 
-### 14.4 Proposal Defense
+- `CONFORMED`
+- `DECLINED`
 
-- consume `steps.proposal`;
-- if LOCKED, render lock UX only and no usable form;
-- require active adviser assignment for access;
-- do not infer access from Title PASSED alone.
+### Authorization
 
-### 14.5 STRIKE
+For response:
 
-- use persisted data only;
-- remove developer/internal policy wording from Student-facing copy;
-- do not display fake/mock result/history data;
-- follow centralized policy only.
+```text
+request.requestedAdviserId === authenticated userId
+```
 
-### 14.6 Final Defense
+unless Admin override is explicitly required by existing project policy.
 
-- replace old `/student/journey` / `ThesisRecord.stage/status` progression logic;
-- consume centralized journey state;
-- if LOCKED, do not render usable Final form;
-- respect centralized STRIKE policy on both sidebar and direct URL.
+### Inbox data
 
-Acceptance: the same fixture must produce the same state in sidebar, page, `/student/thesis` redirect, and direct-route behavior.
+Return enough data for later UI:
 
-## Phase 15 — Complete GS-020 three-actor UI
-
-### 15.1 Student
-
-Ensure Student Adviser Request UI meets the updated design specification.
-
-### 15.2 Panelist/Adviser
-
-Implement a real Adviser Requests inbox and request detail/action screen.
-
-Required:
-
-- discoverable sidebar navigation;
-- Student identity/program;
+- Student name;
+- Student number;
+- Program;
 - official selected title;
 - request remarks;
+- Title Defense role of the requested adviser;
+- request date;
+- adviser status;
+- Dean status;
+- response remarks/timestamp where applicable.
+
+### Rules
+
+- CONFORME does not create AdviserAssignment;
+- CONFORME keeps Dean review pending;
+- Decline creates no assignment and permits later retry by Student.
+
+### Validation
+
+Focused tests for:
+
+- own requests visible;
+- another adviser's requests hidden;
+- another adviser cannot respond;
+- CONFORME state transition;
+- Decline transition;
+- no assignment after either Adviser response.
+
+### Stop condition
+
+STOP after WP3.
+
+---
+
+## WP4 — Dean decision and AdviserAssignment backend
+
+### Goal
+
+Implement the final GS-020 backend transition.
+
+### Required behavior
+
+Dean/Admin can review conformed requests and choose:
+
+- Approve;
+- Reject.
+
+Approval transaction must re-check:
+
+- request exists;
+- `adviserStatus === CONFORMED`;
+- `deanStatus === PENDING`;
+- no conflicting active AdviserAssignment exists.
+
+Only then:
+
+- mark Dean APPROVED;
+- store reviewer/timestamp/remarks;
+- create active AdviserAssignment transactionally.
+
+Reject:
+
+- marks Dean REJECTED;
+- stores reviewer/timestamp/remarks;
+- creates no assignment;
+- allows Student to make another valid request later.
+
+### Legacy compatibility
+
+If an old `/adviser/assign` path remains, it must not bypass Adviser CONFORME → Dean approval.
+
+### Validation
+
+Focused tests for:
+
+- Dean cannot approve before CONFORME;
+- approved request creates exactly one active assignment;
+- rejected request creates none;
+- conflicting active assignment prevents duplicate creation;
+- retry remains possible after rejection.
+
+### Stop condition
+
+STOP after WP4.
+
+---
+
+## WP5 — Central Student Thesis Journey read model and STRIKE policy
+
+### Goal
+
+Create the single backend-authoritative Student Thesis Journey read model.
+
+### Journey states
+
+Use:
+
+- `COMPLETED`
+- `CURRENT`
+- `AVAILABLE`
+- `WAITING`
+- `LOCKED`
+
+### Required progression inputs
+
+At minimum:
+
+- Comprehensive Exam result;
+- formal Title `DefenseConclusion`;
+- official selected title;
+- AdviserRequest;
+- active AdviserAssignment;
+- formal Proposal conclusion;
+- persisted plagiarism/STRIKE result;
+- formal Final conclusion.
+
+Do not derive academic progression from `ThesisRecord.stage/status` alone.
+
+### Conceptual response
+
+```ts
+{
+  steps: {
+    title: { state, href, lockReason, nextAction },
+    adviser: { state, href, lockReason, nextAction },
+    proposal: { state, href, lockReason, nextAction },
+    strike: { state, href, lockReason, nextAction },
+    final: { state, href, lockReason, nextAction }
+  },
+  currentStep,
+  selectedTitle,
+  activeAdviser,
+  adviserRequest,
+  policy: {
+    strikeBeforeFinalRequired
+  }
+}
+```
+
+### STRIKE policy
+
+Create one centralized/configurable policy source used by:
+
+- Student Journey state;
+- Final application eligibility;
+- Final scheduling eligibility.
+
+Do not allow Journey to say Final is locked while backend submission/scheduling independently permits it.
+
+STRIKE-before-Final remains `OPEN_QUESTION / PROPOSED_SYSTEM_DESIGN`; do not present it as confirmed institutional policy.
+
+### Validation
+
+Focused backend tests for major state transitions.
+
+### Stop condition
+
+STOP after WP5.
+
+---
+
+## WP6 — Deterministic backend fixtures
+
+### Goal
+
+Create idempotent scenario fixtures for later frontend/manual validation.
+
+Required scenarios:
+
+- Title ready;
+- Title pending;
+- Title PASSED + official title + no adviser request;
+- Adviser pending;
+- Adviser CONFORMED waiting Dean;
+- Adviser approved;
+- Proposal ready;
+- Proposal PASSED;
+- STRIKE ready;
+- STRIKE eligible/completed;
+- Final ready;
+- Final PASSED.
+
+Do not rely on one overloaded legacy Student account.
+
+### Validation
+
+- run seed;
+- run seed again;
+- prove idempotency;
+- verify each fixture's required records and absent records;
+- keep fixtures internally consistent with the central journey rules.
+
+### Stop condition
+
+STOP after WP6.
+
+---
+
+## WP7 — Student Journey hook, sidebar, and /student/thesis redirect
+
+### Goal
+
+Implement only the central Student Journey frontend plumbing/navigation.
+
+### Required work
+
+- one Student Thesis Journey hook/query;
+- one shared React Query key;
+- `/student/thesis` redirects from `currentStep`;
+- Thesis Journey parent is toggle-only;
+- five children only.
+
+### Sidebar status UX
+
+Text stays on the **left**. Status icon stays on the **right**.
+
+```text
+Title Defense                         [check]
+Adviser Request                       [circle-dot]
+Proposal Defense                      [lock]
+STRIKE / Plagiarism                   [lock]
+Final Defense                         [lock]
+```
+
+Mapping:
+
+- COMPLETED → Check / CheckCircle;
+- CURRENT → CircleDot / filled dot + subtle row emphasis;
+- AVAILABLE → hollow circle / subtle arrow;
+- WAITING → Clock;
+- LOCKED → Lock.
+
+Do not show noisy CURRENT/WAITING/LOCKED pills beside every item.
+
+Every icon needs accessible hover/focus/tap explanation.
+
+LOCKED:
+
+- must be genuinely non-navigable;
+- backend `lockReason` appears in tooltip/focus text.
+
+### Scope limit
+
+Do not redesign the individual thesis pages in WP7.
+
+### Stop condition
+
+STOP after WP7 and provide screenshots/manual notes if useful.
+
+---
+
+## WP8 — Student Adviser Request UI
+
+### Goal
+
+Implement the Student GS-020 UI only.
+
+### Candidate presentation
+
+Do not use a generic unrestricted faculty directory.
+
+Show candidate metadata:
+
+- Name;
 - Title Defense role;
-- request status/date;
-- CONFORME action;
-- Decline action;
-- real endpoint integration;
-- refresh/status feedback after action.
+- specialization when available;
+- office affiliation when available;
+- visible selected state.
 
-Do not leave a placeholder-only page.
+A searchable selector is acceptable only if the same metadata remains visible.
 
-### 15.3 Admin/Dean
+Before submission, show a selected-candidate confirmation summary plus optional Student remarks.
 
-Refactor the old adviser assignment UI into Dean review semantics for GS-020.
+### Student-facing states
 
-Required:
+Support:
 
-- show Student-selected adviser;
-- show Adviser CONFORME state;
-- show official title/request details;
-- Approve action;
-- Reject action;
-- real Dean decision endpoint.
+1. Ready to request
+2. Waiting for Adviser response
+3. Adviser declined
+4. Adviser CONFORMED — waiting for Dean
+5. Dean rejected
+6. Approved / active adviser
 
-Remove the requirement for Dean/Admin to choose an arbitrary replacement adviser from the unrestricted adviser list during this approval action.
+Pending must never imply assignment.
 
-Any retained legacy assign endpoint/UI must not bypass the service invariant.
+Decline/rejection must support retry.
 
-## Phase 16 — Academic Journey and legacy route cleanup
+### Stop condition
+
+STOP after WP8.
+
+---
+
+## WP9 — Panelist/Adviser Adviser Requests UI
+
+### Goal
+
+Implement the requested Adviser inbox and response UI.
+
+### Required information
+
+- Student;
+- Student number;
+- Program;
+- official selected title;
+- Student remarks;
+- Title Defense role;
+- request date/status.
+
+### Actions
+
+When response is pending:
+
+- Decline
+- CONFORME / Accept
+
+After CONFORME, clearly show:
+
+```text
+Adviser response recorded
+Waiting for Dean approval
+```
+
+Do not imply active assignment before Dean approval.
+
+Add discoverable Adviser Requests navigation in the Panelist/Adviser portal.
+
+### Stop condition
+
+STOP after WP9.
+
+---
+
+## WP10 — Admin/Dean Adviser Review UI
+
+### Goal
+
+Replace old generic adviser-assignment semantics with GS-020 Dean review.
+
+### Display
+
+- Student;
+- Student number;
+- Program;
+- official selected title;
+- Student-selected adviser;
+- Title Defense role;
+- Student remarks;
+- Adviser CONFORME state/remarks;
+- timestamps.
+
+### Actions
+
+- Reject
+- Approve Request
+
+Both must be functional.
+
+Do not show an unrestricted adviser picker in this approval step.
+
+Do not retain dead Reject/Approve buttons.
+
+### Stop condition
+
+STOP after WP10.
+
+---
+
+## WP11 — Title and Proposal integration
+
+### Title
+
+- consume centralized journey state;
+- completed Title remains viewable;
+- show official selected title;
+- CTA after PASSED + selected title = **Continue to Adviser Request**;
+- user-facing upload label = **Title Defense Proposal Package**.
+
+### Proposal
+
+- consume `steps.proposal`;
+- when LOCKED, show lock UX only;
+- no usable form;
+- no submit action;
+- active AdviserAssignment required.
+
+Proposal page must still represent real administrative/session state:
+
+- not submitted;
+- pending review;
+- approved / ready for scheduling;
+- scheduled/active;
+- concluded.
+
+Do not create another academic progression model.
+
+### Stop condition
+
+STOP after WP11.
+
+---
+
+## WP12 — STRIKE and Final integration
+
+### STRIKE
+
+- persisted data only;
+- no fake similarity percentage/history/report links;
+- no developer/internal policy wording;
+- do not tell Student to perform an action that has no real mechanism.
+
+Legacy `/student/plagiarism` should redirect/retire safely in favor of `/student/thesis/strike`.
+
+### Final
+
+- consume centralized journey state;
+- LOCKED means no usable form/submit action;
+- use centralized STRIKE policy;
+- preserve real administrative/session application state;
+- remove internal engineering/client-confirmation wording from Student-facing UI.
+
+### Stop condition
+
+STOP after WP12.
+
+---
+
+## WP13 — Academic Journey, legacy cleanup, and final UI consistency
 
 ### Academic Journey
 
-Replace the detailed Thesis/Adviser milestone timeline with:
+Keep high-level only:
 
 ```text
 Admissions / Enrollment
@@ -447,48 +653,71 @@ Admissions / Enrollment
 → Graduation / Completion
 ```
 
-Remove Adviser-before-Title ordering, `APPROVED` treated as `PASSED`, and duplicated detailed thesis progression logic.
+Do not duplicate detailed Thesis Journey state here.
 
 ### Legacy routes
 
-Review and resolve:
+Review:
 
-- `/student/thesis` — centralized current-step redirect only;
-- `/student/plagiarism` — redirect to `/student/thesis/strike` or otherwise retire as a competing workflow page;
-- old adviser routes/pages — no independent/bypass workflow.
+- `/student/thesis`;
+- `/student/plagiarism`;
+- legacy Adviser assignment/request routes/pages.
 
-Do not delete compatibility routes without checking references; redirect where safer.
+No legacy page may maintain an independent progression model or bypass GS-020.
 
-## Phase 17 — Playwright stabilization pass (deferred)
+### UI consistency
 
-Do **not** execute this phase during the current backend/frontend refactor session.
+- reuse existing EARIST UI primitives;
+- keep spacing/typography/cards/alerts responsive;
+- avoid raw enum/debug-style screens;
+- remove internal implementation jargon;
+- manually inspect desktop and one narrow/mobile viewport.
 
-After the workflow is stable, return to Playwright and implement behavioral coverage for adviser states, Proposal and Final direct-route locks, STRIKE policy transitions, Final PASSED viewability, the full Student → requested Adviser → Dean → Student GS-020 flow, and decline/reject/retry paths where practical.
+### Stop condition
 
-Locked-route tests must assert actual unusability, not only page headings.
+STOP after WP13 and provide the final feature handoff report.
 
-## Phase 18 — Final UX regression and handoff
+---
 
-Before final handoff:
+## Validation rules across packages
 
-1. Run backend generate/build/tests.
-2. Run frontend type/lint/build checks available in the repository.
-3. Run the complete deterministic seed set.
-4. Do not run Playwright/E2E in this pass unless explicitly requested after backend/frontend stabilization.
-5. Manually inspect major pages at desktop and one narrow/mobile viewport.
-6. Verify no Student-facing page exposes engineering phrases such as `OPEN_QUESTION`, `PROPOSED_SYSTEM_DESIGN`, or 'policy is centralized'.
-7. Verify no mock plagiarism data is presented as real.
-8. Verify no frontend route bypasses Adviser CONFORME → Dean.
-9. Verify no Student page bypasses centralized lock state.
-10. Report pre-existing unrelated issues separately rather than silently changing unrelated modules.
+A successful compile does not prove correct workflow behavior.
 
-Final handoff must include:
+Use focused validation:
 
-- exact changed-file list for the correction pass;
-- before/after summary of each audited UI;
-- backend test count/result;
-- frontend check results;
-- Playwright/E2E status: explicitly mark **deferred** for this pass;
-- screenshots or traces for remaining UI failures;
+### Backend packages
+
+- Prisma generate when relevant;
+- feature migration check when relevant;
+- backend build;
+- focused backend tests.
+
+### Frontend packages
+
+- available typecheck;
+- lint;
+- build;
+- focused manual page verification.
+
+### Fixture package
+
+- seed twice;
+- verify idempotency and expected state.
+
+Do not run or add Playwright/browser E2E as part of this feature branch plan.
+
+## Final feature handoff
+
+Report:
+
+- work packages completed;
+- exact changed files;
+- schema/migration changes;
+- backend tests/results;
+- frontend checks/results;
+- deterministic fixture status;
+- manual verification summary;
 - remaining OPEN_QUESTION items;
-- explicit confirmation that the branch has not been merged unless project-owner approval was given.
+- known unrelated/pre-existing issues;
+- confirmation that automated browser E2E was intentionally excluded;
+- confirmation that the branch was not merged unless explicitly approved.
