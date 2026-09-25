@@ -3,8 +3,7 @@
 **Date:** 2026-09-25  
 **Implementation branch:** `refactor/student-thesis-journey`  
 **Parent branch:** `refactor/defense-workflow`  
-**Status:** Documentation-only implementation guide  
-**Playwright/E2E:** Deferred until backend/frontend contracts are stable
+**Status:** Documentation-only implementation guide
 
 ## 1. Purpose
 
@@ -17,11 +16,32 @@ Read these documents first, in order:
 3. `docs/superpowers/plans/2026-09-25-student-thesis-journey-refactor.md`
 4. this reference
 
-The branch is intentionally clean. It starts from `refactor/defense-workflow`. The experimental implementation on `refactor/student-thesis-journey-rebuild` is **not** an implementation base.
+The branch is intentionally clean and starts from `refactor/defense-workflow`.
 
-Do not copy its code, migrations, seeds, tests, or UI wholesale.
+The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
 
-## 2. Canonical Student flow
+## 2. Migration baseline — VERIFIED
+
+The historical fresh-replay ordering defect was repaired in the parent branch by:
+
+`63ce47149a6c9fdc660f62be8a4e75ab4aca4378`  
+`fix(prisma): repair fresh migration replay order`
+
+The repaired parent baseline was then merged into this branch.
+
+Verified on 2026-09-25 using a newly created MySQL `graduate_system` database:
+
+- all existing migrations replayed successfully from the initial migration through `20260923160000_rap_signature_policy`;
+- `npx prisma migrate dev` completed successfully;
+- Prisma reported: database/schema in sync.
+
+Therefore migration-chain repair is **not an implementation task for this feature anymore**.
+
+Do not modify historical migrations again unless a new concrete defect is found.
+
+Any new schema required by Student Thesis Journey must be introduced through a new feature migration on this branch.
+
+## 3. Canonical Student flow
 
 ```text
 Comprehensive Examination PASSED
@@ -59,7 +79,7 @@ Research/Data Gathering/Data Analysis are academic activities, not sidebar modul
 
 Instrument Validation / Expert Evaluation remains external/manual in the current project scope.
 
-## 3. Student Thesis Journey navigation
+## 4. Student Thesis Journey navigation
 
 ```text
 Thesis Journey
@@ -74,7 +94,7 @@ The parent is toggle-only.
 
 `/student/thesis` must redirect from the centralized backend journey state and must not maintain a second progression model.
 
-## 4. Journey states
+## 5. Journey states
 
 Use only:
 
@@ -100,34 +120,6 @@ Formal inputs include:
 - Final formal outcome.
 
 Application approval, scheduling, score completion, formal conclusion, PASSED outcome, RAP completion, and stage completion are separate concepts.
-
-## 5. Sidebar UI contract
-
-Keep the text label on the **left** and the status icon on the **right**.
-
-```text
-Title Defense                         [check]
-Adviser Request                       [circle-dot]
-Proposal Defense                      [lock]
-STRIKE / Plagiarism                   [lock]
-Final Defense                         [lock]
-```
-
-Recommended icon semantics:
-
-- COMPLETED → Check / CheckCircle
-- CURRENT → CircleDot / filled dot + subtle row emphasis
-- AVAILABLE → hollow circle / subtle arrow
-- WAITING → Clock
-- LOCKED → Lock
-
-Do not show repeated CURRENT/WAITING/LOCKED text pills when the icon already conveys state.
-
-Every icon needs accessible hover/focus/tap explanation.
-
-For LOCKED, the tooltip/focus text includes the backend `lockReason`.
-
-LOCKED items are genuinely non-navigable.
 
 ## 6. GS-020 Adviser Request
 
@@ -221,7 +213,35 @@ Actions:
 
 Do not show an arbitrary adviser picker in the Dean approval flow.
 
-## 8. Proposal and Final route behavior
+## 8. Sidebar UI contract
+
+Keep the text label on the **left** and the status icon on the **right**.
+
+```text
+Title Defense                         [check]
+Adviser Request                       [circle-dot]
+Proposal Defense                      [lock]
+STRIKE / Plagiarism                   [lock]
+Final Defense                         [lock]
+```
+
+Recommended icon semantics:
+
+- COMPLETED → Check / CheckCircle
+- CURRENT → CircleDot / filled dot + subtle row emphasis
+- AVAILABLE → hollow circle / subtle arrow
+- WAITING → Clock
+- LOCKED → Lock
+
+Do not show repeated CURRENT/WAITING/LOCKED text pills when the icon already conveys state.
+
+Every icon needs accessible hover/focus/tap explanation.
+
+For LOCKED, the tooltip/focus text includes the backend `lockReason`.
+
+LOCKED items are genuinely non-navigable.
+
+## 9. Proposal and Final route behavior
 
 A locked journey step may show a lock explanation, but it must not render a usable form or submit action.
 
@@ -239,7 +259,7 @@ Proposal/Final pages must still distinguish real application/session states such
 
 These are administrative/session states, not a second academic progression model.
 
-## 9. STRIKE policy
+## 10. STRIKE policy
 
 STRIKE-before-Final remains an `OPEN_QUESTION / PROPOSED_SYSTEM_DESIGN`.
 
@@ -252,34 +272,6 @@ Use one centralized/configurable policy source for:
 Do not allow the UI to show Final locked while the backend independently permits Final submission.
 
 Do not expose engineering uncertainty wording to Students.
-
-## 10. Migration baseline warning
-
-The parent branch currently contains the known fresh-replay ordering defect:
-
-```text
-20260922183328_align_defense_conclusion_relations
-MODIFY rap_report_signatures.required
-
-before
-
-20260923160000_rap_signature_policy
-ADD rap_report_signatures.required
-```
-
-Phase 0 must repair and validate the migration chain before feature schema work.
-
-Use a fresh development/test database.
-
-Required baseline after the repair:
-
-- full migration replay from zero;
-- `prisma migrate dev` succeeds on the clean database;
-- seed succeeds;
-- Prisma generate succeeds;
-- backend build/tests succeed.
-
-Do not use the old experimental database as the implementation baseline.
 
 ## 11. Deterministic fixtures
 
@@ -300,52 +292,78 @@ Create dedicated, idempotent fixtures for:
 
 Do not rely on one overloaded legacy Student account.
 
-## 12. Implementation order
+## 12. Implementation strategy — one work package per agent session
+
+Do **not** ask one coding-agent session to implement the whole feature.
+
+The implementation plan is split into small work packages.
+
+Rules for every agent session:
+
+1. Read the SOT, design spec, implementation plan, and this reference.
+2. Work on **one work package only**.
+3. Do not begin the next package automatically.
+4. Run only the validation required by that package.
+5. Stop and provide a handoff report for review.
+6. Continue only after the project owner starts/approves the next package.
+
+Backend/domain work comes first. Frontend presentation comes only after its backend contract is stable.
+
+## 13. Work-package order
 
 ```text
-Phase 0 migration-chain repair
+WP1  GS-020 schema / AdviserRequest model
 ↓
-Backend/domain authority
+WP2  Student adviser-candidate + request backend
 ↓
-GS-020 schema + services
+WP3  Requested Adviser response backend
 ↓
-Central Student Thesis Journey read model
+WP4  Dean decision + AdviserAssignment backend
 ↓
-Backend tests
+WP5  Central Student Thesis Journey read model + STRIKE policy
 ↓
-Deterministic fixtures
+WP6  Backend-focused deterministic fixtures
 ↓
-Student frontend
+WP7  Student Journey hook + sidebar + /student/thesis redirect
 ↓
-Panelist/Adviser frontend
+WP8  Student Adviser Request UI
 ↓
-Admin/Dean frontend
+WP9  Panelist/Adviser Adviser Requests UI
 ↓
-Proposal/Final application-state cleanup
+WP10 Admin/Dean Adviser Review UI
 ↓
-Sidebar icon/tooltip polish
+WP11 Title + Proposal integration
 ↓
-Build/type/lint/seed/manual verification
+WP12 STRIKE + Final integration
 ↓
-Playwright later
+WP13 Academic Journey / legacy routes / final UI consistency
 ```
 
-## 13. Current validation scope
+Automated browser E2E is intentionally **not part of this feature plan**. It will be handled separately after the Student Thesis Journey flow is implemented and stable.
 
-Required now:
+## 14. Current validation scope
 
-- Prisma generate;
+Use package-appropriate checks only.
+
+Backend packages generally require:
+
+- Prisma generate when schema changes;
+- new feature migration validation when schema changes;
 - backend TypeScript build;
-- backend tests;
-- available frontend typecheck/lint/build checks;
-- deterministic seed verification;
-- manual functional review at desktop and one narrow/mobile viewport.
+- focused backend tests.
 
-Deferred:
+Frontend packages generally require:
 
-- Playwright/E2E expansion and stabilization.
+- available frontend typecheck;
+- lint;
+- build;
+- manual functional inspection for the changed page(s).
 
-## 14. Do not implement
+Seed/fixture packages require repeated seed execution to verify idempotency.
+
+Do not turn every small work package into a full-repository browser-testing exercise.
+
+## 15. Do not implement
 
 Do not add:
 
@@ -358,7 +376,7 @@ Do not add:
 - unconditional Statistician/Instrument/STRIKE gates without SOT confirmation;
 - another independent Student thesis progression model.
 
-## 15. Historical branch rule
+## 16. Historical branch rule
 
 `refactor/student-thesis-journey-rebuild` is historical/reference only.
 
