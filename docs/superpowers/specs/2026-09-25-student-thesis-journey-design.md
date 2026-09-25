@@ -222,35 +222,21 @@ STRIKE              LOCKED
 Final Defense       LOCKED
 ```
 
-## 9. Migration reliability constraint
+## 9. Migration baseline
 
-Before feature schema work, the implementation agent must repair/validate the existing Prisma migration chain.
+The historical fresh-replay ordering defect in the parent workflow branch has been repaired by commit:
 
-Known issue:
+`63ce47149a6c9fdc660f62be8a4e75ab4aca4378` — `fix(prisma): repair fresh migration replay order`
 
-```text
-20260922183328_align_defense_conclusion_relations
-modifies rap_report_signatures.required
+The repaired baseline is already present on this branch.
 
-before
+It was verified on 2026-09-25 against a newly created MySQL `graduate_system` database: all existing migrations replayed successfully through `20260923160000_rap_signature_policy`, and `npx prisma migrate dev` reported the database/schema in sync.
 
-20260923160000_rap_signature_policy
-creates rap_report_signatures.required
-```
+Therefore this feature must **not** reopen or rewrite the historical migration repair unless a new concrete migration defect is discovered.
 
-This causes fresh/shadow replay failure with MySQL error 1054.
+Any Student Thesis Journey schema work must use a new feature migration on this branch.
 
-The implementation must not treat `prisma migrate deploy` as the permanent solution.
-
-Required baseline:
-- full migration replay on a fresh temporary MySQL database;
-- `prisma migrate dev` succeeds there;
-- seed succeeds;
-- Prisma generate succeeds;
-- backend build succeeds;
-- backend tests succeed.
-
-Do not run destructive reset/resolve operations against the current working database without explicit project-owner approval.
+Do not run destructive reset/resolve operations against a database unless explicitly approved by the project owner.
 
 ## 10. Definition of done
 
@@ -266,7 +252,7 @@ Complete for the current refactor pass only when:
 - seed/manual functional verification is completed for the changed backend/frontend flows;
 - remaining OPEN_QUESTION items are reported, not silently hard-coded.
 
-Playwright/E2E is **deferred to a later stabilization pass** and is not part of the current refactor acceptance gate.
+Automated browser E2E is **out of scope for this feature plan**. It will be handled separately after the Student Thesis Journey flow is implemented and stable.
 
 ## 11. Mandatory UI/UX implementation contract
 
@@ -474,40 +460,19 @@ Adviser Request becomes COMPLETED, active adviser is visible, and Proposal becom
 
 When centralized policy requires STRIKE and no eligible plagiarism result exists, STRIKE is CURRENT/WAITING and Final is LOCKED. Direct Final URL shows lock UX and no usable Final form.
 
-## 13. Deferred Playwright/E2E contract
-
-Playwright/E2E is **not part of the current refactor pass**. Do not spend agent time expanding or stabilizing browser tests until the backend/frontend workflow and UI contracts below are stable.
-
-When Playwright resumes in a later stabilization pass, it should assert behavior rather than merely page existence.
-
-For locked stages, verify at least one concrete lock behavior: application form absent, submit action absent/disabled, lock reason visible, and/or sidebar item non-navigating.
-
-A test that only checks that a locked page heading renders is insufficient.
-
-Future GS-020 end-to-end coverage should include:
-
-```text
-Student request
-→ Panelist/Adviser CONFORME
-→ Student sees waiting for Dean
-→ Dean approves
-→ active AdviserAssignment appears
-→ Proposal unlocks
-```
-
-Decline/reject paths should also be covered when the stabilization pass begins.
-
 ## 14. Implementation constraint
 
 Start from the `refactor/defense-workflow` implementation baseline. Do not copy the experimental implementation from `refactor/student-thesis-journey-rebuild`; use that branch only as historical evidence for what was tried and what failed.
 
-Implement one backend-authoritative journey architecture, complete the Student/Panelist/Dean GS-020 flow, preserve application/session state as separate from academic completion state, and follow the UI/UX contract in this document. Playwright/E2E remains deferred.
+Implement one backend-authoritative journey architecture, complete the Student/Panelist/Dean GS-020 flow, preserve application/session state as separate from academic completion state, and follow the UI/UX contract in this document. Automated browser E2E is not part of this feature branch implementation plan.
 
 Do not create another parallel journey architecture.
 
-## 15. Current refactor priority order
+## 15. Implementation priority and package boundaries
 
-For implementation on this clean branch, work in this order:
+For implementation on this clean branch, backend/domain contracts come first. Work must be divided into small packages, and a coding-agent session must stop after the assigned package rather than automatically continuing into the next one.
+
+Preferred order:
 
 1. **Backend correctness first**
    - one authoritative STRIKE-before-Final policy source used by journey state and Final eligibility/scheduling;
@@ -542,4 +507,4 @@ For implementation on this clean branch, work in this order:
    - deterministic seed verification;
    - manual functional verification at desktop and one narrow/mobile viewport.
 
-Playwright/E2E begins only after these contracts are stable.
+Browser E2E work is excluded from this feature plan and should be scheduled separately after implementation is stable.
