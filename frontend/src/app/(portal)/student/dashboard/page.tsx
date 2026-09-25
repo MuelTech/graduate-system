@@ -357,7 +357,7 @@ export default async function StudentDashboard() {
                   icon: User,
                 },
                 {
-                  href: "/student/plagiarism",
+                  href: "/student/thesis/strike",
                   label: "STRIKE Check",
                   icon: AlertCircle,
                 },

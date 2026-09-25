@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
-import { journeyRouteFor } from "@/lib/student-thesis-journey";
+import {
+  journeyRouteFor,
+  journeyStepFor,
+} from "@/lib/student-thesis-journey";
 import {
   Card,
   CardContent,
@@ -10,18 +13,57 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { FileSearch, Info, Lock } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Info, Lock, Clock, CheckCircle2 } from "lucide-react";
 
 /**
- * WP7 minimal STRIKE route shell (navigation continuity only).
- * Full STRIKE UI integration is WP12 — no mock results or Faculty API here.
+ * WP12 — canonical Student STRIKE / Plagiarism page.
+ * Status-only from Journey + persisted backend evidence.
+ * No mock results, thresholds, uploads, or Faculty API.
  */
-export default function StudentStrikeShellPage() {
-  const { data: journey, isLoading, isError } = useStudentThesisJourney();
-  const strike = journey?.steps.find((s) => s.key === "STRIKE");
+export default function StudentStrikePage() {
+  const {
+    data: journey,
+    isLoading,
+    isError,
+    refetch,
+  } = useStudentThesisJourney();
+
+  const strike = journeyStepFor(journey, "STRIKE");
   const strikeRequired = journey?.policy?.strikeRequired === true;
   const strikeCompleted = strike?.state === "COMPLETED";
+  const finalStep = journeyStepFor(journey, "FINAL_DEFENSE");
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-(--earist-primary)">
+          STRIKE / Plagiarism
+        </h2>
+        <p className="text-sm text-(--earist-body-text)">Loading status…</p>
+      </div>
+    );
+  }
+
+  if (isError || !journey) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-(--earist-primary)">
+          STRIKE / Plagiarism
+        </h2>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <p className="text-sm text-red-600">
+              Unable to load STRIKE / plagiarism status.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -34,13 +76,6 @@ export default function StudentStrikeShellPage() {
         </p>
       </div>
 
-      {isLoading && (
-        <p className="text-sm text-(--earist-body-text)">Loading status…</p>
-      )}
-      {isError && (
-        <p className="text-sm text-red-600">Unable to load journey status.</p>
-      )}
-
       {strike?.state === "LOCKED" && (
         <Card>
           <CardContent className="space-y-2 pt-6">
@@ -49,7 +84,7 @@ export default function StudentStrikeShellPage() {
               <p className="font-semibold">This step is not available yet</p>
             </div>
             <p className="text-sm text-(--earist-body-text)">
-              {strike.lockReason}
+              {strike.lockReason || "This step is currently unavailable."}
             </p>
             <Link
               href={journeyRouteFor("PROPOSAL_DEFENSE")}
@@ -67,6 +102,7 @@ export default function StudentStrikeShellPage() {
             <CardTitle className="flex items-center gap-2 text-sm">
               <Info className="h-4 w-4" />
               Not required
+              <Badge variant="outline">Not required</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -77,17 +113,17 @@ export default function StudentStrikeShellPage() {
             {strike.detail && (
               <p className="text-xs text-(--earist-body-text)">{strike.detail}</p>
             )}
-            {strike.nextAction && (
-              <p className="text-xs text-(--earist-body-text)">
-                {strike.nextAction}
-              </p>
+            {(finalStep?.state === "CURRENT" ||
+              finalStep?.state === "AVAILABLE" ||
+              finalStep?.state === "WAITING" ||
+              finalStep?.state === "COMPLETED") && (
+              <Link
+                href={journeyRouteFor("FINAL_DEFENSE")}
+                className={buttonVariants()}
+              >
+                Continue to Final Defense
+              </Link>
             )}
-            <Link
-              href={journeyRouteFor("FINAL_DEFENSE")}
-              className={buttonVariants()}
-            >
-              Continue to Final Defense
-            </Link>
           </CardContent>
         </Card>
       )}
@@ -96,25 +132,29 @@ export default function StudentStrikeShellPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <FileSearch className="h-4 w-4" />
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               Plagiarism check
               <Badge className="bg-emerald-100 text-emerald-800">Completed</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="text-(--earist-body-text)">
-              {strike.nextAction ||
-                "Your required plagiarism check is complete."}
+              The required plagiarism / STRIKE clearance has been recorded.
             </p>
-            <p className="text-xs text-(--earist-body-text)">
-              Only reports recorded in this system are shown here.
-            </p>
-            <Link
-              href={journeyRouteFor("FINAL_DEFENSE")}
-              className={buttonVariants()}
-            >
-              Continue to Final Defense
-            </Link>
+            {strike.nextAction && (
+              <p className="text-xs text-(--earist-body-text)">
+                {strike.nextAction}
+              </p>
+            )}
+            {(finalStep?.state === "CURRENT" ||
+              finalStep?.state === "AVAILABLE") && (
+              <Link
+                href={journeyRouteFor("FINAL_DEFENSE")}
+                className={buttonVariants()}
+              >
+                Continue to Final Defense
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}
@@ -126,20 +166,22 @@ export default function StudentStrikeShellPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
-                <FileSearch className="h-4 w-4" />
+                <Clock className="h-5 w-5 text-amber-600" />
                 Plagiarism check
-                <Badge>
-                  {strike.state === "CURRENT" ? "Action needed" : "Pending"}
-                </Badge>
+                <Badge className="bg-amber-100 text-amber-800">Pending</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p className="text-(--earist-body-text)">
-                {strike.nextAction ||
-                  "Complete the required plagiarism review before Final Defense."}
+                STRIKE / plagiarism clearance is pending.
               </p>
               <p className="text-xs text-(--earist-body-text)">
-                Only reports recorded in this system are shown here.
+                No eligible STRIKE result has been recorded yet. Follow the
+                instructions provided by the Graduate School or wait for the
+                result to be recorded.
+              </p>
+              <p className="text-xs text-(--earist-body-text)">
+                Only records held in this system are shown here.
               </p>
             </CardContent>
           </Card>
