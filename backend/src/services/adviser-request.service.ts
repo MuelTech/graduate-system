@@ -504,76 +504,107 @@ export class AdviserRequestService {
     const now = new Date();
     const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
 
-    return prisma.$transaction(async (tx) => {
-      // Re-read + conditional state protection inside the transaction.
-      const current = await tx.adviserRequest.findUnique({
-        where: { id: requestId },
-      });
-      if (!current) {
-        throw new AppError("Adviser request not found.", 404);
-      }
-      if (
-        current.status !== "PENDING" ||
-        current.adviserStatus !== "CONFORMED" ||
-        current.deanStatus !== "PENDING"
-      ) {
-        throw new AppError(
-          "Adviser request state changed or has already been decided.",
-          409,
-        );
-      }
-
-      if (gate.decision === "APPROVED") {
-        const active = await tx.adviserAssignment.findFirst({
-          where: { studentId: current.studentId, isActive: true },
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // Re-read + conditional state protection inside the transaction.
+        const current = await tx.adviserRequest.findUnique({
+          where: { id: requestId },
         });
-        if (active) {
+        if (!current) {
+          throw new AppError("Adviser request not found.", 404);
+        }
+        if (
+          current.status !== "PENDING" ||
+          current.adviserStatus !== "CONFORMED" ||
+          current.deanStatus !== "PENDING"
+        ) {
           throw new AppError(
-            "An active adviser assignment already exists for this student.",
+            "Adviser request state changed or has already been decided.",
             409,
           );
         }
-      }
 
-      const expectedPreState = {
-        id: requestId,
-        status: "PENDING" as const,
-        adviserStatus: "CONFORMED" as const,
-        deanStatus: "PENDING" as const,
-      };
+        // Serialize per Student before active-assignment check + create.
+        // Prevents two different CONFORMED requests from both inserting
+        // an active AdviserAssignment (check-then-insert race).
+        await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${current.studentId} FOR UPDATE`;
 
-      const updated = await tx.adviserRequest.updateMany({
-        where: expectedPreState,
-        data: {
-          deanStatus: gate.decision,
-          deanReviewedById: deanUserId,
-          deanReviewedAt: now,
-          deanRemarks: remarks,
-          status: mapDeanDecisionToOverallStatus(gate.decision),
-          // Compatibility mirror only — not authoritative for GS-020.
-          approvedById: deanUserId,
-        },
+        if (gate.decision === "APPROVED") {
+          const active = await tx.adviserAssignment.findFirst({
+            where: { studentId: current.studentId, isActive: true },
+          });
+          if (active) {
+            throw new AppError(
+              "An active adviser assignment already exists for this student.",
+              409,
+            );
+          }
+        }
+
+        const expectedPreState = {
+          id: requestId,
+          status: "PENDING" as const,
+          adviserStatus: "CONFORMED" as const,
+          deanStatus: "PENDING" as const,
+        };
+
+        // approvedById is approval-only compatibility. Never written on REJECT.
+        const updateData =
+          gate.decision === "APPROVED"
+            ? {
+                deanStatus: gate.decision,
+                deanReviewedById: deanUserId,
+                deanReviewedAt: now,
+                deanRemarks: remarks,
+                status: mapDeanDecisionToOverallStatus(gate.decision),
+                // Compatibility mirror only — not authoritative for GS-020.
+                approvedById: deanUserId,
+              }
+            : {
+                deanStatus: gate.decision,
+                deanReviewedById: deanUserId,
+                deanReviewedAt: now,
+                deanRemarks: remarks,
+                status: mapDeanDecisionToOverallStatus(gate.decision),
+              };
+
+        const updated = await tx.adviserRequest.updateMany({
+          where: expectedPreState,
+          data: updateData,
+        });
+        if (updated.count === 0) {
+          throw new AppError(
+            "Adviser request state changed or has already been decided.",
+            409,
+          );
+        }
+
+        // Assignment only after CONFORME + Dean APPROVED, same transaction.
+        if (gate.decision === "APPROVED") {
+          await tx.adviserAssignment.create({
+            data: {
+              studentId: current.studentId,
+              adviserId: current.requestedAdviserId,
+              assignedDate: now,
+              isActive: true,
+            },
+          });
+        }
+
+        return tx.adviserRequest.findUnique({ where: { id: requestId } });
       });
-      if (updated.count === 0) {
+    } catch (error: unknown) {
+      // Map lock/deadlock/serialization conflicts to domain 409.
+      const message = error instanceof Error ? error.message : String(error);
+      const isConcurrency =
+        /deadlock|lock wait timeout|serialization|WSREP|ER_LOCK/i.test(message);
+      if (isConcurrency && !(error instanceof AppError)) {
         throw new AppError(
-          "Adviser request state changed or has already been decided.",
+          "Adviser assignment conflict: another decision is in progress. Please retry.",
           409,
         );
       }
-
-      // Assignment only after CONFORME + Dean APPROVED, same transaction.
-      if (gate.decision === "APPROVED") {
-        await tx.adviserAssignment.create({
-          data: {
-            studentId: current.studentId,
-            adviserId: current.requestedAdviserId,
-            assignedDate: now,
-            isActive: true,
-          },
-        });
-      }
-
-      return tx.adviserRequest.findUnique({ where: { id: requestId } });
-    });
+      throw error;
+    }
   }
 }
