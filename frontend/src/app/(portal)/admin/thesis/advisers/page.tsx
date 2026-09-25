@@ -289,7 +289,7 @@ export default function AdminAdviserRequestReviewPage() {
             <DialogDescription>
               {pendingDecision?.decision === "APPROVED"
                 ? `The requested adviser has already recorded CONFORME. Approval will officially assign ${pendingDecision.adviserName} as the student's adviser.`
-                : "No AdviserAssignment will be created. The student may submit another valid adviser request."}
+                : "No active adviser assignment will be created. The student may submit another valid adviser request."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

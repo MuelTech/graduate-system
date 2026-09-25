@@ -1,456 +1,195 @@
 import Link from "next/link";
-import { auth } from "@/auth";
+import { apiServerRequest } from "@/lib/api.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
-  CheckCircle2,
-  Clock,
-  FileText,
   ArrowRight,
   BookOpen,
-  Calendar,
+  FileText,
   Library,
   Megaphone,
   User,
-  AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function compExamLabel(status?: string): string {
+  const s = (status || "").toLowerCase();
+  if (s === "passed") return "Passed";
+  if (s === "failed") return "Failed";
+  if (s === "pending") return "Pending";
+  return "Not taken";
+}
+
+/**
+ * Student dashboard — high-level academic info only.
+ * Detailed thesis progression lives in Thesis Journey (GET /thesis/journey).
+ */
 export default async function StudentDashboard() {
-  const session = await auth();
-  if (!session?.user?.accessToken) {
-    return <div>Please log in to view your dashboard.</div>;
+  let journey: Record<string, unknown> | null = null;
+  let loadFailed = false;
+  try {
+    journey = await apiServerRequest("/student/journey");
+  } catch {
+    loadFailed = true;
   }
 
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
-  const res = await fetch(`${apiUrl}/api/student/journey`, {
-    headers: { Authorization: `Bearer ${session.user.accessToken}` },
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    return <div>Error loading profile data.</div>;
-  }
-  const journey = await res.json();
-
-  const student = {
-    firstName: journey.user?.firstName || "Student",
-    lastName: journey.user?.lastName || "",
-    studentNumber: journey.studentNumber || "Not Assigned",
-    program: journey.program?.programName || "Graduate Program",
-    currentStage: "proposal_defense" as
-      | "title_defense"
-      | "proposal_defense"
-      | "final_defense"
-      | "repository",
-    compExamStatus: (journey.compExamRecords?.[0]?.status?.toLowerCase() ||
-      "not_taken") as "pending" | "passed" | "failed" | "not_taken" | "approved",
-    activeApplication: {
-      stage: "Proposal Defense",
-      dateSubmitted: "May 28, 2026",
-      status: "pending_review" as
-        | "pending_review"
-        | "approved"
-        | "scheduled"
-        | "completed",
-    },
-    upcomingDefense: null as null | {
-      stage: string;
-      date: string;
-      time: string;
-      teamsLink: string;
-    },
-    requirements: {
-      submitted: journey.studentRequirements?.length || 0,
-      total: 6,
-    },
+  const user = (journey?.user ?? {}) as {
+    firstName?: string;
+    lastName?: string;
   };
-
-  const stages = [
-    { key: "title_defense", label: "Title Defense" },
-    { key: "proposal_defense", label: "Proposal Defense" },
-    { key: "final_defense", label: "Final Defense" },
-    { key: "repository", label: "Repository" },
-  ];
-
-  const currentStageIndex = stages.findIndex(
-    (s) => s.key === student.currentStage,
-  );
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  const firstName = user.firstName || "Student";
+  const program =
+    (journey?.program as { programName?: string } | undefined)?.programName ||
+    "Graduate Program";
+  const studentNumber = (journey?.studentNumber as string) || "Not Assigned";
+  const compExamStatus = (
+    journey?.compExamRecords as Array<{ status?: string }> | undefined
+  )?.[0]?.status;
+  const requirementsSubmitted =
+    (journey?.studentRequirements as unknown[] | undefined)?.length ?? 0;
 
   return (
     <div className="space-y-4">
-      {/* Welcome Header */}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
-          {getGreeting()}, {student.firstName}
+          {getGreeting()}, {firstName}
         </h2>
-        <p className="text-sm text-(--earist-body-text)">{student.program}</p>
+        <p className="text-sm text-(--earist-body-text)">{program}</p>
         <p className="text-xs text-(--earist-body-text)">
-          Student Number: {student.studentNumber}
+          Student Number: {studentNumber}
         </p>
       </div>
 
-      {/* Thesis Pipeline Progress */}
-      <div className="rounded-xl border border-(--earist-border-gray) bg-white px-6 py-4">
-        <p className="mb-3 text-xs font-semibold text-(--earist-secondary)">
-          Thesis Pipeline
-        </p>
-        <div className="relative">
-          {/* Connector lines */}
-          <div className="absolute top-4 right-4 left-4 h-1 -translate-y-1/2 rounded bg-(--earist-border-gray)" />
-          <div
-            className="absolute top-4 left-4 h-1 -translate-y-1/2 rounded bg-green-500"
-            style={{
-              width: `calc(${currentStageIndex / (stages.length - 1)} * (100% - 2rem))`,
-            }}
-          />
-          {/* Steps */}
-          <div className="relative flex justify-between">
-            {stages.map((stage, i) => {
-              const isCompleted = i < currentStageIndex;
-              const isCurrent = i === currentStageIndex;
+      {loadFailed && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+            Unable to load your dashboard information. Please try again later.
+          </CardContent>
+        </Card>
+      )}
 
-              return (
-                <div key={stage.key} className="flex flex-col items-center">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                      isCompleted
-                        ? "bg-green-500 text-white"
-                        : isCurrent
-                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/20"
-                          : "bg-(--earist-surface-gray) text-(--earist-body-text)"
-                    }`}
-                  >
-                    {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
-                  </div>
-                  <span
-                    className={`mt-1.5 text-center text-[11px] font-medium ${
-                      isCurrent
-                        ? "text-(--earist-primary)"
-                        : isCompleted
-                          ? "text-green-600"
-                          : "text-(--earist-body-text)"
-                    }`}
-                  >
-                    {stage.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Active Defense Application — spans 2 cols */}
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Active Defense Application
-              </CardTitle>
-              <Badge className="bg-amber-100 text-amber-700">
-                <Clock className="mr-1 h-3 w-3" />
-                Pending Review
-              </Badge>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4" />
+              Thesis Journey
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
-              <p className="text-sm font-semibold text-(--earist-primary)">
-                {student.activeApplication.stage}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Submitted: {student.activeApplication.dateSubmitted}
-              </p>
-            </div>
-            <Link
-              href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-            >
-              View Application <ArrowRight className="h-3 w-3" />
+          <CardContent className="space-y-3">
+            <p className="text-sm text-(--earist-body-text)">
+              View your current thesis/dissertation stage, requirements, and
+              next action.
+            </p>
+            <Link href="/student/thesis" className={buttonVariants()}>
+              Open Thesis Journey
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </CardContent>
         </Card>
 
-        {/* Comp Exam Status — compact */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Comprehensive Exam
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <BookOpen className="h-4 w-4" />
+              Comprehensive Examination
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  student.compExamStatus === "passed" || student.compExamStatus === "approved"
-                    ? "bg-green-50"
-                    : student.compExamStatus === "failed"
-                      ? "bg-red-50"
-                      : "bg-gray-50"
-                }`}
-              >
-                {student.compExamStatus === "passed" || student.compExamStatus === "approved" ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                ) : student.compExamStatus === "failed" ? (
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                ) : (
-                  <Clock className="h-5 w-5 text-gray-500" />
-                )}
-              </div>
-              <div>
-                {(student.compExamStatus === "passed" || student.compExamStatus === "approved") && (
-                  <Badge className="bg-green-100 text-green-700">Passed</Badge>
-                )}
-                {student.compExamStatus === "failed" && (
-                  <Badge className="bg-red-100 text-red-700">Failed</Badge>
-                )}
-                {student.compExamStatus === "pending" && (
-                  <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
-                )}
-                {student.compExamStatus === "not_taken" && (
-                  <Badge className="bg-gray-100 text-gray-500">Not Taken</Badge>
-                )}
-                <p className="mt-1 text-xs text-(--earist-body-text)">
-                  For academic tracking only. Not administered through the
-                  system.
-                </p>
-              </div>
-            </div>
+            <Badge variant="outline">
+              {compExamLabel(compExamStatus)}
+            </Badge>
+            <p className="mt-2 text-xs text-(--earist-body-text)">
+              Required before Title Defense.
+            </p>
           </CardContent>
         </Card>
 
-        {/* Requirements Status — spans 2 cols */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Requirements Status
-              </CardTitle>
-              <FileText className="h-5 w-5 text-(--earist-accent)" />
-            </div>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4" />
+              Academic Journey
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-(--earist-primary)">
-                  {student.requirements.submitted}
-                  <span className="text-base font-normal text-(--earist-body-text)">
-                    {" "}
-                    / {student.requirements.total}
-                  </span>
-                </span>
-                <span className="text-xs text-(--earist-body-text)">
-                  submitted
-                </span>
-              </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
-                <div
-                  className="h-full rounded-full bg-(--earist-primary)"
-                  style={{
-                    width: `${(student.requirements.submitted / student.requirements.total) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-(--earist-body-text)">
+              High-level program phases from enrollment to completion.
+            </p>
             <Link
-              href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+              href="/student/journey"
+              className={buttonVariants({ variant: "outline" })}
             >
-              View Requirements <ArrowRight className="h-3 w-3" />
+              View Academic Journey
             </Link>
           </CardContent>
         </Card>
 
-        {/* Upcoming Defense / No Scheduled Defense — spans 2 cols */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Upcoming Defense
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Library className="h-4 w-4" />
+              Research Repository
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-(--earist-body-text)">
+              Browse published graduate research and submit completed work.
+            </p>
+            <p className="text-xs text-(--earist-body-text)">
+              Requirements submitted: {requirementsSubmitted}
+            </p>
+            <Link
+              href="/student/repository"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Open Repository
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Megaphone className="h-4 w-4" />
+              Announcements
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {student.upcomingDefense ? (
-              <div>
-                <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
-                  <p className="text-sm font-semibold text-(--earist-primary)">
-                    {student.upcomingDefense.stage}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {student.upcomingDefense.date} &middot;{" "}
-                    {student.upcomingDefense.time}
-                  </p>
-                </div>
-                <a
-                  href={student.upcomingDefense.teamsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-                >
-                  Join MS Teams <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center rounded-lg bg-(--earist-surface-gray) py-6">
-                <div className="text-center">
-                  <Calendar className="mx-auto mb-2 h-8 w-8 text-(--earist-body-text)/40" />
-                  <p className="text-sm text-(--earist-body-text)">
-                    No defense scheduled yet
-                  </p>
-                </div>
-              </div>
-            )}
+            <Link
+              href="/student/announcements"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              View Announcements
+            </Link>
           </CardContent>
         </Card>
-
-        {/* Quick Links — spans 2 cols */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Quick Links
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4" />
+              Notifications
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {[
-                {
-                  href: "/student/thesis",
-                  label: "Thesis Pipeline",
-                  icon: FileText,
-                },
-                {
-                  href: "/student/curriculum",
-                  label: "Curriculum",
-                  icon: BookOpen,
-                },
-                {
-                  href: "/student/journey",
-                  label: "Academic Journey",
-                  icon: ArrowRight,
-                },
-                {
-                  href: "/student/repository",
-                  label: "Repository",
-                  icon: Library,
-                },
-                {
-                  href: "/student/announcements",
-                  label: "Announcements",
-                  icon: Megaphone,
-                },
-                {
-                  href: "/student/profile",
-                  label: "Profile",
-                  icon: User,
-                },
-                {
-                  href: "/student/thesis/strike",
-                  label: "STRIKE Check",
-                  icon: AlertCircle,
-                },
-              ].map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center gap-2 rounded-lg bg-(--earist-surface-gray) p-2.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
-                >
-                  <link.icon className="h-4 w-4 shrink-0" />
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notifications — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Recent Notifications
-              </CardTitle>
-              <Link
-                href="/student/notifications"
-                className="text-xs font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-              >
-                View All
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {[
-                {
-                  title: "Proposal Defense application under review",
-                  desc: "Your application is being reviewed by the GS Office.",
-                  time: "1 hour ago",
-                  unread: true,
-                },
-                {
-                  title: "Adviser assigned",
-                  desc: "Dr. Reyes has been assigned as your thesis adviser.",
-                  time: "3 hours ago",
-                  unread: true,
-                },
-                {
-                  title: "Title Defense RAP Report signed",
-                  desc: "All panelists have signed your Title Defense RAP Report.",
-                  time: "2 days ago",
-                  unread: true,
-                },
-                {
-                  title: "Curriculum checklist updated",
-                  desc: "New subjects added for the current semester.",
-                  time: "3 days ago",
-                  unread: false,
-                },
-                {
-                  title: "Welcome to Student Portal",
-                  desc: "Your account has been activated. Explore your dashboard.",
-                  time: "1 week ago",
-                  unread: false,
-                },
-              ].map((notif, i) => (
-                <div
-                  key={i}
-                  className={`flex items-start gap-3 rounded-lg p-2.5 ${
-                    notif.unread
-                      ? "bg-(--earist-surface-light-red)"
-                      : "bg-(--earist-surface-gray)"
-                  }`}
-                >
-                  <div
-                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-                      notif.unread ? "bg-(--earist-accent)" : "bg-transparent"
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-(--earist-primary)">
-                      {notif.title}
-                    </p>
-                    <p className="truncate text-xs text-(--earist-body-text)">
-                      {notif.desc}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-(--earist-body-text)">
-                    {notif.time}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <Link
+              href="/student/notifications"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              View Notifications
+            </Link>
           </CardContent>
         </Card>
       </div>

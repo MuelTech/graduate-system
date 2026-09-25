@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   studentThesisJourneyQueryKey,
-  journeyRouteFor,
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
@@ -228,10 +227,10 @@ export default function ProposalDefensePage() {
               {proposalStep?.lockReason || "This step is currently unavailable."}
             </p>
             <Link
-              href={journeyRouteFor("ADVISER_REQUEST")}
+              href="/student/thesis"
               className={buttonVariants({ variant: "outline" })}
             >
-              Go to Adviser Request
+              Continue in Thesis Journey
             </Link>
           </CardContent>
         </Card>

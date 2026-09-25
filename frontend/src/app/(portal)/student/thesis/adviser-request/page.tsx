@@ -211,10 +211,10 @@ export default function AdviserRequestPage() {
               {adviserStep?.lockReason || "This step is currently unavailable."}
             </p>
             <Link
-              href="/student/thesis/title-defense"
+              href="/student/thesis"
               className={buttonVariants({ variant: "outline" })}
             >
-              Go to Title Defense
+              Continue in Thesis Journey
             </Link>
           </CardContent>
         </Card>
