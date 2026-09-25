@@ -49,6 +49,6 @@ export function resolveAdviserRequestUiState(input: {
 export function roleLabel(role: string): string {
   if (role === "CHAIRMAN") return "Chairman";
   if (role === "PANELIST") return "Panelist";
-  // Do not invent meaning for unexpected roles.
-  return role;
+  // Defensive only — backend eligibility normally returns Chairman/Panelist only.
+  return "Title Defense panel member";
 }

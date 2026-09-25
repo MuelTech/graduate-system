@@ -208,8 +208,7 @@ export default function AdviserRequestPage() {
               <p className="font-semibold">Adviser Request is locked</p>
             </div>
             <p className="text-sm text-(--earist-body-text)">
-              {adviserStep?.lockReason ||
-                "Complete and pass Title Defense with an official selected title first."}
+              {adviserStep?.lockReason || "This step is currently unavailable."}
             </p>
             <Link
               href="/student/thesis/title-defense"
@@ -397,7 +396,7 @@ export default function AdviserRequestPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold text-(--earist-primary)">
-                          Dr. {c.name}
+                          {c.name}
                         </p>
                         <p className="text-xs text-(--earist-body-text)">
                           {roleLabel(c.defenseRole)} — Title Defense
@@ -461,7 +460,7 @@ export default function AdviserRequestPage() {
               </p>
               <p>
                 <span className="text-(--earist-body-text)">Selected adviser: </span>
-                <span className="font-medium">Dr. {selectedCandidate.name}</span>
+                <span className="font-medium">{selectedCandidate.name}</span>
               </p>
               <p>
                 <span className="text-(--earist-body-text)">Title Defense role: </span>
