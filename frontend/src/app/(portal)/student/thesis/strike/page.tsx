@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { FileSearch, Lock } from "lucide-react";
+import { FileSearch, Info, Lock } from "lucide-react";
 
 /**
  * WP7 minimal STRIKE route shell (navigation continuity only).
@@ -20,6 +20,8 @@ import { FileSearch, Lock } from "lucide-react";
 export default function StudentStrikeShellPage() {
   const { data: journey, isLoading, isError } = useStudentThesisJourney();
   const strike = journey?.steps.find((s) => s.key === "STRIKE");
+  const strikeRequired = journey?.policy?.strikeRequired === true;
+  const strikeCompleted = strike?.state === "COMPLETED";
 
   return (
     <div className="space-y-4">
@@ -28,7 +30,7 @@ export default function StudentStrikeShellPage() {
           STRIKE / Plagiarism
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Review your manuscript similarity check status for Final Defense.
+          Manuscript plagiarism review status for Final Defense.
         </p>
       </div>
 
@@ -59,36 +61,89 @@ export default function StudentStrikeShellPage() {
         </Card>
       )}
 
-      {strike && strike.state !== "LOCKED" && (
+      {strike && strike.state !== "LOCKED" && !strikeRequired && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Info className="h-4 w-4" />
+              Not required
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p className="text-(--earist-body-text)">
+              STRIKE / plagiarism checking is not required for your current
+              workflow.
+            </p>
+            {strike.detail && (
+              <p className="text-xs text-(--earist-body-text)">{strike.detail}</p>
+            )}
+            {strike.nextAction && (
+              <p className="text-xs text-(--earist-body-text)">
+                {strike.nextAction}
+              </p>
+            )}
+            <Link
+              href={journeyRouteFor("FINAL_DEFENSE")}
+              className={buttonVariants()}
+            >
+              Continue to Final Defense
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {strike && strike.state !== "LOCKED" && strikeRequired && strikeCompleted && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <FileSearch className="h-4 w-4" />
-              Similarity check
-              <Badge>
-                {strike.state === "COMPLETED" ? "Completed" : "In progress"}
-              </Badge>
+              Plagiarism check
+              <Badge className="bg-emerald-100 text-emerald-800">Completed</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p className="text-(--earist-body-text)">
               {strike.nextAction ||
-                "Check your academic records for the required plagiarism review."}
+                "Your required plagiarism check is complete."}
             </p>
             <p className="text-xs text-(--earist-body-text)">
               Only reports recorded in this system are shown here.
             </p>
-            {strike.state === "COMPLETED" && (
-              <Link
-                href={journeyRouteFor("FINAL_DEFENSE")}
-                className={buttonVariants()}
-              >
-                Continue to Final Defense
-              </Link>
-            )}
+            <Link
+              href={journeyRouteFor("FINAL_DEFENSE")}
+              className={buttonVariants()}
+            >
+              Continue to Final Defense
+            </Link>
           </CardContent>
         </Card>
       )}
+
+      {strike &&
+        strike.state !== "LOCKED" &&
+        strikeRequired &&
+        !strikeCompleted && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FileSearch className="h-4 w-4" />
+                Plagiarism check
+                <Badge>
+                  {strike.state === "CURRENT" ? "Action needed" : "Pending"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-(--earist-body-text)">
+                {strike.nextAction ||
+                  "Complete the required plagiarism review before Final Defense."}
+              </p>
+              <p className="text-xs text-(--earist-body-text)">
+                Only reports recorded in this system are shown here.
+              </p>
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 }

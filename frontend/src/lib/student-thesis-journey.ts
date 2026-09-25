@@ -28,6 +28,22 @@ export const JOURNEY_STEP_ORDER: JourneyStepKey[] = [
   "FINAL_DEFENSE",
 ];
 
+/** User-facing labels — never render raw enum keys. */
+export const JOURNEY_STEP_LABELS: Record<JourneyStepKey, string> = {
+  TITLE_DEFENSE: "Title Defense",
+  ADVISER_REQUEST: "Adviser Request",
+  PROPOSAL_DEFENSE: "Proposal Defense",
+  STRIKE: "STRIKE / Plagiarism",
+  FINAL_DEFENSE: "Final Defense",
+};
+
+export function journeyLabelFor(
+  key: JourneyStepKey,
+  backendLabel?: string | null,
+): string {
+  return backendLabel?.trim() || JOURNEY_STEP_LABELS[key];
+}
+
 export function journeyRouteFor(key: JourneyStepKey): string {
   return JOURNEY_STEP_ROUTES[key];
 }

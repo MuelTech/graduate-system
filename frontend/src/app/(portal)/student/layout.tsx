@@ -30,6 +30,7 @@ import {
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
 import {
   JOURNEY_STEP_ORDER,
+  journeyLabelFor,
   journeyRouteFor,
 } from "@/lib/student-thesis-journey";
 import type {
@@ -43,6 +44,9 @@ const topNavItems = [
   { href: "/student/profile", label: "Profile", icon: User },
   { href: "/student/curriculum", label: "Curriculum", icon: BookOpen },
   { href: "/student/journey", label: "Academic Journey", icon: Milestone },
+];
+
+const bottomNavItems = [
   { href: "/student/repository", label: "Repository", icon: Library },
   { href: "/student/announcements", label: "Announcements", icon: Megaphone },
   { href: "/student/notifications", label: "Notifications", icon: Bell },
@@ -216,9 +220,16 @@ export default function StudentLayout({
                   {JOURNEY_STEP_ORDER.map((key) => {
                     const step = stepByKey.get(key);
                     const href = journeyRouteFor(key);
+                    const label = journeyLabelFor(key, step?.label);
                     const isChildActive = pathname === href;
                     const isCurrent = step?.state === "CURRENT";
-                    const isLocked = step?.state === "LOCKED";
+                    // Unknown state (loading/error/missing) must NOT unlock navigation.
+                    const isNavigable =
+                      Boolean(step) &&
+                      (step!.state === "COMPLETED" ||
+                        step!.state === "CURRENT" ||
+                        step!.state === "AVAILABLE" ||
+                        step!.state === "WAITING");
                     const tip = statusExplanation(
                       step,
                       journeyError ? "ERROR" : "LOADING",
@@ -226,7 +237,7 @@ export default function StudentLayout({
                     const stateForIcon: JourneyStepState | "LOADING" | "ERROR" =
                       step?.state ?? (journeyError ? "ERROR" : "LOADING");
 
-                    if (isLocked) {
+                    if (!isNavigable) {
                       return (
                         <li key={key}>
                           <div
@@ -235,6 +246,7 @@ export default function StudentLayout({
                             tabIndex={0}
                             title={tip}
                             className="block cursor-not-allowed rounded-lg px-3 py-2 text-sm text-white/40"
+                            onClick={(e) => e.preventDefault()}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
@@ -242,8 +254,14 @@ export default function StudentLayout({
                             }}
                           >
                             <span className="flex items-center justify-between gap-2">
-                              <span>{step?.label ?? key}</span>
-                              <span title={tip} aria-label={tip}>
+                              <span>{label}</span>
+                              <span
+                                title={tip}
+                                aria-label={tip}
+                                tabIndex={0}
+                                role="img"
+                                className="rounded p-0.5"
+                              >
                                 {statusIcon(stateForIcon)}
                               </span>
                             </span>
@@ -268,8 +286,14 @@ export default function StudentLayout({
                           }`}
                         >
                           <span className="flex items-center justify-between gap-2">
-                            <span>{step?.label ?? key}</span>
-                            <span title={tip} aria-label={tip}>
+                            <span>{label}</span>
+                            <span
+                              title={tip}
+                              aria-label={tip}
+                              tabIndex={0}
+                              role="img"
+                              className="rounded p-0.5"
+                            >
                               {statusIcon(stateForIcon)}
                             </span>
                           </span>
@@ -280,6 +304,27 @@ export default function StudentLayout({
                 </ul>
               )}
             </li>
+
+            {bottomNavItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-(--earist-accent) text-(--earist-primary)"
+                        : "text-white hover:bg-white/10 hover:text-(--earist-accent)"
+                    }`}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
