@@ -21,7 +21,6 @@ Read these documents first, in order:
 
 The completed Student Thesis Journey work was integrated into `refactor/defense-workflow`. New correction work must be performed on `refactor/defense-workflow-corrections`.
 
-The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
 
 ## 1.1 Post-QA implementation status — 2026-09-26
 
@@ -412,10 +411,8 @@ Do not add:
 - unconditional Statistician/Instrument/STRIKE gates without SOT confirmation;
 - another independent Student thesis progression model.
 
-## 16. Historical branch rule
+## 16. Historical implementation rule
 
-`refactor/student-thesis-journey-rebuild` is historical/reference only.
+Retired/experimental branch implementations are not authoritative sources for new work.
 
-Use the reviewed documentation lessons from that branch, but re-implement cleanly on this branch.
-
-If old code and the current SOT/spec disagree, the SOT/spec wins.
+Use the current SOT, the 2026-09-26 correction design, and the active correction plan. If historical code and the current SOT/spec disagree, the current SOT/spec wins.
