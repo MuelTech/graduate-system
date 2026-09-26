@@ -36,6 +36,9 @@ Canonical corrections include:
 - Oral Summary shows computed grades but does not auto-PASS/FAIL;
 - Chairman records formal result;
 - Rapporteur owns defense summary/RAP workflow;
+- finalized Proposal/Final individual evaluations become immutable printable Oral Examination Criteria records;
+- the Oral Examination Summary is generated from finalized evaluator records rather than manually re-encoded;
+- Admin gets a read-only Defense Records surface for finalized individual evaluations, the Summary, and finalized RAP outputs;
 - role-aware Defense Workspace replaces the current lobby concept;
 - Research Variables is not an active Proposal blocker in the correction pass;
 - Proposal revisions are carried by RAP/history into Final Defense, without a separate revision upload gate;
