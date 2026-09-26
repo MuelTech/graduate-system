@@ -1,5 +1,5 @@
 > **HISTORICAL PLAN NOTICE — 2026-09-26**  
-> WP1–WP13 in this plan are complete. Do not restart them. Manual QA exposed workflow/UI corrections that are planned in `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`. New coding-agent work must start from that correction plan and the 2026-09-26 Defense Session design spec.
+> WP1–WP13 in this plan are complete and were integrated into `refactor/defense-workflow`. Do not restart them. Manual QA exposed workflow/UI corrections that are planned in `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`. New coding-agent work must use `refactor/defense-workflow-corrections` and start from that correction plan plus the 2026-09-26 Defense Session design spec.
 
 # Student Thesis Journey Refactor — Implementation Plan
 
