@@ -1,7 +1,7 @@
 # Defense Session & Thesis Journey Correction — Design Specification
 
 **Date:** 2026-09-26  
-**Branch:** `refactor/student-thesis-journey`  
+**Branch:** `refactor/defense-workflow-corrections`  
 **Status:** Canonical correction design after manual QA and client workflow clarification  
 **Canonical parent:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`
@@ -10,7 +10,7 @@
 
 ## 1. Purpose
 
-This document captures the workflow corrections discovered after WP1–WP13 manual QA and the client/form clarifications gathered on 2026-09-26.
+This document captures the workflow corrections discovered after WP1–WP13 manual QA and the client/form clarifications gathered on 2026-09-26. The completed Student Thesis Journey branch was first integrated into `refactor/defense-workflow`; implementation of these corrections continues on `refactor/defense-workflow-corrections`.
 
 It is normative for the next implementation pass. Where this document conflicts with the 2026-09-25 Student Thesis Journey design or plan, this document wins.
 
