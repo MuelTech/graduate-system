@@ -1,8 +1,9 @@
 # Post-QA Defense Workflow Corrections — Implementation Plan
 
 **Date:** 2026-09-26  
-**Branch:** `refactor/student-thesis-journey`  
-**Baseline accepted HEAD before this documentation pass:** `587afd3cf1d1e7c6b35ce5cbcf3ae9ca66a10c0b`  
+**Branch:** `refactor/defense-workflow-corrections`  
+**Pre-correction implementation baseline:** `587afd3cf1d1e7c6b35ce5cbcf3ae9ca66a10c0b`  
+**Student Journey integration:** merged/fast-forwarded into `refactor/defense-workflow` before this correction branch was created  
 **Status:** Next implementation plan after completed WP1–WP13  
 **Execution rule:** One correction package per coding-agent session. Stop and report before starting the next package.
 
@@ -24,7 +25,7 @@ WP1–WP13 are historical completed work. Do not re-run them.
 
 For every correction package:
 
-1. inspect the current branch implementation before editing;
+1. verify the working branch is `refactor/defense-workflow-corrections`, then inspect the current implementation before editing;
 2. keep backend/domain authority ahead of frontend presentation;
 3. do not weaken a domain gate merely to make fixtures/UI pass;
 4. add/adjust focused tests for the changed rule;
