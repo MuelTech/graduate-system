@@ -105,9 +105,10 @@ export class AdviserRequestService {
 
     let hasFinalizedTitleRap = false;
     if (conclusion) {
+      // RAP must belong to the same defense session as this PASSED conclusion.
       const titleRaps = await prisma.rapReport.findMany({
         where: {
-          thesisId: conclusion.thesisId,
+          scheduleId: conclusion.scheduleId,
           defenseType: "TITLE_DEFENSE",
         },
         select: { status: true },

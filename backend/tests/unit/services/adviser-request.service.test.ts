@@ -221,6 +221,43 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     ).rejects.toThrow(/Title RAP/i);
   });
 
+  it("CP1-FIX1: wrong-session finalized Title RAP does not unlock GS-020", async () => {
+    // Conclusion is on session-b; only session-a has a finalized RAP.
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      titleConclusion({ scheduleId: "session-b" }),
+    );
+    prismaMock.rapReport.findMany.mockImplementation(async (args: any) => {
+      const where = args?.where ?? {};
+      const rows = [
+        { scheduleId: "session-a", status: "FINALIZED" },
+        { scheduleId: "session-b", status: "DRAFT" },
+      ];
+      return rows.filter((r) => !where.scheduleId || r.scheduleId === where.scheduleId);
+    });
+    await expect(
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+    ).rejects.toThrow(/Title RAP/i);
+
+    // Query must be bound to the conclusion's scheduleId.
+    const call = prismaMock.rapReport.findMany.mock.calls.at(-1)?.[0];
+    expect(call?.where?.scheduleId).toBe("session-b");
+    expect(call?.where?.thesisId).toBeUndefined();
+  });
+
+  it("CP1-FIX1: matching-session finalized Title RAP allows GS-020", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      titleConclusion({ scheduleId: "session-b" }),
+    );
+    prismaMock.rapReport.findMany.mockImplementation(async (args: any) => {
+      const where = args?.where ?? {};
+      const rows = [{ scheduleId: "session-b", status: "FINALIZED" }];
+      return rows.filter((r) => !where.scheduleId || r.scheduleId === where.scheduleId);
+    });
+    await expect(
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+    ).resolves.toBeTruthy();
+  });
+
   it("excludes seats that are not real PANELIST accounts", async () => {
     const result = await svc.listOdpCandidates("user-1");
     expect(result.candidates.map((c) => c.userId)).not.toContain("admin-seat");

@@ -4,10 +4,30 @@ import {
   canUnlockProposal,
   computeStageCompletion,
   isProposalStageComplete,
+  isRapCompleteForSchedule,
+  isRapStatusComplete,
   isTitleStageComplete,
 } from "../../../src/services/stage-completion";
 
 describe("stage completion (derived)", () => {
+  it("CP1-FIX1: RAP completion is bound to the conclusion scheduleId", () => {
+    const raps = [
+      { scheduleId: "session-a", status: "FINALIZED" },
+      { scheduleId: "session-b", status: "DRAFT" },
+    ];
+
+    // Wrong-session finalized RAP must NOT satisfy the current session.
+    expect(isRapCompleteForSchedule(raps, "session-b")).toBe(false);
+    // Matching-session finalized RAP satisfies.
+    expect(isRapCompleteForSchedule(raps, "session-a")).toBe(true);
+    // No schedule → never complete.
+    expect(isRapCompleteForSchedule(raps, null)).toBe(false);
+    expect(isRapCompleteForSchedule(raps, undefined)).toBe(false);
+    expect(isRapStatusComplete("ALL_SIGNED")).toBe(true);
+    expect(isRapStatusComplete("FINALIZED")).toBe(true);
+    expect(isRapStatusComplete("DRAFT")).toBe(false);
+  });
+
   it("Title is complete only with PASSED + selected title + finalized Title RAP", () => {
     expect(
       isTitleStageComplete({

@@ -145,27 +145,8 @@ export class DefenseEligibilityRepository {
         })) > 0
       : false;
 
-    const titleRapSigned = thesisIdForDocs
-      ? (await prisma.rapReport.count({
-          where: {
-            thesisId: thesisIdForDocs,
-            defenseType: "TITLE_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
-          },
-        })) > 0
-      : false;
-
-    const proposalRapSigned = thesisIdForDocs
-      ? (await prisma.rapReport.count({
-          where: {
-            thesisId: thesisIdForDocs,
-            defenseType: "PROPOSAL_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
-          },
-        })) > 0
-      : false;
-
     // Formal academic authority: DefenseConclusion (not ThesisRecord mirrors).
+    // RAP completion is bound to that conclusion's defense session (scheduleId).
     const titleConclusion = thesisIdForDocs
       ? await prisma.defenseConclusion.findFirst({
           where: {
@@ -173,7 +154,7 @@ export class DefenseEligibilityRepository {
             schedule: { defenseType: "TITLE_DEFENSE" },
           },
           orderBy: { concludedAt: "desc" },
-          select: { outcome: true, selectedTitleId: true },
+          select: { outcome: true, selectedTitleId: true, scheduleId: true },
         })
       : null;
     const proposalConclusion = thesisIdForDocs
@@ -183,9 +164,29 @@ export class DefenseEligibilityRepository {
             schedule: { defenseType: "PROPOSAL_DEFENSE" },
           },
           orderBy: { concludedAt: "desc" },
-          select: { outcome: true },
+          select: { outcome: true, scheduleId: true },
         })
       : null;
+
+    const titleRapSigned = titleConclusion?.scheduleId
+      ? (await prisma.rapReport.count({
+          where: {
+            scheduleId: titleConclusion.scheduleId,
+            defenseType: "TITLE_DEFENSE",
+            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+          },
+        })) > 0
+      : false;
+
+    const proposalRapSigned = proposalConclusion?.scheduleId
+      ? (await prisma.rapReport.count({
+          where: {
+            scheduleId: proposalConclusion.scheduleId,
+            defenseType: "PROPOSAL_DEFENSE",
+            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+          },
+        })) > 0
+      : false;
 
     const titleOutcome =
       titleConclusion?.outcome === "PASSED" ||

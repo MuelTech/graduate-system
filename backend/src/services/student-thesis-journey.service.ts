@@ -17,6 +17,19 @@ import {
   type StudentThesisJourneyDto,
 } from "./student-thesis-journey.rules";
 
+/** RAP completion for the exact defense session that owns the formal conclusion. */
+async function hasFinalizedRapForSession(
+  scheduleId: string | null | undefined,
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE",
+): Promise<boolean> {
+  if (!scheduleId) return false;
+  const rows = await prisma.rapReport.findMany({
+    where: { scheduleId, defenseType },
+    select: { status: true },
+  });
+  return rows.some((r) => isRapStatusComplete(r.status));
+}
+
 function toAdminState(row: {
   status: string;
   stage: string;
@@ -92,13 +105,15 @@ export class StudentThesisJourneyService {
     const schedules = thesis?.defenseSchedules ?? [];
 
     // Latest formal PASSED conclusion per defense type (deterministic).
-    const titleConclusion = schedules.find(
+    const titleSession = schedules.find(
       (s) => s.defenseType === "TITLE_DEFENSE" && s.conclusion?.outcome === "PASSED",
-    )?.conclusion;
-    const proposalConclusion = schedules.find(
+    );
+    const proposalSession = schedules.find(
       (s) =>
         s.defenseType === "PROPOSAL_DEFENSE" && s.conclusion?.outcome === "PASSED",
-    )?.conclusion;
+    );
+    const titleConclusion = titleSession?.conclusion ?? null;
+    const proposalConclusion = proposalSession?.conclusion ?? null;
     const finalConclusion = schedules.find(
       (s) =>
         s.defenseType === "FINAL_DEFENSE" && s.conclusion?.outcome === "PASSED",
@@ -107,22 +122,15 @@ export class StudentThesisJourneyService {
     // selectedTitle MUST come from formal conclusion.selectedTitleId.
     const selectedTitle = titleConclusion?.selectedTitle ?? null;
 
-    // Title/Proposal RAP finalization is part of canonical stage completion.
-    const rapRows = thesis
-      ? await prisma.rapReport.findMany({
-          where: {
-            thesisId: thesis.id,
-            defenseType: { in: ["TITLE_DEFENSE", "PROPOSAL_DEFENSE"] },
-          },
-          select: { defenseType: true, status: true },
-        })
-      : [];
-    const titleRapFinalized = rapRows.some(
-      (r) => r.defenseType === "TITLE_DEFENSE" && isRapStatusComplete(r.status),
+    // Title/Proposal RAP must belong to the same defense session as the
+    // authoritative conclusion (scheduleId), not merely the same thesis.
+    const titleRapFinalized = await hasFinalizedRapForSession(
+      titleConclusion?.scheduleId ?? titleSession?.id ?? null,
+      "TITLE_DEFENSE",
     );
-    const proposalRapFinalized = rapRows.some(
-      (r) =>
-        r.defenseType === "PROPOSAL_DEFENSE" && isRapStatusComplete(r.status),
+    const proposalRapFinalized = await hasFinalizedRapForSession(
+      proposalConclusion?.scheduleId ?? proposalSession?.id ?? null,
+      "PROPOSAL_DEFENSE",
     );
 
     const activeAssignment = student.adviserAssignments[0] ?? null;

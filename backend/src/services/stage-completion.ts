@@ -40,6 +40,21 @@ export function isRapStatusComplete(
   return status === "ALL_SIGNED" || status === "FINALIZED";
 }
 
+/**
+ * A required stage RAP must belong to the same defense session
+ * (DefenseConclusion.scheduleId → RapReport.scheduleId).
+ * A finalized RAP from another attempt/session must not satisfy completion.
+ */
+export function isRapCompleteForSchedule(
+  rapRows: Array<{ scheduleId: string | null; status: string | null }>,
+  scheduleId: string | null | undefined,
+): boolean {
+  if (!scheduleId) return false;
+  return rapRows.some(
+    (row) => row.scheduleId === scheduleId && isRapStatusComplete(row.status),
+  );
+}
+
 export interface UnlockProposalInput {
   /** Formal Title DefenseConclusion outcome — not ThesisRecord.outcome. */
   outcome: DefenseOutcomeName | null;
