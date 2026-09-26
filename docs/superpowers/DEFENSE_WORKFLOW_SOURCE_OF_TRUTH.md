@@ -1085,17 +1085,33 @@ Form-supported working rule:
 
 ### 13.2 Score lifecycle
 
+For each Proposal/Final evaluator:
+
 ```text
 NOT_STARTED
       ↓
-IN_PROGRESS
+DRAFT / IN_PROGRESS
       ↓
-ALL_REQUIRED_SCORES_SUBMITTED
+REVIEW
+      ↓
+E-SIGNED + FINALIZED
+      ↓
+LOCKED OFFICIAL RECORD
+```
+
+For the defense session:
+
+```text
+REQUIRED EVALUATIONS IN PROGRESS
+      ↓
+ALL REQUIRED EVALUATIONS FINALIZED
       ↓
 SUMMARY_READY
       ↓
 AWAITING_FORMAL_CONCLUSION
 ```
+
+Title Defense does not use this Group I/Group II numerical lifecycle under the current confirmed design.
 
 ### 13.3 Critical rule
 
@@ -1126,10 +1142,11 @@ The formal conclusion is the single authoritative operation that records the aca
 
 Recommended:
 
-- defense session exists and is active/ready,
-- required evaluator scores are complete,
-- required session notes are available,
-- current user is authorized to conclude,
+- defense session exists and is active/ready;
+- for Proposal/Final, all required evaluator records are finalized/signed;
+- for Title, the required deliberation/title-selection data is available instead of Proposal/Final numerical scoring;
+- required session/RAP notes are available at the stage needed for conclusion;
+- current user is authorized to conclude;
 - defense has not already been concluded.
 
 ### 14.2 Title-specific precondition
@@ -1156,15 +1173,11 @@ The conclusion operation should atomically:
 
 ### 14.4 Authorized concluder
 
-**OPEN_QUESTION:** Determine whether the official conclusion is submitted by:
+**CONFIRMED_CLIENT — 2026-09-26:** The **Chairman** records the formal academic defense result.
 
-- Chairman,
-- Graduate School Admin,
-- Rapporteur,
-- Dean/authorized Graduate School official,
-- or a combination/attestation workflow.
+Authorization must be based on the authenticated user's `CHAIRMAN` assignment for that specific defense session, not merely on a broad account role or on visibility of a frontend button.
 
-Until confirmed, backend authorization must not rely only on a frontend button.
+Admin manages operational review/scheduling/records but does not replace the Chairman as formal academic-result authority.
 
 ---
 
@@ -1219,6 +1232,31 @@ RapSignatureRequirement
 If Proposal requires an approved Title RAP and Final requires an approved Proposal RAP, eligibility should reference the existing finalized internal RAP record.
 
 The student should not have to upload a duplicate copy of a RAP that the system itself generated and finalized.
+
+### 15.5 Official defense records and Admin reporting
+
+For Proposal/Final, the system must retain three separate official record layers:
+
+1. **Individual Oral Examination Criteria** — one finalized/signed record per required evaluator;
+2. **Oral Examination Summary Sheet** — one defense-session summary generated from finalized evaluator records;
+3. **RAP Report** — the official minutes/recommendations/revisions record with its own signature lifecycle.
+
+The individual evaluation form and the summary are not interchangeable, and neither is the RAP.
+
+A finalized individual evaluator record must be reproducible as a printable/downloadable Oral Examination Criteria output. The current supplied form supports Candidate, Course, Date, Group I criteria/average, Group II criteria/average, Recommendations, Summary of Evaluation/Rating/Remarks, and signature over printed name of Panelist.
+
+The Oral Examination Summary must be generated from finalized evaluator records; Admin/Chairman should not manually re-key the same grades.
+
+Admin must have a read-only **Defense Records** surface where authorized staff can inspect a defense session and access official outputs:
+
+- finalized individual Oral Examination Criteria per evaluator;
+- generated Oral Examination Summary;
+- finalized RAP;
+- defense/student/program/schedule/committee/formal-result metadata.
+
+Only finalized/signed records may be presented as official print/download outputs. Draft records must be visibly non-official and must not be printable as final institutional records.
+
+Admin report access does not authorize score editing and does not transfer formal-result authority away from the Chairman.
 
 ---
 
