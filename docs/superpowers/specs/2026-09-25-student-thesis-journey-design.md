@@ -468,7 +468,7 @@ When centralized policy requires STRIKE and no eligible plagiarism result exists
 
 ## 14. Implementation constraint
 
-Start from the `refactor/defense-workflow` implementation baseline. Do not copy the experimental implementation from `refactor/student-thesis-journey-rebuild`; use that branch only as historical evidence for what was tried and what failed.
+This design is now a historical baseline. The completed implementation was integrated into `refactor/defense-workflow`, and active correction work continues from `refactor/defense-workflow-corrections`. Do not use retired experimental branches as implementation sources.
 
 Implement one backend-authoritative journey architecture, complete the Student/Panelist/Dean GS-020 flow, preserve application/session state as separate from academic completion state, and follow the UI/UX contract in this document. Automated browser E2E is not part of this feature branch implementation plan.
 
