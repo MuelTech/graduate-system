@@ -508,31 +508,39 @@ export class ProposalAdviserReviewService {
     remarks: string,
   ): Promise<ProposalAdviserReviewDto> {
     const thesis = await this.loadReviewContext(thesisId);
+    // Re-check active adviser immediately before write (TOCTOU).
     const isActive = await this.isActiveAdviserForStudent(
       adviserUserId,
       thesis.student.id,
     );
     const cert = thesis.adviserCertifications[0] ?? null;
     const reviewStatus = mapCertStatusToReviewStatus(cert?.status);
+    const expectedReviewedDocumentId = cert?.reviewedDocumentId ?? null;
+
     const gate = evaluateRequestChangesGate({
       isActiveAdviser: isActive,
-      reviewStatus: cert ? reviewStatus : thesis.thesisDocuments[0] ? "AWAITING_REVIEW" : "NONE",
+      reviewStatus,
       hasRemarks: Boolean(remarks?.trim()),
+      hasReviewedDocument: Boolean(expectedReviewedDocumentId),
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
-    if (cert) {
-      await prisma.adviserCertification.update({
-        where: { id: cert.id },
-        data: {
-          status: "CHANGES_REQUESTED",
-          reviewRemarks: remarks.trim(),
-          adviserId: adviserUserId,
-        },
-      });
-    } else {
+    // CP3-FIX3: conditional transition — only AWAITING_REVIEW + expected document.
+    const updated = await prisma.adviserCertification.updateMany({
+      where: {
+        id: cert!.id,
+        status: "AWAITING_REVIEW",
+        reviewedDocumentId: expectedReviewedDocumentId,
+      },
+      data: {
+        status: "CHANGES_REQUESTED",
+        reviewRemarks: remarks.trim(),
+        adviserId: adviserUserId,
+      },
+    });
+    if (updated.count === 0) {
       throw new AppError(
-        "No Proposal manuscript is currently awaiting Adviser review.",
+        "Proposal review state changed. Refresh the task and try again.",
         409,
       );
     }
@@ -542,11 +550,18 @@ export class ProposalAdviserReviewService {
   /**
    * Adviser certifies Proposal manuscript with e-signature.
    * Server timestamps are authoritative; client timestamps are ignored.
+   * CP3-FIX3: atomic AWAITING_REVIEW + expected reviewedDocumentId → ISSUED.
    */
   async certify(
     adviserUserId: string,
     thesisId: string,
-    input: { signatureData: string; remarks?: string | null; clientIssuedAt?: string | null },
+    input: {
+      signatureData: string;
+      remarks?: string | null;
+      clientIssuedAt?: string | null;
+      /** Optional expected document from the task the Adviser is acting on. */
+      expectedReviewedDocumentId?: string | null;
+    },
   ): Promise<ProposalAdviserReviewDto> {
     const thesis = await this.loadReviewContext(thesisId);
     const isActive = await this.isActiveAdviserForStudent(
@@ -554,32 +569,48 @@ export class ProposalAdviserReviewService {
       thesis.student.id,
     );
     const cert = thesis.adviserCertifications[0] ?? null;
-    // CP3-FIX1: certify the exact bound review manuscript (not "latest upload").
+    // CP3-FIX1/3: certify the exact bound review manuscript only.
     const boundDocId = cert?.reviewedDocumentId ?? null;
     const manuscript = boundDocId
       ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
         cert?.reviewedDocument ??
         null)
-      : (thesis.thesisDocuments[0] ?? null);
+      : null;
     const alreadyIssued = thesis.adviserCertifications.some(
       (c) => c.status === "ISSUED",
     );
 
+    // Expected document: explicit client expectation when provided, else bound id.
+    const expectedReviewedDocumentId =
+      input.expectedReviewedDocumentId ?? boundDocId;
+
     const gate = evaluateCertifyGate({
       isActiveAdviser: isActive,
       reviewStatus: mapCertStatusToReviewStatus(cert?.status),
-      hasManuscript: Boolean(manuscript || cert?.reviewedDocumentId),
+      hasManuscript: Boolean(manuscript),
       hasSignature: Boolean(input.signatureData?.trim()),
       alreadyIssued,
+      hasReviewedDocument: Boolean(expectedReviewedDocumentId),
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
-    // Preserve exact certified manuscript binding.
-    const reviewedDocumentId = cert?.reviewedDocumentId ?? manuscript?.id ?? null;
+    // If the Adviser is acting on a different document than currently bound, reject.
+    if (
+      input.expectedReviewedDocumentId &&
+      boundDocId &&
+      input.expectedReviewedDocumentId !== boundDocId
+    ) {
+      throw new AppError(
+        "This Proposal manuscript is no longer the current Adviser review version.",
+        409,
+      );
+    }
+
     const signedAt = new Date(); // server-authoritative
+    const reviewRemarks = input.remarks?.trim() || cert?.reviewRemarks || null;
 
     await prisma.$transaction(async (tx) => {
-      // Prevent duplicate ISSUED for the same thesis+stage.
+      // Duplicate ISSUED guard (same thesis+stage).
       const issued = await tx.adviserCertification.findFirst({
         where: {
           thesisId,
@@ -591,34 +622,28 @@ export class ProposalAdviserReviewService {
         throw new AppError("Proposal Adviser Certification is already issued.", 409);
       }
 
-      if (cert) {
-        await tx.adviserCertification.update({
-          where: { id: cert.id },
-          data: {
-            status: "ISSUED",
-            adviserId: adviserUserId,
-            reviewRemarks: input.remarks?.trim() || cert.reviewRemarks || null,
-            // Keep exact reviewed manuscript — never infer a different latest doc.
-            reviewedDocumentId,
-            signatureData: input.signatureData.trim(),
-            signedAt,
-            certifiedAt: signedAt,
-          },
-        });
-      } else {
-        await tx.adviserCertification.create({
-          data: {
-            thesisId,
-            adviserId: adviserUserId,
-            defenseStage: PROPOSAL_REVIEW_STAGE,
-            status: "ISSUED",
-            reviewedDocumentId,
-            signatureData: input.signatureData.trim(),
-            signedAt,
-            certifiedAt: signedAt,
-            reviewRemarks: input.remarks?.trim() || null,
-          },
-        });
+      // CP3-FIX3: conditional write — only AWAITING_REVIEW + expected document.
+      // Do not rewrite reviewedDocumentId from stale in-memory data.
+      const result = await tx.adviserCertification.updateMany({
+        where: {
+          id: cert!.id,
+          status: "AWAITING_REVIEW",
+          reviewedDocumentId: expectedReviewedDocumentId,
+        },
+        data: {
+          status: "ISSUED",
+          adviserId: adviserUserId,
+          reviewRemarks,
+          signatureData: input.signatureData.trim(),
+          signedAt,
+          certifiedAt: signedAt,
+        },
+      });
+      if (result.count === 0) {
+        throw new AppError(
+          "Proposal review state changed. Refresh the task and try again.",
+          409,
+        );
       }
     });
 

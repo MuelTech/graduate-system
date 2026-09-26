@@ -183,6 +183,8 @@ export interface RequestChangesGateInput {
   isActiveAdviser: boolean;
   reviewStatus: ProposalReviewStatus;
   hasRemarks: boolean;
+  /** Bound reviewedDocumentId must exist for an active review cycle. */
+  hasReviewedDocument: boolean;
 }
 
 export function evaluateRequestChangesGate(
@@ -200,10 +202,18 @@ export function evaluateRequestChangesGate(
       statusCode: 409,
     };
   }
-  if (input.reviewStatus !== "AWAITING_REVIEW" && input.reviewStatus !== "NONE") {
+  // CP3-FIX3: only from AWAITING_REVIEW (not NONE / CHANGES_REQUESTED / ISSUED).
+  if (input.reviewStatus !== "AWAITING_REVIEW") {
     return {
       allowed: false,
       reason: "No Proposal manuscript is currently awaiting Adviser review.",
+      statusCode: 409,
+    };
+  }
+  if (!input.hasReviewedDocument) {
+    return {
+      allowed: false,
+      reason: "Proposal review state changed. Refresh the task and try again.",
       statusCode: 409,
     };
   }
@@ -223,6 +233,8 @@ export interface CertifyGateInput {
   hasManuscript: boolean;
   hasSignature: boolean;
   alreadyIssued: boolean;
+  /** Bound reviewedDocumentId must exist; certify never invents a document. */
+  hasReviewedDocument: boolean;
 }
 
 export function evaluateCertifyGate(
@@ -247,10 +259,21 @@ export function evaluateCertifyGate(
       statusCode: 400,
     };
   }
-  if (input.reviewStatus !== "AWAITING_REVIEW" && input.reviewStatus !== "CHANGES_REQUESTED") {
+  if (!input.hasReviewedDocument) {
     return {
       allowed: false,
-      reason: "No Proposal manuscript is available for certification.",
+      reason: "Proposal review state changed. Refresh the task and try again.",
+      statusCode: 409,
+    };
+  }
+  // CP3-FIX3: certify only from AWAITING_REVIEW (Student must resubmit after CHANGES_REQUESTED).
+  if (input.reviewStatus !== "AWAITING_REVIEW") {
+    return {
+      allowed: false,
+      reason:
+        input.reviewStatus === "CHANGES_REQUESTED"
+          ? "Changes were requested on this manuscript. Wait for the Student to resubmit before certifying."
+          : "No Proposal manuscript is available for certification.",
       statusCode: 409,
     };
   }

@@ -730,6 +730,8 @@ export class ThesisController {
         remarks: req.body?.remarks ?? null,
         // Client timestamps are ignored — server time is authoritative.
         clientIssuedAt: req.body?.issuedAt ?? null,
+        // CP3-FIX3: expected manuscript from the task the Adviser is acting on.
+        expectedReviewedDocumentId: req.body?.expectedReviewedDocumentId ?? null,
       });
       res.status(200).json(result);
     } catch (error: any) {

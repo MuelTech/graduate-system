@@ -19,6 +19,7 @@ const prismaMock = vi.hoisted(() => {
       findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       create: vi.fn(),
     },
     defenseConclusion: { findFirst: vi.fn() },
@@ -113,6 +114,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       uploadedAt: new Date(),
       ...args.data,
     }));
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
     prismaMock.__tx.adviserCertification.update.mockResolvedValue({});
     prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
@@ -213,6 +215,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
             id: "cert-1",
             status: "AWAITING_REVIEW",
             defenseStage: "PROPOSAL_DEFENSE",
+            reviewedDocumentId: "doc-1",
             adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
             reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
             reviewRemarks: null,
@@ -222,8 +225,9 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         ],
       }),
     );
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
     const dto = await svc.requestChanges("adviser-1", "thesis-1", "Please revise Ch. 2");
-    expect(prismaMock.adviserCertification.update).toHaveBeenCalledWith(
+    expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           status: "CHANGES_REQUESTED",
@@ -291,6 +295,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
           id: "cert-1",
           status: "AWAITING_REVIEW",
           defenseStage: "PROPOSAL_DEFENSE",
+          reviewedDocumentId: "doc-1",
           adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
           reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
           reviewRemarks: null,
@@ -324,8 +329,8 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     });
 
     const updateArgs =
-      prismaMock.__tx.adviserCertification.update.mock.calls[0]?.[0] ??
-      prismaMock.adviserCertification.update.mock.calls[0]?.[0];
+      prismaMock.__tx.adviserCertification.updateMany.mock.calls[0]?.[0];
+    expect(updateArgs?.where?.status).toBe("AWAITING_REVIEW");
     expect(updateArgs?.data?.status).toBe("ISSUED");
     expect(updateArgs?.data?.signatureData).toBe("e-sign-blob");
     expect(updateArgs?.data?.signedAt).toBeInstanceOf(Date);
@@ -465,5 +470,236 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     );
     expect(researchVariablesSatisfied("NONE")).toBe(false); // helper unchanged
     // Gate is not invoked when Research Variables is absent — CP1 regression in eligibility tests.
+  });
+
+  it("Test 1: stale certify after Student resubmit is rejected (count=0)", async () => {
+    // Task presented manuscript A
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [
+          { id: "doc-b", uploadedAt: new Date() },
+          { id: "doc-a", uploadedAt: new Date("2026-09-01") },
+        ],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            reviewedDocumentId: "doc-b", // Student resubmitted B
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "sig",
+        expectedReviewedDocumentId: "doc-a", // stale A
+      }),
+    ).rejects.toThrow(/no longer the current|review state changed/i);
+  });
+
+  it("Test 2: correct current certify succeeds and keeps reviewedDocumentId", async () => {
+    prismaMock.thesisRecord.findUnique
+      .mockResolvedValueOnce(
+        thesisRow({
+          thesisDocuments: [{ id: "doc-b", uploadedAt: new Date() }],
+          adviserCertifications: [
+            {
+              id: "cert-1",
+              status: "AWAITING_REVIEW",
+              defenseStage: "PROPOSAL_DEFENSE",
+              reviewedDocumentId: "doc-b",
+              adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+              reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+              reviewRemarks: null,
+              signatureData: null,
+              signedAt: null,
+            },
+          ],
+        }),
+      )
+      .mockResolvedValue(
+        thesisRow({
+          thesisDocuments: [{ id: "doc-b", uploadedAt: new Date() }],
+          adviserCertifications: [
+            {
+              id: "cert-1",
+              status: "ISSUED",
+              defenseStage: "PROPOSAL_DEFENSE",
+              reviewedDocumentId: "doc-b",
+              adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+              reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+              reviewRemarks: null,
+              signatureData: "sig",
+              signedAt: new Date(),
+            },
+          ],
+        }),
+      );
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+
+    await svc.certify("adviser-1", "thesis-1", {
+      signatureData: "sig",
+      expectedReviewedDocumentId: "doc-b",
+    });
+
+    const call = prismaMock.__tx.adviserCertification.updateMany.mock.calls[0]?.[0];
+    expect(call?.where?.status).toBe("AWAITING_REVIEW");
+    expect(call?.where?.reviewedDocumentId).toBe("doc-b");
+    expect(call?.data?.status).toBe("ISSUED");
+    expect(call?.data?.reviewedDocumentId).toBeUndefined();
+  });
+
+  it("Test 4: request changes loses race to certify (count=0 → 409)", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-a", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            reviewedDocumentId: "doc-a",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-a", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", "please revise"),
+    ).rejects.toThrow(/review state changed/i);
+  });
+
+  it("Test 5: request changes stale manuscript binding rejected", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [
+          { id: "doc-b", uploadedAt: new Date() },
+          { id: "doc-a", uploadedAt: new Date("2026-09-01") },
+        ],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            reviewedDocumentId: "doc-b",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", "stale remarks"),
+    ).rejects.toThrow(/review state changed/i);
+    expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          reviewedDocumentId: "doc-b",
+          status: "AWAITING_REVIEW",
+        }),
+      }),
+    );
+  });
+
+  it("Test 6: request changes correct current version succeeds", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-a", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            reviewedDocumentId: "doc-a",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-a", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+
+    await svc.requestChanges("adviser-1", "thesis-1", "revise ch2");
+    expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "cert-1",
+          status: "AWAITING_REVIEW",
+          reviewedDocumentId: "doc-a",
+        }),
+        data: expect.objectContaining({
+          status: "CHANGES_REQUESTED",
+          reviewRemarks: "revise ch2",
+        }),
+      }),
+    );
+  });
+
+  it("Test 9: ISSUED immutable across resubmit / request-changes / certify", async () => {
+    const issuedRow = thesisRow({
+      thesisDocuments: [{ id: "doc-keep", uploadedAt: new Date() }],
+      adviserCertifications: [
+        {
+          id: "cert-issued",
+          status: "ISSUED",
+          defenseStage: "PROPOSAL_DEFENSE",
+          reviewedDocumentId: "doc-keep",
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+          reviewedDocument: { id: "doc-keep", uploadedAt: new Date() },
+          reviewRemarks: null,
+          signatureData: "keep-me",
+          signedAt: new Date("2026-09-27T10:00:00Z"),
+          certifiedAt: new Date("2026-09-27T10:00:00Z"),
+        },
+      ],
+    });
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(issuedRow);
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(issuedRow);
+    prismaMock.adviserCertification.findFirst.mockResolvedValue({
+      id: "cert-issued",
+      status: "ISSUED",
+    });
+
+    await expect(
+      svc.submitManuscriptForReview("student-user", {
+        path: "uploads/x.pdf",
+        originalname: "x.pdf",
+      } as Express.Multer.File),
+    ).rejects.toThrow(/already issued/i);
+
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", "nope"),
+    ).rejects.toThrow(/already issued|cannot be changed|review state/i);
+
+    await expect(
+      svc.certify("adviser-1", "thesis-1", { signatureData: "again" }),
+    ).rejects.toThrow(/already issued/i);
+
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
   });
 });

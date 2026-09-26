@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -64,14 +64,26 @@ export default function ProposalAdviserReviewsPage() {
     mutationFn: async () =>
       apiClientRequest(
         `/thesis/proposal-adviser-review/tasks/${selectedThesisId}/request-changes`,
-        { method: "POST", body: JSON.stringify({ remarks }) },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            remarks,
+            expectedReviewedDocumentId: task?.manuscript?.documentId ?? null,
+          }),
+        },
       ),
     onSuccess: async () => {
       setError(null);
       setRemarks("");
       await invalidate();
     },
-    onError: (e: Error) => setError(e.message || "Failed to request changes"),
+    onError: async (e: Error) => {
+      setError(e.message || "Failed to request changes");
+      // Stale review state (409) — refresh so Adviser sees current manuscript.
+      if (e instanceof ApiError && e.statusCode === 409) {
+        await invalidate();
+      }
+    },
   });
 
   const certify = useMutation({
@@ -80,7 +92,11 @@ export default function ProposalAdviserReviewsPage() {
         `/thesis/proposal-adviser-review/tasks/${selectedThesisId}/certify`,
         {
           method: "POST",
-          body: JSON.stringify({ signatureData: signature, remarks }),
+          body: JSON.stringify({
+            signatureData: signature,
+            remarks,
+            expectedReviewedDocumentId: task?.manuscript?.documentId ?? null,
+          }),
         },
       ),
     onSuccess: async () => {
@@ -89,7 +105,13 @@ export default function ProposalAdviserReviewsPage() {
       setRemarks("");
       await invalidate();
     },
-    onError: (e: Error) => setError(e.message || "Failed to certify"),
+    onError: async (e: Error) => {
+      setError(e.message || "Failed to certify");
+      // Stale review state (409) — do not auto-retry; Adviser must re-review.
+      if (e instanceof ApiError && e.statusCode === 409) {
+        await invalidate();
+      }
+    },
   });
 
   return (

@@ -97,6 +97,7 @@ describe("proposal-adviser-review.rules", () => {
         isActiveAdviser: true,
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: true,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(true);
     expect(
@@ -104,6 +105,7 @@ describe("proposal-adviser-review.rules", () => {
         isActiveAdviser: true,
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: false,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -111,6 +113,7 @@ describe("proposal-adviser-review.rules", () => {
         isActiveAdviser: true,
         reviewStatus: "ISSUED",
         hasRemarks: true,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -118,6 +121,39 @@ describe("proposal-adviser-review.rules", () => {
         isActiveAdviser: false,
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: true,
+        hasReviewedDocument: true,
+      }).allowed,
+    ).toBe(false);
+  });
+
+  it("Test 7/8: certify and request changes only from AWAITING_REVIEW", () => {
+    // CHANGES_REQUESTED cannot certify (Test 7)
+    expect(
+      evaluateCertifyGate({
+        isActiveAdviser: true,
+        reviewStatus: "CHANGES_REQUESTED",
+        hasManuscript: true,
+        hasSignature: true,
+        alreadyIssued: false,
+        hasReviewedDocument: true,
+      }).allowed,
+    ).toBe(false);
+    // CHANGES_REQUESTED cannot request changes again (Test 8)
+    expect(
+      evaluateRequestChangesGate({
+        isActiveAdviser: true,
+        reviewStatus: "CHANGES_REQUESTED",
+        hasRemarks: true,
+        hasReviewedDocument: true,
+      }).allowed,
+    ).toBe(false);
+    // NONE has no active review cycle
+    expect(
+      evaluateRequestChangesGate({
+        isActiveAdviser: true,
+        reviewStatus: "NONE",
+        hasRemarks: true,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
   });
@@ -130,6 +166,7 @@ describe("proposal-adviser-review.rules", () => {
         hasManuscript: true,
         hasSignature: true,
         alreadyIssued: false,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(true);
     expect(
@@ -139,6 +176,7 @@ describe("proposal-adviser-review.rules", () => {
         hasManuscript: true,
         hasSignature: false,
         alreadyIssued: false,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -148,6 +186,7 @@ describe("proposal-adviser-review.rules", () => {
         hasManuscript: true,
         hasSignature: true,
         alreadyIssued: true,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -157,6 +196,7 @@ describe("proposal-adviser-review.rules", () => {
         hasManuscript: true,
         hasSignature: true,
         alreadyIssued: false,
+        hasReviewedDocument: true,
       }).allowed,
     ).toBe(false);
   });
