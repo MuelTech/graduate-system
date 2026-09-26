@@ -46,7 +46,6 @@ describe("stage completion (derived)", () => {
   it("REVISION_REQUIRED does not unlock Proposal or Final", () => {
     expect(
       canUnlockProposal({
-        thesisStage: "TITLE",
         outcome: "REVISION_REQUIRED",
         hasSelectedTitle: true,
         titleRapFinalized: true,
@@ -55,7 +54,6 @@ describe("stage completion (derived)", () => {
 
     expect(
       canUnlockFinal({
-        thesisStage: "PROPOSAL",
         outcome: "REVISION_REQUIRED",
         proposalRapFinalized: true,
       }),
@@ -65,7 +63,6 @@ describe("stage completion (derived)", () => {
   it("FAILED does not unlock the next stage", () => {
     expect(
       canUnlockProposal({
-        thesisStage: "TITLE",
         outcome: "FAILED",
         hasSelectedTitle: true,
         titleRapFinalized: true,
@@ -88,20 +85,32 @@ describe("stage completion (derived)", () => {
     ).toBe(false);
   });
 
-  it("already-advanced stages unlock without re-checking prior outcome", () => {
+  it("CP1: stage-mirror alone does not unlock without formal prior-stage completion", () => {
+    // Formal Title completion is required — not ThesisRecord.stage.
     expect(
       canUnlockProposal({
-        thesisStage: "PROPOSAL",
         outcome: null,
         hasSelectedTitle: false,
         titleRapFinalized: false,
       }),
+    ).toBe(false);
+    expect(
+      canUnlockProposal({
+        outcome: "PASSED",
+        hasSelectedTitle: true,
+        titleRapFinalized: true,
+      }),
     ).toBe(true);
     expect(
       canUnlockFinal({
-        thesisStage: "FINAL",
         outcome: null,
         proposalRapFinalized: false,
+      }),
+    ).toBe(false);
+    expect(
+      canUnlockFinal({
+        outcome: "PASSED",
+        proposalRapFinalized: true,
       }),
     ).toBe(true);
   });

@@ -8,6 +8,7 @@
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { isRapStatusComplete } from "./stage-completion";
 import { resolveStrikePolicy } from "./strike-policy";
 import {
   evaluateStudentThesisJourney,
@@ -106,6 +107,24 @@ export class StudentThesisJourneyService {
     // selectedTitle MUST come from formal conclusion.selectedTitleId.
     const selectedTitle = titleConclusion?.selectedTitle ?? null;
 
+    // Title/Proposal RAP finalization is part of canonical stage completion.
+    const rapRows = thesis
+      ? await prisma.rapReport.findMany({
+          where: {
+            thesisId: thesis.id,
+            defenseType: { in: ["TITLE_DEFENSE", "PROPOSAL_DEFENSE"] },
+          },
+          select: { defenseType: true, status: true },
+        })
+      : [];
+    const titleRapFinalized = rapRows.some(
+      (r) => r.defenseType === "TITLE_DEFENSE" && isRapStatusComplete(r.status),
+    );
+    const proposalRapFinalized = rapRows.some(
+      (r) =>
+        r.defenseType === "PROPOSAL_DEFENSE" && isRapStatusComplete(r.status),
+    );
+
     const activeAssignment = student.adviserAssignments[0] ?? null;
     const openRequest =
       student.adviserRequests.find(
@@ -157,6 +176,7 @@ export class StudentThesisJourneyService {
       titlePassed: Boolean(titleConclusion),
       selectedTitleId: selectedTitle?.id ?? null,
       selectedTitleText: selectedTitle?.titleText ?? null,
+      titleRapFinalized,
       titleAdminState: adminFor("TITLE_DEFENSE", "TITLE"),
       adviserRequest: openRequest
         ? {
@@ -175,6 +195,7 @@ export class StudentThesisJourneyService {
           }
         : null,
       proposalPassed: Boolean(proposalConclusion),
+      proposalRapFinalized,
       proposalAdminState: adminFor("PROPOSAL_DEFENSE", "PROPOSAL"),
       strikeEligible,
       strikeRequired: policy.required,

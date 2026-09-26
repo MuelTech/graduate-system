@@ -165,6 +165,41 @@ export class DefenseEligibilityRepository {
         })) > 0
       : false;
 
+    // Formal academic authority: DefenseConclusion (not ThesisRecord mirrors).
+    const titleConclusion = thesisIdForDocs
+      ? await prisma.defenseConclusion.findFirst({
+          where: {
+            thesisId: thesisIdForDocs,
+            schedule: { defenseType: "TITLE_DEFENSE" },
+          },
+          orderBy: { concludedAt: "desc" },
+          select: { outcome: true, selectedTitleId: true },
+        })
+      : null;
+    const proposalConclusion = thesisIdForDocs
+      ? await prisma.defenseConclusion.findFirst({
+          where: {
+            thesisId: thesisIdForDocs,
+            schedule: { defenseType: "PROPOSAL_DEFENSE" },
+          },
+          orderBy: { concludedAt: "desc" },
+          select: { outcome: true },
+        })
+      : null;
+
+    const titleOutcome =
+      titleConclusion?.outcome === "PASSED" ||
+      titleConclusion?.outcome === "REVISION_REQUIRED" ||
+      titleConclusion?.outcome === "FAILED"
+        ? titleConclusion.outcome
+        : null;
+    const proposalOutcome =
+      proposalConclusion?.outcome === "PASSED" ||
+      proposalConclusion?.outcome === "REVISION_REQUIRED" ||
+      proposalConclusion?.outcome === "FAILED"
+        ? proposalConclusion.outcome
+        : null;
+
     const researchVariableRows = thesisIdForDocs
       ? await prisma.researchVariableForm.findMany({
           where: { thesisId: thesisIdForDocs },
@@ -190,7 +225,9 @@ export class DefenseEligibilityRepository {
       thesisStage: thesis?.stage ?? null,
       thesisStatus: thesis?.status ?? null,
       thesisOutcome: thesis?.outcome ?? null,
-      hasSelectedTitle: (thesis?.thesisTitles ?? []).some((t) => t.isSelected),
+      titleOutcome,
+      hasSelectedTitle: Boolean(titleConclusion?.selectedTitleId),
+      proposalOutcome,
       compExamPassed,
       compExamDismissed: failedStrikes >= 2,
       activeAdviser: (student?.adviserAssignments ?? []).length > 0,

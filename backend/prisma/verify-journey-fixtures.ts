@@ -95,6 +95,21 @@ async function verifyIntegrity(
         }
       }
 
+      // Canonical Title completion requires a finalized Title RAP.
+      const titleRapCount = await prisma.rapReport.count({
+        where: {
+          thesisId: thesis.id,
+          defenseType: "TITLE_DEFENSE",
+          status: { in: ["ALL_SIGNED", "FINALIZED"] },
+        },
+      });
+      if (titlePassedExpected && titleRapCount < 1) {
+        console.error(
+          `  FAIL ${scenario}: expected finalized Title RAP for completed Title stage`,
+        );
+        f++;
+      }
+
       // Adviser request source schedule integrity
       const requests = await prisma.adviserRequest.findMany({
         where: { studentId },
@@ -178,6 +193,20 @@ async function verifyIntegrity(
       if (!proposalPassedExpected && proposalPassedCount !== 0) {
         console.error(
           `  FAIL ${scenario}: expected 0 Proposal PASSED conclusion, got ${proposalPassedCount}`,
+        );
+        f++;
+      }
+
+      const proposalRapCount = await prisma.rapReport.count({
+        where: {
+          thesisId: thesis.id,
+          defenseType: "PROPOSAL_DEFENSE",
+          status: { in: ["ALL_SIGNED", "FINALIZED"] },
+        },
+      });
+      if (proposalPassedExpected && proposalRapCount < 1) {
+        console.error(
+          `  FAIL ${scenario}: expected finalized Proposal RAP for completed Proposal stage`,
         );
         f++;
       }

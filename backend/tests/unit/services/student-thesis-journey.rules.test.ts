@@ -10,10 +10,12 @@ function baseSnap(overrides: Partial<JourneySnapshot> = {}): JourneySnapshot {
     titlePassed: false,
     selectedTitleId: null,
     selectedTitleText: null,
+    titleRapFinalized: false,
     titleAdminState: "NONE",
     adviserRequest: null,
     activeAdviser: null,
     proposalPassed: false,
+    proposalRapFinalized: false,
     proposalAdminState: "NONE",
     strikeEligible: false,
     strikeRequired: false,
@@ -62,19 +64,84 @@ describe("evaluateStudentThesisJourney — Title / Comp Exam", () => {
         titlePassed: true,
         selectedTitleId: null,
         selectedTitleText: null,
+        titleRapFinalized: true,
       }),
     );
     // Title is waiting on official title selection (formal conclusion incomplete).
     expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
+    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
   });
 
-  it("formal PASSED + selected title completes Title", () => {
+  it("CP1: PASSED + selected title + RAP NOT finalized keeps Title incomplete and Adviser locked", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({
         compExamPassed: true,
         titlePassed: true,
         selectedTitleId: "title-1",
         selectedTitleText: "Official Title",
+        titleRapFinalized: false,
+      }),
+    );
+    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
+    const adviser = dto.steps.find((s) => s.key === "ADVISER_REQUEST");
+    expect(adviser?.lockReason).toMatch(/Title RAP/i);
+  });
+
+  it("CP1: PASSED + selected title + RAP finalized completes Title and unlocks Adviser", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "title-1",
+        selectedTitleText: "Official Title",
+        titleRapFinalized: true,
+      }),
+    );
+    expect(stateOf(dto, "TITLE_DEFENSE")).toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("CURRENT");
+    expect(dto.selectedTitle).toEqual({
+      id: "title-1",
+      titleText: "Official Title",
+    });
+  });
+
+  it("CP1: NOT PASSED + selected title + RAP finalized keeps Title incomplete and Adviser locked", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: false,
+        selectedTitleId: "title-1",
+        selectedTitleText: "Official Title",
+        titleRapFinalized: true,
+      }),
+    );
+    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
+  });
+
+  it("CP1: PASSED + no selected title + RAP finalized keeps Title incomplete and Adviser locked", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: null,
+        selectedTitleText: null,
+        titleRapFinalized: true,
+      }),
+    );
+    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
+  });
+
+  it("formal PASSED + selected title + finalized RAP completes Title", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "title-1",
+        selectedTitleText: "Official Title",
+        titleRapFinalized: true,
       }),
     );
     expect(stateOf(dto, "TITLE_DEFENSE")).toBe("COMPLETED");
@@ -91,6 +158,7 @@ describe("evaluateStudentThesisJourney — Adviser", () => {
     titlePassed: true,
     selectedTitleId: "title-1",
     selectedTitleText: "Official Title",
+    titleRapFinalized: true,
   } as const;
 
   it("no request → Adviser current", () => {
@@ -198,6 +266,7 @@ describe("evaluateStudentThesisJourney — Proposal / Final", () => {
     titlePassed: true,
     selectedTitleId: "title-1",
     selectedTitleText: "Official Title",
+    titleRapFinalized: true,
     activeAdviser: { userId: "a", name: "Ana" },
   } as const;
 
@@ -209,12 +278,28 @@ describe("evaluateStudentThesisJourney — Proposal / Final", () => {
     expect(stateOf(dto, "FINAL_DEFENSE")).toBe("LOCKED");
   });
 
-  it("Proposal formal PASSED completes Proposal", () => {
+  it("Proposal formal PASSED + finalized RAP completes Proposal", () => {
     const dto = evaluateStudentThesisJourney(
-      baseSnap({ ...withAdviser, proposalPassed: true }),
+      baseSnap({
+        ...withAdviser,
+        proposalPassed: true,
+        proposalRapFinalized: true,
+      }),
     );
     expect(stateOf(dto, "PROPOSAL_DEFENSE")).toBe("COMPLETED");
     expect(stateOf(dto, "FINAL_DEFENSE")).toBe("CURRENT");
+  });
+
+  it("Proposal PASSED without finalized RAP is not completed", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        ...withAdviser,
+        proposalPassed: true,
+        proposalRapFinalized: false,
+      }),
+    );
+    expect(stateOf(dto, "PROPOSAL_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "FINAL_DEFENSE")).toBe("LOCKED");
   });
 
   it("Final PASSED completes Final", () => {
@@ -222,6 +307,7 @@ describe("evaluateStudentThesisJourney — Proposal / Final", () => {
       baseSnap({
         ...withAdviser,
         proposalPassed: true,
+        proposalRapFinalized: true,
         finalPassed: true,
       }),
     );
@@ -236,8 +322,10 @@ describe("evaluateStudentThesisJourney — STRIKE policy", () => {
     titlePassed: true,
     selectedTitleId: "t",
     selectedTitleText: "T",
+    titleRapFinalized: true,
     activeAdviser: { userId: "a", name: "A" },
     proposalPassed: true,
+    proposalRapFinalized: true,
   } as const;
 
   it("required + no eligible result → STRIKE current, Final locked", () => {
@@ -311,6 +399,7 @@ describe("currentStep determinism and cumulative sequence", () => {
         titlePassed: true,
         selectedTitleId: "t",
         selectedTitleText: "T",
+        titleRapFinalized: true,
         proposalPassed: true,
       }),
     );
@@ -327,8 +416,10 @@ describe("currentStep determinism and cumulative sequence", () => {
         titlePassed: true,
         selectedTitleId: "t",
         selectedTitleText: "T",
+        titleRapFinalized: true,
         activeAdviser: { userId: "a", name: "A" },
         proposalPassed: true,
+        proposalRapFinalized: true,
         strikeRequired: true,
         strikeEligible: true,
         finalPassed: true,
@@ -345,8 +436,10 @@ describe("rejected applications are actionable, not WAITING", () => {
     titlePassed: true,
     selectedTitleId: "t",
     selectedTitleText: "T",
+    titleRapFinalized: true,
     activeAdviser: { userId: "a", name: "A" },
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: false,
     finalPassed: false,
   } as const;

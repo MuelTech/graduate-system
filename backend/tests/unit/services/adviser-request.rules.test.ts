@@ -12,6 +12,11 @@ import {
   mapAdviserResponseToOverallStatus,
   mapDeanDecisionToOverallStatus,
 } from "../../../src/services/adviser-request.rules";
+import {
+  evaluateStudentThesisJourney,
+  type JourneySnapshot,
+} from "../../../src/services/student-thesis-journey.rules";
+import { isTitleStageComplete } from "../../../src/services/stage-completion";
 
 const validPanelist = {
   defenseRole: "PANELIST",
@@ -38,6 +43,7 @@ describe("evaluateTitleDefenseGate", () => {
     const r = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: false,
       hasOfficialSelectedTitle: false,
+      hasFinalizedTitleRap: false,
     });
     expect(r.allowed).toBe(false);
     if (!r.allowed) {
@@ -50,6 +56,7 @@ describe("evaluateTitleDefenseGate", () => {
     const r = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: true,
       hasOfficialSelectedTitle: false,
+      hasFinalizedTitleRap: true,
     });
     expect(r.allowed).toBe(false);
     if (!r.allowed) {
@@ -57,14 +64,137 @@ describe("evaluateTitleDefenseGate", () => {
     }
   });
 
-  it("allows when both formal PASSED and selected title exist", () => {
+  it("CP1: rejects PASSED + selected title when Title RAP is not finalized", () => {
+    const r = evaluateTitleDefenseGate({
+      hasPassedTitleConclusion: true,
+      hasOfficialSelectedTitle: true,
+      hasFinalizedTitleRap: false,
+    });
+    expect(r.allowed).toBe(false);
+    if (!r.allowed) {
+      expect(r.reason).toMatch(/Title RAP/i);
+      expect(r.reason).not.toMatch(/formally PASSED Title Defense conclusion/i);
+    }
+  });
+
+  it("allows when formal PASSED + selected title + finalized Title RAP exist", () => {
     expect(
       evaluateTitleDefenseGate({
         hasPassedTitleConclusion: true,
         hasOfficialSelectedTitle: true,
+        hasFinalizedTitleRap: true,
       }).allowed,
     ).toBe(true);
   });
+});
+
+describe("CP1 Journey / GS-020 consistency", () => {
+  function journeySnap(over: Partial<JourneySnapshot>): JourneySnapshot {
+    return {
+      compExamPassed: true,
+      titlePassed: false,
+      selectedTitleId: null,
+      selectedTitleText: null,
+      titleRapFinalized: false,
+      titleAdminState: "NONE",
+      adviserRequest: null,
+      activeAdviser: null,
+      proposalPassed: false,
+      proposalRapFinalized: false,
+      proposalAdminState: "NONE",
+      strikeEligible: false,
+      strikeRequired: false,
+      finalPassed: false,
+      finalAdminState: "NONE",
+      ...over,
+    };
+  }
+
+  function adviserUnlockedInJourney(snap: JourneySnapshot): boolean {
+    const dto = evaluateStudentThesisJourney(snap);
+    const step = dto.steps.find((s) => s.key === "ADVISER_REQUEST");
+    return step != null && step.state !== "LOCKED";
+  }
+
+  function gs020Allows(input: {
+    hasPassedTitleConclusion: boolean;
+    hasOfficialSelectedTitle: boolean;
+    hasFinalizedTitleRap: boolean;
+  }): boolean {
+    return evaluateTitleDefenseGate(input).allowed;
+  }
+
+  const cases = [
+    {
+      name: "PASSED + title + RAP not finalized",
+      snap: journeySnap({
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: false,
+      }),
+      gate: {
+        hasPassedTitleConclusion: true,
+        hasOfficialSelectedTitle: true,
+        hasFinalizedTitleRap: false,
+      },
+    },
+    {
+      name: "PASSED + title + RAP finalized",
+      snap: journeySnap({
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: true,
+      }),
+      gate: {
+        hasPassedTitleConclusion: true,
+        hasOfficialSelectedTitle: true,
+        hasFinalizedTitleRap: true,
+      },
+    },
+    {
+      name: "not PASSED + title + RAP finalized",
+      snap: journeySnap({
+        titlePassed: false,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: true,
+      }),
+      gate: {
+        hasPassedTitleConclusion: false,
+        hasOfficialSelectedTitle: true,
+        hasFinalizedTitleRap: true,
+      },
+    },
+    {
+      name: "PASSED + no title + RAP finalized",
+      snap: journeySnap({
+        titlePassed: true,
+        selectedTitleId: null,
+        selectedTitleText: null,
+        titleRapFinalized: true,
+      }),
+      gate: {
+        hasPassedTitleConclusion: true,
+        hasOfficialSelectedTitle: false,
+        hasFinalizedTitleRap: true,
+      },
+    },
+  ];
+
+  for (const c of cases) {
+    it(`agrees on Adviser Request availability: ${c.name}`, () => {
+      const journey = adviserUnlockedInJourney(c.snap);
+      const gs020 = gs020Allows(c.gate);
+      expect(journey, "journey vs GS-020 must agree").toBe(gs020);
+      expect(isTitleStageComplete({
+        outcome: c.snap.titlePassed ? "PASSED" : null,
+        hasSelectedTitle: Boolean(c.snap.selectedTitleId),
+        titleRapFinalized: c.snap.titleRapFinalized,
+      })).toBe(gs020);
+    });
+  }
 });
 
 describe("evaluateCandidateEligibility", () => {

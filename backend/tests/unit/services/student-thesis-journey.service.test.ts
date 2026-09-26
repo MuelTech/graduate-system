@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   student: { findUnique: vi.fn() },
   thesisRecord: { findFirst: vi.fn() },
+  rapReport: { findMany: vi.fn() },
 }));
 
 vi.mock("../../../src/config/database", () => ({
@@ -55,9 +56,13 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
     vi.clearAllMocks();
     prismaMock.student.findUnique.mockResolvedValue(studentRow());
     prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
+    prismaMock.rapReport.findMany.mockResolvedValue([]);
   });
 
   it("selectedTitle comes from PASSED Title DefenseConclusion.selectedTitle only", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+    ]);
     prismaMock.thesisRecord.findFirst.mockResolvedValue(
       thesisRow({
         defenseSchedules: [
@@ -76,6 +81,27 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
     });
     const title = journey.steps.find((s) => s.key === "TITLE_DEFENSE");
     expect(title?.state).toBe("COMPLETED");
+  });
+
+  it("CP1: PASSED + selected title without finalized Title RAP is not COMPLETED", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([]);
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(
+      thesisRow({
+        defenseSchedules: [
+          scheduleWithConclusion("TITLE_DEFENSE", {
+            outcome: "PASSED",
+            selectedTitle: { id: "title-formal", titleText: "Formal Title" },
+          }),
+        ],
+      }),
+    );
+
+    const journey = await svc.getJourney("user-1");
+    const title = journey.steps.find((s) => s.key === "TITLE_DEFENSE");
+    const adviser = journey.steps.find((s) => s.key === "ADVISER_REQUEST");
+    expect(title?.state).not.toBe("COMPLETED");
+    expect(adviser?.state).toBe("LOCKED");
+    expect(adviser?.lockReason).toMatch(/Title RAP/i);
   });
 
   it("ThesisTitle.isSelected alone does NOT complete Title", async () => {
@@ -109,6 +135,9 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
         ],
       }),
     );
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+    ]);
     prismaMock.thesisRecord.findFirst.mockResolvedValue(
       thesisRow({
         defenseSchedules: [
@@ -126,6 +155,10 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
       journey.steps.find((s) => s.key === "PROPOSAL_DEFENSE")?.state,
     ).not.toBe("COMPLETED");
 
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+      { defenseType: "PROPOSAL_DEFENSE", status: "FINALIZED" },
+    ]);
     prismaMock.thesisRecord.findFirst.mockResolvedValue(
       thesisRow({
         defenseSchedules: [
@@ -144,6 +177,10 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
   });
 
   it("Final PASSED is read from FINAL_DEFENSE conclusion only", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+      { defenseType: "PROPOSAL_DEFENSE", status: "FINALIZED" },
+    ]);
     prismaMock.thesisRecord.findFirst.mockResolvedValue(
       thesisRow({
         defenseSchedules: [
@@ -174,6 +211,10 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
   });
 
   it("consumes persisted PlagiarismResult.isEligible", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+      { defenseType: "PROPOSAL_DEFENSE", status: "FINALIZED" },
+    ]);
     prismaMock.thesisRecord.findFirst.mockResolvedValue(
       thesisRow({
         plagiarismResults: [{ isEligible: true, submittedAt: new Date() }],

@@ -15,10 +15,12 @@ function snap(partial: Partial<JourneySnapshot>): JourneySnapshot {
     titlePassed: false,
     selectedTitleId: null,
     selectedTitleText: null,
+    titleRapFinalized: false,
     titleAdminState: "NONE",
     adviserRequest: null,
     activeAdviser: null,
     proposalPassed: false,
+    proposalRapFinalized: false,
     proposalAdminState: "NONE",
     strikeEligible: false,
     strikeRequired: false,
@@ -32,6 +34,7 @@ const titleReady = {
   titlePassed: true,
   selectedTitleId: "t",
   selectedTitleText: "Official",
+  titleRapFinalized: true,
 } as const;
 const adviserReady = {
   ...titleReady,
@@ -69,23 +72,27 @@ const SNAPSHOT_BY_FIXTURE: Record<string, JourneySnapshot> = {
   PROPOSAL_PASSED: snap({
     ...adviserReady,
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: false,
   }),
   STRIKE_READY: snap({
     ...adviserReady,
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: false,
     strikeEligible: false,
   }),
   STRIKE_ELIGIBLE: snap({
     ...adviserReady,
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: true,
     strikeEligible: true,
   }),
   FINAL_READY: snap({
     ...adviserReady,
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: true,
     strikeEligible: true,
     finalAdminState: "NONE",
@@ -93,6 +100,7 @@ const SNAPSHOT_BY_FIXTURE: Record<string, JourneySnapshot> = {
   FINAL_PASSED: snap({
     ...adviserReady,
     proposalPassed: true,
+    proposalRapFinalized: true,
     strikeRequired: true,
     strikeEligible: true,
     finalPassed: true,
@@ -123,6 +131,7 @@ describe("WP6 fixture Journey expectations (shared manifest)", () => {
       snap({
         ...adviserReady,
         proposalPassed: true,
+        proposalRapFinalized: true,
         strikeRequired: true,
         strikeEligible: false,
       }),
@@ -139,6 +148,7 @@ describe("WP6 fixture Journey expectations (shared manifest)", () => {
       snap({
         ...adviserReady,
         proposalPassed: true,
+        proposalRapFinalized: true,
         strikeRequired: true,
         strikeEligible: true,
       }),

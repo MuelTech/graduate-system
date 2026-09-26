@@ -8,7 +8,11 @@
  *
  * Never treat ThesisRecord.stage/status or application APPROVED as academic
  * completion. Those are administrative/session context only.
+ *
+ * Title stage completion uses the shared stage-completion authority:
+ * formal PASSED + official selected title + finalized Title RAP.
  */
+import { isProposalStageComplete, isTitleStageComplete } from "./stage-completion";
 
 export type JourneyStepKey =
   | "TITLE_DEFENSE"
@@ -42,6 +46,8 @@ export interface JourneySnapshot {
   titlePassed: boolean;
   selectedTitleId: string | null;
   selectedTitleText: string | null;
+  /** Required Title RAP is finalized/signed (ALL_SIGNED or FINALIZED). */
+  titleRapFinalized: boolean;
   /** Administrative: title application/session context for WAITING text. */
   titleAdminState: AdminSessionState;
 
@@ -57,6 +63,8 @@ export interface JourneySnapshot {
   activeAdviser: { userId: string; name: string } | null;
 
   proposalPassed: boolean;
+  /** Required Proposal RAP is finalized/signed (ALL_SIGNED or FINALIZED). */
+  proposalRapFinalized: boolean;
   proposalAdminState: AdminSessionState;
 
   /** Persisted PlagiarismResult.isEligible (real evidence only). */
@@ -177,9 +185,20 @@ function adminActionableStep(
 export function evaluateStudentThesisJourney(
   snap: JourneySnapshot,
 ): StudentThesisJourneyDto {
-  const titleCompleted = snap.titlePassed && Boolean(snap.selectedTitleId);
+  // Canonical Title completion: PASSED + official selected title + finalized Title RAP.
+  const titleCompleted = isTitleStageComplete({
+    outcome: snap.titlePassed ? "PASSED" : null,
+    hasSelectedTitle: Boolean(snap.selectedTitleId),
+    titleRapFinalized: snap.titleRapFinalized,
+  });
+  const titleResultAndTitleReady =
+    snap.titlePassed && Boolean(snap.selectedTitleId);
+  const titleRapPending = titleResultAndTitleReady && !snap.titleRapFinalized;
   const adviserCompleted = Boolean(snap.activeAdviser);
-  const proposalCompleted = snap.proposalPassed;
+  const proposalCompleted = isProposalStageComplete({
+    outcome: snap.proposalPassed ? "PASSED" : null,
+    proposalRapFinalized: snap.proposalRapFinalized,
+  });
   const strikeRequired = snap.strikeRequired;
   const strikeSatisfied = !strikeRequired || snap.strikeEligible;
   const finalCompleted = snap.finalPassed;
@@ -201,19 +220,28 @@ export function evaluateStudentThesisJourney(
       )
     : titleCompleted
       ? step("TITLE_DEFENSE", "COMPLETED", null, "Continue to Adviser Request.")
-      : adminActionableStep(
-          "TITLE_DEFENSE",
-          snap.titleAdminState,
-          "Title",
-          "Submit Title Defense application.",
-        );
+      : titleRapPending
+        ? step(
+            "TITLE_DEFENSE",
+            "WAITING",
+            "Title Defense academic result and official title are recorded. Required Title RAP is still awaiting finalization/signatures.",
+            "Finalizing Title Defense records.",
+          )
+        : adminActionableStep(
+            "TITLE_DEFENSE",
+            snap.titleAdminState,
+            "Title",
+            "Submit Title Defense application.",
+          );
 
   // ── Adviser Request ────────────────────────────────────────────
   const adviserStep = !adviserReady
     ? step(
         "ADVISER_REQUEST",
         "LOCKED",
-        "Complete and pass Title Defense with an official selected title first.",
+        titleRapPending
+          ? "Title Defense academic result and official title are complete, but the required Title RAP must be finalized before Adviser Request."
+          : "Complete and pass Title Defense with an official selected title first.",
       )
     : adviserCompleted
       ? step("ADVISER_REQUEST", "COMPLETED", null, "Continue to Proposal Defense.")

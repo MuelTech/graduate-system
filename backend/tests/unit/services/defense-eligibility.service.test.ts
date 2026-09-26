@@ -17,7 +17,9 @@ const baseSnap = (): EligibilitySnapshot => ({
   thesisStage: "TITLE",
   thesisStatus: "PENDING",
   thesisOutcome: null,
+  titleOutcome: null,
   hasSelectedTitle: false,
+  proposalOutcome: null,
   compExamPassed: true,
   compExamDismissed: false,
   activeAdviser: true,
@@ -100,12 +102,12 @@ describe("evaluateApplyTitle", () => {
 describe("evaluateApplyProposal", () => {
   const svc = new DefenseEligibilityService();
 
-  it("requires title PASSED outcome and proposal matrix", () => {
+  it("requires formal Title PASSED + selected title + Title RAP and proposal matrix", () => {
     const ok = svc.evaluateApplyProposal({
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PASSED",
-      thesisOutcome: "PASSED",
+      titleOutcome: "PASSED",
       hasSelectedTitle: true,
     });
     expect(ok.eligible).toBe(true);
@@ -114,20 +116,18 @@ describe("evaluateApplyProposal", () => {
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PENDING",
-      thesisOutcome: null,
+      titleOutcome: null,
+      hasSelectedTitle: false,
       adviserCerts: { proposal: false, final: true },
       titleRapSigned: false,
       researchVariables: "NONE",
     });
     expect(bad.eligible).toBe(false);
     expect(codes(bad.missing)).toEqual(
-      expect.arrayContaining([
-        "THESIS_STAGE",
-        "ADVISER_CERT",
-        "PRIOR_RAP",
-        "RESEARCH_VARIABLES",
-      ]),
+      expect.arrayContaining(["THESIS_STAGE", "ADVISER_CERT", "PRIOR_RAP"]),
     );
+    // Research Variables is not an active blocking gate (CP1).
+    expect(codes(bad.missing)).not.toContain("RESEARCH_VARIABLES");
   });
 
   it("does not unlock Proposal from REVISION_REQUIRED or APPROVED-without-outcome", () => {
@@ -135,7 +135,7 @@ describe("evaluateApplyProposal", () => {
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "REVISION",
-      thesisOutcome: "REVISION_REQUIRED",
+      titleOutcome: "REVISION_REQUIRED",
       hasSelectedTitle: true,
     });
     expect(codes(revision.missing)).toContain("THESIS_STAGE");
@@ -144,25 +144,61 @@ describe("evaluateApplyProposal", () => {
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "APPROVED",
-      thesisOutcome: null,
+      titleOutcome: null,
       hasSelectedTitle: true,
     });
     expect(codes(approvedOnly.missing)).toContain("THESIS_STAGE");
   });
 
-  it("accepts Research Variables NOT_APPLICABLE", () => {
+  it("CP1: missing formal result/title vs RAP pending use distinct reasons", () => {
+    // Case A — result/title incomplete (even if RAP exists).
+    const caseA = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      titleOutcome: null,
+      hasSelectedTitle: false,
+      titleRapSigned: true,
+    });
+    expect(codes(caseA.missing)).toContain("THESIS_STAGE");
+    const caseAMsg = caseA.missing.find((m) => m.code === "THESIS_STAGE");
+    expect(caseAMsg?.message).toMatch(/formally PASSED with an official selected title/i);
+    expect(caseA.missing.find((m) => m.code === "PRIOR_RAP")).toBeUndefined();
+
+    // Case B — PASSED + selected title, RAP not finalized.
+    const caseB = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      titleOutcome: "PASSED",
+      hasSelectedTitle: true,
+      titleRapSigned: false,
+    });
+    expect(codes(caseB.missing)).toContain("PRIOR_RAP");
+    expect(codes(caseB.missing)).not.toContain("THESIS_STAGE");
+    const caseBMsg = caseB.missing.find((m) => m.code === "PRIOR_RAP");
+    expect(caseBMsg?.message).toMatch(/Title RAP is still awaiting finalization/i);
+  });
+
+  it("CP1: otherwise valid Proposal eligibility does NOT fail solely because Research Variables is absent", () => {
     expect(researchVariablesSatisfied("NOT_APPLICABLE")).toBe(true);
     expect(researchVariablesSatisfied("APPROVED")).toBe(true);
     expect(researchVariablesSatisfied("PENDING")).toBe(false);
     expect(researchVariablesSatisfied("NONE")).toBe(false);
 
-    const result = svc.evaluateApplyProposal({
+    const absent = svc.evaluateApplyProposal({
       ...baseSnap(),
-      thesisStage: "PROPOSAL",
-      thesisOutcome: null,
-      researchVariables: "NOT_APPLICABLE",
+      titleOutcome: "PASSED",
+      hasSelectedTitle: true,
+      researchVariables: "NONE",
     });
-    expect(result.eligible).toBe(true);
+    expect(absent.eligible).toBe(true);
+    expect(codes(absent.missing)).not.toContain("RESEARCH_VARIABLES");
+
+    const pending = svc.evaluateApplyProposal({
+      ...baseSnap(),
+      titleOutcome: "PASSED",
+      hasSelectedTitle: true,
+      researchVariables: "PENDING",
+    });
+    expect(pending.eligible).toBe(true);
+    expect(codes(pending.missing)).not.toContain("RESEARCH_VARIABLES");
   });
 
   it("requires stage-scoped COR and fee proof (Title receipt is not enough)", () => {
@@ -192,7 +228,7 @@ describe("evaluateApplyProposal", () => {
       ...baseSnap(),
       thesisStage: "TITLE",
       thesisStatus: "PASSED",
-      thesisOutcome: "PASSED",
+      titleOutcome: "PASSED",
       hasSelectedTitle: true,
       activeAdviser: false,
     });
@@ -203,12 +239,12 @@ describe("evaluateApplyProposal", () => {
 describe("evaluateApplyFinal", () => {
   const svc = new DefenseEligibilityService();
 
-  it("requires proposal PASSED outcome and confirmed Final matrix only", () => {
+  it("requires formal Proposal PASSED + Proposal RAP and confirmed Final matrix only", () => {
     const ok = svc.evaluateApplyFinal({
       ...baseSnap(),
       thesisStage: "PROPOSAL",
       thesisStatus: "PASSED",
-      thesisOutcome: "PASSED",
+      proposalOutcome: "PASSED",
     });
     expect(ok.eligible).toBe(true);
 
@@ -216,7 +252,7 @@ describe("evaluateApplyFinal", () => {
       ...baseSnap(),
       thesisStage: "PROPOSAL",
       thesisStatus: "APPROVED",
-      thesisOutcome: null,
+      proposalOutcome: null,
       adviserCerts: { proposal: true, final: false },
       proposalRapSigned: false,
     });
@@ -225,11 +261,23 @@ describe("evaluateApplyFinal", () => {
     );
   });
 
+  it("CP1: Proposal result complete + RAP pending uses RAP-specific reason", () => {
+    const caseB = svc.evaluateApplyFinal({
+      ...baseSnap(),
+      proposalOutcome: "PASSED",
+      proposalRapSigned: false,
+    });
+    expect(codes(caseB.missing)).toContain("PRIOR_RAP");
+    expect(codes(caseB.missing)).not.toContain("THESIS_STAGE");
+    const msg = caseB.missing.find((m) => m.code === "PRIOR_RAP");
+    expect(msg?.message).toMatch(/Proposal RAP is still awaiting finalization/i);
+  });
+
   it("does NOT block Final on STRIKE/statistician/instruments by default", () => {
     const result = svc.evaluateApplyFinal({
       ...baseSnap(),
       thesisStage: "PROPOSAL",
-      thesisOutcome: "PASSED",
+      proposalOutcome: "PASSED",
       evidence: { ...baseSnap().evidence, instruments: false },
       statisticianCert: false,
       plagiarismEligible: false,
@@ -242,7 +290,7 @@ describe("evaluateApplyFinal", () => {
       {
         ...baseSnap(),
         thesisStage: "PROPOSAL",
-        thesisOutcome: "PASSED",
+        proposalOutcome: "PASSED",
         evidence: { ...baseSnap().evidence, instruments: false },
         statisticianCert: false,
         plagiarismEligible: false,
@@ -268,7 +316,7 @@ describe("evaluateApplyFinal", () => {
       {
         ...baseSnap(),
         thesisStage: "PROPOSAL",
-        thesisOutcome: "PASSED",
+        proposalOutcome: "PASSED",
         adviserCerts: { proposal: true, final: false },
       },
       { manuscript: true, cor: true, receipt: true },

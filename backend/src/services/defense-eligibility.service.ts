@@ -13,7 +13,6 @@ import {
   type FinalOptionalGateFlags,
 } from "./defense-gates.config";
 import { getFinalOptionalGates } from "./strike-policy";
-import { canUnlockFinal, canUnlockProposal } from "./stage-completion";
 import { AppError } from "../utils/AppError";
 
 export interface ApplyTitleEligibilityInput {
@@ -35,11 +34,20 @@ function miss(
   return { code, message, stage };
 }
 
-/** Research Variables: IF ANY — NOT_APPLICABLE satisfies (§10.3.1). */
+/**
+ * Research Variables: IF ANY — informational only in this correction pass.
+ * NOT_APPLICABLE and missing rows must NOT block Proposal apply/schedule.
+ * Schema/data is retained; do not invent an N/A workflow here.
+ */
 export function researchVariablesSatisfied(
   state: ResearchVariablesState,
 ): boolean {
   return state === "APPROVED" || state === "NOT_APPLICABLE";
+}
+
+/** True when Title academic result + official title exist (RAP checked separately). */
+function titleResultAndOfficialTitle(snap: EligibilitySnapshot): boolean {
+  return snap.titleOutcome === "PASSED" && snap.hasSelectedTitle;
 }
 
 export class DefenseEligibilityService {
@@ -129,12 +137,7 @@ export class DefenseEligibilityService {
   ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "PROPOSAL";
-    const titlePassed = canUnlockProposal({
-      thesisStage: snap.thesisStage,
-      outcome: snap.thesisOutcome,
-      hasSelectedTitle: snap.hasSelectedTitle,
-      titleRapFinalized: snap.titleRapSigned,
-    });
+    const titleResultReady = titleResultAndOfficialTitle(snap);
 
     if (!snap.compExamPassed) {
       missing.push(
@@ -154,11 +157,24 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!titlePassed) {
+    // Case A: formal result/title incomplete (distinct from RAP pending).
+    if (!titleResultReady) {
       missing.push(
         miss(
           "THESIS_STAGE",
-          "Title Defense must be PASSED (with selected title and finalized Title RAP) before Proposal application.",
+          "Title Defense must be formally PASSED with an official selected title before Proposal application.",
+          stage,
+        ),
+      );
+    }
+    // Case B: academic result/title exist but Title RAP is not finalized.
+    if (!snap.titleRapSigned) {
+      missing.push(
+        miss(
+          "PRIOR_RAP",
+          titleResultReady
+            ? "Title Defense academic result and official title are complete, but the required Title RAP is still awaiting finalization/signatures."
+            : "Approved (signed) Title Defense RAP Report is required.",
           stage,
         ),
       );
@@ -181,24 +197,7 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!snap.titleRapSigned) {
-      missing.push(
-        miss(
-          "PRIOR_RAP",
-          "Approved (signed) Title Defense RAP Report is required.",
-          stage,
-        ),
-      );
-    }
-    if (!researchVariablesSatisfied(snap.researchVariables)) {
-      missing.push(
-        miss(
-          "RESEARCH_VARIABLES",
-          "Research Variables approval is required when applicable (mark NOT_APPLICABLE if the study has no variables).",
-          stage,
-        ),
-      );
-    }
+    // Research Variables is NOT an active Proposal blocking gate (CP1 correction).
     if (!upload.manuscript && !snap.evidence.proposalChapters) {
       missing.push(
         miss(
@@ -241,11 +240,7 @@ export class DefenseEligibilityService {
   ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "FINAL";
-    const proposalPassed = canUnlockFinal({
-      thesisStage: snap.thesisStage,
-      outcome: snap.thesisOutcome,
-      proposalRapFinalized: snap.proposalRapSigned,
-    });
+    const proposalResultReady = snap.proposalOutcome === "PASSED";
 
     if (!snap.compExamPassed) {
       missing.push(
@@ -261,11 +256,24 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    if (!proposalPassed) {
+    // Case A: formal Proposal result incomplete.
+    if (!proposalResultReady) {
       missing.push(
         miss(
           "THESIS_STAGE",
-          "Proposal Defense must be PASSED (with finalized Proposal RAP) before Final application.",
+          "Proposal Defense must be formally PASSED before Final application.",
+          stage,
+        ),
+      );
+    }
+    // Case B: Proposal result exists but Proposal RAP is not finalized.
+    if (!snap.proposalRapSigned) {
+      missing.push(
+        miss(
+          "PRIOR_RAP",
+          proposalResultReady
+            ? "Proposal Defense academic result is complete, but the required Proposal RAP is still awaiting finalization/signatures."
+            : "Approved (signed) Proposal Defense RAP Report is required.",
           stage,
         ),
       );
@@ -284,15 +292,6 @@ export class DefenseEligibilityService {
         miss(
           "ADVISER_CERT",
           "Adviser certification for Final Defense must be issued.",
-          stage,
-        ),
-      );
-    }
-    if (!snap.proposalRapSigned) {
-      missing.push(
-        miss(
-          "PRIOR_RAP",
-          "Approved (signed) Proposal Defense RAP Report is required.",
           stage,
         ),
       );
@@ -494,18 +493,16 @@ export class DefenseEligibilityService {
       }
       if (!snap.titleRapSigned) {
         missing.push(
-          miss("PRIOR_RAP", "Signed Title Defense RAP is required.", stage),
-        );
-      }
-      if (!researchVariablesSatisfied(snap.researchVariables)) {
-        missing.push(
           miss(
-            "RESEARCH_VARIABLES",
-            "Research Variables approval is required when applicable (NOT_APPLICABLE is allowed).",
+            "PRIOR_RAP",
+            titleResultAndOfficialTitle(snap)
+              ? "Title Defense academic result and official title are complete, but the required Title RAP is still awaiting finalization/signatures."
+              : "Signed Title Defense RAP is required.",
             stage,
           ),
         );
       }
+      // Research Variables is NOT an active Proposal scheduling gate (CP1).
       if (!snap.evidence.proposalChapters) {
         missing.push(
           miss(

@@ -74,9 +74,17 @@ export interface EligibilitySnapshot {
   thesisId: string | null;
   thesisStage: DefenseStage | null;
   thesisStatus: string | null;
-  /** Formal academic outcome from DefenseConclusion / conclusion flow. */
+  /**
+   * Compatibility mirror of ThesisRecord.outcome.
+   * Prefer titleOutcome / proposalOutcome for academic unlock decisions.
+   */
   thesisOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+  /** Formal Title DefenseConclusion outcome (academic authority for Title). */
+  titleOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+  /** Official selected title from Title DefenseConclusion.selectedTitleId. */
   hasSelectedTitle: boolean;
+  /** Formal Proposal DefenseConclusion outcome (academic authority for Proposal). */
+  proposalOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
   compExamPassed: boolean;
   compExamDismissed: boolean;
   activeAdviser: boolean;

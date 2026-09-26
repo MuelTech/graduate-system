@@ -25,6 +25,7 @@ import {
   mapAdviserResponseToOverallStatus,
   mapDeanDecisionToOverallStatus,
 } from "./adviser-request.rules";
+import { isRapStatusComplete } from "./stage-completion";
 
 export interface OdpCandidateDto {
   userId: string;
@@ -102,9 +103,22 @@ export class AdviserRequestService {
       },
     });
 
+    let hasFinalizedTitleRap = false;
+    if (conclusion) {
+      const titleRaps = await prisma.rapReport.findMany({
+        where: {
+          thesisId: conclusion.thesisId,
+          defenseType: "TITLE_DEFENSE",
+        },
+        select: { status: true },
+      });
+      hasFinalizedTitleRap = titleRaps.some((r) => isRapStatusComplete(r.status));
+    }
+
     const gate = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: Boolean(conclusion),
       hasOfficialSelectedTitle: Boolean(conclusion?.selectedTitleId),
+      hasFinalizedTitleRap,
     });
     if (!gate.allowed) {
       throw new AppError(gate.reason, gate.statusCode);

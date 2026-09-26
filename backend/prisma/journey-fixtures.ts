@@ -258,6 +258,31 @@ async function ensureTitles(prisma: Prisma, thesisId: string, selectedText: stri
   return selected.id;
 }
 
+async function createFinalizedRap(
+  prisma: Prisma,
+  opts: {
+    thesisId: string;
+    scheduleId: string;
+    defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
+    generatedById: string;
+    selectedTitle?: string | null;
+  },
+) {
+  return prisma.rapReport.create({
+    data: {
+      scheduleId: opts.scheduleId,
+      thesisId: opts.thesisId,
+      defenseType: opts.defenseType,
+      status: "FINALIZED",
+      selectedTitle: opts.selectedTitle ?? null,
+      reportDate: new Date("2026-07-11T00:00:00.000Z"),
+      generatedById: opts.generatedById,
+      generatedAt: new Date("2026-07-11T12:00:00.000Z"),
+      decisionsAndRecommendations: "WP6 fixture — required RAP finalized",
+    },
+  });
+}
+
 async function createTitlePassedDefense(
   prisma: Prisma,
   opts: {
@@ -266,6 +291,9 @@ async function createTitlePassedDefense(
     chairmanUserId: string;
     panelistUserId: string;
     selectedTitleId: string;
+    selectedTitleText?: string;
+    /** Canonical Title completion also requires a finalized Title RAP. */
+    finalizeRap?: boolean;
   },
 ) {
   const schedule = await prisma.defenseSchedule.create({
@@ -300,6 +328,16 @@ async function createTitlePassedDefense(
     },
   });
 
+  if (opts.finalizeRap !== false) {
+    await createFinalizedRap(prisma, {
+      thesisId: opts.thesisId,
+      scheduleId: schedule.id,
+      defenseType: "TITLE_DEFENSE",
+      generatedById: opts.adminId,
+      selectedTitle: opts.selectedTitleText ?? null,
+    });
+  }
+
   return schedule.id;
 }
 
@@ -309,6 +347,8 @@ async function createStagePassed(
     thesisId: string;
     adminId: string;
     defenseType: "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
+    /** Stage completion for Proposal also requires a finalized Proposal RAP. */
+    finalizeRap?: boolean;
   },
 ) {
   const schedule = await prisma.defenseSchedule.create({
@@ -332,6 +372,14 @@ async function createStagePassed(
       concludedAt: new Date("2026-08-10T12:00:00.000Z"),
     },
   });
+  if (opts.finalizeRap) {
+    await createFinalizedRap(prisma, {
+      thesisId: opts.thesisId,
+      scheduleId: schedule.id,
+      defenseType: opts.defenseType,
+      generatedById: opts.adminId,
+    });
+  }
   return schedule.id;
 }
 
@@ -512,6 +560,9 @@ export async function seedStudentThesisJourneyFixtures(
         chairmanUserId: chairman.id,
         panelistUserId: panelist.id,
         selectedTitleId,
+        selectedTitleText: DEFAULT_TITLE,
+        // Canonical Title completion requires finalized Title RAP.
+        finalizeRap: true,
       });
 
       switch (meta.key) {
@@ -561,6 +612,8 @@ export async function seedStudentThesisJourneyFixtures(
           thesisId,
           adminId: admin.id,
           defenseType: "PROPOSAL_DEFENSE",
+          // Proposal stage completion for later fixtures includes Proposal RAP.
+          finalizeRap: true,
         });
       }
 

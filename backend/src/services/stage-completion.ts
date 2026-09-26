@@ -30,15 +30,25 @@ export interface ProposalCompletionInput {
   proposalRapFinalized: boolean;
 }
 
+/**
+ * RAP counts as finalized/signed for stage completion when status is
+ * ALL_SIGNED or FINALIZED (same convention as eligibility lookups).
+ */
+export function isRapStatusComplete(
+  status: string | null | undefined,
+): boolean {
+  return status === "ALL_SIGNED" || status === "FINALIZED";
+}
+
 export interface UnlockProposalInput {
-  thesisStage: "TITLE" | "PROPOSAL" | "FINAL" | null;
+  /** Formal Title DefenseConclusion outcome — not ThesisRecord.outcome. */
   outcome: DefenseOutcomeName | null;
   hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
 }
 
 export interface UnlockFinalInput {
-  thesisStage: "TITLE" | "PROPOSAL" | "FINAL" | null;
+  /** Formal Proposal DefenseConclusion outcome — not ThesisRecord.outcome. */
   outcome: DefenseOutcomeName | null;
   proposalRapFinalized: boolean;
 }
@@ -71,13 +81,11 @@ export function isFinalDefensePassed(
 }
 
 /**
- * Proposal is unlocked only when Title is complete (outcome + selected title + RAP),
- * or the record has already advanced past Title (transition enforced at apply time).
+ * Proposal is unlocked only when Title is formally complete
+ * (PASSED + selected title + finalized Title RAP).
+ * Do not infer unlock from ThesisRecord.stage alone.
  */
 export function canUnlockProposal(input: UnlockProposalInput): boolean {
-  if (input.thesisStage === "PROPOSAL" || input.thesisStage === "FINAL") {
-    return true;
-  }
   return isTitleStageComplete({
     outcome: input.outcome,
     hasSelectedTitle: input.hasSelectedTitle,
@@ -85,13 +93,12 @@ export function canUnlockProposal(input: UnlockProposalInput): boolean {
   });
 }
 
+/**
+ * Final is unlocked only when Proposal is formally complete
+ * (PASSED + finalized Proposal RAP).
+ * Do not infer unlock from ThesisRecord.stage alone.
+ */
 export function canUnlockFinal(input: UnlockFinalInput): boolean {
-  if (input.thesisStage === "FINAL") {
-    return true;
-  }
-  if (input.thesisStage !== "PROPOSAL") {
-    return false;
-  }
   return isProposalStageComplete({
     outcome: input.outcome,
     proposalRapFinalized: input.proposalRapFinalized,

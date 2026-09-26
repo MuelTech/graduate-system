@@ -16,6 +16,7 @@ const prismaMock = vi.hoisted(() => {
   return {
     student: { findUnique: vi.fn() },
     defenseConclusion: { findFirst: vi.fn() },
+    rapReport: { findMany: vi.fn() },
     panelAssignment: { findUnique: vi.fn() },
     adviserAssignment: { findFirst: vi.fn(), create: vi.fn() },
     adviserRequest: {
@@ -192,6 +193,9 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     }));
     prismaMock.panelAssignment.findUnique.mockResolvedValue(null);
     prismaMock.defenseConclusion.findFirst.mockResolvedValue(titleConclusion());
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      { defenseType: "TITLE_DEFENSE", status: "FINALIZED" },
+    ]);
   });
 
   it("rejects when there is no formal passed Title Defense conclusion", async () => {
@@ -208,6 +212,13 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     await expect(
       svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
     ).rejects.toThrow(/official selected title/i);
+  });
+
+  it("CP1: rejects when Title RAP is not finalized", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([]);
+    await expect(
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+    ).rejects.toThrow(/Title RAP/i);
   });
 
   it("excludes seats that are not real PANELIST accounts", async () => {
