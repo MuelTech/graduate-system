@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_rethrow } from "next/dist/client/components/unstable-rethrow";
 import { apiServerRequest } from "@/lib/api.server";
 import {
   Card,
@@ -73,7 +74,9 @@ export default async function StudentAcademicJourneyPage() {
   try {
     const data = await apiServerRequest("/student/journey");
     compExamStatus = data?.compExamRecords?.[0]?.status as string | undefined;
-  } catch {
+  } catch (error) {
+    // Preserve Next.js redirect/navigation exceptions (e.g. 401 → /login).
+    unstable_rethrow(error);
     loadFailed = true;
   }
 
@@ -118,7 +121,10 @@ export default async function StudentAcademicJourneyPage() {
                   </p>
                   {phase.label === "Comprehensive Examination" && (
                     <p className="mt-1 text-xs text-(--earist-body-text)">
-                      Status: {compExamLabel(compExamStatus)}
+                      Status:{" "}
+                      {loadFailed
+                        ? "Status unavailable"
+                        : compExamLabel(compExamStatus)}
                     </p>
                   )}
                   {phase.label === "Thesis / Dissertation Phase" && (

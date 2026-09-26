@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_rethrow } from "next/dist/client/components/unstable-rethrow";
 import { apiServerRequest } from "@/lib/api.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ function getGreeting() {
   return "Good evening";
 }
 
-function compExamLabel(status?: string): string {
+function compExamLabel(status?: string | null): string {
   const s = (status || "").toLowerCase();
   if (s === "passed") return "Passed";
   if (s === "failed") return "Failed";
@@ -36,24 +37,34 @@ export default async function StudentDashboard() {
   let loadFailed = false;
   try {
     journey = await apiServerRequest("/student/journey");
-  } catch {
+  } catch (error) {
+    // Preserve Next.js redirect/navigation exceptions (e.g. 401 → /login).
+    unstable_rethrow(error);
     loadFailed = true;
   }
 
+  // Field fallbacks only apply after a successful load.
   const user = (journey?.user ?? {}) as {
     firstName?: string;
     lastName?: string;
   };
-  const firstName = user.firstName || "Student";
-  const program =
-    (journey?.program as { programName?: string } | undefined)?.programName ||
-    "Graduate Program";
-  const studentNumber = (journey?.studentNumber as string) || "Not Assigned";
-  const compExamStatus = (
-    journey?.compExamRecords as Array<{ status?: string }> | undefined
-  )?.[0]?.status;
-  const requirementsSubmitted =
-    (journey?.studentRequirements as unknown[] | undefined)?.length ?? 0;
+  const firstName = loadFailed
+    ? "Student"
+    : user.firstName || "Student";
+  const program = loadFailed
+    ? "Graduate Program"
+    : (journey?.program as { programName?: string } | undefined)?.programName ||
+      "Graduate Program";
+  const studentNumber = loadFailed
+    ? null
+    : ((journey?.studentNumber as string) || "Not Assigned");
+  const compExamStatus = loadFailed
+    ? null
+    : ((journey?.compExamRecords as Array<{ status?: string }> | undefined)?.[0]
+        ?.status ?? "not_taken");
+  const requirementsSubmitted = loadFailed
+    ? null
+    : ((journey?.studentRequirements as unknown[] | undefined)?.length ?? 0);
 
   return (
     <div className="space-y-4">
@@ -64,10 +75,14 @@ export default async function StudentDashboard() {
         >
           {getGreeting()}, {firstName}
         </h2>
-        <p className="text-sm text-(--earist-body-text)">{program}</p>
-        <p className="text-xs text-(--earist-body-text)">
-          Student Number: {studentNumber}
-        </p>
+        {!loadFailed && (
+          <>
+            <p className="text-sm text-(--earist-body-text)">{program}</p>
+            <p className="text-xs text-(--earist-body-text)">
+              Student Number: {studentNumber}
+            </p>
+          </>
+        )}
       </div>
 
       {loadFailed && (
@@ -98,22 +113,24 @@ export default async function StudentDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <BookOpen className="h-4 w-4" />
-              Comprehensive Examination
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="outline">
-              {compExamLabel(compExamStatus)}
-            </Badge>
-            <p className="mt-2 text-xs text-(--earist-body-text)">
-              Required before Title Defense.
-            </p>
-          </CardContent>
-        </Card>
+        {!loadFailed && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <BookOpen className="h-4 w-4" />
+                Comprehensive Examination
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge variant="outline">
+                {compExamLabel(compExamStatus)}
+              </Badge>
+              <p className="mt-2 text-xs text-(--earist-body-text)">
+                Required before Title Defense.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -146,9 +163,11 @@ export default async function StudentDashboard() {
             <p className="text-sm text-(--earist-body-text)">
               Browse published graduate research and submit completed work.
             </p>
-            <p className="text-xs text-(--earist-body-text)">
-              Requirements submitted: {requirementsSubmitted}
-            </p>
+            {!loadFailed && (
+              <p className="text-xs text-(--earist-body-text)">
+                Requirements submitted: {requirementsSubmitted}
+              </p>
+            )}
             <Link
               href="/student/repository"
               className={buttonVariants({ variant: "outline" })}
