@@ -7,7 +7,7 @@ import {
   JOURNEY_FIXTURE_EXPECTATIONS,
   JOURNEY_FIXTURE_KEYS,
   STRIKE_POLICY_ON_EXPECTATIONS,
-} from "../../../src/services/journey-fixture-expectations";
+} from "../../fixtures/journey-fixture-expectations";
 
 function snap(partial: Partial<JourneySnapshot>): JourneySnapshot {
   return {

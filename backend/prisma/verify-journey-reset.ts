@@ -9,7 +9,7 @@ import { StudentThesisJourneyService } from "../src/services/student-thesis-jour
 import {
   JOURNEY_FIXTURE_EXPECTATIONS,
   type JourneyFixtureKey,
-} from "../src/services/journey-fixture-expectations";
+} from "../tests/fixtures/journey-fixture-expectations";
 import {
   journeyFixtureMeta,
   seedStudentThesisJourneyFixtures,

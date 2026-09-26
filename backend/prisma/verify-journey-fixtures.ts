@@ -14,7 +14,7 @@ import {
   type JourneyFixtureKey,
   type StepKey,
   type StepState,
-} from "../src/services/journey-fixture-expectations";
+} from "../tests/fixtures/journey-fixture-expectations";
 import { journeyFixtureMeta } from "./journey-fixtures";
 
 const STEP_KEYS: StepKey[] = [
