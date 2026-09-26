@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { unstable_rethrow } from "next/dist/client/components/unstable-rethrow";
+import { unstable_rethrow } from "next/navigation";
 import { apiServerRequest } from "@/lib/api.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

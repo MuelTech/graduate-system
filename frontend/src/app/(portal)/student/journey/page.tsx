@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { unstable_rethrow } from "next/dist/client/components/unstable-rethrow";
+import { unstable_rethrow } from "next/navigation";
 import { apiServerRequest } from "@/lib/api.server";
 import {
   Card,
@@ -122,9 +122,7 @@ export default async function StudentAcademicJourneyPage() {
                   {phase.label === "Comprehensive Examination" && (
                     <p className="mt-1 text-xs text-(--earist-body-text)">
                       Status:{" "}
-                      {loadFailed
-                        ? "Status unavailable"
-                        : compExamLabel(compExamStatus)}
+                      {loadFailed ? "Unavailable" : compExamLabel(compExamStatus)}
                     </p>
                   )}
                   {phase.label === "Thesis / Dissertation Phase" && (
