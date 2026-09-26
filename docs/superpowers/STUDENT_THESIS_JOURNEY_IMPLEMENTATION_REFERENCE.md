@@ -12,13 +12,34 @@ This document is the short implementation entry point for a fresh coding-agent s
 Read these documents first, in order:
 
 1. `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`
-2. `docs/superpowers/specs/2026-09-25-student-thesis-journey-design.md`
-3. `docs/superpowers/plans/2026-09-25-student-thesis-journey-refactor.md`
-4. this reference
+2. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
+3. `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`
+4. `docs/superpowers/specs/2026-09-25-student-thesis-journey-design.md` — historical baseline; superseded where conflicting
+5. `docs/superpowers/plans/2026-09-25-student-thesis-journey-refactor.md` — WP1–WP13 completed/history
+6. this reference
 
 The branch is intentionally clean and starts from `refactor/defense-workflow`.
 
 The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
+
+## 1.1 Post-QA implementation status — 2026-09-26
+
+WP1–WP13 are implemented and accepted at the pre-correction baseline `587afd3cf1d1e7c6b35ce5cbcf3ae9ca66a10c0b`. Manual QA then exposed integration/design gaps.
+
+Do **not** continue with a hypothetical WP14 from the old plan. Use the 2026-09-26 correction packages (CP1 onward).
+
+Canonical corrections include:
+
+- Title completion = formal PASSED + selected title + finalized required Title RAP before Adviser Request;
+- Proposal/Final manuscript goes through active Adviser review and e-signed Adviser Certification before Admin review;
+- Proposal/Final evaluators use Group I/II, own-record e-sign/finalize lifecycle;
+- Oral Summary shows computed grades but does not auto-PASS/FAIL;
+- Chairman records formal result;
+- Rapporteur owns defense summary/RAP workflow;
+- role-aware Defense Workspace replaces the current lobby concept;
+- Research Variables is not an active Proposal blocker in the correction pass;
+- Proposal revisions are carried by RAP/history into Final Defense, without a separate revision upload gate;
+- Student WAITING/status UX and schedule visibility require correction.
 
 ## 2. Migration baseline — VERIFIED
 
@@ -135,7 +156,8 @@ Candidate source:
 Backend unlock requires:
 
 - formal Title Defense = PASSED;
-- official selected title exists.
+- official selected title exists;
+- required Title RAP is finalized/signed.
 
 Flow:
 
