@@ -12,15 +12,18 @@ function baseSnap(overrides: Partial<JourneySnapshot> = {}): JourneySnapshot {
     selectedTitleText: null,
     titleRapFinalized: false,
     titleAdminState: "NONE",
+    titleSession: null,
     adviserRequest: null,
     activeAdviser: null,
     proposalPassed: false,
     proposalRapFinalized: false,
     proposalAdminState: "NONE",
+    proposalSession: null,
     strikeEligible: false,
     strikeRequired: false,
     finalPassed: false,
     finalAdminState: "NONE",
+    finalSession: null,
     ...overrides,
   };
 }
@@ -33,6 +36,128 @@ function stateOf(
 }
 
 describe("evaluateStudentThesisJourney — Title / Comp Exam", () => {
+  it("CP2: application PENDING + no schedule → under review", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "SUBMITTED",
+        titleSession: null,
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.state).toBe("WAITING");
+    expect(title?.defenseStatus).toBe("APPLICATION_UNDER_REVIEW");
+    expect(title?.detail).toMatch(/under Admin review/i);
+    expect(title?.defenseSession).toBeNull();
+  });
+
+  it("CP2: application APPROVED + no schedule → approved waiting schedule", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "APPROVED_READY",
+        titleSession: null,
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("APPROVED_WAITING_SCHEDULE");
+    expect(title?.detail).toMatch(/approved/i);
+    expect(title?.detail).toMatch(/waiting for defense schedule/i);
+  });
+
+  it("CP2: SCHEDULED session returns schedule summary", () => {
+    const session = {
+      defenseType: "TITLE_DEFENSE" as const,
+      defenseDate: "2026-09-30T00:00:00.000Z",
+      defenseTime: "1970-01-01T14:00:00.000Z",
+      venueOrLink: "Graduate School Conference Room",
+      sessionStatus: "SCHEDULED",
+    };
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "SCHEDULED",
+        titleSession: session,
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("SCHEDULED");
+    expect(title?.defenseSession).toEqual(session);
+    expect(title?.detail).toMatch(/scheduled/i);
+  });
+
+  it("CP2: IN_PROGRESS session → defense in progress", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "IN_PROGRESS",
+        titleSession: {
+          defenseType: "TITLE_DEFENSE",
+          defenseDate: "2026-09-30T00:00:00.000Z",
+          defenseTime: null,
+          venueOrLink: null,
+          sessionStatus: "IN_PROGRESS",
+        },
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("DEFENSE_IN_PROGRESS");
+    expect(title?.detail).toMatch(/in progress/i);
+  });
+
+  it("CP2: AWAITING_CONCLUSION → awaiting official result", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "AWAITING_CONCLUSION",
+        titleSession: {
+          defenseType: "TITLE_DEFENSE",
+          defenseDate: null,
+          defenseTime: null,
+          venueOrLink: null,
+          sessionStatus: "AWAITING_CONCLUSION",
+        },
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("AWAITING_CONCLUSION");
+    expect(title?.detail).toMatch(/awaiting official result/i);
+  });
+
+  it("CP2: Title PASSED + selected title + RAP pending → finalizing records", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: false,
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("FINALIZING_RECORDS");
+    expect(title?.state).toBe("WAITING");
+    expect(title?.detail).toMatch(/Finalizing Title Defense records/i);
+    expect(
+      dto.steps.find((s) => s.key === "ADVISER_REQUEST")?.state,
+    ).toBe("LOCKED");
+  });
+
+  it("CP2: Title PASSED + selected title + RAP finalized → completed", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: true,
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("COMPLETED");
+    expect(title?.state).toBe("COMPLETED");
+  });
+
   it("locks Title when Comp Exam is not passed", () => {
     const dto = evaluateStudentThesisJourney(baseSnap());
     expect(stateOf(dto, "TITLE_DEFENSE")).toBe("LOCKED");

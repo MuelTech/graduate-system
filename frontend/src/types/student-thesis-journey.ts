@@ -1,5 +1,5 @@
 /**
- * Student Thesis Journey frontend contract (WP7).
+ * Student Thesis Journey frontend contract (WP7 / CP2).
  * Aligned with backend student-thesis-journey.rules.ts DTO.
  */
 
@@ -17,6 +17,27 @@ export type JourneyStepState =
   | "WAITING"
   | "LOCKED";
 
+/** Precise administrative/session substatus under a coarse Journey state. */
+export type DefenseSubstatus =
+  | "NOT_SUBMITTED"
+  | "APPLICATION_UNDER_REVIEW"
+  | "APPROVED_WAITING_SCHEDULE"
+  | "SCHEDULED"
+  | "DEFENSE_IN_PROGRESS"
+  | "AWAITING_CONCLUSION"
+  | "FINALIZING_RECORDS"
+  | "COMPLETED"
+  | "REJECTED"
+  | "CANCELLED_SESSION";
+
+export interface DefenseSessionSummary {
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
+  defenseDate: string | null;
+  defenseTime: string | null;
+  venueOrLink: string | null;
+  sessionStatus: string;
+}
+
 export interface JourneyStepView {
   key: JourneyStepKey;
   label: string;
@@ -24,6 +45,8 @@ export interface JourneyStepView {
   lockReason: string | null;
   nextAction: string | null;
   detail?: string | null;
+  defenseStatus?: DefenseSubstatus | null;
+  defenseSession?: DefenseSessionSummary | null;
 }
 
 export interface StudentThesisJourney {

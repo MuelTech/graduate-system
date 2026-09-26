@@ -9,6 +9,7 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import { DefenseStatusPanel } from "@/components/student/defense-status-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,7 +17,6 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   FileText,
   Lock,
   Send,
@@ -110,6 +110,8 @@ export default function FinalDefensePage() {
     isLoading,
     isError,
     refetch,
+    refreshStatus,
+    isRefreshing,
   } = useStudentThesisJourney();
 
   const finalStep = journeyStepFor(journey, "FINAL_DEFENSE");
@@ -264,30 +266,20 @@ export default function FinalDefensePage() {
             Final Defense
           </h2>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-5 w-5 text-amber-600" />
-              Application in progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
-              {finalStep?.detail ||
-                finalStep?.lockReason ||
-                "Your Final Defense application is under review."}
-            </p>
-            {finalStep?.nextAction && (
-              <p className="text-(--earist-body-text)">{finalStep.nextAction}</p>
-            )}
+        <DefenseStatusPanel
+          kind="Final"
+          step={finalStep}
+          onRefresh={refreshStatus}
+          isRefreshing={isRefreshing}
+          extra={
             <Link
               href="/student/thesis"
               className={buttonVariants({ variant: "outline" })}
             >
               Continue in Thesis Journey
             </Link>
-          </CardContent>
-        </Card>
+          }
+        />
       </div>
     );
   }

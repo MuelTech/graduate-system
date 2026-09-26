@@ -10,6 +10,7 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import { DefenseStatusPanel } from "@/components/student/defense-status-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,7 +21,6 @@ import {
   Send,
   AlertCircle,
   CheckCircle2,
-  Clock,
   Lock,
 } from "lucide-react";
 
@@ -107,6 +107,8 @@ export default function TitleDefensePage() {
     isLoading,
     isError,
     refetch,
+    refreshStatus,
+    isRefreshing,
   } = useStudentThesisJourney();
 
   const titleStep = journeyStepFor(journey, "TITLE_DEFENSE");
@@ -247,30 +249,20 @@ export default function TitleDefensePage() {
             Title Defense
           </h2>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-5 w-5 text-amber-600" />
-              Application under review
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="text-(--earist-body-text)">
-              {titleStep?.lockReason ||
-                titleStep?.detail ||
-                "Your Title Defense application is under review."}
-            </p>
-            {titleStep?.nextAction && (
-              <p className="text-(--earist-body-text)">{titleStep.nextAction}</p>
-            )}
+        <DefenseStatusPanel
+          kind="Title"
+          step={titleStep}
+          onRefresh={refreshStatus}
+          isRefreshing={isRefreshing}
+          extra={
             <Link
               href="/student/thesis"
               className={buttonVariants({ variant: "outline" })}
             >
               Continue in Thesis Journey
             </Link>
-          </CardContent>
-        </Card>
+          }
+        />
       </div>
     );
   }

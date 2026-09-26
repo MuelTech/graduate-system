@@ -13,6 +13,7 @@ import { resolveStrikePolicy } from "./strike-policy";
 import {
   evaluateStudentThesisJourney,
   type AdminSessionState,
+  type DefenseSessionSummary,
   type JourneySnapshot,
   type StudentThesisJourneyDto,
 } from "./student-thesis-journey.rules";
@@ -34,7 +35,10 @@ function toAdminState(row: {
   status: string;
   stage: string;
   outcome: string | null;
-  schedules: Array<{ conclusion?: { outcome: string } | null }>;
+  schedules: Array<{
+    sessionStatus?: string | null;
+    conclusion?: { outcome: string } | null;
+  }>;
 } | null): AdminSessionState {
   if (!row) return "NONE";
   const concluded = row.schedules.find((s) => s.conclusion)?.conclusion;
@@ -44,11 +48,51 @@ function toAdminState(row: {
       ? "CONCLUDED_FAILED"
       : "CONCLUDED_OTHER";
   }
+  const latest = row.schedules[0];
+  const sessionStatus = latest?.sessionStatus;
+  if (sessionStatus === "IN_PROGRESS") return "IN_PROGRESS";
+  if (sessionStatus === "AWAITING_CONCLUSION") return "AWAITING_CONCLUSION";
+  if (sessionStatus === "CANCELLED") return "CANCELLED";
   if (row.schedules.length > 0) return "SCHEDULED";
   if (row.status === "REJECTED") return "REJECTED";
   if (row.status === "APPROVED") return "APPROVED_READY";
   if (row.status === "PENDING") return "SUBMITTED";
   return "NONE";
+}
+
+/** Stage-scoped session summary for Student display (no internal IDs). */
+function toSessionSummary(
+  schedule: {
+    defenseDate: Date | string;
+    defenseTime: Date | string;
+    venueOrLink: string | null;
+    sessionStatus: string;
+    defenseType: string;
+    conclusion?: { outcome: string } | null;
+  } | null,
+  defenseType: DefenseSessionSummary["defenseType"],
+): DefenseSessionSummary | null {
+  if (!schedule) return null;
+  return {
+    defenseType,
+    defenseDate:
+      schedule.defenseDate instanceof Date
+        ? schedule.defenseDate.toISOString()
+        : String(schedule.defenseDate ?? ""),
+    defenseTime:
+      schedule.defenseTime instanceof Date
+        ? schedule.defenseTime.toISOString()
+        : String(schedule.defenseTime ?? ""),
+    venueOrLink: schedule.venueOrLink ?? null,
+    sessionStatus: schedule.sessionStatus,
+  };
+}
+
+function pickSessionSchedule<T extends { conclusion?: unknown }>(
+  rows: T[],
+): T | null {
+  // Prefer the schedule that owns a formal conclusion (CP1-FIX1 session authority).
+  return rows.find((s) => s.conclusion) ?? rows[0] ?? null;
 }
 
 export class StudentThesisJourneyService {
@@ -153,18 +197,25 @@ export class StudentThesisJourneyService {
     // Stage-scoped admin context: ThesisRecord.stage/status only apply to the
     // matching current stage. Prior-stage status must not make a later stage
     // look submitted/approved.
+    const rowsFor = (
+      defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE",
+    ) => schedules.filter((s) => s.defenseType === defenseType);
+
     const adminFor = (
       defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE",
       stage: "TITLE" | "PROPOSAL" | "FINAL",
     ) => {
-      const rows = schedules.filter((s) => s.defenseType === defenseType);
+      const rows = rowsFor(defenseType);
       const latest = rows[0] ?? null;
       if (latest) {
         return toAdminState({
           status: thesis?.status ?? "PENDING",
           stage: thesis?.stage ?? stage,
           outcome: thesis?.outcome ?? null,
-          schedules: rows.map((s) => ({ conclusion: s.conclusion })),
+          schedules: rows.map((s) => ({
+            sessionStatus: s.sessionStatus,
+            conclusion: s.conclusion,
+          })),
         });
       }
       // No session for this stage — only use ThesisRecord if it is the current stage.
@@ -179,6 +230,14 @@ export class StudentThesisJourneyService {
       return "NONE";
     };
 
+    const sessionSummaryFor = (
+      defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE",
+    ): DefenseSessionSummary | null => {
+      const rows = rowsFor(defenseType);
+      const chosen = pickSessionSchedule(rows);
+      return toSessionSummary(chosen, defenseType);
+    };
+
     const snapshot: JourneySnapshot = {
       compExamPassed: student.compExamRecords.some((c) => c.status === "PASSED"),
       titlePassed: Boolean(titleConclusion),
@@ -186,6 +245,7 @@ export class StudentThesisJourneyService {
       selectedTitleText: selectedTitle?.titleText ?? null,
       titleRapFinalized,
       titleAdminState: adminFor("TITLE_DEFENSE", "TITLE"),
+      titleSession: sessionSummaryFor("TITLE_DEFENSE"),
       adviserRequest: openRequest
         ? {
             id: openRequest.id,
@@ -204,11 +264,13 @@ export class StudentThesisJourneyService {
         : null,
       proposalPassed: Boolean(proposalConclusion),
       proposalRapFinalized,
+      proposalSession: sessionSummaryFor("PROPOSAL_DEFENSE"),
       proposalAdminState: adminFor("PROPOSAL_DEFENSE", "PROPOSAL"),
       strikeEligible,
       strikeRequired: policy.required,
       finalPassed: Boolean(finalConclusion),
       finalAdminState: adminFor("FINAL_DEFENSE", "FINAL"),
+      finalSession: sessionSummaryFor("FINAL_DEFENSE"),
     };
 
     return evaluateStudentThesisJourney(snapshot);
