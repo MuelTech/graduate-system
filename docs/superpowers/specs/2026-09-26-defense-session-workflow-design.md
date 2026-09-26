@@ -389,6 +389,28 @@ If the institution later requires correction of a finalized evaluation, implemen
 
 The e-signature on the individual evaluation is separate from the later RAP signature.
 
+### 9.4 Finalized individual evaluation is an official defense record
+
+The web evaluation form is the data-entry interface; the finalized record must be reproducible as the official **Oral Examination Criteria** output for that evaluator.
+
+A finalized evaluator record should preserve at minimum:
+
+- Candidate;
+- Course/Program;
+- Defense date;
+- Group I criterion selections and Group I average;
+- Group II criterion selections and Group II average;
+- Recommendations;
+- Summary of Evaluation / Rating / Remarks when supported by the form;
+- evaluator printed name;
+- evaluator digital signature;
+- finalized/signed timestamp;
+- defense session and evaluator-assignment identity.
+
+Once `FINALIZED`, the record is read-only through the normal workflow and becomes available as a printable/downloadable official output.
+
+Draft or unsigned evaluations must not be presented as official printable copies.
+
 ---
 
 ## 10. Oral Examination Summary and formal result
@@ -404,6 +426,71 @@ After all required Proposal/Final evaluator score sheets are finalized:
 **CONFIRMED_CLIENT:** Chairman is the formal result authority.
 
 The software must not implement an automatic PASS/FAIL threshold unless the client later supplies the exact institutional rule and explicitly asks for automation.
+
+### 10.1 Summary generation
+
+The Oral Examination Summary is derived from the finalized individual evaluator records. It must not require Admin or Chairman to re-encode the same scores manually.
+
+Before every required evaluator is finalized, the system should show progress such as:
+
+```text
+Evaluations finalized: 3 of 5
+Summary: Not ready
+```
+
+After every required evaluator is finalized:
+
+```text
+Evaluations finalized: 5 of 5
+Summary: Ready
+```
+
+The generated summary becomes a persistent defense-session record and a printable/downloadable official output.
+
+### 10.2 Admin Defense Records / Official Outputs
+
+Admin must have read-only access to the finalized official records of a defense session.
+
+Recommended navigation:
+
+```text
+Admin
+→ Thesis / Dissertation
+→ Defense Records
+→ [Student / Defense Session]
+```
+
+A defense-record page should expose:
+
+```text
+Defense Overview
+- Student
+- Program
+- Defense type
+- Date / time / venue
+- Committee / role assignments
+- Formal result
+- Record status
+
+Individual Evaluations
+- Evaluator / role
+- Draft / Finalized state
+- View finalized record
+- Print / Download finalized Oral Examination Criteria
+
+Oral Examination Summary
+- View
+- Print / Download
+
+RAP Report
+- Signature progress
+- View finalized report
+- Print / Download when finalized
+```
+
+Admin does not edit academic scores through this page and does not become the academic-result authority. It is an official-record/reporting surface.
+
+Only finalized/signed records may be labeled or rendered as official outputs. A preview may exist for authorized workflow users, but drafts must be clearly marked non-official.
 
 ---
 
@@ -433,7 +520,7 @@ Current confirmed direction:
 - Proposal/Final RAP signatories are the participants assigned to evaluation/scoring for that defense;
 - Title RAP is approved by the required Title panel signatories after title deliberation.
 
-Exact printed RAP/PDF layout remains an OPEN_QUESTION until an authoritative RAP format is supplied.
+Exact printed RAP/PDF layout remains an OPEN_QUESTION until an authoritative RAP format is supplied. The system may still expose the finalized RAP record for view/download; it must not invent an EARIST facsimile layout that has not been provided.
 
 ### 11.3 Student visibility
 
@@ -497,6 +584,8 @@ Admin approval is not academic PASS.
 Admin scheduling is not academic PASS.
 
 Formal academic result is recorded by the Chairman.
+
+After a defense is completed, Admin's operational responsibility includes access to the read-only Defense Record and its finalized official outputs; this does not give Admin permission to change evaluator scores or replace the Chairman's formal conclusion.
 
 The Student-facing status must reflect Admin actions clearly instead of remaining in a generic review state after approval/scheduling.
 
