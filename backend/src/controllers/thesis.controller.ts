@@ -703,10 +703,21 @@ export class ThesisController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
+      // CP3-FIX4: client must identify the manuscript it acted on.
+      const expectedReviewedDocumentId = req.body?.expectedReviewedDocumentId;
+      if (!expectedReviewedDocumentId || typeof expectedReviewedDocumentId !== "string") {
+        res.status(400).json({
+          error: "Reviewed manuscript identifier is required.",
+        });
+        return;
+      }
       const result = await this.proposalAdviserReview.requestChanges(
         userId,
         thesisId,
-        remarks,
+        {
+          remarks,
+          expectedReviewedDocumentId,
+        },
       );
       res.status(200).json(result);
     } catch (error: any) {
@@ -725,13 +736,20 @@ export class ThesisController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
+      const expectedReviewedDocumentId = req.body?.expectedReviewedDocumentId;
+      if (!expectedReviewedDocumentId || typeof expectedReviewedDocumentId !== "string") {
+        res.status(400).json({
+          error: "Reviewed manuscript identifier is required.",
+        });
+        return;
+      }
       const result = await this.proposalAdviserReview.certify(userId, thesisId, {
         signatureData: String(req.body?.signatureData ?? ""),
         remarks: req.body?.remarks ?? null,
         // Client timestamps are ignored — server time is authoritative.
         clientIssuedAt: req.body?.issuedAt ?? null,
-        // CP3-FIX3: expected manuscript from the task the Adviser is acting on.
-        expectedReviewedDocumentId: req.body?.expectedReviewedDocumentId ?? null,
+        // CP3-FIX4: required expected manuscript — no DB fallback.
+        expectedReviewedDocumentId,
       });
       res.status(200).json(result);
     } catch (error: any) {

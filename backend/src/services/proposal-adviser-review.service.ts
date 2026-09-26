@@ -502,11 +502,25 @@ export class ProposalAdviserReviewService {
     return this.toStudentDto(thesis, adviserUserId);
   }
 
+  /**
+   * CP3-FIX4: expectedReviewedDocumentId is the client's optimistic concurrency
+   * token — never derived from the current DB row.
+   */
   async requestChanges(
     adviserUserId: string,
     thesisId: string,
-    remarks: string,
+    input: {
+      remarks: string;
+      expectedReviewedDocumentId: string;
+    },
   ): Promise<ProposalAdviserReviewDto> {
+    const expectedReviewedDocumentId = String(
+      input.expectedReviewedDocumentId ?? "",
+    ).trim();
+    if (!expectedReviewedDocumentId) {
+      throw new AppError("Reviewed manuscript identifier is required.", 400);
+    }
+
     const thesis = await this.loadReviewContext(thesisId);
     // Re-check active adviser immediately before write (TOCTOU).
     const isActive = await this.isActiveAdviserForStudent(
@@ -515,17 +529,17 @@ export class ProposalAdviserReviewService {
     );
     const cert = thesis.adviserCertifications[0] ?? null;
     const reviewStatus = mapCertStatusToReviewStatus(cert?.status);
-    const expectedReviewedDocumentId = cert?.reviewedDocumentId ?? null;
 
     const gate = evaluateRequestChangesGate({
       isActiveAdviser: isActive,
       reviewStatus,
-      hasRemarks: Boolean(remarks?.trim()),
-      hasReviewedDocument: Boolean(expectedReviewedDocumentId),
+      hasRemarks: Boolean(input.remarks?.trim()),
+      hasReviewedDocument: Boolean(cert?.reviewedDocumentId),
+      hasExpectedReviewedDocument: true,
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
-    // CP3-FIX3: conditional transition — only AWAITING_REVIEW + expected document.
+    // Atomic: status AWAITING_REVIEW + client expected document (may be stale vs DB).
     const updated = await prisma.adviserCertification.updateMany({
       where: {
         id: cert!.id,
@@ -534,7 +548,7 @@ export class ProposalAdviserReviewService {
       },
       data: {
         status: "CHANGES_REQUESTED",
-        reviewRemarks: remarks.trim(),
+        reviewRemarks: input.remarks.trim(),
         adviserId: adviserUserId,
       },
     });
@@ -559,17 +573,23 @@ export class ProposalAdviserReviewService {
       signatureData: string;
       remarks?: string | null;
       clientIssuedAt?: string | null;
-      /** Optional expected document from the task the Adviser is acting on. */
-      expectedReviewedDocumentId?: string | null;
+      /** CP3-FIX4: required — document the Adviser acted on; never inferred from DB. */
+      expectedReviewedDocumentId: string;
     },
   ): Promise<ProposalAdviserReviewDto> {
+    const expectedReviewedDocumentId = String(
+      input.expectedReviewedDocumentId ?? "",
+    ).trim();
+    if (!expectedReviewedDocumentId) {
+      throw new AppError("Reviewed manuscript identifier is required.", 400);
+    }
+
     const thesis = await this.loadReviewContext(thesisId);
     const isActive = await this.isActiveAdviserForStudent(
       adviserUserId,
       thesis.student.id,
     );
     const cert = thesis.adviserCertifications[0] ?? null;
-    // CP3-FIX1/3: certify the exact bound review manuscript only.
     const boundDocId = cert?.reviewedDocumentId ?? null;
     const manuscript = boundDocId
       ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
@@ -580,37 +600,21 @@ export class ProposalAdviserReviewService {
       (c) => c.status === "ISSUED",
     );
 
-    // Expected document: explicit client expectation when provided, else bound id.
-    const expectedReviewedDocumentId =
-      input.expectedReviewedDocumentId ?? boundDocId;
-
     const gate = evaluateCertifyGate({
       isActiveAdviser: isActive,
       reviewStatus: mapCertStatusToReviewStatus(cert?.status),
       hasManuscript: Boolean(manuscript),
       hasSignature: Boolean(input.signatureData?.trim()),
       alreadyIssued,
-      hasReviewedDocument: Boolean(expectedReviewedDocumentId),
+      hasReviewedDocument: Boolean(boundDocId),
+      hasExpectedReviewedDocument: true,
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
-
-    // If the Adviser is acting on a different document than currently bound, reject.
-    if (
-      input.expectedReviewedDocumentId &&
-      boundDocId &&
-      input.expectedReviewedDocumentId !== boundDocId
-    ) {
-      throw new AppError(
-        "This Proposal manuscript is no longer the current Adviser review version.",
-        409,
-      );
-    }
 
     const signedAt = new Date(); // server-authoritative
     const reviewRemarks = input.remarks?.trim() || cert?.reviewRemarks || null;
 
     await prisma.$transaction(async (tx) => {
-      // Duplicate ISSUED guard (same thesis+stage).
       const issued = await tx.adviserCertification.findFirst({
         where: {
           thesisId,
@@ -622,8 +626,7 @@ export class ProposalAdviserReviewService {
         throw new AppError("Proposal Adviser Certification is already issued.", 409);
       }
 
-      // CP3-FIX3: conditional write — only AWAITING_REVIEW + expected document.
-      // Do not rewrite reviewedDocumentId from stale in-memory data.
+      // CP3-FIX4: WHERE uses client expected id (not inferred current DB value).
       const result = await tx.adviserCertification.updateMany({
         where: {
           id: cert!.id,

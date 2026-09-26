@@ -199,10 +199,10 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       svc.getReviewTask("other-panelist", "thesis-1"),
     ).rejects.toThrow(/active adviser/i);
     await expect(
-      svc.requestChanges("other-panelist", "thesis-1", "nope"),
+      svc.requestChanges("other-panelist", "thesis-1", { remarks: "nope", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/active adviser/i);
     await expect(
-      svc.certify("other-panelist", "thesis-1", { signatureData: "sig" }),
+      svc.certify("other-panelist", "thesis-1", { signatureData: "sig", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/active adviser/i);
   });
 
@@ -226,7 +226,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       }),
     );
     prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
-    const dto = await svc.requestChanges("adviser-1", "thesis-1", "Please revise Ch. 2");
+    const dto = await svc.requestChanges("adviser-1", "thesis-1", { remarks: "Please revise Ch. 2", expectedReviewedDocumentId: "doc-1" });
     expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -326,6 +326,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     const dto = await svc.certify("adviser-1", "thesis-1", {
       signatureData: "e-sign-blob",
       clientIssuedAt: "2000-01-01T00:00:00.000Z", // must be ignored
+      expectedReviewedDocumentId: "doc-1",
     });
 
     const updateArgs =
@@ -362,7 +363,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       status: "ISSUED",
     });
     await expect(
-      svc.certify("adviser-1", "thesis-1", { signatureData: "sig" }),
+      svc.certify("adviser-1", "thesis-1", { signatureData: "sig", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/already issued/i);
   });
 
@@ -581,7 +582,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      svc.requestChanges("adviser-1", "thesis-1", "please revise"),
+      svc.requestChanges("adviser-1", "thesis-1", { remarks: "please revise", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/review state changed/i);
   });
 
@@ -610,12 +611,16 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      svc.requestChanges("adviser-1", "thesis-1", "stale remarks"),
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "stale remarks",
+        expectedReviewedDocumentId: "doc-a", // client expectation A
+      }),
     ).rejects.toThrow(/review state changed/i);
+    // CP3-FIX4: WHERE must use client expected A, not current DB B.
     expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          reviewedDocumentId: "doc-b",
+          reviewedDocumentId: "doc-a",
           status: "AWAITING_REVIEW",
         }),
       }),
@@ -643,7 +648,10 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     );
     prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
 
-    await svc.requestChanges("adviser-1", "thesis-1", "revise ch2");
+    await svc.requestChanges("adviser-1", "thesis-1", {
+      remarks: "revise ch2",
+      expectedReviewedDocumentId: "doc-a",
+    });
     expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -657,6 +665,25 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         }),
       }),
     );
+  });
+
+  it("Test 2b: missing expectedReviewedDocumentId rejected (400)", async () => {
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "x",
+        expectedReviewedDocumentId: "",
+      }),
+    ).rejects.toThrow(/Reviewed manuscript identifier is required/i);
+
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "sig",
+        expectedReviewedDocumentId: "",
+      }),
+    ).rejects.toThrow(/Reviewed manuscript identifier is required/i);
+
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
   });
 
   it("Test 9: ISSUED immutable across resubmit / request-changes / certify", async () => {
@@ -692,11 +719,11 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     ).rejects.toThrow(/already issued/i);
 
     await expect(
-      svc.requestChanges("adviser-1", "thesis-1", "nope"),
+      svc.requestChanges("adviser-1", "thesis-1", { remarks: "nope", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/already issued|cannot be changed|review state/i);
 
     await expect(
-      svc.certify("adviser-1", "thesis-1", { signatureData: "again" }),
+      svc.certify("adviser-1", "thesis-1", { signatureData: "again", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/already issued/i);
 
     expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();

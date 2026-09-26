@@ -185,6 +185,8 @@ export interface RequestChangesGateInput {
   hasRemarks: boolean;
   /** Bound reviewedDocumentId must exist for an active review cycle. */
   hasReviewedDocument: boolean;
+  /** CP3-FIX4: client must supply expectedReviewedDocumentId. */
+  hasExpectedReviewedDocument: boolean;
 }
 
 export function evaluateRequestChangesGate(
@@ -208,6 +210,13 @@ export function evaluateRequestChangesGate(
       allowed: false,
       reason: "No Proposal manuscript is currently awaiting Adviser review.",
       statusCode: 409,
+    };
+  }
+  if (!input.hasExpectedReviewedDocument) {
+    return {
+      allowed: false,
+      reason: "Reviewed manuscript identifier is required.",
+      statusCode: 400,
     };
   }
   if (!input.hasReviewedDocument) {
@@ -235,6 +244,8 @@ export interface CertifyGateInput {
   alreadyIssued: boolean;
   /** Bound reviewedDocumentId must exist; certify never invents a document. */
   hasReviewedDocument: boolean;
+  /** CP3-FIX4: client must supply expectedReviewedDocumentId. */
+  hasExpectedReviewedDocument: boolean;
 }
 
 export function evaluateCertifyGate(
@@ -256,6 +267,13 @@ export function evaluateCertifyGate(
     return {
       allowed: false,
       reason: "A current Proposal manuscript is required before certification.",
+      statusCode: 400,
+    };
+  }
+  if (!input.hasExpectedReviewedDocument) {
+    return {
+      allowed: false,
+      reason: "Reviewed manuscript identifier is required.",
       statusCode: 400,
     };
   }

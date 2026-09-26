@@ -98,6 +98,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(true);
     expect(
@@ -106,6 +107,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: false,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -114,6 +116,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "ISSUED",
         hasRemarks: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -122,6 +125,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "AWAITING_REVIEW",
         hasRemarks: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
   });
@@ -136,6 +140,7 @@ describe("proposal-adviser-review.rules", () => {
         hasSignature: true,
         alreadyIssued: false,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     // CHANGES_REQUESTED cannot request changes again (Test 8)
@@ -145,6 +150,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "CHANGES_REQUESTED",
         hasRemarks: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     // NONE has no active review cycle
@@ -154,6 +160,7 @@ describe("proposal-adviser-review.rules", () => {
         reviewStatus: "NONE",
         hasRemarks: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
   });
@@ -167,6 +174,7 @@ describe("proposal-adviser-review.rules", () => {
         hasSignature: true,
         alreadyIssued: false,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(true);
     expect(
@@ -177,6 +185,7 @@ describe("proposal-adviser-review.rules", () => {
         hasSignature: false,
         alreadyIssued: false,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -187,6 +196,7 @@ describe("proposal-adviser-review.rules", () => {
         hasSignature: true,
         alreadyIssued: true,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
     expect(
@@ -197,6 +207,7 @@ describe("proposal-adviser-review.rules", () => {
         hasSignature: true,
         alreadyIssued: false,
         hasReviewedDocument: true,
+        hasExpectedReviewedDocument: true,
       }).allowed,
     ).toBe(false);
   });

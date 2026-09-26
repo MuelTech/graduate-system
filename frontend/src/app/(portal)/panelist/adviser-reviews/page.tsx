@@ -283,14 +283,22 @@ export default function ProposalAdviserReviewsPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={requestChanges.isPending || !remarks.trim()}
+                        disabled={
+                          requestChanges.isPending ||
+                          !remarks.trim() ||
+                          !task.manuscript?.documentId
+                        }
                         onClick={() => requestChanges.mutate()}
                       >
                         Request Changes
                       </Button>
                       <Button
                         type="button"
-                        disabled={certify.isPending || !signature.trim()}
+                        disabled={
+                          certify.isPending ||
+                          !signature.trim() ||
+                          !task.manuscript?.documentId
+                        }
                         className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
                         onClick={() => certify.mutate()}
                       >
