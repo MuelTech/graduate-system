@@ -374,7 +374,6 @@ export class ThesisRepository {
 
   async updateThesisToProposal(
     thesisId: string,
-    filePath: string,
     corPath: string,
     receiptPath: string,
   ) {
@@ -386,16 +385,11 @@ export class ThesisRepository {
         data: { stage: "PROPOSAL", status: "PENDING", outcome: null },
       });
 
-      // Proposal-scoped evidence only (Title package/receipt never counts here).
+      // CP3-FIX1: do NOT create another PROPOSAL_CHAPTERS — the Adviser-certified
+      // manuscript (AdviserCertification.reviewedDocumentId) is authoritative.
+      // Only persist application evidence submitted at this step.
       await tx.thesisDocument.createMany({
         data: [
-          {
-            thesisId,
-            docType: "PROPOSAL_CHAPTERS",
-            defenseStage: "PROPOSAL",
-            filePath: filePath,
-            uploadedAt: new Date(),
-          },
           {
             thesisId,
             docType: "COR",
@@ -603,7 +597,7 @@ export class ThesisRepository {
   }
 
   async getPanelistAssignments(userId: string) {
-    return prisma.panelAssignment.findMany({
+    const rows = await prisma.panelAssignment.findMany({
       where: { userId },
       include: {
         schedule: {
@@ -624,6 +618,36 @@ export class ThesisRepository {
       orderBy: {
         createdAt: "desc",
       },
+    });
+
+    // CP3-FIX1: stage-aware document visibility — Title panel does not see
+    // Proposal pre-review manuscripts (and vice versa).
+    const defenseTypeToStage: Record<string, string> = {
+      TITLE_DEFENSE: "TITLE",
+      PROPOSAL_DEFENSE: "PROPOSAL",
+      FINAL_DEFENSE: "FINAL",
+    };
+    return rows.map((row) => {
+      const defenseType = row.schedule?.defenseType as string | undefined;
+      const stage = defenseType ? defenseTypeToStage[defenseType] : null;
+      const docs = row.schedule?.thesis?.thesisDocuments ?? [];
+      const filtered = stage
+        ? docs.filter(
+            (d) => d.defenseStage == null || d.defenseStage === stage,
+          )
+        : docs;
+      return {
+        ...row,
+        schedule: row.schedule
+          ? {
+              ...row.schedule,
+              thesis: {
+                ...row.schedule.thesis,
+                thesisDocuments: filtered,
+              },
+            }
+          : row.schedule,
+      };
     });
   }
 

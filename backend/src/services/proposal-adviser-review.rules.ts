@@ -58,6 +58,35 @@ export function isProposalAdviserCertIssued(
   );
 }
 
+export interface CertifiedManuscriptDocLike {
+  id: string;
+  thesisId: string;
+  docType: string;
+  defenseStage: string | null;
+}
+
+/**
+ * CP3-FIX1: an ISSUED Proposal cert is only valid when bound to a
+ * Proposal manuscript on the same thesis (reviewedDocumentId).
+ * Legacy ISSUED rows without reviewedDocumentId are NOT accepted for
+ * new application/eligibility (fail closed).
+ */
+export function isValidCertifiedProposalManuscript(
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+): boolean {
+  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== "PROPOSAL_DEFENSE") {
+    return false;
+  }
+  if (!cert.reviewedDocumentId || !doc) return false;
+  if (doc.id !== cert.reviewedDocumentId) return false;
+  if (doc.thesisId !== thesisId) return false;
+  if (doc.docType !== "PROPOSAL_CHAPTERS") return false;
+  if (doc.defenseStage !== "PROPOSAL") return false;
+  return true;
+}
+
 export type ReviewActionResult =
   | { allowed: true }
   | { allowed: false; reason: string; statusCode: number };

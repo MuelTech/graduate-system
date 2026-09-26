@@ -120,8 +120,6 @@ export default function ProposalDefensePage() {
   const state = proposalStep?.state;
   const activeAdviser = journey?.activeAdviser ?? null;
 
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
   const [corFile, setCorFile] = useState<File | null>(null);
   const corInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -148,8 +146,7 @@ export default function ProposalDefensePage() {
   const systemGaps = useMemo(
     () =>
       (eligibility?.missing ?? []).filter(
-        (m) =>
-          !["PROPOSAL_CHAPTERS", "COR", "RECEIPT"].includes(m.code),
+        (m) => !["PROPOSAL_CHAPTERS", "COR", "RECEIPT"].includes(m.code),
       ),
     [eligibility],
   );
@@ -157,9 +154,9 @@ export default function ProposalDefensePage() {
   // Fail closed: submit only when eligibility actually loaded successfully.
   const eligibilityReady = eligibility != null && !eligibilityError;
 
+  // CP3-FIX1: no second manuscript — certified manuscript is system-owned.
   const canSubmit =
     eligibilityReady &&
-    !!documentFile &&
     !!corFile &&
     !!receiptFile &&
     (state === "CURRENT" || state === "AVAILABLE") &&
@@ -168,7 +165,6 @@ export default function ProposalDefensePage() {
   const submitProposal = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      formData.append("document", documentFile!);
       formData.append("cor", corFile!);
       formData.append("receipt", receiptFile!);
       return apiClientRequest("/thesis/defense/proposal", {
@@ -401,19 +397,8 @@ export default function ProposalDefensePage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <FileSlot
-          label="Manuscript Chapters 1–3"
-          file={documentFile}
-          inputRef={documentInputRef}
-          accept=".pdf,.doc,.docx"
-          hint="Stage-scoped upload"
-          onPick={setDocumentFile}
-          onRemove={() => {
-            setDocumentFile(null);
-            if (documentInputRef.current) documentInputRef.current.value = "";
-          }}
-        />
+      {/* CP3-FIX1: certified Proposal manuscript is system-owned — COR + fee only */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FileSlot
           label="Certificate of Registration (COR)"
           file={corFile}

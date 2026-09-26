@@ -19,13 +19,13 @@ router.post(
   thesisController.applyTitle,
 );
 
-// STUDENT ONLY: Proposal Defense — stage-scoped document + cor + receipt
+// STUDENT ONLY: Proposal Defense application — COR + fee proof only.
+// Certified Proposal manuscript is resolved internally (CP3-FIX1).
 router.post(
   "/defense/proposal",
   authenticateJWT,
   requireRole(["STUDENT"]),
   upload.fields([
-    { name: "document", maxCount: 1 },
     { name: "cor", maxCount: 1 },
     { name: "receipt", maxCount: 1 },
   ]),

@@ -13,6 +13,46 @@ interface ModelConfig {
     getExtraAuthCheck?: (record: any, userId: string, userRole: string) => boolean;
 }
 
+/**
+ * CP3-FIX1: stage-aware thesis document access for Panelists.
+ * Unscoped legacy docs allow any panel assignment; stage-scoped docs require
+ * a matching defense-type assignment. Active advisers always allowed.
+ */
+export function canPanelistAccessThesisDocument(
+  record: {
+    defenseStage?: string | null;
+    thesis?: {
+      student?: {
+        adviserAssignments?: Array<{ adviserId: string }>;
+      } | null;
+      defenseSchedules?: Array<{
+        defenseType?: string;
+        panelAssignments?: Array<{ userId: string }>;
+      }> | null;
+    } | null;
+  },
+  userId: string,
+): boolean {
+  const activeAdviserIds: string[] =
+    record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
+  if (activeAdviserIds.includes(userId)) return true;
+
+  const docStage = record.defenseStage ?? null;
+  const schedules = record.thesis?.defenseSchedules ?? [];
+  const stageToDefenseType: Record<string, string> = {
+    TITLE: "TITLE_DEFENSE",
+    PROPOSAL: "PROPOSAL_DEFENSE",
+    FINAL: "FINAL_DEFENSE",
+  };
+  const requiredType = docStage ? stageToDefenseType[docStage] : null;
+
+  return schedules.some((ds) => {
+    if (!ds.panelAssignments?.some((pa) => pa.userId === userId)) return false;
+    if (!docStage || !requiredType) return true;
+    return ds.defenseType === requiredType;
+  });
+}
+
 const MODEL_REGISTRY: Record<string, ModelConfig> = {
     "cor-upload": {
         prismaModel: "corUpload",
@@ -26,7 +66,15 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         include: {
             thesis: {
                 include: {
-                    student: { include: { user: true } },
+                    student: {
+                        include: {
+                            user: true,
+                            adviserAssignments: {
+                                where: { isActive: true },
+                                select: { adviserId: true },
+                            },
+                        },
+                    },
                     defenseSchedules: {
                         include: {
                             panelAssignments: true,
@@ -37,12 +85,8 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
         getExtraAuthCheck: (record, userId, userRole) => {
-            if (userRole === "PANELIST") {
-                return record.thesis?.defenseSchedules?.some((ds: any) =>
-                    ds.panelAssignments?.some((pa: any) => pa.userId === userId)
-                ) ?? false;
-            }
-            return false;
+            if (userRole !== "PANELIST") return false;
+            return canPanelistAccessThesisDocument(record, userId);
         },
     },
     "rap-report": {

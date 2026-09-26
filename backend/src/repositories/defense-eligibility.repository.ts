@@ -4,6 +4,7 @@ import type {
   ResearchVariablesState,
   StageEvidenceFlags,
 } from "../interfaces/defense-eligibility.interfaces";
+import { isValidCertifiedProposalManuscript } from "../services/proposal-adviser-review.rules";
 
 export type { EligibilitySnapshot };
 
@@ -125,15 +126,36 @@ export class DefenseEligibilityRepository {
     const currentStage = thesis?.stage ?? null;
 
     // Adviser certifications are stage-scoped (§16.3): Proposal cert ≠ Final cert.
-    const adviserCertProposal = thesisIdForDocs
-      ? (await prisma.adviserCertification.count({
-          where: {
-            thesisId: thesisIdForDocs,
-            status: "ISSUED",
-            defenseStage: "PROPOSAL_DEFENSE",
+    // CP3-FIX1: ISSUED must be bound to a valid Proposal manuscript on this thesis.
+    let adviserCertProposal = false;
+    if (thesisIdForDocs) {
+      const proposalCerts = await prisma.adviserCertification.findMany({
+        where: {
+          thesisId: thesisIdForDocs,
+          status: "ISSUED",
+          defenseStage: "PROPOSAL_DEFENSE",
+        },
+        include: { reviewedDocument: true },
+      });
+      adviserCertProposal = proposalCerts.some((c) =>
+        isValidCertifiedProposalManuscript(
+          {
+            status: c.status,
+            defenseStage: c.defenseStage,
+            reviewedDocumentId: c.reviewedDocumentId,
           },
-        })) > 0
-      : false;
+          c.reviewedDocument
+            ? {
+                id: c.reviewedDocument.id,
+                thesisId: c.reviewedDocument.thesisId,
+                docType: c.reviewedDocument.docType,
+                defenseStage: c.reviewedDocument.defenseStage,
+              }
+            : null,
+          thesisIdForDocs,
+        ),
+      );
+    }
 
     const adviserCertFinal = thesisIdForDocs
       ? (await prisma.adviserCertification.count({

@@ -15,6 +15,7 @@ import {
   evaluateRequestChangesGate,
   evaluateSubmitManuscriptGate,
   isAllowedProposalManuscriptMime,
+  isValidCertifiedProposalManuscript,
   mapCertStatusToReviewStatus,
   PROPOSAL_REVIEW_STAGE,
   type ProposalReviewStatus,
@@ -140,7 +141,7 @@ export class ProposalAdviserReviewService {
           orderBy: { updatedAt: "desc" },
           include: {
             adviser: { select: { id: true, firstName: true, lastName: true } },
-            reviewedDocument: { select: { id: true, uploadedAt: true } },
+            reviewedDocument: true,
           },
         },
       },
@@ -158,14 +159,16 @@ export class ProposalAdviserReviewService {
       thesis.adviserCertifications.find((c) => c.status === "ISSUED") ??
       thesis.adviserCertifications[0] ??
       null;
+    // CP3-FIX1: current review manuscript is cert.reviewedDocumentId (not latest upload).
+    const boundDocId = cert?.reviewedDocumentId ?? null;
+    const manuscript = boundDocId
+      ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+        cert?.reviewedDocument ??
+        null)
+      : (thesis.thesisDocuments[0] ?? null);
     const reviewStatus = cert
       ? mapCertStatusToReviewStatus(cert.status)
-      : thesis.thesisDocuments[0]
-        ? "NONE"
-        : "NONE";
-    // If manuscript exists but no cert row yet, treat as ready to submit (NONE)
-    // After submit, AWAITING_REVIEW is stored on cert row.
-    const manuscript = thesis.thesisDocuments[0] ?? null;
+      : "NONE";
     const officialTitle =
       thesis.defenseSchedules[0]?.conclusion?.selectedTitle?.titleText ??
       thesis.thesisTitles[0]?.titleText ??
@@ -308,18 +311,7 @@ export class ProposalAdviserReviewService {
       );
     }
 
-    const document = await prisma.thesisDocument.create({
-      data: {
-        thesisId: thesis.id,
-        docType: MANUSCRIPT_DOC_TYPE,
-        defenseStage: "PROPOSAL",
-        filePath: file.path,
-        uploadedAt: new Date(),
-      },
-    });
-
-    // Reset review cycle for the new manuscript; never leave CHANGES_REQUESTED on a new upload.
-    // If already ISSUED for this stage, do not silently overwrite — fail closed.
+    // CP3-FIX1: reject AFTER ISSUED before any ThesisDocument row is created.
     const existingIssued = await prisma.adviserCertification.findFirst({
       where: {
         thesisId: thesis.id,
@@ -328,6 +320,7 @@ export class ProposalAdviserReviewService {
       },
     });
     if (existingIssued) {
+      await safeUnlink(file.path);
       throw new AppError(
         "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
         409,
@@ -335,34 +328,56 @@ export class ProposalAdviserReviewService {
     }
 
     const adviserId = assignment!.adviserId;
-    const existing = await prisma.adviserCertification.findFirst({
-      where: { thesisId: thesis.id, defenseStage: PROPOSAL_REVIEW_STAGE },
-      orderBy: { updatedAt: "desc" },
-    });
 
-    if (existing) {
-      await prisma.adviserCertification.update({
-        where: { id: existing.id },
-        data: {
-          status: "AWAITING_REVIEW",
-          reviewRemarks: existing.status === "CHANGES_REQUESTED" ? existing.reviewRemarks : null,
-          reviewedDocumentId: document.id,
-          adviserId,
-          signatureData: null,
-          signedAt: null,
-          certifiedAt: null,
-        },
+    try {
+      await prisma.$transaction(async (tx) => {
+        const document = await tx.thesisDocument.create({
+          data: {
+            thesisId: thesis.id,
+            docType: MANUSCRIPT_DOC_TYPE,
+            defenseStage: "PROPOSAL",
+            filePath: file.path,
+            uploadedAt: new Date(),
+          },
+        });
+
+        // Bind the new manuscript as the current review cycle document.
+        const existing = await tx.adviserCertification.findFirst({
+          where: { thesisId: thesis.id, defenseStage: PROPOSAL_REVIEW_STAGE },
+          orderBy: { updatedAt: "desc" },
+        });
+
+        if (existing) {
+          await tx.adviserCertification.update({
+            where: { id: existing.id },
+            data: {
+              status: "AWAITING_REVIEW",
+              reviewRemarks:
+                existing.status === "CHANGES_REQUESTED"
+                  ? existing.reviewRemarks
+                  : null,
+              reviewedDocumentId: document.id,
+              adviserId,
+              signatureData: null,
+              signedAt: null,
+              certifiedAt: null,
+            },
+          });
+        } else {
+          await tx.adviserCertification.create({
+            data: {
+              thesisId: thesis.id,
+              adviserId,
+              defenseStage: PROPOSAL_REVIEW_STAGE,
+              status: "AWAITING_REVIEW",
+              reviewedDocumentId: document.id,
+            },
+          });
+        }
       });
-    } else {
-      await prisma.adviserCertification.create({
-        data: {
-          thesisId: thesis.id,
-          adviserId,
-          defenseStage: PROPOSAL_REVIEW_STAGE,
-          status: "AWAITING_REVIEW",
-          reviewedDocumentId: document.id,
-        },
-      });
+    } catch (err) {
+      await safeUnlink(file.path);
+      throw err;
     }
 
     return this.getStudentReviewState(userId);
@@ -507,7 +522,13 @@ export class ProposalAdviserReviewService {
       thesis.student.id,
     );
     const cert = thesis.adviserCertifications[0] ?? null;
-    const manuscript = thesis.thesisDocuments[0] ?? null;
+    // CP3-FIX1: certify the exact bound review manuscript (not "latest upload").
+    const boundDocId = cert?.reviewedDocumentId ?? null;
+    const manuscript = boundDocId
+      ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+        cert?.reviewedDocument ??
+        null)
+      : (thesis.thesisDocuments[0] ?? null);
     const alreadyIssued = thesis.adviserCertifications.some(
       (c) => c.status === "ISSUED",
     );
@@ -521,8 +542,8 @@ export class ProposalAdviserReviewService {
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
-    // Bind certification to the manuscript the Adviser is reviewing.
-    const reviewedDocumentId = manuscript?.id ?? cert?.reviewedDocumentId ?? null;
+    // Preserve exact certified manuscript binding.
+    const reviewedDocumentId = cert?.reviewedDocumentId ?? manuscript?.id ?? null;
     const signedAt = new Date(); // server-authoritative
 
     await prisma.$transaction(async (tx) => {
@@ -545,6 +566,7 @@ export class ProposalAdviserReviewService {
             status: "ISSUED",
             adviserId: adviserUserId,
             reviewRemarks: input.remarks?.trim() || cert.reviewRemarks || null,
+            // Keep exact reviewed manuscript — never infer a different latest doc.
             reviewedDocumentId,
             signatureData: input.signatureData.trim(),
             signedAt,

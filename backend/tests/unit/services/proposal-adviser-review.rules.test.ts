@@ -7,6 +7,7 @@ import {
   isAllowedProposalManuscriptMime,
   isProposalAdviserCertIssued,
   isProposalStageCert,
+  isValidCertifiedProposalManuscript,
   mapCertStatusToReviewStatus,
 } from "../../../src/services/proposal-adviser-review.rules";
 
@@ -167,5 +168,53 @@ describe("proposal-adviser-review.rules", () => {
       ),
     ).toBe(true);
     expect(isAllowedProposalManuscriptMime("image/png")).toBe(false);
+  });
+
+  it("Test C/D/E: certified manuscript binding must match thesis + Proposal stage", () => {
+    const thesisA = "thesis-a";
+    const docA = {
+      id: "doc-a",
+      thesisId: thesisA,
+      docType: "PROPOSAL_CHAPTERS",
+      defenseStage: "PROPOSAL",
+    };
+    const cert = {
+      status: "ISSUED",
+      defenseStage: "PROPOSAL_DEFENSE",
+      reviewedDocumentId: "doc-a",
+    };
+
+    // Valid binding
+    expect(isValidCertifiedProposalManuscript(cert, docA, thesisA)).toBe(true);
+
+    // C: ISSUED without reviewedDocumentId fails closed
+    expect(
+      isValidCertifiedProposalManuscript(
+        { ...cert, reviewedDocumentId: null },
+        null,
+        thesisA,
+      ),
+    ).toBe(false);
+
+    // D: wrong-thesis document
+    expect(
+      isValidCertifiedProposalManuscript(cert, { ...docA, thesisId: "thesis-b" }, thesisA),
+    ).toBe(false);
+
+    // E: wrong stage / doc type
+    expect(
+      isValidCertifiedProposalManuscript(
+        cert,
+        { ...docA, defenseStage: "FINAL", docType: "FINAL_MANUSCRIPT" },
+        thesisA,
+      ),
+    ).toBe(false);
+    expect(
+      isValidCertifiedProposalManuscript(
+        { ...cert, defenseStage: "FINAL_DEFENSE" },
+        docA,
+        thesisA,
+      ),
+    ).toBe(false);
   });
 });

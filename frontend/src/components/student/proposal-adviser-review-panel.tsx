@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
@@ -40,6 +40,7 @@ export function ProposalAdviserReviewPanel() {
   const [file, setFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const prevStatusRef = useRef<ProposalReviewStatus | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: reviewQueryKey,
@@ -52,6 +53,30 @@ export function ProposalAdviserReviewPanel() {
     },
     refetchOnWindowFocus: true,
   });
+
+  // CP3-FIX1: refresh Proposal eligibility only on meaningful transitions (e.g. → ISSUED)
+  const currentStatus = data?.reviewStatus ?? null;
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    if (prevStatus === currentStatus) return;
+    prevStatusRef.current = currentStatus;
+    if (currentStatus === "ISSUED" && prevStatus !== null && prevStatus !== "ISSUED") {
+      void queryClient.invalidateQueries({
+        queryKey: ["thesisEligibility", "PROPOSAL_DEFENSE"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: studentThesisJourneyQueryKey,
+      });
+    }
+    if (
+      currentStatus === "AWAITING_REVIEW" ||
+      currentStatus === "CHANGES_REQUESTED"
+    ) {
+      void queryClient.invalidateQueries({
+        queryKey: ["thesisEligibility", "PROPOSAL_DEFENSE"],
+      });
+    }
+  }, [currentStatus, queryClient]);
 
   const submitManuscript = useMutation({
     mutationFn: async () => {

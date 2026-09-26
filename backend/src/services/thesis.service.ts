@@ -276,7 +276,6 @@ export class ThesisService {
 
   async applyProposalDefense(
     userId: string,
-    filePath: string,
     corPath: string,
     receiptPath: string,
   ) {
@@ -284,8 +283,10 @@ export class ThesisService {
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const snap = await this.eligibilityRepo.loadForStudent(student.id);
+    // Certified Proposal manuscript is system-owned (reviewedDocumentId).
+    // Student only supplies COR + fee proof at final application time.
     const result = this.eligibility.evaluateApplyProposal(snap, {
-      manuscript: !!filePath,
+      manuscript: snap.evidence.proposalChapters,
       cor: !!corPath,
       receipt: !!receiptPath,
     });
@@ -299,12 +300,7 @@ export class ThesisService {
       );
     }
 
-    return this.thesisRepo.updateThesisToProposal(
-      thesis.id,
-      filePath,
-      corPath,
-      receiptPath,
-    );
+    return this.thesisRepo.updateThesisToProposal(thesis.id, corPath, receiptPath);
   }
 
   async applyFinalDefense(

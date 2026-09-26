@@ -138,19 +138,17 @@ export class ThesisController {
   applyProposal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      
+
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      const document = files?.['document']?.[0];
+      // CP3-FIX1: certified Proposal manuscript is system-owned — no second upload.
       const cor = files?.['cor']?.[0];
       const receipt = files?.['receipt']?.[0];
 
-      if (!document) throw new Error('Chapters 1-3 document is required');
       if (!cor) throw new Error('COR is required');
       if (!receipt) throw new Error('Defense-fee proof of payment is required');
 
       const result = await this.thesisService.applyProposalDefense(
         req.user.userId,
-        document.path,
         cor.path,
         receipt.path,
       );
