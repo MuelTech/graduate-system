@@ -6,6 +6,7 @@ const prismaMock = vi.hoisted(() => {
     adviserCertification: {
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       create: vi.fn(),
     },
   };
@@ -114,6 +115,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     }));
     prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
     prismaMock.__tx.adviserCertification.update.mockResolvedValue({});
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.__tx.adviserCertification.create.mockResolvedValue({});
   });
 
@@ -233,14 +235,16 @@ describe("ProposalAdviserReviewService (CP3)", () => {
   });
 
   it("Test 6: resubmit after changes returns to AWAITING_REVIEW with new document", async () => {
-    // ISSUED guard uses prisma.findFirst; in-tx lookup uses tx.findFirst.
+    // Outer ISSUED guard, then in-tx ISSUED guard, then current cert lookup.
     prismaMock.adviserCertification.findFirst.mockResolvedValueOnce(null);
-    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue({
-      id: "cert-1",
-      status: "CHANGES_REQUESTED",
-      defenseStage: "PROPOSAL_DEFENSE",
-      reviewRemarks: "revise",
-    });
+    prismaMock.__tx.adviserCertification.findFirst
+      .mockResolvedValueOnce(null) // in-tx ISSUED check
+      .mockResolvedValueOnce({
+        id: "cert-1",
+        status: "CHANGES_REQUESTED",
+        defenseStage: "PROPOSAL_DEFENSE",
+        reviewRemarks: "revise",
+      });
     prismaMock.thesisRecord.findUnique.mockResolvedValue(
       thesisRow({
         thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
@@ -263,8 +267,12 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       originalname: "revised.pdf",
     } as Express.Multer.File);
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
-    expect(prismaMock.__tx.adviserCertification.update).toHaveBeenCalledWith(
+    expect(prismaMock.__tx.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({
+          id: "cert-1",
+          status: { not: "ISSUED" },
+        }),
         data: expect.objectContaining({
           status: "AWAITING_REVIEW",
           reviewedDocumentId: "doc-1",
@@ -367,6 +375,58 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     ).rejects.toThrow(/already issued/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("Test 1-2: transactional guard blocks race — ISSUED cannot be downgraded", async () => {
+    // Outer pre-check: no ISSUED yet.
+    prismaMock.adviserCertification.findFirst.mockResolvedValueOnce(null);
+    // Inside transaction: certification is now ISSUED (Adviser certified mid-flight).
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue({
+      id: "cert-1",
+      status: "ISSUED",
+      defenseStage: "PROPOSAL_DEFENSE",
+      signatureData: "keep-me",
+      signedAt: new Date("2026-09-27T10:00:00Z"),
+      certifiedAt: new Date("2026-09-27T10:00:00Z"),
+      reviewedDocumentId: "doc-keep",
+    });
+
+    await expect(
+      svc.submitManuscriptForReview("student-user", {
+        path: "uploads/race.pdf",
+        originalname: "race.pdf",
+      } as Express.Multer.File),
+    ).rejects.toThrow(/already issued/i);
+
+    // No manuscript committed; no downgrade update.
+    expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.update).not.toHaveBeenCalled();
+  });
+
+  it("Test 1b: conditional updateMany count=0 also blocks downgrade", async () => {
+    prismaMock.adviserCertification.findFirst.mockResolvedValueOnce(null);
+    prismaMock.__tx.adviserCertification.findFirst
+      .mockResolvedValueOnce(null) // ISSUED check inside tx
+      .mockResolvedValueOnce({
+        id: "cert-1",
+        status: "CHANGES_REQUESTED",
+        defenseStage: "PROPOSAL_DEFENSE",
+        reviewRemarks: "old",
+      });
+    prismaMock.__tx.thesisDocument.create.mockResolvedValue({
+      id: "doc-new",
+      uploadedAt: new Date(),
+    });
+    // Conditional write fails — row became ISSUED.
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      svc.submitManuscriptForReview("student-user", {
+        path: "uploads/race2.pdf",
+        originalname: "race2.pdf",
+      } as Express.Multer.File),
+    ).rejects.toThrow(/already issued/i);
   });
 
   it("Test H: review task prefers cert.reviewedDocumentId over latest upload", async () => {

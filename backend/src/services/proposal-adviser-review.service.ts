@@ -331,6 +331,21 @@ export class ProposalAdviserReviewService {
 
     try {
       await prisma.$transaction(async (tx) => {
+        // CP3-FIX2: re-check ISSUED inside the transaction (race with Adviser certify).
+        const existingIssuedInTx = await tx.adviserCertification.findFirst({
+          where: {
+            thesisId: thesis.id,
+            defenseStage: PROPOSAL_REVIEW_STAGE,
+            status: "ISSUED",
+          },
+        });
+        if (existingIssuedInTx) {
+          throw new AppError(
+            "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
+            409,
+          );
+        }
+
         const document = await tx.thesisDocument.create({
           data: {
             thesisId: thesis.id,
@@ -348,8 +363,12 @@ export class ProposalAdviserReviewService {
         });
 
         if (existing) {
-          await tx.adviserCertification.update({
-            where: { id: existing.id },
+          // Atomic conditional write: never downgrade an ISSUED certification.
+          const updated = await tx.adviserCertification.updateMany({
+            where: {
+              id: existing.id,
+              status: { not: "ISSUED" },
+            },
             data: {
               status: "AWAITING_REVIEW",
               reviewRemarks:
@@ -363,6 +382,12 @@ export class ProposalAdviserReviewService {
               certifiedAt: null,
             },
           });
+          if (updated.count === 0) {
+            throw new AppError(
+              "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
+              409,
+            );
+          }
         } else {
           await tx.adviserCertification.create({
             data: {
@@ -417,18 +442,25 @@ export class ProposalAdviserReviewService {
           thesisDocuments: {
             where: { docType: MANUSCRIPT_DOC_TYPE, defenseStage: "PROPOSAL" },
             orderBy: { uploadedAt: "desc" },
-            take: 1,
+            take: 5,
           },
           adviserCertifications: {
             where: { defenseStage: PROPOSAL_REVIEW_STAGE },
             orderBy: { updatedAt: "desc" },
             take: 1,
+            include: { reviewedDocument: true },
           },
         },
       });
       if (!thesis) continue;
       const cert = thesis.adviserCertifications[0] ?? null;
-      const manuscript = thesis.thesisDocuments[0] ?? null;
+      // CP3-FIX2: queue follows reviewedDocumentId when a binding exists.
+      const boundDocId = cert?.reviewedDocumentId ?? null;
+      const manuscript = boundDocId
+        ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+          cert?.reviewedDocument ??
+          null)
+        : (thesis.thesisDocuments[0] ?? null);
       const status = cert
         ? mapCertStatusToReviewStatus(cert.status)
         : manuscript

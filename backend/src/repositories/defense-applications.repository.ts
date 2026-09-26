@@ -15,7 +15,52 @@ import {
   resolveDisplayStatus,
   type ApplicationWorkflowBucket,
 } from "../services/defense-application-workflow";
+import { resolveCurrentProposalApplicationDocuments } from "../services/proposal-adviser-review.rules";
 import type { DefenseStage } from "../interfaces/defense-eligibility.interfaces";
+
+type AppDocRow = {
+  id: string;
+  docType: string;
+  filePath: string;
+  defenseStage?: string | null;
+  thesisId?: string;
+};
+
+/**
+ * CP3-FIX2: Proposal current application documents use the certified
+ * manuscript (ISSUED reviewedDocumentId) only — never all historical revisions.
+ */
+function resolveApplicationDocuments(row: {
+  id: string;
+  stage: DefenseStage;
+  thesisDocuments: AppDocRow[];
+  adviserCertifications?: Array<{
+    status: string;
+    defenseStage: string;
+    reviewedDocumentId: string | null;
+  }>;
+}): AppDocRow[] {
+  const scoped = row.thesisDocuments.filter(
+    (d) =>
+      String(d.defenseStage || "").toUpperCase() ===
+      String(row.stage || "").toUpperCase(),
+  );
+  if (String(row.stage).toUpperCase() !== "PROPOSAL") {
+    return scoped;
+  }
+  const cert = row.adviserCertifications?.[0] ?? null;
+  return resolveCurrentProposalApplicationDocuments(
+    scoped.map((d) => ({
+      id: d.id,
+      thesisId: d.thesisId ?? row.id,
+      docType: d.docType,
+      defenseStage: d.defenseStage ?? null,
+      filePath: d.filePath,
+    })),
+    cert,
+    row.id,
+  ) as AppDocRow[];
+}
 
 export function stageToDefenseType(stage: string): string {
   const map: Record<string, string> = {
@@ -124,6 +169,16 @@ function applicationInclude() {
         defenseStage: true,
       },
     },
+    adviserCertifications: {
+      where: { defenseStage: "PROPOSAL_DEFENSE", status: "ISSUED" },
+      select: {
+        id: true,
+        status: true,
+        defenseStage: true,
+        reviewedDocumentId: true,
+      },
+      take: 1,
+    },
     assignment: {
       include: {
         adviser: {
@@ -173,6 +228,12 @@ function mapApplicationRow(row: {
     docType: string;
     filePath: string;
     defenseStage?: string | null;
+    thesisId?: string;
+  }>;
+  adviserCertifications?: Array<{
+    status: string;
+    defenseStage: string;
+    reviewedDocumentId: string | null;
   }>;
   assignment: unknown;
   defenseSchedules: SessionRow[];
@@ -215,7 +276,7 @@ function mapApplicationRow(row: {
     createdAt: row.createdAt,
     student: row.student,
     thesisTitles: row.thesisTitles,
-    thesisDocuments: filterDocumentsForStage(row.thesisDocuments, row.stage),
+    thesisDocuments: resolveApplicationDocuments(row),
     assignment: row.assignment,
     currentSchedule: sessionForDisplay
       ? {
@@ -379,6 +440,16 @@ export class DefenseApplicationsRepository {
                 defenseStage: true,
               },
             },
+            adviserCertifications: {
+              where: { defenseStage: "PROPOSAL_DEFENSE", status: "ISSUED" },
+              select: {
+                id: true,
+                status: true,
+                defenseStage: true,
+                reviewedDocumentId: true,
+              },
+              take: 1,
+            },
             assignment: {
               include: {
                 adviser: {
@@ -418,10 +489,20 @@ export class DefenseApplicationsRepository {
         student: c.thesis.student,
         thesisTitles: c.thesis.thesisTitles,
         // Scope to THIS history record's stage (not ThesisRecord.current stage).
-        thesisDocuments: filterDocumentsForStage(
-          c.thesis.thesisDocuments,
-          stageName,
-        ),
+        // CP3-FIX2: Proposal history prefers certified manuscript authority.
+        thesisDocuments: resolveApplicationDocuments({
+          id: c.thesisId,
+          stage: stageName,
+          thesisDocuments: c.thesis.thesisDocuments.map((d) => ({
+            ...d,
+            thesisId: c.thesisId,
+          })),
+          adviserCertifications: (c.thesis as { adviserCertifications?: Array<{
+            status: string;
+            defenseStage: string;
+            reviewedDocumentId: string | null;
+          }> }).adviserCertifications,
+        }),
         assignment: c.thesis.assignment,
         currentSchedule: {
           id: c.schedule.id,

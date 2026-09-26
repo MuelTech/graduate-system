@@ -9,6 +9,8 @@ import {
   isProposalStageCert,
   isValidCertifiedProposalManuscript,
   mapCertStatusToReviewStatus,
+  resolveCurrentProposalApplicationDocuments,
+  selectCertifiedProposalManuscript,
 } from "../../../src/services/proposal-adviser-review.rules";
 
 describe("proposal-adviser-review.rules", () => {
@@ -216,5 +218,81 @@ describe("proposal-adviser-review.rules", () => {
         thesisA,
       ),
     ).toBe(false);
+  });
+
+  it("Test 4/5/6: Admin application documents use certified manuscript only", () => {
+    const thesisId = "thesis-a";
+    const docs = [
+      {
+        id: "A",
+        thesisId,
+        docType: "PROPOSAL_CHAPTERS",
+        defenseStage: "PROPOSAL",
+        filePath: "a",
+      },
+      {
+        id: "B",
+        thesisId,
+        docType: "PROPOSAL_CHAPTERS",
+        defenseStage: "PROPOSAL",
+        filePath: "b",
+      },
+      {
+        id: "C",
+        thesisId,
+        docType: "PROPOSAL_CHAPTERS",
+        defenseStage: "PROPOSAL",
+        filePath: "c",
+      },
+      {
+        id: "cor",
+        thesisId,
+        docType: "COR",
+        defenseStage: "PROPOSAL",
+        filePath: "cor",
+      },
+      {
+        id: "receipt",
+        thesisId,
+        docType: "RECEIPT",
+        defenseStage: "PROPOSAL",
+        filePath: "r",
+      },
+    ];
+    const certC = {
+      status: "ISSUED",
+      defenseStage: "PROPOSAL_DEFENSE",
+      reviewedDocumentId: "C",
+    };
+
+    // Test 4: only C + COR + RECEIPT
+    const current = resolveCurrentProposalApplicationDocuments(docs, certC, thesisId);
+    expect(current.map((d) => d.id).sort()).toEqual(["C", "cor", "receipt"]);
+
+    // Test 5: never substitute latest B when A is certified
+    const certA = { ...certC, reviewedDocumentId: "A" };
+    expect(selectCertifiedProposalManuscript(docs, certA, thesisId)?.id).toBe("A");
+
+    // Test 6: invalid binding fails closed (no random latest substitution)
+    expect(
+      selectCertifiedProposalManuscript(docs, { ...certC, reviewedDocumentId: null }, thesisId),
+    ).toBeNull();
+    expect(
+      selectCertifiedProposalManuscript(
+        docs,
+        certC,
+        "other-thesis",
+      ),
+    ).toBeNull();
+    const wrongStage = [
+      {
+        id: "C",
+        thesisId,
+        docType: "FINAL_MANUSCRIPT",
+        defenseStage: "FINAL",
+        filePath: "c",
+      },
+    ];
+    expect(selectCertifiedProposalManuscript(wrongStage, certC, thesisId)).toBeNull();
   });
 });

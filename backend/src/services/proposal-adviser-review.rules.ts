@@ -87,6 +87,40 @@ export function isValidCertifiedProposalManuscript(
   return true;
 }
 
+/**
+ * CP3-FIX2: resolve the single authoritative Proposal manuscript document.
+ * Returns null when no valid ISSUED binding exists (fail closed — never
+ * substitute "latest" Proposal revisions).
+ */
+export function selectCertifiedProposalManuscript<
+  T extends CertifiedManuscriptDocLike,
+>(
+  docs: T[],
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  thesisId: string,
+): T | null {
+  if (!cert?.reviewedDocumentId) return null;
+  const doc = docs.find((d) => d.id === cert.reviewedDocumentId) ?? null;
+  return isValidCertifiedProposalManuscript(cert, doc, thesisId) ? doc : null;
+}
+
+/**
+ * Authoritative current-application Proposal documents:
+ * certified manuscript + non-manuscript stage evidence (COR/RECEIPT/etc).
+ * Historical PROPOSAL_CHAPTERS revisions are excluded from the current list.
+ */
+export function resolveCurrentProposalApplicationDocuments<
+  T extends CertifiedManuscriptDocLike & { docType: string },
+>(
+  docs: T[],
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  thesisId: string,
+): T[] {
+  const certified = selectCertifiedProposalManuscript(docs, cert, thesisId);
+  const others = docs.filter((d) => d.docType !== "PROPOSAL_CHAPTERS");
+  return certified ? [certified, ...others] : others;
+}
+
 export type ReviewActionResult =
   | { allowed: true }
   | { allowed: false; reason: string; statusCode: number };
