@@ -25,7 +25,6 @@ Verified on 2026-09-25 against a newly created MySQL `graduate_system` database:
 
 Do not reopen the historical migration repair unless a new concrete defect is found.
 
-The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
 
 ## Working method
 
