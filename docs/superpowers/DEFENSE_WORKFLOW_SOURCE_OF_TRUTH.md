@@ -6,10 +6,40 @@
 **Scope:** Graduate Student Thesis / Dissertation workflow  
 **Target Implementation Branch:** `refactor/defense-workflow` (parent); Student Thesis Journey implementation is isolated on `refactor/student-thesis-journey`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.5-draft  
-**Last Updated:** 2026-09-25  
+**Version:** 1.6-draft  
+**Last Updated:** 2026-09-26  
 
 ---
+
+## 0. 2026-09-26 Post-QA Canonical Correction
+
+**CONFIRMED_CLIENT / CONFIRMED_PROJECT_DESIGN**
+
+Manual QA plus the supplied Stage #1/#2/#3 guides, Oral Examination forms, Adviser Certification form, and client clarifications produced a workflow correction after WP1–WP13.
+
+The detailed correction design is:
+
+- `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
+
+The implementation sequence is:
+
+- `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`
+
+Where older sections of this SOT or the 2026-09-25 Student Thesis Journey documents conflict with the following rules, the 2026-09-26 correction wins:
+
+1. **Title Defense is a three-title deliberation/selection workflow, not the Proposal/Final Group I/II numerical scoring workflow.**
+2. Title Defense completes only when the formal Title result is `PASSED`, one official title is selected, and the required Title RAP is finalized/signed.
+3. Adviser Request unlocks only after that completed Title stage.
+4. Proposal and Final use individual Group I/Group II evaluator forms. Each evaluator e-signs/finalizes their own evaluation.
+5. Finalized evaluator grades feed the Oral Examination Summary. The system displays/calculates grades but does **not** automatically decide PASS/FAIL.
+6. **Chairman is the formal academic result authority.**
+7. Rapporteur records/finalizes the defense minutes/RAP; Student sees the official/finalized output, not live draft notes.
+8. RAP is system-owned evidence. A Student never downloads a system-generated RAP merely to upload it back as the next stage's requirement.
+9. Proposal/Final Adviser Certification is an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
+10. Research Variables is temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
+11. Proposal revisions remain in the Proposal RAP and are checked against the Final manuscript during Final Defense; there is no separate Proposal-revision upload/clearance gate.
+12. Student defense pages must distinguish submitted, approved/waiting schedule, scheduled, active/finalizing, and completed states rather than collapsing them into a generic WAITING message.
+13. The current Defense Lobby is a prototype. The target is a role-aware Defense Workspace with evaluator action + Student document viewing, and a separate Rapporteur workspace behavior.
 
 ## 1. Purpose
 
@@ -88,7 +118,7 @@ The current client clarification used by the project is:
 
 > **Title Defense application does not require an adviser.**
 
-After a Title Defense is formally concluded as `PASSED` and one official title is selected, the student may begin the Adviser Request process. The current client further clarified that the student's adviser must be chosen from the student's own Title Defense panel rather than from the full faculty/adviser directory.
+After a Title Defense is formally concluded as `PASSED`, one official title is selected, and the required Title RAP is finalized/signed, the student may begin the Adviser Request process. The current client further clarified that the student's adviser must be chosen from the student's own Title Defense panel rather than from the full faculty/adviser directory.
 
 For current GS-IS terminology:
 
@@ -98,7 +128,7 @@ For current GS-IS terminology:
 - **External panelists may participate in defense panels but are never eligible to become a thesis/dissertation adviser.** Adviser candidacy is limited to internal panelists.
 - `isAvailableAsAdviser` remains the explicit Admin-controlled eligibility flag for internal panelists. When a panelist is external, effective adviser availability must be false regardless of any legacy/default stored value.
 
-An active adviser is required before Proposal/Final eligibility under the current design, but adviser selection itself may begin after a passed Title Defense and official-title selection; it does not need to wait for every later Title post-defense artifact.
+An active adviser is required before Proposal/Final eligibility. Adviser selection begins only after the Title stage is complete: formal PASSED result + official selected title + required finalized/signed Title RAP.
 
 **Status:** Adviser not required for Title, adviser must come from the student's own Title Defense panel, and external panelists cannot become advisers are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
 
@@ -173,9 +203,9 @@ flowchart TD
 8. Evaluator scores and session notes are completed.
 9. Authorized conclusion records the official defense outcome.
 10. For a passed Title Defense, one of the three proposed titles is selected as the official research title.
-11. Adviser Request becomes available; the student selects an eligible adviser candidate from the student's own Title Defense ODP.
-12. Adviser CONFORME/acceptance and Dean approval are completed before an active `AdviserAssignment` is created.
-13. Required Title post-defense records/RAP and remaining Proposal prerequisites are completed.
+11. The required Title RAP/signatures are finalized.
+12. Adviser Request becomes available; the student selects an eligible adviser candidate from the student's own Title Defense panel.
+13. Adviser CONFORME/acceptance and Dean approval are completed before an active `AdviserAssignment` is created.
 14. Student files Proposal Defense application.
 15. Proposal is reviewed, scheduled, conducted, and formally concluded.
 16. Proposal post-defense requirements/RAP are completed.
@@ -578,7 +608,7 @@ At minimum:
 
 Only then should Proposal readiness be evaluated.
 
-**Adviser-selection timing:** Adviser Request may unlock earlier than full Title-stage completion once the Title Defense has been formally concluded as `PASSED` and an official title is selected. This does **not** unlock Proposal by itself; Proposal still requires the active approved adviser relationship plus the remaining Title completion requirements.
+**Adviser-selection timing — REVISED 2026-09-26:** Adviser Request does **not** unlock before full Title-stage completion. It unlocks only after formal Title `PASSED` + official selected title + required finalized/signed Title RAP.
 
 ---
 
@@ -589,7 +619,7 @@ The adviser relationship begins after the student's Title Defense has been forma
 ### 9.1 Confirmed system rules
 
 - Adviser is not required to file Title Defense. **CONFIRMED_CLIENT**
-- Adviser selection becomes available after the student's Title Defense is formally `PASSED` and one official title has been selected. **CONFIRMED_CLIENT**
+- Adviser selection becomes available after the Title stage is complete: formal `PASSED`, one official title selected, and the required Title RAP finalized/signed. **CONFIRMED_CLIENT — clarified 2026-09-26**
 - The adviser must be selected from the student's own Title Defense panel, not from the unrestricted faculty/adviser directory. **CONFIRMED_CLIENT**, also consistent with legacy EARIST adviser-selection material.
 - The current Adviser Request form, **EARIST-QSF-GS-020 Rev. 00 (06.20.25)**, represents Student request → Adviser **CONFORME** → Dean, Graduate School approval. **SUPPORTED_CURRENT_FORM**
 - `AdviserAssignment` becomes active only after the configured Adviser acceptance/conforme and Dean approval sequence succeeds. **PROPOSED_SYSTEM_DESIGN**
@@ -653,6 +683,8 @@ Rules:
 Title Defense formally PASSED
       ↓
 Official Title selected
+      ↓
+Required Title RAP finalized/signed
       ↓
 Adviser Selection unlocked
       ↓
@@ -792,9 +824,9 @@ The UI should distinguish:
 
 These may be shown as instructions or tracked as received by GS staff if the client later requests office-checklist tracking, but they are not automatically student file-upload requirements.
 
-### 10.3.1 Conditional Research Variables rule
+### 10.3.1 Research Variables — temporarily disabled as active gate
 
-The current Stage #2 public guidance says **“Letter for Approval of the Variables (IF ANY)”**. Therefore Research Variables must not be a universal Proposal gate.
+The current Stage #2 public guidance says **“Letter for Approval of the Variables (IF ANY)”**, but the responsible actor and applicability/approval workflow are not yet confirmed. **For the current correction pass, Research Variables must not block Proposal apply/schedule eligibility.** Preserve existing schema/data, but do not require the Student to self-declare `NOT_APPLICABLE`.
 
 Recommended domain behavior:
 
