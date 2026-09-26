@@ -1,3 +1,6 @@
+> **SUPERSESSION NOTICE — 2026-09-26**  
+> WP1–WP13 based on this design have been implemented and manually QA'd. The post-QA workflow corrections are now defined in `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`. Where this document conflicts with that correction spec, the 2026-09-26 spec wins. In particular: Title Adviser Request now waits for finalized Title RAP; Title does not use Proposal/Final Group I/II scoring; Proposal/Final add Adviser review/certification before Admin review; Chairman records the formal result; Research Variables is not an active blocking gate in the correction pass.
+
 # Student Thesis Journey — Design Specification
 
 **Date:** 2026-09-25  
@@ -91,13 +94,14 @@ Student supplies:
 - current COR;
 - stage-specific defense-fee proof.
 
-After formal PASSED + official selected title, next action is Adviser Request.
+After formal PASSED + official selected title + finalized required Title RAP, next action is Adviser Request.
 
 ### Adviser Request
 
 Unlocks only after:
-- formal Title Defense = PASSED; and
-- official selected title exists.
+- formal Title Defense = PASSED;
+- official selected title exists; and
+- required Title RAP is finalized/signed.
 
 Candidates come only from the student's actual passed Title Defense ODP/evaluator subset. The unrestricted faculty directory is not a valid candidate source.
 
