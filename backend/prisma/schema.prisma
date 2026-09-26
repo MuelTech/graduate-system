@@ -515,6 +515,7 @@ model ThesisDocument {
   copyNumber    Int?           @map("copy_number")
   uploadedAt    DateTime       @map("uploaded_at")
   thesis        ThesisRecord   @relation(fields: [thesisId], references: [id])
+  adviserCertReviews AdviserCertification[] @relation("AdviserCertReviewedDoc")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
   @@map("thesis_documents")
@@ -756,19 +757,30 @@ model RapReportSignature {
 }
 
 model AdviserCertification {
-  id           String       @id @default(uuid()) @map("cert_id")
-  thesisId     String       @map("thesis_id")
-  adviserId    String       @map("adviser_id")
-  defenseStage DefenseType  @map("defense_stage")
-  certifiedAt  DateTime?    @map("certified_at") @db.Date
-  filePath     String?      @map("file_path")
-  status       CertStatus   @default(PENDING)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  adviser      User         @relation("AdviserCertIssuer", fields: [adviserId], references: [id])
-  thesis       ThesisRecord @relation(fields: [thesisId], references: [id])
+  id                 String         @id @default(uuid()) @map("cert_id")
+  thesisId           String         @map("thesis_id")
+  adviserId          String         @map("adviser_id")
+  defenseStage       DefenseType    @map("defense_stage")
+  certifiedAt        DateTime?      @map("certified_at") @db.Date
+  filePath           String?        @map("file_path")
+  status             CertStatus     @default(AWAITING_REVIEW)
+  /** Adviser remarks when requesting changes or certifying. */
+  reviewRemarks      String?        @map("review_remarks") @db.Text
+  /** ThesisDocument id of the Proposal manuscript the Adviser reviewed. */
+  reviewedDocumentId String?        @map("reviewed_document_id")
+  /** Persisted e-signature evidence (not exposed in Student DTOs). */
+  signatureData      String?        @map("signature_data") @db.Text
+  /** Server-side e-sign / issue timestamp — never client-supplied. */
+  signedAt           DateTime?      @map("signed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  adviser            User           @relation("AdviserCertIssuer", fields: [adviserId], references: [id])
+  thesis             ThesisRecord   @relation(fields: [thesisId], references: [id])
+  reviewedDocument   ThesisDocument? @relation("AdviserCertReviewedDoc", fields: [reviewedDocumentId], references: [id])
 
   @@index([adviserId], map: "adviser_certifications_adviser_id_fkey")
   @@index([thesisId], map: "adviser_certifications_thesis_id_fkey")
+  @@index([reviewedDocumentId])
   @@map("adviser_certifications")
 }
 
@@ -1315,6 +1327,8 @@ enum RapStatus {
 
 enum CertStatus {
   PENDING
+  AWAITING_REVIEW
+  CHANGES_REQUESTED
   ISSUED
 
   @@map("cert_status")

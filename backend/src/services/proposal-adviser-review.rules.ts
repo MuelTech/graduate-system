@@ -1,0 +1,215 @@
+/**
+ * CP3 — Proposal Adviser review / certification pure rules.
+ * Stage scope is strictly PROPOSAL_DEFENSE.
+ */
+
+export const PROPOSAL_REVIEW_STAGE = "PROPOSAL_DEFENSE" as const;
+
+export type ProposalReviewStatus =
+  | "NONE"
+  | "AWAITING_REVIEW"
+  | "CHANGES_REQUESTED"
+  | "ISSUED";
+
+export type ProposalReviewTransition =
+  | "SUBMIT_FOR_REVIEW"
+  | "REQUEST_CHANGES"
+  | "CERTIFY";
+
+export interface ProposalReviewRowLike {
+  status: string;
+  defenseStage: string;
+  reviewedDocumentId?: string | null;
+  signatureData?: string | null;
+  signedAt?: Date | string | null;
+}
+
+export function mapCertStatusToReviewStatus(
+  status: string | null | undefined,
+): ProposalReviewStatus {
+  switch (status) {
+    case "AWAITING_REVIEW":
+    case "PENDING":
+      // Legacy PENDING rows without workflow fields are treated as awaiting review.
+      return "AWAITING_REVIEW";
+    case "CHANGES_REQUESTED":
+      return "CHANGES_REQUESTED";
+    case "ISSUED":
+      return "ISSUED";
+    default:
+      return "NONE";
+  }
+}
+
+export function isProposalStageCert(row: {
+  defenseStage: string;
+} | null | undefined): boolean {
+  return row?.defenseStage === PROPOSAL_REVIEW_STAGE;
+}
+
+/** Only ISSUED Proposal certifications satisfy ADVISER_CERT. */
+export function isProposalAdviserCertIssued(
+  row: ProposalReviewRowLike | null | undefined,
+): boolean {
+  return (
+    !!row &&
+    isProposalStageCert(row) &&
+    row.status === "ISSUED"
+  );
+}
+
+export type ReviewActionResult =
+  | { allowed: true }
+  | { allowed: false; reason: string; statusCode: number };
+
+export interface ActiveAdviserGateInput {
+  isAuthenticated: boolean;
+  isActiveAdviserForStudent: boolean;
+}
+
+export function evaluateActiveAdviserGate(
+  input: ActiveAdviserGateInput,
+): ReviewActionResult {
+  if (!input.isAuthenticated) {
+    return { allowed: false, reason: "Authentication required.", statusCode: 401 };
+  }
+  if (!input.isActiveAdviserForStudent) {
+    return {
+      allowed: false,
+      reason: "Only the current active adviser may review this Proposal manuscript.",
+      statusCode: 403,
+    };
+  }
+  return { allowed: true };
+}
+
+export interface SubmitManuscriptGateInput {
+  hasActiveAdviser: boolean;
+  titleStageComplete: boolean;
+  hasManuscriptFile: boolean;
+}
+
+export function evaluateSubmitManuscriptGate(
+  input: SubmitManuscriptGateInput,
+): ReviewActionResult {
+  if (!input.hasActiveAdviser) {
+    return {
+      allowed: false,
+      reason: "An active Thesis Adviser is required before submitting the Proposal manuscript for review.",
+      statusCode: 400,
+    };
+  }
+  if (!input.titleStageComplete) {
+    return {
+      allowed: false,
+      reason: "Title Defense must be complete before Proposal manuscript review.",
+      statusCode: 400,
+    };
+  }
+  if (!input.hasManuscriptFile) {
+    return {
+      allowed: false,
+      reason: "Proposal manuscript (Chapters 1-3) is required.",
+      statusCode: 400,
+    };
+  }
+  return { allowed: true };
+}
+
+export interface RequestChangesGateInput {
+  isActiveAdviser: boolean;
+  reviewStatus: ProposalReviewStatus;
+  hasRemarks: boolean;
+}
+
+export function evaluateRequestChangesGate(
+  input: RequestChangesGateInput,
+): ReviewActionResult {
+  const auth = evaluateActiveAdviserGate({
+    isAuthenticated: true,
+    isActiveAdviserForStudent: input.isActiveAdviser,
+  });
+  if (!auth.allowed) return auth;
+  if (input.reviewStatus === "ISSUED") {
+    return {
+      allowed: false,
+      reason: "Issued Proposal Adviser Certification cannot be changed.",
+      statusCode: 409,
+    };
+  }
+  if (input.reviewStatus !== "AWAITING_REVIEW" && input.reviewStatus !== "NONE") {
+    return {
+      allowed: false,
+      reason: "No Proposal manuscript is currently awaiting Adviser review.",
+      statusCode: 409,
+    };
+  }
+  if (!input.hasRemarks) {
+    return {
+      allowed: false,
+      reason: "Remarks are required when requesting changes.",
+      statusCode: 400,
+    };
+  }
+  return { allowed: true };
+}
+
+export interface CertifyGateInput {
+  isActiveAdviser: boolean;
+  reviewStatus: ProposalReviewStatus;
+  hasManuscript: boolean;
+  hasSignature: boolean;
+  alreadyIssued: boolean;
+}
+
+export function evaluateCertifyGate(
+  input: CertifyGateInput,
+): ReviewActionResult {
+  const auth = evaluateActiveAdviserGate({
+    isAuthenticated: true,
+    isActiveAdviserForStudent: input.isActiveAdviser,
+  });
+  if (!auth.allowed) return auth;
+  if (input.alreadyIssued || input.reviewStatus === "ISSUED") {
+    return {
+      allowed: false,
+      reason: "Proposal Adviser Certification is already issued.",
+      statusCode: 409,
+    };
+  }
+  if (!input.hasManuscript) {
+    return {
+      allowed: false,
+      reason: "A current Proposal manuscript is required before certification.",
+      statusCode: 400,
+    };
+  }
+  if (input.reviewStatus !== "AWAITING_REVIEW" && input.reviewStatus !== "CHANGES_REQUESTED") {
+    return {
+      allowed: false,
+      reason: "No Proposal manuscript is available for certification.",
+      statusCode: 409,
+    };
+  }
+  if (!input.hasSignature) {
+    return {
+      allowed: false,
+      reason: "Adviser e-signature is required to issue the certification.",
+      statusCode: 400,
+    };
+  }
+  return { allowed: true };
+}
+
+/** Allowed Proposal manuscript extensions (consistent with Proposal upload). */
+export const PROPOSAL_MANUSCRIPT_MIME_ALLOWLIST = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+] as const;
+
+export function isAllowedProposalManuscriptMime(mime: string | null | undefined): boolean {
+  return (PROPOSAL_MANUSCRIPT_MIME_ALLOWLIST as readonly string[]).includes(
+    String(mime ?? ""),
+  );
+}

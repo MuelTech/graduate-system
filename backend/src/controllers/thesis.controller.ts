@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ThesisService } from '../services/thesis.service';
 import { StudentThesisJourneyService } from '../services/student-thesis-journey.service';
+import { ProposalAdviserReviewService } from '../services/proposal-adviser-review.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -18,6 +19,7 @@ function sendEligibilityError(res: Response, error: any): void {
 export class ThesisController {
   private thesisService = new ThesisService();
   private journeyService = new StudentThesisJourneyService();
+  private proposalAdviserReview = new ProposalAdviserReviewService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -609,6 +611,131 @@ export class ThesisController {
       res.status(200).json(lobbyData);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  };
+
+  // ── CP3 Proposal Adviser review / certification ──────────────────
+
+  getProposalAdviserReviewState = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.proposalAdviserReview.getStudentReviewState(userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  submitProposalManuscriptForReview = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const file = req.file;
+      if (!file) {
+        res.status(400).json({ error: "Proposal manuscript file is required." });
+        return;
+      }
+      const result = await this.proposalAdviserReview.submitManuscriptForReview(
+        userId,
+        file,
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  listMyProposalAdviserReviews = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.proposalAdviserReview.listReviewTasks(userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  getProposalAdviserReviewTask = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.proposalAdviserReview.getReviewTask(userId, thesisId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  requestProposalAdviserChanges = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      const remarks = String(req.body?.remarks ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.proposalAdviserReview.requestChanges(
+        userId,
+        thesisId,
+        remarks,
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  certifyProposalAdviserReview = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.proposalAdviserReview.certify(userId, thesisId, {
+        signatureData: String(req.body?.signatureData ?? ""),
+        remarks: req.body?.remarks ?? null,
+        // Client timestamps are ignored — server time is authoritative.
+        clientIssuedAt: req.body?.issuedAt ?? null,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
     }
   };
 }

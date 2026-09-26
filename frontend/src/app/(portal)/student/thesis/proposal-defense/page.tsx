@@ -10,6 +10,7 @@ import {
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
 import { DefenseStatusPanel } from "@/components/student/defense-status-panel";
+import { ProposalAdviserReviewPanel } from "@/components/student/proposal-adviser-review-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -344,6 +345,9 @@ export default function ProposalDefensePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* CP3: manuscript → Adviser review/certification before Admin application */}
+      <ProposalAdviserReviewPanel />
 
       {submitError && (
         <Alert variant="destructive">

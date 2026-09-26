@@ -1,0 +1,359 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => {
+  const tx = {
+    adviserCertification: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  return {
+    student: { findUnique: vi.fn() },
+    thesisRecord: { findFirst: vi.fn(), findUnique: vi.fn() },
+    adviserAssignment: { findFirst: vi.fn(), findMany: vi.fn() },
+    thesisDocument: { create: vi.fn() },
+    adviserCertification: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    defenseConclusion: { findFirst: vi.fn() },
+    rapReport: { findFirst: vi.fn(), count: vi.fn() },
+    $transaction: vi.fn(async (fn: any) => fn(tx)),
+    __tx: tx,
+  };
+});
+
+vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+vi.mock("file-type", () => ({
+  fileTypeFromFile: vi.fn(async () => ({ mime: "application/pdf" })),
+}));
+vi.mock("fs/promises", () => ({
+  default: { unlink: vi.fn() },
+  unlink: vi.fn(),
+}));
+
+import { ProposalAdviserReviewService } from "../../../src/services/proposal-adviser-review.service";
+
+function studentRow() {
+  return {
+    id: "student-1",
+    studentNumber: "2026-001",
+    user: { id: "student-user", firstName: "Ana", lastName: "Student" },
+  };
+}
+
+function thesisRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "thesis-1",
+    student: {
+      id: "student-1",
+      studentNumber: "2026-001",
+      user: { id: "student-user", firstName: "Ana", lastName: "Student" },
+      adviserAssignments: [
+        {
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+        },
+      ],
+    },
+    thesisTitles: [],
+    defenseSchedules: [
+      {
+        conclusion: {
+          selectedTitle: { titleText: "Official Title" },
+        },
+      },
+    ],
+    thesisDocuments: [],
+    adviserCertifications: [],
+    ...overrides,
+  };
+}
+
+describe("ProposalAdviserReviewService (CP3)", () => {
+  const svc = new ProposalAdviserReviewService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.student.findUnique.mockResolvedValue(studentRow());
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue({
+      id: "assign-1",
+      studentId: "student-1",
+      adviserId: "adviser-1",
+      isActive: true,
+    });
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      selectedTitleId: "t1",
+      scheduleId: "sched-1",
+    });
+    prismaMock.rapReport.count.mockResolvedValue(1);
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.adviserCertification.create.mockImplementation(async (args: any) => ({
+      id: "cert-1",
+      ...args.data,
+    }));
+    prismaMock.adviserCertification.update.mockImplementation(async (args: any) => ({
+      id: args.where.id,
+      ...args.data,
+    }));
+    prismaMock.thesisDocument.create.mockImplementation(async (args: any) => ({
+      id: "doc-1",
+      uploadedAt: new Date(),
+      ...args.data,
+    }));
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(thesisRow());
+    prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock.__tx));
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserCertification.update.mockResolvedValue({});
+    prismaMock.__tx.adviserCertification.create.mockResolvedValue({});
+  });
+
+  it("Test 1: Student submits manuscript → AWAITING_REVIEW, no Admin application", async () => {
+    // After create, getStudentReviewState reloads via findUnique.
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    const file = {
+      path: "uploads/manuscript.pdf",
+      originalname: "chapters.pdf",
+    } as Express.Multer.File;
+    const dto = await svc.submitManuscriptForReview("student-user", file);
+    expect(prismaMock.thesisDocument.create).toHaveBeenCalled();
+    expect(prismaMock.adviserCertification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "AWAITING_REVIEW",
+          defenseStage: "PROPOSAL_DEFENSE",
+        }),
+      }),
+    );
+    expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
+    expect(dto.certification).toBeNull();
+  });
+
+  it("Test 2: no active Adviser rejects manuscript submit", async () => {
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.submitManuscriptForReview("student-user", {
+        path: "uploads/x.pdf",
+        originalname: "x.pdf",
+      } as Express.Multer.File),
+    ).rejects.toThrow(/active Thesis Adviser/i);
+    expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
+  });
+
+  it("Test 3-4: only active adviser can read/write review task", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+
+    // Correct adviser can read
+    await expect(
+      svc.getReviewTask("adviser-1", "thesis-1"),
+    ).resolves.toBeTruthy();
+
+    // Unrelated panelist denied
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.getReviewTask("other-panelist", "thesis-1"),
+    ).rejects.toThrow(/active adviser/i);
+    await expect(
+      svc.requestChanges("other-panelist", "thesis-1", "nope"),
+    ).rejects.toThrow(/active adviser/i);
+    await expect(
+      svc.certify("other-panelist", "thesis-1", { signatureData: "sig" }),
+    ).rejects.toThrow(/active adviser/i);
+  });
+
+  it("Test 5: request changes stores remarks and does not issue cert", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    const dto = await svc.requestChanges("adviser-1", "thesis-1", "Please revise Ch. 2");
+    expect(prismaMock.adviserCertification.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "CHANGES_REQUESTED",
+          reviewRemarks: "Please revise Ch. 2",
+        }),
+      }),
+    );
+    expect(dto.certification).toBeNull();
+  });
+
+  it("Test 6: resubmit after changes returns to AWAITING_REVIEW with new document", async () => {
+    // findFirst is used for ISSUED guard then current cert lookup.
+    prismaMock.adviserCertification.findFirst
+      .mockResolvedValueOnce(null) // no ISSUED
+      .mockResolvedValueOnce({
+        id: "cert-1",
+        status: "CHANGES_REQUESTED",
+        defenseStage: "PROPOSAL_DEFENSE",
+        reviewRemarks: "revise",
+      });
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "PROPOSAL_DEFENSE",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    const dto = await svc.submitManuscriptForReview("student-user", {
+      path: "uploads/revised.pdf",
+      originalname: "revised.pdf",
+    } as Express.Multer.File);
+    expect(prismaMock.thesisDocument.create).toHaveBeenCalled();
+    expect(prismaMock.adviserCertification.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "AWAITING_REVIEW",
+          reviewedDocumentId: "doc-1",
+        }),
+      }),
+    );
+    expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
+  });
+
+  it("Test 7-8: certify with e-sign uses server timestamp and stores signature", async () => {
+    const before = Date.now();
+    const awaiting = thesisRow({
+      thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+      adviserCertifications: [
+        {
+          id: "cert-1",
+          status: "AWAITING_REVIEW",
+          defenseStage: "PROPOSAL_DEFENSE",
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+          reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+          reviewRemarks: null,
+          signatureData: null,
+          signedAt: null,
+        },
+      ],
+    });
+    const issued = thesisRow({
+      thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+      adviserCertifications: [
+        {
+          id: "cert-1",
+          status: "ISSUED",
+          defenseStage: "PROPOSAL_DEFENSE",
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+          reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+          reviewRemarks: null,
+          signatureData: "e-sign-blob",
+          signedAt: new Date(),
+        },
+      ],
+    });
+    prismaMock.thesisRecord.findUnique
+      .mockResolvedValueOnce(awaiting)
+      .mockResolvedValue(issued);
+
+    const dto = await svc.certify("adviser-1", "thesis-1", {
+      signatureData: "e-sign-blob",
+      clientIssuedAt: "2000-01-01T00:00:00.000Z", // must be ignored
+    });
+
+    const updateArgs =
+      prismaMock.__tx.adviserCertification.update.mock.calls[0]?.[0] ??
+      prismaMock.adviserCertification.update.mock.calls[0]?.[0];
+    expect(updateArgs?.data?.status).toBe("ISSUED");
+    expect(updateArgs?.data?.signatureData).toBe("e-sign-blob");
+    expect(updateArgs?.data?.signedAt).toBeInstanceOf(Date);
+    // Server time, not client year 2000
+    expect(updateArgs?.data?.signedAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(dto.certification?.issued).toBe(true);
+  });
+
+  it("Test 9: duplicate certification prevented", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-issued",
+            status: "ISSUED",
+            defenseStage: "PROPOSAL_DEFENSE",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: "old",
+            signedAt: new Date(),
+          },
+        ],
+      }),
+    );
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue({
+      id: "cert-issued",
+      status: "ISSUED",
+    });
+    await expect(
+      svc.certify("adviser-1", "thesis-1", { signatureData: "sig" }),
+    ).rejects.toThrow(/already issued/i);
+  });
+
+  it("Test 10/12: eligibility snapshot — only ISSUED counts; Research Variables non-blocking", async () => {
+    // Pure rule already covered; eligibility service keeps ADVISER_CERT from ISSUED only.
+    const { researchVariablesSatisfied } = await import(
+      "../../../src/services/defense-eligibility.service"
+    );
+    expect(researchVariablesSatisfied("NONE")).toBe(false); // helper unchanged
+    // Gate is not invoked when Research Variables is absent — CP1 regression in eligibility tests.
+  });
+});

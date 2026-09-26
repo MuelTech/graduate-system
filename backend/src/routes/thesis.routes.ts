@@ -53,6 +53,57 @@ router.get(
   thesisController.getStudentThesisJourney,
 );
 
+// ── CP3: Proposal Adviser review (pre-application manuscript) ──
+
+// STUDENT: Proposal adviser-review state
+router.get(
+  "/proposal-adviser-review",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getProposalAdviserReviewState,
+);
+
+// STUDENT: upload/resubmit Proposal manuscript for Adviser review (not Admin application)
+router.post(
+  "/proposal-adviser-review/manuscript",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  upload.single("document"),
+  thesisController.submitProposalManuscriptForReview,
+);
+
+// ACTIVE ADVISER: own Proposal review queue
+router.get(
+  "/proposal-adviser-review/tasks",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.listMyProposalAdviserReviews,
+);
+
+// ACTIVE ADVISER: authorized review task detail
+router.get(
+  "/proposal-adviser-review/tasks/:thesisId",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getProposalAdviserReviewTask,
+);
+
+// ACTIVE ADVISER: request changes
+router.post(
+  "/proposal-adviser-review/tasks/:thesisId/request-changes",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.requestProposalAdviserChanges,
+);
+
+// ACTIVE ADVISER: certify + e-sign
+router.post(
+  "/proposal-adviser-review/tasks/:thesisId/certify",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.certifyProposalAdviserReview,
+);
+
 // STUDENT: ODP adviser candidates from passed Title Defense (GS-020)
 router.get(
   "/adviser/candidates",

@@ -28,6 +28,7 @@ const navItems = [
   { href: "/panelist/profile", label: "Profile", icon: User },
   { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
   { href: "/panelist/adviser-requests", label: "Adviser Requests", icon: UserCheck },
+  { href: "/panelist/adviser-reviews", label: "Proposal Reviews", icon: FileCheck2 },
   { href: "/panelist/materials", label: "Materials", icon: FolderOpen },
   { href: "/panelist/scoring", label: "Scoring", icon: PenLine },
   { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
