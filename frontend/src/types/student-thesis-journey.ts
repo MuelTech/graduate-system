@@ -27,9 +27,16 @@ export type DefenseSubstatus =
   | "AWAITING_CONCLUSION"
   | "FINALIZING_RECORDS"
   | "COMPLETED"
+  | "FAILED"
+  | "REVISION_REQUIRED"
   | "REJECTED"
   | "CANCELLED_SESSION";
 
+/**
+ * defenseDate: wall-clock calendar date `YYYY-MM-DD`
+ * defenseTime: wall-clock time `HH:mm:ss` (Admin-entered clock time)
+ * Do not treat these as timezone instants.
+ */
 export interface DefenseSessionSummary {
   defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
   defenseDate: string | null;

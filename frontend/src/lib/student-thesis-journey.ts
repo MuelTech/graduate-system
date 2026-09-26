@@ -83,6 +83,10 @@ export function defenseStatusHeading(
       return "Finalizing defense records";
     case "COMPLETED":
       return "Defense completed";
+    case "FAILED":
+      return "Defense result: Failed";
+    case "REVISION_REQUIRED":
+      return "Revision required";
     case "REJECTED":
       return "Application returned";
     case "CANCELLED_SESSION":
@@ -110,9 +114,13 @@ export function defenseStatusDescription(
     case "AWAITING_CONCLUSION":
       return `The ${kind} Defense session has finished deliberation. The official result is not yet available.`;
     case "FINALIZING_RECORDS":
-      return `The formal ${kind} Defense result is recorded. Required records are still being finalized before the next step unlocks.`;
+      return `Formal result: Passed. Required RAP/signatures are still being finalized before the next step unlocks.`;
     case "COMPLETED":
       return `${kind} Defense is complete.`;
+    case "FAILED":
+      return `The formal ${kind} Defense result has been recorded as Failed. Contact / await instructions from the Graduate School regarding the next required action.`;
+    case "REVISION_REQUIRED":
+      return `Revision required. Follow the Graduate School / panel instructions for required revisions.`;
     case "REJECTED":
       return `Your ${kind} Defense application was returned. Review the feedback and resubmit.`;
     case "CANCELLED_SESSION":
@@ -142,42 +150,84 @@ export function sessionStatusLabel(sessionStatus: string | null | undefined): st
   }
 }
 
-export function formatDefenseDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
+/**
+ * Format wall-clock defense date without browser timezone conversion.
+ * Accepts `YYYY-MM-DD` or ISO; uses UTC/calendar components only.
+ */
+export function formatDefenseDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value).trim());
+  if (ymd) {
+    return new Date(Date.UTC(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]))).toLocaleDateString(
+      "en-US",
+      { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+    );
+  }
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
-export function formatDefenseTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
+/**
+ * Format wall-clock defense time without browser timezone conversion.
+ * Accepts `HH:mm[:ss]` or ISO instant carrying wall-clock in UTC components.
+ */
+export function formatDefenseTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const hms = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(value).trim());
+  if (hms) {
+    const h = Number(hms[1]);
+    const min = hms[2];
+    if (h > 23) return "—";
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${min} ${ampm}`;
+  }
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "UTC",
   });
 }
 
-/** True when the step is waiting on another actor/event or has an active session. */
+const ACTIVE_DEFENSE_STATUSES: ReadonlySet<string> = new Set([
+  "APPLICATION_UNDER_REVIEW",
+  "APPROVED_WAITING_SCHEDULE",
+  "SCHEDULED",
+  "DEFENSE_IN_PROGRESS",
+  "AWAITING_CONCLUSION",
+  "FINALIZING_RECORDS",
+]);
+
+const TERMINAL_DEFENSE_STATUSES: ReadonlySet<string> = new Set([
+  "FAILED",
+  "REVISION_REQUIRED",
+  "COMPLETED",
+  "REJECTED",
+  "CANCELLED_SESSION",
+]);
+
+/**
+ * Poll only while an external action is expected to change Student-visible status.
+ * Terminal FAILED / REVISION_REQUIRED / COMPLETED / REJECTED / CANCELLED do not poll
+ * just because the coarse Journey state is WAITING.
+ */
 export function shouldPollJourney(journey: StudentThesisJourney | undefined): boolean {
   if (!journey) return true;
   return journey.steps.some((s) => {
-    if (s.state === "WAITING") return true;
     const st = s.defenseStatus;
-    return (
-      st === "APPLICATION_UNDER_REVIEW" ||
-      st === "APPROVED_WAITING_SCHEDULE" ||
-      st === "SCHEDULED" ||
-      st === "DEFENSE_IN_PROGRESS" ||
-      st === "AWAITING_CONCLUSION" ||
-      st === "FINALIZING_RECORDS"
-    );
+    if (st && TERMINAL_DEFENSE_STATUSES.has(st)) return false;
+    if (st && ACTIVE_DEFENSE_STATUSES.has(st)) return true;
+    // Non-defense WAITING (e.g. adviser request) may still need polling.
+    return s.state === "WAITING";
   });
 }
 

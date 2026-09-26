@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateStudentThesisJourney,
+  formatWallClockDateDisplay,
+  formatWallClockTimeDisplay,
+  shouldPollJourneySteps,
+  toWallClockDate,
+  toWallClockTime,
   type JourneySnapshot,
 } from "../../../src/services/student-thesis-journey.rules";
 
@@ -157,7 +162,153 @@ describe("evaluateStudentThesisJourney — Title / Comp Exam", () => {
     expect(title?.defenseStatus).toBe("COMPLETED");
     expect(title?.state).toBe("COMPLETED");
   });
+});
 
+describe("CP2-FIX1 wall-clock date/time (no timezone shift)", () => {
+  it("Test 1: defenseTime 1970-01-01T14:00:00.000Z displays as 2:00 PM", () => {
+    const wall = toWallClockTime(new Date("1970-01-01T14:00:00.000Z"));
+    expect(wall).toBe("14:00:00");
+    expect(formatWallClockTimeDisplay(wall)).toBe("2:00 PM");
+    // ISO string carrier with UTC wall-clock components
+    expect(
+      formatWallClockTimeDisplay(toWallClockTime("1970-01-01T14:00:00.000Z")),
+    ).toBe("2:00 PM");
+  });
+
+  it("Test 1b: morning 08:30 displays as 8:30 AM", () => {
+    expect(formatWallClockTimeDisplay("08:30:00")).toBe("8:30 AM");
+    expect(
+      formatWallClockTimeDisplay(
+        toWallClockTime(new Date("1970-01-01T08:30:00.000Z")),
+      ),
+    ).toBe("8:30 AM");
+  });
+
+  it("Test 2: defenseDate 2026-09-30 remains September 30, 2026", () => {
+    expect(toWallClockDate(new Date("2026-09-30T00:00:00.000Z"))).toBe(
+      "2026-09-30",
+    );
+    expect(formatWallClockDateDisplay("2026-09-30")).toBe("September 30, 2026");
+    expect(
+      formatWallClockDateDisplay(
+        toWallClockDate(new Date("2026-09-30T00:00:00.000Z")),
+      ),
+    ).toBe("September 30, 2026");
+    // Pure string path must not depend on local timezone
+    expect(formatWallClockDateDisplay(toWallClockDate("2026-09-30"))).toBe(
+      "September 30, 2026",
+    );
+  });
+});
+
+describe("CP2-FIX1 formal result statuses", () => {
+  it("Test 3: FAILED conclusion → FAILED, not FINALIZING_RECORDS", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "CONCLUDED_FAILED",
+        titleSession: {
+          defenseType: "TITLE_DEFENSE",
+          defenseDate: "2026-09-30",
+          defenseTime: "14:00:00",
+          venueOrLink: null,
+          sessionStatus: "CONCLUDED",
+        },
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("FAILED");
+    expect(title?.defenseStatus).not.toBe("FINALIZING_RECORDS");
+    expect(title?.detail).toMatch(/Failed/i);
+  });
+
+  it("Test 4: REVISION_REQUIRED conclusion → REVISION_REQUIRED, not FINALIZING_RECORDS", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titleAdminState: "CONCLUDED_OTHER",
+        titleSession: {
+          defenseType: "TITLE_DEFENSE",
+          defenseDate: null,
+          defenseTime: null,
+          venueOrLink: null,
+          sessionStatus: "CONCLUDED",
+        },
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("REVISION_REQUIRED");
+    expect(title?.defenseStatus).not.toBe("FINALIZING_RECORDS");
+    expect(title?.detail).toMatch(/Revision required/i);
+  });
+
+  it("Test 5: PASSED + RAP pending still FINALIZING_RECORDS", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: true,
+        selectedTitleId: "t",
+        selectedTitleText: "T",
+        titleRapFinalized: false,
+        titleAdminState: "CONCLUDED_PASSED",
+      }),
+    );
+    const title = dto.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("FINALIZING_RECORDS");
+    expect(title?.state).toBe("WAITING");
+  });
+});
+
+describe("CP2-FIX1 polling", () => {
+  it("Test 6: terminal FAILED / REVISION_REQUIRED do not poll", () => {
+    expect(
+      shouldPollJourneySteps([
+        { state: "WAITING", defenseStatus: "FAILED" },
+      ]),
+    ).toBe(false);
+    expect(
+      shouldPollJourneySteps([
+        { state: "WAITING", defenseStatus: "REVISION_REQUIRED" },
+      ]),
+    ).toBe(false);
+    expect(
+      shouldPollJourneySteps([{ state: "WAITING", defenseStatus: "COMPLETED" }]),
+    ).toBe(false);
+  });
+
+  it("Test 6b: active defense statuses still poll", () => {
+    for (const defenseStatus of [
+      "APPLICATION_UNDER_REVIEW",
+      "APPROVED_WAITING_SCHEDULE",
+      "SCHEDULED",
+      "DEFENSE_IN_PROGRESS",
+      "AWAITING_CONCLUSION",
+      "FINALIZING_RECORDS",
+    ] as const) {
+      expect(
+        shouldPollJourneySteps([{ state: "WAITING", defenseStatus }]),
+        defenseStatus,
+      ).toBe(true);
+    }
+  });
+
+  it("Test 6c: another active step can still require polling", () => {
+    expect(
+      shouldPollJourneySteps([
+        { state: "WAITING", defenseStatus: "FAILED" },
+        { state: "WAITING", defenseStatus: "APPLICATION_UNDER_REVIEW" },
+      ]),
+    ).toBe(true);
+    expect(
+      shouldPollJourneySteps([
+        { state: "WAITING", defenseStatus: "FAILED" },
+        { state: "CURRENT", defenseStatus: "NOT_SUBMITTED" },
+      ]),
+    ).toBe(false);
+  });
+});
+
+describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
   it("locks Title when Comp Exam is not passed", () => {
     const dto = evaluateStudentThesisJourney(baseSnap());
     expect(stateOf(dto, "TITLE_DEFENSE")).toBe("LOCKED");

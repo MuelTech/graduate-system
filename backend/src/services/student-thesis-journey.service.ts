@@ -12,6 +12,8 @@ import { isRapStatusComplete } from "./stage-completion";
 import { resolveStrikePolicy } from "./strike-policy";
 import {
   evaluateStudentThesisJourney,
+  toWallClockDate,
+  toWallClockTime,
   type AdminSessionState,
   type DefenseSessionSummary,
   type JourneySnapshot,
@@ -60,7 +62,10 @@ function toAdminState(row: {
   return "NONE";
 }
 
-/** Stage-scoped session summary for Student display (no internal IDs). */
+/**
+ * Stage-scoped session summary for Student display (no internal IDs).
+ * Date/time are wall-clock strings (`YYYY-MM-DD`, `HH:mm:ss`) — not instants.
+ */
 function toSessionSummary(
   schedule: {
     defenseDate: Date | string;
@@ -75,14 +80,8 @@ function toSessionSummary(
   if (!schedule) return null;
   return {
     defenseType,
-    defenseDate:
-      schedule.defenseDate instanceof Date
-        ? schedule.defenseDate.toISOString()
-        : String(schedule.defenseDate ?? ""),
-    defenseTime:
-      schedule.defenseTime instanceof Date
-        ? schedule.defenseTime.toISOString()
-        : String(schedule.defenseTime ?? ""),
+    defenseDate: toWallClockDate(schedule.defenseDate),
+    defenseTime: toWallClockTime(schedule.defenseTime),
     venueOrLink: schedule.venueOrLink ?? null,
     sessionStatus: schedule.sessionStatus,
   };

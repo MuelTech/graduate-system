@@ -41,16 +41,107 @@ export type DefenseSubstatus =
   | "AWAITING_CONCLUSION"
   | "FINALIZING_RECORDS"
   | "COMPLETED"
+  | "FAILED"
+  | "REVISION_REQUIRED"
   | "REJECTED"
   | "CANCELLED_SESSION";
 
-/** Safe schedule/session summary for Student display (no internal IDs). */
+/**
+ * Safe schedule/session summary for Student display (no internal IDs).
+ * defenseDate is wall-clock calendar date `YYYY-MM-DD`.
+ * defenseTime is wall-clock time `HH:mm:ss` — NOT a timezone instant.
+ */
 export interface DefenseSessionSummary {
   defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
   defenseDate: string | null;
   defenseTime: string | null;
   venueOrLink: string | null;
   sessionStatus: string;
+}
+
+/** Wall-clock date `YYYY-MM-DD` from a DB DATE carrier (UTC components). */
+export function toWallClockDate(
+  value: Date | string | null | undefined,
+): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(value.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(value).trim();
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) return toWallClockDate(parsed);
+  return null;
+}
+
+/**
+ * Wall-clock time `HH:mm:ss` from a DB TIME carrier.
+ * Storage convention: `1970-01-01THH:mm:ss.000Z` encodes wall-clock HH:mm.
+ * Use UTC components — never local timezone.
+ */
+export function toWallClockTime(
+  value: Date | string | null | undefined,
+): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const hh = String(value.getUTCHours()).padStart(2, "0");
+    const mm = String(value.getUTCMinutes()).padStart(2, "0");
+    const ss = String(value.getUTCSeconds()).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+  const s = String(value).trim();
+  const hms = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+  if (hms) return `${hms[1]}:${hms[2]}:${hms[3] ?? "00"}`;
+  const iso = /T(\d{2}):(\d{2}):(\d{2})/.exec(s);
+  if (iso) return `${iso[1]}:${iso[2]}:${iso[3]}`;
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) return toWallClockTime(parsed);
+  return null;
+}
+
+/** Display `September 30, 2026` from wall-clock `YYYY-MM-DD` (no TZ shift). */
+export function formatWallClockDateDisplay(
+  ymd: string | null | undefined,
+): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd ?? ""));
+  if (!m) return "—";
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const monthIndex = Number(m[2]) - 1;
+  if (monthIndex < 0 || monthIndex > 11) return "—";
+  return `${months[monthIndex]} ${Number(m[3])}, ${m[1]}`;
+}
+
+/** Display `2:00 PM` from wall-clock `HH:mm[:ss]` (no TZ shift). */
+export function formatWallClockTimeDisplay(
+  hms: string | null | undefined,
+): string {
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(hms ?? "").trim());
+  if (!m) return "—";
+  const h = Number(m[1]);
+  const min = m[2];
+  if (h > 23) return "—";
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${min} ${ampm}`;
 }
 
 export interface JourneyStepView {
@@ -121,6 +212,42 @@ export type AdminSessionState =
   | "CONCLUDED_PASSED"
   | "CONCLUDED_OTHER";
 
+/** Terminal defense outcomes — do not poll merely because Journey state is WAITING. */
+const TERMINAL_DEFENSE_STATUSES: ReadonlySet<DefenseSubstatus> = new Set([
+  "FAILED",
+  "REVISION_REQUIRED",
+  "COMPLETED",
+  "REJECTED",
+  "CANCELLED_SESSION",
+]);
+
+const ACTIVE_DEFENSE_STATUSES: ReadonlySet<DefenseSubstatus> = new Set([
+  "APPLICATION_UNDER_REVIEW",
+  "APPROVED_WAITING_SCHEDULE",
+  "SCHEDULED",
+  "DEFENSE_IN_PROGRESS",
+  "AWAITING_CONCLUSION",
+  "FINALIZING_RECORDS",
+]);
+
+/**
+ * Whether journey data should keep polling for cross-role updates.
+ * Prefer precise defenseStatus over coarse WAITING for terminal results.
+ */
+export function shouldPollJourneySteps(
+  steps: Array<{
+    state: JourneyStepState | string;
+    defenseStatus?: DefenseSubstatus | null;
+  }>,
+): boolean {
+  return steps.some((s) => {
+    const st = s.defenseStatus ?? null;
+    if (st && TERMINAL_DEFENSE_STATUSES.has(st)) return false;
+    if (st && ACTIVE_DEFENSE_STATUSES.has(st)) return true;
+    return s.state === "WAITING";
+  });
+}
+
 export interface StudentThesisJourneyDto {
   currentStep: JourneyStepKey | null;
   selectedTitle: { id: string; titleText: string } | null;
@@ -178,9 +305,13 @@ function adminSubstatus(admin: AdminSessionState): DefenseSubstatus {
     case "REJECTED":
       return "REJECTED";
     case "CONCLUDED_PASSED":
-    case "CONCLUDED_FAILED":
-    case "CONCLUDED_OTHER":
+      // PASSED without full stage completion still finalizes RAP/records.
       return "FINALIZING_RECORDS";
+    case "CONCLUDED_FAILED":
+      return "FAILED";
+    case "CONCLUDED_OTHER":
+      // REVISION_REQUIRED and other non-passing formal outcomes.
+      return "REVISION_REQUIRED";
     default:
       return "NOT_SUBMITTED";
   }
@@ -204,8 +335,9 @@ function adminWaitingText(
     case "CANCELLED":
       return `Your ${kind} Defense session was cancelled. Await rescheduling or further instructions.`;
     case "CONCLUDED_FAILED":
+      return `Defense result: Failed. The formal ${kind} Defense result has been recorded.`;
     case "CONCLUDED_OTHER":
-      return `${kind} Defense was concluded without a passing result.`;
+      return `Revision required. Follow the Graduate School / panel instructions for required revisions.`;
     default:
       return null;
   }
@@ -228,6 +360,10 @@ function adminNextAction(
       return "Await the official defense result.";
     case "CANCELLED":
       return "Await rescheduling or further instructions from the Graduate School.";
+    case "CONCLUDED_FAILED":
+      return "Contact / await instructions from the Graduate School regarding the next required action.";
+    case "CONCLUDED_OTHER":
+      return "Follow the Graduate School / panel instructions for required revisions.";
     default:
       return `Await ${kind} Defense review and formal conclusion.`;
   }
