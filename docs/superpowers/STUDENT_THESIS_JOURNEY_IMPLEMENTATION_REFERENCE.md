@@ -1,8 +1,9 @@
 # Student Thesis Journey — Implementation Reference
 
 **Date:** 2026-09-25  
-**Implementation branch:** `refactor/student-thesis-journey`  
-**Parent branch:** `refactor/defense-workflow`  
+**Historical implementation branch:** `refactor/student-thesis-journey`  
+**Integration branch:** `refactor/defense-workflow`  
+**Active correction branch:** `refactor/defense-workflow-corrections`  
 **Status:** Documentation-only implementation guide
 
 ## 1. Purpose
@@ -18,7 +19,7 @@ Read these documents first, in order:
 5. `docs/superpowers/plans/2026-09-25-student-thesis-journey-refactor.md` — WP1–WP13 completed/history
 6. this reference
 
-The branch is intentionally clean and starts from `refactor/defense-workflow`.
+The completed Student Thesis Journey work was integrated into `refactor/defense-workflow`. New correction work must be performed on `refactor/defense-workflow-corrections`.
 
 The experimental branch `refactor/student-thesis-journey-rebuild` is historical/reference only. Do not copy its implementation code, schema changes, migrations, seeds, tests, or UI wholesale.
 
@@ -26,7 +27,7 @@ The experimental branch `refactor/student-thesis-journey-rebuild` is historical/
 
 WP1–WP13 are implemented and accepted at the pre-correction baseline `587afd3cf1d1e7c6b35ce5cbcf3ae9ca66a10c0b`. Manual QA then exposed integration/design gaps.
 
-Do **not** continue with a hypothetical WP14 from the old plan. Use the 2026-09-26 correction packages (CP1 onward).
+Do **not** continue with a hypothetical WP14 from the old plan. Use the 2026-09-26 correction packages (CP1 onward) on `refactor/defense-workflow-corrections`.
 
 Canonical corrections include:
 
