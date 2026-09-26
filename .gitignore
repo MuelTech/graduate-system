@@ -21,3 +21,5 @@ docs/EARIST_GS_UIUX_Design_Documentation_v8.md
 docs/GSIS_Requirements_Matrix.md
 docs/GS_System_Workflow_Revised-6-3-26_Updated.md
 docs/Tech Stack for the system (1).md
+# Build output
+dist/
