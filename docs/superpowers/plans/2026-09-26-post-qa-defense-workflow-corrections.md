@@ -276,8 +276,10 @@ Complete the post-evaluation defense workflow.
 ### Proposal/Final
 
 ```text
-all required evaluations FINALIZED
-→ system generates Oral Examination Summary
+each evaluator: DRAFT → e-sign → FINALIZED
+→ each finalized evaluation becomes an immutable official record
+→ when all required evaluations are FINALIZED
+→ system generates Oral Examination Summary from those records
 → Rapporteur finalizes official RAP content
 → Chairman reviews grade/summary and records formal result
 → RAP routed to required evaluator/scorer signatories
@@ -304,9 +306,49 @@ panel deliberation
 - do not rely on account role alone;
 - Rapporteur note/finalize actions must require the session's `RAPPORTEUR` assignment.
 
+### Official printable records
+
+Implement persistent, reproducible official outputs for Proposal/Final:
+
+- one finalized **Oral Examination Criteria** output per evaluator;
+- one generated **Oral Examination Summary** per defense session;
+- finalized RAP output once its required signatures are complete.
+
+The individual Criteria output must be populated from the evaluator's finalized structured record, including Group I, Group II, averages, recommendations, rating/remarks where supported, evaluator identity, and e-signature. Do not ask Admin to re-encode scores.
+
+Draft/unsigned evaluations must not be treated as official printable records.
+
+### Admin Defense Records page
+
+Add a read-only Admin defense-record/report surface for each defense session.
+
+At minimum show:
+
+- defense/student/program/schedule overview;
+- formal result;
+- list of required evaluators and their finalization state;
+- View / Print / Download for each finalized individual Oral Examination Criteria;
+- View / Print / Download for the generated Oral Examination Summary;
+- RAP signature progress;
+- View / Print / Download for finalized RAP.
+
+Admin must not edit individual academic scores or replace the Chairman's formal-result action from this reports page.
+
 ### Student RAP
 
 Add Student-safe status/view/download access for finalized RAP.
+
+### Validation
+
+Manually verify:
+
+1. one evaluator finalizes → only that evaluator's official Criteria record is available; Summary remains not ready while required evaluators are incomplete;
+2. all required evaluators finalize → Summary is generated from finalized records without manual re-entry;
+3. Admin can open the defense record and print/download each finalized Criteria and the Summary;
+4. draft/unsigned evaluations are never labeled as official;
+5. Admin report access cannot mutate evaluator scores;
+6. Chairman remains the formal-result authority;
+7. finalized RAP becomes view/download/printable only according to the confirmed RAP lifecycle.
 
 ### Stop
 
