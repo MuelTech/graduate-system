@@ -4,7 +4,8 @@
 **System:** EARIST Graduate School Information System (GS-IS)  
 **Campus Context:** Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST), Manila Campus  
 **Scope:** Graduate Student Thesis / Dissertation workflow  
-**Target Implementation Branch:** `refactor/defense-workflow` (parent); Student Thesis Journey implementation is isolated on `refactor/student-thesis-journey`  
+**Integration Branch:** `refactor/defense-workflow`  
+**Active Correction Branch:** `refactor/defense-workflow-corrections`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
 **Version:** 1.6-draft  
 **Last Updated:** 2026-09-26  
@@ -15,7 +16,7 @@
 
 **CONFIRMED_CLIENT / CONFIRMED_PROJECT_DESIGN**
 
-Manual QA plus the supplied Stage #1/#2/#3 guides, Oral Examination forms, Adviser Certification form, and client clarifications produced a workflow correction after WP1–WP13.
+WP1–WP13 and the Student Thesis Journey documentation were merged back into `refactor/defense-workflow`. Manual QA plus the supplied Stage #1/#2/#3 guides, Oral Examination forms, Adviser Certification form, and client clarifications produced the next workflow correction pass on `refactor/defense-workflow-corrections`.
 
 The detailed correction design is:
 
