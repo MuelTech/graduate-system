@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolvePanelistAdviserFlags } from "./admin-panelist.repository";
+import { resolvePanelistAdviserFlags } from "../../../src/repositories/admin-panelist.repository";
 
 describe("resolvePanelistAdviserFlags", () => {
   it("status-only update preserves external and availability", () => {

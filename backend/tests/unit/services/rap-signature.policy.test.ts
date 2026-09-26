@@ -4,7 +4,7 @@ import {
   isRapReadyToFinalize,
   rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
-} from "./rap-signature.policy";
+} from "../../../src/services/rap-signature.policy";
 
 describe("RAP signature policy (interim)", () => {
   it("marks policy as interim all-participants (form sets UNRESOLVED)", () => {

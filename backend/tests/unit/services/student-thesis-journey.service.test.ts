@@ -5,11 +5,11 @@ const prismaMock = vi.hoisted(() => ({
   thesisRecord: { findFirst: vi.fn() },
 }));
 
-vi.mock("../config/database", () => ({
+vi.mock("../../../src/config/database", () => ({
   default: prismaMock,
 }));
 
-import { StudentThesisJourneyService } from "./student-thesis-journey.service";
+import { StudentThesisJourneyService } from "../../../src/services/student-thesis-journey.service";
 
 function studentRow(overrides: Record<string, unknown> = {}) {
   return {

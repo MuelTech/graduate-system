@@ -14,7 +14,7 @@ import {
   isStageUnlockedByPriorStatus,
   normalizeDefenseOutcome,
   validateTitleConclusionSelection,
-} from "./defense-workflow.rules";
+} from "../../../src/services/defense-workflow.rules";
 
 describe("APPROVED != PASSED", () => {
   it("does not unlock the next stage from APPROVED alone", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DefenseCommitteePolicy,
   getSessionTotal,
-} from "./defense-committee.policy";
+} from "../../../src/services/defense-committee.policy";
 
 const policy = new DefenseCommitteePolicy();
 

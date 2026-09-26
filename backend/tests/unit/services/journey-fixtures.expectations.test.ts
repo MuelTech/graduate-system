@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateStudentThesisJourney,
   type JourneySnapshot,
-} from "./student-thesis-journey.rules";
+} from "../../../src/services/student-thesis-journey.rules";
 import {
   JOURNEY_FIXTURE_EXPECTATIONS,
   JOURNEY_FIXTURE_KEYS,
   STRIKE_POLICY_ON_EXPECTATIONS,
-} from "./journey-fixture-expectations";
+} from "../../../src/services/journey-fixture-expectations";
 
 function snap(partial: Partial<JourneySnapshot>): JourneySnapshot {
   return {

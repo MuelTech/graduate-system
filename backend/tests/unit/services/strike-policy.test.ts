@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   getFinalOptionalGates,
   resolveStrikePolicy,
-} from "./strike-policy";
-import { DEFAULT_FINAL_OPTIONAL_GATES } from "./defense-gates.config";
+} from "../../../src/services/strike-policy";
+import { DEFAULT_FINAL_OPTIONAL_GATES } from "../../../src/services/defense-gates.config";
 
 describe("resolveStrikePolicy", () => {
   afterEach(() => {

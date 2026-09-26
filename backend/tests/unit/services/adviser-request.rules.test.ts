@@ -11,7 +11,7 @@ import {
   isFinalApprovedRequest,
   mapAdviserResponseToOverallStatus,
   mapDeanDecisionToOverallStatus,
-} from "./adviser-request.rules";
+} from "../../../src/services/adviser-request.rules";
 
 const validPanelist = {
   defenseRole: "PANELIST",

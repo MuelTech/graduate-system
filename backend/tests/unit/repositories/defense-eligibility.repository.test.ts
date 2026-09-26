@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasStageDoc } from "./defense-eligibility.repository";
+import { hasStageDoc } from "../../../src/repositories/defense-eligibility.repository";
 
 describe("hasStageDoc (stage-scoped evidence)", () => {
   const docs = [

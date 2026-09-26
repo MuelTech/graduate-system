@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateStudentThesisJourney,
   type JourneySnapshot,
-} from "./student-thesis-journey.rules";
+} from "../../../src/services/student-thesis-journey.rules";
 
 function baseSnap(overrides: Partial<JourneySnapshot> = {}): JourneySnapshot {
   return {

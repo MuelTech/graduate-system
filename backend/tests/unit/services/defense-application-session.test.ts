@@ -3,7 +3,7 @@ import {
   formatNameList,
   pickCurrentDefenseSchedule,
   summarizeCommittee,
-} from "./defense-application-session";
+} from "../../../src/services/defense-application-session";
 
 const user = (id: string, first: string, last: string) => ({
   id,

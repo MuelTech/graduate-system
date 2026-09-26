@@ -5,7 +5,7 @@ import {
   computeStageCompletion,
   isProposalStageComplete,
   isTitleStageComplete,
-} from "./stage-completion";
+} from "../../../src/services/stage-completion";
 
 describe("stage completion (derived)", () => {
   it("Title is complete only with PASSED + selected title + finalized Title RAP", () => {

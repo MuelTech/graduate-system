@@ -12,7 +12,7 @@ import {
   matchesStatusRefine,
   pickActiveCurrentStageSchedule,
   resolveDisplayStatus,
-} from "./defense-application-workflow";
+} from "../../../src/services/defense-application-workflow";
 
 const sched = (
   id: string,

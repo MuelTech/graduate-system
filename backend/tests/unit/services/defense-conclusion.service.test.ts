@@ -3,7 +3,7 @@ import {
   DefenseConclusionService,
   hasConclusionAuthority,
   validateConclusionPreconditions,
-} from "./defense-conclusion.service";
+} from "../../../src/services/defense-conclusion.service";
 
 const baseInput = {
   alreadyConcluded: false,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppError } from "../utils/AppError";
+import { AppError } from "../../../src/utils/AppError";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
@@ -31,11 +31,11 @@ const prismaMock = vi.hoisted(() => {
   };
 });
 
-vi.mock("../config/database", () => ({
+vi.mock("../../../src/config/database", () => ({
   default: prismaMock,
 }));
 
-import { AdviserRequestService } from "./adviser-request.service";
+import { AdviserRequestService } from "../../../src/services/adviser-request.service";
 
 function panelistProfile(overrides: Record<string, unknown> = {}) {
   return {
@@ -741,7 +741,7 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
 
   it("legacy approveAdviserRequest bypass is retired", async () => {
     const { ThesisRepository } = await import(
-      "../repositories/thesis.repository"
+      "../../../src/repositories/thesis.repository"
     );
     const repo = new ThesisRepository();
     await expect(

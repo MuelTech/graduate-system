@@ -3,13 +3,13 @@ import {
   DEFENSE_TYPE_STAGE,
   type EligibilitySnapshot,
   type MissingRequirement,
-} from "../interfaces/defense-eligibility.interfaces";
+} from "../../../src/interfaces/defense-eligibility.interfaces";
 import {
   DefenseEligibilityService,
   researchVariablesSatisfied,
   type ApplyTitleEligibilityInput,
-} from "./defense-eligibility.service";
-import { DEFAULT_FINAL_OPTIONAL_GATES } from "./defense-gates.config";
+} from "../../../src/services/defense-eligibility.service";
+import { DEFAULT_FINAL_OPTIONAL_GATES } from "../../../src/services/defense-gates.config";
 
 const baseSnap = (): EligibilitySnapshot => ({
   studentId: "s1",
