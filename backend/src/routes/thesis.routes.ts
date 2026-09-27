@@ -419,13 +419,66 @@ router.put(
   requireRole(["PANELIST"]),
   thesisController.saveRapporteurWorkspaceNotes,
 );
-// Formal conclusion — sole writer of academic outcome (interim: ADMIN until OPEN_QUESTION §14.4).
+// CP7 formal conclusion — session CHAIRMAN assignment is authoritative (not account role).
 // Score completion never concludes; RAP is created only here.
+router.post(
+  "/defense/:scheduleId/conclusion",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.recordFormalConclusion,
+);
+// Legacy path delegates to the same secure service.
 router.post(
   "/defense/:scheduleId/conclude",
   authenticateJWT,
-  requireRole(["ADMIN"]),
+  requireRole(["PANELIST"]),
   thesisController.concludeDefense,
+);
+
+// CP7: Rapporteur finalize defense notes (irreversible)
+router.post(
+  "/defense/:scheduleId/rapporteur/finalize",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.finalizeRapporteurNotes,
+);
+
+// CP7: Official Criteria (ADMIN or owning evaluator)
+router.get(
+  "/defense/:scheduleId/records/criteria/:panelAssignmentId",
+  authenticateJWT,
+  requireRole(["ADMIN", "PANELIST"]),
+  thesisController.getOfficialCriteria,
+);
+
+// CP7: Oral Examination Summary
+router.get(
+  "/defense/:scheduleId/records/summary",
+  authenticateJWT,
+  requireRole(["ADMIN", "PANELIST", "STUDENT"]),
+  thesisController.getOralExamSummary,
+);
+
+// CP7: Admin Defense Records (read-only)
+router.get(
+  "/defense/records",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAdminDefenseRecords,
+);
+router.get(
+  "/defense/:scheduleId/records",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getAdminDefenseRecordDetail,
+);
+
+// CP7: Student-owned RAP access
+router.get(
+  "/student/defense/:scheduleId/rap",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentDefenseRap,
 );
 
 // ADMIN: Manage RAP Reports

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -239,8 +240,15 @@ export default function AdminRAPReportsPage() {
           RAP Report Management
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Generate, distribute, and track RAP Report e-signatures
+          Read-only RAP signature status. RAP is created automatically after the
+          Chairman formal result — use Defense Records for official outputs.
         </p>
+        <Link
+          href="/admin/thesis/defense-records"
+          className="mt-2 inline-block text-sm text-(--earist-primary) underline"
+        >
+          Open Defense Records →
+        </Link>
       </div>
 
       {/* Summary Cards */}
@@ -485,13 +493,14 @@ export default function AdminRAPReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Actions */}
+            {/* Actions — CP7: RAP lifecycle is not Admin-driven */}
             <div className="flex gap-2">
               {selectedReportData.status === "pending" && (
-                <Button onClick={() => handleDistribute(selectedReportData.id)} className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
-                  <Send className="mr-2 h-4 w-4" />
-                  Generate & Distribute
-                </Button>
+                <p className="flex-1 rounded border border-(--earist-border-gray) p-2 text-xs text-(--earist-body-text)">
+                  RAP is generated after the Chairman records the formal result.
+                  Signature tasks appear immediately — no Admin generate step is
+                  required.
+                </p>
               )}
               {selectedReportData.status === "finalized" && (
                 <>

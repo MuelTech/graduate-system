@@ -52,6 +52,7 @@ export type DefenseSubstatus =
  * defenseTime is wall-clock time `HH:mm:ss` — NOT a timezone instant.
  */
 export interface DefenseSessionSummary {
+  scheduleId: string;
   defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
   defenseDate: string | null;
   defenseTime: string | null;

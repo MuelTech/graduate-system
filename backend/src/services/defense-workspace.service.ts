@@ -52,6 +52,9 @@ export interface DefenseWorkspaceDto {
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
+    canFinalizeRapporteurNotes: boolean;
+    canRecordFormalResult: boolean;
+    canViewFinalizedRapporteurNotes: boolean;
   };
   documents: Array<{
     id: string;
@@ -68,9 +71,21 @@ export interface DefenseWorkspaceDto {
     evaluationStatus: "NOT_STARTED" | "DRAFT" | "FINALIZED" | "NONE";
   }>;
   rapporteurDraft: { notes: string | null } | null;
+  rapporteurNotesFinalizedAt: string | null;
   evaluationStatus: "NOT_STARTED" | "DRAFT" | "FINALIZED" | "NONE";
   sessionStatus: string;
   conclusionsPresent: boolean;
+  evaluationProgress: {
+    evaluatorAssignments: number;
+    finalizedEvaluations: number;
+  };
+  oralSummary: {
+    ready: boolean;
+    overallAverage: number | null;
+    finalRating: string | null;
+  } | null;
+  formalResult: string | null;
+  rapStatus: string | null;
 }
 
 function wallDate(v: Date | null | undefined): string | null {
@@ -165,7 +180,17 @@ export class DefenseWorkspaceService {
         oralExamScores: {
           select: { panelId: true, status: true },
         },
-        conclusion: { select: { id: true } },
+        conclusion: {
+          select: { id: true, outcome: true },
+        },
+        oralExamSummary: {
+          select: { id: true, overallAverage: true, finalRating: true },
+        },
+        rapReports: {
+          select: { status: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
@@ -306,6 +331,32 @@ export class DefenseWorkspaceService {
             ? "DRAFT"
             : "NOT_STARTED";
 
+    // CP7 readiness
+    const evaluatorRoles = committeePolicy
+      .getEvaluatorRoles(defenseType as never)
+      .map(String);
+    const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+      evaluatorRoles.includes(String(p.role)),
+    );
+    const finalizedEvaluations = evaluatorAssignments.filter(
+      (p) => evaluationByPanel.get(p.id) === "FINALIZED",
+    ).length;
+    const notesFinalizedAt = schedule.rapporteurNotesFinalizedAt ?? null;
+    const isChairman = role === "CHAIRMAN";
+    const canFinalizeRapporteurNotes =
+      role === "RAPPORTEUR" && !notesFinalizedAt;
+    const canViewFinalizedRapporteurNotes =
+      Boolean(notesFinalizedAt) &&
+      (isChairman || role === "RAPPORTEUR") &&
+      !schedule.conclusion;
+    const summaryReady = Boolean(schedule.oralExamSummary);
+    const canRecordFormalResult =
+      isChairman &&
+      !schedule.conclusion &&
+      String(schedule.sessionStatus) === "AWAITING_CONCLUSION" &&
+      Boolean(notesFinalizedAt) &&
+      (defenseType === "TITLE_DEFENSE" || summaryReady);
+
     return {
       schedule: {
         id: schedule.id,
@@ -332,6 +383,9 @@ export class DefenseWorkspaceService {
         canEditRapporteurNotes,
         canViewTitleDeliberation,
         canViewTitleChairmanResult,
+        canFinalizeRapporteurNotes,
+        canRecordFormalResult,
+        canViewFinalizedRapporteurNotes,
       },
       documents: docs,
       proposedTitles:
@@ -339,17 +393,37 @@ export class DefenseWorkspaceService {
           ? (schedule.thesis?.thesisTitles ?? []).slice(0, 3)
           : [],
       roster,
-      // Draft notes visible only to assigned Rapporteur.
+      // Draft notes visible only to assigned Rapporteur; finalized content also to Chairman.
       rapporteurDraft: canEditRapporteurNotes
         ? { notes: schedule.rapporteurNotes }
+        : canViewFinalizedRapporteurNotes
+          ? { notes: schedule.rapporteurNotes }
+          : null,
+      rapporteurNotesFinalizedAt: notesFinalizedAt
+        ? notesFinalizedAt.toISOString()
         : null,
       evaluationStatus,
       sessionStatus: schedule.sessionStatus,
       conclusionsPresent: Boolean(schedule.conclusion),
+      evaluationProgress: {
+        evaluatorAssignments: evaluatorAssignments.length,
+        finalizedEvaluations,
+      },
+      oralSummary: schedule.oralExamSummary
+        ? {
+            ready: true,
+            overallAverage: Number(schedule.oralExamSummary.overallAverage),
+            finalRating: schedule.oralExamSummary.finalRating ?? null,
+          }
+        : { ready: false, overallAverage: null, finalRating: null },
+      formalResult: schedule.conclusion
+        ? String(schedule.conclusion.outcome)
+        : null,
+      rapStatus: schedule.rapReports?.[0]?.status ?? null,
     };
   }
 
-  /** CP6: only the session Rapporteur may write draft notes. */
+  /** CP6/CP7: only the session Rapporteur may write draft notes; locked after finalization. */
   async saveRapporteurNotes(
     scheduleId: string,
     userId: string,
@@ -357,7 +431,10 @@ export class DefenseWorkspaceService {
   ): Promise<{ saved: true }> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
-      select: { sessionStatus: true },
+      select: {
+        sessionStatus: true,
+        rapporteurNotesFinalizedAt: true,
+      },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
@@ -366,6 +443,14 @@ export class DefenseWorkspaceService {
       throw new AppError(
         "Only the assigned Rapporteur may edit defense notes.",
         403,
+      );
+    }
+
+    // CP7: finalized notes are immutable through the normal workspace.
+    if (schedule.rapporteurNotesFinalizedAt) {
+      throw new AppError(
+        "Defense notes are finalized and can no longer be edited.",
+        409,
       );
     }
 
@@ -381,6 +466,7 @@ export class DefenseWorkspaceService {
     const result = await prisma.defenseSchedule.updateMany({
       where: {
         id: scheduleId,
+        rapporteurNotesFinalizedAt: null,
         sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] },
       },
       data: { rapporteurNotes: notes },

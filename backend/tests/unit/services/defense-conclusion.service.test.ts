@@ -1,101 +1,178 @@
 import { describe, expect, it } from "vitest";
 import {
   DefenseConclusionService,
-  hasConclusionAuthority,
+  isSessionChairmanRole,
+  resolveExplicitOutcome,
   validateConclusionPreconditions,
 } from "../../../src/services/defense-conclusion.service";
 
 const baseInput = {
   alreadyConcluded: false,
-  actorRole: "ADMIN",
+  sessionRole: "CHAIRMAN",
+  isSessionChairman: true,
   evaluatorAssignments: 2,
-  submittedEvaluatorScores: 2,
+  finalizedEvaluatorScores: 2,
   defenseType: "PROPOSAL_DEFENSE",
+  sessionStatus: "AWAITING_CONCLUSION",
+  rapporteurNotesFinalized: true,
+  oralSummaryExists: true,
   selectedTitleId: null,
   thesisTitleIds: ["a", "b", "c"],
+  outcomeProvided: true,
 };
 
-describe("conclusion authorization (interim ADMIN)", () => {
-  it("allows ADMIN only", () => {
-    expect(hasConclusionAuthority("ADMIN")).toBe(true);
-    expect(hasConclusionAuthority("PANELIST")).toBe(false);
-    expect(hasConclusionAuthority("STUDENT")).toBe(false);
-    expect(hasConclusionAuthority("CUSTOM")).toBe(false);
-  });
-
-  it("rejects non-admin concluder", () => {
+describe("CP7 Chairman conclusion authority", () => {
+  it("Test 11: ADMIN without session CHAIRMAN assignment cannot conclude", () => {
     const result = validateConclusionPreconditions(
-      { ...baseInput, actorRole: "PANELIST" },
+      {
+        ...baseInput,
+        sessionRole: null,
+        isSessionChairman: false,
+      },
       "PASSED",
     );
     expect(result.ok).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/authorized concluder/i);
+    expect(result.statusCode).toBe(403);
+    expect(result.errors.join(" ")).toMatch(/session Chairman/i);
+  });
+
+  it("Test 12: ordinary PANELIST cannot conclude", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        sessionRole: "PANELIST",
+        isSessionChairman: false,
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
+  });
+
+  it("Test 13: session CHAIRMAN can conclude when preconditions hold", () => {
+    const result = validateConclusionPreconditions(baseInput, "PASSED");
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("PASSED");
+  });
+
+  it("Test 14: missing outcome is 400 and never defaults to PASSED", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, outcomeProvided: false },
+      undefined,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+    expect(result.outcome).toBeNull();
+  });
+
+  it("rejects invalid outcome values", () => {
+    const result = validateConclusionPreconditions(baseInput, "APPROVED");
+    expect(result.ok).toBe(false);
   });
 });
 
-describe("score completion does not conclude", () => {
-  it("requires all evaluator evaluations to be finalized before conclusion", () => {
+describe("CP7 readiness gates", () => {
+  it("Test 16: Rapporteur notes not finalized → 409", () => {
     const result = validateConclusionPreconditions(
-      { ...baseInput, submittedEvaluatorScores: 1 },
+      { ...baseInput, rapporteurNotesFinalized: false },
       "PASSED",
     );
     expect(result.ok).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/evaluator evaluations must be finalized/i);
+    expect(result.statusCode).toBe(409);
+    expect(result.errors.join(" ")).toMatch(/Rapporteur/i);
   });
 
-  it("blocks double conclusion", () => {
+  it("Test 15: missing Oral Summary on Proposal/Final → not ready", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, oralSummaryExists: false },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/Oral Examination Summary/i);
+  });
+
+  it("requires all evaluators FINALIZED", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, finalizedEvaluatorScores: 1 },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("Test 17: second conclusion → 409", () => {
     const result = validateConclusionPreconditions(
       { ...baseInput, alreadyConcluded: true },
       "PASSED",
     );
     expect(result.ok).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/already been concluded/i);
+    expect(result.statusCode).toBe(409);
+  });
+
+  it("requires session AWAITING_CONCLUSION", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, sessionStatus: "IN_PROGRESS" },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
   });
 });
 
-describe("Title conclusion requires selected title", () => {
-  it("rejects Title PASSED without selection", () => {
+describe("CP7 Title conclusion selected-title rules", () => {
+  it("Test 18: Title PASSED without selectedTitleId → 400", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
         selectedTitleId: null,
       },
       "PASSED",
     );
     expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
   });
 
-  it("rejects Title PASSED with foreign title id", () => {
+  it("Test 19: cross-thesis selected title rejected", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
         selectedTitleId: "zzz",
       },
       "PASSED",
     );
     expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
   });
 
-  it("allows Title PASSED with a proposed title", () => {
+  it("Title PASSED with a student title is allowed", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
         selectedTitleId: "b",
       },
       "PASSED",
     );
     expect(result.ok).toBe(true);
-    expect(result.outcome).toBe("PASSED");
   });
 
-  it("does not require title selection for FAILED Title conclusion", () => {
+  it("Title FAILED does not require selected title", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
         selectedTitleId: null,
       },
       "FAILED",
@@ -103,17 +180,45 @@ describe("Title conclusion requires selected title", () => {
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("FAILED");
   });
+
+  it("Title skips numerical Summary/evaluator prerequisites", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(true);
+  });
 });
 
-describe("outcome normalization", () => {
+describe("CP7 outcome safety", () => {
   it("accepts REVISION alias and maps to REVISION_REQUIRED", () => {
+    expect(resolveExplicitOutcome("REVISION")).toBe("REVISION_REQUIRED");
     const svc = new DefenseConclusionService();
-    const outcome = svc.assertCanConclude(baseInput, "REVISION");
+    const outcome = svc.assertCanConclude(
+      { ...baseInput, outcomeProvided: true },
+      "REVISION",
+    );
     expect(outcome).toBe("REVISION_REQUIRED");
   });
 
-  it("rejects APPROVED as an outcome", () => {
-    const result = validateConclusionPreconditions(baseInput, "APPROVED");
-    expect(result.ok).toBe(false);
+  it("Test 20: outcome is independent of numeric score", () => {
+    // Even with a high average the Chairman may record REVISION_REQUIRED.
+    const result = validateConclusionPreconditions(baseInput, "REVISION_REQUIRED");
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("REVISION_REQUIRED");
+  });
+
+  it("isSessionChairmanRole recognizes CHAIRMAN only", () => {
+    expect(isSessionChairmanRole("CHAIRMAN")).toBe(true);
+    expect(isSessionChairmanRole("PANELIST")).toBe(false);
+    expect(isSessionChairmanRole(null)).toBe(false);
+    expect(isSessionChairmanRole("ADMIN")).toBe(false);
   });
 });

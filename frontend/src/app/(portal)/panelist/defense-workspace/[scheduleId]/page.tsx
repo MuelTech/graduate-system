@@ -10,6 +10,7 @@ import { DefenseWorkspaceHeader } from "@/components/defense-workspace/workspace
 import { DefenseRoster } from "@/components/defense-workspace/defense-roster";
 import { OralEvaluationForm } from "@/components/defense-workspace/oral-evaluation-form";
 import { RapporteurNotesWorkspace } from "@/components/defense-workspace/rapporteur-notes-workspace";
+import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman-conclusion-panel";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 export default function DefenseWorkspacePage() {
@@ -60,7 +61,9 @@ export default function DefenseWorkspacePage() {
   const isTitle = data.schedule.defenseType === "TITLE_DEFENSE";
   const canEvaluate = data.capabilities.canEvaluate && !isTitle;
   const isRapporteur = data.capabilities.canEditRapporteurNotes;
+  const isChairman = data.myAssignment.role === "CHAIRMAN";
   const primaryDoc = data.documents[0];
+  const progress = data.evaluationProgress;
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -68,6 +71,23 @@ export default function DefenseWorkspacePage() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
+          {!isTitle && (
+            <Card>
+              <CardContent className="pt-5 text-xs text-(--earist-body-text)">
+                <p>
+                  Evaluations finalized: {progress.finalizedEvaluations} /{" "}
+                  {progress.evaluatorAssignments}
+                </p>
+                <p>
+                  Summary:{" "}
+                  {data.oralSummary?.ready
+                    ? `Ready${data.oralSummary.overallAverage != null ? ` — avg ${data.oralSummary.overallAverage}` : ""}`
+                    : "Not ready"}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {isTitle && (
             <Card>
               <CardHeader>
@@ -82,12 +102,6 @@ export default function DefenseWorkspacePage() {
                     {t.titleText}
                   </p>
                 ))}
-                {data.capabilities.canViewTitleChairmanResult && (
-                  <p className="text-xs text-(--earist-body-text)">
-                    Formal Title Result: Official title selection and formal result
-                    are completed in the Chairman conclusion phase.
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
@@ -96,14 +110,23 @@ export default function DefenseWorkspacePage() {
             <OralEvaluationForm scheduleId={scheduleId} />
           )}
 
-          {isRapporteur && (
+          {(isRapporteur ||
+            (Boolean(data.rapporteurNotesFinalizedAt) &&
+              (isChairman || isRapporteur))) && (
             <RapporteurNotesWorkspace
               scheduleId={scheduleId}
               initialNotes={data.rapporteurDraft?.notes ?? ""}
+              notesFinalizedAt={data.rapporteurNotesFinalizedAt}
+              canFinalize={data.capabilities.canFinalizeRapporteurNotes}
+              evaluationProgress={progress}
             />
           )}
 
-          {!canEvaluate && !isRapporteur && (
+          {isChairman && (
+            <ChairmanConclusionPanel scheduleId={scheduleId} workspace={data} />
+          )}
+
+          {!canEvaluate && !isRapporteur && !isChairman && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Your session role</CardTitle>
@@ -115,21 +138,8 @@ export default function DefenseWorkspacePage() {
                     : "Read-only defense session view. Evaluation is limited to assigned evaluators."}
                 </p>
                 {data.sessionStatus === "AWAITING_CONCLUSION" && (
-                  <p>
-                    Evaluations complete — awaiting formal conclusion.
-                    {data.myAssignment.role === "CHAIRMAN" &&
-                      " Formal conclusion will be available in the post-evaluation workflow."}
-                  </p>
+                  <p>Evaluations complete — awaiting formal conclusion.</p>
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          {data.myAssignment.role === "CHAIRMAN" && !isTitle && (
-            <Card>
-              <CardContent className="pt-5 text-xs text-(--earist-body-text)">
-                Formal conclusion: Available in the post-evaluation workflow once
-                all required evaluations are finalized.
               </CardContent>
             </Card>
           )}

@@ -20,6 +20,7 @@ import type {
   DefenseSubstatus,
   JourneyStepView,
 } from "@/types/student-thesis-journey";
+import { StudentRapPanel } from "@/components/student/student-rap-panel";
 
 export function DefenseScheduleSummary({
   session,
@@ -59,6 +60,9 @@ export function DefenseScheduleSummary({
           {sessionStatusLabel(session.sessionStatus)}
         </p>
       </div>
+      {session.scheduleId && (
+        <StudentRapPanel scheduleId={session.scheduleId} />
+      )}
     </div>
   );
 }

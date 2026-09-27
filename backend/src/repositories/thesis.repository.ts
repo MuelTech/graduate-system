@@ -1,10 +1,7 @@
 import prisma from "../config/database";
 import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
 import { DefenseCommitteePolicy } from "../services/defense-committee.policy";
-import {
-  rapStatusAfterSignatures,
-  resolveRapSignatureRequirements,
-} from "../services/rap-signature.policy";
+import { AppError } from "../utils/AppError";
 
 export class ThesisRepository {
   async getStudentByUserId(userId: string) {
@@ -34,6 +31,13 @@ export class ThesisRepository {
   }
 
   /** Read model for formal conclusion preconditions (scores complete, not already concluded). */
+  async getSessionPanelAssignments(scheduleId: string, userId: string) {
+    return prisma.panelAssignment.findMany({
+      where: { scheduleId },
+      select: { id: true, userId: true, role: true },
+    });
+  }
+
   async getDefenseScheduleForConclude(scheduleId: string) {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -45,9 +49,10 @@ export class ThesisRepository {
           },
         },
         panelAssignments: {
-          select: { id: true, role: true },
+          select: { id: true, role: true, userId: true },
         },
         oralExamScores: { select: { id: true, status: true, panelId: true } },
+        oralExamSummary: { select: { id: true } },
       },
     });
     if (!schedule) return null;
@@ -73,6 +78,9 @@ export class ThesisRepository {
       submittedEvaluatorScores: finalizedEvaluatorScores,
       finalizedEvaluatorScores,
       thesisTitleIds: schedule.thesis.thesisTitles.map((t) => t.id),
+      sessionStatus: schedule.sessionStatus as string,
+      rapporteurNotesFinalized: Boolean(schedule.rapporteurNotesFinalizedAt),
+      oralSummaryExists: Boolean(schedule.oralExamSummary),
     };
   }
 
@@ -747,46 +755,10 @@ export class ThesisRepository {
     });
   }
 
-  // Securely save the Base64 signature and server timestamp
+  // CP7: own-signature CAS via RapReportService (PNG evidence + finalizedAt).
   async signRapReport(sigId: string, userId: string, signatureData: string) {
-    const signature = await prisma.rapReportSignature.findFirst({
-      where: { id: sigId, userId, isSigned: false },
-    });
-
-    if (!signature)
-      throw new Error("Signature request not found or already signed!");
-
-    return prisma.$transaction(async (tx) => {
-      const signed = await tx.rapReportSignature.update({
-        where: { id: sigId },
-        data: {
-          isSigned: true,
-          signatureData,
-          signedAt: new Date(),
-        },
-      });
-
-      const slots = await tx.rapReportSignature.findMany({
-        where: { rapId: signature.rapId },
-        select: { required: true, isSigned: true },
-      });
-
-      // Only required signatories block finalization (form policy UNRESOLVED).
-      const nextStatus = rapStatusAfterSignatures(slots);
-      await tx.rapReport.update({
-        where: { id: signature.rapId },
-        data: {
-          status:
-            nextStatus === "FINALIZED"
-              ? "FINALIZED"
-              : nextStatus === "PARTIALLY_SIGNED"
-                ? "PARTIALLY_SIGNED"
-                : "FOR_SIGNATURE",
-        },
-      });
-
-      return signed;
-    });
+    const { RapReportService } = await import("../services/rap-report.service");
+    return new RapReportService().signRapSlot(sigId, userId, signatureData);
   }
 
   // Get current lobby state
@@ -850,18 +822,23 @@ export class ThesisRepository {
   }
 
   /**
-   * Defense conclusion: records outcome, optionally selects the winning title
-   * (Title Defense only), and opens a DRAFT Rapporteur Report task.
-   * Only PASSED unlocks the next academic stage.
+   * CP7 formal conclusion transaction (Chairman authority).
+   * All authoritative checks are re-verified inside the transaction.
+   * Creates DefenseConclusion + one RAP + required evaluator signature slots.
+   * Never invents OralRating. Never defaults missing outcome to PASSED.
    */
   async concludeDefense(
     scheduleId: string,
-    generatedById: string,
-    options?: {
-      outcome?: "PASSED" | "REVISION" | "REVISION_REQUIRED" | "FAILED";
+    chairmanUserId: string,
+    options: {
+      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED";
       selectedTitleId?: string | null;
+      finalRemarks?: string | null;
     },
   ) {
+    const { RapReportService } = await import("../services/rap-report.service");
+    const rapService = new RapReportService();
+
     return prisma.$transaction(async (tx) => {
       const schedule = await tx.defenseSchedule.findUnique({
         where: { id: scheduleId },
@@ -869,39 +846,74 @@ export class ThesisRepository {
           oralExamScores: true,
           panelAssignments: true,
           conclusion: true,
-          thesis: { include: { thesisTitles: true } },
+          oralExamSummary: true,
+          thesis: {
+            include: {
+              thesisTitles: true,
+              student: { select: { studentNumber: true } },
+            },
+          },
         },
       });
 
-      if (!schedule) throw new Error("Schedule not found");
-      if (schedule.conclusion) {
-        throw new Error(
-          "Defense has already been concluded. A second conclusion is not allowed.",
+      if (!schedule) throw new AppError("Defense session not found.", 404);
+
+      // Re-verify Chairman assignment inside the transaction.
+      const chairmanAssignment = schedule.panelAssignments.find(
+        (p) => p.userId === chairmanUserId && String(p.role) === "CHAIRMAN",
+      );
+      if (!chairmanAssignment) {
+        throw new AppError(
+          "Only the assigned session Chairman may record the formal academic result.",
+          403,
         );
       }
 
-      const rawOutcome = options?.outcome ?? "PASSED";
-      const outcome =
-        rawOutcome === "REVISION" || rawOutcome === "REVISION_REQUIRED"
-          ? ("REVISION_REQUIRED" as const)
-          : rawOutcome === "FAILED"
-            ? ("FAILED" as const)
-            : ("PASSED" as const);
-      const selectedTitleId = options?.selectedTitleId ?? null;
+      if (schedule.conclusion) {
+        throw new AppError(
+          "Defense has already been concluded. A second conclusion is not allowed.",
+          409,
+        );
+      }
 
-      // Title Defense conclusion must pick one of the student's proposed titles.
-      if (schedule.defenseType === "TITLE_DEFENSE") {
+      if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
+        throw new AppError(
+          "Formal conclusion requires the session to be awaiting conclusion.",
+          409,
+        );
+      }
+
+      if (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes) {
+        throw new AppError(
+          "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+          409,
+        );
+      }
+
+      const outcome = options.outcome;
+      const selectedTitleId = options.selectedTitleId ?? null;
+      const finalRemarks =
+        options.finalRemarks != null && String(options.finalRemarks).trim() !== ""
+          ? String(options.finalRemarks)
+          : null;
+
+      const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
+
+      // Title: validate selected title only for PASSED.
+      if (isTitle && outcome === "PASSED") {
         if (!selectedTitleId) {
-          throw new Error(
-            "Title Defense conclusion requires selecting an approved research title.",
+          throw new AppError(
+            "Title Defense PASSED requires selecting one of the student's proposed titles.",
+            400,
           );
         }
         const title = schedule.thesis.thesisTitles.find(
           (t) => t.id === selectedTitleId,
         );
         if (!title) {
-          throw new Error(
+          throw new AppError(
             "Selected title must be one of the student's proposed titles.",
+            400,
           );
         }
         await tx.thesisTitle.updateMany({
@@ -912,42 +924,78 @@ export class ThesisRepository {
           where: { id: selectedTitleId },
           data: { isSelected: true },
         });
+      } else if (isTitle && outcome !== "PASSED") {
+        // Do not fabricate an official selected title for non-PASSED.
+        await tx.thesisTitle.updateMany({
+          where: { thesisId: schedule.thesisId },
+          data: { isSelected: false },
+        });
       }
 
-      const selectedTitle =
-        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
-        schedule.thesis.thesisTitles.find((t) => t.id === selectedTitleId)
-          ?.titleText ??
-        "No Title";
+      // Proposal/Final: require evaluator completion + existing Summary.
+      if (!isTitle) {
+        const evaluatorRoles = ["CHAIRMAN", "PANELIST"];
+        const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+          evaluatorRoles.includes(String(p.role)),
+        );
+        const finalized = schedule.oralExamScores.filter(
+          (s) =>
+            s.status === "FINALIZED" &&
+            evaluatorAssignments.some((a) => a.id === s.panelId),
+        );
+        if (
+          evaluatorAssignments.length === 0 ||
+          finalized.length < evaluatorAssignments.length
+        ) {
+          throw new AppError(
+            "All required evaluator evaluations must be finalized before formal conclusion.",
+            409,
+          );
+        }
+        if (!schedule.oralExamSummary) {
+          throw new AppError(
+            "Oral Examination Summary must exist before formal conclusion.",
+            409,
+          );
+        }
+      }
 
+      const officialTitle =
+        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
+        (selectedTitleId
+          ? schedule.thesis.thesisTitles.find((t) => t.id === selectedTitleId)
+              ?.titleText
+          : null) ??
+        null;
+
+      // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
       const panelRecommendations = schedule.oralExamScores
+        .filter(
+          (s) =>
+            s.status === "FINALIZED" &&
+            schedule.panelAssignments.some(
+              (p) =>
+                p.id === s.panelId &&
+                ["CHAIRMAN", "PANELIST"].includes(String(p.role)),
+            ),
+        )
         .map((s) => s.recommendations)
         .filter(Boolean)
         .join("\n\n");
-      const finalDecisions = `=== RAPPORTEUR NOTES ===\n${schedule.rapporteurNotes || ""}\n\n=== PANEL ===\n${panelRecommendations}`;
 
-      const scoreCount = schedule.oralExamScores.length;
-      const finalAverage = scoreCount
-        ? schedule.oralExamScores.reduce(
-            (acc, s) => acc + Number(s.overallAverage ?? 0),
-            0,
-          ) / scoreCount
-        : 0;
-
-      await tx.oralExamSummary.create({
-        data: {
-          scheduleId,
-          overallAverage: finalAverage,
-          finalRating:
-            outcome === "PASSED"
-              ? "VS"
-              : outcome === "REVISION_REQUIRED"
-                ? "S"
-                : "BS",
-          finalRemarks: `Defense outcome: ${outcome}`,
-          attestedById: generatedById,
-        },
-      });
+      const rapContent = [
+        `Defense Type: ${String(schedule.defenseType)}`,
+        officialTitle ? `Official Title: ${officialTitle}` : null,
+        `Formal Outcome: ${outcome}`,
+        "",
+        "=== RAPPORTEUR FINALIZED NOTES ===",
+        schedule.rapporteurNotes,
+        panelRecommendations
+          ? `\n=== EVALUATOR RECOMMENDATIONS ===\n${panelRecommendations}`
+          : null,
+      ]
+        .filter((line) => line !== null)
+        .join("\n");
 
       // Formal conclusion record (sole source of academic outcome).
       const conclusion = await tx.defenseConclusion.create({
@@ -955,15 +1003,14 @@ export class ThesisRepository {
           scheduleId,
           thesisId: schedule.thesisId,
           outcome,
-          selectedTitleId:
-            schedule.defenseType === "TITLE_DEFENSE" ? selectedTitleId : null,
-          finalRemarks: `Defense outcome: ${outcome}`,
-          concludedById: generatedById,
+          selectedTitleId: isTitle ? selectedTitleId : null,
+          finalRemarks,
+          concludedById: chairmanUserId,
           concludedAt: new Date(),
         },
       });
 
-      // Persist formal outcome. Compat-mirror into ThesisStatus for existing UI (Phase G).
+      // Compat-mirror into ThesisStatus for existing UI. Never invents rating.
       const legacyStatus =
         outcome === "PASSED"
           ? ("PASSED" as const)
@@ -980,35 +1027,15 @@ export class ThesisRepository {
         data: { sessionStatus: "CONCLUDED" },
       });
 
-      // Draft RAP only â€” Rapporteur must submit post-defense summary before completion.
-      const rapReport = await tx.rapReport.create({
-        data: {
-          scheduleId,
-          thesisId: schedule.thesisId,
-          defenseType: schedule.defenseType,
-          reportDate: new Date(),
-          decisionsAndRecommendations: finalDecisions,
-          selectedTitle,
-          status: "FOR_SIGNATURE",
-          generatedById,
-        },
-      });
-
-      // Signature slots from policy (form-specific sets UNRESOLVED — interim all participants).
-      const signatureRequirements = resolveRapSignatureRequirements(
-        schedule.panelAssignments.map((p) => ({
-          userId: p.userId,
-          role: p.role as string,
-        })),
-        schedule.defenseType as string,
-      );
-      await tx.rapReportSignature.createMany({
-        data: signatureRequirements.map((req) => ({
-          rapId: rapReport.id,
-          userId: req.userId,
-          roleAtDefense: req.roleAtDefense,
-          required: req.required,
-        })),
+      // RAP created once. generatedBy = Rapporteur who finalized notes.
+      const rapReport = await rapService.createRapAfterConclusion(tx, {
+        scheduleId,
+        thesisId: schedule.thesisId,
+        defenseType: String(schedule.defenseType),
+        venue: schedule.venueOrLink,
+        selectedTitle: officialTitle,
+        decisionsAndRecommendations: rapContent,
+        generatedById: schedule.rapporteurNotesFinalizedById ?? chairmanUserId,
       });
 
       return { conclusion, rapReport };

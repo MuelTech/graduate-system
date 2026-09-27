@@ -514,6 +514,37 @@ export class OralEvaluationService {
     // CP5-FIX1: recompute AFTER commit so concurrent last-finalizers both commit first.
     await this.recomputeEvaluationSessionStatus(scheduleId);
 
+    // CP7: persist official Criteria snapshot (identity metadata only).
+    try {
+      const { OfficialDefenseRecordService } = await import(
+        "./official-defense-record.service"
+      );
+      await new OfficialDefenseRecordService().snapshotFinalizedEvaluation(
+        scheduleId,
+        assignment.id,
+      );
+    } catch {
+      // Snapshot is non-blocking for evaluator finalize; backfill on official read.
+    }
+
+    // CP7: when all required evaluators are FINALIZED, generate Oral Summary once.
+    try {
+      const counts = await this.getFinalizedEvaluatorCount(scheduleId);
+      if (
+        counts.evaluatorAssignments > 0 &&
+        counts.finalizedEvaluations >= counts.evaluatorAssignments
+      ) {
+        const { OfficialDefenseRecordService } = await import(
+          "./official-defense-record.service"
+        );
+        await new OfficialDefenseRecordService().ensureOralExamSummary(
+          scheduleId,
+        );
+      }
+    } catch {
+      // Summary generation is idempotent; conclusion still enforces existence.
+    }
+
     const row = await prisma.oralExamScore.findUnique({
       where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
     });

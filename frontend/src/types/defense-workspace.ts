@@ -38,6 +38,9 @@ export interface DefenseWorkspace {
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
+    canFinalizeRapporteurNotes: boolean;
+    canRecordFormalResult: boolean;
+    canViewFinalizedRapporteurNotes: boolean;
   };
   documents: Array<{
     id: string;
@@ -54,9 +57,21 @@ export interface DefenseWorkspace {
     evaluationStatus: EvaluationStatus;
   }>;
   rapporteurDraft: { notes: string | null } | null;
+  rapporteurNotesFinalizedAt: string | null;
   evaluationStatus: EvaluationStatus;
   sessionStatus: string;
   conclusionsPresent: boolean;
+  evaluationProgress: {
+    evaluatorAssignments: number;
+    finalizedEvaluations: number;
+  };
+  oralSummary: {
+    ready: boolean;
+    overallAverage: number | null;
+    finalRating: string | null;
+  } | null;
+  formalResult: string | null;
+  rapStatus: string | null;
 }
 
 export interface OralEvaluation {

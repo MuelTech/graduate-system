@@ -603,20 +603,160 @@ export class ThesisController {
     }
   };
 
-  public concludeDefense = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * CP7: formal conclusion — session CHAIRMAN only.
+   * Explicit outcome required. Never defaults to PASSED.
+   */
+  public concludeDefense = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const userId = (req as any).user?.userId;
-      const actorRole = String((req as any).user?.role ?? "");
-      const rapReport = await this.thesisService.concludeDefense(
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result = await this.thesisService.concludeDefense(
         req.params.scheduleId as string,
         userId,
-        actorRole,
         {
           outcome: req.body?.outcome,
           selectedTitleId: req.body?.selectedTitleId ?? null,
+          finalRemarks: req.body?.finalRemarks ?? null,
         },
       );
-      res.status(200).json({ message: "Defense concluded.", rapReport });
+      res.status(200).json({
+        message: "Formal defense result recorded.",
+        conclusion: result.conclusion,
+        rapReport: {
+          id: result.rapReport.id,
+          status: result.rapReport.status,
+          generatedAt: result.rapReport.generatedAt,
+        },
+      });
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7 alias endpoint: POST /thesis/defense/:scheduleId/conclusion */
+  public recordFormalConclusion = this.concludeDefense;
+
+  /** CP7: Rapporteur finalize defense notes (irreversible). */
+  public finalizeRapporteurNotes = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result = await this.thesisService.finalizeDefenseNotes(
+        req.params.scheduleId as string,
+        userId,
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7: official individual Criteria (ADMIN or owning evaluator). */
+  public getOfficialCriteria = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      const scheduleId = req.params.scheduleId as string;
+      const panelAssignmentId = req.params.panelAssignmentId as string;
+
+      const criteria = await this.thesisService.getOfficialCriteria(
+        scheduleId,
+        panelAssignmentId,
+      );
+
+      if (accountRole !== "ADMIN") {
+        // Evaluator privacy: only the owning evaluator may read detailed Criteria.
+        if (!userId || criteria.evaluatorUserId !== userId) {
+          res.status(403).json({
+            error:
+              "You may not inspect another evaluator's individual Oral Examination Criteria.",
+          });
+          return;
+        }
+      }
+
+      res.status(200).json(criteria);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7: Oral Examination Summary read model. */
+  public getOralExamSummary = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const summary = await this.thesisService.getOralExamSummaryRecord(
+        req.params.scheduleId as string,
+      );
+      res.status(200).json(summary);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7: Student-owned finalized RAP access. */
+  public getStudentDefenseRap = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result = await this.thesisService.getStudentDefenseRap(
+        req.params.scheduleId as string,
+        userId,
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7: Admin Defense Records list (read-only). */
+  public getAdminDefenseRecords = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAdminDefenseRecords({
+        page: Number(req.query.page ?? 1),
+        pageSize: Number(req.query.pageSize ?? 10),
+        search: (req.query.search as string) ?? undefined,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** CP7: Admin Defense Record detail (read-only). */
+  public getAdminDefenseRecordDetail = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const result = await this.thesisService.getAdminDefenseRecordDetail(
+        req.params.scheduleId as string,
+      );
+      res.status(200).json(result);
     } catch (error: any) {
       sendEligibilityError(res, error);
     }

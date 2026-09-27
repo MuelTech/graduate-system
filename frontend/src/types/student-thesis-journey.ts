@@ -38,6 +38,7 @@ export type DefenseSubstatus =
  * Do not treat these as timezone instants.
  */
 export interface DefenseSessionSummary {
+  scheduleId: string;
   defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
   defenseDate: string | null;
   defenseTime: string | null;

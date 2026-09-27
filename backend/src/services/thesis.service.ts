@@ -25,6 +25,9 @@ import {
 import { canApplyReviewTransition } from './defense-workflow.rules';
 import { AdviserRequestService } from './adviser-request.service';
 import { OralEvaluationService } from './oral-evaluation.service';
+import { OfficialDefenseRecordService } from './official-defense-record.service';
+import { RapporteurFinalizationService } from './rapporteur-finalization.service';
+import { RapReportService } from './rap-report.service';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -43,6 +46,9 @@ export class ThesisService {
   private committeePolicy = new DefenseCommitteePolicy();
   private adviserRequestService = new AdviserRequestService();
   private conclusion = new DefenseConclusionService();
+  private officialRecords = new OfficialDefenseRecordService();
+  private rapporteurFinalization = new RapporteurFinalizationService();
+  private rapReports = new RapReportService();
 
   async getPendingDefenses() {
     return this.thesisRepo.getPendingDefenses();
@@ -561,40 +567,106 @@ export class ThesisService {
   }
 
   async updateRapporteurNotes(scheduleId: string, notes: string) {
+    // CP7: locked after Rapporteur finalization.
+    await this.rapporteurFinalization.assertNotesEditable(scheduleId);
     return this.thesisRepo.updateRapporteurNotes(scheduleId, notes);
   }
 
+  /**
+   * CP7 formal conclusion — session CHAIRMAN assignment only.
+   * Explicit outcome required (no PASSED default). Independent of numeric scores.
+   */
   async concludeDefense(
     scheduleId: string,
-    adminId: string,
-    actorRole: string,
+    userId: string,
     options?: {
-      outcome?: 'PASSED' | 'REVISION' | 'REVISION_REQUIRED' | 'FAILED';
+      outcome?: string | null;
       selectedTitleId?: string | null;
+      finalRemarks?: string | null;
     },
   ) {
-    // Formal conclusion is the sole writer of academic outcome (Phase E).
-    // REVISION / REVISION_REQUIRED is stored but never unlocks the next stage.
     const schedule = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
-    if (!schedule) throw new AppError('Defense schedule not found.', 404);
+    if (!schedule) throw new AppError("Defense schedule not found.", 404);
+
+    // Session assignment authority (never account role alone).
+    const assignments = await this.resolveSessionAssignments(scheduleId, userId);
+    const sessionRole = assignments.find((a) => a.userId === userId)?.role ?? null;
+    const isSessionChairman = sessionRole === "CHAIRMAN";
 
     const outcome = this.conclusion.assertCanConclude(
       {
         alreadyConcluded: schedule.alreadyConcluded,
-        actorRole,
+        sessionRole,
+        isSessionChairman,
         evaluatorAssignments: schedule.evaluatorAssignments,
-        submittedEvaluatorScores: schedule.submittedEvaluatorScores,
+        finalizedEvaluatorScores: schedule.finalizedEvaluatorScores,
         defenseType: schedule.defenseType,
+        sessionStatus: schedule.sessionStatus,
+        rapporteurNotesFinalized: schedule.rapporteurNotesFinalized,
+        oralSummaryExists: schedule.oralSummaryExists,
         selectedTitleId: options?.selectedTitleId ?? null,
         thesisTitleIds: schedule.thesisTitleIds,
+        outcomeProvided:
+          options?.outcome != null && String(options.outcome).trim() !== "",
       },
-      options?.outcome ?? 'PASSED',
+      options?.outcome,
     );
 
-    return this.thesisRepo.concludeDefense(scheduleId, adminId, {
+    // Ensure Proposal/Final Summary exists (idempotent) before the transaction.
+    if (schedule.defenseType !== "TITLE_DEFENSE") {
+      await this.officialRecords.ensureOralExamSummary(scheduleId);
+    }
+
+    return this.thesisRepo.concludeDefense(scheduleId, userId, {
       outcome,
       selectedTitleId: options?.selectedTitleId ?? null,
+      finalRemarks: options?.finalRemarks ?? null,
     });
+  }
+
+  /** Alias for the canonical CP7 conclusion endpoint. */
+  async recordFormalConclusion(
+    scheduleId: string,
+    userId: string,
+    options?: {
+      outcome?: string | null;
+      selectedTitleId?: string | null;
+      finalRemarks?: string | null;
+    },
+  ) {
+    return this.concludeDefense(scheduleId, userId, options);
+  }
+
+  async finalizeDefenseNotes(scheduleId: string, userId: string) {
+    return this.rapporteurFinalization.finalizeDefenseNotes(scheduleId, userId);
+  }
+
+  async getOfficialCriteria(scheduleId: string, panelAssignmentId: string) {
+    return this.officialRecords.getOfficialCriteria(scheduleId, panelAssignmentId);
+  }
+
+  async getOralExamSummaryRecord(scheduleId: string) {
+    return this.officialRecords.getSummaryReadModel(scheduleId);
+  }
+
+  async getStudentDefenseRap(scheduleId: string, userId: string) {
+    return this.rapReports.getStudentRapAccess(scheduleId, userId);
+  }
+
+  async getAdminDefenseRecords(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }) {
+    return this.officialRecords.listAdminDefenseRecords(params);
+  }
+
+  async getAdminDefenseRecordDetail(scheduleId: string) {
+    return this.officialRecords.getAdminDefenseRecordDetail(scheduleId);
+  }
+
+  private async resolveSessionAssignments(scheduleId: string, userId: string) {
+    return this.thesisRepo.getSessionPanelAssignments(scheduleId, userId);
   }
 
   async getAllRapReports() {

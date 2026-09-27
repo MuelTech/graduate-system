@@ -1,22 +1,27 @@
 import type { DefensePanelRole } from "../interfaces/defense-committee.interfaces";
 
 /**
- * RAP signature requirements (source of truth §15.3).
+ * RAP signature requirements (CP7 confirmed project direction).
  *
- * UNRESOLVED (OPEN_QUESTION): form-specific signatories for GS-011 / RAP /
- * GS-022. Do not invent Chairman/Members/Adviser/Dean sets until the client
- * confirms.
+ * Required signers are the actual evaluator assignments only
+ * (DefenseCommitteePolicy evaluator roles: CHAIRMAN + PANELIST).
  *
- * Interim default: every assigned defense participant gets a signature slot and
- * every slot is `required` (blocks finalization). Swap `resolveRapSignatureRequirements`
- * when form policy lands — conclusion flow stays unchanged.
+ * Do NOT invent Facilitator / Rapporteur / Adviser / Dean RAP signatories.
+ * Those form-specific sets remain OPEN_QUESTION and must not be silently required.
  */
 export type RapSignaturePolicyMode =
+  | "EVALUATOR_SIGNATORIES"
   | "INTERIM_ALL_PARTICIPANTS"
   | "FORM_SPECIFIC";
 
 export const RAP_SIGNATURE_POLICY_MODE: RapSignaturePolicyMode =
-  "INTERIM_ALL_PARTICIPANTS";
+  "EVALUATOR_SIGNATORIES";
+
+/** Canonical evaluator roles that own RAP signature slots. */
+export const RAP_REQUIRED_SIGNER_ROLES: DefensePanelRole[] = [
+  "CHAIRMAN",
+  "PANELIST",
+];
 
 export interface RapSignatureSlotInput {
   userId: string;
@@ -29,17 +34,24 @@ export interface RapSignatureRequirement {
   required: boolean;
 }
 
+/**
+ * Resolve required RAP signatories from session assignments.
+ * Proposal/Final and Title use the same evaluator-role set (CHAIRMAN + PANELIST).
+ * Non-evaluator participants never receive a required slot.
+ */
 export function resolveRapSignatureRequirements(
   participants: RapSignatureSlotInput[],
   _defenseType?: string,
 ): RapSignatureRequirement[] {
-  // Interim: assignment does not prove form signatory (§15.3), but we have no
-  // confirmed form set yet — so all assigned participants are required signers.
-  return participants.map((p) => ({
-    userId: p.userId,
-    roleAtDefense: p.role,
-    required: true,
-  }));
+  return participants
+    .filter((p) =>
+      (RAP_REQUIRED_SIGNER_ROLES as string[]).includes(String(p.role)),
+    )
+    .map((p) => ({
+      userId: p.userId,
+      roleAtDefense: String(p.role),
+      required: true,
+    }));
 }
 
 export function isRapReadyToFinalize(slots: {
@@ -57,6 +69,7 @@ export function rapStatusAfterSignatures(
 ): "FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "ALL_SIGNED" | "FINALIZED" {
   const requiredSlots = slots.filter((s) => s.required !== false);
   const signedRequired = requiredSlots.filter((s) => s.isSigned === true);
+  if (requiredSlots.length === 0) return "FOR_SIGNATURE";
   if (signedRequired.length === 0) return "FOR_SIGNATURE";
   if (signedRequired.length < requiredSlots.length) return "PARTIALLY_SIGNED";
   return "FINALIZED";

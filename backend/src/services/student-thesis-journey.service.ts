@@ -68,6 +68,7 @@ function toAdminState(row: {
  */
 function toSessionSummary(
   schedule: {
+    id: string;
     defenseDate: Date | string;
     defenseTime: Date | string;
     venueOrLink: string | null;
@@ -79,6 +80,7 @@ function toSessionSummary(
 ): DefenseSessionSummary | null {
   if (!schedule) return null;
   return {
+    scheduleId: schedule.id,
     defenseType,
     defenseDate: toWallClockDate(schedule.defenseDate),
     defenseTime: toWallClockTime(schedule.defenseTime),
