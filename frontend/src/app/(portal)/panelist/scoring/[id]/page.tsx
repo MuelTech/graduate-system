@@ -54,6 +54,8 @@ export default function PanelistScoringPage() {
   const [scores, setScores] = useState<Record<string, number>>(
     Object.fromEntries(allCriteria.map((c) => [c.id, 0])),
   );
+  // CP5-FIX2: track touched fields so untouched zeros are not sent as scores.
+  const [touchedCriteria, setTouchedCriteria] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Fetch the specific schedule details
@@ -70,16 +72,21 @@ export default function PanelistScoringPage() {
   }, [scheduleId]);
 
   const totalScore = Object.values(scores).reduce((sum, s) => sum + s, 0);
-  const allScored = allCriteria.every((c) => scores[c.id] > 0);
-  // CP5-FIX1: partial drafts allowed — enable once any criterion is entered.
-  const hasAnyScore = allCriteria.some((c) => scores[c.id] > 0);
+  // CP5-FIX2: enable when any criterion was actually touched (0 is valid).
+  const hasAnyScore = touchedCriteria.size > 0;
 
   const handleScoreChange = (id: string, value: string, max: number) => {
     const num = parseInt(value) || 0;
+    const clamped = Math.min(Math.max(0, num), max);
     setScores((prev) => ({
       ...prev,
-      [id]: Math.min(Math.max(0, num), max),
+      [id]: clamped,
     }));
+    setTouchedCriteria((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -91,23 +98,16 @@ export default function PanelistScoringPage() {
     try {
       setIsSubmitting(true);
 
-      // CP5: legacy endpoint saves own DRAFT only — server derives totals.
-      // Never send client PASS/FAIL rating or authoritative averages.
+      // CP5-FIX2: send only touched criteria (explicit 0 is a real score).
+      const sparseScores: Record<string, number> = {};
+      for (const key of touchedCriteria) {
+        sparseScores[key] = scores[key];
+      }
       await apiClientRequest(`/thesis/defense/${scheduleId}/score`, {
         method: "POST",
         body: JSON.stringify({
           panelId,
-          scores: {
-            timelinessRelevance: scores.timelinessRelevance,
-            organization: scores.organization,
-            depthComprehensiveness: scores.depthComprehensiveness,
-            relevanceConclusions: scores.relevanceConclusions,
-            evidenceOriginalThinking: scores.evidenceOriginalThinking,
-            presentation: scores.presentation,
-            masterySubject: scores.masterySubject,
-            communicationSkill: scores.communicationSkill,
-            attitude: scores.attitude,
-          },
+          scores: sparseScores,
         }),
       });
 
@@ -333,7 +333,7 @@ export default function PanelistScoringPage() {
               </>
             )}
           </Button>
-          {!allScored && (
+          {touchedCriteria.size < allCriteria.length && (
             <p className="mt-2 text-center text-xs font-medium text-(--earist-body-text)">
               Partial drafts are saved as you go. All criteria are required only when finalizing (CP6).
             </p>

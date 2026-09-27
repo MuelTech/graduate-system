@@ -9,7 +9,16 @@ const prismaMock = vi.hoisted(() => {
       count: vi.fn(),
     },
     panelAssignment: { findMany: vi.fn() },
-    defenseSchedule: { update: vi.fn(), updateMany: vi.fn() },
+    defenseSchedule: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    oralExamSummary: { create: vi.fn() },
+    defenseConclusion: { create: vi.fn() },
+    rapReport: { create: vi.fn() },
+    rapReportSignature: { create: vi.fn(), createMany: vi.fn() },
+    thesisRecord: { update: vi.fn(), updateMany: vi.fn() },
   };
   return {
     defenseSchedule: {
@@ -24,6 +33,11 @@ const prismaMock = vi.hoisted(() => {
       updateMany: vi.fn(),
       count: vi.fn(),
     },
+    oralExamSummary: { create: vi.fn() },
+    defenseConclusion: { create: vi.fn() },
+    rapReport: { create: vi.fn() },
+    rapReportSignature: { create: vi.fn(), createMany: vi.fn() },
+    thesisRecord: { update: vi.fn(), updateMany: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
     __tx: tx,
   };
@@ -85,6 +99,9 @@ describe("OralEvaluationService (CP5)", () => {
     ]);
     prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.__tx.defenseSchedule.update.mockResolvedValue({});
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      sessionStatus: "IN_PROGRESS",
+    });
     // Recompute (post-commit) uses top-level prisma.
     prismaMock.panelAssignment.findMany.mockResolvedValue([
       { id: "panel-1" },
@@ -297,5 +314,57 @@ describe("OralEvaluationService (CP5)", () => {
     await expect(
       svc.saveDraft("sched-1", "user-a", { criteria: { organization: 3 } }),
     ).rejects.toThrow(/Evaluation state changed/i);
+  });
+
+  it("Test 6: Save Draft race — session cancelled inside transaction", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      sessionStatus: "CANCELLED",
+    });
+    await expect(
+      svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1 } }),
+    ).rejects.toThrow(/Evaluation editing is closed/i);
+    expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("Test 7: Finalize race — session concluded inside transaction", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      sessionStatus: "CONCLUDED",
+    });
+    await expect(
+      svc.finalize("sched-1", "user-a", {
+        signatureData: "sig",
+        criteria: completeCriteria,
+      }),
+    ).rejects.toThrow(/Evaluation editing is closed/i);
+    expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("Test 8/9: finalize does not call CP7 writers on actual Prisma mock", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      sessionStatus: "IN_PROGRESS",
+    });
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "DRAFT",
+      ...completeCriteria,
+    });
+    await svc.finalize("sched-1", "user-a", {
+      signatureData: "e-sign",
+      criteria: completeCriteria,
+    });
+    expect(prismaMock.__tx.oralExamSummary.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisRecord.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+    expect(prismaMock.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.create).not.toHaveBeenCalled();
+    // Allowed: evaluation finalized + session recompute only
+    expect(prismaMock.__tx.oralExamScore.updateMany).toHaveBeenCalled();
+    expect(prismaMock.defenseSchedule.updateMany).toHaveBeenCalled();
   });
 });

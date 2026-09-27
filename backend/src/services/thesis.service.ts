@@ -515,22 +515,37 @@ export class ThesisService {
     scheduleId: string,
     data: any,
   ) {
+    // CP5-FIX2: sparse criteria — only keys actually present on the client payload.
+    const CRITERIA = [
+      "timelinessRelevance",
+      "organization",
+      "depthComprehensiveness",
+      "relevanceConclusions",
+      "evidenceOriginalThinking",
+      "presentation",
+      "masterySubject",
+      "communicationSkill",
+      "attitude",
+    ] as const;
+    const criteria: Record<string, unknown> = {};
+    const src = data ?? {};
+    for (const key of CRITERIA) {
+      if (Object.prototype.hasOwnProperty.call(src, key)) {
+        criteria[key] = src[key];
+      }
+    }
+    const optional: Record<string, unknown> = {};
+    if (Object.prototype.hasOwnProperty.call(src, "rating")) {
+      optional.rating = src.rating;
+    }
+    if (Object.prototype.hasOwnProperty.call(src, "recommendations")) {
+      optional.recommendations = src.recommendations;
+    }
     return this.oralEvaluation.saveDraft(scheduleId, userId, {
-      criteria: {
-        timelinessRelevance: data?.timelinessRelevance,
-        organization: data?.organization,
-        depthComprehensiveness: data?.depthComprehensiveness,
-        relevanceConclusions: data?.relevanceConclusions,
-        evidenceOriginalThinking: data?.evidenceOriginalThinking,
-        presentation: data?.presentation,
-        masterySubject: data?.masterySubject,
-        communicationSkill: data?.communicationSkill,
-        attitude: data?.attitude,
-      },
-      rating: data?.rating ?? null,
-      recommendations: data?.recommendations ?? null,
+      criteria: criteria as never,
+      ...optional,
       clientPanelId: panelId ?? null,
-    });
+    } as Parameters<typeof this.oralEvaluation.saveDraft>[2]);
   }
 
   async getPendingRapReports(userId: string) {

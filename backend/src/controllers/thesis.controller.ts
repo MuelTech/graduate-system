@@ -18,6 +18,24 @@ function sendEligibilityError(res: Response, error: any): void {
   res.status(status).json({ error: error.message });
 }
 
+/**
+ * CP5-FIX2: preserve absent vs explicit-null for PATCH optional fields.
+ * Absent property is omitted from input so the service can keep stored value.
+ */
+function pickOptionalPatchFields(
+  body: Record<string, unknown> | undefined,
+  fields: readonly string[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const src = body ?? {};
+  for (const key of fields) {
+    if (Object.prototype.hasOwnProperty.call(src, key)) {
+      out[key] = src[key];
+    }
+  }
+  return out;
+}
+
 export class ThesisController {
   private thesisService = new ThesisService();
   private journeyService = new StudentThesisJourneyService();
@@ -506,13 +524,16 @@ export class ThesisController {
         return;
       }
       const scheduleId = req.params.scheduleId as string;
+      const optional = pickOptionalPatchFields(req.body, [
+        "rating",
+        "recommendations",
+      ]);
       res.status(200).json(
         await this.oralEvaluation.saveDraft(scheduleId, req.user.userId, {
           criteria: req.body?.criteria ?? {},
-          rating: req.body?.rating ?? null,
-          recommendations: req.body?.recommendations ?? null,
+          ...optional,
           clientPanelId: req.body?.panelId ?? null,
-        }),
+        } as Parameters<typeof this.oralEvaluation.saveDraft>[2]),
       );
     } catch (error: any) {
       res.status(error?.statusCode || 400).json({ error: error.message });
@@ -529,16 +550,19 @@ export class ThesisController {
         return;
       }
       const scheduleId = req.params.scheduleId as string;
+      const optional = pickOptionalPatchFields(req.body, [
+        "rating",
+        "recommendations",
+      ]);
       res.status(200).json(
         await this.oralEvaluation.finalize(scheduleId, req.user.userId, {
           signatureData: String(req.body?.signatureData ?? ""),
           criteria: req.body?.criteria ?? {},
-          rating: req.body?.rating ?? null,
-          recommendations: req.body?.recommendations ?? null,
+          ...optional,
           clientPanelId: req.body?.panelId ?? null,
           clientSignedAt: req.body?.signedAt ?? null,
           clientFinalizedAt: req.body?.finalizedAt ?? null,
-        }),
+        } as Parameters<typeof this.oralEvaluation.finalize>[2]),
       );
     } catch (error: any) {
       res.status(error?.statusCode || 400).json({ error: error.message });

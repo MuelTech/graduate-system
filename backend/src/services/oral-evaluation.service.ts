@@ -135,7 +135,7 @@ export class OralEvaluationService {
     }
   }
 
-  private assertSessionEditable(sessionStatus: string) {
+  private assertSessionEditable(sessionStatus: string | null | undefined) {
     const gate = assertEvaluationSessionEditable(sessionStatus);
     if (!gate.ok) throw new AppError(gate.reason, gate.statusCode);
   }
@@ -252,6 +252,13 @@ export class OralEvaluationService {
 
     try {
       await prisma.$transaction(async (tx) => {
+        // CP5-FIX2: re-check session editability inside the write transaction.
+        const current = await tx.defenseSchedule.findUnique({
+          where: { id: scheduleId },
+          select: { sessionStatus: true },
+        });
+        this.assertSessionEditable(current?.sessionStatus);
+
         const existing = await tx.oralExamScore.findUnique({
           where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
         });
@@ -461,6 +468,13 @@ export class OralEvaluationService {
     );
 
     await prisma.$transaction(async (tx) => {
+      // CP5-FIX2: re-check session editability inside the write transaction.
+      const current = await tx.defenseSchedule.findUnique({
+        where: { id: scheduleId },
+        select: { sessionStatus: true },
+      });
+      this.assertSessionEditable(current?.sessionStatus);
+
       const result = await tx.oralExamScore.updateMany({
         where: {
           scheduleId,
