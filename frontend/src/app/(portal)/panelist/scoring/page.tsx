@@ -44,7 +44,7 @@ export default function PanelistScoringIndex() {
             return (
               <Link
                 key={assignment.id}
-                href={`/panelist/scoring/${schedule.id}?panelId=${assignment.id}`}
+                href={`/panelist/defense-workspace/${schedule.id}`}
                 className="flex w-full items-center gap-4 rounded-xl border border-(--earist-border-gray) bg-white p-5 text-left transition-all hover:bg-blue-50/50 hover:shadow-md hover:border-blue-200 group"
               >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">

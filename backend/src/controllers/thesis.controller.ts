@@ -4,6 +4,7 @@ import { StudentThesisJourneyService } from '../services/student-thesis-journey.
 import { ProposalAdviserReviewService } from '../services/proposal-adviser-review.service';
 import { FinalAdviserReviewService } from '../services/final-adviser-review.service';
 import { OralEvaluationService } from '../services/oral-evaluation.service';
+import { DefenseWorkspaceService } from '../services/defense-workspace.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -42,6 +43,7 @@ export class ThesisController {
   private proposalAdviserReview = new ProposalAdviserReviewService();
   private finalAdviserReview = new FinalAdviserReviewService();
   private oralEvaluation = new OralEvaluationService();
+  private defenseWorkspace = new DefenseWorkspaceService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -679,6 +681,53 @@ export class ThesisController {
       res.status(400).json({ error: error.message });
     }
   };
+  // ── CP6 Defense Workspace ───────────────────────────────────────
+
+  getDefenseWorkspace = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const scheduleId = req.params.scheduleId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      res
+        .status(200)
+        .json(await this.defenseWorkspace.getWorkspace(scheduleId, userId));
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
+
+  saveRapporteurWorkspaceNotes = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const scheduleId = req.params.scheduleId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const notes = String(req.body?.notes ?? "");
+      res
+        .status(200)
+        .json(
+          await this.defenseWorkspace.saveRapporteurNotes(
+            scheduleId,
+            userId,
+            notes,
+          ),
+        );
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
+
   public getLobbyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const scheduleId = req.params.scheduleId as string;

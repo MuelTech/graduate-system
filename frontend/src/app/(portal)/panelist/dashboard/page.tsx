@@ -177,14 +177,14 @@ export default function PanelistDashboard() {
                       </div>
                     </div>
 
-                    <Link href={`/panelist/defense-lobby/${schedule.id}`}>
+                    <Link href={`/panelist/defense-workspace/${schedule.id}`}>
                       <Button variant="outline" className="w-full mb-2 border-(--earist-primary) text-(--earist-primary) hover:bg-(--earist-primary)/10">
-                        Enter Defense Lobby
+                        Open Defense Workspace
                       </Button>
                     </Link>
-                    <Link href={`/panelist/scoring/${schedule.id}?panelId=${assignment.id}`}>
+                    <Link href={`/panelist/defense-workspace/${schedule.id}`}>
                       <Button className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90">
-                        Grade Defense
+                        Open Defense Workspace
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>

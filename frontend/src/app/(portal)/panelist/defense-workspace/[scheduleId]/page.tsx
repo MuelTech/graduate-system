@@ -1,0 +1,198 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DefenseWorkspaceHeader } from "@/components/defense-workspace/workspace-header";
+import { DefenseRoster } from "@/components/defense-workspace/defense-roster";
+import { OralEvaluationForm } from "@/components/defense-workspace/oral-evaluation-form";
+import { RapporteurNotesWorkspace } from "@/components/defense-workspace/rapporteur-notes-workspace";
+import type { DefenseWorkspace } from "@/types/defense-workspace";
+
+export default function DefenseWorkspacePage() {
+  const params = useParams<{ scheduleId: string }>();
+  const scheduleId = params.scheduleId;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["defenseWorkspace", scheduleId],
+    queryFn: async () =>
+      (await apiClientRequest(
+        `/thesis/defense/${scheduleId}/workspace`,
+      )) as DefenseWorkspace,
+    refetchInterval: (q) => {
+      const ws = q.state.data as DefenseWorkspace | undefined;
+      const s = ws?.schedule.sessionStatus;
+      return s === "SCHEDULED" || s === "IN_PROGRESS" || s === "AWAITING_CONCLUSION"
+        ? 20000
+        : false;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-(--earist-primary)" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="mx-auto max-w-md space-y-3 p-8 text-center">
+        <p className="text-sm text-red-600">
+          {(error as Error)?.message ||
+            "You are not assigned to this defense session."}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded border border-(--earist-border-gray) px-3 py-1.5 text-sm"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const isTitle = data.schedule.defenseType === "TITLE_DEFENSE";
+  const canEvaluate = data.capabilities.canEvaluate && !isTitle;
+  const isRapporteur = data.capabilities.canEditRapporteurNotes;
+  const primaryDoc = data.documents[0];
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-4">
+      <DefenseWorkspaceHeader workspace={data} />
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="space-y-4 lg:col-span-2">
+          {isTitle && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Proposed Titles</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {data.proposedTitles.map((t, i) => (
+                  <p key={t.id} className="rounded border border-(--earist-border-gray) p-2">
+                    <span className="mr-2 text-xs text-(--earist-body-text)">
+                      Title {i + 1}
+                    </span>
+                    {t.titleText}
+                  </p>
+                ))}
+                {data.capabilities.canViewTitleDeliberation && (
+                  <p className="text-xs text-(--earist-body-text)">
+                    Formal Title Result: Official title selection and formal result
+                    are completed in the Chairman conclusion phase.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {canEvaluate && (
+            <OralEvaluationForm scheduleId={scheduleId} />
+          )}
+
+          {isRapporteur && (
+            <RapporteurNotesWorkspace
+              scheduleId={scheduleId}
+              initialNotes={data.rapporteurDraft?.notes ?? ""}
+            />
+          )}
+
+          {!canEvaluate && !isRapporteur && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Your session role</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-(--earist-body-text)">
+                <p>
+                  {data.myAssignment.role === "FACILITATOR"
+                    ? "No dedicated digital action is assigned to the Facilitator in the current workflow."
+                    : "Read-only defense session view. Evaluation is limited to assigned evaluators."}
+                </p>
+                {data.sessionStatus === "AWAITING_CONCLUSION" && (
+                  <p>
+                    Evaluations complete — awaiting formal conclusion.
+                    {data.myAssignment.role === "CHAIRMAN" &&
+                      " Formal conclusion will be available in the post-evaluation workflow."}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {data.myAssignment.role === "CHAIRMAN" && !isTitle && (
+            <Card>
+              <CardContent className="pt-5 text-xs text-(--earist-body-text)">
+                Formal conclusion: Available in the post-evaluation workflow once
+                all required evaluations are finalized.
+              </CardContent>
+            </Card>
+          )}
+
+          <DefenseRoster roster={data.roster} />
+        </div>
+
+        <div className="lg:col-span-3">
+          <Tabs defaultValue="doc" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="doc">Student Document</TabsTrigger>
+              <TabsTrigger value="info">Session</TabsTrigger>
+            </TabsList>
+            <TabsContent value="doc" className="mt-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">
+                    {primaryDoc?.displayName || "Student document"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {primaryDoc ? (
+                    <iframe
+                      title="Student document"
+                      src={`/api/documents/thesis-document/${primaryDoc.id}/file`}
+                      className="h-[70vh] w-full rounded border border-(--earist-border-gray)"
+                    />
+                  ) : (
+                    <p className="text-sm text-(--earist-body-text)">
+                      No stage document is available yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="info" className="mt-3 space-y-3">
+              <Card>
+                <CardContent className="space-y-2 pt-5 text-sm">
+                  <p>
+                    <Badge variant="outline" className="mr-2">
+                      {data.myAssignment.role}
+                    </Badge>
+                    Evaluation status:{" "}
+                    <strong>
+                      {data.evaluationStatus === "NONE"
+                        ? "Not required"
+                        : data.evaluationStatus}
+                    </strong>
+                  </p>
+                  <p className="text-(--earist-body-text)">
+                    Session: {data.schedule.sessionStatus}
+                    {data.conclusionsPresent ? " · formal result recorded" : ""}
+                  </p>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Official summary / formal result workflows are not part of
+                    this workspace yet.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+}

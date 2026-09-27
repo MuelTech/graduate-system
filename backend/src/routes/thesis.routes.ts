@@ -394,8 +394,31 @@ router.post(
 );
 
 // LOBBY POLLING ROUTES
+// CP6 Defense Workspace (role-safe read model)
+router.get(
+  "/defense/:scheduleId/workspace",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getDefenseWorkspace,
+);
+
+// CP6: secure Rapporteur draft notes (session RAPPORTEUR only)
+router.put(
+  "/defense/:scheduleId/workspace/rapporteur-notes",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.saveRapporteurWorkspaceNotes,
+);
+
+// Legacy lobby — compatibility only
 router.get("/defense/:scheduleId/lobby", authenticateJWT, thesisController.getLobbyStatus);
-router.put("/defense/:scheduleId/notes", authenticateJWT, thesisController.updateRapporteurNotes);
+// Legacy notes — same Rapporteur authorization as workspace notes
+router.put(
+  "/defense/:scheduleId/notes",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.saveRapporteurWorkspaceNotes,
+);
 // Formal conclusion — sole writer of academic outcome (interim: ADMIN until OPEN_QUESTION §14.4).
 // Score completion never concludes; RAP is created only here.
 router.post(
