@@ -47,6 +47,8 @@ export interface FinalAdviserReviewDto {
   strikeRequired: boolean;
   strikeEligible: boolean;
   proposalStageComplete: boolean;
+  /** Non-null when Adviser Request Changes / Certify are blocked. */
+  actionBlockedReason?: string | null;
 }
 
 export interface FinalReviewQueueItem {
@@ -152,6 +154,32 @@ export class FinalAdviserReviewService {
     return thesis;
   }
 
+  /**
+   * CP4-FIX1: re-check Proposal completion + centralized STRIKE before
+   * Adviser mutations (not only at Student upload).
+   */
+  private async assertFinalReviewPrerequisites(thesisId: string): Promise<void> {
+    const proposalComplete = await this.proposalStageCompleteFor(thesisId);
+    if (!proposalComplete) {
+      throw new AppError(
+        "Proposal Defense must be formally PASSED with a finalized Proposal RAP before Final Adviser review actions.",
+        400,
+      );
+    }
+    const gates = getFinalOptionalGates();
+    if (gates.requireStrike) {
+      const eligible = await prisma.plagiarismResult.count({
+        where: { thesisId, isEligible: true },
+      });
+      if (eligible === 0) {
+        throw new AppError(
+          "Required STRIKE / plagiarism clearance is still pending.",
+          400,
+        );
+      }
+    }
+  }
+
   private async proposalStageCompleteFor(thesisId: string): Promise<boolean> {
     const titleConclusion = await prisma.defenseConclusion.findFirst({
       where: {
@@ -252,6 +280,9 @@ export class FinalAdviserReviewService {
       strikeRequired,
       strikeEligible,
       proposalStageComplete: true, // refined in getStudentReviewState
+      actionBlockedReason: strikeRequired && !strikeEligible
+        ? "Required STRIKE / plagiarism clearance is still pending."
+        : null,
     };
   }
 
@@ -291,6 +322,11 @@ export class FinalAdviserReviewService {
       strikeRequired,
       strikeEligible,
       proposalStageComplete: proposalComplete,
+      actionBlockedReason: !proposalComplete
+        ? "Proposal Defense must be formally PASSED with a finalized Proposal RAP before Final Adviser review actions."
+        : strikeRequired && !strikeEligible
+          ? "Required STRIKE / plagiarism clearance is still pending."
+          : null,
     };
   }
 
@@ -563,6 +599,8 @@ export class FinalAdviserReviewService {
     );
     const cert = thesis.adviserCertifications[0] ?? null;
     const reviewStatus = mapCertStatusToReviewStatus(cert?.status);
+    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time.
+    await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateRequestChangesGate({
       isActiveAdviser: isActive,
       reviewStatus,
@@ -624,6 +662,8 @@ export class FinalAdviserReviewService {
     const alreadyIssued = thesis.adviserCertifications.some(
       (c) => c.status === "ISSUED",
     );
+    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time (before ISSUED).
+    await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateCertifyGate({
       isActiveAdviser: isActive,
       reviewStatus: mapCertStatusToReviewStatus(cert?.status),

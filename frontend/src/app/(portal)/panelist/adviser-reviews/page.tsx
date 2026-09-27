@@ -134,16 +134,27 @@ export default function ProposalAdviserReviewsPage() {
     },
   });
 
+  const finalTask = task as
+    | (ProposalAdviserReview & {
+        strikeRequired?: boolean;
+        strikeEligible?: boolean;
+      })
+    | undefined;
+  const actionsBlocked =
+    selectedStage === "FINAL" &&
+    finalTask?.strikeRequired === true &&
+    finalTask?.strikeEligible !== true;
+
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Proposal Adviser Reviews
+            Adviser Reviews
           </h2>
           <p className="text-sm text-(--earist-body-text)">
-            Review Proposal manuscripts for students you actively advise. Only
-            the active adviser may review or certify.
+            Review manuscripts for students you actively advise. Only the current
+            active adviser may review or certify.
           </p>
         </div>
         <Button
@@ -179,7 +190,7 @@ export default function ProposalAdviserReviewsPage() {
             )}
             {!isLoading && (!queue || queue.length === 0) && (
               <p className="text-sm text-(--earist-body-text)">
-                No Proposal manuscripts awaiting your review.
+                No manuscripts are currently awaiting your review.
               </p>
             )}
             {queue?.map((item) => (
@@ -235,8 +246,7 @@ export default function ProposalAdviserReviewsPage() {
           <CardContent className="space-y-3 text-sm">
             {!task && (
               <p className="text-(--earist-body-text)">
-                Select a student from the queue to review their Proposal
-                manuscript.
+                Select a student from the queue to review their manuscript.
               </p>
             )}
             {task && (
@@ -251,7 +261,11 @@ export default function ProposalAdviserReviewsPage() {
                   </div>
                 </div>
                 <p className="text-xs uppercase tracking-wide text-(--earist-body-text)">
-                  Status:{" "}
+                  Stage:{" "}
+                  <span className="font-semibold normal-case text-(--earist-primary)">
+                    {selectedStage === "FINAL" ? "Final" : "Proposal"}
+                  </span>
+                  {" · "}Status:{" "}
                   <span className="font-medium normal-case">
                     {task.reviewStatus === "ISSUED"
                       ? "Certification issued"
@@ -262,6 +276,19 @@ export default function ProposalAdviserReviewsPage() {
                           : "No manuscript"}
                   </span>
                 </p>
+                {selectedStage === "FINAL" &&
+                  (task as { strikeRequired?: boolean; strikeEligible?: boolean })
+                    .strikeRequired === true &&
+                  (task as { strikeEligible?: boolean }).strikeEligible !== true && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>STRIKE pending</AlertTitle>
+                      <AlertDescription>
+                        Required STRIKE / plagiarism clearance is still pending.
+                        Review actions are disabled until clearance is recorded.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 {task.manuscript && (
                   <a
                     href={`/api/documents/thesis-document/${task.manuscript.documentId}/file`}
@@ -270,7 +297,9 @@ export default function ProposalAdviserReviewsPage() {
                     className="flex items-center gap-2 text-(--earist-primary) underline"
                   >
                     <FileText className="h-4 w-4" />
-                    Open Proposal manuscript
+                    {selectedStage === "FINAL"
+                      ? "Open Final manuscript"
+                      : "Open Proposal manuscript"}
                   </a>
                 )}
                 {task.certification?.issued && (
@@ -316,7 +345,8 @@ export default function ProposalAdviserReviewsPage() {
                         disabled={
                           requestChanges.isPending ||
                           !remarks.trim() ||
-                          !task.manuscript?.documentId
+                          !task.manuscript?.documentId ||
+                          actionsBlocked
                         }
                         onClick={() => requestChanges.mutate()}
                       >
@@ -327,7 +357,8 @@ export default function ProposalAdviserReviewsPage() {
                         disabled={
                           certify.isPending ||
                           !signature.trim() ||
-                          !task.manuscript?.documentId
+                          !task.manuscript?.documentId ||
+                          actionsBlocked
                         }
                         className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
                         onClick={() => certify.mutate()}

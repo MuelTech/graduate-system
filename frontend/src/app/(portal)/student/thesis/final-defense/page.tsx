@@ -118,8 +118,6 @@ export default function FinalDefensePage() {
   const finalStep = journeyStepFor(journey, "FINAL_DEFENSE");
   const state = finalStep?.state;
 
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
   const [corFile, setCorFile] = useState<File | null>(null);
   const corInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);

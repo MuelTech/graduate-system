@@ -206,7 +206,7 @@ export function evaluateActiveAdviserGate(
   if (!input.isActiveAdviserForStudent) {
     return {
       allowed: false,
-      reason: "Only the current active adviser may review this Proposal manuscript.",
+      reason: "Only the current active adviser may review this manuscript.",
       statusCode: 403,
     };
   }
@@ -267,7 +267,7 @@ export function evaluateRequestChangesGate(
   if (input.reviewStatus === "ISSUED") {
     return {
       allowed: false,
-      reason: "Issued Proposal Adviser Certification cannot be changed.",
+      reason: "Issued Adviser Certification cannot be changed.",
       statusCode: 409,
     };
   }
@@ -275,7 +275,7 @@ export function evaluateRequestChangesGate(
   if (input.reviewStatus !== "AWAITING_REVIEW") {
     return {
       allowed: false,
-      reason: "No Proposal manuscript is currently awaiting Adviser review.",
+      reason: "No manuscript is currently awaiting Adviser review.",
       statusCode: 409,
     };
   }
@@ -289,7 +289,7 @@ export function evaluateRequestChangesGate(
   if (!input.hasReviewedDocument) {
     return {
       allowed: false,
-      reason: "Proposal review state changed. Refresh the task and try again.",
+      reason: "Adviser review state changed. Refresh the task and try again.",
       statusCode: 409,
     };
   }
@@ -326,14 +326,14 @@ export function evaluateCertifyGate(
   if (input.alreadyIssued || input.reviewStatus === "ISSUED") {
     return {
       allowed: false,
-      reason: "Proposal Adviser Certification is already issued.",
+      reason: "Adviser Certification is already issued.",
       statusCode: 409,
     };
   }
   if (!input.hasManuscript) {
     return {
       allowed: false,
-      reason: "A current Proposal manuscript is required before certification.",
+      reason: "A current manuscript is required before certification.",
       statusCode: 400,
     };
   }
@@ -347,7 +347,7 @@ export function evaluateCertifyGate(
   if (!input.hasReviewedDocument) {
     return {
       allowed: false,
-      reason: "Proposal review state changed. Refresh the task and try again.",
+      reason: "Adviser review state changed. Refresh the task and try again.",
       statusCode: 409,
     };
   }
@@ -358,7 +358,7 @@ export function evaluateCertifyGate(
       reason:
         input.reviewStatus === "CHANGES_REQUESTED"
           ? "Changes were requested on this manuscript. Wait for the Student to resubmit before certifying."
-          : "No Proposal manuscript is available for certification.",
+          : "No manuscript is available for certification.",
       statusCode: 409,
     };
   }

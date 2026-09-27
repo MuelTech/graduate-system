@@ -241,4 +241,106 @@ describe("FinalAdviserReviewService (CP4)", () => {
     expect(call?.data?.status).toBe("ISSUED");
     expect(call?.data?.reviewedDocumentId).toBeUndefined();
   });
+
+  function awaitingThesis() {
+    return thesisRow({
+      thesisDocuments: [{ id: "doc-a", uploadedAt: new Date() }],
+      adviserCertifications: [
+        {
+          id: "cert-1",
+          status: "AWAITING_REVIEW",
+          defenseStage: "FINAL_DEFENSE",
+          reviewedDocumentId: "doc-a",
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+          reviewedDocument: { id: "doc-a", uploadedAt: new Date() },
+          reviewRemarks: null,
+          signatureData: null,
+          signedAt: null,
+        },
+      ],
+    });
+  }
+
+  async function withStrikeEnv(required: boolean, eligible: boolean, fn: () => Promise<void>) {
+    const prev = process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+    process.env.STRIKE_BEFORE_FINAL_REQUIRED = required ? "true" : "false";
+    prismaMock.plagiarismResult.count.mockResolvedValue(eligible ? 1 : 0);
+    try {
+      await fn();
+    } finally {
+      if (prev === undefined) delete process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+      else process.env.STRIKE_BEFORE_FINAL_REQUIRED = prev;
+    }
+  }
+
+  it("Test A: STRIKE OFF allows Final Adviser Request Changes", async () => {
+    await withStrikeEnv(false, false, async () => {
+      prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+      prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+      await svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "ok",
+        expectedReviewedDocumentId: "doc-a",
+      });
+      expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalled();
+    });
+  });
+
+  it("Test B/C/E: STRIKE ON blocks Request Changes and Certify on existing manuscript", async () => {
+    await withStrikeEnv(true, false, async () => {
+      prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+
+      await expect(
+        svc.requestChanges("adviser-1", "thesis-1", {
+          remarks: "x",
+          expectedReviewedDocumentId: "doc-a",
+        }),
+      ).rejects.toThrow(/STRIKE/i);
+      expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+
+      await expect(
+        svc.certify("adviser-1", "thesis-1", {
+          signatureData: "sig",
+          expectedReviewedDocumentId: "doc-a",
+        }),
+      ).rejects.toThrow(/STRIKE/i);
+      expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  it("Test D: STRIKE ON + eligible allows Adviser action", async () => {
+    await withStrikeEnv(true, true, async () => {
+      prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+      prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+      await svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "ok",
+        expectedReviewedDocumentId: "doc-a",
+      });
+      expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalled();
+    });
+  });
+
+  it("Test F: incomplete Proposal blocks Final Adviser mutation", async () => {
+    prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
+        return { outcome: "PENDING", scheduleId: null };
+      }
+      return { selectedTitleId: "t1", scheduleId: "title-sched" };
+    });
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "x",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toThrow(/Proposal Defense must be formally PASSED/i);
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "sig",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toThrow(/Proposal Defense must be formally PASSED/i);
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+  });
 });
