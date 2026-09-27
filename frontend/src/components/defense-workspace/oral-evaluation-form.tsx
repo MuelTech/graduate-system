@@ -41,6 +41,7 @@ function evalQueryKey(scheduleId: string) {
 export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
+  const [touchedCriteria, setTouchedCriteria] = useState<Set<string>>(new Set());
   const [rating, setRating] = useState("");
   const [ratingTouched, setRatingTouched] = useState(false);
   const [recommendations, setRecommendations] = useState("");
@@ -66,6 +67,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       next[k] = v === null || v === undefined ? "" : String(v);
     }
     setValues(next);
+    setTouchedCriteria(new Set());
     setRating(evaluation.rating ?? "");
     setRatingTouched(false);
     setRecommendations(evaluation.recommendations ?? "");
@@ -74,34 +76,61 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
 
   const locked = evaluation?.isLocked === true;
 
-  const parseCriteria = () => {
+  const ALL_CRITERIA = [...GROUP_I, ...GROUP_II];
+
+  /**
+   * CP6-FIX2: single snapshot used by Review AND Finalize.
+   * Only touched criteria are sent; blank → null; "0" → 0.
+   */
+  const buildCurrentEvaluationPatch = () => {
     const criteria: Record<string, number | null> = {};
-    for (const item of [...GROUP_I, ...GROUP_II]) {
-      const raw = values[item.key];
-      if (raw === undefined || raw === "") continue;
-      criteria[item.key] = Number(raw);
+    for (const key of touchedCriteria) {
+      const raw = values[key];
+      criteria[key] = raw === undefined || raw === "" ? null : Number(raw);
     }
-    return criteria;
+    const body: Record<string, unknown> = { criteria };
+    if (ratingTouched) {
+      body.rating = rating === "" ? null : rating;
+    }
+    if (recommendations !== (evaluation?.recommendations ?? "")) {
+      body.recommendations = recommendations;
+    }
+    return body;
   };
 
+  const reviewCriteriaView = useMemo(() => {
+    // Review shows current form state for all fields; blank → "—".
+    return ALL_CRITERIA.map((c) => {
+      const raw = values[c.key];
+      const display =
+        raw === undefined || raw === null || raw === ""
+          ? "—"
+          : String(Number(raw));
+      const n = raw === undefined || raw === null || raw === "" ? 0 : Number(raw);
+      return { key: c.key, label: c.label, display, numeric: n };
+    });
+  }, [values]);
+
   const localPreview = useMemo(() => {
-    const g1 = GROUP_I.reduce((s, c) => s + (Number(values[c.key]) || 0), 0);
-    const g2 = GROUP_II.reduce((s, c) => s + (Number(values[c.key]) || 0), 0);
+    const g1 = GROUP_I.reduce((s, c) => {
+      const raw = values[c.key];
+      return s + (raw === "" || raw === undefined ? 0 : Number(raw) || 0);
+    }, 0);
+    const g2 = GROUP_II.reduce((s, c) => {
+      const raw = values[c.key];
+      return s + (raw === "" || raw === undefined ? 0 : Number(raw) || 0);
+    }, 0);
     return { g1, g2, overall: g1 + g2 };
   }, [values]);
 
+  const allCriteriaComplete = ALL_CRITERIA.every((c) => {
+    const raw = values[c.key];
+    return raw !== undefined && raw !== null && raw !== "";
+  });
+
   const saveDraft = useMutation({
     mutationFn: async () => {
-      const body: Record<string, unknown> = {
-        criteria: parseCriteria(),
-      };
-      // CP6-FIX1: explicit clear sends null; omitted preserves server value.
-      if (ratingTouched) {
-        body.rating = rating === "" ? null : rating;
-      }
-      if (recommendations !== (evaluation?.recommendations ?? "")) {
-        body.recommendations = recommendations;
-      }
+      const body = buildCurrentEvaluationPatch();
       return apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/draft`, {
         method: "PUT",
         body: JSON.stringify(body),
@@ -119,15 +148,18 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
 
   const finalize = useMutation({
     mutationFn: async () => {
+      const patch = buildCurrentEvaluationPatch();
       return apiClientRequest(
         `/thesis/defense/${scheduleId}/evaluation/finalize`,
         {
           method: "POST",
           body: JSON.stringify({
             signatureData: signature,
-            criteria: parseCriteria(),
-            ...(ratingTouched ? { rating: rating === "" ? null : rating } : {}),
-            recommendations,
+            criteria: patch.criteria,
+            ...(Object.prototype.hasOwnProperty.call(patch, "rating")
+              ? { rating: patch.rating }
+              : {}),
+            recommendations: patch.recommendations ?? recommendations,
           }),
         },
       );
@@ -163,6 +195,11 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
         value={values[item.key] ?? ""}
         onChange={(e) => {
           setDirty(true);
+          setTouchedCriteria((prev) => {
+            const next = new Set(prev);
+            next.add(item.key);
+            return next;
+          });
           setValues((prev) => ({ ...prev, [item.key]: e.target.value }));
         }}
         className="w-full rounded border border-(--earist-border-gray) px-2 py-1.5 text-sm"
@@ -314,26 +351,49 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
               Review Evaluation (irreversible after finalize)
             </p>
             <ul className="mb-2 list-disc space-y-1 pl-5 text-(--earist-body-text)">
+              {GROUP_I.map((c) => (
+                <li key={c.key}>
+                  {c.label}:{" "}
+                  {
+                    reviewCriteriaView.find((r) => r.key === c.key)?.display
+                  }
+                </li>
+              ))}
+              <li>Group I total: {localPreview.g1}</li>
+              {GROUP_II.map((c) => (
+                <li key={c.key}>
+                  {c.label}:{" "}
+                  {
+                    reviewCriteriaView.find((r) => r.key === c.key)?.display
+                  }
+                </li>
+              ))}
+              <li>Group II total: {localPreview.g2}</li>
               <li>
-                Group I: {[...GROUP_I].map((c) => `${c.label}=${values[c.key] ?? "—"}`).join(", ")}{" "}
-                → {localPreview.g1}
+                Overall: {localPreview.overall}
+                {dirty ? " (current form)" : ""}
               </li>
-              <li>
-                Group II: {[...GROUP_II].map((c) => `${c.label}=${values[c.key] ?? "—"}`).join(", ")}{" "}
-                → {localPreview.g2}
-              </li>
-              <li>Overall: {localPreview.overall}</li>
               <li>Rating: {rating || "—"}</li>
               <li>Recommendations: {recommendations || "—"}</li>
             </ul>
+            {!allCriteriaComplete && (
+              <p className="mb-2 font-medium text-amber-700">
+                Incomplete — all criteria are required before finalization.
+              </p>
+            )}
             <p className="mb-2 text-xs text-(--earist-body-text)">
-              Final server values are recalculated on submission.
+              Final server values are recalculated on submission from these
+              criteria.
             </p>
             <ESignaturePad value={signature} onChange={setSignature} disabled={locked} />
             <div className="flex gap-2">
               <Button
                 type="button"
-                disabled={finalize.isPending || !signature.trim()}
+                disabled={
+                  finalize.isPending ||
+                  !signature.startsWith("data:image/png;base64,") ||
+                  !allCriteriaComplete
+                }
                 onClick={() => finalize.mutate()}
               >
                 <FileSignature className="mr-2 h-4 w-4" />
