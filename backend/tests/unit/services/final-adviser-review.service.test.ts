@@ -343,4 +343,103 @@ describe("FinalAdviserReviewService (CP4)", () => {
     expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
   });
+
+  async function captureError(fn: () => Promise<unknown>) {
+    try {
+      await fn();
+      throw new Error("expected rejection");
+    } catch (e: any) {
+      return e;
+    }
+  }
+
+  it("Test 1/2/3/4: unauthorized caller gets 403 before Proposal/STRIKE checks", async () => {
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    // If prerequisites ran, Proposal incomplete would throw 400 — force incomplete Proposal
+    prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
+        return { outcome: "PENDING", scheduleId: null };
+      }
+      return { selectedTitleId: "t1", scheduleId: "title-sched" };
+    });
+    const prevStrike = process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+    process.env.STRIKE_BEFORE_FINAL_REQUIRED = "true";
+    prismaMock.plagiarismResult.count.mockResolvedValue(0);
+
+    try {
+      const rc = await captureError(() =>
+        svc.requestChanges("other-panelist", "thesis-1", {
+          remarks: "x",
+          expectedReviewedDocumentId: "doc-a",
+        }),
+      );
+      expect(rc.statusCode).toBe(403);
+      expect(rc.message).toMatch(/active adviser/i);
+      expect(rc.message).not.toMatch(/Proposal Defense/i);
+      expect(rc.message).not.toMatch(/STRIKE/i);
+
+      const cert = await captureError(() =>
+        svc.certify("other-panelist", "thesis-1", {
+          signatureData: "sig",
+          expectedReviewedDocumentId: "doc-a",
+        }),
+      );
+      expect(cert.statusCode).toBe(403);
+      expect(cert.message).toMatch(/active adviser/i);
+      expect(cert.message).not.toMatch(/Proposal Defense/i);
+      expect(cert.message).not.toMatch(/STRIKE/i);
+      expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+    } finally {
+      if (prevStrike === undefined)
+        delete process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+      else process.env.STRIKE_BEFORE_FINAL_REQUIRED = prevStrike;
+    }
+  });
+
+  it("Test 5/6: authorized adviser still receives prerequisite errors", async () => {
+    // Proposal incomplete → 400
+    prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
+        return { outcome: "PENDING", scheduleId: null };
+      }
+      return { selectedTitleId: "t1", scheduleId: "title-sched" };
+    });
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    const proposalErr = await captureError(() =>
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "x",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    );
+    expect(proposalErr.statusCode).toBe(400);
+    expect(proposalErr.message).toMatch(/Proposal Defense/i);
+
+    // STRIKE pending → 400
+    prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
+        return { outcome: "PASSED", scheduleId: "prop-sched" };
+      }
+      return { selectedTitleId: "t1", scheduleId: "title-sched" };
+    });
+    prismaMock.rapReport.count.mockResolvedValue(1);
+    const prev = process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+    process.env.STRIKE_BEFORE_FINAL_REQUIRED = "true";
+    prismaMock.plagiarismResult.count.mockResolvedValue(0);
+    try {
+      const strikeErr = await captureError(() =>
+        svc.certify("adviser-1", "thesis-1", {
+          signatureData: "sig",
+          expectedReviewedDocumentId: "doc-a",
+        }),
+      );
+      expect(strikeErr.statusCode).toBe(400);
+      expect(strikeErr.message).toMatch(/STRIKE/i);
+      expect(strikeErr.message).not.toMatch(/active adviser/i);
+    } finally {
+      if (prev === undefined) delete process.env.STRIKE_BEFORE_FINAL_REQUIRED;
+      else process.env.STRIKE_BEFORE_FINAL_REQUIRED = prev;
+    }
+  });
 });

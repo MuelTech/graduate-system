@@ -597,9 +597,16 @@ export class FinalAdviserReviewService {
       adviserUserId,
       thesis.student.id,
     );
+    // CP4-FIX2: authorize BEFORE workflow-state checks (no 400 leak to non-advisers).
+    const auth = evaluateActiveAdviserGate({
+      isAuthenticated: true,
+      isActiveAdviserForStudent: isActive,
+    });
+    if (!auth.allowed) throw new AppError(auth.reason, auth.statusCode);
+
     const cert = thesis.adviserCertifications[0] ?? null;
     const reviewStatus = mapCertStatusToReviewStatus(cert?.status);
-    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time.
+    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time (authorized only).
     await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateRequestChangesGate({
       isActiveAdviser: isActive,
@@ -652,6 +659,13 @@ export class FinalAdviserReviewService {
       adviserUserId,
       thesis.student.id,
     );
+    // CP4-FIX2: authorize BEFORE workflow-state checks (no 400 leak to non-advisers).
+    const auth = evaluateActiveAdviserGate({
+      isAuthenticated: true,
+      isActiveAdviserForStudent: isActive,
+    });
+    if (!auth.allowed) throw new AppError(auth.reason, auth.statusCode);
+
     const cert = thesis.adviserCertifications[0] ?? null;
     const boundDocId = cert?.reviewedDocumentId ?? null;
     const manuscript = boundDocId
@@ -662,7 +676,7 @@ export class FinalAdviserReviewService {
     const alreadyIssued = thesis.adviserCertifications.some(
       (c) => c.status === "ISSUED",
     );
-    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time (before ISSUED).
+    // CP4-FIX1: Proposal + STRIKE re-checked at mutation time (authorized only).
     await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateCertifyGate({
       isActiveAdviser: isActive,
