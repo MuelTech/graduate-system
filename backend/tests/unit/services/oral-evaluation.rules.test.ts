@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   areAllCriteriaComplete,
+  assertEvaluationSessionEditable,
   calculateEvaluationScores,
   canEditEvaluation,
   canFinalizeEvaluation,
+  countEvaluatorFinalized,
   isNumericalEvaluationComplete,
   isNumericalEvaluationDefense,
   isEvaluatorRole,
+  mergeOptionalField,
+  mergePartialCriteria,
   validateCriterionValue,
 } from "../../../src/services/oral-evaluation.rules";
 
@@ -108,5 +112,65 @@ describe("oral-evaluation.rules (CP5)", () => {
     expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, 3)).toBe(false);
     expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, 4)).toBe(true);
     expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 0, 0)).toBe(false);
+  });
+
+  it("Test 1–3: partial Draft merge preserves omitted fields", () => {
+    const existing = {
+      organization: 8,
+      depthComprehensiveness: 12,
+      recommendations: "Improve chapter 3",
+    };
+    const merged = mergePartialCriteria(existing, { attitude: 9 });
+    expect(merged.organization).toBe(8);
+    expect(merged.depthComprehensiveness).toBe(12);
+    expect(merged.attitude).toBe(9);
+
+    // explicit null clears a criterion when the key is present
+    const cleared = mergePartialCriteria(existing, {
+      organization: null,
+    });
+    expect(cleared.organization).toBeNull();
+    expect(cleared.depthComprehensiveness).toBe(12);
+
+    expect(
+      mergeOptionalField(
+        "S",
+        { recommendations: "Improve chapter 3" },
+        "rating",
+      ),
+    ).toBe("S");
+    expect(mergeOptionalField("S", { rating: null }, "rating")).toBeNull();
+  });
+
+  it("Test 4–6: session mutation gate", () => {
+    expect(assertEvaluationSessionEditable("SCHEDULED").ok).toBe(true);
+    expect(assertEvaluationSessionEditable("IN_PROGRESS").ok).toBe(true);
+    expect(assertEvaluationSessionEditable("AWAITING_CONCLUSION").ok).toBe(false);
+    expect(assertEvaluationSessionEditable("CONCLUDED").ok).toBe(false);
+    expect(assertEvaluationSessionEditable("CANCELLED").ok).toBe(false);
+    expect(
+      assertEvaluationSessionEditable("CONCLUDED").statusCode,
+    ).toBe(409);
+  });
+
+  it("evaluator role uses centralized committee policy", () => {
+    expect(isEvaluatorRole("CHAIRMAN")).toBe(true);
+    expect(isEvaluatorRole("PANELIST")).toBe(true);
+    expect(isEvaluatorRole("RAPPORTEUR")).toBe(false);
+  });
+
+  it("Test 7: non-evaluator FINALIZED row does not satisfy completion", () => {
+    const evaluators = ["a", "b", "c", "d"];
+    const scores = [
+      { panelId: "a", status: "FINALIZED" },
+      { panelId: "b", status: "FINALIZED" },
+      { panelId: "c", status: "FINALIZED" },
+      { panelId: "r", status: "FINALIZED" }, // Rapporteur legacy
+    ];
+    const count = countEvaluatorFinalized(evaluators, scores);
+    expect(count).toBe(3);
+    expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, count)).toBe(
+      false,
+    );
   });
 });

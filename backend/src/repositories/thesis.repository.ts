@@ -1,5 +1,6 @@
 import prisma from "../config/database";
 import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
+import { DefenseCommitteePolicy } from "../services/defense-committee.policy";
 import {
   rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
@@ -44,29 +45,33 @@ export class ThesisRepository {
           },
         },
         panelAssignments: {
-          select: { role: true },
+          select: { id: true, role: true },
         },
-        oralExamScores: { select: { id: true, status: true } },
+        oralExamScores: { select: { id: true, status: true, panelId: true } },
       },
     });
     if (!schedule) return null;
 
-    const evaluatorRoles = new Set(["CHAIRMAN", "PANELIST"]);
-    const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
-      evaluatorRoles.has(p.role),
+    // CP5-FIX1: centralized evaluator policy (not a local literal set).
+    const evaluatorRoles = new DefenseCommitteePolicy().getEvaluatorRoles(
+      schedule.defenseType as never,
+    );
+    const evaluatorAssignmentIds = schedule.panelAssignments
+      .filter((p) => (evaluatorRoles as string[]).includes(p.role))
+      .map((p) => p.id);
+    const evaluatorSet = new Set(evaluatorAssignmentIds);
+
+    // FINALIZED only, and only rows owned by evaluator assignments.
+    const finalizedEvaluatorScores = schedule.oralExamScores.filter(
+      (s) => s.status === "FINALIZED" && evaluatorSet.has(s.panelId),
     ).length;
 
-    // CP5: DRAFT rows must not satisfy formal conclusion — FINALIZED only.
     return {
       defenseType: schedule.defenseType as string,
       alreadyConcluded: !!schedule.conclusion,
-      evaluatorAssignments,
-      submittedEvaluatorScores: schedule.oralExamScores.filter(
-        (s) => s.status === "FINALIZED",
-      ).length,
-      finalizedEvaluatorScores: schedule.oralExamScores.filter(
-        (s) => s.status === "FINALIZED",
-      ).length,
+      evaluatorAssignments: evaluatorAssignmentIds.length,
+      submittedEvaluatorScores: finalizedEvaluatorScores,
+      finalizedEvaluatorScores,
       thesisTitleIds: schedule.thesis.thesisTitles.map((t) => t.id),
     };
   }

@@ -1,9 +1,45 @@
 /**
- * CP5 — Proposal/Final evaluator evaluation pure rules.
+ * CP5 / CP5-FIX1 — Proposal/Final evaluator evaluation pure rules.
  * Title Defense does not use Group I/II numerical evaluation.
  */
+import { DefenseCommitteePolicy } from "./defense-committee.policy";
 
 export type OralEvaluationStatusName = "DRAFT" | "FINALIZED";
+
+const committeePolicy = new DefenseCommitteePolicy();
+
+/** Centralized evaluator-role authority (DefenseCommitteePolicy). */
+export function isEvaluatorRole(role: string | null | undefined): boolean {
+  return committeePolicy.isEvaluatorRole("PROPOSAL_DEFENSE", role as never);
+}
+
+/** Evaluation mutations only while session is in the evaluation phase. */
+/** CP5-FIX1: count FINALIZED rows only for evaluator assignment IDs. */
+export function countEvaluatorFinalized(
+  evaluatorAssignmentIds: string[],
+  scores: Array<{ panelId: string; status: string }>,
+): number {
+  const set = new Set(evaluatorAssignmentIds);
+  return scores.filter((s) => s.status === "FINALIZED" && set.has(s.panelId))
+    .length;
+}
+
+export function isSessionEditableForEvaluation(
+  sessionStatus: string | null | undefined,
+): boolean {
+  return sessionStatus === "SCHEDULED" || sessionStatus === "IN_PROGRESS";
+}
+
+export function assertEvaluationSessionEditable(
+  sessionStatus: string | null | undefined,
+): { ok: true } | { ok: false; reason: string; statusCode: number } {
+  if (isSessionEditableForEvaluation(sessionStatus)) return { ok: true };
+  return {
+    ok: false,
+    reason: "Evaluation editing is closed for this defense session.",
+    statusCode: 409,
+  };
+}
 
 export const CRITERION_LIMITS = {
   timelinessRelevance: 10,
@@ -36,13 +72,40 @@ export const GROUP_II_KEYS = [
 
 export type CriteriaInput = Partial<Record<CriterionKey, number | string | null>>;
 
-export function isNumericalEvaluationDefense(defenseType: string | null | undefined): boolean {
-  return defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
+/**
+ * CP5-FIX1: merge partial Draft patches.
+ * Absent property → keep existing; present null → clear; present value → replace.
+ */
+export function mergePartialCriteria(
+  existing: CriteriaInput | null | undefined,
+  patch: CriteriaInput | null | undefined,
+): CriteriaInput {
+  const base: CriteriaInput = { ...(existing ?? {}) };
+  const p = patch ?? {};
+  for (const key of Object.keys(CRITERION_LIMITS) as CriterionKey[]) {
+    if (Object.prototype.hasOwnProperty.call(p, key)) {
+      base[key] = p[key] ?? null;
+    } else if (!(key in base)) {
+      base[key] = null;
+    }
+  }
+  return base;
 }
 
-/** Evaluator roles for Proposal/Final (DefenseCommitteePolicy EVALUATOR_ROLES). */
-export function isEvaluatorRole(role: string | null | undefined): boolean {
-  return role === "CHAIRMAN" || role === "PANELIST";
+/** Preserve existing rating when patch omits the property. */
+export function mergeOptionalField<T>(
+  existing: T | null | undefined,
+  patch: { hasOwnProperty(prop: string): boolean } & Record<string, unknown>,
+  field: string,
+): T | null {
+  if (Object.prototype.hasOwnProperty.call(patch, field)) {
+    return (patch[field] ?? null) as T | null;
+  }
+  return existing ?? null;
+}
+
+export function isNumericalEvaluationDefense(defenseType: string | null | undefined): boolean {
+  return defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
 }
 
 export function validateCriterionValue(

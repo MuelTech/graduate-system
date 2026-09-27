@@ -8,14 +8,16 @@ import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import {
   areAllCriteriaComplete,
+  assertEvaluationSessionEditable,
   calculateEvaluationScores,
-  canEditEvaluation,
   canFinalizeEvaluation,
   CRITERION_LIMITS,
   isEvaluatorRole,
   isNumericalEvaluationComplete,
   isNumericalEvaluationDefense,
   isValidOralRating,
+  mergeOptionalField,
+  mergePartialCriteria,
   validateCriterionValue,
   type CriterionKey,
   type CriteriaInput,
@@ -133,6 +135,67 @@ export class OralEvaluationService {
     }
   }
 
+  private assertSessionEditable(sessionStatus: string) {
+    const gate = assertEvaluationSessionEditable(sessionStatus);
+    if (!gate.ok) throw new AppError(gate.reason, gate.statusCode);
+  }
+
+  /**
+   * CP5-FIX1: recompute session status from committed DB state.
+   * Idempotent; never regresses CONCLUDED/CANCELLED.
+   */
+  async recomputeEvaluationSessionStatus(scheduleId: string): Promise<void> {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: { defenseType: true, sessionStatus: true },
+    });
+    if (!schedule) return;
+    if (
+      schedule.sessionStatus === "CONCLUDED" ||
+      schedule.sessionStatus === "CANCELLED"
+    ) {
+      return;
+    }
+    const evaluatorRoles = evaluatorRoleList();
+    const assignments = await prisma.panelAssignment.findMany({
+      where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+      select: { id: true },
+    });
+    const finalized = await prisma.oralExamScore.count({
+      where: {
+        scheduleId,
+        status: "FINALIZED",
+        panelId: { in: assignments.map((a) => a.id) },
+      },
+    });
+    const complete = isNumericalEvaluationComplete(
+      schedule.defenseType,
+      assignments.length,
+      finalized,
+    );
+    if (complete && assignments.length > 0) {
+      await prisma.defenseSchedule.updateMany({
+        where: {
+          id: scheduleId,
+          sessionStatus: { in: ["SCHEDULED", "IN_PROGRESS", "AWAITING_CONCLUSION"] },
+        },
+        data: { sessionStatus: "AWAITING_CONCLUSION" },
+      });
+    } else if (
+      schedule.sessionStatus === "SCHEDULED" ||
+      schedule.sessionStatus === "IN_PROGRESS" ||
+      schedule.sessionStatus === "AWAITING_CONCLUSION"
+    ) {
+      // Not all finalized → evaluation phase continues only if not closed.
+      if (schedule.sessionStatus === "AWAITING_CONCLUSION") {
+        await prisma.defenseSchedule.updateMany({
+          where: { id: scheduleId, sessionStatus: "AWAITING_CONCLUSION" },
+          data: { sessionStatus: "IN_PROGRESS" },
+        });
+      }
+    }
+  }
+
   private assertEvaluatorRole(role: string) {
     if (!isEvaluatorRole(role)) {
       throw new AppError(
@@ -144,9 +207,10 @@ export class OralEvaluationService {
 
   async getMyEvaluation(scheduleId: string, userId: string): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
-    this.assertNumericalStage(schedule.defenseType);
+    // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
+    this.assertNumericalStage(schedule.defenseType);
     const row = await prisma.oralExamScore.findUnique({
       where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
     });
@@ -168,11 +232,12 @@ export class OralEvaluationService {
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
-    this.assertNumericalStage(schedule.defenseType);
+    // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
+    this.assertNumericalStage(schedule.defenseType);
+    this.assertSessionEditable(schedule.sessionStatus);
 
-    // Optional legacy panelId: must match own assignment if supplied.
     if (
       input.clientPanelId &&
       String(input.clientPanelId) !== String(assignment.id)
@@ -183,95 +248,122 @@ export class OralEvaluationService {
       );
     }
 
-    const criteria = input.criteria ?? {};
-    const validated: Partial<Record<CriterionKey, number | null>> = {};
-    for (const key of CRITERION_KEYS) {
-      const result = validateCriterionValue(key, criteria[key]);
-      if (!result.ok) throw new AppError(result.reason, 400);
-      validated[key] = result.value;
-    }
-    if (
-      input.rating !== null &&
-      input.rating !== undefined &&
-      input.rating !== "" &&
-      !isValidOralRating(input.rating)
-    ) {
-      throw new AppError("Invalid evaluation rating value.", 400);
-    }
-
-    const derived = calculateEvaluationScores(validated);
     const now = new Date();
 
-    await prisma.$transaction(async (tx) => {
-      const existing = await tx.oralExamScore.findUnique({
-        where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
-      });
-      if (existing?.status === "FINALIZED") {
-        throw new AppError("Evaluation is already finalized.", 409);
-      }
-
-      const data = {
-        timelinessRelevance: validated.timelinessRelevance,
-        organization: validated.organization,
-        depthComprehensiveness: validated.depthComprehensiveness,
-        relevanceConclusions: validated.relevanceConclusions,
-        evidenceOriginalThinking: validated.evidenceOriginalThinking,
-        presentation: validated.presentation,
-        masterySubject: validated.masterySubject,
-        communicationSkill: validated.communicationSkill,
-        attitude: validated.attitude,
-        // Server-derived only (legacy column names = point subtotals).
-        groupAAverage: derived.groupIValue,
-        groupBAverage: derived.groupIIValue,
-        overallAverage: derived.overallValue,
-        rating:
-          input.rating === null || input.rating === undefined || input.rating === ""
-            ? null
-            : (input.rating as never),
-        recommendations: input.recommendations ?? null,
-        scoredAt: now,
-      };
-
-      if (existing) {
-        const updated = await tx.oralExamScore.updateMany({
-          where: {
-            id: existing.id,
-            status: "DRAFT",
-            scheduleId,
-            panelId: assignment.id,
-          },
-          data,
+    try {
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.oralExamScore.findUnique({
+          where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
         });
-        if (updated.count === 0) {
-          throw new AppError(
-            "Evaluation state changed. Refresh and try again.",
-            409,
-          );
+        if (existing?.status === "FINALIZED") {
+          throw new AppError("Evaluation is already finalized.", 409);
         }
-      } else {
-        await tx.oralExamScore.create({
-          data: {
-            scheduleId,
-            panelId: assignment.id,
-            status: "DRAFT",
-            ...data,
-          },
-        });
-      }
 
-      // Session progress: Draft → IN_PROGRESS (never AWAITING_CONCLUSION from draft).
-      if (schedule.sessionStatus === "SCHEDULED" || schedule.sessionStatus === "UNSCHEDULED") {
-        await tx.defenseSchedule.update({
-          where: { id: scheduleId },
-          data: { sessionStatus: "IN_PROGRESS" },
-        });
-      } else if (schedule.sessionStatus === "IN_PROGRESS") {
-        // stay
-      } else if (schedule.sessionStatus === "AWAITING_CONCLUSION") {
-        // Keep awaiting only if still all finalized; draft cannot appear after finalize of self,
-        // but another draft may exist — recompute below on finalize only.
+        // CP5-FIX1: PATCH merge — absent fields preserve stored values.
+        const merged = mergePartialCriteria(
+          {
+            timelinessRelevance: (existing as any)?.timelinessRelevance,
+            organization: (existing as any)?.organization,
+            depthComprehensiveness: (existing as any)?.depthComprehensiveness,
+            relevanceConclusions: (existing as any)?.relevanceConclusions,
+            evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
+            presentation: (existing as any)?.presentation,
+            masterySubject: (existing as any)?.masterySubject,
+            communicationSkill: (existing as any)?.communicationSkill,
+            attitude: (existing as any)?.attitude,
+          },
+          input.criteria ?? {},
+        );
+        const validated: Partial<Record<CriterionKey, number | null>> = {};
+        for (const key of CRITERION_KEYS) {
+          const result = validateCriterionValue(key, merged[key]);
+          if (!result.ok) throw new AppError(result.reason, 400);
+          validated[key] = result.value;
+        }
+
+        const rating = mergeOptionalField<string>(
+          existing?.rating as string | null,
+          (input ?? {}) as Record<string, unknown>,
+          "rating",
+        );
+        if (rating !== null && rating !== "" && !isValidOralRating(rating)) {
+          throw new AppError("Invalid evaluation rating value.", 400);
+        }
+        const recommendations = mergeOptionalField<string>(
+          existing?.recommendations as string | null,
+          (input ?? {}) as Record<string, unknown>,
+          "recommendations",
+        );
+
+        const derived = calculateEvaluationScores(validated);
+        const data = {
+          timelinessRelevance: validated.timelinessRelevance,
+          organization: validated.organization,
+          depthComprehensiveness: validated.depthComprehensiveness,
+          relevanceConclusions: validated.relevanceConclusions,
+          evidenceOriginalThinking: validated.evidenceOriginalThinking,
+          presentation: validated.presentation,
+          masterySubject: validated.masterySubject,
+          communicationSkill: validated.communicationSkill,
+          attitude: validated.attitude,
+          groupAAverage: derived.groupIValue,
+          groupBAverage: derived.groupIIValue,
+          overallAverage: derived.overallValue,
+          rating: (rating || null) as never,
+          recommendations,
+          scoredAt: now,
+        };
+
+        if (existing) {
+          const updated = await tx.oralExamScore.updateMany({
+            where: {
+              id: existing.id,
+              status: "DRAFT",
+              scheduleId,
+              panelId: assignment.id,
+            },
+            data,
+          });
+          if (updated.count === 0) {
+            throw new AppError(
+              "Evaluation state changed. Refresh and try again.",
+              409,
+            );
+          }
+        } else {
+          await tx.oralExamScore.create({
+            data: {
+              scheduleId,
+              panelId: assignment.id,
+              status: "DRAFT",
+              ...data,
+            },
+          });
+        }
+
+        if (
+          schedule.sessionStatus === "SCHEDULED" ||
+          schedule.sessionStatus === "UNSCHEDULED"
+        ) {
+          await tx.defenseSchedule.updateMany({
+            where: {
+              id: scheduleId,
+              sessionStatus: { in: ["SCHEDULED", "UNSCHEDULED"] },
+            },
+            data: { sessionStatus: "IN_PROGRESS" },
+          });
+        }
+      });
+    } catch (err: any) {
+      // Concurrent first-create unique race → friendly 409.
+      if (err?.code === "P2002" || err?.meta?.target) {
+        throw new AppError(
+          "Evaluation state changed. Refresh and try again.",
+          409,
+        );
       }
-    });
+      throw err;
+    }
 
     const row = await prisma.oralExamScore.findUnique({
       where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
@@ -293,9 +385,11 @@ export class OralEvaluationService {
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
-    this.assertNumericalStage(schedule.defenseType);
+    // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
+    this.assertNumericalStage(schedule.defenseType);
+    this.assertSessionEditable(schedule.sessionStatus);
 
     if (
       input.clientPanelId &&
@@ -314,12 +408,20 @@ export class OralEvaluationService {
       throw new AppError("Evaluation is already finalized.", 409);
     }
 
-    const criteria = {
-      ...(Object.fromEntries(
-        CRITERION_KEYS.map((k) => [k, (existing as any)?.[k] ?? null]),
-      ) as CriteriaInput),
-      ...(input.criteria ?? {}),
-    };
+    const criteria = mergePartialCriteria(
+      {
+        timelinessRelevance: (existing as any)?.timelinessRelevance,
+        organization: (existing as any)?.organization,
+        depthComprehensiveness: (existing as any)?.depthComprehensiveness,
+        relevanceConclusions: (existing as any)?.relevanceConclusions,
+        evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
+        presentation: (existing as any)?.presentation,
+        masterySubject: (existing as any)?.masterySubject,
+        communicationSkill: (existing as any)?.communicationSkill,
+        attitude: (existing as any)?.attitude,
+      },
+      input.criteria ?? {},
+    );
     const validated: Partial<Record<CriterionKey, number | null>> = {};
     for (const key of CRITERION_KEYS) {
       const result = validateCriterionValue(key, criteria[key]);
@@ -347,6 +449,16 @@ export class OralEvaluationService {
     // Server-authoritative timestamps (ignore client signedAt/finalizedAt).
     const signedAt = new Date();
     const finalizedAt = signedAt;
+    const rating = mergeOptionalField<string>(
+      existing?.rating as string | null,
+      (input ?? {}) as Record<string, unknown>,
+      "rating",
+    );
+    const recommendations = mergeOptionalField<string>(
+      existing?.recommendations as string | null,
+      (input ?? {}) as Record<string, unknown>,
+      "recommendations",
+    );
 
     await prisma.$transaction(async (tx) => {
       const result = await tx.oralExamScore.updateMany({
@@ -369,11 +481,8 @@ export class OralEvaluationService {
           groupAAverage: derived.groupIValue,
           groupBAverage: derived.groupIIValue,
           overallAverage: derived.overallValue,
-          rating:
-            input.rating === null || input.rating === undefined || input.rating === ""
-              ? (existing?.rating as never) ?? null
-              : (input.rating as never),
-          recommendations: input.recommendations ?? existing?.recommendations ?? null,
+          rating: (rating || null) as never,
+          recommendations,
           signatureData: input.signatureData.trim(),
           signedAt,
           finalizedAt,
@@ -386,32 +495,10 @@ export class OralEvaluationService {
           409,
         );
       }
-
-      // Recompute session progress from FINALIZED evaluators only.
-      const evaluatorRoles = evaluatorRoleList();
-      const assignments = await tx.panelAssignment.findMany({
-        where: { scheduleId, role: { in: evaluatorRoles as never[] } },
-        select: { id: true },
-      });
-      const finalized = await tx.oralExamScore.count({
-        where: {
-          scheduleId,
-          status: "FINALIZED",
-          panelId: { in: assignments.map((a) => a.id) },
-        },
-      });
-      const complete = isNumericalEvaluationComplete(
-        schedule.defenseType,
-        assignments.length,
-        finalized,
-      );
-      await tx.defenseSchedule.update({
-        where: { id: scheduleId },
-        data: {
-          sessionStatus: complete ? "AWAITING_CONCLUSION" : "IN_PROGRESS",
-        },
-      });
     });
+
+    // CP5-FIX1: recompute AFTER commit so concurrent last-finalizers both commit first.
+    await this.recomputeEvaluationSessionStatus(scheduleId);
 
     const row = await prisma.oralExamScore.findUnique({
       where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },

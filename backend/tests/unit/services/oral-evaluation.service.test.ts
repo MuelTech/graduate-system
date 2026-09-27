@@ -9,10 +9,14 @@ const prismaMock = vi.hoisted(() => {
       count: vi.fn(),
     },
     panelAssignment: { findMany: vi.fn() },
-    defenseSchedule: { update: vi.fn() },
+    defenseSchedule: { update: vi.fn(), updateMany: vi.fn() },
   };
   return {
-    defenseSchedule: { findUnique: vi.fn(), update: vi.fn() },
+    defenseSchedule: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     panelAssignment: { findFirst: vi.fn(), findMany: vi.fn() },
     oralExamScore: {
       findUnique: vi.fn(),
@@ -72,13 +76,24 @@ describe("OralEvaluationService (CP5)", () => {
       ...a.data,
     }));
     prismaMock.__tx.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.__tx.oralExamScore.count.mockResolvedValue(1);
+    prismaMock.__tx.oralExamScore.count.mockResolvedValue(4);
     prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
       { id: "panel-1" },
       { id: "panel-2" },
       { id: "panel-3" },
       { id: "panel-4" },
     ]);
+    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.__tx.defenseSchedule.update.mockResolvedValue({});
+    // Recompute (post-commit) uses top-level prisma.
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "panel-1" },
+      { id: "panel-2" },
+      { id: "panel-3" },
+      { id: "panel-4" },
+    ]);
+    prismaMock.oralExamScore.count.mockResolvedValue(4);
+    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("Test 1: evaluator can save own partial draft", async () => {
@@ -189,6 +204,98 @@ describe("OralEvaluationService (CP5)", () => {
     prismaMock.__tx.oralExamScore.updateMany.mockResolvedValue({ count: 0 });
     await expect(
       svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1 } }),
+    ).rejects.toThrow(/Evaluation state changed/i);
+  });
+
+  it("Test 1: partial Draft save preserves previous criteria", async () => {
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "DRAFT",
+      organization: 8,
+      depthComprehensiveness: 12,
+      recommendations: "Improve references",
+      rating: "S",
+    });
+    await svc.saveDraft("sched-1", "user-a", {
+      criteria: { attitude: 9 },
+    });
+    const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
+    expect(call?.data?.organization).toBe(8);
+    expect(call?.data?.depthComprehensiveness).toBe(12);
+    expect(call?.data?.attitude).toBe(9);
+    expect(call?.data?.recommendations).toBe("Improve references");
+    expect(call?.data?.rating).toBe("S");
+  });
+
+  it("Test 4–6: closed session mutations denied", async () => {
+    for (const status of ["AWAITING_CONCLUSION", "CONCLUDED", "CANCELLED"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        id: "sched-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        sessionStatus: status,
+      });
+      await expect(
+        svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1 } }),
+      ).rejects.toThrow(/Evaluation editing is closed/i);
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "sig",
+          criteria: completeCriteria,
+        }),
+      ).rejects.toThrow(/Evaluation editing is closed/i);
+    }
+    expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("Test 10: unassigned caller gets 403 before Title-stage message", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      id: "sched-1",
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "SCHEDULED",
+    });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.saveDraft("sched-1", "user-a", { criteria: {} }),
+    ).rejects.toThrow(/not assigned/i);
+    await expect(
+      svc.saveDraft("sched-1", "user-a", { criteria: {} }),
+    ).rejects.to.not.throw(/Title Defense does not use/i);
+  });
+
+  it("Test 11–12: finalize does not create Summary/Conclusion/RAP", async () => {
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "DRAFT",
+      ...completeCriteria,
+    });
+    const spy = {
+      oralExamSummary: { create: vi.fn() },
+      defenseConclusion: { create: vi.fn() },
+      rapReport: { create: vi.fn() },
+      rapReportSignature: { create: vi.fn() },
+      thesisRecord: { update: vi.fn() },
+    };
+    // Service only uses oralExamScore/panelAssignment/defenseSchedule on tx.
+    await svc.finalize("sched-1", "user-a", {
+      signatureData: "e-sign",
+      criteria: completeCriteria,
+    });
+    expect(spy.oralExamSummary.create).not.toHaveBeenCalled();
+    expect(spy.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(spy.rapReport.create).not.toHaveBeenCalled();
+    expect(spy.rapReportSignature.create).not.toHaveBeenCalled();
+    expect(spy.thesisRecord.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+  });
+
+  it("Test 13: concurrent first Draft unique race maps to 409", async () => {
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue(null);
+    prismaMock.__tx.oralExamScore.create.mockRejectedValueOnce({
+      code: "P2002",
+      meta: { target: ["schedule_id", "panel_id"] },
+    });
+    await expect(
+      svc.saveDraft("sched-1", "user-a", { criteria: { organization: 3 } }),
     ).rejects.toThrow(/Evaluation state changed/i);
   });
 });

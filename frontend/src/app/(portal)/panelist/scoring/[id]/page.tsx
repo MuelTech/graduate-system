@@ -71,6 +71,8 @@ export default function PanelistScoringPage() {
 
   const totalScore = Object.values(scores).reduce((sum, s) => sum + s, 0);
   const allScored = allCriteria.every((c) => scores[c.id] > 0);
+  // CP5-FIX1: partial drafts allowed — enable once any criterion is entered.
+  const hasAnyScore = allCriteria.some((c) => scores[c.id] > 0);
 
   const handleScoreChange = (id: string, value: string, max: number) => {
     const num = parseInt(value) || 0;
@@ -315,15 +317,15 @@ export default function PanelistScoringPage() {
         <div className="mt-8">
           <Button
             onClick={handleSubmit}
-            disabled={!allScored || isSubmitting}
+            disabled={!hasAnyScore || isSubmitting}
             className={`w-full py-6 text-base font-bold shadow-lg ${
-              allScored
+              hasAnyScore
                 ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                 : "cursor-not-allowed bg-gray-200 text-gray-400"
             }`}
           >
             {isSubmitting ? (
-              "Submitting..."
+              "Saving..."
             ) : (
               <>
                 <Send className="mr-2 h-5 w-5" />
@@ -333,7 +335,7 @@ export default function PanelistScoringPage() {
           </Button>
           {!allScored && (
             <p className="mt-2 text-center text-xs font-medium text-(--earist-body-text)">
-              Please score all criteria before submitting.
+              Partial drafts are saved as you go. All criteria are required only when finalizing (CP6).
             </p>
           )}
         </div>
