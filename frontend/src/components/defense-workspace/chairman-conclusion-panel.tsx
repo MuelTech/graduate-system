@@ -25,9 +25,19 @@ const OUTCOMES = [
 export function ChairmanConclusionPanel({
   scheduleId,
   workspace,
+  detailedSummaryReady,
+  detailedSummaryLoading,
+  detailedSummaryError,
 }: {
   scheduleId: string;
   workspace: DefenseWorkspace;
+  /**
+   * CP7-FIX3: true only when Proposal/Final detailed Summary loaded successfully
+   * and data.ready === true. Title does not require this gate.
+   */
+  detailedSummaryReady?: boolean;
+  detailedSummaryLoading?: boolean;
+  detailedSummaryError?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [outcome, setOutcome] = useState<string>("");
@@ -44,13 +54,18 @@ export function ChairmanConclusionPanel({
     evals.evaluatorAssignments > 0 &&
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
+  // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
   const canSubmit =
     !concluded &&
     notesReady &&
-    outcome &&
+    Boolean(outcome) &&
     (isTitle
-      ? outcome !== "PASSED" || selectedTitleId
-      : summaryReady && evalsComplete);
+      ? outcome !== "PASSED" || Boolean(selectedTitleId)
+      : summaryReady &&
+        evalsComplete &&
+        detailedSummaryReady === true &&
+        !detailedSummaryLoading &&
+        !detailedSummaryError);
 
   const conclude = useMutation({
     mutationFn: async () =>
@@ -119,6 +134,24 @@ export function ChairmanConclusionPanel({
                     ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
                     : "Not ready"}
                 </p>
+                <p>
+                  Detailed Summary:{" "}
+                  {detailedSummaryError
+                    ? "unavailable (retry required)"
+                    : detailedSummaryLoading
+                      ? "loading"
+                      : detailedSummaryReady
+                        ? "reviewed/available"
+                        : summaryReady
+                          ? "unavailable"
+                          : "not ready"}
+                </p>
+                {!isTitle && detailedSummaryError && (
+                  <p className="mt-1 text-red-700">
+                    Unable to load Summary. Formal result is disabled until a
+                    successful load.
+                  </p>
+                )}
               </div>
             )}
 
@@ -197,7 +230,11 @@ export function ChairmanConclusionPanel({
                       </li>
                       <li>
                         Generated Summary:{" "}
-                        {summaryReady ? "reviewed/available" : "not ready"}
+                        {detailedSummaryReady
+                          ? "reviewed/available"
+                          : detailedSummaryLoading
+                            ? "loading"
+                            : "unavailable"}
                       </li>
                     </>
                   )}

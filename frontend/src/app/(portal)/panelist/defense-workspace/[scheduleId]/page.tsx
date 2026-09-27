@@ -14,6 +14,27 @@ import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman
 import { ChairmanOralSummary } from "@/components/defense-workspace/chairman-oral-summary";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
+/** CP7-FIX3: shared detailed Summary contract for Chairman review + conclusion gate. */
+export interface OralExamSummaryDetail {
+  scheduleId: string;
+  defenseType: string;
+  ready: boolean;
+  evaluatorAssignments: number;
+  finalizedEvaluations: number;
+  overallAverage: number | null;
+  finalRating: string | null;
+  generatedAt: string | null;
+  evaluators: Array<{
+    evaluatorName: string;
+    functionalRole: string;
+    groupIValue: number | null;
+    groupIIValue: number | null;
+    overallValue: number | null;
+    rating: string | null;
+    recommendations?: string | null;
+  }>;
+}
+
 export default function DefenseWorkspacePage() {
   const params = useParams<{ scheduleId: string }>();
   const scheduleId = params.scheduleId;
@@ -31,6 +52,36 @@ export default function DefenseWorkspacePage() {
         ? 20000
         : false;
     },
+  });
+
+  const isTitle =
+    data?.schedule.defenseType === "TITLE_DEFENSE";
+  const isChairman = data?.myAssignment.role === "CHAIRMAN";
+  const workspaceSummaryReady = data?.oralSummary?.ready === true;
+  // CP7-FIX3: only Chairman + Proposal/Final + aggregate ready loads detailed rows.
+  const showDetailedSummary =
+    Boolean(data) &&
+    isChairman &&
+    !isTitle &&
+    workspaceSummaryReady;
+
+  // Parent owns the single detailed Summary fetch (Option A).
+  const {
+    data: detailedSummary,
+    isLoading: detailedSummaryLoading,
+    isFetching: detailedSummaryFetching,
+    error: detailedSummaryError,
+    refetch: refetchDetailedSummary,
+  } = useQuery({
+    queryKey: ["oralExamSummary", scheduleId],
+    queryFn: async () =>
+      (await apiClientRequest(
+        `/thesis/defense/${scheduleId}/records/summary`,
+      )) as OralExamSummaryDetail,
+    enabled: showDetailedSummary,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   if (isLoading) {
@@ -59,15 +110,22 @@ export default function DefenseWorkspacePage() {
     );
   }
 
-  const isTitle = data.schedule.defenseType === "TITLE_DEFENSE";
   const canEvaluate = data.capabilities.canEvaluate && !isTitle;
   const isRapporteur = data.capabilities.canEditRapporteurNotes;
-  const isChairman = data.myAssignment.role === "CHAIRMAN";
   const primaryDoc = data.documents[0];
   const progress = data.evaluationProgress;
-  // CP7-FIX2: only Chairman + Proposal/Final + ready Summary loads detailed rows.
-  const showDetailedSummary =
-    isChairman && !isTitle && (data.oralSummary?.ready === true);
+
+  // CP7-FIX3: successful detailed load + ready for Proposal/Final Chairman gate.
+  const detailedSummaryLoadedSuccessfully =
+    !detailedSummaryLoading &&
+    !detailedSummaryFetching &&
+    !detailedSummaryError &&
+    detailedSummary !== undefined;
+  const detailedSummaryReady =
+    !isTitle &&
+    showDetailedSummary &&
+    detailedSummaryLoadedSuccessfully &&
+    detailedSummary?.ready === true;
 
   const oralSummaryLabel = isTitle
     ? null
@@ -141,11 +199,30 @@ export default function DefenseWorkspacePage() {
           )}
 
           {showDetailedSummary && (
-            <ChairmanOralSummary scheduleId={scheduleId} show={showDetailedSummary} />
+            <ChairmanOralSummary
+              data={detailedSummary ?? null}
+              isLoading={detailedSummaryLoading || detailedSummaryFetching}
+              error={
+                detailedSummaryError
+                  ? (detailedSummaryError as Error)
+                  : null
+              }
+              onRetry={() => {
+                void refetchDetailedSummary();
+              }}
+            />
           )}
 
           {isChairman && (
-            <ChairmanConclusionPanel scheduleId={scheduleId} workspace={data} />
+            <ChairmanConclusionPanel
+              scheduleId={scheduleId}
+              workspace={data}
+              detailedSummaryReady={detailedSummaryReady}
+              detailedSummaryLoading={showDetailedSummary && (detailedSummaryLoading || detailedSummaryFetching)}
+              detailedSummaryError={
+                showDetailedSummary ? Boolean(detailedSummaryError) : false
+              }
+            />
           )}
 
           {!canEvaluate && !isRapporteur && !isChairman && (

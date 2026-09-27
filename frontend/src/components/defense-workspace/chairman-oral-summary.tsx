@@ -1,10 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface SummaryEvaluatorRow {
+export interface SummaryEvaluatorRow {
   evaluatorName: string;
   functionalRole: string;
   groupIValue: number | null;
@@ -14,7 +13,7 @@ interface SummaryEvaluatorRow {
   recommendations?: string | null;
 }
 
-interface OralExamSummaryDetail {
+export interface OralExamSummaryDetail {
   scheduleId: string;
   defenseType: string;
   ready: boolean;
@@ -27,32 +26,21 @@ interface OralExamSummaryDetail {
 }
 
 /**
- * CP7-FIX2: Chairman-only detailed Oral Examination Summary (read-only).
- * Backend enforces ADMIN/session-CHAIRMAN authorization.
- * Frontend gating is UX only. Title Defense never fetches numerical Summary.
+ * CP7-FIX2/FIX3: presentational Chairman Summary table.
+ * Query lives in DefenseWorkspacePage so loading/error/success is shared
+ * with ChairmanConclusionPanel (single authoritative fetch).
  */
 export function ChairmanOralSummary({
-  scheduleId,
-  show,
+  data,
+  isLoading,
+  error,
+  onRetry,
 }: {
-  scheduleId: string;
-  /** Only true for Chairman + Proposal/Final + summary ready. */
-  show: boolean;
+  data: OralExamSummaryDetail | null;
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: () => void;
 }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["oralExamSummary", scheduleId],
-    queryFn: async () =>
-      (await apiClientRequest(
-        `/thesis/defense/${scheduleId}/records/summary`,
-      )) as OralExamSummaryDetail,
-    enabled: show,
-    // One fetch when ready; workspace polling refreshes readiness separately.
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  if (!show) return null;
-
   if (isLoading) {
     return (
       <Card>
@@ -72,8 +60,16 @@ export function ChairmanOralSummary({
         <CardHeader>
           <CardTitle className="text-sm">Oral Examination Summary</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-red-600">
-          {(error as Error)?.message || "Unable to load Summary."}
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-red-600">
+            Unable to load Summary: {error.message || "Request failed."}
+          </p>
+          <p className="text-xs text-(--earist-body-text)">
+            Formal result remains disabled until the Summary loads successfully.
+          </p>
+          <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -88,7 +84,7 @@ export function ChairmanOralSummary({
         <CardTitle className="text-sm">Oral Examination Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        {!ready ? (
+        {!data || !ready ? (
           <p className="text-xs text-(--earist-body-text)">
             Not ready — waiting for all required evaluators to finalize.
           </p>
@@ -98,16 +94,16 @@ export function ChairmanOralSummary({
               <p>
                 Overall Defense Average:{" "}
                 <strong className="text-(--earist-primary)">
-                  {data?.overallAverage ?? "—"}
+                  {data.overallAverage ?? "—"}
                 </strong>
-                {data?.finalRating ? ` · Rating: ${data.finalRating}` : ""}
+                {data.finalRating ? ` · Rating: ${data.finalRating}` : ""}
               </p>
-              {data?.generatedAt && (
+              {data.generatedAt && (
                 <p>Generated At: {new Date(data.generatedAt).toLocaleString()}</p>
               )}
               <p>
-                Evaluators finalized: {data?.finalizedEvaluations ?? 0} /{" "}
-                {data?.evaluatorAssignments ?? 0}
+                Evaluators finalized: {data.finalizedEvaluations ?? 0} /{" "}
+                {data.evaluatorAssignments ?? 0}
               </p>
             </div>
 

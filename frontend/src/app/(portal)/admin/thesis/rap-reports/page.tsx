@@ -2,15 +2,14 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   FileText,
   Clock,
   CheckCircle2,
-  Download,
   Send,
   PenTool,
   Users,
@@ -18,14 +17,20 @@ import {
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 
+/** CP7 canonical UI status keys. */
+type RapUiStatus = "awaiting" | "partial" | "finalized" | "legacy";
+
 interface RapReportData {
   id: string;
+  scheduleId: string;
   studentName: string;
   studentNumber: string;
   program: string;
   stage: string;
   defenseDate: string;
-  status: string;
+  /** Backend RapReport.status — lifecycle authority. */
+  rawStatus: string;
+  status: RapUiStatus;
   generatedAt: string | null;
   panelists: {
     name: string;
@@ -37,14 +42,15 @@ interface RapReportData {
 
 interface BackendRapReport {
   id: string;
+  scheduleId: string;
   status: string;
   generatedAt: string | null;
   thesis: {
     student: {
       user: { firstName: string; lastName: string };
       studentNumber: string | null;
-      program?: { code?: string; name?: string };
-    }
+      program?: { programName?: string | null };
+    };
   };
   schedule: {
     defenseType: string;
@@ -53,37 +59,45 @@ interface BackendRapReport {
   };
   signatures: {
     userId: string;
+    roleAtDefense?: string | null;
     isSigned: boolean;
     signedAt: string | null;
     user: { firstName: string; lastName: string };
   }[];
 }
 
-function mapRapReport(rap: BackendRapReport): RapReportData {
-  let uiStatus = "pending";
-  if (rap.status === "DRAFT") uiStatus = "pending";
-  else if (rap.status === "DISTRIBUTED") {
-    const signedCount = rap.signatures.filter((s) => s.isSigned).length;
-    if (signedCount === 0) uiStatus = "distributed";
-    else if (signedCount < rap.signatures.length) uiStatus = "partial";
-    else uiStatus = "finalized";
-  } else if (rap.status === "ALL_SIGNED" || rap.status === "FINALIZED") {
-    uiStatus = "finalized";
+/**
+ * CP7-FIX3: backend status is the lifecycle authority.
+ * Signature counts are progress metadata only.
+ */
+function mapBackendStatus(raw: string): RapUiStatus {
+  switch (raw) {
+    case "FOR_SIGNATURE":
+      return "awaiting";
+    case "PARTIALLY_SIGNED":
+      return "partial";
+    case "FINALIZED":
+      return "finalized";
+    default:
+      // DRAFT / DISTRIBUTED / ALL_SIGNED / others — legacy, not active CP7 steps.
+      return "legacy";
   }
+}
 
+function mapRapReport(rap: BackendRapReport): RapReportData {
+  const programName = rap.thesis.student.program?.programName ?? null;
   return {
     id: rap.id,
+    scheduleId: rap.scheduleId,
     studentName: `${rap.thesis.student.user.firstName} ${rap.thesis.student.user.lastName}`,
     studentNumber: rap.thesis.student.studentNumber || "N/A",
-    program:
-      rap.thesis.student.program?.code ||
-      rap.thesis.student.program?.name ||
-      "Program",
+    program: programName || "Program",
     stage: rap.schedule.defenseType.toLowerCase(),
     defenseDate: rap.schedule.defenseDate
       ? new Date(rap.schedule.defenseDate).toLocaleDateString()
       : "—",
-    status: uiStatus,
+    rawStatus: rap.status,
+    status: mapBackendStatus(rap.status),
     generatedAt: rap.generatedAt
       ? new Date(rap.generatedAt).toLocaleDateString()
       : null,
@@ -93,8 +107,8 @@ function mapRapReport(rap: BackendRapReport): RapReportData {
       );
       return {
         name: `${sig.user.firstName} ${sig.user.lastName}`,
-        role: assignment?.role || "Panelist",
-        signed: sig.isSigned,
+        role: assignment?.role || sig.roleAtDefense || "Panelist",
+        signed: sig.isSigned === true,
         signedAt: sig.signedAt
           ? new Date(sig.signedAt).toLocaleString()
           : null,
@@ -104,56 +118,30 @@ function mapRapReport(rap: BackendRapReport): RapReportData {
 }
 
 async function fetchReportsData(): Promise<RapReportData[]> {
-  // Correct mount is /api/thesis/defense/... (see thesis.routes + /api router).
-  // Auth comes from the NextAuth session via apiClientRequest — not localStorage.
   const data = await apiClientRequest("/thesis/defense/rap-reports/all");
   const list: BackendRapReport[] = Array.isArray(data) ? data : [];
   return list.map(mapRapReport);
 }
 
 export default function AdminRAPReportsPage() {
-  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
-  const {
-    data: rapReports = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const { data: rapReports = [], isLoading, isError, error } = useQuery({
     queryKey: ["adminRapReports"],
     queryFn: fetchReportsData,
   });
 
-  const distributeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiClientRequest(`/thesis/defense/rap-reports/${id}/distribute`, {
-        method: "POST",
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminRapReports"] });
-    },
-  });
-
+  // CP7-FIX3: reminder is notification-only — allowed only while signatures pending.
   const remindMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiClientRequest(`/thesis/defense/rap-reports/${id}/remind`, {
+    mutationFn: async (id: string) =>
+      apiClientRequest(`/thesis/defense/rap-reports/${id}/remind`, {
         method: "POST",
-      });
-    },
+      }),
     onSuccess: () => {
       alert("Reminders queued successfully!");
     },
   });
-
-  const handleDistribute = useCallback(
-    (id: string) => {
-      distributeMutation.mutate(id);
-    },
-    [distributeMutation],
-  );
 
   const handleRemind = useCallback(
     (id: string) => {
@@ -169,14 +157,10 @@ export default function AdminRAPReportsPage() {
 
   const selectedReportData = rapReports.find((r) => r.id === selectedReport);
 
-  const pendingCount = rapReports.filter((r) => r.status === "pending").length;
-  const distributedCount = rapReports.filter(
-    (r) => r.status === "distributed",
-  ).length;
+  const awaitingCount = rapReports.filter((r) => r.status === "awaiting").length;
   const partialCount = rapReports.filter((r) => r.status === "partial").length;
-  const finalizedCount = rapReports.filter(
-    (r) => r.status === "finalized",
-  ).length;
+  const finalizedCount = rapReports.filter((r) => r.status === "finalized").length;
+  const legacyCount = rapReports.filter((r) => r.status === "legacy").length;
 
   const getStageLabel = (stage: string) => {
     switch (stage) {
@@ -191,27 +175,20 @@ export default function AdminRAPReportsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: RapUiStatus) => {
     switch (status) {
-      case "pending":
+      case "awaiting":
         return (
-          <Badge className="bg-gray-100 text-gray-500">
+          <Badge className="bg-gray-100 text-gray-700">
             <Clock className="mr-1 h-3 w-3" />
-            Pending
-          </Badge>
-        );
-      case "distributed":
-        return (
-          <Badge className="bg-blue-100 text-blue-700">
-            <Send className="mr-1 h-3 w-3" />
-            Distributed
+            Awaiting Signatures
           </Badge>
         );
       case "partial":
         return (
           <Badge className="bg-amber-100 text-amber-700">
             <PenTool className="mr-1 h-3 w-3" />
-            Partial
+            Partially Signed
           </Badge>
         );
       case "finalized":
@@ -219,6 +196,12 @@ export default function AdminRAPReportsPage() {
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle2 className="mr-1 h-3 w-3" />
             Finalized
+          </Badge>
+        );
+      case "legacy":
+        return (
+          <Badge variant="outline" className="text-(--earist-body-text)">
+            Legacy Status
           </Badge>
         );
       default:
@@ -229,19 +212,24 @@ export default function AdminRAPReportsPage() {
   const getSignedCount = (panelists: { signed: boolean }[]) =>
     panelists.filter((p) => p.signed).length;
 
+  const canRemind =
+    selectedReportData &&
+    (selectedReportData.rawStatus === "FOR_SIGNATURE" ||
+      selectedReportData.rawStatus === "PARTIALLY_SIGNED");
+
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div>
         <h2
           className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
-          RAP Report Management
+          RAP Report Status
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Read-only RAP signature status. RAP is created automatically after the
-          Chairman formal result — use Defense Records for official outputs.
+          Read-only RAP signature status. Lifecycle is signature-driven only:
+          Awaiting Signatures → Partially Signed → Finalized. Official outputs
+          live in Defense Records.
         </p>
         <Link
           href="/admin/thesis/defense-records"
@@ -251,27 +239,21 @@ export default function AdminRAPReportsPage() {
         </Link>
       </div>
 
-      {/* Summary Cards */}
+      {/* CP7 canonical summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Pending</p>
-            <p className="text-lg font-bold text-gray-500">{pendingCount}</p>
+            <p className="text-xs text-(--earist-body-text)">
+              Awaiting Signatures
+            </p>
+            <p className="text-lg font-bold text-gray-600">{awaitingCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-(--earist-body-text)">
-              Distributed
+              Partially Signed
             </p>
-            <p className="text-lg font-bold text-blue-600">
-              {distributedCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Partial</p>
             <p className="text-lg font-bold text-amber-600">{partialCount}</p>
           </CardContent>
         </Card>
@@ -281,20 +263,32 @@ export default function AdminRAPReportsPage() {
             <p className="text-lg font-bold text-green-600">{finalizedCount}</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-(--earist-body-text)">
+              Legacy / Other
+            </p>
+            <p className="text-lg font-bold text-(--earist-body-text)">
+              {legacyCount}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Status Filter */}
+      {/* Status filter — no Distributed as a canonical category */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-(--earist-body-text)" />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { value: "all", label: "All" },
-                { value: "pending", label: "Pending" },
-                { value: "distributed", label: "Distributed" },
-                { value: "partial", label: "Partial" },
+                { value: "awaiting", label: "Awaiting Signatures" },
+                { value: "partial", label: "Partially Signed" },
                 { value: "finalized", label: "Finalized" },
+                ...(legacyCount > 0
+                  ? [{ value: "legacy", label: "Legacy" }]
+                  : []),
               ].map((f) => (
                 <button
                   key={f.value}
@@ -310,7 +304,6 @@ export default function AdminRAPReportsPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Reports List */}
         <div className="space-y-2 lg:col-span-1">
           {isLoading && (
             <p className="py-8 text-center text-sm text-(--earist-body-text)">
@@ -333,37 +326,35 @@ export default function AdminRAPReportsPage() {
           {!isLoading &&
             !isError &&
             filteredReports.map((report) => (
-            <button
-              key={report.id}
-              onClick={() => setSelectedReport(report.id)}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedReport === report.id ? "border-(--earist-primary) bg-(--earist-surface-light-red)" : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"}`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-(--earist-primary)">
-                    {report.studentName}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {getStageLabel(report.stage)} &middot; {report.program}
-                  </p>
+              <button
+                key={report.id}
+                onClick={() => setSelectedReport(report.id)}
+                className={`w-full rounded-lg border p-4 text-left transition-colors ${selectedReport === report.id ? "border-(--earist-primary) bg-(--earist-surface-light-red)" : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-(--earist-primary)">
+                      {report.studentName}
+                    </p>
+                    <p className="text-xs text-(--earist-body-text)">
+                      {getStageLabel(report.stage)} &middot; {report.program}
+                    </p>
+                  </div>
+                  {getStatusBadge(report.status)}
                 </div>
-                {getStatusBadge(report.status)}
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-xs text-(--earist-body-text)">
-                <Users className="h-3 w-3" />
-                <span>
-                  {getSignedCount(report.panelists)}/{report.panelists.length}{" "}
-                  signed
-                </span>
-              </div>
-            </button>
-          ))}
+                <div className="mt-2 flex items-center gap-2 text-xs text-(--earist-body-text)">
+                  <Users className="h-3 w-3" />
+                  <span>
+                    {getSignedCount(report.panelists)}/{report.panelists.length}{" "}
+                    signed
+                  </span>
+                </div>
+              </button>
+            ))}
         </div>
 
-        {/* Report Detail */}
         {selectedReportData ? (
           <div className="space-y-4 lg:col-span-2">
-            {/* Report Info */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -376,9 +367,7 @@ export default function AdminRAPReportsPage() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-(--earist-body-text)">
-                      Student
-                    </p>
+                    <p className="text-xs text-(--earist-body-text)">Student</p>
                     <p className="text-sm font-medium text-(--earist-primary)">
                       {selectedReportData.studentName}
                     </p>
@@ -392,9 +381,7 @@ export default function AdminRAPReportsPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-(--earist-body-text)">
-                      Program
-                    </p>
+                    <p className="text-xs text-(--earist-body-text)">Program</p>
                     <p className="text-sm font-medium text-(--earist-primary)">
                       {selectedReportData.program}
                     </p>
@@ -407,11 +394,18 @@ export default function AdminRAPReportsPage() {
                       {selectedReportData.defenseDate}
                     </p>
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-(--earist-body-text)">
+                      Backend status
+                    </p>
+                    <p className="text-sm font-medium text-(--earist-primary)">
+                      {selectedReportData.rawStatus}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* E-Signature Tracking */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
@@ -466,60 +460,66 @@ export default function AdminRAPReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Progress Bar */}
             <Card>
               <CardContent className="py-3">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs text-(--earist-body-text)">
-                    Signature Progress
+                    Signature Progress (metadata only — status is lifecycle
+                    authority)
                   </span>
                   <span className="text-xs font-medium text-(--earist-primary)">
-                    {Math.round(
-                      (getSignedCount(selectedReportData.panelists) /
-                        selectedReportData.panelists.length) *
-                        100,
-                    )}
-                    %
+                    {getSignedCount(selectedReportData.panelists)}/
+                    {selectedReportData.panelists.length}
                   </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
                   <div
                     className="h-full rounded-full bg-green-500"
                     style={{
-                      width: `${(getSignedCount(selectedReportData.panelists) / selectedReportData.panelists.length) * 100}%`,
+                      width: `${(getSignedCount(selectedReportData.panelists) /
+                        Math.max(selectedReportData.panelists.length, 1)) *
+                        100}%`,
                     }}
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions — CP7: RAP lifecycle is not Admin-driven */}
-            <div className="flex gap-2">
-              {selectedReportData.status === "pending" && (
+            {/* Read-only actions — no Admin lifecycle mutation */}
+            <div className="flex flex-wrap gap-2">
+              {selectedReportData.status === "legacy" && (
                 <p className="flex-1 rounded border border-(--earist-border-gray) p-2 text-xs text-(--earist-body-text)">
-                  RAP is generated after the Chairman records the formal result.
-                  Signature tasks appear immediately — no Admin generate step is
-                  required.
+                  Legacy status — not an active CP7 lifecycle step. Use Defense
+                  Records for official outputs.
                 </p>
               )}
-              {selectedReportData.status === "finalized" && (
-                <>
-                  <Button variant="outline" className="flex-1">
-                    <Download className="mr-2 h-4 w-4" />
-                    Student Copy (Watermarked)
-                  </Button>
-                  <Button className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
-                    <Download className="mr-2 h-4 w-4" />
-                    Official Copy
-                  </Button>
-                </>
-              )}
-              {(selectedReportData.status === "distributed" ||
-                selectedReportData.status === "partial") && (
-                <Button onClick={() => handleRemind(selectedReportData.id)} variant="outline" className="flex-1">
+              {canRemind && (
+                <Button
+                  onClick={() => handleRemind(selectedReportData.id)}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={remindMutation.isPending}
+                >
                   <Send className="mr-2 h-4 w-4" />
-                  Resend Reminder
+                  Send Reminder
                 </Button>
+              )}
+              {selectedReportData.status === "finalized" && (
+                <div className="w-full space-y-2">
+                  <Link
+                    href={`/admin/thesis/defense-records/${selectedReportData.scheduleId}`}
+                    className={buttonVariants({
+                      className:
+                        "w-full bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                    })}
+                  >
+                    View Official Defense Record
+                  </Link>
+                  <p className="text-xs text-(--earist-body-text)">
+                    Official Criteria, Oral Summary, and RAP are available in
+                    Defense Records.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -535,8 +535,8 @@ export default function AdminRAPReportsPage() {
                     Select a RAP Report
                   </h3>
                   <p className="text-sm text-(--earist-body-text)">
-                    Click a report from the list to view details and manage
-                    e-signatures.
+                    Click a report to view signature status. Official outputs
+                    are in Defense Records.
                   </p>
                 </div>
               </CardContent>
