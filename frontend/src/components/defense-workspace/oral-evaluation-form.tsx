@@ -14,6 +14,7 @@ import {
   Save,
   Eye,
 } from "lucide-react";
+import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import type { OralEvaluation } from "@/types/defense-workspace";
 
 const GROUP_I = [
@@ -41,6 +42,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
   const [rating, setRating] = useState("");
+  const [ratingTouched, setRatingTouched] = useState(false);
   const [recommendations, setRecommendations] = useState("");
   const [signature, setSignature] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -65,8 +67,10 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
     }
     setValues(next);
     setRating(evaluation.rating ?? "");
+    setRatingTouched(false);
     setRecommendations(evaluation.recommendations ?? "");
-  }, [evaluation, dirty]);
+    setDirty(false);
+  }, [evaluation]);
 
   const locked = evaluation?.isLocked === true;
 
@@ -91,7 +95,10 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       const body: Record<string, unknown> = {
         criteria: parseCriteria(),
       };
-      if (rating) body.rating = rating;
+      // CP6-FIX1: explicit clear sends null; omitted preserves server value.
+      if (ratingTouched) {
+        body.rating = rating === "" ? null : rating;
+      }
       if (recommendations !== (evaluation?.recommendations ?? "")) {
         body.recommendations = recommendations;
       }
@@ -104,6 +111,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       setMessage("Draft saved");
       setError(null);
       setDirty(false);
+      setRatingTouched(false);
       await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
     },
     onError: (e: Error) => setError(e.message),
@@ -118,7 +126,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
           body: JSON.stringify({
             signatureData: signature,
             criteria: parseCriteria(),
-            ...(rating ? { rating } : {}),
+            ...(ratingTouched ? { rating: rating === "" ? null : rating } : {}),
             recommendations,
           }),
         },
@@ -240,6 +248,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
             value={rating}
             onChange={(e) => {
               setDirty(true);
+              setRatingTouched(true);
               setRating(e.target.value);
             }}
             className="w-full rounded border border-(--earist-border-gray) px-2 py-1.5 text-sm"
@@ -307,24 +316,20 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
             <ul className="mb-2 list-disc space-y-1 pl-5 text-(--earist-body-text)">
               <li>
                 Group I: {[...GROUP_I].map((c) => `${c.label}=${values[c.key] ?? "—"}`).join(", ")}{" "}
-                → {evaluation?.groupIValue ?? localPreview.g1}
+                → {localPreview.g1}
               </li>
               <li>
                 Group II: {[...GROUP_II].map((c) => `${c.label}=${values[c.key] ?? "—"}`).join(", ")}{" "}
-                → {evaluation?.groupIIValue ?? localPreview.g2}
+                → {localPreview.g2}
               </li>
-              <li>Overall: {evaluation?.overallValue ?? localPreview.overall}</li>
+              <li>Overall: {localPreview.overall}</li>
               <li>Rating: {rating || "—"}</li>
               <li>Recommendations: {recommendations || "—"}</li>
             </ul>
-            <label className="mb-2 block">
-              <span className="mb-1 block font-medium">E-signature (type full name)</span>
-              <input
-                value={signature}
-                onChange={(e) => setSignature(e.target.value)}
-                className="w-full rounded border border-(--earist-border-gray) px-2 py-1.5"
-              />
-            </label>
+            <p className="mb-2 text-xs text-(--earist-body-text)">
+              Final server values are recalculated on submission.
+            </p>
+            <ESignaturePad value={signature} onChange={setSignature} disabled={locked} />
             <div className="flex gap-2">
               <Button
                 type="button"

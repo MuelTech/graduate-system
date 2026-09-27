@@ -157,7 +157,7 @@ export default function PanelistDefensesPage() {
                             href={`/panelist/defense-workspace/${schedule.id}`}
                             className="inline-flex w-full items-center justify-center rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
                           >
-                            Grade Defense
+                            Open Defense Workspace
                           </Link>
                         )}
                         <Link

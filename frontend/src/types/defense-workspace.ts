@@ -37,6 +37,7 @@ export interface DefenseWorkspace {
     canEvaluate: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
+    canViewTitleChairmanResult: boolean;
   };
   documents: Array<{
     id: string;

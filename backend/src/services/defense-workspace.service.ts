@@ -6,8 +6,8 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
-import { isEvaluatorRole } from "./oral-evaluation.rules";
-import { assertEvaluationSessionEditable } from "./oral-evaluation.rules";
+import { isEvaluatorRole, assertEvaluationSessionEditable } from "./oral-evaluation.rules";
+import { selectCertifiedProposalManuscript, selectCertifiedFinalManuscript } from "./proposal-adviser-review.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -51,6 +51,7 @@ export interface DefenseWorkspaceDto {
     canEvaluate: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
+    canViewTitleChairmanResult: boolean;
   };
   documents: Array<{
     id: string;
@@ -134,8 +135,23 @@ export class DefenseWorkspaceService {
                 docType: true,
                 defenseStage: true,
                 uploadedAt: true,
+                thesisId: true,
               },
               orderBy: { uploadedAt: "desc" },
+            },
+            adviserCertifications: {
+              where: {
+                status: "ISSUED",
+                defenseStage: {
+                  in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"],
+                },
+              },
+              select: {
+                defenseStage: true,
+                reviewedDocumentId: true,
+                status: true,
+              },
+              take: 2,
             },
           },
         },
@@ -163,29 +179,97 @@ export class DefenseWorkspaceService {
     const canViewTitleDeliberation =
       defenseType === "TITLE_DEFENSE" &&
       (role === "CHAIRMAN" || role === "PANELIST");
+    // CP6-FIX1: Chairman-only formal-result informational block.
+    const canViewTitleChairmanResult =
+      defenseType === "TITLE_DEFENSE" && role === "CHAIRMAN";
 
-    const docRule = DOC_BY_DEFENSE[defenseType];
-    const docs = (schedule.thesis?.thesisDocuments ?? [])
-      .filter((d) => {
-        if (!docRule) return false;
-        return (
-          d.docType === docRule.docType &&
-          (d.defenseStage === docRule.defenseStage || d.defenseStage == null)
+    const allDocs = schedule.thesis?.thesisDocuments ?? [];
+    const thesisId = schedule.thesisId;
+    const certs = schedule.thesis?.adviserCertifications ?? [];
+    let docs: Array<{
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      uploadedAt: string | null;
+      displayName: string;
+    }> = [];
+
+    if (defenseType === "PROPOSAL_DEFENSE") {
+      const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE");
+      const exact = selectCertifiedProposalManuscript(
+        allDocs.map((d) => ({
+          id: d.id,
+          thesisId: d.thesisId ?? thesisId,
+          docType: d.docType,
+          defenseStage: d.defenseStage ?? null,
+        })),
+        cert ?? null,
+        thesisId,
+      );
+      if (!exact) {
+        throw new AppError(
+          "Certified defense manuscript is unavailable for this session.",
+          409,
         );
-      })
-      .slice(0, 3)
-      .map((d) => ({
-        id: d.id,
-        docType: d.docType,
-        defenseStage: d.defenseStage,
-        uploadedAt: d.uploadedAt ? d.uploadedAt.toISOString() : null,
-        displayName:
-          d.docType === "TITLE_PROPOSAL"
-            ? "Title Defense Proposal Package"
-            : d.docType === "PROPOSAL_CHAPTERS"
-              ? "Proposal Manuscript (Chapters 1–3)"
-              : "Final Manuscript",
-      }));
+      }
+      docs = [
+        {
+          id: exact.id,
+          docType: exact.docType,
+          defenseStage: exact.defenseStage,
+          uploadedAt:
+            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
+            null,
+          displayName: "Certified Proposal Manuscript",
+        },
+      ];
+    } else if (defenseType === "FINAL_DEFENSE") {
+      const cert = certs.find((c) => c.defenseStage === "FINAL_DEFENSE");
+      const exact = selectCertifiedFinalManuscript(
+        allDocs.map((d) => ({
+          id: d.id,
+          thesisId: d.thesisId ?? thesisId,
+          docType: d.docType,
+          defenseStage: d.defenseStage ?? null,
+        })),
+        cert ?? null,
+        thesisId,
+      );
+      if (!exact) {
+        throw new AppError(
+          "Certified defense manuscript is unavailable for this session.",
+          409,
+        );
+      }
+      docs = [
+        {
+          id: exact.id,
+          docType: exact.docType,
+          defenseStage: exact.defenseStage,
+          uploadedAt:
+            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
+            null,
+          displayName: "Certified Final Manuscript",
+        },
+      ];
+    } else {
+      const docRule = DOC_BY_DEFENSE[defenseType];
+      docs = allDocs
+        .filter(
+          (d) =>
+            docRule &&
+            d.docType === docRule.docType &&
+            (d.defenseStage === docRule.defenseStage || d.defenseStage == null),
+        )
+        .slice(0, 1)
+        .map((d) => ({
+          id: d.id,
+          docType: d.docType,
+          defenseStage: d.defenseStage,
+          uploadedAt: d.uploadedAt ? d.uploadedAt.toISOString() : null,
+          displayName: "Title Defense Proposal Package",
+        }));
+    }
 
     const evaluationByPanel = new Map(
       schedule.oralExamScores.map((s) => [s.panelId, s.status as string]),
@@ -247,6 +331,7 @@ export class DefenseWorkspaceService {
         canEvaluate: isEvaluator,
         canEditRapporteurNotes,
         canViewTitleDeliberation,
+        canViewTitleChairmanResult,
       },
       documents: docs,
       proposedTitles:
@@ -293,13 +378,20 @@ export class DefenseWorkspaceService {
       );
     }
 
-    await prisma.defenseSchedule.updateMany({
+    const result = await prisma.defenseSchedule.updateMany({
       where: {
         id: scheduleId,
         sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] },
       },
       data: { rapporteurNotes: notes },
     });
+    // CP6-FIX1: close-state race — conditional update affected 0 rows.
+    if (result.count === 0) {
+      throw new AppError(
+        "Defense notes state changed or notes are closed for this session.",
+        409,
+      );
+    }
     return { saved: true };
   }
 }

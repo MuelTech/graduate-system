@@ -120,7 +120,7 @@ export default function PanelistDashboard() {
       </div>
 
       <div className="grid gap-6">
-        <h3 className="text-lg font-bold text-(--earist-secondary)">Pending Evaluations</h3>
+        <h3 className="text-lg font-bold text-(--earist-secondary)">Defense Assignments</h3>
         
         {isLoading ? (
           <p className="text-sm text-gray-500 animate-pulse">Loading assignments...</p>

@@ -14,13 +14,39 @@ interface ModelConfig {
 }
 
 /**
- * CP3-FIX1: stage-aware thesis document access for Panelists.
- * Unscoped legacy docs allow any panel assignment; stage-scoped docs require
- * a matching defense-type assignment. Active advisers always allowed.
+ * CP6-FIX1: resolve effective stage for thesis documents.
+ * Explicit defenseStage wins. Legacy null stage may be inferred only for
+ * known academic manuscript types; otherwise null (fail closed for Panelists).
+ */
+export function resolveThesisDocumentStage(input: {
+  docType?: string | null;
+  defenseStage?: string | null;
+}): "TITLE" | "PROPOSAL" | "FINAL" | null {
+  if (input.defenseStage === "TITLE" || input.defenseStage === "PROPOSAL" || input.defenseStage === "FINAL") {
+    return input.defenseStage;
+  }
+  // Legacy unscoped academic manuscripts only.
+  if (input.docType === "TITLE_PROPOSAL") return "TITLE";
+  if (input.docType === "PROPOSAL_CHAPTERS") return "PROPOSAL";
+  if (input.docType === "FINAL_MANUSCRIPT") return "FINAL";
+  return null;
+}
+
+const STAGE_TO_DEFENSE_TYPE: Record<string, string> = {
+  TITLE: "TITLE_DEFENSE",
+  PROPOSAL: "PROPOSAL_DEFENSE",
+  FINAL: "FINAL_DEFENSE",
+};
+
+/**
+ * CP6-FIX1: stage-aware thesis document access for Panelists.
+ * Stage-scoped or safely inferred stage docs require a matching defense-type
+ * assignment. Ambiguous unscoped docs fail closed. Active advisers allowed.
  */
 export function canPanelistAccessThesisDocument(
   record: {
     defenseStage?: string | null;
+    docType?: string | null;
     thesis?: {
       student?: {
         adviserAssignments?: Array<{ adviserId: string }>;
@@ -37,20 +63,20 @@ export function canPanelistAccessThesisDocument(
     record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
   if (activeAdviserIds.includes(userId)) return true;
 
-  const docStage = record.defenseStage ?? null;
-  const schedules = record.thesis?.defenseSchedules ?? [];
-  const stageToDefenseType: Record<string, string> = {
-    TITLE: "TITLE_DEFENSE",
-    PROPOSAL: "PROPOSAL_DEFENSE",
-    FINAL: "FINAL_DEFENSE",
-  };
-  const requiredType = docStage ? stageToDefenseType[docStage] : null;
-
-  return schedules.some((ds) => {
-    if (!ds.panelAssignments?.some((pa) => pa.userId === userId)) return false;
-    if (!docStage || !requiredType) return true;
-    return ds.defenseType === requiredType;
+  const effectiveStage = resolveThesisDocumentStage({
+    docType: record.docType,
+    defenseStage: record.defenseStage,
   });
+  // Ambiguous legacy unscoped document → fail closed for Panelists.
+  if (!effectiveStage) return false;
+
+  const requiredType = STAGE_TO_DEFENSE_TYPE[effectiveStage];
+  const schedules = record.thesis?.defenseSchedules ?? [];
+  return schedules.some(
+    (ds) =>
+      ds.defenseType === requiredType &&
+      ds.panelAssignments?.some((pa) => pa.userId === userId),
+  );
 }
 
 const MODEL_REGISTRY: Record<string, ModelConfig> = {

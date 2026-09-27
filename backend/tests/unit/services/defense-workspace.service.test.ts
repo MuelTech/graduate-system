@@ -22,6 +22,7 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
     venueOrLink: "Room 101",
     rapporteurNotes: "draft notes",
     conclusion: null,
+    thesisId: "thesis-1",
     thesis: {
       student: {
         id: "st-1",
@@ -36,6 +37,14 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
           docType: "PROPOSAL_CHAPTERS",
           defenseStage: "PROPOSAL",
           uploadedAt: new Date(),
+          thesisId: "thesis-1",
+        },
+      ],
+      adviserCertifications: [
+        {
+          defenseStage: "PROPOSAL_DEFENSE",
+          status: "ISSUED",
+          reviewedDocumentId: "doc-p",
         },
       ],
     },
@@ -84,11 +93,85 @@ describe("DefenseWorkspaceService (CP6)", () => {
   });
 
   it("Test 2/3: Proposal PANELIST canEvaluate, cannot edit notes", async () => {
+    // Certified manuscript binding for Proposal workspace
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        thesis: {
+          student: {
+            id: "st-1",
+            studentNumber: "2026-1",
+            user: { firstName: "Ana", lastName: "Student" },
+            program: { programName: "MIT" },
+          },
+          thesisTitles: [],
+          thesisDocuments: [
+            {
+              id: "doc-a",
+              docType: "PROPOSAL_CHAPTERS",
+              defenseStage: "PROPOSAL",
+              uploadedAt: new Date("2026-01-01"),
+              thesisId: "thesis-1",
+            },
+            {
+              id: "doc-b",
+              docType: "PROPOSAL_CHAPTERS",
+              defenseStage: "PROPOSAL",
+              uploadedAt: new Date("2026-02-01"),
+              thesisId: "thesis-1",
+            },
+          ],
+          adviserCertifications: [
+            {
+              defenseStage: "PROPOSAL_DEFENSE",
+              status: "ISSUED",
+              reviewedDocumentId: "doc-a",
+            },
+          ],
+        },
+      }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-eval",
+      scheduleId: "sched-1",
+      userId: "u-eval",
+      role: "PANELIST",
+    });
     const ws = await svc.getWorkspace("sched-1", "u-eval");
     expect(ws.myAssignment.role).toBe("PANELIST");
     expect(ws.capabilities.canEvaluate).toBe(true);
     expect(ws.capabilities.canEditRapporteurNotes).toBe(false);
     expect(ws.rapporteurDraft).toBeNull();
+    // Test 4: exact certified manuscript A, not newer B
+    expect(ws.documents.map((d) => d.id)).toEqual(["doc-a"]);
+  });
+
+  it("Test 6: missing certification binding returns 409 (no latest fallback)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        thesis: {
+          student: {
+            id: "st-1",
+            studentNumber: "2026-1",
+            user: { firstName: "Ana", lastName: "Student" },
+            program: { programName: "MIT" },
+          },
+          thesisTitles: [],
+          thesisDocuments: [
+            {
+              id: "doc-b",
+              docType: "PROPOSAL_CHAPTERS",
+              defenseStage: "PROPOSAL",
+              uploadedAt: new Date("2026-02-01"),
+              thesisId: "thesis-1",
+            },
+          ],
+          adviserCertifications: [],
+        },
+      }),
+    );
+    await expect(svc.getWorkspace("sched-1", "u-eval")).rejects.toThrow(
+      /Certified defense manuscript is unavailable/i,
+    );
   });
 
   it("Test 4: Proposal RAPPORTEUR can edit notes, cannot evaluate", async () => {
@@ -126,6 +209,32 @@ describe("DefenseWorkspaceService (CP6)", () => {
     const title = await svc.getWorkspace("sched-1", "u-eval");
     expect(title.capabilities.canEvaluate).toBe(false);
     expect(title.proposedTitles.length).toBeGreaterThan(0);
+    expect(title.capabilities.canViewTitleChairmanResult).toBe(false);
+
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-eval",
+      role: "CHAIRMAN",
+    });
+    const titleChair = await svc.getWorkspace("sched-1", "u-eval");
+    expect(titleChair.capabilities.canViewTitleChairmanResult).toBe(true);
+    expect(titleChair.capabilities.canViewTitleDeliberation).toBe(true);
+  });
+
+  it("Test 8: notes updateMany count=0 → 409", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-rap",
+      userId: "u-rap",
+      role: "RAPPORTEUR",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "IN_PROGRESS" }),
+    );
+    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      svc.saveRapporteurNotes("sched-1", "u-rap", "x"),
+    ).rejects.toThrow(/state changed or notes are closed/i);
   });
 
   it("Test 7/8: roster status + evaluation privacy", async () => {

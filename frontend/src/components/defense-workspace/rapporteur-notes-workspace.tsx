@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,11 +17,15 @@ export function RapporteurNotesWorkspace({
 }) {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState(initialNotes ?? "");
+  const dirtyRef = useRef(false);
+  const [dirty, setDirty] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
 
+  // CP6-FIX1: only hydrate when clean — never overwrite unsaved typing.
   useEffect(() => {
+    if (dirtyRef.current) return;
     setNotes(initialNotes ?? "");
   }, [initialNotes]);
 
@@ -37,17 +41,33 @@ export function RapporteurNotesWorkspace({
     onMutate: () => setState("saving"),
     onSuccess: async () => {
       setState("saved");
+      dirtyRef.current = false;
+      setDirty(false);
       await queryClient.invalidateQueries({
         queryKey: ["defenseWorkspace", scheduleId],
       });
     },
-    onError: () => setState("error"),
+    onError: (e: Error) => {
+      setState("error");
+      const msg =
+        e instanceof ApiError && e.statusCode === 409
+          ? e.message
+          : "Error saving notes";
+      console.error(msg);
+    },
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Defense Notes (Draft)</CardTitle>
+        <CardTitle className="flex items-center justify-between text-sm">
+          Defense Notes (Draft)
+          {dirty && (
+            <span className="text-xs font-normal text-amber-700">
+              Unsaved changes
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-(--earist-body-text)">
@@ -59,6 +79,8 @@ export function RapporteurNotesWorkspace({
           value={notes}
           onChange={(e) => {
             setNotes(e.target.value);
+            dirtyRef.current = true;
+            setDirty(true);
             setState("idle");
           }}
           placeholder="Minutes, recommendations, and session notes…"

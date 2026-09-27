@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { canPanelistAccessThesisDocument } from "../../../src/services/document.service";
+import {
+  canPanelistAccessThesisDocument,
+  resolveThesisDocumentStage,
+} from "../../../src/services/document.service";
 
 function makeRecord(opts: {
   defenseStage?: string | null;
+  docType?: string | null;
   adviserIds?: string[];
   schedules?: Array<{
     defenseType: string;
@@ -11,6 +15,7 @@ function makeRecord(opts: {
 }) {
   return {
     defenseStage: opts.defenseStage ?? null,
+    docType: opts.docType ?? null,
     thesis: {
       student: {
         adviserAssignments: (opts.adviserIds ?? []).map((adviserId) => ({
@@ -79,17 +84,6 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
       ],
     });
     expect(canPanelistAccessThesisDocument(proposalOnlyFinalDoc, "p2")).toBe(false);
-
-    const unscoped = makeRecord({
-      defenseStage: null,
-      schedules: [
-        {
-          defenseType: "TITLE_DEFENSE",
-          panelAssignments: [{ userId: "p3" }],
-        },
-      ],
-    });
-    expect(canPanelistAccessThesisDocument(unscoped, "p3")).toBe(true);
   });
 
   it("unrelated Panelist denied", () => {
@@ -103,5 +97,56 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
       ],
     });
     expect(canPanelistAccessThesisDocument(record, "unrelated")).toBe(false);
+  });
+
+  it("Test 1: legacy unscoped Final doc denied to Title Panelist", () => {
+    const record = makeRecord({
+      defenseStage: null,
+      docType: "FINAL_MANUSCRIPT",
+      schedules: [
+        {
+          defenseType: "TITLE_DEFENSE",
+          panelAssignments: [{ userId: "title-panelist" }],
+        },
+      ],
+    });
+    expect(canPanelistAccessThesisDocument(record, "title-panelist")).toBe(false);
+  });
+
+  it("Test 2: legacy unscoped Proposal doc allowed to Proposal Panelist", () => {
+    const record = makeRecord({
+      defenseStage: null,
+      docType: "PROPOSAL_CHAPTERS",
+      schedules: [
+        {
+          defenseType: "PROPOSAL_DEFENSE",
+          panelAssignments: [{ userId: "proposal-panelist" }],
+        },
+      ],
+    });
+    expect(canPanelistAccessThesisDocument(record, "proposal-panelist")).toBe(true);
+  });
+
+  it("Test 3: ambiguous unscoped doc fails closed", () => {
+    const record = makeRecord({
+      defenseStage: null,
+      docType: "COR",
+      schedules: [
+        {
+          defenseType: "TITLE_DEFENSE",
+          panelAssignments: [{ userId: "title-panelist" }],
+        },
+      ],
+    });
+    expect(canPanelistAccessThesisDocument(record, "title-panelist")).toBe(false);
+    expect(
+      resolveThesisDocumentStage({ docType: "COR", defenseStage: null }),
+    ).toBeNull();
+    expect(
+      resolveThesisDocumentStage({
+        docType: "FINAL_MANUSCRIPT",
+        defenseStage: null,
+      }),
+    ).toBe("FINAL");
   });
 });

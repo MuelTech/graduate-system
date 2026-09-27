@@ -22,7 +22,7 @@ export default function PanelistScoringIndex() {
         className="mb-6 text-2xl font-bold text-(--earist-primary)"
         style={{ fontFamily: '"Calibri", sans-serif' }}
       >
-        Select Defense to Score
+        Defense Workspaces
       </h3>
 
       {isLoading ? (

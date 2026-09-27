@@ -82,7 +82,7 @@ export default function DefenseWorkspacePage() {
                     {t.titleText}
                   </p>
                 ))}
-                {data.capabilities.canViewTitleDeliberation && (
+                {data.capabilities.canViewTitleChairmanResult && (
                   <p className="text-xs text-(--earist-body-text)">
                     Formal Title Result: Official title selection and formal result
                     are completed in the Chairman conclusion phase.
