@@ -19,9 +19,10 @@ export const RAP_SIGNATURE_POLICY_MODE: RapSignaturePolicyMode =
   "EVALUATOR_SIGNATORIES";
 
 /**
- * CP7-FIX1 Issue 9: centralized RAP signatory roles.
+ * CP7-FIX1 Issue 9 / CP7-FIX2 Issue 5: centralized RAP signatory roles.
  * Title and Proposal/Final share the confirmed evaluator-role set.
- * DefenseCommitteePolicy remains the single evaluator-role authority.
+ * DefenseCommitteePolicy is the single evaluator-role authority.
+ * (Removed redundant RAP_REQUIRED_SIGNER_ROLES constant — use this helper.)
  */
 export function getRapSignatoryRoles(
   defenseType?: string,
@@ -31,12 +32,6 @@ export function getRapSignatoryRoles(
     (defenseType as never) ?? ("PROPOSAL_DEFENSE" as never),
   );
 }
-
-/** Canonical evaluator roles that own RAP signature slots. */
-export const RAP_REQUIRED_SIGNER_ROLES: DefensePanelRole[] = [
-  "CHAIRMAN",
-  "PANELIST",
-];
 
 export interface RapSignatureSlotInput {
   userId: string;

@@ -11,6 +11,7 @@ import { DefenseRoster } from "@/components/defense-workspace/defense-roster";
 import { OralEvaluationForm } from "@/components/defense-workspace/oral-evaluation-form";
 import { RapporteurNotesWorkspace } from "@/components/defense-workspace/rapporteur-notes-workspace";
 import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman-conclusion-panel";
+import { ChairmanOralSummary } from "@/components/defense-workspace/chairman-oral-summary";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 export default function DefenseWorkspacePage() {
@@ -64,6 +65,23 @@ export default function DefenseWorkspacePage() {
   const isChairman = data.myAssignment.role === "CHAIRMAN";
   const primaryDoc = data.documents[0];
   const progress = data.evaluationProgress;
+  // CP7-FIX2: only Chairman + Proposal/Final + ready Summary loads detailed rows.
+  const showDetailedSummary =
+    isChairman && !isTitle && (data.oralSummary?.ready === true);
+
+  const oralSummaryLabel = isTitle
+    ? null
+    : data.oralSummary?.ready
+      ? "Ready"
+      : "Waiting for evaluator completion";
+  const formalResultLabel = data.formalResult
+    ? data.formalResult
+    : data.conclusionsPresent
+      ? "Recorded"
+      : data.sessionStatus === "AWAITING_CONCLUSION"
+        ? "Awaiting Chairman"
+        : "Not yet recorded";
+  const rapLabel = data.rapStatus ?? "Not yet generated";
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -120,6 +138,10 @@ export default function DefenseWorkspacePage() {
               canFinalize={data.capabilities.canFinalizeRapporteurNotes}
               evaluationProgress={progress}
             />
+          )}
+
+          {showDetailedSummary && (
+            <ChairmanOralSummary scheduleId={scheduleId} show={showDetailedSummary} />
           )}
 
           {isChairman && (
@@ -193,10 +215,13 @@ export default function DefenseWorkspacePage() {
                     Session: {data.schedule.sessionStatus}
                     {data.conclusionsPresent ? " · formal result recorded" : ""}
                   </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Official summary / formal result workflows are not part of
-                    this workspace yet.
-                  </p>
+                  <div className="space-y-1 text-xs text-(--earist-body-text)">
+                    {oralSummaryLabel !== null && (
+                      <p>Oral Summary: {oralSummaryLabel}</p>
+                    )}
+                    <p>Formal Result: {formalResultLabel}</p>
+                    <p>RAP: {rapLabel}</p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

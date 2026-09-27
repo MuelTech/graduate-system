@@ -731,24 +731,37 @@ export class ThesisRepository {
     });
   }
   async getPendingRapReports(userId: string) {
+    // CP7-FIX2: never serialize other users' signature image evidence.
     return prisma.rapReportSignature.findMany({
       where: {
         userId,
         isSigned: false,
       },
-      include: {
+      select: {
+        id: true,
+        rapId: true,
+        userId: true,
+        roleAtDefense: true,
+        required: true,
+        isSigned: true,
+        signedAt: true,
         rapReport: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            defenseType: true,
+            generatedAt: true,
             thesis: {
-              include: {
+              select: {
                 student: {
-                  include: {
-                    user: true,
+                  select: {
+                    user: {
+                      select: { firstName: true, lastName: true },
+                    },
                   },
                 },
               },
             },
-            schedule: true,
           },
         },
       },
@@ -1070,27 +1083,49 @@ export class ThesisRepository {
     });
   }
 
-  // Fetch ALL RAP Reports for Admin Management Page
+  // CP7-FIX2: Admin RAP list — explicit select; never expose signatureData.
   async getAllRapReports() {
     return prisma.rapReport.findMany({
-      include: {
+      select: {
+        id: true,
+        scheduleId: true,
+        status: true,
+        defenseType: true,
+        generatedAt: true,
+        finalizedAt: true,
+        selectedTitle: true,
+        createdAt: true,
         thesis: {
-          include: {
+          select: {
             student: {
-              include: { user: true, program: true },
+              select: {
+                studentNumber: true,
+                user: { select: { firstName: true, lastName: true } },
+                program: { select: { programName: true } },
+              },
             },
           },
         },
         schedule: {
-          include: {
+          select: {
+            defenseDate: true,
+            defenseType: true,
             panelAssignments: {
-              include: { user: true },
+              select: { userId: true, role: true },
             },
           },
         },
         signatures: {
-          include: {
-            user: true,
+          select: {
+            id: true,
+            userId: true,
+            roleAtDefense: true,
+            required: true,
+            isSigned: true,
+            signedAt: true,
+            user: {
+              select: { firstName: true, lastName: true, email: true },
+            },
           },
         },
       },
@@ -1111,11 +1146,23 @@ export class ThesisRepository {
     );
   }
 
-  // Fetch missing signatures to remind them
+  // CP7-FIX2: reminder metadata only — no raw signature evidence.
   async getMissingSignaturesForRap(rapId: string) {
     return prisma.rapReportSignature.findMany({
       where: { rapId, isSigned: false },
-      include: { user: true, rapReport: true },
+      select: {
+        id: true,
+        rapId: true,
+        userId: true,
+        roleAtDefense: true,
+        required: true,
+        isSigned: true,
+        signedAt: true,
+        user: { select: { firstName: true, lastName: true, email: true } },
+        rapReport: {
+          select: { id: true, status: true, defenseType: true },
+        },
+      },
     });
   }
 }

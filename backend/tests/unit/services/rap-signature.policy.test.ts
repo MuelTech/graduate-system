@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
-  RAP_REQUIRED_SIGNER_ROLES,
   RAP_SIGNATURE_POLICY_MODE,
+  getRapSignatoryRoles,
   isRapReadyToFinalize,
   rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
 } from "../../../src/services/rap-signature.policy";
 
 describe("CP7 RAP signature policy (evaluator signatories)", () => {
-  it("uses evaluator-role signatories (not all participants)", () => {
+  it("uses evaluator-role signatories via centralized getRapSignatoryRoles", () => {
     expect(RAP_SIGNATURE_POLICY_MODE).toBe("EVALUATOR_SIGNATORIES");
-    expect(RAP_REQUIRED_SIGNER_ROLES).toEqual(["CHAIRMAN", "PANELIST"]);
+    expect(getRapSignatoryRoles("PROPOSAL_DEFENSE")).toEqual([
+      "CHAIRMAN",
+      "PANELIST",
+    ]);
+    expect(getRapSignatoryRoles("TITLE_DEFENSE")).toEqual([
+      "CHAIRMAN",
+      "PANELIST",
+    ]);
   });
 
   it("Test 21/23: Proposal/Final slots = actual evaluators only (no Facilitator/Rapporteur/Adviser)", () => {

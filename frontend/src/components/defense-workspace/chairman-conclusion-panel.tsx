@@ -186,17 +186,28 @@ export function ChairmanConclusionPanel({
                   <li>Student: {workspace.student.name}</li>
                   <li>Defense: {workspace.schedule.defenseType}</li>
                   {!isTitle && (
-                    <li>
-                      Summary average:{" "}
-                      {workspace.oralSummary?.overallAverage ?? "—"}
-                    </li>
+                    <>
+                      <li>
+                        Evaluators finalized: {evals.finalizedEvaluations} /{" "}
+                        {evals.evaluatorAssignments}
+                      </li>
+                      <li>
+                        Overall defense average:{" "}
+                        {workspace.oralSummary?.overallAverage ?? "—"}
+                      </li>
+                      <li>
+                        Generated Summary:{" "}
+                        {summaryReady ? "reviewed/available" : "not ready"}
+                      </li>
+                    </>
                   )}
                   <li>Selected result: {outcome}</li>
                   {isTitle && outcome === "PASSED" && (
                     <li>Selected title required</li>
                   )}
                   <li className="font-semibold">
-                    This action is irreversible.
+                    This action is irreversible. No result is recommended from
+                    scores.
                   </li>
                 </ul>
                 <div className="mt-3 flex gap-2">
