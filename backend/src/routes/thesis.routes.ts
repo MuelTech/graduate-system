@@ -32,17 +32,61 @@ router.post(
   thesisController.applyProposal,
 );
 
-// STUDENT ONLY: Final Defense — stage-scoped document + cor + receipt
+// STUDENT ONLY: Final Defense application — COR + fee proof (certified manuscript internal)
 router.post(
   "/defense/final",
   authenticateJWT,
   requireRole(["STUDENT"]),
   upload.fields([
-    { name: "document", maxCount: 1 },
     { name: "cor", maxCount: 1 },
     { name: "receipt", maxCount: 1 },
   ]),
   thesisController.applyFinal,
+);
+
+// ── CP4: Final Adviser review (pre-application manuscript) ──
+
+router.get(
+  "/final-adviser-review",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getFinalAdviserReviewState,
+);
+
+router.post(
+  "/final-adviser-review/manuscript",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  upload.single("document"),
+  thesisController.submitFinalManuscriptForReview,
+);
+
+router.get(
+  "/final-adviser-review/tasks",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.listMyFinalAdviserReviews,
+);
+
+router.get(
+  "/final-adviser-review/tasks/:thesisId",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getFinalAdviserReviewTask,
+);
+
+router.post(
+  "/final-adviser-review/tasks/:thesisId/request-changes",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.requestFinalAdviserChanges,
+);
+
+router.post(
+  "/final-adviser-review/tasks/:thesisId/certify",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.certifyFinalAdviserReview,
 );
 
 // STUDENT: central Thesis Journey read model (authoritative progression)

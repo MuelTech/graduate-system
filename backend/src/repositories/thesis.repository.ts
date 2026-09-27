@@ -413,7 +413,6 @@ export class ThesisRepository {
 
   async updateThesisToFinal(
     thesisId: string,
-    filePath: string,
     corPath: string,
     receiptPath: string,
   ) {
@@ -423,15 +422,9 @@ export class ThesisRepository {
         data: { stage: "FINAL", status: "PENDING", outcome: null },
       });
 
+      // CP4: do NOT create another FINAL_MANUSCRIPT — certified manuscript is authoritative.
       await tx.thesisDocument.createMany({
         data: [
-          {
-            thesisId,
-            docType: "FINAL_MANUSCRIPT",
-            defenseStage: "FINAL",
-            filePath: filePath,
-            uploadedAt: new Date(),
-          },
           {
             thesisId,
             docType: "COR",

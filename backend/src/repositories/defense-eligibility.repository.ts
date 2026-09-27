@@ -4,7 +4,7 @@ import type {
   ResearchVariablesState,
   StageEvidenceFlags,
 } from "../interfaces/defense-eligibility.interfaces";
-import { isValidCertifiedProposalManuscript } from "../services/proposal-adviser-review.rules";
+import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "../services/proposal-adviser-review.rules";
 
 export type { EligibilitySnapshot };
 
@@ -157,15 +157,36 @@ export class DefenseEligibilityRepository {
       );
     }
 
-    const adviserCertFinal = thesisIdForDocs
-      ? (await prisma.adviserCertification.count({
-          where: {
-            thesisId: thesisIdForDocs,
-            status: "ISSUED",
-            defenseStage: "FINAL_DEFENSE",
+    // CP4: Final cert must be bound to a valid Final manuscript.
+    let adviserCertFinal = false;
+    if (thesisIdForDocs) {
+      const finalCerts = await prisma.adviserCertification.findMany({
+        where: {
+          thesisId: thesisIdForDocs,
+          status: "ISSUED",
+          defenseStage: "FINAL_DEFENSE",
+        },
+        include: { reviewedDocument: true },
+      });
+      adviserCertFinal = finalCerts.some((c) =>
+        isValidCertifiedFinalManuscript(
+          {
+            status: c.status,
+            defenseStage: c.defenseStage,
+            reviewedDocumentId: c.reviewedDocumentId,
           },
-        })) > 0
-      : false;
+          c.reviewedDocument
+            ? {
+                id: c.reviewedDocument.id,
+                thesisId: c.reviewedDocument.thesisId,
+                docType: c.reviewedDocument.docType,
+                defenseStage: c.reviewedDocument.defenseStage,
+              }
+            : null,
+          thesisIdForDocs,
+        ),
+      );
+    }
 
     // Formal academic authority: DefenseConclusion (not ThesisRecord mirrors).
     // RAP completion is bound to that conclusion's defense session (scheduleId).

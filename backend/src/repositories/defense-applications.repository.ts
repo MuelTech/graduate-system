@@ -15,7 +15,10 @@ import {
   resolveDisplayStatus,
   type ApplicationWorkflowBucket,
 } from "../services/defense-application-workflow";
-import { resolveCurrentProposalApplicationDocuments } from "../services/proposal-adviser-review.rules";
+import {
+  resolveCurrentFinalApplicationDocuments,
+  resolveCurrentProposalApplicationDocuments,
+} from "../services/proposal-adviser-review.rules";
 import type { DefenseStage } from "../interfaces/defense-eligibility.interfaces";
 
 type AppDocRow = {
@@ -45,21 +48,33 @@ function resolveApplicationDocuments(row: {
       String(d.defenseStage || "").toUpperCase() ===
       String(row.stage || "").toUpperCase(),
   );
-  if (String(row.stage).toUpperCase() !== "PROPOSAL") {
-    return scoped;
+  const stageKey = String(row.stage).toUpperCase();
+  const certs = row.adviserCertifications ?? [];
+  const mapped = scoped.map((d) => ({
+    id: d.id,
+    thesisId: d.thesisId ?? row.id,
+    docType: d.docType,
+    defenseStage: d.defenseStage ?? null,
+    filePath: d.filePath,
+  }));
+  if (stageKey === "PROPOSAL") {
+    const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE") ?? null;
+    return resolveCurrentProposalApplicationDocuments(
+      mapped,
+      cert,
+      row.id,
+    ) as AppDocRow[];
   }
-  const cert = row.adviserCertifications?.[0] ?? null;
-  return resolveCurrentProposalApplicationDocuments(
-    scoped.map((d) => ({
-      id: d.id,
-      thesisId: d.thesisId ?? row.id,
-      docType: d.docType,
-      defenseStage: d.defenseStage ?? null,
-      filePath: d.filePath,
-    })),
-    cert,
-    row.id,
-  ) as AppDocRow[];
+  // CP4: Final current application uses certified Final manuscript only.
+  if (stageKey === "FINAL") {
+    const cert = certs.find((c) => c.defenseStage === "FINAL_DEFENSE") ?? null;
+    return resolveCurrentFinalApplicationDocuments(
+      mapped,
+      cert,
+      row.id,
+    ) as AppDocRow[];
+  }
+  return scoped;
 }
 
 export function stageToDefenseType(stage: string): string {
@@ -170,14 +185,21 @@ function applicationInclude() {
       },
     },
     adviserCertifications: {
-      where: { defenseStage: "PROPOSAL_DEFENSE", status: "ISSUED" },
+      where: {
+        status: "ISSUED",
+        defenseStage: {
+          in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] as Array<
+            "PROPOSAL_DEFENSE" | "FINAL_DEFENSE"
+          >,
+        },
+      },
       select: {
         id: true,
         status: true,
         defenseStage: true,
         reviewedDocumentId: true,
       },
-      take: 1,
+      take: 2,
     },
     assignment: {
       include: {
@@ -441,14 +463,21 @@ export class DefenseApplicationsRepository {
               },
             },
             adviserCertifications: {
-              where: { defenseStage: "PROPOSAL_DEFENSE", status: "ISSUED" },
+              where: {
+                status: "ISSUED",
+                defenseStage: {
+          in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] as Array<
+            "PROPOSAL_DEFENSE" | "FINAL_DEFENSE"
+          >,
+        },
+              },
               select: {
                 id: true,
                 status: true,
                 defenseStage: true,
                 reviewedDocumentId: true,
               },
-              take: 1,
+              take: 2,
             },
             assignment: {
               include: {

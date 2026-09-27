@@ -1,0 +1,244 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => {
+  const tx = {
+    thesisDocument: { create: vi.fn() },
+    adviserCertification: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  return {
+    student: { findUnique: vi.fn() },
+    thesisRecord: { findFirst: vi.fn(), findUnique: vi.fn() },
+    adviserAssignment: { findFirst: vi.fn(), findMany: vi.fn() },
+    thesisDocument: { create: vi.fn() },
+    adviserCertification: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+    },
+    defenseConclusion: { findFirst: vi.fn() },
+    rapReport: { count: vi.fn() },
+    plagiarismResult: { count: vi.fn() },
+    $transaction: vi.fn(async (fn: any) => fn(tx)),
+    __tx: tx,
+  };
+});
+
+vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+vi.mock("file-type", () => ({
+  fileTypeFromFile: vi.fn(async () => ({ mime: "application/pdf" })),
+}));
+vi.mock("fs/promises", () => ({
+  default: { unlink: vi.fn() },
+  unlink: vi.fn(),
+}));
+
+import { FinalAdviserReviewService } from "../../../src/services/final-adviser-review.service";
+
+function studentRow() {
+  return {
+    id: "student-1",
+    studentNumber: "2026-001",
+    user: { id: "student-user", firstName: "Ana", lastName: "Student" },
+  };
+}
+
+function thesisRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "thesis-1",
+    student: {
+      id: "student-1",
+      studentNumber: "2026-001",
+      user: { id: "student-user", firstName: "Ana", lastName: "Student" },
+      adviserAssignments: [
+        {
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+        },
+      ],
+    },
+    defenseSchedules: [
+      {
+        defenseType: "TITLE_DEFENSE",
+        conclusion: { selectedTitle: { titleText: "Official Title" } },
+      },
+    ],
+    thesisDocuments: [],
+    adviserCertifications: [],
+    plagiarismResults: [],
+    ...overrides,
+  };
+}
+
+describe("FinalAdviserReviewService (CP4)", () => {
+  const svc = new FinalAdviserReviewService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.student.findUnique.mockResolvedValue(studentRow());
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue({
+      id: "assign-1",
+      studentId: "student-1",
+      adviserId: "adviser-1",
+      isActive: true,
+    });
+    prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
+        return { outcome: "PASSED", scheduleId: "prop-sched" };
+      }
+      return { selectedTitleId: "t1", scheduleId: "title-sched" };
+    });
+    prismaMock.rapReport.count.mockResolvedValue(1);
+    prismaMock.plagiarismResult.count.mockResolvedValue(0);
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.thesisDocument.create.mockImplementation(async (a: any) => ({
+      id: "doc-1",
+      uploadedAt: new Date(),
+      ...a.data,
+    }));
+    prismaMock.adviserCertification.create.mockImplementation(async (a: any) => ({
+      id: "cert-1",
+      ...a.data,
+    }));
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(thesisRow());
+    prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock.__tx));
+    prismaMock.__tx.thesisDocument.create.mockImplementation(async (a: any) => ({
+      id: "doc-1",
+      uploadedAt: new Date(),
+      ...a.data,
+    }));
+    prismaMock.__tx.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.__tx.adviserCertification.create.mockResolvedValue({});
+  });
+
+  it("Test 1: Final review submit creates FINAL_MANUSCRIPT + AWAITING_REVIEW", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-1", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "FINAL_DEFENSE",
+            reviewedDocumentId: "doc-1",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    const dto = await svc.submitManuscriptForReview("student-user", {
+      path: "uploads/final.pdf",
+      originalname: "final.pdf",
+    } as Express.Multer.File);
+    expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          docType: "FINAL_MANUSCRIPT",
+          defenseStage: "FINAL",
+        }),
+      }),
+    );
+    expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
+  });
+
+  it("Test 3: no active Adviser rejects Final manuscript submit", async () => {
+    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.submitManuscriptForReview("student-user", {
+        path: "uploads/x.pdf",
+        originalname: "x.pdf",
+      } as Express.Multer.File),
+    ).rejects.toThrow(/active Thesis Adviser/i);
+    expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
+  });
+
+  it("Test 10: stale request changes uses client expected doc in predicate", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [
+          { id: "doc-b", uploadedAt: new Date() },
+          { id: "doc-a", uploadedAt: new Date("2026-09-01") },
+        ],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "FINAL_DEFENSE",
+            reviewedDocumentId: "doc-b",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "stale",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toThrow(/review state changed/i);
+    expect(prismaMock.adviserCertification.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          reviewedDocumentId: "doc-a",
+          defenseStage: "FINAL_DEFENSE",
+          status: "AWAITING_REVIEW",
+        }),
+      }),
+    );
+  });
+
+  it("Test 13/15: certify requires expected token and uses atomic predicate", async () => {
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "sig",
+        expectedReviewedDocumentId: "",
+      }),
+    ).rejects.toThrow(/Reviewed manuscript identifier/i);
+
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(
+      thesisRow({
+        thesisDocuments: [{ id: "doc-b", uploadedAt: new Date() }],
+        adviserCertifications: [
+          {
+            id: "cert-1",
+            status: "AWAITING_REVIEW",
+            defenseStage: "FINAL_DEFENSE",
+            reviewedDocumentId: "doc-b",
+            adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+            reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
+            reviewRemarks: null,
+            signatureData: null,
+            signedAt: null,
+          },
+        ],
+      }),
+    );
+    prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
+    await svc.certify("adviser-1", "thesis-1", {
+      signatureData: "sig",
+      expectedReviewedDocumentId: "doc-b",
+    });
+    const call = prismaMock.__tx.adviserCertification.updateMany.mock.calls[0]?.[0];
+    expect(call?.where?.defenseStage).toBe("FINAL_DEFENSE");
+    expect(call?.where?.reviewedDocumentId).toBe("doc-b");
+    expect(call?.data?.status).toBe("ISSUED");
+    expect(call?.data?.reviewedDocumentId).toBeUndefined();
+  });
+});

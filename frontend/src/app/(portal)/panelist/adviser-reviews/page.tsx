@@ -19,43 +19,66 @@ import type {
   ProposalAdviserReview,
 } from "@/types/proposal-adviser-review";
 
-const queueKey = ["panelist", "proposal-adviser-reviews"] as const;
+const queueKey = ["panelist", "adviser-reviews"] as const;
 
-function taskKey(thesisId: string) {
-  return [...queueKey, thesisId] as const;
+type ReviewStage = "PROPOSAL" | "FINAL";
+
+function taskKey(thesisId: string, stage: ReviewStage) {
+  return [...queueKey, stage, thesisId] as const;
 }
 
 export default function ProposalAdviserReviewsPage() {
   const queryClient = useQueryClient();
   const [selectedThesisId, setSelectedThesisId] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState<ReviewStage>("PROPOSAL");
   const [remarks, setRemarks] = useState("");
   const [signature, setSignature] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const { data: queue, isLoading, refetch, isRefetching } = useQuery({
     queryKey: queueKey,
-    queryFn: async () =>
-      (await apiClientRequest(
-        "/thesis/proposal-adviser-review/tasks",
-      )) as AdviserReviewQueueItem[],
+    queryFn: async () => {
+      const [proposal, finalTasks] = await Promise.all([
+        apiClientRequest("/thesis/proposal-adviser-review/tasks") as Promise<
+          AdviserReviewQueueItem[]
+        >,
+        apiClientRequest("/thesis/final-adviser-review/tasks") as Promise<
+          Array<AdviserReviewQueueItem & { stage?: string }>
+        >,
+      ]);
+      return [
+        ...proposal.map((t) => ({ ...t, stage: "PROPOSAL" as ReviewStage })),
+        ...finalTasks.map((t) => ({ ...t, stage: "FINAL" as ReviewStage })),
+      ];
+    },
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });
 
   const { data: task } = useQuery({
-    queryKey: taskKey(selectedThesisId ?? "none"),
-    queryFn: async () =>
-      (await apiClientRequest(
-        `/thesis/proposal-adviser-review/tasks/${selectedThesisId}`,
-      )) as ProposalAdviserReview,
+    queryKey: taskKey(selectedThesisId ?? "none", selectedStage),
+    queryFn: async () => {
+      const path =
+        selectedStage === "FINAL"
+          ? `/thesis/final-adviser-review/tasks/${selectedThesisId}`
+          : `/thesis/proposal-adviser-review/tasks/${selectedThesisId}`;
+      return (await apiClientRequest(path)) as ProposalAdviserReview & {
+        stage?: string;
+      };
+    },
     enabled: Boolean(selectedThesisId),
   });
+
+  const reviewBase =
+    selectedStage === "FINAL"
+      ? "/thesis/final-adviser-review/tasks"
+      : "/thesis/proposal-adviser-review/tasks";
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: queueKey });
     if (selectedThesisId) {
       await queryClient.invalidateQueries({
-        queryKey: taskKey(selectedThesisId),
+        queryKey: taskKey(selectedThesisId, selectedStage),
       });
     }
   };
@@ -63,7 +86,7 @@ export default function ProposalAdviserReviewsPage() {
   const requestChanges = useMutation({
     mutationFn: async () =>
       apiClientRequest(
-        `/thesis/proposal-adviser-review/tasks/${selectedThesisId}/request-changes`,
+        `${reviewBase}/${selectedThesisId}/request-changes`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -88,17 +111,14 @@ export default function ProposalAdviserReviewsPage() {
 
   const certify = useMutation({
     mutationFn: async () =>
-      apiClientRequest(
-        `/thesis/proposal-adviser-review/tasks/${selectedThesisId}/certify`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            signatureData: signature,
-            remarks,
-            expectedReviewedDocumentId: task?.manuscript?.documentId ?? null,
-          }),
-        },
-      ),
+      apiClientRequest(`${reviewBase}/${selectedThesisId}/certify`, {
+        method: "POST",
+        body: JSON.stringify({
+          signatureData: signature,
+          remarks,
+          expectedReviewedDocumentId: task?.manuscript?.documentId ?? null,
+        }),
+      }),
     onSuccess: async () => {
       setError(null);
       setSignature("");
@@ -168,6 +188,11 @@ export default function ProposalAdviserReviewsPage() {
                 type="button"
                 onClick={() => {
                   setSelectedThesisId(item.thesisId);
+                  setSelectedStage(
+                    (item as { stage?: ReviewStage }).stage === "FINAL"
+                      ? "FINAL"
+                      : "PROPOSAL",
+                  );
                   setRemarks(item.reviewRemarks || "");
                 }}
                 className={`w-full rounded-lg border p-3 text-left transition-colors ${
@@ -178,6 +203,11 @@ export default function ProposalAdviserReviewsPage() {
               >
                 <p className="font-medium text-(--earist-primary)">
                   {item.student.name}
+                  <span className="ml-2 rounded bg-(--earist-surface-gray) px-1.5 py-0.5 text-[10px] font-semibold text-(--earist-secondary)">
+                    {(item as { stage?: ReviewStage }).stage === "FINAL"
+                      ? "Final"
+                      : "Proposal"}
+                  </span>
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
                   {item.student.studentNumber || "—"}

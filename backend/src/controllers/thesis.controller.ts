@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ThesisService } from '../services/thesis.service';
 import { StudentThesisJourneyService } from '../services/student-thesis-journey.service';
 import { ProposalAdviserReviewService } from '../services/proposal-adviser-review.service';
+import { FinalAdviserReviewService } from '../services/final-adviser-review.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -20,6 +21,7 @@ export class ThesisController {
   private thesisService = new ThesisService();
   private journeyService = new StudentThesisJourneyService();
   private proposalAdviserReview = new ProposalAdviserReviewService();
+  private finalAdviserReview = new FinalAdviserReviewService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -161,19 +163,17 @@ export class ThesisController {
   applyFinal = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');
-      
+
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      const document = files?.['document']?.[0];
+      // CP4: certified Final manuscript is system-owned — no second upload.
       const cor = files?.['cor']?.[0];
       const receipt = files?.['receipt']?.[0];
 
-      if (!document) throw new Error('Final Manuscript document is required');
       if (!cor) throw new Error('COR is required');
       if (!receipt) throw new Error('Defense-fee proof of payment is required');
 
       const result = await this.thesisService.applyFinalDefense(
         req.user.userId,
-        document.path,
         cor.path,
         receipt.path,
       );
@@ -752,6 +752,133 @@ export class ThesisController {
         expectedReviewedDocumentId,
       });
       res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  // ── CP4 Final Adviser review / certification ────────────────────
+
+  getFinalAdviserReviewState = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      res.status(200).json(await this.finalAdviserReview.getStudentReviewState(userId));
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  submitFinalManuscriptForReview = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const file = req.file;
+      if (!file) {
+        res.status(400).json({ error: "Final manuscript file is required." });
+        return;
+      }
+      res.status(200).json(await this.finalAdviserReview.submitManuscriptForReview(userId, file));
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  listMyFinalAdviserReviews = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      res.status(200).json(await this.finalAdviserReview.listReviewTasks(userId));
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  getFinalAdviserReviewTask = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      res.status(200).json(await this.finalAdviserReview.getReviewTask(userId, thesisId));
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  requestFinalAdviserChanges = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const expectedReviewedDocumentId = req.body?.expectedReviewedDocumentId;
+      if (!expectedReviewedDocumentId || typeof expectedReviewedDocumentId !== "string") {
+        res.status(400).json({ error: "Reviewed manuscript identifier is required." });
+        return;
+      }
+      res.status(200).json(
+        await this.finalAdviserReview.requestChanges(userId, thesisId, {
+          remarks: String(req.body?.remarks ?? ""),
+          expectedReviewedDocumentId,
+        }),
+      );
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  certifyFinalAdviserReview = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const thesisId = req.params.thesisId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const expectedReviewedDocumentId = req.body?.expectedReviewedDocumentId;
+      if (!expectedReviewedDocumentId || typeof expectedReviewedDocumentId !== "string") {
+        res.status(400).json({ error: "Reviewed manuscript identifier is required." });
+        return;
+      }
+      res.status(200).json(
+        await this.finalAdviserReview.certify(userId, thesisId, {
+          signatureData: String(req.body?.signatureData ?? ""),
+          remarks: req.body?.remarks ?? null,
+          expectedReviewedDocumentId,
+        }),
+      );
     } catch (error: any) {
       sendEligibilityError(res, error);
     }

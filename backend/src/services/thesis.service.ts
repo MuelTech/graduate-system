@@ -305,7 +305,6 @@ export class ThesisService {
 
   async applyFinalDefense(
     userId: string,
-    filePath: string,
     corPath: string,
     receiptPath: string,
   ) {
@@ -313,8 +312,9 @@ export class ThesisService {
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const snap = await this.eligibilityRepo.loadForStudent(student.id);
+    // CP4: certified Final manuscript is system-owned (reviewedDocumentId).
     const result = this.eligibility.evaluateApplyFinal(snap, {
-      manuscript: !!filePath,
+      manuscript: snap.evidence.finalManuscript,
       cor: !!corPath,
       receipt: !!receiptPath,
     });
@@ -323,12 +323,7 @@ export class ThesisService {
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
     if (!thesis) throw new AppError('No active Thesis Record found.', 400);
 
-    return this.thesisRepo.updateThesisToFinal(
-      thesis.id,
-      filePath,
-      corPath,
-      receiptPath,
-    );
+    return this.thesisRepo.updateThesisToFinal(thesis.id, corPath, receiptPath);
   }
 
 

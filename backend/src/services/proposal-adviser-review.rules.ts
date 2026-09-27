@@ -1,9 +1,14 @@
 /**
- * CP3 — Proposal Adviser review / certification pure rules.
- * Stage scope is strictly PROPOSAL_DEFENSE.
+ * CP3/CP4 — Adviser review / certification pure rules.
+ * Proposal stage is PROPOSAL_DEFENSE; Final stage is FINAL_DEFENSE (CP4).
  */
 
 export const PROPOSAL_REVIEW_STAGE = "PROPOSAL_DEFENSE" as const;
+export const FINAL_REVIEW_STAGE = "FINAL_DEFENSE" as const;
+export const PROPOSAL_MANUSCRIPT_DOC_TYPE = "PROPOSAL_CHAPTERS" as const;
+export const FINAL_MANUSCRIPT_DOC_TYPE = "FINAL_MANUSCRIPT" as const;
+export const PROPOSAL_MANUSCRIPT_DOC_STAGE = "PROPOSAL" as const;
+export const FINAL_MANUSCRIPT_DOC_STAGE = "FINAL" as const;
 
 export type ProposalReviewStatus =
   | "NONE"
@@ -76,14 +81,50 @@ export function isValidCertifiedProposalManuscript(
   doc: CertifiedManuscriptDocLike | null | undefined,
   thesisId: string,
 ): boolean {
-  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== "PROPOSAL_DEFENSE") {
+  return isValidCertifiedStageManuscript(
+    cert,
+    doc,
+    thesisId,
+    PROPOSAL_REVIEW_STAGE,
+    PROPOSAL_MANUSCRIPT_DOC_TYPE,
+    PROPOSAL_MANUSCRIPT_DOC_STAGE,
+  );
+}
+
+/**
+ * CP4: ISSUED Final certification bound to a Final manuscript on the same thesis.
+ */
+export function isValidCertifiedFinalManuscript(
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+): boolean {
+  return isValidCertifiedStageManuscript(
+    cert,
+    doc,
+    thesisId,
+    FINAL_REVIEW_STAGE,
+    FINAL_MANUSCRIPT_DOC_TYPE,
+    FINAL_MANUSCRIPT_DOC_STAGE,
+  );
+}
+
+function isValidCertifiedStageManuscript(
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+  certStage: string,
+  docType: string,
+  docStage: string,
+): boolean {
+  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== certStage) {
     return false;
   }
   if (!cert.reviewedDocumentId || !doc) return false;
   if (doc.id !== cert.reviewedDocumentId) return false;
   if (doc.thesisId !== thesisId) return false;
-  if (doc.docType !== "PROPOSAL_CHAPTERS") return false;
-  if (doc.defenseStage !== "PROPOSAL") return false;
+  if (doc.docType !== docType) return false;
+  if (doc.defenseStage !== docStage) return false;
   return true;
 }
 
@@ -118,6 +159,32 @@ export function resolveCurrentProposalApplicationDocuments<
 ): T[] {
   const certified = selectCertifiedProposalManuscript(docs, cert, thesisId);
   const others = docs.filter((d) => d.docType !== "PROPOSAL_CHAPTERS");
+  return certified ? [certified, ...others] : others;
+}
+
+/** CP4: exact certified Final manuscript (fail closed). */
+export function selectCertifiedFinalManuscript<
+  T extends CertifiedManuscriptDocLike,
+>(
+  docs: T[],
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  thesisId: string,
+): T | null {
+  if (!cert?.reviewedDocumentId) return null;
+  const doc = docs.find((d) => d.id === cert.reviewedDocumentId) ?? null;
+  return isValidCertifiedFinalManuscript(cert, doc, thesisId) ? doc : null;
+}
+
+/** CP4: Final application documents = certified Final manuscript + COR/RECEIPT. */
+export function resolveCurrentFinalApplicationDocuments<
+  T extends CertifiedManuscriptDocLike & { docType: string },
+>(
+  docs: T[],
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  thesisId: string,
+): T[] {
+  const certified = selectCertifiedFinalManuscript(docs, cert, thesisId);
+  const others = docs.filter((d) => d.docType !== "FINAL_MANUSCRIPT");
   return certified ? [certified, ...others] : others;
 }
 

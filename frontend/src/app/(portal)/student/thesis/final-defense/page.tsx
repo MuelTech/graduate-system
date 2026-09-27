@@ -10,6 +10,7 @@ import {
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
 import { DefenseStatusPanel } from "@/components/student/defense-status-panel";
+import { FinalAdviserReviewPanel } from "@/components/student/final-adviser-review-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -154,7 +155,6 @@ export default function FinalDefensePage() {
 
   const canSubmit =
     eligibilityReady &&
-    !!documentFile &&
     !!corFile &&
     !!receiptFile &&
     (state === "CURRENT" || state === "AVAILABLE") &&
@@ -163,7 +163,7 @@ export default function FinalDefensePage() {
   const submitFinal = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      formData.append("document", documentFile!);
+      // CP4: certified Final manuscript is system-owned — COR + fee only.
       formData.append("cor", corFile!);
       formData.append("receipt", receiptFile!);
       return apiClientRequest("/thesis/defense/final", {
@@ -372,19 +372,10 @@ export default function FinalDefensePage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <FileSlot
-          label="Complete manuscript — preliminaries through Chapters 1–5"
-          file={documentFile}
-          inputRef={documentInputRef}
-          accept=".pdf,.doc,.docx"
-          hint="Final stage upload"
-          onPick={setDocumentFile}
-          onRemove={() => {
-            setDocumentFile(null);
-            if (documentInputRef.current) documentInputRef.current.value = "";
-          }}
-        />
+      {/* CP4: certified Final manuscript is system-owned — COR + fee only */}
+      <FinalAdviserReviewPanel />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FileSlot
           label="Certificate of Registration (COR)"
           file={corFile}
