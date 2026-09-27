@@ -259,7 +259,7 @@ export class ProposalAdviserReviewService {
       where: {
         thesisId: thesis.id,
         defenseType: "TITLE_DEFENSE",
-        status: { in: ["ALL_SIGNED", "FINALIZED"] },
+        status: "FINALIZED",
       },
     });
     const titleConclusion = await prisma.defenseConclusion.findFirst({
@@ -276,7 +276,7 @@ export class ProposalAdviserReviewService {
           where: {
             scheduleId: titleConclusion.scheduleId,
             defenseType: "TITLE_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+            status: "FINALIZED",
           },
         })) > 0
       : Boolean(titleRap);

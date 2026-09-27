@@ -451,11 +451,11 @@ router.get(
   thesisController.getOfficialCriteria,
 );
 
-// CP7: Oral Examination Summary
+// CP7: Oral Examination Summary — ADMIN or session CHAIRMAN only (auth inside service)
 router.get(
   "/defense/:scheduleId/records/summary",
   authenticateJWT,
-  requireRole(["ADMIN", "PANELIST", "STUDENT"]),
+  requireRole(["ADMIN", "PANELIST"]),
   thesisController.getOralExamSummary,
 );
 

@@ -203,7 +203,7 @@ export class FinalAdviserReviewService {
           where: {
             scheduleId: proposalConclusion.scheduleId,
             defenseType: "PROPOSAL_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+            status: "FINALIZED",
           },
         })) > 0
       : false;

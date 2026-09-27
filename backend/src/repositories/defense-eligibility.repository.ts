@@ -216,7 +216,7 @@ export class DefenseEligibilityRepository {
           where: {
             scheduleId: titleConclusion.scheduleId,
             defenseType: "TITLE_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+            status: "FINALIZED",
           },
         })) > 0
       : false;
@@ -226,7 +226,7 @@ export class DefenseEligibilityRepository {
           where: {
             scheduleId: proposalConclusion.scheduleId,
             defenseType: "PROPOSAL_DEFENSE",
-            status: { in: ["ALL_SIGNED", "FINALIZED"] },
+            status: "FINALIZED",
           },
         })) > 0
       : false;

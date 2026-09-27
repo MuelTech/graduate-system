@@ -6,7 +6,6 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
-  rapStatusAfterSignatures,
   resolveRapSignatureRequirements,
 } from "./rap-signature.policy";
 
@@ -81,8 +80,8 @@ export class RapReportService {
   }
 
   /**
-   * Own-signature CAS. Blank signatures rejected. Double-sign → 409.
-   * Last required signer sets RAP.status = FINALIZED and finalizedAt server-side.
+   * CP7-FIX1: own-slot CAS only. Aggregate recompute runs AFTER commit so
+   * concurrent final signers both commit first, then recompute converges.
    */
   async signRapSlot(
     sigId: string,
@@ -93,7 +92,6 @@ export class RapReportService {
     if (!trimmed) {
       throw new AppError("Signature evidence is required.", 400);
     }
-    // Prefer CP6 PNG data URLs for new signatures.
     if (!trimmed.startsWith("data:image/")) {
       throw new AppError(
         "Signature must be image evidence (data:image/...).",
@@ -101,8 +99,7 @@ export class RapReportService {
       );
     }
 
-    return prisma.$transaction(async (tx) => {
-      // CAS: only own unsigned slot.
+    const rapId = await prisma.$transaction(async (tx) => {
       const updated = await tx.rapReportSignature.updateMany({
         where: {
           id: sigId,
@@ -137,28 +134,77 @@ export class RapReportService {
         select: { rapId: true },
       });
       if (!slot) throw new AppError("Signature request not found.", 404);
-
-      const slots = await tx.rapReportSignature.findMany({
-        where: { rapId: slot.rapId },
-        select: { required: true, isSigned: true },
-      });
-
-      const nextStatus = rapStatusAfterSignatures(slots);
-      const finalize = nextStatus === "FINALIZED";
-      await tx.rapReport.update({
-        where: { id: slot.rapId },
-        data: {
-          status: finalize ? "FINALIZED" : nextStatus,
-          ...(finalize ? { finalizedAt: new Date() } : {}),
-        },
-      });
-
-      return {
-        signatureId: sigId,
-        rapId: slot.rapId,
-        status: finalize ? "FINALIZED" : nextStatus,
-      };
+      return slot.rapId;
     });
+
+    // CP7-FIX1: committed-state recompute (never downgrades FINALIZED).
+    const status = await this.recomputeRapStatus(rapId);
+    return { signatureId: sigId, rapId, status };
+  }
+
+  /**
+   * CP7-FIX1: monotonic aggregate recompute from committed required slots.
+   * FINALIZED is never downgraded; finalizedAt is set once server-side.
+   */
+  async recomputeRapStatus(
+    rapId: string,
+  ): Promise<"FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED"> {
+    const slots = await prisma.rapReportSignature.findMany({
+      where: { rapId },
+      select: { required: true, isSigned: true },
+    });
+    const required = slots.filter((s) => s.required !== false);
+    const signedRequired = required.filter((s) => s.isSigned === true);
+    let next: "FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED";
+    if (required.length === 0 || signedRequired.length === 0) {
+      next = "FOR_SIGNATURE";
+    } else if (signedRequired.length < required.length) {
+      next = "PARTIALLY_SIGNED";
+    } else {
+      next = "FINALIZED";
+    }
+
+    const current = await prisma.rapReport.findUnique({
+      where: { id: rapId },
+      select: { status: true, finalizedAt: true },
+    });
+    if (!current) return next;
+
+    // Never downgrade FINALIZED.
+    if (current.status === "FINALIZED") {
+      if (!current.finalizedAt) {
+        await prisma.rapReport.update({
+          where: { id: rapId },
+          data: { finalizedAt: new Date() },
+        });
+      }
+      return "FINALIZED";
+    }
+
+    if (next === "FINALIZED") {
+      // Conditional finalize — race-safe, set finalizedAt once.
+      const result = await prisma.rapReport.updateMany({
+        where: { id: rapId, status: { not: "FINALIZED" } },
+        data: { status: "FINALIZED", finalizedAt: current.finalizedAt ?? new Date() },
+      });
+      if (result.count === 0) {
+        const winner = await prisma.rapReport.findUnique({
+          where: { id: rapId },
+          select: { status: true },
+        });
+        if (winner?.status === "FINALIZED") return "FINALIZED";
+      }
+      return "FINALIZED";
+    }
+
+    await prisma.rapReport.updateMany({
+      where: {
+        id: rapId,
+        status: { notIn: ["FINALIZED"] },
+      },
+      data: { status: next },
+    });
+    return next;
   }
 
   async getStudentRapAccess(scheduleId: string, userId: string) {
@@ -197,7 +243,8 @@ export class RapReportService {
     }
 
     const rap = schedule.rapReports[0] ?? null;
-    const finalized = rap?.status === "FINALIZED" || rap?.status === "ALL_SIGNED";
+    // CP7-FIX1: FINALIZED only — ALL_SIGNED is not official completion.
+    const finalized = rap?.status === "FINALIZED";
 
     return {
       scheduleId,

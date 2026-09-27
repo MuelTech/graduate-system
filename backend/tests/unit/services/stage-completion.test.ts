@@ -23,7 +23,8 @@ describe("stage completion (derived)", () => {
     // No schedule → never complete.
     expect(isRapCompleteForSchedule(raps, null)).toBe(false);
     expect(isRapCompleteForSchedule(raps, undefined)).toBe(false);
-    expect(isRapStatusComplete("ALL_SIGNED")).toBe(true);
+    // CP7-FIX1: FINALIZED is the sole completion state; ALL_SIGNED is legacy only.
+    expect(isRapStatusComplete("ALL_SIGNED")).toBe(false);
     expect(isRapStatusComplete("FINALIZED")).toBe(true);
     expect(isRapStatusComplete("DRAFT")).toBe(false);
   });

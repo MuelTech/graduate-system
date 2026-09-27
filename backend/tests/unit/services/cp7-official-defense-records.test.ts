@@ -23,7 +23,12 @@ const prismaMock = vi.hoisted(() => {
       create: vi.fn(),
     },
     defenseConclusion: { create: vi.fn() },
-    rapReport: { create: vi.fn(), update: vi.fn() },
+    rapReport: {
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      findUnique: vi.fn(),
+    },
     rapReportSignature: {
       createMany: vi.fn(),
       findMany: vi.fn(),
@@ -431,11 +436,16 @@ describe("CP7 RAP signing lifecycle", () => {
       userId: "u1",
       isSigned: true,
     });
-    tx.rapReportSignature.findMany.mockResolvedValue([
+    // Post-commit recompute reads committed state on root prisma.
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },
       { required: true, isSigned: true },
     ]);
-    tx.rapReport.update.mockResolvedValue({});
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      status: "PARTIALLY_SIGNED",
+      finalizedAt: null,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.signRapSlot(
       "sig-1",
@@ -443,9 +453,11 @@ describe("CP7 RAP signing lifecycle", () => {
       "data:image/png;base64,abc",
     );
     expect(result.status).toBe("FINALIZED");
-    const updateArgs = tx.rapReport.update.mock.calls[0][0];
-    expect(updateArgs.data.status).toBe("FINALIZED");
-    expect(updateArgs.data.finalizedAt).toBeInstanceOf(Date);
+    const updateArgs = prismaMock.rapReport.updateMany.mock.calls.find(
+      (c: any) => c[0]?.data?.status === "FINALIZED",
+    );
+    expect(updateArgs).toBeTruthy();
+    expect(updateArgs![0].data.finalizedAt).toBeInstanceOf(Date);
   });
 
   it("Test 24: first of two signatures → PARTIALLY_SIGNED", async () => {
@@ -456,11 +468,15 @@ describe("CP7 RAP signing lifecycle", () => {
       rapId: "rap-1",
       userId: "u1",
     });
-    tx.rapReportSignature.findMany.mockResolvedValue([
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },
       { required: true, isSigned: false },
     ]);
-    tx.rapReport.update.mockResolvedValue({});
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      status: "FOR_SIGNATURE",
+      finalizedAt: null,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.signRapSlot(
       "sig-1",

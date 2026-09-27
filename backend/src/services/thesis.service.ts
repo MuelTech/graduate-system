@@ -588,10 +588,43 @@ export class ThesisService {
     const schedule = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
     if (!schedule) throw new AppError("Defense schedule not found.", 404);
 
-    // Session assignment authority (never account role alone).
+    // Session assignment authority first (never account role alone).
     const assignments = await this.resolveSessionAssignments(scheduleId, userId);
     const sessionRole = assignments.find((a) => a.userId === userId)?.role ?? null;
     const isSessionChairman = sessionRole === "CHAIRMAN";
+
+    // Chairman authorization must be established before any Summary recovery side-effect.
+    if (!isSessionChairman) {
+      throw new AppError(
+        "Only the assigned session Chairman may record the formal academic result.",
+        403,
+      );
+    }
+    if (schedule.alreadyConcluded) {
+      throw new AppError(
+        "Defense has already been concluded. A second conclusion is not allowed.",
+        409,
+      );
+    }
+
+    // CP7-FIX1 Issue 5: recover missing Summary after Chairman auth (transient failure).
+    if (schedule.defenseType !== "TITLE_DEFENSE") {
+      try {
+        await this.officialRecords.ensureOralExamSummary(scheduleId);
+      } catch {
+        // Genuine incomplete evaluator state still rejects below / in transaction.
+      }
+      // Re-fetch authoritative readiness after recovery attempt.
+      const refreshed = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
+      if (refreshed) {
+        schedule.oralSummaryExists = refreshed.oralSummaryExists;
+        schedule.evaluatorAssignments = refreshed.evaluatorAssignments;
+        schedule.finalizedEvaluatorScores = refreshed.finalizedEvaluatorScores;
+        schedule.sessionStatus = refreshed.sessionStatus;
+        schedule.rapporteurNotesFinalized = refreshed.rapporteurNotesFinalized;
+        schedule.alreadyConcluded = refreshed.alreadyConcluded;
+      }
+    }
 
     const outcome = this.conclusion.assertCanConclude(
       {
@@ -612,16 +645,23 @@ export class ThesisService {
       options?.outcome,
     );
 
-    // Ensure Proposal/Final Summary exists (idempotent) before the transaction.
-    if (schedule.defenseType !== "TITLE_DEFENSE") {
-      await this.officialRecords.ensureOralExamSummary(scheduleId);
+    try {
+      return await this.thesisRepo.concludeDefense(scheduleId, userId, {
+        outcome,
+        selectedTitleId: options?.selectedTitleId ?? null,
+        finalRemarks: options?.finalRemarks ?? null,
+      });
+    } catch (error: unknown) {
+      // CP7-FIX1 Issue 11: unique race → 409, never expose raw Prisma errors.
+      const code = (error as { code?: string })?.code;
+      if (code === "P2002") {
+        throw new AppError(
+          "Defense has already been concluded or official records were created by another request.",
+          409,
+        );
+      }
+      throw error;
     }
-
-    return this.thesisRepo.concludeDefense(scheduleId, userId, {
-      outcome,
-      selectedTitleId: options?.selectedTitleId ?? null,
-      finalRemarks: options?.finalRemarks ?? null,
-    });
   }
 
   /** Alias for the canonical CP7 conclusion endpoint. */
@@ -641,12 +681,24 @@ export class ThesisService {
     return this.rapporteurFinalization.finalizeDefenseNotes(scheduleId, userId);
   }
 
-  async getOfficialCriteria(scheduleId: string, panelAssignmentId: string) {
-    return this.officialRecords.getOfficialCriteria(scheduleId, panelAssignmentId);
+  async getOfficialCriteria(
+    scheduleId: string,
+    panelAssignmentId: string,
+    actor: { userId: string; role: string },
+  ) {
+    // CP7-FIX1 Issue 8: authorization happens inside the service BEFORE any backfill.
+    return this.officialRecords.getOfficialCriteria(
+      scheduleId,
+      panelAssignmentId,
+      actor,
+    );
   }
 
-  async getOralExamSummaryRecord(scheduleId: string) {
-    return this.officialRecords.getSummaryReadModel(scheduleId);
+  async getOralExamSummaryRecord(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ) {
+    return this.officialRecords.getSummaryReadModel(scheduleId, actor);
   }
 
   async getStudentDefenseRap(scheduleId: string, userId: string) {

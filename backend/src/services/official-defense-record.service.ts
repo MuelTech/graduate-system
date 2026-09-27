@@ -286,7 +286,14 @@ export class OfficialDefenseRecordService {
     }
   }
 
-  async getSummaryReadModel(scheduleId: string) {
+  /**
+   * CP7-FIX1 Issue 3: detailed Summary is ADMIN or session CHAIRMAN only.
+   * Issue 12: Title Defense never fabricates numerical Summary content.
+   */
+  async getSummaryReadModel(
+    scheduleId: string,
+    actor?: { userId: string; role: string },
+  ) {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
@@ -302,9 +309,39 @@ export class OfficialDefenseRecordService {
         },
         oralExamSummary: true,
         conclusion: true,
+        panelAssignments: {
+          where: actor
+            ? { userId: actor.userId }
+            : { id: { in: [] } },
+          select: { role: true },
+          take: 1,
+        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    // Authorization: ADMIN or session CHAIRMAN assignment.
+    if (actor) {
+      const isAdmin = actor.role === "ADMIN";
+      const sessionRole = schedule.panelAssignments[0]
+        ? String(schedule.panelAssignments[0].role)
+        : null;
+      const isChairman = sessionRole === "CHAIRMAN";
+      if (!isAdmin && !isChairman) {
+        throw new AppError(
+          "Detailed Oral Examination Summary is restricted to Admin and the session Chairman.",
+          403,
+        );
+      }
+    }
+
+    // Issue 12: Title has no numerical Summary.
+    if (!isNumericalDefenseType(String(schedule.defenseType))) {
+      throw new AppError(
+        "Title Defense does not use numerical Oral Examination Summary.",
+        400,
+      );
+    }
 
     const evaluatorRoles = committeePolicy
       .getEvaluatorRoles(schedule.defenseType as never)
@@ -347,12 +384,15 @@ export class OfficialDefenseRecordService {
   }
 
   /**
+  /**
    * Official individual Oral Examination Criteria.
+   * CP7-FIX1 Issue 8: authorization FIRST — before any snapshot backfill.
    * Available only for FINALIZED evaluator records with signature evidence.
    */
   async getOfficialCriteria(
     scheduleId: string,
     panelAssignmentId: string,
+    actor?: { userId: string; role: string },
   ): Promise<OfficialCriteriaDto> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -379,6 +419,18 @@ export class OfficialDefenseRecordService {
     });
     if (!assignment || assignment.scheduleId !== scheduleId) {
       throw new AppError("Panel assignment not found for this defense.", 404);
+    }
+
+    // Authorization BEFORE any official-record side effect.
+    if (actor) {
+      const isAdmin = actor.role === "ADMIN";
+      const isOwner = actor.userId === assignment.userId;
+      if (!isAdmin && !isOwner) {
+        throw new AppError(
+          "You may not inspect another evaluator's individual Oral Examination Criteria.",
+          403,
+        );
+      }
     }
 
     const evaluatorRoles = committeePolicy
@@ -726,7 +778,9 @@ export class OfficialDefenseRecordService {
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    const evaluatorRoles = ["CHAIRMAN", "PANELIST"];
+    const evaluatorRoles = committeePolicy
+      .getEvaluatorRoles(schedule.defenseType as never)
+      .map(String);
     const scoreByPanel = new Map(
       schedule.oralExamScores.map((s) => [s.panelId, s]),
     );

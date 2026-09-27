@@ -1,4 +1,5 @@
 import type { DefensePanelRole } from "../interfaces/defense-committee.interfaces";
+import { DefenseCommitteePolicy } from "./defense-committee.policy";
 
 /**
  * RAP signature requirements (CP7 confirmed project direction).
@@ -16,6 +17,20 @@ export type RapSignaturePolicyMode =
 
 export const RAP_SIGNATURE_POLICY_MODE: RapSignaturePolicyMode =
   "EVALUATOR_SIGNATORIES";
+
+/**
+ * CP7-FIX1 Issue 9: centralized RAP signatory roles.
+ * Title and Proposal/Final share the confirmed evaluator-role set.
+ * DefenseCommitteePolicy remains the single evaluator-role authority.
+ */
+export function getRapSignatoryRoles(
+  defenseType?: string,
+): DefensePanelRole[] {
+  const policy = new DefenseCommitteePolicy();
+  return policy.getEvaluatorRoles(
+    (defenseType as never) ?? ("PROPOSAL_DEFENSE" as never),
+  );
+}
 
 /** Canonical evaluator roles that own RAP signature slots. */
 export const RAP_REQUIRED_SIGNER_ROLES: DefensePanelRole[] = [
@@ -36,17 +51,18 @@ export interface RapSignatureRequirement {
 
 /**
  * Resolve required RAP signatories from session assignments.
- * Proposal/Final and Title use the same evaluator-role set (CHAIRMAN + PANELIST).
+ * Proposal/Final and Title use getRapSignatoryRoles (centralized).
  * Non-evaluator participants never receive a required slot.
  */
 export function resolveRapSignatureRequirements(
   participants: RapSignatureSlotInput[],
-  _defenseType?: string,
+  defenseType?: string,
 ): RapSignatureRequirement[] {
+  const allowed = new Set(
+    getRapSignatoryRoles(defenseType).map(String),
+  );
   return participants
-    .filter((p) =>
-      (RAP_REQUIRED_SIGNER_ROLES as string[]).includes(String(p.role)),
-    )
+    .filter((p) => allowed.has(String(p.role)))
     .map((p) => ({
       userId: p.userId,
       roleAtDefense: String(p.role),

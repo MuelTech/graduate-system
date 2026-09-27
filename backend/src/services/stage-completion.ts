@@ -31,13 +31,13 @@ export interface ProposalCompletionInput {
 }
 
 /**
- * RAP counts as finalized/signed for stage completion when status is
- * ALL_SIGNED or FINALIZED (same convention as eligibility lookups).
+ * CP7-FIX1: FINALIZED is the sole completed RAP state for stage completion
+ * and official-output logic. ALL_SIGNED is a legacy enum value only.
  */
 export function isRapStatusComplete(
   status: string | null | undefined,
 ): boolean {
-  return status === "ALL_SIGNED" || status === "FINALIZED";
+  return status === "FINALIZED";
 }
 
 /**

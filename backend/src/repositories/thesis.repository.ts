@@ -890,6 +890,26 @@ export class ThesisRepository {
         );
       }
 
+      // CP7-FIX1 Issue 10: RAP generator must be the Rapporteur finalizer — no Chairman fallback.
+      const rapporteurFinalizerId = schedule.rapporteurNotesFinalizedById;
+      if (!rapporteurFinalizerId) {
+        throw new AppError(
+          "Rapporteur notes finalizer identity is missing. Official RAP cannot be generated.",
+          409,
+        );
+      }
+      const rapporteurAssignment = schedule.panelAssignments.find(
+        (p) =>
+          p.userId === rapporteurFinalizerId &&
+          String(p.role) === "RAPPORTEUR",
+      );
+      if (!rapporteurAssignment) {
+        throw new AppError(
+          "Rapporteur notes finalizer is not the assigned session Rapporteur. Data integrity check failed.",
+          409,
+        );
+      }
+
       const outcome = options.outcome;
       const selectedTitleId = options.selectedTitleId ?? null;
       const finalRemarks =
@@ -934,7 +954,10 @@ export class ThesisRepository {
 
       // Proposal/Final: require evaluator completion + existing Summary.
       if (!isTitle) {
-        const evaluatorRoles = ["CHAIRMAN", "PANELIST"];
+        // CP7-FIX1 Issue 9: centralized evaluator-role policy.
+        const evaluatorRoles = new DefenseCommitteePolicy()
+          .getEvaluatorRoles(schedule.defenseType as never)
+          .map(String);
         const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
           evaluatorRoles.includes(String(p.role)),
         );
@@ -969,6 +992,11 @@ export class ThesisRepository {
         null;
 
       // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
+      const evaluatorRoleSet = new Set(
+        new DefenseCommitteePolicy()
+          .getEvaluatorRoles(schedule.defenseType as never)
+          .map(String),
+      );
       const panelRecommendations = schedule.oralExamScores
         .filter(
           (s) =>
@@ -976,7 +1004,7 @@ export class ThesisRepository {
             schedule.panelAssignments.some(
               (p) =>
                 p.id === s.panelId &&
-                ["CHAIRMAN", "PANELIST"].includes(String(p.role)),
+                evaluatorRoleSet.has(String(p.role)),
             ),
         )
         .map((s) => s.recommendations)
@@ -1027,7 +1055,7 @@ export class ThesisRepository {
         data: { sessionStatus: "CONCLUDED" },
       });
 
-      // RAP created once. generatedBy = Rapporteur who finalized notes.
+      // RAP created once. generatedBy = Rapporteur who finalized notes (no Chairman fallback).
       const rapReport = await rapService.createRapAfterConclusion(tx, {
         scheduleId,
         thesisId: schedule.thesisId,
@@ -1035,7 +1063,7 @@ export class ThesisRepository {
         venue: schedule.venueOrLink,
         selectedTitle: officialTitle,
         decisionsAndRecommendations: rapContent,
-        generatedById: schedule.rapporteurNotesFinalizedById ?? chairmanUserId,
+        generatedById: rapporteurFinalizerId,
       });
 
       return { conclusion, rapReport };
@@ -1070,15 +1098,17 @@ export class ThesisRepository {
     });
   }
 
-  // Update RAP Report status to DISTRIBUTED
+  /**
+   * CP7-FIX1 Issue 1: legacy distribute is retired.
+   * Never mutates RapReport lifecycle status.
+   */
   async distributeRapReport(rapId: string) {
-    return prisma.rapReport.update({
-      where: { id: rapId },
-      data: { status: "DISTRIBUTED" },
-      include: {
-        signatures: { include: { user: true } },
-      },
-    });
+    const { AppError: AE } = await import("../utils/AppError");
+    void rapId;
+    throw new AE(
+      "Manual RAP distribution is retired. Signature routing begins automatically after formal conclusion.",
+      409,
+    );
   }
 
   // Fetch missing signatures to remind them

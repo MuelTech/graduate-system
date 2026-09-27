@@ -589,7 +589,8 @@ export class ThesisController {
       const result = await this.thesisService.signRapReport(sigId, req.user.userId, signatureData);
       res.status(200).json({ message: "Rap Report successfully signed", result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      // CP7-FIX1: preserve AppError status (400/403/404/409).
+      sendEligibilityError(res, error);
     }
   };
 
@@ -661,7 +662,7 @@ export class ThesisController {
     }
   };
 
-  /** CP7: official individual Criteria (ADMIN or owning evaluator). */
+  /** CP7: official individual Criteria (ADMIN or owning evaluator; auth inside service). */
   public getOfficialCriteria = async (
     req: AuthenticatedRequest,
     res: Response,
@@ -669,39 +670,36 @@ export class ThesisController {
     try {
       const userId = req.user?.userId;
       const accountRole = String(req.user?.role ?? "");
-      const scheduleId = req.params.scheduleId as string;
-      const panelAssignmentId = req.params.panelAssignmentId as string;
-
-      const criteria = await this.thesisService.getOfficialCriteria(
-        scheduleId,
-        panelAssignmentId,
-      );
-
-      if (accountRole !== "ADMIN") {
-        // Evaluator privacy: only the owning evaluator may read detailed Criteria.
-        if (!userId || criteria.evaluatorUserId !== userId) {
-          res.status(403).json({
-            error:
-              "You may not inspect another evaluator's individual Oral Examination Criteria.",
-          });
-          return;
-        }
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
       }
-
+      const criteria = await this.thesisService.getOfficialCriteria(
+        req.params.scheduleId as string,
+        req.params.panelAssignmentId as string,
+        { userId, role: accountRole },
+      );
       res.status(200).json(criteria);
     } catch (error: any) {
       sendEligibilityError(res, error);
     }
   };
 
-  /** CP7: Oral Examination Summary read model. */
+  /** CP7: Oral Examination Summary — ADMIN or session CHAIRMAN only (auth inside service). */
   public getOralExamSummary = async (
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
     try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
       const summary = await this.thesisService.getOralExamSummaryRecord(
         req.params.scheduleId as string,
+        { userId, role: accountRole },
       );
       res.status(200).json(summary);
     } catch (error: any) {
@@ -772,30 +770,11 @@ export class ThesisController {
   };
 
   public distributeRapReport = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const rapId = req.params.rapId as string;
-      const rap = await this.thesisService.distributeRapReport(rapId);
-      
-      // Email each panelist asynchronously via BullMQ
-      for (const sig of rap.signatures) {
-        if (!sig.isSigned) {
-          await import("../services/email.service").then(module => {
-            module.EmailService.sendTemplateEmail(
-              sig.user.email,
-              "rap_distributed",
-              {
-                panelist_name: `${sig.user.firstName} ${sig.user.lastName}`,
-                rap_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/panelist/rap-reports`
-              }
-            ).catch(err => console.error("Failed to queue email:", err));
-          });
-        }
-      }
-      
-      res.status(200).json({ success: true, rapReport: rap });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    // CP7-FIX1: Manual RAP distribution is retired. Lifecycle is signature-driven only.
+    res.status(409).json({
+      error:
+        "Manual RAP distribution is retired. Signature routing begins automatically after formal conclusion.",
+    });
   };
 
   public remindRapReportPanelists = async (req: Request, res: Response): Promise<void> => {
@@ -879,27 +858,36 @@ export class ThesisController {
         return;
       }
 
-      // Fetch the lobby status first to check panel assignments
-      const lobbyData = await this.thesisService.getLobbyStatus(scheduleId);
-
-      // 1. Must be a panelist account
-      if (role !== "PANELIST") {
-        res.status(403).json({ error: "Forbidden: The lobby is restricted to Panelists only." });
-        return;
-      }
-
-      // 2. Must be officially assigned to this specific defense
-      const isAssigned = lobbyData.panelStatuses.some(
-        (panel: any) => panel.userId === userId
+      // CP7-FIX1: legacy lobby delegates to role-safe workspace authorization.
+      // Never returns Rapporteur draft notes to ordinary Panelists/unassigned users.
+      const workspace = await this.defenseWorkspace.getWorkspace(
+        scheduleId,
+        userId,
       );
-      if (!isAssigned) {
-        res.status(403).json({ error: "Forbidden: You are not assigned to this defense panel." });
-        return;
-      }
-
-      res.status(200).json(lobbyData);
+      res.status(200).json({
+        studentName: workspace.student.name,
+        defenseType: workspace.schedule.defenseType,
+        proposedTitles: workspace.proposedTitles,
+        // Draft/finalized notes only for Rapporteur (and Chairman after finalization).
+        rapporteurNotes: workspace.rapporteurDraft?.notes ?? null,
+        isConcluded: workspace.conclusionsPresent,
+        panelStatuses: workspace.roster.map((r) => ({
+          userId: r.userId,
+          panelistName: r.name,
+          role: r.role,
+          status:
+            r.evaluationStatus === "FINALIZED"
+              ? "Ready"
+              : r.evaluationStatus === "DRAFT"
+                ? "Draft"
+                : r.evaluationStatus === "NONE"
+                  ? "Ready"
+                  : "Scoring...",
+        })),
+        sessionStatus: workspace.sessionStatus,
+      });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendEligibilityError(res, error);
     }
   };
 
