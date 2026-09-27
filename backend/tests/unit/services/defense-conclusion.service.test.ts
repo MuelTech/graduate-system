@@ -34,13 +34,13 @@ describe("conclusion authorization (interim ADMIN)", () => {
 });
 
 describe("score completion does not conclude", () => {
-  it("requires all evaluator scores before conclusion", () => {
+  it("requires all evaluator evaluations to be finalized before conclusion", () => {
     const result = validateConclusionPreconditions(
       { ...baseInput, submittedEvaluatorScores: 1 },
       "PASSED",
     );
     expect(result.ok).toBe(false);
-    expect(result.errors.join(" ")).toMatch(/evaluator scores/i);
+    expect(result.errors.join(" ")).toMatch(/evaluator evaluations must be finalized/i);
   });
 
   it("blocks double conclusion", () => {

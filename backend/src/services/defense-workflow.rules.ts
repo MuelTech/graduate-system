@@ -217,10 +217,16 @@ export function applyWinningTitleFlags(
   }));
 }
 
+/**
+ * CP5: Proposal/Final require all evaluator evaluations FINALIZED.
+ * Title Defense does not use Group I/II scores — always complete.
+ */
 export function isScoringComplete(
   evaluatorAssignments: number,
   submittedEvaluatorScores: number,
+  defenseType?: string,
 ): boolean {
+  if (defenseType === "TITLE_DEFENSE") return true;
   return (
     evaluatorAssignments > 0 && submittedEvaluatorScores >= evaluatorAssignments
   );

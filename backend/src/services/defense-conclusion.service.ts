@@ -70,10 +70,14 @@ export function validateConclusionPreconditions(
   }
 
   if (
-    !isScoringComplete(input.evaluatorAssignments, input.submittedEvaluatorScores)
+    !isScoringComplete(
+      input.evaluatorAssignments,
+      input.submittedEvaluatorScores,
+      input.defenseType,
+    )
   ) {
     errors.push(
-      "All required evaluator scores must be submitted before formal conclusion.",
+      "All required evaluator evaluations must be finalized before formal conclusion.",
     );
   }
 

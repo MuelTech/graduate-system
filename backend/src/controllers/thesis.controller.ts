@@ -3,6 +3,7 @@ import { ThesisService } from '../services/thesis.service';
 import { StudentThesisJourneyService } from '../services/student-thesis-journey.service';
 import { ProposalAdviserReviewService } from '../services/proposal-adviser-review.service';
 import { FinalAdviserReviewService } from '../services/final-adviser-review.service';
+import { OralEvaluationService } from '../services/oral-evaluation.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -22,6 +23,7 @@ export class ThesisController {
   private journeyService = new StudentThesisJourneyService();
   private proposalAdviserReview = new ProposalAdviserReviewService();
   private finalAdviserReview = new FinalAdviserReviewService();
+  private oralEvaluation = new OralEvaluationService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -458,14 +460,90 @@ export class ThesisController {
 
   submitOralExamScore = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+      if (!req.user) throw new Error("Unauthorized");
       const scheduleId  = req.params.scheduleId as string;
       const { panelId, scores } = req.body;
-      const result = await this.thesisService.submitOralExamScore(panelId, scheduleId, scores);
-      res.status(201).json({ message: "Score submitted!", result });
+      // CP5: legacy /score = own Draft only (client panelId is not ownership).
+      const result = await this.thesisService.submitOralExamScore(
+        req.user.userId,
+        panelId,
+        scheduleId,
+        scores,
+      );
+      res.status(200).json({ message: "Evaluation draft saved.", result });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(error?.statusCode || 400).json({ error: error.message });
     }
   }
+
+  // ── CP5 evaluator evaluation lifecycle ───────────────────────────
+
+  getMyOralEvaluation = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      res
+        .status(200)
+        .json(await this.oralEvaluation.getMyEvaluation(scheduleId, req.user.userId));
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
+
+  saveOralEvaluationDraft = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      res.status(200).json(
+        await this.oralEvaluation.saveDraft(scheduleId, req.user.userId, {
+          criteria: req.body?.criteria ?? {},
+          rating: req.body?.rating ?? null,
+          recommendations: req.body?.recommendations ?? null,
+          clientPanelId: req.body?.panelId ?? null,
+        }),
+      );
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
+
+  finalizeOralEvaluation = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      res.status(200).json(
+        await this.oralEvaluation.finalize(scheduleId, req.user.userId, {
+          signatureData: String(req.body?.signatureData ?? ""),
+          criteria: req.body?.criteria ?? {},
+          rating: req.body?.rating ?? null,
+          recommendations: req.body?.recommendations ?? null,
+          clientPanelId: req.body?.panelId ?? null,
+          clientSignedAt: req.body?.signedAt ?? null,
+          clientFinalizedAt: req.body?.finalizedAt ?? null,
+        }),
+      );
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
 
   getPendingRapReports = async(req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

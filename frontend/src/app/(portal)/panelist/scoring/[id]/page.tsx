@@ -89,26 +89,29 @@ export default function PanelistScoringPage() {
     try {
       setIsSubmitting(true);
 
-      const groupATotal = groupA.reduce((sum, c) => sum + scores[c.id], 0);
-      const groupBTotal = groupB.reduce((sum, c) => sum + scores[c.id], 0);
-
+      // CP5: legacy endpoint saves own DRAFT only — server derives totals.
+      // Never send client PASS/FAIL rating or authoritative averages.
       await apiClientRequest(`/thesis/defense/${scheduleId}/score`, {
         method: "POST",
         body: JSON.stringify({
           panelId,
           scores: {
-            ...scores,
-            groupAAverage: groupATotal, // Saving the raw sum out of 60
-            groupBAverage: groupBTotal, // Saving the raw sum out of 40
-            overallAverage: totalScore, // Saving the grand total out of 100
-            rating: totalScore >= 75 ? "PASSED" : "FAILED", // Using 75 as passing mark for now
+            timelinessRelevance: scores.timelinessRelevance,
+            organization: scores.organization,
+            depthComprehensiveness: scores.depthComprehensiveness,
+            relevanceConclusions: scores.relevanceConclusions,
+            evidenceOriginalThinking: scores.evidenceOriginalThinking,
+            presentation: scores.presentation,
+            masterySubject: scores.masterySubject,
+            communicationSkill: scores.communicationSkill,
+            attitude: scores.attitude,
           },
         }),
       });
 
       setSubmissionState("submitted");
     } catch (error: unknown) {
-      alert("Failed to submit scores: " + (error as Error).message);
+      alert("Failed to save draft: " + (error as Error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -124,7 +127,7 @@ export default function PanelistScoringPage() {
                 <CheckCircle2 className="h-10 w-10 text-green-600" />
               </div>
               <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                Scores Submitted
+                Draft Saved
               </h3>
               <p className="mb-4 text-sm text-(--earist-body-text)">
                 Your evaluation has been recorded successfully.
@@ -324,7 +327,7 @@ export default function PanelistScoringPage() {
             ) : (
               <>
                 <Send className="mr-2 h-5 w-5" />
-                Submit Final Score
+                Save Draft
               </>
             )}
           </Button>

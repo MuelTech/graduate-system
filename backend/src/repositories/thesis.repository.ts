@@ -46,7 +46,7 @@ export class ThesisRepository {
         panelAssignments: {
           select: { role: true },
         },
-        oralExamScores: { select: { id: true } },
+        oralExamScores: { select: { id: true, status: true } },
       },
     });
     if (!schedule) return null;
@@ -56,11 +56,17 @@ export class ThesisRepository {
       evaluatorRoles.has(p.role),
     ).length;
 
+    // CP5: DRAFT rows must not satisfy formal conclusion — FINALIZED only.
     return {
       defenseType: schedule.defenseType as string,
       alreadyConcluded: !!schedule.conclusion,
       evaluatorAssignments,
-      submittedEvaluatorScores: schedule.oralExamScores.length,
+      submittedEvaluatorScores: schedule.oralExamScores.filter(
+        (s) => s.status === "FINALIZED",
+      ).length,
+      finalizedEvaluatorScores: schedule.oralExamScores.filter(
+        (s) => s.status === "FINALIZED",
+      ).length,
       thesisTitleIds: schedule.thesis.thesisTitles.map((t) => t.id),
     };
   }

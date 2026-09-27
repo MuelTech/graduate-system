@@ -347,12 +347,34 @@ router.get(
   thesisController.getPanelistAssignments,
 );
 
-// PANELIST: Submit Score
+// PANELIST: legacy score → own DRAFT only (never FINALIZED)
 router.post(
   "/defense/:scheduleId/score",
   authenticateJWT,
   requireRole(["PANELIST"]),
   thesisController.submitOralExamScore,
+);
+
+// PANELIST: own evaluation lifecycle (CP5)
+router.get(
+  "/defense/:scheduleId/evaluation/me",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getMyOralEvaluation,
+);
+
+router.put(
+  "/defense/:scheduleId/evaluation/draft",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.saveOralEvaluationDraft,
+);
+
+router.post(
+  "/defense/:scheduleId/evaluation/finalize",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.finalizeOralEvaluation,
 );
 
 // PANELIST: Get Pending RAP Reports

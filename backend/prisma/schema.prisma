@@ -582,12 +582,26 @@ model OralExamScore {
   rating                   OralRating?
   recommendations          String?         @db.Text
   scoredAt                 DateTime        @map("scored_at")
+  /** CP5: DRAFT → FINALIZED (e-sign + locked). */
+  status                   OralEvaluationStatus @default(DRAFT)
+  signatureData            String?         @map("signature_data") @db.Text
+  signedAt                 DateTime?       @map("signed_at")
+  finalizedAt              DateTime?       @map("finalized_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
   panel                    PanelAssignment @relation(fields: [panelId], references: [id])
   schedule                 DefenseSchedule @relation(fields: [scheduleId], references: [id])
 
+  @@unique([scheduleId, panelId])
   @@index([panelId], map: "oral_exam_scores_panel_id_fkey")
   @@index([scheduleId], map: "oral_exam_scores_schedule_id_fkey")
   @@map("oral_exam_scores")
+}
+
+enum OralEvaluationStatus {
+  DRAFT
+  FINALIZED
+
+  @@map("oral_evaluation_status")
 }
 
 model OralExamSummary {

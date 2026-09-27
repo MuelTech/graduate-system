@@ -24,6 +24,7 @@ import {
 } from './defense-application-workflow';
 import { canApplyReviewTransition } from './defense-workflow.rules';
 import { AdviserRequestService } from './adviser-request.service';
+import { OralEvaluationService } from './oral-evaluation.service';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -35,6 +36,7 @@ export interface ScheduleDefenseInput {
 
 export class ThesisService {
   private thesisRepo = new ThesisRepository();
+  private oralEvaluation = new OralEvaluationService();
   private defenseAppsRepo = new DefenseApplicationsRepository();
   private eligibilityRepo = new DefenseEligibilityRepository();
   private eligibility = new DefenseEligibilityService();
@@ -503,18 +505,32 @@ export class ThesisService {
     return this.thesisRepo.getPanelistAssignments(userId);
   }
 
-  async submitOralExamScore(panelId: string, scheduleId: string, data: any) {
-    const schedule = await this.thesisRepo.getDefenseScheduleForScoring(scheduleId);
-    if (!schedule) throw new AppError('Defense schedule not found.', 404);
-    const evaluatorRoles = this.committeePolicy.getEvaluatorRoles(
-      schedule.defenseType as DefenseTypeName,
-    );
-    return this.thesisRepo.submitOralExamScore(
-      panelId,
-      scheduleId,
-      data,
-      evaluatorRoles,
-    );
+  /**
+   * CP5 legacy compatibility: /score saves the caller's own DRAFT only.
+   * Never FINALIZED; never trusts client panelId as ownership.
+   */
+  async submitOralExamScore(
+    userId: string,
+    panelId: string,
+    scheduleId: string,
+    data: any,
+  ) {
+    return this.oralEvaluation.saveDraft(scheduleId, userId, {
+      criteria: {
+        timelinessRelevance: data?.timelinessRelevance,
+        organization: data?.organization,
+        depthComprehensiveness: data?.depthComprehensiveness,
+        relevanceConclusions: data?.relevanceConclusions,
+        evidenceOriginalThinking: data?.evidenceOriginalThinking,
+        presentation: data?.presentation,
+        masterySubject: data?.masterySubject,
+        communicationSkill: data?.communicationSkill,
+        attitude: data?.attitude,
+      },
+      rating: data?.rating ?? null,
+      recommendations: data?.recommendations ?? null,
+      clientPanelId: panelId ?? null,
+    });
   }
 
   async getPendingRapReports(userId: string) {
