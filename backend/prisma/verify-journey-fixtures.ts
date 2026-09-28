@@ -7,6 +7,7 @@
  */
 import prisma from "../src/config/database";
 import { StudentThesisJourneyService } from "../src/services/student-thesis-journey.service";
+import { isRapStatusComplete } from "../src/services/stage-completion";
 import {
   JOURNEY_FIXTURE_EXPECTATIONS,
   JOURNEY_FIXTURE_KEYS,
@@ -95,17 +96,24 @@ async function verifyIntegrity(
         }
       }
 
-      // Canonical Title completion requires a finalized Title RAP.
-      const titleRapCount = await prisma.rapReport.count({
-        where: {
-          thesisId: thesis.id,
-          defenseType: "TITLE_DEFENSE",
-          status: { in: ["ALL_SIGNED", "FINALIZED"] },
-        },
-      });
-      if (titlePassedExpected && titleRapCount < 1) {
+      // Canonical Title completion: matching-session FINALIZED Title RAP only.
+      // CP7+: ALL_SIGNED is legacy and must not satisfy completion.
+      const titleConclusionScheduleId = titleConclusions[0]?.scheduleId ?? null;
+      const titleRapRows = titleConclusionScheduleId
+        ? await prisma.rapReport.findMany({
+            where: {
+              scheduleId: titleConclusionScheduleId,
+              defenseType: "TITLE_DEFENSE",
+            },
+            select: { status: true },
+          })
+        : [];
+      const titleRapComplete = titleRapRows.some((r) =>
+        isRapStatusComplete(r.status),
+      );
+      if (titlePassedExpected && !titleRapComplete) {
         console.error(
-          `  FAIL ${scenario}: expected finalized Title RAP for completed Title stage`,
+          `  FAIL ${scenario}: expected FINALIZED matching-session Title RAP for completed Title stage`,
         );
         f++;
       }
@@ -197,16 +205,31 @@ async function verifyIntegrity(
         f++;
       }
 
-      const proposalRapCount = await prisma.rapReport.count({
+      // Canonical Proposal completion: matching-session FINALIZED Proposal RAP only.
+      const proposalConclusion = await prisma.defenseConclusion.findFirst({
         where: {
           thesisId: thesis.id,
-          defenseType: "PROPOSAL_DEFENSE",
-          status: { in: ["ALL_SIGNED", "FINALIZED"] },
+          schedule: { defenseType: "PROPOSAL_DEFENSE" },
+          outcome: "PASSED",
         },
+        orderBy: { concludedAt: "desc" },
+        select: { scheduleId: true },
       });
-      if (proposalPassedExpected && proposalRapCount < 1) {
+      const proposalRapRows = proposalConclusion?.scheduleId
+        ? await prisma.rapReport.findMany({
+            where: {
+              scheduleId: proposalConclusion.scheduleId,
+              defenseType: "PROPOSAL_DEFENSE",
+            },
+            select: { status: true },
+          })
+        : [];
+      const proposalRapComplete = proposalRapRows.some((r) =>
+        isRapStatusComplete(r.status),
+      );
+      if (proposalPassedExpected && !proposalRapComplete) {
         console.error(
-          `  FAIL ${scenario}: expected finalized Proposal RAP for completed Proposal stage`,
+          `  FAIL ${scenario}: expected FINALIZED matching-session Proposal RAP for completed Proposal stage`,
         );
         f++;
       }
