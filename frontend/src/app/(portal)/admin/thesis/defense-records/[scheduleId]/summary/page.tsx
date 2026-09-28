@@ -157,9 +157,6 @@ export default function AdminOralExamSummaryPrintPage() {
             <h1 className="text-lg font-semibold text-(--earist-primary)">
               Oral Examination Summary
             </h1>
-            <p className="text-xs text-(--earist-body-text)">
-              System-generated official defense record
-            </p>
           </div>
           <Link
             href={`/admin/thesis/defense-records/${scheduleId}`}
@@ -288,14 +285,12 @@ export default function AdminOralExamSummaryPrintPage() {
           </span>{" "}
           <strong>{summary.overallAverage ?? "—"}</strong>
         </p>
-        <p>
-          <span className="text-(--earist-body-text)">Final Rating:</span>{" "}
-          {summary.finalRating ? (
+        {summary.finalRating != null && summary.finalRating !== "" && (
+          <p>
+            <span className="text-(--earist-body-text)">Final Rating:</span>{" "}
             <strong>{summary.finalRating}</strong>
-          ) : (
-            "—"
-          )}
-        </p>
+          </p>
+        )}
       </div>
 
       <div className="border-t pt-4">
