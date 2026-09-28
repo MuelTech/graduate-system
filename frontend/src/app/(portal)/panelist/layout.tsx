@@ -23,14 +23,27 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
+/** Nested/compat routes stay active on their nav entry. */
+function isNavItemActive(pathname: string, href: string): boolean {
+  // Compatibility index is /panelist/scoring; canonical workspace is nested.
+  if (href === "/panelist/scoring") {
+    return (
+      pathname === "/panelist/scoring" ||
+      pathname.startsWith("/panelist/scoring/") ||
+      pathname.startsWith("/panelist/defense-workspace/")
+    );
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 const navItems = [
   { href: "/panelist/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/panelist/profile", label: "Profile", icon: User },
   { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
   { href: "/panelist/adviser-requests", label: "Adviser Requests", icon: UserCheck },
-  { href: "/panelist/adviser-reviews", label: "Proposal Reviews", icon: FileCheck2 },
+  { href: "/panelist/adviser-reviews", label: "Adviser Reviews", icon: FileCheck2 },
   { href: "/panelist/materials", label: "Materials", icon: FolderOpen },
-  { href: "/panelist/scoring", label: "Scoring", icon: PenLine },
+  { href: "/panelist/scoring", label: "Defense Workspaces", icon: PenLine },
   { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
   { href: "/panelist/repository", label: "Repository", icon: Library },
   { href: "/panelist/announcements", label: "Announcements", icon: Megaphone },
@@ -91,7 +104,7 @@ export default function PanelistLayout({
         <nav className="flex-1 overflow-y-auto px-2 py-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isNavItemActive(pathname, item.href);
               return (
                 <li key={item.href}>
                   <Link

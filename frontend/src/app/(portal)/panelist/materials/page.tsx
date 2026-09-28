@@ -10,6 +10,35 @@ import { DocumentViewer } from "@/components/ui/document-viewer";
 import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
 import { PanelistAssignmentData as AssignmentData, DocumentData } from "@/types";
 
+const SESSION_LABELS: Record<string, string> = {
+  SCHEDULED: "Scheduled",
+  IN_PROGRESS: "In Progress",
+  AWAITING_CONCLUSION: "Awaiting Conclusion",
+  CONCLUDED: "Concluded",
+  CANCELLED: "Cancelled",
+};
+
+function sessionStatusLabel(status: string | undefined): string {
+  return SESSION_LABELS[status ?? ""] ?? status ?? "—";
+}
+
+function sessionBadgeClass(status: string | undefined): string {
+  switch (status) {
+    case "SCHEDULED":
+      return "bg-blue-100 text-blue-700";
+    case "IN_PROGRESS":
+      return "bg-amber-100 text-amber-800";
+    case "AWAITING_CONCLUSION":
+      return "bg-violet-100 text-violet-800";
+    case "CONCLUDED":
+      return "bg-emerald-100 text-emerald-700";
+    case "CANCELLED":
+      return "bg-gray-200 text-gray-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
 export default function PanelistMaterialsPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
@@ -56,7 +85,9 @@ export default function PanelistMaterialsPage() {
 
             if (!schedule || !student) return null;
 
-            const isUpcoming = schedule.status === "SCHEDULED";
+            const sessionStatus = schedule.sessionStatus;
+            const isConcluded = sessionStatus === "CONCLUDED";
+            const isCancelled = sessionStatus === "CANCELLED";
 
             return (
               <Card key={assignment.id}>
@@ -65,12 +96,20 @@ export default function PanelistMaterialsPage() {
                     <div className="flex items-center gap-2">
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                          isUpcoming ? "bg-blue-50" : "bg-green-50"
+                          isCancelled
+                            ? "bg-gray-100"
+                            : isConcluded
+                              ? "bg-green-50"
+                              : "bg-blue-50"
                         }`}
                       >
                         <FileText
                           className={`h-5 w-5 ${
-                            isUpcoming ? "text-blue-600" : "text-green-600"
+                            isCancelled
+                              ? "text-gray-500"
+                              : isConcluded
+                                ? "text-green-600"
+                                : "text-blue-600"
                           }`}
                         />
                       </div>
@@ -83,16 +122,12 @@ export default function PanelistMaterialsPage() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <Badge
-                        className={
-                          isUpcoming
-                            ? "bg-blue-100 text-blue-700 font-bold uppercase text-[10px]"
-                            : "bg-green-100 text-green-700 font-bold uppercase text-[10px]"
-                        }
+                        className={`${sessionBadgeClass(sessionStatus)} font-bold uppercase text-[10px]`}
                       >
-                        {isUpcoming ? "Upcoming" : "Completed"}
+                        {sessionStatusLabel(sessionStatus)}
                       </Badge>
                       <div className="flex items-center gap-1.5 text-sm font-medium text-(--earist-body-text)">
                         <Calendar className="h-4 w-4 text-(--earist-primary)" />

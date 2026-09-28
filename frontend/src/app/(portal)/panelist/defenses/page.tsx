@@ -16,6 +16,35 @@ import {
 } from "lucide-react";
 import { PanelistAssignmentData as AssignmentData } from "@/types";
 
+const SESSION_LABELS: Record<string, string> = {
+  SCHEDULED: "Scheduled",
+  IN_PROGRESS: "In Progress",
+  AWAITING_CONCLUSION: "Awaiting Conclusion",
+  CONCLUDED: "Concluded",
+  CANCELLED: "Cancelled",
+};
+
+function sessionStatusLabel(status: string | undefined): string {
+  return SESSION_LABELS[status ?? ""] ?? status ?? "—";
+}
+
+function sessionBadgeClass(status: string | undefined): string {
+  switch (status) {
+    case "SCHEDULED":
+      return "bg-blue-100 text-blue-700";
+    case "IN_PROGRESS":
+      return "bg-amber-100 text-amber-800";
+    case "AWAITING_CONCLUSION":
+      return "bg-violet-100 text-violet-800";
+    case "CONCLUDED":
+      return "bg-emerald-100 text-emerald-700";
+    case "CANCELLED":
+      return "bg-gray-200 text-gray-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
 export default function PanelistDefensesPage() {
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["panelistAssignments"],
@@ -25,8 +54,17 @@ export default function PanelistDefensesPage() {
     },
   });
 
-  const upcomingCount = assignments.filter((a: AssignmentData) => a.schedule.status === "SCHEDULED").length;
-  const completedCount = assignments.filter((a: AssignmentData) => a.schedule.status !== "SCHEDULED").length;
+  const sessionCounts = {
+    SCHEDULED: 0,
+    IN_PROGRESS: 0,
+    AWAITING_CONCLUSION: 0,
+    CONCLUDED: 0,
+    CANCELLED: 0,
+  } as Record<string, number>;
+  for (const a of assignments as AssignmentData[]) {
+    const st = String(a.schedule?.sessionStatus ?? "");
+    if (st in sessionCounts) sessionCounts[st] += 1;
+  }
 
   return (
     <div className="space-y-4 pb-24">
@@ -43,14 +81,21 @@ export default function PanelistDefensesPage() {
         </p>
       </div>
 
-      {/* Summary Badges (From your Mock) */}
-      <div className="flex gap-2">
-        <Badge className="bg-blue-100 text-blue-700">
-          {upcomingCount} Upcoming
-        </Badge>
-        <Badge className="bg-green-100 text-green-700">
-          {completedCount} Completed
-        </Badge>
+      {/* Session-state summary — uses DefenseSchedule.sessionStatus */}
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            "SCHEDULED",
+            "IN_PROGRESS",
+            "AWAITING_CONCLUSION",
+            "CONCLUDED",
+            "CANCELLED",
+          ] as const
+        ).map((st) => (
+          <Badge key={st} className={sessionBadgeClass(st)}>
+            {sessionCounts[st]} {sessionStatusLabel(st)}
+          </Badge>
+        ))}
       </div>
 
       {isLoading ? (
@@ -70,7 +115,11 @@ export default function PanelistDefensesPage() {
             
             if (!schedule || !student) return null;
 
-            const isUpcoming = schedule.status === "SCHEDULED";
+            const sessionStatus = schedule.sessionStatus;
+            const isCancelled = sessionStatus === "CANCELLED";
+            const isConcluded = sessionStatus === "CONCLUDED";
+            // Workspace stays discoverable for assigned non-cancelled sessions.
+            const canOpenWorkspace = !isCancelled;
             const isOnline = (schedule.venueOrLink || "").includes("http");
 
             return (
@@ -82,13 +131,21 @@ export default function PanelistDefensesPage() {
                       <div className="mb-3 flex items-center gap-2">
                         <div
                           className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                            isUpcoming ? "bg-blue-50" : "bg-green-50"
+                            isCancelled
+                              ? "bg-gray-100"
+                              : isConcluded
+                                ? "bg-green-50"
+                                : "bg-blue-50"
                           }`}
                         >
-                          {isUpcoming ? (
-                            <FileCheck2 className="h-5 w-5 text-blue-600" />
-                          ) : (
+                          {isConcluded ? (
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <FileCheck2
+                              className={`h-5 w-5 ${
+                                isCancelled ? "text-gray-500" : "text-blue-600"
+                              }`}
+                            />
                           )}
                         </div>
                         <div>
@@ -152,7 +209,12 @@ export default function PanelistDefensesPage() {
                       </div>
 
                       <div className="mt-4 flex flex-col gap-2">
-                        {isUpcoming && (
+                        <Badge
+                          className={`${sessionBadgeClass(sessionStatus)} w-fit font-bold uppercase text-[10px]`}
+                        >
+                          {sessionStatusLabel(sessionStatus)}
+                        </Badge>
+                        {canOpenWorkspace && (
                           <Link
                             href={`/panelist/defense-workspace/${schedule.id}`}
                             className="inline-flex w-full items-center justify-center rounded-lg bg-(--earist-primary) px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-(--earist-primary)/90"
