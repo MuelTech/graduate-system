@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { PRIVATE_UPLOAD_ROOT } from "../utils/file.utils";
+import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
 
 interface ModelConfig {
     prismaModel: string;
@@ -42,15 +43,25 @@ const STAGE_TO_DEFENSE_TYPE: Record<string, string> = {
  * CP6-FIX1: stage-aware thesis document access for Panelists.
  * Stage-scoped or safely inferred stage docs require a matching defense-type
  * assignment. Ambiguous unscoped docs fail closed. Active advisers allowed.
+ *
+ * CP8 narrow exception: a Final Defense participant may access only the
+ * exact authoritative prior Proposal manuscript (ISSUED Proposal certification
+ * reviewedDocumentId) — never arbitrary Proposal revisions.
  */
 export function canPanelistAccessThesisDocument(
   record: {
+    id?: string;
     defenseStage?: string | null;
     docType?: string | null;
     thesis?: {
       student?: {
         adviserAssignments?: Array<{ adviserId: string }>;
       } | null;
+      adviserCertifications?: Array<{
+        defenseStage: string;
+        status: string;
+        reviewedDocumentId?: string | null;
+      }> | null;
       defenseSchedules?: Array<{
         defenseType?: string;
         panelAssignments?: Array<{ userId: string }>;
@@ -72,11 +83,33 @@ export function canPanelistAccessThesisDocument(
 
   const requiredType = STAGE_TO_DEFENSE_TYPE[effectiveStage];
   const schedules = record.thesis?.defenseSchedules ?? [];
-  return schedules.some(
+  const hasMatchingStageAssignment = schedules.some(
     (ds) =>
       ds.defenseType === requiredType &&
       ds.panelAssignments?.some((pa) => pa.userId === userId),
   );
+  if (hasMatchingStageAssignment) return true;
+
+  // CP8: Final Defense participant → exact certified prior Proposal manuscript only.
+  if (effectiveStage === "PROPOSAL") {
+    const isFinalParticipant = schedules.some(
+      (ds) =>
+        ds.defenseType === "FINAL_DEFENSE" &&
+        ds.panelAssignments?.some((pa) => pa.userId === userId),
+    );
+    if (!isFinalParticipant) return false;
+
+    const proposalCert = (record.thesis?.adviserCertifications ?? []).find(
+      (c) =>
+        c.defenseStage === "PROPOSAL_DEFENSE" && c.status === "ISSUED",
+    );
+    return isAuthoritativePriorProposalManuscript(
+      record.id ?? null,
+      proposalCert ?? null,
+    );
+  }
+
+  return false;
 }
 
 const MODEL_REGISTRY: Record<string, ModelConfig> = {
@@ -99,6 +132,14 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
                                 where: { isActive: true },
                                 select: { adviserId: true },
                             },
+                        },
+                    },
+                    adviserCertifications: {
+                        where: { status: "ISSUED" },
+                        select: {
+                            defenseStage: true,
+                            status: true,
+                            reviewedDocumentId: true,
                         },
                     },
                     defenseSchedules: {

@@ -175,6 +175,22 @@ export function selectCertifiedFinalManuscript<
   return isValidCertifiedFinalManuscript(cert, doc, thesisId) ? doc : null;
 }
 
+/**
+ * CP8: the one authoritative prior Proposal manuscript for Final Defense
+ * history/document access — exact ISSUED Proposal certification binding only.
+ * Never a newer un-certified Proposal revision.
+ */
+export function isAuthoritativePriorProposalManuscript(
+  docId: string | null | undefined,
+  cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+): boolean {
+  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== PROPOSAL_REVIEW_STAGE) {
+    return false;
+  }
+  if (!cert.reviewedDocumentId || !docId) return false;
+  return docId === cert.reviewedDocumentId;
+}
+
 /** CP4: Final application documents = certified Final manuscript + COR/RECEIPT. */
 export function resolveCurrentFinalApplicationDocuments<
   T extends CertifiedManuscriptDocLike & { docType: string },

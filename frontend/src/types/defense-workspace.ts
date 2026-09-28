@@ -72,6 +72,25 @@ export interface DefenseWorkspace {
   } | null;
   formalResult: string | null;
   rapStatus: string | null;
+  /**
+   * CP8: prior Proposal context for Final Defense only.
+   * Null/absent for Title and Proposal workspaces.
+   */
+  proposalHistory?: {
+    manuscript: {
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      uploadedAt: string | null;
+      displayName: string;
+    } | null;
+    rap: {
+      id: string;
+      status: "FINALIZED";
+      finalizedAt: string | null;
+      decisionsAndRecommendations: string | null;
+    } | null;
+  } | null;
 }
 
 export interface OralEvaluation {

@@ -86,6 +86,25 @@ export interface DefenseWorkspaceDto {
   } | null;
   formalResult: string | null;
   rapStatus: string | null;
+  /**
+   * CP8: prior Proposal context for Final Defense only.
+   * Absent/null for Title and Proposal workspaces.
+   */
+  proposalHistory: {
+    manuscript: {
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      uploadedAt: string | null;
+      displayName: string;
+    } | null;
+    rap: {
+      id: string;
+      status: "FINALIZED";
+      finalizedAt: string | null;
+      decisionsAndRecommendations: string | null;
+    } | null;
+  } | null;
 }
 
 function wallDate(v: Date | null | undefined): string | null {
@@ -218,6 +237,8 @@ export class DefenseWorkspaceService {
       uploadedAt: string | null;
       displayName: string;
     }> = [];
+    /** CP8: prior Proposal context — only for FINAL_DEFENSE. */
+    let proposalHistory: DefenseWorkspaceDto["proposalHistory"] = null;
 
     if (defenseType === "PROPOSAL_DEFENSE") {
       const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE");
@@ -277,6 +298,40 @@ export class DefenseWorkspaceService {
           displayName: "Certified Final Manuscript",
         },
       ];
+
+      // CP8: exact certified prior Proposal manuscript (never a later revision).
+      const proposalCert = certs.find(
+        (c) => c.defenseStage === "PROPOSAL_DEFENSE",
+      );
+      const priorProposal = selectCertifiedProposalManuscript(
+        allDocs.map((d) => ({
+          id: d.id,
+          thesisId: d.thesisId ?? thesisId,
+          docType: d.docType,
+          defenseStage: d.defenseStage ?? null,
+        })),
+        proposalCert ?? null,
+        thesisId,
+      );
+
+      // CP8: finalized Proposal RAP bound to the formal Proposal session only.
+      const proposalRap = await this.loadFinalizedProposalRap(thesisId);
+
+      proposalHistory = {
+        manuscript: priorProposal
+          ? {
+              id: priorProposal.id,
+              docType: priorProposal.docType,
+              defenseStage: priorProposal.defenseStage,
+              uploadedAt:
+                allDocs
+                  .find((d) => d.id === priorProposal.id)
+                  ?.uploadedAt?.toISOString() ?? null,
+              displayName: "Previous Proposal Manuscript",
+            }
+          : null,
+        rap: proposalRap,
+      };
     } else {
       const docRule = DOC_BY_DEFENSE[defenseType];
       docs = allDocs
@@ -420,6 +475,51 @@ export class DefenseWorkspaceService {
         ? String(schedule.conclusion.outcome)
         : null,
       rapStatus: schedule.rapReports?.[0]?.status ?? null,
+      proposalHistory,
+    };
+  }
+
+  /**
+   * CP8: authoritative prior Proposal RAP.
+   * Bound to DefenseConclusion.scheduleId for PROPOSAL_DEFENSE; FINALIZED only.
+   * Never draft/FOR_SIGNATURE/PARTIALLY_SIGNED/ALL_SIGNED content.
+   */
+  private async loadFinalizedProposalRap(thesisId: string): Promise<{
+    id: string;
+    status: "FINALIZED";
+    finalizedAt: string | null;
+    decisionsAndRecommendations: string | null;
+  } | null> {
+    const proposalConclusion = await prisma.defenseConclusion.findFirst({
+      where: {
+        thesisId,
+        schedule: { defenseType: "PROPOSAL_DEFENSE" },
+      },
+      orderBy: { concludedAt: "desc" },
+      select: { scheduleId: true },
+    });
+    if (!proposalConclusion?.scheduleId) return null;
+
+    const rap = await prisma.rapReport.findFirst({
+      where: {
+        scheduleId: proposalConclusion.scheduleId,
+        defenseType: "PROPOSAL_DEFENSE",
+        status: "FINALIZED",
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        finalizedAt: true,
+        decisionsAndRecommendations: true,
+      },
+    });
+    if (!rap) return null;
+
+    return {
+      id: rap.id,
+      status: "FINALIZED" as const,
+      finalizedAt: rap.finalizedAt ? rap.finalizedAt.toISOString() : null,
+      decisionsAndRecommendations: rap.decisionsAndRecommendations ?? null,
     };
   }
 

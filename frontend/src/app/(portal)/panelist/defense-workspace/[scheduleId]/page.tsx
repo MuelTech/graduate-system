@@ -12,6 +12,7 @@ import { OralEvaluationForm } from "@/components/defense-workspace/oral-evaluati
 import { RapporteurNotesWorkspace } from "@/components/defense-workspace/rapporteur-notes-workspace";
 import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman-conclusion-panel";
 import { ChairmanOralSummary } from "@/components/defense-workspace/chairman-oral-summary";
+import { ProposalHistoryPanel } from "@/components/defense-workspace/proposal-history-panel";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 /** CP7-FIX3: shared detailed Summary contract for Chairman review + conclusion gate. */
@@ -56,6 +57,7 @@ export default function DefenseWorkspacePage() {
 
   const isTitle =
     data?.schedule.defenseType === "TITLE_DEFENSE";
+  const isFinal = data?.schedule.defenseType === "FINAL_DEFENSE";
   const isChairman = data?.myAssignment.role === "CHAIRMAN";
   const workspaceSummaryReady = data?.oralSummary?.ready === true;
   // CP7-FIX3: only Chairman + Proposal/Final + aggregate ready loads detailed rows.
@@ -247,22 +249,46 @@ export default function DefenseWorkspacePage() {
         </div>
 
         <div className="lg:col-span-3">
-          <Tabs defaultValue="doc" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="doc">Student Document</TabsTrigger>
-              <TabsTrigger value="info">Session</TabsTrigger>
+          <Tabs defaultValue={isFinal ? "final-doc" : "doc"} className="w-full">
+            <TabsList
+              className={
+                isFinal
+                  ? "grid w-full grid-cols-3"
+                  : "grid w-full grid-cols-2"
+              }
+            >
+              {isFinal ? (
+                <>
+                  <TabsTrigger value="final-doc">Final Manuscript</TabsTrigger>
+                  <TabsTrigger value="proposal-history">
+                    Proposal Context
+                  </TabsTrigger>
+                  <TabsTrigger value="info">Session</TabsTrigger>
+                </>
+              ) : (
+                <>
+                  <TabsTrigger value="doc">Student Document</TabsTrigger>
+                  <TabsTrigger value="info">Session</TabsTrigger>
+                </>
+              )}
             </TabsList>
-            <TabsContent value="doc" className="mt-3">
+            <TabsContent value={isFinal ? "final-doc" : "doc"} className="mt-3">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">
-                    {primaryDoc?.displayName || "Student document"}
+                    {isFinal
+                      ? "Current Final Manuscript"
+                      : primaryDoc?.displayName || "Student document"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {primaryDoc ? (
                     <iframe
-                      title="Student document"
+                      title={
+                        isFinal
+                          ? "Current Final Manuscript"
+                          : "Student document"
+                      }
                       src={`/api/documents/thesis-document/${primaryDoc.id}/file`}
                       className="h-[70vh] w-full rounded border border-(--earist-border-gray)"
                     />
@@ -274,6 +300,30 @@ export default function DefenseWorkspacePage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            {isFinal && (
+              <TabsContent value="proposal-history" className="mt-3 space-y-3">
+                {data.proposalHistory?.manuscript && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">
+                        Previous Proposal Manuscript
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <iframe
+                        title="Previous Proposal Manuscript"
+                        src={`/api/documents/thesis-document/${data.proposalHistory.manuscript.id}/file`}
+                        className="h-[50vh] w-full rounded border border-(--earist-border-gray)"
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+                <ProposalHistoryPanel
+                  manuscript={data.proposalHistory?.manuscript ?? null}
+                  rap={data.proposalHistory?.rap ?? null}
+                />
+              </TabsContent>
+            )}
             <TabsContent value="info" className="mt-3 space-y-3">
               <Card>
                 <CardContent className="space-y-2 pt-5 text-sm">
