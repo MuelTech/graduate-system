@@ -329,14 +329,15 @@ export default function AdminDefenseRecordDetailPage() {
                       ))}
                     </tbody>
                   </table>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => window.print()}
+                  <Link
+                    href={`/admin/thesis/defense-records/${scheduleId}/summary`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      size: "sm",
+                    })}
                   >
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print / Download Summary
-                  </Button>
+                    View / Print Summary
+                  </Link>
                 </>
               )}
             </CardContent>
