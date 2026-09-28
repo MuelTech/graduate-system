@@ -158,7 +158,11 @@ export default function AdminDefenseRecordsPage() {
                         )}
                       </td>
                       <td className="py-2 pr-3">
-                        {r.summaryReady ? "Ready" : "Not ready"}
+                        {r.defenseType === "TITLE_DEFENSE"
+                          ? "N/A"
+                          : r.summaryReady
+                            ? "Ready"
+                            : "Not ready"}
                       </td>
                       <td className="py-2 pr-3">{r.rapStatus ?? "—"}</td>
                       <td className="py-2">

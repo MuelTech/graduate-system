@@ -98,6 +98,11 @@ export default function AdminDefenseRecordDetailPage() {
   }
 
   const o = data.defenseOverview;
+  const isTitleDefense = o.defenseType === "TITLE_DEFENSE";
+  const selectedTitle =
+    data.rapReport?.selectedTitle ??
+    o.proposedTitles.find((t) => t.isSelected)?.titleText ??
+    null;
 
   return (
     <div className="space-y-4">
@@ -180,126 +185,164 @@ export default function AdminDefenseRecordDetailPage() {
               ))}
             </ul>
           </div>
+          {selectedTitle && (
+            <div>
+              <span className="text-xs text-(--earist-body-text)">
+                Official title
+              </span>
+              <p>{selectedTitle}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Individual Evaluations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-xs text-(--earist-body-text)">
-                <th className="py-2 pr-3">Evaluator</th>
-                <th className="py-2 pr-3">Role</th>
-                <th className="py-2 pr-3">Status</th>
-                <th className="py-2 pr-3">Overall</th>
-                <th className="py-2 pr-3">Official Criteria</th>
-                <th className="py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {data.individualEvaluations.map((e) => (
-                <tr
-                  key={e.panelAssignmentId}
-                  className="border-b border-(--earist-border-gray)"
-                >
-                  <td className="py-2 pr-3">{e.evaluatorName}</td>
-                  <td className="py-2 pr-3">{e.role}</td>
-                  <td className="py-2 pr-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        e.status === "FINALIZED"
-                          ? "border-emerald-500 text-emerald-700"
-                          : e.status === "DRAFT"
-                            ? "border-amber-500 text-amber-700"
-                            : ""
-                      }
-                    >
-                      {e.status === "NOT_STARTED"
-                        ? "Draft / Not finalized"
-                        : e.status}
-                    </Badge>
-                  </td>
-                  <td className="py-2 pr-3">{e.overallValue ?? "—"}</td>
-                  <td className="py-2 pr-3">
-                    {e.hasOfficialCriteria ? "Available" : "Not available"}
-                  </td>
-                  <td className="py-2">
-                    {e.hasOfficialCriteria && (
-                      <Link
-                        href={`/admin/thesis/defense-records/${scheduleId}/criteria/${e.panelAssignmentId}`}
-                        className={buttonVariants({
-                          variant: "outline",
-                          size: "sm",
-                        })}
-                      >
-                        View / Print
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Oral Examination Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {!data.oralExamSummary.ready ? (
-            <p className="text-(--earist-body-text)">
-              Summary not ready — waiting for all required evaluator
-              finalizations.
+      {isTitleDefense ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">
+              Oral Examination Criteria &amp; Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-(--earist-body-text)">
+            <p>
+              Not applicable to Title Defense. Title Defense does not use Group
+              I / Group II numerical Oral Examination Criteria or a numerical
+              Oral Examination Summary.
             </p>
-          ) : (
-            <>
-              <p>
-                Overall average:{" "}
-                <strong>{data.oralExamSummary.overallAverage ?? "—"}</strong>
-                {data.oralExamSummary.finalRating
-                  ? ` · Rating: ${data.oralExamSummary.finalRating}`
-                  : " · Rating: not assigned"}
-              </p>
-              <table className="w-full text-left text-xs">
+            <p className="mt-2">
+              The formal Chairman-recorded result and RAP record remain the
+              official academic outputs for this session.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Individual Evaluations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b text-(--earist-body-text)">
-                    <th className="py-1 pr-2">Examiner</th>
-                    <th className="py-1 pr-2">Role</th>
-                    <th className="py-1 pr-2">Group I</th>
-                    <th className="py-1 pr-2">Group II</th>
-                    <th className="py-1 pr-2">Overall</th>
+                  <tr className="border-b text-xs text-(--earist-body-text)">
+                    <th className="py-2 pr-3">Evaluator</th>
+                    <th className="py-2 pr-3">Role</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Overall</th>
+                    <th className="py-2 pr-3">Official Criteria</th>
+                    <th className="py-2" />
                   </tr>
                 </thead>
                 <tbody>
-                  {data.oralExamSummary.rows.map((r, i) => (
-                    <tr key={i} className="border-b border-(--earist-border-gray)">
-                      <td className="py-1 pr-2">{r.evaluatorName}</td>
-                      <td className="py-1 pr-2">{r.functionalRole}</td>
-                      <td className="py-1 pr-2">{r.groupIValue ?? "—"}</td>
-                      <td className="py-1 pr-2">{r.groupIIValue ?? "—"}</td>
-                      <td className="py-1 pr-2">{r.overallValue ?? "—"}</td>
+                  {data.individualEvaluations.map((e) => (
+                    <tr
+                      key={e.panelAssignmentId}
+                      className="border-b border-(--earist-border-gray)"
+                    >
+                      <td className="py-2 pr-3">{e.evaluatorName}</td>
+                      <td className="py-2 pr-3">{e.role}</td>
+                      <td className="py-2 pr-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            e.status === "FINALIZED"
+                              ? "border-emerald-500 text-emerald-700"
+                              : e.status === "DRAFT"
+                                ? "border-amber-500 text-amber-700"
+                                : ""
+                          }
+                        >
+                          {e.status === "NOT_STARTED"
+                            ? "Draft / Not finalized"
+                            : e.status}
+                        </Badge>
+                      </td>
+                      <td className="py-2 pr-3">{e.overallValue ?? "—"}</td>
+                      <td className="py-2 pr-3">
+                        {e.hasOfficialCriteria ? "Available" : "Not available"}
+                      </td>
+                      <td className="py-2">
+                        {e.hasOfficialCriteria && (
+                          <Link
+                            href={`/admin/thesis/defense-records/${scheduleId}/criteria/${e.panelAssignmentId}`}
+                            className={buttonVariants({
+                              variant: "outline",
+                              size: "sm",
+                            })}
+                          >
+                            View / Print
+                          </Link>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.print()}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Print / Download Summary
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">
+                Oral Examination Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {!data.oralExamSummary.ready ? (
+                <p className="text-(--earist-body-text)">
+                  Summary not ready — waiting for all required evaluator
+                  finalizations.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    Overall average:{" "}
+                    <strong>
+                      {data.oralExamSummary.overallAverage ?? "—"}
+                    </strong>
+                    {data.oralExamSummary.finalRating
+                      ? ` · Rating: ${data.oralExamSummary.finalRating}`
+                      : " · Rating: not assigned"}
+                  </p>
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b text-(--earist-body-text)">
+                        <th className="py-1 pr-2">Examiner</th>
+                        <th className="py-1 pr-2">Role</th>
+                        <th className="py-1 pr-2">Group I</th>
+                        <th className="py-1 pr-2">Group II</th>
+                        <th className="py-1 pr-2">Overall</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.oralExamSummary.rows.map((r, i) => (
+                        <tr
+                          key={i}
+                          className="border-b border-(--earist-border-gray)"
+                        >
+                          <td className="py-1 pr-2">{r.evaluatorName}</td>
+                          <td className="py-1 pr-2">{r.functionalRole}</td>
+                          <td className="py-1 pr-2">{r.groupIValue ?? "—"}</td>
+                          <td className="py-1 pr-2">{r.groupIIValue ?? "—"}</td>
+                          <td className="py-1 pr-2">{r.overallValue ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.print()}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print / Download Summary
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <Card>
         <CardHeader>

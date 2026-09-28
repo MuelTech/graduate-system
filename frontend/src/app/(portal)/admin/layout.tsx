@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
+/** Nested admin routes stay visually active on their parent nav entry. */
+function isNavActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
@@ -54,6 +59,7 @@ const navItems = [
     children: [
       { href: "/admin/thesis/applications", label: "Defense Applications" },
       { href: "/admin/thesis/scheduling", label: "Scheduling & Panels" },
+      { href: "/admin/thesis/defense-records", label: "Defense Records" },
       { href: "/admin/thesis/rap-reports", label: "RAP Reports" },
       { href: "/admin/thesis/advisers", label: "Adviser Request Review" },
     ],
@@ -139,8 +145,9 @@ export default function AdminLayout({
               if ("children" in item) {
                 const isOpen = openMenus[item.label] ?? false;
                 const isActive =
-                  item.children?.some((child) => pathname === child.href) ??
-                  false;
+                  item.children?.some((child) =>
+                    isNavActive(pathname, child.href),
+                  ) ?? false;
 
                 return (
                   <li key={item.label}>
@@ -168,7 +175,10 @@ export default function AdminLayout({
                     {!collapsed && isOpen && (
                       <ul className="mt-1 ml-6 space-y-1 border-l border-white/10 pl-3">
                         {item.children?.map((child) => {
-                          const isChildActive = pathname === child.href;
+                          const isChildActive = isNavActive(
+                            pathname,
+                            child.href,
+                          );
                           return (
                             <li key={child.href}>
                               <Link
