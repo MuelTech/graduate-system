@@ -98,6 +98,7 @@ describe("CP8 Final Workspace proposalHistory", () => {
     });
     prismaMock.defenseConclusion.findFirst.mockResolvedValue({
       scheduleId: "sched-proposal",
+      outcome: "PASSED",
     });
     prismaMock.rapReport.findFirst.mockResolvedValue({
       id: "rap-proposal-1",
@@ -227,5 +228,89 @@ describe("CP8 Final Workspace proposalHistory", () => {
     );
     const dto = await svc.getWorkspace("sched-final", "u-eval");
     expect(dto.proposalHistory?.manuscript).toBeNull();
+  });
+
+  it("CP8-FIX1: PASSED Proposal conclusion + FINALIZED RAP → exposed", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal",
+      outcome: "PASSED",
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue({
+      id: "rap-passed",
+      finalizedAt: new Date("2026-08-20T00:00:00Z"),
+      decisionsAndRecommendations: "ok",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.rap?.id).toBe("rap-passed");
+    // Conclusion query must filter outcome PASSED
+    const conclusionWhere = prismaMock.defenseConclusion.findFirst.mock.calls[0][0].where;
+    expect(conclusionWhere.outcome).toBe("PASSED");
+    expect(conclusionWhere.schedule.defenseType).toBe("PROPOSAL_DEFENSE");
+  });
+
+  it("CP8-FIX1: FAILED Proposal conclusion + FINALIZED RAP → not exposed", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal-failed",
+      outcome: "FAILED",
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue({
+      id: "rap-failed-conclusion",
+      finalizedAt: new Date(),
+      decisionsAndRecommendations: "should not appear",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.rap).toBeNull();
+  });
+
+  it("CP8-FIX1: REVISION_REQUIRED Proposal conclusion + FINALIZED RAP → not exposed", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal-rev",
+      outcome: "REVISION_REQUIRED",
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue({
+      id: "rap-rev-conclusion",
+      finalizedAt: new Date(),
+      decisionsAndRecommendations: "should not appear",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.rap).toBeNull();
+  });
+
+  it("CP8-FIX1: PASSED Proposal conclusion + non-finalized RAP → not exposed", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal",
+      outcome: "PASSED",
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue(null);
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.rap).toBeNull();
+    expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
+  });
+
+  it("CP8-FIX1: RAP query bound to exact PASSED Proposal conclusion scheduleId", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal-passed",
+      outcome: "PASSED",
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue({
+      id: "rap-bound",
+      finalizedAt: new Date(),
+      decisionsAndRecommendations: "bound",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    await svc.getWorkspace("sched-final", "u-eval");
+
+    const conclusionCall = prismaMock.defenseConclusion.findFirst.mock.calls[0][0];
+    expect(conclusionCall.where.scheduleId).toBeUndefined();
+    expect(conclusionCall.where.outcome).toBe("PASSED");
+
+    const rapCall = prismaMock.rapReport.findFirst.mock.calls[0][0];
+    expect(rapCall.where.scheduleId).toBe("sched-proposal-passed");
+    expect(rapCall.where.status).toBe("FINALIZED");
+    expect(rapCall.where.defenseType).toBe("PROPOSAL_DEFENSE");
   });
 });

@@ -51,9 +51,12 @@ const STAGE_TO_DEFENSE_TYPE: Record<string, string> = {
 export function canPanelistAccessThesisDocument(
   record: {
     id?: string;
+    /** ThesisDocument.thesisId — required for full certified-manuscript validation. */
+    thesisId?: string;
     defenseStage?: string | null;
     docType?: string | null;
     thesis?: {
+      id?: string;
       student?: {
         adviserAssignments?: Array<{ adviserId: string }>;
       } | null;
@@ -90,7 +93,8 @@ export function canPanelistAccessThesisDocument(
   );
   if (hasMatchingStageAssignment) return true;
 
-  // CP8: Final Defense participant → exact certified prior Proposal manuscript only.
+  // CP8-FIX1: Final Defense participant → full certified prior Proposal manuscript only
+  // (ISSUED cert + reviewedDocumentId + same thesis + PROPOSAL_CHAPTERS + stage PROPOSAL).
   if (effectiveStage === "PROPOSAL") {
     const isFinalParticipant = schedules.some(
       (ds) =>
@@ -103,9 +107,19 @@ export function canPanelistAccessThesisDocument(
       (c) =>
         c.defenseStage === "PROPOSAL_DEFENSE" && c.status === "ISSUED",
     );
+    // Full identity: doc.thesisId must match the thesis that owns the cert.
+    const docThesisId = record.thesisId ?? null;
+    const certThesisId = record.thesis?.id ?? null;
+    if (!docThesisId || !certThesisId || !record.id) return false;
     return isAuthoritativePriorProposalManuscript(
-      record.id ?? null,
+      {
+        id: record.id,
+        thesisId: docThesisId,
+        docType: record.docType ?? "",
+        defenseStage: record.defenseStage ?? null,
+      },
       proposalCert ?? null,
+      certThesisId,
     );
   }
 

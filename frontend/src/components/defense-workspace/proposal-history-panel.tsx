@@ -52,15 +52,14 @@ export function ProposalHistoryPanel({
           {manuscript ? (
             <div className="space-y-1">
               <p className="text-sm">{manuscript.displayName}</p>
-              <p className="text-xs text-(--earist-body-text)">
-                Document ID: {manuscript.id}
-                {manuscript.uploadedAt
-                  ? ` · Uploaded ${new Date(manuscript.uploadedAt).toLocaleDateString()}`
-                  : ""}
-              </p>
+              {manuscript.uploadedAt && (
+                <p className="text-xs text-(--earist-body-text)">
+                  Uploaded {new Date(manuscript.uploadedAt).toLocaleDateString()}
+                </p>
+              )}
               <p className="text-[11px] text-(--earist-body-text)">
-                Authoritative certified Proposal manuscript (Adviser
-                Certification binding).
+                Proposal manuscript certified by the Thesis/Dissertation
+                Adviser
               </p>
             </div>
           ) : (

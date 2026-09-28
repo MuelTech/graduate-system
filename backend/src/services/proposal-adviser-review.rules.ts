@@ -176,19 +176,19 @@ export function selectCertifiedFinalManuscript<
 }
 
 /**
- * CP8: the one authoritative prior Proposal manuscript for Final Defense
- * history/document access — exact ISSUED Proposal certification binding only.
- * Never a newer un-certified Proposal revision.
+ * CP8-FIX1: authoritative prior Proposal manuscript for Final Defense
+ * history/file access. Delegates to isValidCertifiedProposalManuscript so
+ * workspace selection and file authorization share one full identity rule:
+ * ISSUED Proposal cert + reviewedDocumentId + same thesis + PROPOSAL_CHAPTERS
+ * + stage PROPOSAL. Fail closed on any mismatch.
  */
 export function isAuthoritativePriorProposalManuscript(
-  docId: string | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
   cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  thesisId: string,
 ): boolean {
-  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== PROPOSAL_REVIEW_STAGE) {
-    return false;
-  }
-  if (!cert.reviewedDocumentId || !docId) return false;
-  return docId === cert.reviewedDocumentId;
+  if (!doc || !thesisId) return false;
+  return isValidCertifiedProposalManuscript(cert, doc, thesisId);
 }
 
 /** CP4: Final application documents = certified Final manuscript + COR/RECEIPT. */

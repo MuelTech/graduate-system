@@ -8,6 +8,7 @@ import {
 
 function makeRecord(opts: {
   id?: string;
+  thesisId?: string;
   defenseStage?: string | null;
   docType?: string | null;
   adviserIds?: string[];
@@ -21,11 +22,14 @@ function makeRecord(opts: {
     panelAssignments: Array<{ userId: string }>;
   }>;
 }) {
+  const thesisId = opts.thesisId ?? "thesis-1";
   return {
     id: opts.id ?? "doc-1",
+    thesisId,
     defenseStage: opts.defenseStage ?? null,
     docType: opts.docType ?? null,
     thesis: {
+      id: thesisId,
       student: {
         adviserAssignments: (opts.adviserIds ?? []).map((adviserId) => ({
           adviserId,
@@ -45,6 +49,12 @@ describe("CP8 Final→prior-Proposal document authorization", () => {
       reviewedDocumentId: "doc-proposal-a",
     },
   ];
+  const finalOnlySchedules = [
+    {
+      defenseType: "FINAL_DEFENSE",
+      panelAssignments: [{ userId: "final-panelist" }],
+    },
+  ];
 
   it("Test 6: Final participant may access exact certified prior Proposal manuscript", () => {
     const record = makeRecord({
@@ -52,12 +62,7 @@ describe("CP8 Final→prior-Proposal document authorization", () => {
       defenseStage: "PROPOSAL",
       docType: "PROPOSAL_CHAPTERS",
       certs: certifiedProposalCert,
-      schedules: [
-        {
-          defenseType: "FINAL_DEFENSE",
-          panelAssignments: [{ userId: "final-panelist" }],
-        },
-      ],
+      schedules: finalOnlySchedules,
     });
     expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(true);
   });
@@ -68,13 +73,61 @@ describe("CP8 Final→prior-Proposal document authorization", () => {
       defenseStage: "PROPOSAL",
       docType: "PROPOSAL_CHAPTERS",
       certs: certifiedProposalCert,
-      schedules: [
-        {
-          defenseType: "FINAL_DEFENSE",
-          panelAssignments: [{ userId: "final-panelist" }],
-        },
-      ],
+      schedules: finalOnlySchedules,
     });
+    expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(false);
+  });
+
+  it("CP8-FIX1: correct id but wrong docType → denied", () => {
+    // Cert points at id, but document is COR not PROPOSAL_CHAPTERS.
+    // effectiveStage resolves to PROPOSAL via docType? COR + stage PROPOSAL → stage wins.
+    const record = makeRecord({
+      id: "doc-proposal-a",
+      defenseStage: "PROPOSAL",
+      docType: "COR",
+      certs: certifiedProposalCert,
+      schedules: finalOnlySchedules,
+    });
+    expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(false);
+  });
+
+  it("CP8-FIX1: correct id/type but wrong defenseStage → denied", () => {
+    // docType implies PROPOSAL path, but explicit stage is not PROPOSAL —
+    // full certified validation requires defenseStage === "PROPOSAL".
+    const record = makeRecord({
+      id: "doc-proposal-a",
+      defenseStage: "TITLE",
+      docType: "PROPOSAL_CHAPTERS",
+      certs: certifiedProposalCert,
+      schedules: finalOnlySchedules,
+    });
+    expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(false);
+
+    // Null stage: inferred PROPOSAL path, but isValidCertifiedProposalManuscript
+    // requires explicit defenseStage PROPOSAL → fail closed.
+    const nullStage = makeRecord({
+      id: "doc-proposal-a",
+      defenseStage: null,
+      docType: "PROPOSAL_CHAPTERS",
+      certs: certifiedProposalCert,
+      schedules: finalOnlySchedules,
+    });
+    expect(canPanelistAccessThesisDocument(nullStage, "final-panelist")).toBe(false);
+  });
+
+  it("CP8-FIX1: document thesisId mismatched from cert thesis → denied", () => {
+    const record = {
+      id: "doc-proposal-a",
+      thesisId: "thesis-other",
+      defenseStage: "PROPOSAL",
+      docType: "PROPOSAL_CHAPTERS",
+      thesis: {
+        id: "thesis-1",
+        student: { adviserAssignments: [] },
+        adviserCertifications: certifiedProposalCert,
+        defenseSchedules: finalOnlySchedules,
+      },
+    };
     expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(false);
   });
 
@@ -173,27 +226,59 @@ describe("CP8 Final→prior-Proposal document authorization", () => {
     expect(canPanelistAccessThesisDocument(record, "adviser-1")).toBe(true);
   });
 
-  it("isAuthoritativePriorProposalManuscript matches ISSUED binding only", () => {
+  it("isAuthoritativePriorProposalManuscript enforces full certified identity", () => {
+    const validDoc = {
+      id: "doc-proposal-a",
+      thesisId: "thesis-1",
+      docType: "PROPOSAL_CHAPTERS",
+      defenseStage: "PROPOSAL",
+    };
+    const cert = {
+      status: "ISSUED",
+      defenseStage: "PROPOSAL_DEFENSE",
+      reviewedDocumentId: "doc-proposal-a",
+    };
+    expect(isAuthoritativePriorProposalManuscript(validDoc, cert, "thesis-1")).toBe(true);
+
+    // id mismatch
     expect(
-      isAuthoritativePriorProposalManuscript("doc-proposal-a", {
-        status: "ISSUED",
-        defenseStage: "PROPOSAL_DEFENSE",
-        reviewedDocumentId: "doc-proposal-a",
-      }),
-    ).toBe(true);
-    expect(
-      isAuthoritativePriorProposalManuscript("doc-proposal-b", {
-        status: "ISSUED",
-        defenseStage: "PROPOSAL_DEFENSE",
-        reviewedDocumentId: "doc-proposal-a",
-      }),
+      isAuthoritativePriorProposalManuscript(
+        { ...validDoc, id: "doc-proposal-b" },
+        cert,
+        "thesis-1",
+      ),
     ).toBe(false);
+
+    // wrong docType
     expect(
-      isAuthoritativePriorProposalManuscript("doc-proposal-a", {
-        status: "PENDING",
-        defenseStage: "PROPOSAL_DEFENSE",
-        reviewedDocumentId: "doc-proposal-a",
-      }),
+      isAuthoritativePriorProposalManuscript(
+        { ...validDoc, docType: "COR" },
+        cert,
+        "thesis-1",
+      ),
+    ).toBe(false);
+
+    // wrong defenseStage
+    expect(
+      isAuthoritativePriorProposalManuscript(
+        { ...validDoc, defenseStage: "FINAL" },
+        cert,
+        "thesis-1",
+      ),
+    ).toBe(false);
+
+    // thesisId mismatch (doc vs cert thesis)
+    expect(
+      isAuthoritativePriorProposalManuscript(validDoc, cert, "thesis-other"),
+    ).toBe(false);
+
+    // non-ISSUED cert
+    expect(
+      isAuthoritativePriorProposalManuscript(
+        validDoc,
+        { ...cert, status: "PENDING" },
+        "thesis-1",
+      ),
     ).toBe(false);
   });
 });

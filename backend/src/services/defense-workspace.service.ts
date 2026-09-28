@@ -484,6 +484,12 @@ export class DefenseWorkspaceService {
    * Bound to DefenseConclusion.scheduleId for PROPOSAL_DEFENSE; FINALIZED only.
    * Never draft/FOR_SIGNATURE/PARTIALLY_SIGNED/ALL_SIGNED content.
    */
+  /**
+   * CP8-FIX1: authoritative prior Proposal RAP for Final Defense history.
+   * Only from a formally PASSED Proposal DefenseConclusion + exact-schedule
+   * FINALIZED RapReport. REVISION_REQUIRED / FAILED conclusions never expose
+   * RAP history. Fail closed — no fallback to another concluded session.
+   */
   private async loadFinalizedProposalRap(thesisId: string): Promise<{
     id: string;
     status: "FINALIZED";
@@ -493,12 +499,14 @@ export class DefenseWorkspaceService {
     const proposalConclusion = await prisma.defenseConclusion.findFirst({
       where: {
         thesisId,
+        outcome: "PASSED",
         schedule: { defenseType: "PROPOSAL_DEFENSE" },
       },
       orderBy: { concludedAt: "desc" },
-      select: { scheduleId: true },
+      select: { scheduleId: true, outcome: true },
     });
     if (!proposalConclusion?.scheduleId) return null;
+    if (String(proposalConclusion.outcome) !== "PASSED") return null;
 
     const rap = await prisma.rapReport.findFirst({
       where: {
