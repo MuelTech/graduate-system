@@ -185,7 +185,7 @@ export default function AdminDefenseRecordDetailPage() {
               ))}
             </ul>
           </div>
-          {selectedTitle && (
+          {isTitleDefense && selectedTitle && (
             <div>
               <span className="text-xs text-(--earist-body-text)">
                 Official title
