@@ -41,19 +41,31 @@ export interface PendingCorUpload {
 }
 
 // PANELIST INTERFACES
+export type PanelistEvaluationStatus =
+  | "NOT_STARTED"
+  | "DRAFT"
+  | "FINALIZED"
+  | "NONE";
+
 export interface PanelistAssignmentData {
   id: string;
   role: string;
+  /** CP9: own evaluation status from own OralExamScore only. */
+  evaluationStatus?: PanelistEvaluationStatus;
   schedule: {
     id: string;
     defenseDate: string;
     defenseTime?: string;
     venueOrLink?: string;
     defenseType: string;
-    status?: string; // "SCHEDULED" or "COMPLETED"
+    /** Authoritative DefenseSchedule.sessionStatus (not application status). */
+    sessionStatus?: string;
+    /** @deprecated legacy alias — use sessionStatus */
+    status?: string;
     thesis: {
       student: {
-        programId: string;
+        programId?: string;
+        program?: { programName?: string } | null;
         user: {
           firstName: string;
           lastName: string;

@@ -619,12 +619,18 @@ export class ThesisRepository {
                 student: {
                   include: {
                     user: true,
+                    program: { select: { programName: true } },
                   },
                 },
                 thesisDocuments: true,
               },
             },
           },
+        },
+        // Own evaluation status only — never other evaluators' score content.
+        // Relation is scoped to this PanelAssignment (panelId).
+        oralExamScores: {
+          select: { panelId: true, status: true },
         },
       },
       orderBy: {
@@ -639,8 +645,12 @@ export class ThesisRepository {
       PROPOSAL_DEFENSE: "PROPOSAL",
       FINAL_DEFENSE: "FINAL",
     };
+    const evaluatorRoles = new DefenseCommitteePolicy()
+      .getEvaluatorRoles("PROPOSAL_DEFENSE" as never)
+      .map(String);
+
     return rows.map((row) => {
-      const defenseType = row.schedule?.defenseType as string | undefined;
+      const defenseType = String(row.schedule?.defenseType ?? "");
       const stage = defenseType ? defenseTypeToStage[defenseType] : null;
       const docs = row.schedule?.thesis?.thesisDocuments ?? [];
       const filtered = stage
@@ -648,8 +658,29 @@ export class ThesisRepository {
             (d) => d.defenseStage == null || d.defenseStage === stage,
           )
         : docs;
+
+      // CP9: own evaluation status from own assignment + own OralExamScore only.
+      // Title never uses Proposal/Final numerical evaluation. Non-evaluators: NONE.
+      let evaluationStatus: "NOT_STARTED" | "DRAFT" | "FINALIZED" | "NONE" =
+        "NONE";
+      const isNumerical =
+        defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
+      const isEvaluatorRole =
+        evaluatorRoles.includes(String(row.role)) && isNumerical;
+      if (isEvaluatorRole) {
+        // oralExamScores relation is already scoped to this PanelAssignment.
+        const ownScore = row.oralExamScores?.[0] ?? null;
+        evaluationStatus =
+          ownScore?.status === "FINALIZED"
+            ? "FINALIZED"
+            : ownScore?.status === "DRAFT"
+              ? "DRAFT"
+              : "NOT_STARTED";
+      }
+
       return {
         ...row,
+        evaluationStatus,
         schedule: row.schedule
           ? {
               ...row.schedule,
