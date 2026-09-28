@@ -45,7 +45,8 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
   if (!scheduleId || isLoading) return null;
   if (error || !data) return null;
 
-  const finalized = data.rapStatus === "FINALIZED" || data.rapStatus === "ALL_SIGNED";
+  // Canonical RAP completion is FINALIZED only (ALL_SIGNED/DISTRIBUTED are legacy).
+  const finalized = data.rapStatus === "FINALIZED";
 
   return (
     <Card>
@@ -120,9 +121,9 @@ export function StudentRapPanel({ scheduleId }: { scheduleId: string }) {
           </div>
         ) : (
           <p className="text-xs text-(--earist-body-text)">
-            Official RAP content becomes available after required signatures are
-            complete. Internal draft notes and private evaluator score sheets are
-            not shared.
+            Official RAP content becomes available after the RAP is finalized.
+            Internal draft notes and private evaluator score sheets are not
+            shared.
           </p>
         )}
       </CardContent>

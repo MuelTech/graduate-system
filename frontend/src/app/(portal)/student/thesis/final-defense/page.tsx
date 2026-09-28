@@ -9,7 +9,10 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
-import { DefenseStatusPanel } from "@/components/student/defense-status-panel";
+import {
+  DefenseScheduleSummary,
+  DefenseStatusPanel,
+} from "@/components/student/defense-status-panel";
 import { FinalAdviserReviewPanel } from "@/components/student/final-adviser-review-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -252,6 +255,7 @@ export default function FinalDefensePage() {
             )}
           </CardContent>
         </Card>
+        <DefenseScheduleSummary session={finalStep?.defenseSession} />
       </div>
     );
   }
