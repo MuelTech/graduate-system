@@ -1,9 +1,7 @@
 // backend/src/services/document.service.ts
-import path from "path";
-import fs from "fs/promises";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
-import { PRIVATE_UPLOAD_ROOT } from "../utils/file.utils";
+import { storageService } from "../storage";
 import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
 
 interface ModelConfig {
@@ -190,13 +188,6 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
     },
 };
 
-const MIME_MAP: Record<string, string> = {
-    ".pdf": "application/pdf",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-};
-
 export class DocumentService {
     async resolveDocument(
         modelType: string,
@@ -247,37 +238,20 @@ export class DocumentService {
             throw new AppError("Not authorized to view this document", 403);
         }
 
-        // Extract file path
-        const storedPath = record[config.fileField];
-        if (!storedPath) {
-            throw new AppError("No file attached to this document", 404);
-        }
+        // Resolve the file through the storage abstraction: modern storage key
+        // first, legacy `filePath` fallback. Path containment + symlink safety
+        // are centralized in the local provider.
+        const resolvedPath = await storageService.resolveReadPath({
+            storageKey: (record as any).storageKey ?? null,
+            filePath: record[config.fileField] ?? null,
+        });
 
-        // Resolve the stored path relative to PRIVATE_UPLOAD_ROOT
-        let resolvedPath = path.isAbsolute(storedPath)
-            ? storedPath
-            : path.join(PRIVATE_UPLOAD_ROOT, path.basename(storedPath));
-
-        // Resolve symlinks via realpath to prevent symlink escapes
-        try {
-            resolvedPath = await fs.realpath(resolvedPath);
-        } catch {
-            throw new AppError("File not found on disk", 404);
-        }
-
-        // Validate that resolved path stays within PRIVATE_UPLOAD_ROOT
-        const realUploadRoot = await fs.realpath(PRIVATE_UPLOAD_ROOT);
-        const relative = path.relative(realUploadRoot, resolvedPath);
-        if (relative.startsWith("..") || path.isAbsolute(relative)) {
-            throw new AppError("Access denied", 403);
-        }
-
-        // Detect MIME type from extension
-        const ext = path.extname(resolvedPath).toLowerCase();
-        const mimeType = MIME_MAP[ext] || "application/octet-stream";
-
-        // Original filename from record or fallback
-        const originalFilename = record.originalFilename || record.filename || path.basename(resolvedPath);
+        // Prefer stored verified MIME/original filename; fall back for legacy.
+        const mimeType = storageService.pickMimeType(record, resolvedPath);
+        const originalFilename = storageService.pickOriginalFilename(
+            record,
+            resolvedPath,
+        );
 
         // Log successful document view (best-effort)
         await prisma.auditLog.create({

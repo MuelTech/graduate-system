@@ -1,10 +1,15 @@
-import path from "path";
+import { resolveStorageConfig } from "../config/storage.config";
 
 /**
- * Resolved absolute path to the private uploads directory.
- * All uploaded files are stored under this root so that path-traversal
- * checks can validate that resolved paths stay within it.
+ * DL-1: resolved, production-validated private storage configuration.
+ * `PRIVATE_UPLOAD_ROOT` is retained for backward compatibility with existing
+ * consumers (Multer destination, retrieval containment). New code should
+ * prefer the storage service/provider abstraction.
  */
-export const PRIVATE_UPLOAD_ROOT = path.resolve(
-  process.env.UPLOAD_DIR || "./uploads"
-);
+export const STORAGE_CONFIG = resolveStorageConfig({
+  uploadDir: process.env.UPLOAD_DIR,
+  nodeEnv: process.env.NODE_ENV,
+  cwd: process.cwd(),
+});
+
+export const PRIVATE_UPLOAD_ROOT = STORAGE_CONFIG.root;

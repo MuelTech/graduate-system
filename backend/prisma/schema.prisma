@@ -329,6 +329,16 @@ model CorUpload {
   filePath         String          @map("file_path")
   originalFilename String?         @map("original_filename")
   detectedMimeType String?         @map("detected_mime_type")
+  /**
+   * DL-1: stable managed-storage identifier/provider + integrity metadata.
+   * Nullable for backward compatibility; legacy rows keep using filePath.
+   */
+  storageKey        String?        @map("storage_key")
+  storageProvider   String?        @map("storage_provider")
+  sizeBytes         Int?           @map("size_bytes")
+  checksum          String?        @map("checksum")
+  checksumAlgorithm String?        @map("checksum_algorithm")
+  uploadedById      String?        @map("uploaded_by")
   status           CorUploadStatus @default(PENDING) @map("status")
   ocrStatus        OcrStatus       @default(PENDING) @map("ocr_status")
   ocrErrorMessage  String?         @map("ocr_error_message")
@@ -339,6 +349,7 @@ model CorUpload {
   student          Student         @relation(fields: [studentId], references: [id])
 
   @@index([studentId], map: "cor_uploads_student_id_fkey")
+  @@index([storageKey], map: "cor_uploads_storage_key_idx")
   @@map("cor_uploads")
 }
 
@@ -519,12 +530,25 @@ model ThesisDocument {
    */
   defenseStage       ThesisStage?           @map("defense_stage")
   filePath           String                 @map("file_path")
+  /**
+   * DL-1: stable managed-storage identifier/provider + integrity metadata.
+   * Nullable for backward compatibility; legacy rows keep using filePath.
+   */
+  storageKey         String?                @map("storage_key")
+  storageProvider    String?                @map("storage_provider")
+  originalFilename   String?                @map("original_filename")
+  verifiedMimeType   String?                @map("verified_mime_type")
+  sizeBytes          Int?                   @map("size_bytes")
+  checksum           String?                @map("checksum")
+  checksumAlgorithm  String?                @map("checksum_algorithm")
+  uploadedById       String?                @map("uploaded_by")
   copyNumber         Int?                   @map("copy_number")
   uploadedAt         DateTime               @map("uploaded_at")
   thesis             ThesisRecord           @relation(fields: [thesisId], references: [id])
   adviserCertReviews AdviserCertification[] @relation("AdviserCertReviewedDoc")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
+  @@index([storageKey], map: "thesis_documents_storage_key_idx")
   @@map("thesis_documents")
 }
 
