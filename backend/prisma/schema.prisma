@@ -355,6 +355,7 @@ model CorUpload {
   processedAt      DateTime?       @map("processed_at")
   createdAt        DateTime        @default(now()) @map("created_at")
   corRecord        CorRecord?
+  extraction       CorExtraction?
   reviewedBy       User?           @relation("CorUploadReviewedBy", fields: [reviewedById], references: [id])
   student          Student         @relation(fields: [studentId], references: [id])
 
@@ -387,6 +388,36 @@ model CorRecord {
   @@index([studentId], map: "cor_records_student_id_fkey")
   @@index([verifiedById], map: "cor_records_verified_by_fkey")
   @@map("cor_records")
+}
+
+/**
+ * DL-4: generic native PDF text-extraction result for one COR upload.
+ *
+ * This is deliberately separate from CorRecord (the Admin-confirmed/verified
+ * authority) and from legacy `ocrStatus`. Native PDF extraction is assistive
+ * only and never populates confirmed COR fields, Student Number, enrollment, or
+ * User role. Suggestions remain nullable/empty until the EARIST parser (DL-5).
+ */
+model CorExtraction {
+  id               String                @id @default(uuid()) @map("extraction_id")
+  corUploadId      String                @unique @map("cor_upload_id")
+  status           CorExtractionStatus   @default(PENDING) @map("status")
+  method           CorExtractionMethod?  @map("method")
+  extractorVersion String?               @map("extractor_version")
+  pageCount        Int?                  @map("page_count")
+  /** Bounded normalized extracted text (never the full unbounded document). */
+  text             String?               @map("text") @db.LongText
+  /** Bounded per-page text + positional items for future parser work. */
+  pages            Json?                 @map("pages")
+  /** Future extracted suggestions; empty/null until DL-5 parser exists. */
+  suggestions      Json?                 @map("suggestions")
+  diagnostic       String?               @map("diagnostic") @db.Text
+  processedAt      DateTime?             @map("processed_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  corUpload        CorUpload             @relation(fields: [corUploadId], references: [id])
+
+  @@map("cor_extractions")
 }
 
 model RequirementsChecklist {
@@ -1245,6 +1276,28 @@ enum CorUploadStatus {
   REJECTED
 
   @@map("cor_upload_status")
+}
+
+/**
+ * DL-4: extraction lifecycle. Distinguishes native PDF extraction, OCR
+ * (reserved future strategy) and manual fallback from legacy OCR fields.
+ */
+enum CorExtractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  MANUAL_REQUIRED
+  FAILED
+
+  @@map("cor_extraction_status")
+}
+
+enum CorExtractionMethod {
+  NATIVE_PDF
+  OCR
+  MANUAL
+
+  @@map("cor_extraction_method")
 }
 
 enum CorSemester {

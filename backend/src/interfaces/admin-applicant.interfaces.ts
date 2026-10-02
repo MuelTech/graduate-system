@@ -60,6 +60,14 @@ export interface ExamApplicationDetail {
   examScores: { multipleChoiceScore: number; essayScore: number; totalScore: number } | null;
 }
 
+export interface CorExtractionSummary {
+  status: string;
+  method: string | null;
+  processedAt: string | null;
+  manualReviewRequired: boolean;
+  diagnostic: string | null;
+}
+
 export interface CorUploadDetail {
   id: string;
   status: string;
@@ -72,6 +80,7 @@ export interface CorUploadDetail {
   rejectionReason: string | null;
   reviewedBy: { firstName: string; lastName: string } | null;
   isCurrent: boolean;
+  extraction: CorExtractionSummary | null;
   corRecord: CorRecordDetail | null;
 }
 

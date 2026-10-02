@@ -37,6 +37,7 @@
     "node-cron": "^4.6.0",
     "nodemailer": "^9.0.5",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

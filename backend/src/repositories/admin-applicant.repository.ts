@@ -163,6 +163,14 @@ export class AdminApplicantRepository {
                 lastName: true,
               },
             },
+            extraction: {
+              select: {
+                status: true,
+                method: true,
+                processedAt: true,
+                diagnostic: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
         },

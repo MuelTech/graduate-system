@@ -160,6 +160,15 @@ describe("AdminApplicantService COR DTO privacy + history", () => {
             reviewedAt: new Date("2026-01-02"),
             rejectionReason: "Illegible",
             reviewedBy: { firstName: "Ad", lastName: "Min" },
+            extraction: {
+              status: "COMPLETED",
+              method: "NATIVE_PDF",
+              processedAt: new Date("2026-01-01T01:00:00Z"),
+              diagnostic: null,
+              // Full text/layout must never be serialized by the Admin DTO.
+              text: "SECRET_FULL_COR_TEXT",
+              pages: [{ page: 1, text: "SECRET_FULL_COR_TEXT", items: [] }],
+            },
             corRecord: null,
           },
         ],
@@ -173,10 +182,15 @@ describe("AdminApplicantService COR DTO privacy + history", () => {
     expect(serialized).not.toContain("filePath");
     expect(serialized).not.toContain("D:\\\\private");
     expect(serialized).not.toContain("storageKey");
+    expect(serialized).not.toContain("SECRET_FULL_COR_TEXT");
     expect(detail.corUploads).toHaveLength(2);
     expect(detail.corUploads[0].status).toBe("PENDING");
     expect(detail.corUploads[0].isCurrent).toBe(true);
     expect(detail.corUploads[1].rejectionReason).toBe("Illegible");
     expect(detail.corUploads[1].isCurrent).toBe(false);
+    expect(detail.corUploads[1].extraction).toMatchObject({
+      status: "COMPLETED",
+      method: "NATIVE_PDF",
+    });
   });
 });

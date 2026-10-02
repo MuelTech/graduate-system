@@ -109,34 +109,45 @@ export default function AdminCORValidationPage() {
     email: u.student.user.email,
     program: u.student.programId || "N/A",
     uploadDate: new Date(u.createdAt).toLocaleDateString(),
-    ocrStatus: "pending" as const,
+    extractionStatus: String(u.extraction?.status ?? "PENDING"),
+    extractionMethod: u.extraction?.method ?? null,
     originalFilename: u.originalFilename,
   }));
 
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);
 
-  const getOcrBadge = (status: string) => {
+  const getExtractionBadge = (status: string) => {
     switch (status) {
-      case "pending":
+      case "COMPLETED":
         return (
-          <Badge className="bg-amber-100 text-amber-700">Manual Review</Badge>
+          <Badge className="bg-green-100 text-green-700">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Text ready
+          </Badge>
         );
-      case "processing":
+      case "PROCESSING":
         return (
-          <Badge className="bg-amber-100 text-amber-700">
+          <Badge className="bg-blue-100 text-blue-700">
             <Clock className="mr-1 h-3 w-3 animate-spin" />
             Processing
           </Badge>
         );
-      case "completed":
+      case "MANUAL_REQUIRED":
         return (
-          <Badge className="bg-green-100 text-green-700">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
-            Completed
+          <Badge className="bg-amber-100 text-amber-700">
+            <AlertTriangle className="mr-1 h-3 w-3" />
+            Manual review
+          </Badge>
+        );
+      case "FAILED":
+        return (
+          <Badge className="bg-red-100 text-red-700">
+            <XCircle className="mr-1 h-3 w-3" />
+            Extraction failed
           </Badge>
         );
       default:
-        return null;
+        return <Badge className="bg-gray-100 text-gray-600">Pending</Badge>;
     }
   };
 
@@ -197,7 +208,7 @@ export default function AdminCORValidationPage() {
                       {cor.program}
                     </p>
                   </div>
-                  {getOcrBadge(cor.ocrStatus)}
+                  {getExtractionBadge(cor.extractionStatus)}
                 </div>
                 <p className="mt-2 truncate text-xs text-(--earist-body-text)">
                   File: {cor.originalFilename}

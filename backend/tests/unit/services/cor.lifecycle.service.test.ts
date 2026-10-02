@@ -42,6 +42,11 @@ vi.mock("fs/promises", () => ({
 vi.mock("../../../src/services/email.service", () => ({
   EmailService: { sendTemplateEmail: vi.fn(async () => undefined) },
 }));
+vi.mock("../../../src/extraction/cor-extraction.service", () => ({
+  CorExtractionService: class {
+    processUpload = vi.fn(async () => ({ status: "PENDING" }));
+  },
+}));
 
 import { CorService } from "../../../src/services/cor.service";
 

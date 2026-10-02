@@ -109,6 +109,21 @@ export class CorRepository {
         });
     }
 
+    /** DL-4: storage/MIME source for extraction of an exact CorUpload. */
+    async getExtractionSource(corUploadId: string) {
+        return prisma.corUpload.findUnique({
+            where: { id: corUploadId },
+            select: {
+                id: true,
+                storageKey: true,
+                storageProvider: true,
+                filePath: true,
+                detectedMimeType: true,
+                originalFilename: true,
+            },
+        });
+    }
+
     async getActiveUploadByStudentId(studentId: string) {
         return prisma.corUpload.findFirst({
             where: {
@@ -144,6 +159,14 @@ export class CorRepository {
                         id: true,
                         programId: true,
                         user: { select: { firstName: true, lastName: true, email: true } },
+                    },
+                },
+                extraction: {
+                    select: {
+                        status: true,
+                        method: true,
+                        processedAt: true,
+                        diagnostic: true,
                     },
                 },
             },

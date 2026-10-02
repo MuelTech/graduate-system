@@ -448,6 +448,21 @@ export default function ApplicantDetailPage() {
                           {upload.reviewedBy.firstName} {upload.reviewedBy.lastName}
                         </p>
                       )}
+                      {upload.extraction && (
+                        <p>
+                          <span className="text-gray-500">Extraction:</span>{" "}
+                          {upload.extraction.status}
+                          {upload.extraction.method
+                            ? ` (${upload.extraction.method})`
+                            : ""}
+                        </p>
+                      )}
+                      {upload.extraction?.diagnostic && (
+                        <p className="md:col-span-2">
+                          <span className="text-gray-500">Extraction note:</span>{" "}
+                          {upload.extraction.diagnostic}
+                        </p>
+                      )}
                       {upload.rejectionReason && (
                         <p className="md:col-span-2">
                           <span className="text-gray-500">Reason:</span>{" "}

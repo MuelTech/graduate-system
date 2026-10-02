@@ -3,6 +3,7 @@ import { fileTypeFromFile } from "file-type";
 import { CorRepository } from "../repositories/cor.repository";
 import { AppError } from "../utils/AppError";
 import { EmailService } from "./email.service";
+import { CorExtractionService } from "../extraction/cor-extraction.service";
 
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_SEMESTERS = ["FIRST_SEM", "SECOND_SEM", "SUMMER"];
@@ -36,7 +37,10 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 export class CorService {
-    private corRepository = new CorRepository();
+    constructor(
+        private readonly corRepository = new CorRepository(),
+        private readonly corExtractionService = new CorExtractionService(),
+    ) {}
 
     /**
      * DL-2/DL-3: the file is already validated, checksummed and promoted to a
@@ -102,8 +106,9 @@ export class CorService {
             );
         }
 
+        let upload: Awaited<ReturnType<CorRepository["createUploadWithAudit"]>>;
         try {
-            const upload = await this.corRepository.createUploadWithAudit(
+            upload = await this.corRepository.createUploadWithAudit(
                 {
                     studentId: student.id,
                     filePath: file.path,
@@ -128,13 +133,22 @@ export class CorService {
                     }),
                 },
             );
-
-            return upload;
         } catch (error) {
             // Cleanup file if the atomic upload persistence rolls back
             await this.safeDeleteFile(file.path);
             throw error;
         }
+
+        // DL-4: best-effort native extraction AFTER the upload is committed.
+        // It is assistive only and must never roll back or delete a valid COR.
+        await this.corExtractionService.processUpload(upload.id).catch((error) => {
+            console.error(
+                "[COR extraction] processing failed:",
+                error instanceof Error ? error.message : error,
+            );
+        });
+
+        return upload;
     }
 
     async getMyUpload(userId: string) {

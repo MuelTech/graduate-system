@@ -122,6 +122,19 @@ export class AdminApplicantService {
             }
           : null,
         isCurrent: index === 0,
+        extraction: upload.extraction
+          ? {
+              status: String(upload.extraction.status),
+              method: upload.extraction.method ?? null,
+              processedAt: upload.extraction.processedAt
+                ? upload.extraction.processedAt.toISOString()
+                : null,
+              manualReviewRequired:
+                upload.extraction.status === "MANUAL_REQUIRED" ||
+                upload.extraction.status === "FAILED",
+              diagnostic: upload.extraction.diagnostic ?? null,
+            }
+          : null,
         corRecord: upload.corRecord
           ? {
               registrationNumber: upload.corRecord.registrationNumber || "",

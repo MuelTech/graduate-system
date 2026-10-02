@@ -28,6 +28,11 @@ vi.mock("../../../src/repositories/cor.repository", () => ({
 vi.mock("file-type", () => ({
   fileTypeFromFile: vi.fn(async () => ({ mime: "application/pdf" })),
 }));
+vi.mock("../../../src/extraction/cor-extraction.service", () => ({
+  CorExtractionService: class {
+    processUpload = vi.fn(async () => ({ status: "PENDING" }));
+  },
+}));
 
 import { CorService } from "../../../src/services/cor.service";
 
