@@ -87,6 +87,15 @@ describe("ThesisService.resubmitApplication guards", () => {
   });
 });
 
+describe("ThesisService rejection canonical guard", () => {
+  it("refuses REJECTED via the generic status endpoint (must use the audited reject action)", async () => {
+    const svc = new ThesisService();
+    await expect(
+      svc.updateDefenseStatus("thesis-1", { status: "REJECTED" }, "admin-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
 describe("ThesisService.getMyCurrentApplication privacy", () => {
   it("returns stage evidence without raw filePath or storageKey", async () => {
     repo.getActiveThesis.mockResolvedValue({

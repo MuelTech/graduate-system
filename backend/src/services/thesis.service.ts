@@ -570,6 +570,13 @@ export class ThesisService {
     actorId: string | null = null,
   ) {
     const status = String(data.status || '').toUpperCase();
+    // DL-8: rejection must go through the canonical reason + AuditLog operation.
+    if (status === 'REJECTED') {
+      throw new AppError(
+        'Rejection requires a reason. Use the reject-application action.',
+        400,
+      );
+    }
     const thesis = await this.thesisRepo.getThesisById(thesisId);
     if (!thesis) {
       throw new AppError('Defense application not found.', 404);
