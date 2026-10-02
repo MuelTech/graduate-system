@@ -101,6 +101,47 @@ export class DatabankArchiveService {
    *   Final DefenseConclusion.outcome = PASSED
    *   AND the FINALIZED RAP belongs to the SAME Final schedule.
    */
+  /**
+   * Official title from the accepted Title Defense authority. Fails closed on
+   * missing ownership or conflicting selected titles — never newest.
+   */
+  private async resolveOfficialTitle(
+    thesisId: string,
+  ): Promise<
+    | { status: "OK"; titleText: string }
+    | { status: "MISSING" }
+    | { status: "AMBIGUOUS" }
+  > {
+    const rows = await this.repo.getPassedTitleAuthoritiesForThesis(thesisId);
+    const valid: Array<{ selectedTitleId: string; titleText: string }> = [];
+    for (const row of rows) {
+      const title = row.selectedTitle;
+      // Exact ownership: the selected title must belong to this exact thesis.
+      if (!row.selectedTitleId || !title) continue;
+      if (title.id !== row.selectedTitleId) continue;
+      if (title.thesisId !== thesisId) continue;
+      valid.push({
+        selectedTitleId: row.selectedTitleId,
+        titleText: title.titleText,
+      });
+    }
+
+    if (valid.length === 0) return { status: "MISSING" };
+
+    const distinctIds = new Set(valid.map((v) => v.selectedTitleId));
+    if (distinctIds.size > 1) return { status: "AMBIGUOUS" };
+
+    // Multiple conclusions may point at the same selected title safely.
+    return { status: "OK", titleText: valid[0].titleText };
+  }
+
+  /**
+   * Authoritative completed Final research context:
+   *   Final DefenseConclusion.outcome = PASSED
+   *   AND the FINALIZED RAP belongs to the SAME Final schedule.
+   *
+   * All Final conclusions are evaluated; none is chosen by recency.
+   */
   private async resolveCompletedContext(studentId: string): Promise<ResolveResult> {
     const thesisIds = await this.repo.getThesisIdsForStudent(studentId);
     if (thesisIds.length === 0) {
@@ -115,31 +156,62 @@ export class DatabankArchiveService {
     let sawPassedWithoutRap = false;
 
     for (const thesisId of thesisIds) {
-      const conclusion = await this.repo.getFinalConclusionForThesis(thesisId);
-      if (!conclusion) continue;
-      if (conclusion.outcome !== "PASSED") {
-        sawFinalNotPassed = true;
-        continue;
+      const conclusions = await this.repo.getFinalConclusionsForThesis(thesisId);
+      const qualified: Array<{
+        scheduleId: string;
+        concludedAt: Date | null;
+        rapFinalizedAt: Date | null;
+      }> = [];
+
+      for (const conclusion of conclusions) {
+        if (conclusion.outcome !== "PASSED") {
+          sawFinalNotPassed = true;
+          continue;
+        }
+        const rap = await this.repo.getFinalizedRapForSchedule(
+          conclusion.scheduleId,
+        );
+        if (!rap) {
+          sawPassedWithoutRap = true;
+          continue;
+        }
+        qualified.push({
+          scheduleId: conclusion.scheduleId,
+          concludedAt: conclusion.concludedAt ?? null,
+          rapFinalizedAt: rap.finalizedAt ?? null,
+        });
       }
-      const rap = await this.repo.getFinalizedRapForSchedule(conclusion.scheduleId);
-      if (!rap) {
-        sawPassedWithoutRap = true;
-        continue;
+
+      if (qualified.length === 0) continue;
+      if (qualified.length > 1) {
+        // Multiple completed Final sessions for one thesis: no recency pick.
+        return {
+          eligible: false,
+          reasons: [DATABANK_ELIGIBILITY_REASONS.RESEARCH_CONTEXT_AMBIGUOUS],
+        };
       }
-      const officialTitle = await this.repo.getOfficialTitleForThesis(thesisId);
-      if (!officialTitle) {
-        // Completed Final but no valid official Title authority → fail closed.
+
+      const title = await this.resolveOfficialTitle(thesisId);
+      if (title.status === "MISSING") {
         return {
           eligible: false,
           reasons: [DATABANK_ELIGIBILITY_REASONS.OFFICIAL_TITLE_MISSING],
         };
       }
+      if (title.status === "AMBIGUOUS") {
+        return {
+          eligible: false,
+          reasons: [DATABANK_ELIGIBILITY_REASONS.RESEARCH_CONTEXT_AMBIGUOUS],
+        };
+      }
+
+      const q = qualified[0];
       completed.push({
         thesisId,
-        scheduleId: conclusion.scheduleId,
-        officialTitle,
-        concludedAt: conclusion.concludedAt ?? null,
-        rapFinalizedAt: rap.finalizedAt ?? null,
+        scheduleId: q.scheduleId,
+        officialTitle: title.titleText,
+        concludedAt: q.concludedAt,
+        rapFinalizedAt: q.rapFinalizedAt,
       });
     }
 

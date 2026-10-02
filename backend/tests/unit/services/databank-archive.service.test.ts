@@ -13,9 +13,9 @@ function makeRepo() {
   return {
     getStudentByUserId: vi.fn(),
     getThesisIdsForStudent: vi.fn(),
-    getFinalConclusionForThesis: vi.fn(),
+    getFinalConclusionsForThesis: vi.fn(),
     getFinalizedRapForSchedule: vi.fn(),
-    getOfficialTitleForThesis: vi.fn(),
+    getPassedTitleAuthoritiesForThesis: vi.fn(),
     getArchiveByThesisId: vi.fn(),
     createArchive: vi.fn(),
   };
@@ -36,19 +36,35 @@ function archiveRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function eligibleRepo(repo: ReturnType<typeof makeRepo>) {
-  repo.getStudentByUserId.mockResolvedValue({ id: "student-1" });
-  repo.getThesisIdsForStudent.mockResolvedValue(["thesis-1"]);
-  repo.getFinalConclusionForThesis.mockResolvedValue({
+function finalConclusion(overrides: Record<string, unknown> = {}) {
+  return {
     outcome: "PASSED",
     scheduleId: "sched-final",
     concludedAt: new Date("2026-09-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+function titleAuthority(overrides: Record<string, unknown> = {}) {
+  return {
     selectedTitleId: "title-1",
-  });
+    selectedTitle: {
+      id: "title-1",
+      thesisId: "thesis-1",
+      titleText: "Server Official Title",
+    },
+    ...overrides,
+  };
+}
+
+function eligibleRepo(repo: ReturnType<typeof makeRepo>) {
+  repo.getStudentByUserId.mockResolvedValue({ id: "student-1" });
+  repo.getThesisIdsForStudent.mockResolvedValue(["thesis-1"]);
+  repo.getFinalConclusionsForThesis.mockResolvedValue([finalConclusion()]);
   repo.getFinalizedRapForSchedule.mockResolvedValue({
     finalizedAt: new Date("2026-09-02T00:00:00Z"),
   });
-  repo.getOfficialTitleForThesis.mockResolvedValue("Server Official Title");
+  repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([titleAuthority()]);
   repo.getArchiveByThesisId.mockResolvedValue(null);
   repo.createArchive.mockImplementation(async (data: any) =>
     archiveRow({ title: data.title, abstract: data.abstract, keywords: data.keywords }),
@@ -73,15 +89,12 @@ describe("DL-9 archive eligibility (context)", () => {
     expect(dto.archive).toBeNull();
   });
 
-  it("not eligible when the Final result is not PASSED", async () => {
+  it("not eligible when the only Final result is not PASSED", async () => {
     const repo = makeRepo();
     eligibleRepo(repo);
-    repo.getFinalConclusionForThesis.mockResolvedValue({
-      outcome: "REVISION_REQUIRED",
-      scheduleId: "s",
-      concludedAt: new Date(),
-      selectedTitleId: null,
-    });
+    repo.getFinalConclusionsForThesis.mockResolvedValue([
+      finalConclusion({ outcome: "REVISION_REQUIRED" }),
+    ]);
     const svc = new DatabankArchiveService(repo as never);
 
     const dto = await svc.getArchiveContext("user-1");
@@ -94,7 +107,7 @@ describe("DL-9 archive eligibility (context)", () => {
   it("not eligible when there is no Final conclusion", async () => {
     const repo = makeRepo();
     eligibleRepo(repo);
-    repo.getFinalConclusionForThesis.mockResolvedValue(null);
+    repo.getFinalConclusionsForThesis.mockResolvedValue([]);
     const svc = new DatabankArchiveService(repo as never);
 
     const dto = await svc.getArchiveContext("user-1");
@@ -122,7 +135,7 @@ describe("DL-9 archive eligibility (context)", () => {
   it("fails closed with OFFICIAL_TITLE_MISSING when the official title authority is absent", async () => {
     const repo = makeRepo();
     eligibleRepo(repo);
-    repo.getOfficialTitleForThesis.mockResolvedValue(null);
+    repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([]);
     const svc = new DatabankArchiveService(repo as never);
 
     const dto = await svc.getArchiveContext("user-1");
@@ -132,10 +145,20 @@ describe("DL-9 archive eligibility (context)", () => {
     ]);
   });
 
-  it("fails closed on ambiguous completed contexts (never picks latest)", async () => {
+  it("fails closed on ambiguous completed contexts across theses (never picks latest)", async () => {
     const repo = makeRepo();
     eligibleRepo(repo);
     repo.getThesisIdsForStudent.mockResolvedValue(["thesis-a", "thesis-b"]);
+    repo.getPassedTitleAuthoritiesForThesis.mockImplementation(async (thesisId: string) => [
+      {
+        selectedTitleId: `title-${thesisId}`,
+        selectedTitle: {
+          id: `title-${thesisId}`,
+          thesisId,
+          titleText: `Title ${thesisId}`,
+        },
+      },
+    ]);
     const svc = new DatabankArchiveService(repo as never);
 
     const dto = await svc.getArchiveContext("user-1");
@@ -152,6 +175,135 @@ describe("DL-9 archive eligibility (context)", () => {
     await expect(svc.getArchiveContext("user-x")).rejects.toMatchObject({
       statusCode: 404,
     });
+  });
+});
+
+describe("DL-9 multiple Final conclusions", () => {
+  it("one valid + one passed-without-finalized-RAP → exactly one completed context", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getFinalConclusionsForThesis.mockResolvedValue([
+      finalConclusion({ scheduleId: "sched-a", concludedAt: new Date("2026-01-01") }),
+      finalConclusion({ scheduleId: "sched-b", concludedAt: new Date("2026-12-01") }),
+    ]);
+    repo.getFinalizedRapForSchedule.mockImplementation(async (scheduleId: string) =>
+      scheduleId === "sched-a" ? { finalizedAt: new Date("2026-01-02") } : null,
+    );
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(true);
+    expect(dto.reasons).toEqual([]);
+  });
+
+  it("one valid + one non-PASSED (later) → earlier valid context is used", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getFinalConclusionsForThesis.mockResolvedValue([
+      finalConclusion({ scheduleId: "sched-a", concludedAt: new Date("2026-01-01") }),
+      finalConclusion({
+        scheduleId: "sched-b",
+        outcome: "REVISION_REQUIRED",
+        concludedAt: new Date("2026-12-01"),
+      }),
+    ]);
+    repo.getFinalizedRapForSchedule.mockImplementation(async (scheduleId: string) =>
+      scheduleId === "sched-a" ? { finalizedAt: new Date("2026-01-02") } : null,
+    );
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(true);
+  });
+
+  it("two valid completed Final contexts → RESEARCH_CONTEXT_AMBIGUOUS regardless of recency", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getFinalConclusionsForThesis.mockResolvedValue([
+      finalConclusion({ scheduleId: "sched-a", concludedAt: new Date("2026-01-01") }),
+      finalConclusion({ scheduleId: "sched-b", concludedAt: new Date("2026-12-01") }),
+    ]);
+    repo.getFinalizedRapForSchedule.mockResolvedValue({
+      finalizedAt: new Date("2026-12-02"),
+    });
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(false);
+    expect(dto.reasons).toEqual([
+      DATABANK_ELIGIBILITY_REASONS.RESEARCH_CONTEXT_AMBIGUOUS,
+    ]);
+  });
+});
+
+describe("DL-9 official title authority", () => {
+  it("duplicate PASSED Title conclusions pointing at the same selectedTitleId resolve safely", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([
+      titleAuthority(),
+      titleAuthority(),
+    ]);
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(true);
+    expect(dto.researchContext?.officialTitle).toBe("Server Official Title");
+  });
+
+  it("two PASSED Title conclusions with different selectedTitleId fail closed", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([
+      titleAuthority(),
+      titleAuthority({
+        selectedTitleId: "title-2",
+        selectedTitle: { id: "title-2", thesisId: "thesis-1", titleText: "Other Title" },
+      }),
+    ]);
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(false);
+    expect(dto.reasons).toEqual([
+      DATABANK_ELIGIBILITY_REASONS.RESEARCH_CONTEXT_AMBIGUOUS,
+    ]);
+  });
+
+  it("cross-thesis selected title fails closed", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([
+      titleAuthority({
+        selectedTitle: {
+          id: "title-1",
+          thesisId: "thesis-other",
+          titleText: "Stolen Title",
+        },
+      }),
+    ]);
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(false);
+    expect(dto.reasons).toEqual([
+      DATABANK_ELIGIBILITY_REASONS.OFFICIAL_TITLE_MISSING,
+    ]);
+  });
+
+  it("missing selected title relation fails closed", async () => {
+    const repo = makeRepo();
+    eligibleRepo(repo);
+    repo.getPassedTitleAuthoritiesForThesis.mockResolvedValue([
+      { selectedTitleId: "title-1", selectedTitle: null },
+    ]);
+    const svc = new DatabankArchiveService(repo as never);
+
+    const dto = await svc.getArchiveContext("user-1");
+    expect(dto.eligible).toBe(false);
+    expect(dto.reasons).toEqual([
+      DATABANK_ELIGIBILITY_REASONS.OFFICIAL_TITLE_MISSING,
+    ]);
   });
 });
 
@@ -184,7 +336,6 @@ describe("DL-9 private archive registration", () => {
     await svc.registerArchive("user-1", {
       abstract: "ok",
       keywords: null,
-      // malicious / legacy authority fields — must be ignored
       thesisId: "another-students-thesis",
       title: "Attacker supplied title",
       fullPaperPath: "/srv/private/secret.pdf",
@@ -231,9 +382,9 @@ describe("DL-9 private archive registration", () => {
     eligibleRepo(repo);
     repo.getArchiveByThesisId.mockResolvedValue(archiveRow());
     const svc = new DatabankArchiveService(repo as never);
-    await expect(
-      svc.registerArchive("user-1", {}),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(svc.registerArchive("user-1", {})).rejects.toMatchObject({
+      statusCode: 409,
+    });
     expect(repo.createArchive).not.toHaveBeenCalled();
   });
 
@@ -242,9 +393,10 @@ describe("DL-9 private archive registration", () => {
     eligibleRepo(repo);
     repo.createArchive.mockRejectedValue({ code: "P2002" });
     const svc = new DatabankArchiveService(repo as never);
-    await expect(
-      svc.registerArchive("user-1", {}),
-    ).rejects.toMatchObject({ statusCode: 409, message: /already registered/i });
+    await expect(svc.registerArchive("user-1", {})).rejects.toMatchObject({
+      statusCode: 409,
+      message: /already registered/i,
+    });
   });
 
   it("rejects registration when not eligible", async () => {
@@ -252,20 +404,30 @@ describe("DL-9 private archive registration", () => {
     eligibleRepo(repo);
     repo.getFinalizedRapForSchedule.mockResolvedValue(null);
     const svc = new DatabankArchiveService(repo as never);
-    await expect(
-      svc.registerArchive("user-1", {}),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(svc.registerArchive("user-1", {})).rejects.toMatchObject({
+      statusCode: 400,
+    });
     expect(repo.createArchive).not.toHaveBeenCalled();
   });
 
   it("returns 409 for ambiguous context registration", async () => {
     const repo = makeRepo();
     eligibleRepo(repo);
-    repo.getThesisIdsForStudent.mockResolvedValue(["a", "b"]);
+    repo.getThesisIdsForStudent.mockResolvedValue(["thesis-a", "thesis-b"]);
+    repo.getPassedTitleAuthoritiesForThesis.mockImplementation(async (thesisId: string) => [
+      {
+        selectedTitleId: `title-${thesisId}`,
+        selectedTitle: {
+          id: `title-${thesisId}`,
+          thesisId,
+          titleText: `Title ${thesisId}`,
+        },
+      },
+    ]);
     const svc = new DatabankArchiveService(repo as never);
-    await expect(
-      svc.registerArchive("user-1", {}),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(svc.registerArchive("user-1", {})).rejects.toMatchObject({
+      statusCode: 409,
+    });
   });
 });
 
@@ -288,7 +450,6 @@ describe("DL-9 archive DTO privacy + existing archive", () => {
     eligibleRepo(repo);
     repo.getArchiveByThesisId.mockResolvedValue(
       archiveRow({
-        // even if a legacy row carried paths, the safe DTO must omit them
         fullPaperPath: "/srv/private/x.pdf",
         respondentDataPath: "../../y.zip",
         storageKey: "k",

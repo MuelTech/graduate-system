@@ -49,19 +49,20 @@ export class DatabankArchiveRepository {
     return rows.map((r) => r.id);
   }
 
-  /** Latest FORMAL Final Defense conclusion for one thesis (authority read). */
-  async getFinalConclusionForThesis(thesisId: string) {
-    return prisma.defenseConclusion.findFirst({
+  /**
+   * ALL formal Final Defense conclusions for one thesis (latest is never
+   * authority). The service owns cardinality/authority interpretation.
+   */
+  async getFinalConclusionsForThesis(thesisId: string) {
+    return prisma.defenseConclusion.findMany({
       where: {
         thesisId,
         schedule: { defenseType: "FINAL_DEFENSE" },
       },
-      orderBy: { concludedAt: "desc" },
       select: {
         outcome: true,
         scheduleId: true,
         concludedAt: true,
-        selectedTitleId: true,
       },
     });
   }
@@ -78,24 +79,26 @@ export class DatabankArchiveRepository {
     });
   }
 
-  /** Official title from the accepted Title Defense conclusion authority. */
-  async getOfficialTitleForThesis(thesisId: string): Promise<string | null> {
-    const titleConclusion = await prisma.defenseConclusion.findFirst({
+  /**
+   * All PASSED Title Defense authorities for one thesis. Each row carries its
+   * selected Title relation so the service can verify exact ownership and
+   * fail closed on conflicting authorities.
+   */
+  async getPassedTitleAuthoritiesForThesis(thesisId: string) {
+    return prisma.defenseConclusion.findMany({
       where: {
         thesisId,
         outcome: "PASSED",
         selectedTitleId: { not: null },
         schedule: { defenseType: "TITLE_DEFENSE" },
       },
-      orderBy: { concludedAt: "desc" },
-      select: { selectedTitleId: true },
+      select: {
+        selectedTitleId: true,
+        selectedTitle: {
+          select: { id: true, thesisId: true, titleText: true },
+        },
+      },
     });
-    if (!titleConclusion?.selectedTitleId) return null;
-    const title = await prisma.thesisTitle.findUnique({
-      where: { id: titleConclusion.selectedTitleId },
-      select: { titleText: true },
-    });
-    return title?.titleText ?? null;
   }
 
   async getArchiveByThesisId(thesisId: string): Promise<ArchiveRecord | null> {
