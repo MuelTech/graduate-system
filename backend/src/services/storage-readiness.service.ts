@@ -46,7 +46,12 @@ export interface StorageReadinessReport {
   capacity: { minimumFreePercent: number | null; pressure: boolean | null };
   backupIntegration: { status: string; lastSuccessfulBackupAt: string | null };
   deploymentRehearsal: {
-    automatedPersistenceVerification: "PASS";
+    /**
+     * The readiness CLI does not execute the persistence unit test, so it must
+     * not claim PASS from the test's static existence. Code evidence is the
+     * separately-run test suite.
+     */
+    automatedPersistenceVerification: "NOT_EXECUTED_BY_READINESS";
     deploymentRestartRehearsal: "NOT EXECUTED";
     backupRestoreRehearsal: "NOT EXECUTED";
   };
@@ -88,6 +93,27 @@ export class StorageReadinessService {
     const alreadyManaged = backfill.summary.ALREADY_MANAGED ?? 0;
     if (eligible > 0) {
       warnings.push({ code: "LEGACY_BACKFILL_PENDING", count: eligible });
+    }
+
+    // A legacy row whose stored non-null metadata disagrees with the physical
+    // object cannot be safely auto-backfilled -> blocking technical error.
+    const metadataConflict = backfill.summary.METADATA_CONFLICT ?? 0;
+    if (metadataConflict > 0) {
+      errors.push({
+        code: "LEGACY_BACKFILL_METADATA_CONFLICT",
+        count: metadataConflict,
+      });
+    }
+
+    // A readable contained legacy object that cannot be represented as a
+    // current storage key. Legacy filePath fallback still works, so warn.
+    const invalidDerivedKey =
+      backfill.summary.INVALID_DERIVED_STORAGE_KEY ?? 0;
+    if (invalidDerivedKey > 0) {
+      warnings.push({
+        code: "LEGACY_BACKFILL_INVALID_DERIVED_KEY",
+        count: invalidDerivedKey,
+      });
     }
 
     const debtTotal = Object.values(debt).reduce((sum, n) => sum + n, 0);
@@ -139,7 +165,7 @@ export class StorageReadinessService {
         lastSuccessfulBackupAt: health.backup.lastSuccessfulBackupAt,
       },
       deploymentRehearsal: {
-        automatedPersistenceVerification: "PASS",
+        automatedPersistenceVerification: "NOT_EXECUTED_BY_READINESS",
         deploymentRestartRehearsal: "NOT EXECUTED",
         backupRestoreRehearsal: "NOT EXECUTED",
       },

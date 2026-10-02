@@ -101,9 +101,21 @@ npm run storage:readiness            # node dist/cli/storage-readiness.js
 ```
 
 Exit code `0` = no blocking technical errors; non-zero = blocking errors.
+
+Backfill dry-run findings surface in the readiness report:
+
+- `METADATA_CONFLICT` → **error** `LEGACY_BACKFILL_METADATA_CONFLICT`
+  (stored metadata disagrees with the physical object; not safe to auto-fill).
+- `INVALID_DERIVED_STORAGE_KEY` → **warning**
+  `LEGACY_BACKFILL_INVALID_DERIVED_KEY` (legacy `filePath` fallback still works).
+- `ELIGIBLE > 0` → **warning** `LEGACY_BACKFILL_PENDING`.
+- `MISSING` / `UNSAFE` are already reported by DL-11 integrity as
+  `INTEGRITY_LEGACY_FILE_MISSING` / `INTEGRITY_LEGACY_FILE_UNSAFE` and are not
+  double-reported.
+
 Warnings (orphans, duplicate references, provider mismatch, pending backfill,
-capacity threshold unset, backup integration unavailable, rehearsals not
-executed) do not by themselves fail.
+invalid derived key, capacity threshold unset, backup integration unavailable,
+rehearsals not executed) do not by themselves fail.
 
 ## 9. Regression commands
 
@@ -118,12 +130,25 @@ npx prisma generate
 
 ## 10. Persistence verification
 
-An automated test proves a promoted managed object survives provider
-recreation against the same root (`tests/unit/storage/persistence.rehearsal.test.ts`).
+Two different things, not interchangeable:
 
-An **actual deployment restart rehearsal** (record object → restart/redeploy →
-verify authorized retrieval) requires a safe disposable environment. If none is
-available, it is `NOT EXECUTABLE` — do not fabricate it.
+```text
+automated persistence test (code evidence)
+≠
+runtime / deployment persistence rehearsal (operational evidence)
+```
+
+- **Automated test:** `tests/unit/storage/persistence.rehearsal.test.ts` proves a
+  promoted managed object survives provider recreation against the same root.
+  Run it as part of the test suite (`npm test`) to obtain this code evidence.
+- **Runtime readiness CLI:** `npm run storage:readiness` does **not** execute
+  that test. It therefore reports
+  `automatedPersistenceVerification = "NOT_EXECUTED_BY_READINESS"` and does not
+  claim the test has passed. The test suite is the code evidence; the CLI is not.
+- **Actual deployment restart rehearsal** (record object → restart/redeploy →
+  verify authorized retrieval) requires a safe disposable environment. If none
+  is available it is `NOT EXECUTED` / `NOT EXECUTABLE` — do not fabricate it.
+  The readiness CLI reports `deploymentRestartRehearsal = "NOT EXECUTED"`.
 
 ## 11. Backup / restore rehearsal
 

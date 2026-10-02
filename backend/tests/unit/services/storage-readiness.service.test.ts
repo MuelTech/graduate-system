@@ -41,13 +41,26 @@ function backfillFixture(overrides: {
   eligible?: number;
   inspected?: number;
   debt?: Record<string, number>;
+  conflict?: number;
+  invalidKey?: number;
+  missing?: number;
+  unsafe?: number;
 } = {}) {
   return {
     plan: vi.fn().mockResolvedValue({
       mode: "DRY_RUN",
       inspected: overrides.inspected ?? 0,
       alreadyManaged: 0,
-      summary: { ELIGIBLE: overrides.eligible ?? 0 },
+      summary: {
+        ALREADY_MANAGED: 0,
+        ELIGIBLE: overrides.eligible ?? 0,
+        APPLIED: 0,
+        MISSING: overrides.missing ?? 0,
+        UNSAFE: overrides.unsafe ?? 0,
+        INVALID_DERIVED_STORAGE_KEY: overrides.invalidKey ?? 0,
+        METADATA_CONFLICT: overrides.conflict ?? 0,
+        RACE_OR_ALREADY_MIGRATED: 0,
+      },
       detailsReturned: 0,
       detailsTruncated: false,
       details: [],
@@ -90,6 +103,9 @@ describe("DL-12 StorageReadinessService", () => {
 
     expect(report.ok).toBe(true);
     expect(report.errors).toEqual([]);
+    expect(
+      report.deploymentRehearsal.automatedPersistenceVerification,
+    ).toBe("NOT_EXECUTED_BY_READINESS");
     expect(report.deploymentRehearsal.deploymentRestartRehearsal).toBe(
       "NOT EXECUTED",
     );
@@ -175,6 +191,68 @@ describe("DL-12 StorageReadinessService", () => {
     expect(codes(report.warnings)).not.toContain(
       "CAPACITY_THRESHOLD_NOT_CONFIGURED",
     );
+  });
+
+  it("surfaces backfill METADATA_CONFLICT as a blocking error", async () => {
+    const report = await makeService(
+      healthFixture({ minimumFreePercent: 10 }),
+      backfillFixture({ conflict: 2 }),
+    ).verify();
+
+    expect(report.ok).toBe(false);
+    const finding = report.errors.find(
+      (f) => f.code === "LEGACY_BACKFILL_METADATA_CONFLICT",
+    );
+    expect(finding).toEqual({
+      code: "LEGACY_BACKFILL_METADATA_CONFLICT",
+      count: 2,
+    });
+  });
+
+  it("surfaces INVALID_DERIVED_STORAGE_KEY as a warning, not silently dropped", async () => {
+    const report = await makeService(
+      healthFixture({ minimumFreePercent: 10 }),
+      backfillFixture({ invalidKey: 1 }),
+    ).verify();
+
+    expect(report.ok).toBe(true);
+    expect(codes(report.warnings)).toContain(
+      "LEGACY_BACKFILL_INVALID_DERIVED_KEY",
+    );
+    expect(
+      report.warnings.find(
+        (f) => f.code === "LEGACY_BACKFILL_INVALID_DERIVED_KEY",
+      )?.count,
+    ).toBe(1);
+  });
+
+  it("does not emit backfill conflict/invalid/eligible findings when there are none", async () => {
+    const report = await makeService(
+      healthFixture({ minimumFreePercent: 10 }),
+      backfillFixture(),
+    ).verify();
+
+    const allCodes = [...codes(report.errors), ...codes(report.warnings)];
+    expect(allCodes).not.toContain("LEGACY_BACKFILL_METADATA_CONFLICT");
+    expect(allCodes).not.toContain("LEGACY_BACKFILL_INVALID_DERIVED_KEY");
+    expect(allCodes).not.toContain("LEGACY_BACKFILL_PENDING");
+  });
+
+  it("does not double-report MISSING/UNSAFE rows already covered by DL-11 integrity", async () => {
+    const health = healthFixture({
+      minimumFreePercent: 10,
+      scanSummary: { LEGACY_FILE_MISSING: 3, LEGACY_FILE_UNSAFE: 1 },
+    });
+    const report = await makeService(
+      health,
+      backfillFixture({ missing: 3, unsafe: 1 }),
+    ).verify();
+
+    const allCodes = [...codes(report.errors), ...codes(report.warnings)];
+    expect(allCodes).toContain("INTEGRITY_LEGACY_FILE_MISSING");
+    expect(allCodes).toContain("INTEGRITY_LEGACY_FILE_UNSAFE");
+    expect(allCodes).not.toContain("LEGACY_BACKFILL_MISSING");
+    expect(allCodes).not.toContain("LEGACY_BACKFILL_UNSAFE");
   });
 
   it("produces deterministic ordering of findings", async () => {
