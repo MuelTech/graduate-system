@@ -13,6 +13,7 @@ const ZERO_TEMP = {
   oldestModifiedAt: null,
   staleRequestDirectories: 0,
   staleFiles: 0,
+  unsafeRootDetected: false,
 };
 
 function makeRepo() {
@@ -129,6 +130,7 @@ describe("DL-11 StorageHealthService.getHealth", () => {
     expect(health.capacity.pressure).toBeNull();
     expect(health.temp.thresholdHours).toBe(24);
     expect(health.temp.fileCount).toBe(4);
+    expect(health.temp.unsafeRootDetected).toBe(false);
     expect(health.uploadTelemetry.scope).toBe("PROCESS_LOCAL_PIPELINE");
     expect(health.backup).toEqual({
       status: "UNAVAILABLE",
@@ -283,6 +285,87 @@ describe("DL-11 integrity scan — healthy + reference checks", () => {
     expect(result.summary.PROVIDER_MISMATCH).toBe(1);
     expect(result.summary.MISSING_OBJECT).toBe(0);
     expect(probe).not.toHaveBeenCalled();
+  });
+
+  it("foreign-provider reference does not suppress local orphan detection", async () => {
+    const diag = makeDiag({
+      listManagedObjects: vi.fn().mockResolvedValue({
+        objects: [
+          {
+            storageKey: "cor/x",
+            namespace: "cor",
+            sizeBytes: 5,
+            modifiedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        symlinks: [],
+      }),
+      probe: vi.fn(),
+    });
+    const repo = makeRepo();
+    repo.listManagedCorUploads.mockResolvedValue([
+      {
+        id: "cor-1",
+        storageKey: "cor/x",
+        storageProvider: "future-provider",
+        sizeBytes: 5,
+        checksum: null,
+        checksumAlgorithm: null,
+      },
+    ]);
+    const { service } = makeService({ diag, repo });
+
+    const result = await service.runIntegrityScan();
+
+    expect(result.summary.PROVIDER_MISMATCH).toBe(1);
+    // The foreign reference does not claim the local object -> it is an orphan.
+    expect(result.summary.ORPHAN_MANAGED_OBJECT).toBe(1);
+    expect(result.summary.MISSING_OBJECT).toBe(0);
+    expect(diag.probe).not.toHaveBeenCalled();
+  });
+
+  it("mixed local+foreign same-key rows are not a local duplicate reference", async () => {
+    const diag = makeDiag({
+      listManagedObjects: vi.fn().mockResolvedValue({
+        objects: [
+          {
+            storageKey: "cor/y",
+            namespace: "cor",
+            sizeBytes: 5,
+            modifiedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        symlinks: [],
+      }),
+      probe: vi.fn().mockResolvedValue({ exists: true, sizeBytes: 5 }),
+    });
+    const repo = makeRepo();
+    repo.listManagedCorUploads.mockResolvedValue([
+      {
+        id: "cor-1",
+        storageKey: "cor/y",
+        storageProvider: "local",
+        sizeBytes: 5,
+        checksum: null,
+        checksumAlgorithm: null,
+      },
+      {
+        id: "cor-2",
+        storageKey: "cor/y",
+        storageProvider: "future-provider",
+        sizeBytes: 5,
+        checksum: null,
+        checksumAlgorithm: null,
+      },
+    ]);
+    const { service } = makeService({ diag, repo });
+
+    const result = await service.runIntegrityScan();
+
+    expect(result.summary.DUPLICATE_REFERENCE).toBe(0);
+    expect(result.summary.PROVIDER_MISMATCH).toBe(1);
+    // The local row still claims the object, so it is not an orphan.
+    expect(result.summary.ORPHAN_MANAGED_OBJECT).toBe(0);
   });
 
   it("reports INVALID_STORAGE_KEY and never resolves an escaping key", async () => {

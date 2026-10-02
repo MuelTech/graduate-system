@@ -95,6 +95,7 @@ export interface StorageHealthDto {
     staleRequestDirectories: number;
     staleFiles: number;
     oldestModifiedAt: string | null;
+    unsafeRootDetected: boolean;
   };
   uploadTelemetry: UploadTelemetrySnapshot;
   backup: {
@@ -181,6 +182,7 @@ export class StorageHealthService {
         staleRequestDirectories: temp.staleRequestDirectories,
         staleFiles: temp.staleFiles,
         oldestModifiedAt: temp.oldestModifiedAt,
+        unsafeRootDetected: temp.unsafeRootDetected,
       },
       uploadTelemetry: this.telemetry.snapshot(),
       backup: {
@@ -235,8 +237,6 @@ export class StorageHealthService {
       ): Promise<void> => {
         const key = row.storageKey;
         if (!key) return;
-        referenced.add(key);
-        keyUsage.set(key, (keyUsage.get(key) ?? 0) + 1);
 
         const base = {
           source,
@@ -254,6 +254,9 @@ export class StorageHealthService {
           return;
         }
 
+        // A foreign-provider row does not claim the local object's namespace:
+        // it must not be added to local reference/duplicate accounting, and the
+        // local object (if present) remains an orphan candidate.
         if (
           row.storageProvider &&
           row.storageProvider !== this.diagnostics.providerName
@@ -265,6 +268,10 @@ export class StorageHealthService {
           });
           return;
         }
+
+        // Active provider (or legacy null provider) owns this key locally.
+        referenced.add(key);
+        keyUsage.set(key, (keyUsage.get(key) ?? 0) + 1);
 
         const probe = await this.diagnostics.probe(key);
         if (!probe.exists) {

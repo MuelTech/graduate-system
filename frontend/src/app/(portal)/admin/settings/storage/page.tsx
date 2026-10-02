@@ -240,6 +240,13 @@ export default function AdminStorageHealthPage() {
                 {formatDate(temp.oldestModifiedAt)}
               </span>
             </div>
+            {temp.unsafeRootDetected && (
+              <p className="flex items-center gap-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
+                <AlertTriangle className="h-3 w-3" />
+                The temporary storage root is a symlink or failed containment
+                and was not traversed. No paths are shown.
+              </p>
+            )}
             <p className="rounded-lg bg-(--earist-surface-gray) p-2 text-xs text-(--earist-body-text)">
               “Stale” means older than {temp.thresholdHours}h by diagnostic
               threshold only — it is not deletion authority.

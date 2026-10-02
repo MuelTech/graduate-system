@@ -24,6 +24,8 @@ export interface StorageTempSummary {
   staleRequestDirectories: number;
   staleFiles: number;
   oldestModifiedAt: string | null;
+  /** True when the `.tmp` root is a symlink / failed containment (not traversed). */
+  unsafeRootDetected: boolean;
 }
 
 export interface UploadFailureEvent {

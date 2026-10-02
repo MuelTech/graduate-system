@@ -33,12 +33,20 @@ async function makeDiag() {
 }
 
 async function trySymlink(target: string, linkPath: string): Promise<boolean> {
-  try {
-    await symlink(target, linkPath, "dir");
-    return true;
-  } catch {
-    return false;
+  // On Windows a plain directory symlink needs privilege; a junction does not
+  // (and Node reports it as a symbolic link via lstat). Try junction first so
+  // containment tests actually execute on Windows CI/dev machines.
+  const types: Array<"junction" | "dir"> =
+    process.platform === "win32" ? ["junction", "dir"] : ["dir"];
+  for (const type of types) {
+    try {
+      await symlink(target, linkPath, type);
+      return true;
+    } catch {
+      // try the next strategy
+    }
   }
+  return false;
 }
 
 afterEach(async () => {
@@ -215,6 +223,7 @@ describe("LocalStorageDiagnostics temporary summary", () => {
       oldestModifiedAt: null,
       staleRequestDirectories: 0,
       staleFiles: 0,
+      unsafeRootDetected: false,
     });
   });
 
@@ -235,5 +244,55 @@ describe("LocalStorageDiagnostics temporary summary", () => {
 
     expect(summary.fileCount).toBe(0);
     expect(existsSync(path.join(outside, "victim"))).toBe(true);
+  });
+});
+
+describe("DL-11 diagnostic containment hardening", () => {
+  it("does not follow a managed namespace root symlink and never enumerates its target", async (ctx) => {
+    const { base, root, diagnostics } = await makeDiag();
+    const outside = path.join(base, "outside-cor");
+    await mkdir(outside, { recursive: true });
+    await writeFile(path.join(outside, "secret-file"), "external-secret");
+    if (!(await trySymlink(outside, path.join(root, "cor")))) {
+      ctx.skip();
+      return;
+    }
+
+    const listing = await diagnostics.listManagedObjects(MANAGED_STORAGE_PREFIXES);
+
+    // The external target is not enumerated as a managed object or orphan.
+    expect(listing.objects).toHaveLength(0);
+    // The namespace-root symlink is reported using only the safe namespace id.
+    expect(listing.symlinks).toHaveLength(1);
+    expect(listing.symlinks[0].namespace).toBe("cor");
+    expect(listing.symlinks[0].storageKey).toBe("cor");
+    const serialized = JSON.stringify(listing);
+    expect(serialized).not.toContain("outside-cor");
+    expect(serialized).not.toContain("secret-file");
+    // Untouched.
+    expect(existsSync(path.join(outside, "secret-file"))).toBe(true);
+  });
+
+  it("does not follow a .tmp root symlink and never enumerates its target", async (ctx) => {
+    const { base, root, diagnostics } = await makeDiag();
+    const outsideTemp = path.join(base, "outside-tmp-root");
+    await mkdir(outsideTemp, { recursive: true });
+    await writeFile(path.join(outsideTemp, "secret-file"), "external-secret");
+    if (!(await trySymlink(outsideTemp, path.join(root, ".tmp")))) {
+      ctx.skip();
+      return;
+    }
+
+    const summary = await diagnostics.tempSummary(24);
+
+    expect(summary.unsafeRootDetected).toBe(true);
+    expect(summary.fileCount).toBe(0);
+    expect(summary.totalBytes).toBe(0);
+    expect(summary.requestDirectories).toBe(0);
+    const serialized = JSON.stringify(summary);
+    expect(serialized).not.toContain("outside-tmp-root");
+    expect(serialized).not.toContain("secret-file");
+    // Untouched, not deleted or repaired.
+    expect(existsSync(path.join(outsideTemp, "secret-file"))).toBe(true);
   });
 });

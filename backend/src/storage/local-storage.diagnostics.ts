@@ -31,10 +31,19 @@ const ZERO_TEMP: TempSummary = {
   oldestModifiedAt: null,
   staleRequestDirectories: 0,
   staleFiles: 0,
+  unsafeRootDetected: false,
 };
 
 function toPosix(relative: string): string {
   return relative.split(path.sep).join("/");
+}
+
+/** True when `child` resolves strictly inside `parent` (both real paths). */
+function isRealInside(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return (
+    relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative)
+  );
 }
 
 export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
@@ -96,7 +105,33 @@ export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
     };
 
     for (const prefix of prefixes) {
-      await walk(path.join(realRoot, prefix), prefix);
+      const candidate = path.join(realRoot, prefix);
+      let rootInfo;
+      try {
+        rootInfo = await fsp.lstat(candidate);
+      } catch {
+        // Namespace not created yet.
+        continue;
+      }
+      if (rootInfo.isSymbolicLink()) {
+        // Never follow a namespace-root symlink; report using the safe
+        // namespace identity only (never the external target).
+        symlinks.push({ storageKey: prefix, namespace: prefix });
+        continue;
+      }
+      if (!rootInfo.isDirectory()) continue;
+
+      let realDir: string;
+      try {
+        realDir = await fsp.realpath(candidate);
+      } catch {
+        continue;
+      }
+      // Prove the resolved namespace root is still inside the real private
+      // root before traversing it.
+      if (!isRealInside(realRoot, realDir)) continue;
+
+      await walk(realDir, prefix);
     }
 
     return { objects, symlinks };
@@ -148,12 +183,35 @@ export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
   }
 
   async tempSummary(staleTempHours: number): Promise<TempSummary> {
-    let realTempRoot: string;
+    const realRoot = await this.provider.realRoot();
+    const lexicalTempRoot = this.provider.temporaryRoot();
+
+    // Validate the `.tmp` root itself (lstat) before any traversal. A symlinked
+    // or non-contained temp root must never be followed.
+    let tempRootInfo;
     try {
-      realTempRoot = await fsp.realpath(this.provider.temporaryRoot());
+      tempRootInfo = await fsp.lstat(lexicalTempRoot);
     } catch {
       return { ...ZERO_TEMP };
     }
+    if (tempRootInfo.isSymbolicLink()) {
+      return { ...ZERO_TEMP, unsafeRootDetected: true };
+    }
+    if (!tempRootInfo.isDirectory()) {
+      return { ...ZERO_TEMP };
+    }
+
+    let realTempRoot: string;
+    try {
+      realTempRoot = await fsp.realpath(lexicalTempRoot);
+    } catch {
+      return { ...ZERO_TEMP, unsafeRootDetected: true };
+    }
+    if (!isRealInside(realRoot, realTempRoot)) {
+      return { ...ZERO_TEMP, unsafeRootDetected: true };
+    }
+
+    const unsafeRootDetected = false;
 
     const cutoff = Date.now() - staleTempHours * 3600 * 1000;
     let requestDirectories = 0;
@@ -258,6 +316,7 @@ export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
       oldestModifiedAt: oldest === null ? null : new Date(oldest).toISOString(),
       staleRequestDirectories,
       staleFiles,
+      unsafeRootDetected,
     };
   }
 

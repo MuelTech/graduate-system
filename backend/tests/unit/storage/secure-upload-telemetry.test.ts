@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "fs/promises";
 import type { AddressInfo } from "net";
 import { tmpdir } from "os";
 import path from "path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { LocalStorageProvider } from "../../../src/storage/local-storage.provider";
 import { createSecureUpload } from "../../../src/storage/secure-upload";
 import { UploadTelemetry } from "../../../src/storage/upload-telemetry";
@@ -22,6 +22,7 @@ let provider: LocalStorageProvider;
 let telemetry: UploadTelemetry;
 let server: ReturnType<express.Express["listen"]>;
 let origin: string;
+let tempFailureTelemetry: UploadTelemetry;
 
 async function post(field: string, name: string, bytes: Buffer, type: string) {
   const form = new FormData();
@@ -44,11 +45,23 @@ beforeAll(async () => {
     fallbackExtensionsWhenUndetected: [],
   };
 
+  const failingProvider = new LocalStorageProvider({
+    root: path.join(base, "root-tempfail"),
+  });
+  vi.spyOn(failingProvider, "removeTemporaryDir").mockRejectedValue(
+    new Error("temp finalization failed"),
+  );
+  tempFailureTelemetry = new UploadTelemetry();
+  const secureFailing = createSecureUpload(failingProvider, tempFailureTelemetry);
+
   const app = express();
   app.post("/upload", secure("applicant-cor").single("file"), (req, res) => {
     res.json({ ok: true });
   });
   app.post("/tiny", secure(tiny).single("file"), (req, res) => {
+    res.json({ ok: true });
+  });
+  app.post("/tempfail", secureFailing("applicant-cor").single("file"), (req, res) => {
     res.json({ ok: true });
   });
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -105,6 +118,35 @@ describe("DL-11 upload telemetry instrumentation", () => {
     await post("file", "secret-name.pdf", TEXT_BYTES, "application/pdf");
     const serialized = JSON.stringify(telemetry.snapshot().recentFailures);
     for (const forbidden of ["secret-name", "filename", "cor/", "storageKey", "path"]) {
+      expect(serialized).not.toContain(forbidden);
+    }
+  });
+
+  it("records a TEMP_STORAGE failure when post-promotion temp finalization fails", async () => {
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([new Uint8Array(PDF_BYTES)], { type: "application/pdf" }),
+      "thesis.pdf",
+    );
+    const res = await fetch(`${origin}/tempfail`, { method: "POST", body: form });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+
+    const snapshot = tempFailureTelemetry.snapshot();
+    expect(snapshot.attempts).toBe(1);
+    expect(snapshot.successes).toBe(0);
+    expect(snapshot.failures).toBe(1);
+    expect(snapshot.recentFailures[0]?.stage).toBe("TEMP_STORAGE");
+
+    const serialized = JSON.stringify(snapshot.recentFailures);
+    for (const forbidden of [
+      "thesis",
+      "filename",
+      "cor/",
+      "storageKey",
+      "path",
+      "root-tempfail",
+    ]) {
       expect(serialized).not.toContain(forbidden);
     }
   });

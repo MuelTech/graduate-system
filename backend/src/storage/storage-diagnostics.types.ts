@@ -56,6 +56,11 @@ export interface TempSummary {
   oldestModifiedAt: string | null;
   staleRequestDirectories: number;
   staleFiles: number;
+  /**
+   * DL-11 hardening: true when the `.tmp` root itself is a symlink (or fails
+   * real-root containment), so it was NOT traversed. No target path is exposed.
+   */
+  unsafeRootDetected: boolean;
 }
 
 export type LegacyProbeResult = "OK" | "MISSING" | "UNSAFE";

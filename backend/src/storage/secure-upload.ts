@@ -173,8 +173,18 @@ export function createSecureUpload(
     if (anyReq.__dl2TempDir) {
       const dir = anyReq.__dl2TempDir;
       delete anyReq.__dl2TempDir;
-      // Files were renamed out; remove the now-empty per-request directory.
-      await provider.removeTemporaryDir(dir);
+      try {
+        // Files were renamed out; remove the now-empty per-request directory.
+        await provider.removeTemporaryDir(dir);
+      } catch (error) {
+        // Post-promotion temp finalization failure: one TEMP_STORAGE failure
+        // for this attempt (no prior success/validation/promotion was recorded).
+        telemetry.recordFailure(
+          "TEMP_STORAGE",
+          (error as { statusCode?: number })?.statusCode,
+        );
+        throw error;
+      }
     }
   }
 
