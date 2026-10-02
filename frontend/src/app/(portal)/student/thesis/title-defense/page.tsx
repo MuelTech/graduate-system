@@ -10,6 +10,7 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import { RejectedApplicationCorrection } from "@/components/student/rejected-application-correction";
 import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
@@ -281,17 +282,7 @@ export default function TitleDefensePage() {
             Title Defense
           </h2>
         </div>
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Application returned</AlertTitle>
-          <AlertDescription>
-            {titleStep?.detail ||
-              "Your Title Defense application was rejected."}{" "}
-            Update your requirements and resubmit when instructed by the
-            Graduate School. A new application form is not shown here to avoid
-            creating a duplicate request.
-          </AlertDescription>
-        </Alert>
+        <RejectedApplicationCorrection stage="TITLE" reason={titleStep?.detail} />
       </div>
     );
   }

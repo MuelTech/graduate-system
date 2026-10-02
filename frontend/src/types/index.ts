@@ -93,7 +93,7 @@ export interface DefenseData {
         lastName: string;
       };
     };
-    thesisDocuments?: Array<{ id: string; docType: string; filePath: string }>;
+    thesisDocuments?: Array<{ id: string; docType: string; isCurrent?: boolean }>;
   };
 }
 

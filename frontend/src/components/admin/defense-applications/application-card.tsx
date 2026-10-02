@@ -29,7 +29,7 @@ import {
 
 export type DefenseApplicationDto = ApprovedApplicationDto & {
   rejectionReason?: string | null;
-  thesisDocuments: Array<{ id: string; docType: string; filePath: string }>;
+  thesisDocuments: Array<{ id: string; docType: string; isCurrent?: boolean }>;
 };
 
 type Props = {

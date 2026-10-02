@@ -12,6 +12,7 @@ import {
   cleanupRequestUploads,
   commitRequestUploads,
 } from '../storage/request-uploads';
+import { managedUploadFromMulter } from '../storage/managed-upload';
 
 function sendEligibilityError(res: Response, error: any): void {
   const missing = (error as { missing?: MissingRequirement[] }).missing;
@@ -152,9 +153,11 @@ export class ThesisController {
       const result = await this.thesisService.applyTitleDefense(
         req.user.userId, 
         req.body, 
-        files.conceptPaper[0].path,
-        files.cor[0].path,
-        files.receipt[0].path
+        {
+          conceptPaper: managedUploadFromMulter(files.conceptPaper[0], req.user.userId),
+          cor: managedUploadFromMulter(files.cor[0], req.user.userId),
+          receipt: managedUploadFromMulter(files.receipt[0], req.user.userId),
+        },
       );
       commitRequestUploads(req);
       res.status(201).json({ message: 'Title Defense application submitted successfully', result });
@@ -179,8 +182,10 @@ export class ThesisController {
 
       const result = await this.thesisService.applyProposalDefense(
         req.user.userId,
-        cor.path,
-        receipt.path,
+        {
+          cor: managedUploadFromMulter(cor, req.user.userId),
+          receipt: managedUploadFromMulter(receipt, req.user.userId),
+        },
       );
       commitRequestUploads(req);
       res.status(200).json({ message: 'Proposal Defense application submitted successfully', result });
@@ -204,8 +209,10 @@ export class ThesisController {
 
       const result = await this.thesisService.applyFinalDefense(
         req.user.userId,
-        cor.path,
-        receipt.path,
+        {
+          cor: managedUploadFromMulter(cor, req.user.userId),
+          receipt: managedUploadFromMulter(receipt, req.user.userId),
+        },
       );
       commitRequestUploads(req);
       res.status(200).json({ message: 'Final Defense application submitted successfully', result });
@@ -372,8 +379,39 @@ export class ThesisController {
     try {
       if (!req.user) throw new Error('Unauthorized');
       const id = req.params.id as string;
-      const result = await this.thesisService.resubmitApplication(req.user.userId, id);
+      const uploader = req.user.userId;
+      const files =
+        (req.files as { [fieldname: string]: Express.Multer.File[] }) ?? {};
+      const first = (name: string) => files?.[name]?.[0];
+      const conceptPaper = first('conceptPaper');
+      const cor = first('cor');
+      const receipt = first('receipt');
+
+      const result = await this.thesisService.resubmitApplication(uploader, id, {
+        conceptPaper: conceptPaper
+          ? managedUploadFromMulter(conceptPaper, uploader)
+          : undefined,
+        cor: cor ? managedUploadFromMulter(cor, uploader) : undefined,
+        receipt: receipt ? managedUploadFromMulter(receipt, uploader) : undefined,
+      });
+      // DL-2 FIX1 / DL-6: application persisted — protect the new managed files.
+      commitRequestUploads(req);
       res.status(200).json({ message: 'Application resubmitted for review', result });
+    } catch (error: any) {
+      await cleanupRequestUploads(req);
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
+  };
+
+  getMyCurrentApplication = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.thesisService.getMyCurrentApplication(req.user.userId);
+      res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

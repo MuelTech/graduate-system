@@ -2,6 +2,39 @@ import prisma from "../config/database";
 import { canCreateDefenseSchedule } from "../services/defense-application-workflow";
 import { DefenseCommitteePolicy } from "../services/defense-committee.policy";
 import { AppError } from "../utils/AppError";
+import type { ManagedUploadInput } from "../storage/managed-upload";
+import {
+  missingRequiredEvidence,
+  type DefenseEvidenceDocType,
+  type DefenseEvidenceStage,
+} from "../services/defense-evidence.rules";
+
+/** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
+function toDocumentData(
+  thesisId: string,
+  defenseStage: DefenseEvidenceStage,
+  docType: DefenseEvidenceDocType,
+  upload: ManagedUploadInput,
+  options?: { isCurrent?: boolean; supersedesDocumentId?: string | null },
+) {
+  return {
+    thesisId,
+    docType,
+    defenseStage,
+    filePath: upload.filePath,
+    storageKey: upload.storageKey,
+    storageProvider: upload.storageProvider,
+    originalFilename: upload.originalFilename,
+    verifiedMimeType: upload.verifiedMimeType,
+    sizeBytes: upload.sizeBytes,
+    checksum: upload.checksum,
+    checksumAlgorithm: upload.checksumAlgorithm,
+    uploadedById: upload.uploadedById,
+    isCurrent: options?.isCurrent ?? true,
+    supersedesDocumentId: options?.supersedesDocumentId ?? null,
+    uploadedAt: new Date(),
+  };
+}
 
 export class ThesisRepository {
   async getStudentByUserId(userId: string) {
@@ -334,13 +367,23 @@ export class ThesisRepository {
     });
   }
 
+  /** DL-6: proposed titles for a thesis record (resubmission eligibility). */
+  async getProposedTitles(thesisId: string) {
+    return prisma.thesisTitle.findMany({
+      where: { thesisId },
+      select: { id: true },
+    });
+  }
+
   async createTitleDefense(
     studentId: string,
     assignmentId: string | null,
     titles: string[],
-    conceptPaperPath: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: {
+      conceptPaper: ManagedUploadInput;
+      cor: ManagedUploadInput;
+      receipt: ManagedUploadInput;
+    },
   ) {
     return prisma.$transaction(async (tx) => {
       // 1. Create the base Thesis Record linked to the Adviser Assignment
@@ -360,30 +403,13 @@ export class ThesisRepository {
         });
       }
 
-      // 3. Stage-scoped Title evidence (§16) — package + COR + fee proof
+      // 3. Stage-scoped Title evidence (§16) — package + COR + fee proof,
+      //    persisting the full DL-1/DL-2 managed metadata + currentness.
       await tx.thesisDocument.createMany({
         data: [
-          {
-            thesisId: thesis.id,
-            docType: "TITLE_PROPOSAL",
-            defenseStage: "TITLE",
-            filePath: conceptPaperPath,
-            uploadedAt: new Date(),
-          },
-          {
-            thesisId: thesis.id,
-            docType: "COR",
-            defenseStage: "TITLE",
-            filePath: corPath,
-            uploadedAt: new Date(),
-          },
-          {
-            thesisId: thesis.id,
-            docType: "RECEIPT",
-            defenseStage: "TITLE",
-            filePath: receiptPath,
-            uploadedAt: new Date(),
-          },
+          toDocumentData(thesis.id, "TITLE", "TITLE_PROPOSAL", evidence.conceptPaper),
+          toDocumentData(thesis.id, "TITLE", "COR", evidence.cor),
+          toDocumentData(thesis.id, "TITLE", "RECEIPT", evidence.receipt),
         ],
       });
 
@@ -393,8 +419,7 @@ export class ThesisRepository {
 
   async updateThesisToProposal(
     thesisId: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     return prisma.$transaction(async (tx) => {
       // New stage application starts a fresh review cycle; clear prior outcome
@@ -406,23 +431,10 @@ export class ThesisRepository {
 
       // CP3-FIX1: do NOT create another PROPOSAL_CHAPTERS — the Adviser-certified
       // manuscript (AdviserCertification.reviewedDocumentId) is authoritative.
-      // Only persist application evidence submitted at this step.
       await tx.thesisDocument.createMany({
         data: [
-          {
-            thesisId,
-            docType: "COR",
-            defenseStage: "PROPOSAL",
-            filePath: corPath,
-            uploadedAt: new Date(),
-          },
-          {
-            thesisId,
-            docType: "RECEIPT",
-            defenseStage: "PROPOSAL",
-            filePath: receiptPath,
-            uploadedAt: new Date(),
-          },
+          toDocumentData(thesisId, "PROPOSAL", "COR", evidence.cor),
+          toDocumentData(thesisId, "PROPOSAL", "RECEIPT", evidence.receipt),
         ],
       });
 
@@ -432,8 +444,7 @@ export class ThesisRepository {
 
   async updateThesisToFinal(
     thesisId: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     return prisma.$transaction(async (tx) => {
       const thesis = await tx.thesisRecord.update({
@@ -444,24 +455,129 @@ export class ThesisRepository {
       // CP4: do NOT create another FINAL_MANUSCRIPT — certified manuscript is authoritative.
       await tx.thesisDocument.createMany({
         data: [
-          {
-            thesisId,
-            docType: "COR",
-            defenseStage: "FINAL",
-            filePath: corPath,
-            uploadedAt: new Date(),
-          },
-          {
-            thesisId,
-            docType: "RECEIPT",
-            defenseStage: "FINAL",
-            filePath: receiptPath,
-            uploadedAt: new Date(),
-          },
+          toDocumentData(thesisId, "FINAL", "COR", evidence.cor),
+          toDocumentData(thesisId, "FINAL", "RECEIPT", evidence.receipt),
         ],
       });
 
       return thesis;
+    });
+  }
+
+  /**
+   * DL-6: append-only supporting-evidence replacement for a REJECTED
+   * application. Locks the thesis row to serialize competing resubmissions,
+   * conditionally transitions REJECTED -> PENDING (affected-row checked),
+   * supersedes the current row per slot (never overwrites/deletes), inserts new
+   * current versions, re-checks the required current evidence set, and writes
+   * the audit entry in the same transaction.
+   */
+  async resubmitWithEvidence(params: {
+    thesisId: string;
+    studentId: string;
+    stage: DefenseEvidenceStage;
+    replacements: Array<{
+      docType: DefenseEvidenceDocType;
+      upload: ManagedUploadInput;
+    }>;
+    audit: { actorId: string; description: string };
+  }) {
+    const { thesisId, studentId, stage, replacements, audit } = params;
+
+    return prisma.$transaction(async (tx) => {
+      // Serialize competing resubmissions for this application.
+      await tx.$queryRaw`SELECT thesis_id FROM thesis_records WHERE thesis_id = ${thesisId} FOR UPDATE`;
+
+      // Claim the exact REJECTED application for this stage.
+      const claimed = await tx.thesisRecord.updateMany({
+        where: { id: thesisId, studentId, status: "REJECTED", stage },
+        data: { status: "PENDING", rejectionReason: null },
+      });
+      if (claimed.count !== 1) {
+        throw new AppError(
+          "Only a rejected application for this stage can be resubmitted.",
+          409,
+        );
+      }
+
+      const createdIds: string[] = [];
+      const supersededIds: string[] = [];
+
+      for (const { docType, upload } of replacements) {
+        const currentRows = await tx.thesisDocument.findMany({
+          where: { thesisId, defenseStage: stage, docType, isCurrent: true },
+          select: { id: true },
+        });
+        // Ambiguous legacy current rows: fail closed rather than guess.
+        if (currentRows.length > 1) {
+          throw new AppError(
+            "Multiple current evidence rows found for this slot; refusing to choose an authoritative version.",
+            409,
+          );
+        }
+        const supersededId = currentRows[0]?.id ?? null;
+        if (supersededId) {
+          await tx.thesisDocument.updateMany({
+            where: { id: supersededId, isCurrent: true },
+            data: { isCurrent: false },
+          });
+          supersededIds.push(supersededId);
+        }
+
+        const created = await tx.thesisDocument.create({
+          data: toDocumentData(thesisId, stage, docType, upload, {
+            isCurrent: true,
+            supersedesDocumentId: supersededId,
+          }),
+          select: { id: true },
+        });
+        createdIds.push(created.id);
+      }
+
+      // Re-check the final effective evidence set after replacements.
+      const currentDocs = await tx.thesisDocument.findMany({
+        where: { thesisId, defenseStage: stage, isCurrent: true },
+        select: { docType: true },
+      });
+      const missing = missingRequiredEvidence(
+        stage,
+        currentDocs.map((d) => d.docType),
+      );
+      if (missing.length > 0) {
+        throw new AppError(
+          `Missing current supporting evidence: ${missing.join(", ")}.`,
+          400,
+        );
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId: audit.actorId,
+          actionType: "DEFENSE_RESUBMIT",
+          targetTable: "thesis_records",
+          targetId: thesisId,
+          description: audit.description,
+          newValue: JSON.stringify({ createdIds, supersededIds }),
+        },
+      });
+
+      return { createdIds, supersededIds };
+    });
+  }
+
+  /** Current stage-bound supporting evidence for an application. */
+  async getCurrentEvidence(thesisId: string, stage: DefenseEvidenceStage) {
+    return prisma.thesisDocument.findMany({
+      where: { thesisId, defenseStage: stage, isCurrent: true },
+      orderBy: { uploadedAt: "asc" },
+    });
+  }
+
+  /** Full supporting-evidence history for a stage (current + superseded). */
+  async getEvidenceHistory(thesisId: string, stage: DefenseEvidenceStage) {
+    return prisma.thesisDocument.findMany({
+      where: { thesisId, defenseStage: stage },
+      orderBy: [{ docType: "asc" }, { uploadedAt: "desc" }],
     });
   }
 

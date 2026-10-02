@@ -27,11 +27,21 @@ type AppDocRow = {
   filePath: string;
   defenseStage?: string | null;
   thesisId?: string;
+  isCurrent?: boolean | null;
+};
+
+/** Safe Admin/read-model document summary (no raw file paths). */
+export type ApplicationDocumentDto = {
+  id: string;
+  docType: string;
+  isCurrent: boolean;
 };
 
 /**
  * CP3-FIX2: Proposal current application documents use the certified
  * manuscript (ISSUED reviewedDocumentId) only — never all historical revisions.
+ * DL-6: only current (isCurrent !== false) supporting evidence is returned;
+ * superseded versions are history and are not exposed here.
  */
 function resolveApplicationDocuments(row: {
   id: string;
@@ -42,11 +52,12 @@ function resolveApplicationDocuments(row: {
     defenseStage: string;
     reviewedDocumentId: string | null;
   }>;
-}): AppDocRow[] {
+}): ApplicationDocumentDto[] {
   const scoped = row.thesisDocuments.filter(
     (d) =>
+      d.isCurrent !== false &&
       String(d.defenseStage || "").toUpperCase() ===
-      String(row.stage || "").toUpperCase(),
+        String(row.stage || "").toUpperCase(),
   );
   const stageKey = String(row.stage).toUpperCase();
   const certs = row.adviserCertifications ?? [];
@@ -56,25 +67,25 @@ function resolveApplicationDocuments(row: {
     docType: d.docType,
     defenseStage: d.defenseStage ?? null,
     filePath: d.filePath,
+    isCurrent: d.isCurrent ?? true,
   }));
+
+  let resolved = mapped;
   if (stageKey === "PROPOSAL") {
     const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE") ?? null;
-    return resolveCurrentProposalApplicationDocuments(
-      mapped,
-      cert,
-      row.id,
-    ) as AppDocRow[];
-  }
-  // CP4: Final current application uses certified Final manuscript only.
-  if (stageKey === "FINAL") {
+    resolved = resolveCurrentProposalApplicationDocuments(mapped, cert, row.id);
+  } else if (stageKey === "FINAL") {
+    // CP4: Final current application uses certified Final manuscript only.
     const cert = certs.find((c) => c.defenseStage === "FINAL_DEFENSE") ?? null;
-    return resolveCurrentFinalApplicationDocuments(
-      mapped,
-      cert,
-      row.id,
-    ) as AppDocRow[];
+    resolved = resolveCurrentFinalApplicationDocuments(mapped, cert, row.id);
   }
-  return scoped;
+
+  // Privacy: expose only safe identifiers, never raw file paths.
+  return resolved.map((d) => ({
+    id: d.id,
+    docType: d.docType,
+    isCurrent: (d as { isCurrent?: boolean }).isCurrent ?? true,
+  }));
 }
 
 export function stageToDefenseType(stage: string): string {
@@ -182,6 +193,7 @@ function applicationInclude() {
         docType: true,
         filePath: true,
         defenseStage: true,
+        isCurrent: true,
       },
     },
     adviserCertifications: {
@@ -251,6 +263,7 @@ function mapApplicationRow(row: {
     filePath: string;
     defenseStage?: string | null;
     thesisId?: string;
+    isCurrent?: boolean | null;
   }>;
   adviserCertifications?: Array<{
     status: string;
@@ -460,6 +473,7 @@ export class DefenseApplicationsRepository {
                 docType: true,
                 filePath: true,
                 defenseStage: true,
+                isCurrent: true,
               },
             },
             adviserCertifications: {

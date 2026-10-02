@@ -8,12 +8,14 @@ import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } f
 
 export type { EligibilitySnapshot };
 
-type DocRow = { docType: string; defenseStage: string | null };
+type DocRow = { docType: string; defenseStage: string | null; isCurrent?: boolean | null };
 
 /**
  * Stage-scoped evidence (source of truth §16).
  * A file only satisfies the stage it belongs to. Legacy rows with null stage
  * count only for the thesis record's current stage (never silently for later stages).
+ * DL-6: a superseded (isCurrent === false) supporting-evidence row no longer
+ * satisfies the requirement. null/undefined is treated as current for legacy rows.
  */
 export function hasStageDoc(
   docs: DocRow[],
@@ -24,6 +26,7 @@ export function hasStageDoc(
   return docs.some(
     (d) =>
       d.docType === docType &&
+      d.isCurrent !== false &&
       (d.defenseStage === stage ||
         (d.defenseStage == null && stage === currentStage)),
   );
@@ -114,7 +117,7 @@ export class DefenseEligibilityRepository {
         where: { id: thesisId },
         include: {
           thesisDocuments: {
-            select: { docType: true, defenseStage: true },
+            select: { docType: true, defenseStage: true, isCurrent: true },
           },
           thesisTitles: { select: { id: true, isSelected: true } },
         },

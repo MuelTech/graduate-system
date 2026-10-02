@@ -9,6 +9,12 @@ import { DefenseCommitteePolicy } from './defense-committee.policy';
 import { DefenseConclusionService } from './defense-conclusion.service';
 import { mapProgramType } from '../interfaces/defense-committee.interfaces';
 import { ApplyTitleDefenseInput } from '../interfaces/thesis.interfaces';
+import type { ManagedUploadInput } from '../storage/managed-upload';
+import {
+  isAllowedEvidenceSlot,
+  type DefenseEvidenceDocType,
+  type DefenseEvidenceStage,
+} from './defense-evidence.rules';
 import type {
   DefenseTypeName,
   MissingRequirement,
@@ -220,9 +226,24 @@ export class ThesisService {
     });
   }
 
-  async resubmitApplication(userId: string, thesisId: string) {
+  /**
+   * DL-6: canonical supporting-evidence correction path for a REJECTED
+   * application. Zero replacement files are allowed when the existing current
+   * evidence is complete; otherwise only the permitted stage slots may be
+   * replaced. Old versions are retained as history.
+   */
+  async resubmitApplication(
+    userId: string,
+    thesisId: string,
+    replacements: {
+      conceptPaper?: ManagedUploadInput;
+      cor?: ManagedUploadInput;
+      receipt?: ManagedUploadInput;
+    } = {},
+  ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
+
     const thesis = await this.thesisRepo.getThesisById(thesisId);
     if (!thesis || thesis.studentId !== student.id) {
       throw new AppError('Application not found.', 404);
@@ -230,15 +251,144 @@ export class ThesisService {
     if (thesis.status !== 'REJECTED') {
       throw new AppError('Only rejected applications can be resubmitted.', 400);
     }
-    return this.thesisRepo.resubmitApplication(thesisId);
+
+    const stage = thesis.stage as DefenseEvidenceStage;
+
+    // Map replacement fields to stage-scoped slots; reject wrong-stage evidence.
+    const requested: Array<{ docType: DefenseEvidenceDocType; upload: ManagedUploadInput }> = [];
+    const pushSlot = (field: string, docType: DefenseEvidenceDocType, upload?: ManagedUploadInput) => {
+      if (!upload) return;
+      if (!isAllowedEvidenceSlot(stage, docType)) {
+        throw new AppError(
+          `Evidence "${field}" does not belong to the ${stage} application stage.`,
+          400,
+        );
+      }
+      requested.push({ docType, upload });
+    };
+    pushSlot('conceptPaper', 'TITLE_PROPOSAL', replacements.conceptPaper);
+    pushSlot('cor', 'COR', replacements.cor);
+    pushSlot('receipt', 'RECEIPT', replacements.receipt);
+
+    // Re-check stage eligibility (do not assume prior eligibility persists).
+    await this.assertResubmitEligibility(student.id, thesis, stage, replacements);
+
+    const result = await this.thesisRepo.resubmitWithEvidence({
+      thesisId,
+      studentId: student.id,
+      stage,
+      replacements: requested,
+      audit: {
+        actorId: userId,
+        description: `Defense ${stage} application resubmitted with ${
+          requested.length
+        } replacement document(s)`,
+      },
+    });
+
+    return { ...result, status: 'PENDING' as const };
+  }
+
+  private async assertResubmitEligibility(
+    studentId: string,
+    thesis: { id: string; stage: string },
+    stage: DefenseEvidenceStage,
+    replacements: {
+      conceptPaper?: ManagedUploadInput;
+      cor?: ManagedUploadInput;
+      receipt?: ManagedUploadInput;
+    },
+  ): Promise<void> {
+    const snap = await this.eligibilityRepo.loadForStudent(studentId);
+    const current = await this.thesisRepo.getCurrentEvidence(thesis.id, stage);
+    const currentTypes = new Set(current.map((d) => d.docType));
+    if (replacements.conceptPaper && isAllowedEvidenceSlot(stage, 'TITLE_PROPOSAL')) {
+      currentTypes.add('TITLE_PROPOSAL');
+    }
+    if (replacements.cor) currentTypes.add('COR');
+    if (replacements.receipt) currentTypes.add('RECEIPT');
+    const has = (t: DefenseEvidenceDocType) => currentTypes.has(t);
+
+    if (stage === 'TITLE') {
+      const titles = await this.thesisRepo.getProposedTitles(thesis.id);
+      this.eligibility.assertEligible(
+        this.eligibility.evaluateApplyTitle({
+          studentExists: true,
+          compExamPassed: snap.compExamPassed,
+          compExamDismissed: snap.compExamDismissed,
+          // Same thesis record — must not block itself.
+          hasActiveThesisBlocking: false,
+          titleCountFromRequest: titles.length,
+          hasConceptPaper: has('TITLE_PROPOSAL'),
+          hasCor: has('COR'),
+          hasReceipt: has('RECEIPT'),
+        }),
+      );
+      return;
+    }
+
+    if (stage === 'PROPOSAL') {
+      this.eligibility.assertEligible(
+        this.eligibility.evaluateApplyProposal(snap, {
+          manuscript: snap.evidence.proposalChapters,
+          cor: has('COR'),
+          receipt: has('RECEIPT'),
+        }),
+      );
+      return;
+    }
+
+    this.eligibility.assertEligible(
+      this.eligibility.evaluateApplyFinal(snap, {
+        manuscript: snap.evidence.finalManuscript,
+        cor: has('COR'),
+        receipt: has('RECEIPT'),
+      }),
+    );
+  }
+
+  /**
+   * DL-6: current application + stage evidence for the authenticated Student.
+   * Returns a safe DTO (no raw paths/storage keys), including history so the
+   * rejected-correction UI can show current evidence and prior versions.
+   */
+  async getMyCurrentApplication(userId: string) {
+    const student = await this.thesisRepo.getStudentByUserId(userId);
+    if (!student) throw new AppError('Student profile not found.', 404);
+
+    const thesis = await this.thesisRepo.getActiveThesis(student.id);
+    if (!thesis) return null;
+
+    const stage = thesis.stage as DefenseEvidenceStage;
+    const documents = await this.thesisRepo.getEvidenceHistory(thesis.id, stage);
+
+    return {
+      thesisId: thesis.id,
+      stage,
+      status: thesis.status,
+      rejectionReason: thesis.rejectionReason ?? null,
+      evidence: documents.map((d) => ({
+        id: d.id,
+        docType: d.docType,
+        defenseStage: d.defenseStage,
+        originalFilename: d.originalFilename,
+        verifiedMimeType: d.verifiedMimeType,
+        sizeBytes: d.sizeBytes,
+        uploadedAt: d.uploadedAt,
+        isCurrent: d.isCurrent,
+        supersedesDocumentId: d.supersedesDocumentId,
+      })),
+    };
   }
 
   async applyTitleDefense(
     userId: string,
     data: ApplyTitleDefenseInput,
-    conceptPaperPath: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: {
+      conceptPaper: ManagedUploadInput;
+      cor: ManagedUploadInput;
+      receipt: ManagedUploadInput;
+    },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     const snap = student
@@ -257,9 +407,9 @@ export class ThesisService {
       hasActiveThesisBlocking:
         !!existingThesis && existingThesis.status !== 'FAILED',
       titleCountFromRequest: titles.filter((t) => t && t.trim()).length,
-      hasConceptPaper: !!conceptPaperPath,
-      hasCor: !!corPath,
-      hasReceipt: !!receiptPath,
+      hasConceptPaper: !!evidence.conceptPaper.filePath,
+      hasCor: !!evidence.cor.filePath,
+      hasReceipt: !!evidence.receipt.filePath,
     };
 
     this.eligibility.assertEligible(this.eligibility.evaluateApplyTitle(input));
@@ -276,27 +426,24 @@ export class ThesisService {
       student.id,
       adviserAssignment?.id ?? null,
       titles,
-      conceptPaperPath,
-      corPath,
-      receiptPath,
+      evidence,
     );
   }
 
   async applyProposalDefense(
     userId: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
 
     const snap = await this.eligibilityRepo.loadForStudent(student.id);
     // Certified Proposal manuscript is system-owned (reviewedDocumentId).
-    // Student only supplies COR + fee proof at final application time.
+    // Student only supplies COR + fee proof at application time.
     const result = this.eligibility.evaluateApplyProposal(snap, {
       manuscript: snap.evidence.proposalChapters,
-      cor: !!corPath,
-      receipt: !!receiptPath,
+      cor: !!evidence.cor.filePath,
+      receipt: !!evidence.receipt.filePath,
     });
     this.eligibility.assertEligible(result);
 
@@ -308,13 +455,12 @@ export class ThesisService {
       );
     }
 
-    return this.thesisRepo.updateThesisToProposal(thesis.id, corPath, receiptPath);
+    return this.thesisRepo.updateThesisToProposal(thesis.id, evidence);
   }
 
   async applyFinalDefense(
     userId: string,
-    corPath: string,
-    receiptPath: string,
+    evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
     if (!student) throw new AppError('Student profile not found.', 404);
@@ -323,15 +469,15 @@ export class ThesisService {
     // CP4: certified Final manuscript is system-owned (reviewedDocumentId).
     const result = this.eligibility.evaluateApplyFinal(snap, {
       manuscript: snap.evidence.finalManuscript,
-      cor: !!corPath,
-      receipt: !!receiptPath,
+      cor: !!evidence.cor.filePath,
+      receipt: !!evidence.receipt.filePath,
     });
     this.eligibility.assertEligible(result);
 
     const thesis = await this.thesisRepo.getActiveThesis(student.id);
     if (!thesis) throw new AppError('No active Thesis Record found.', 400);
 
-    return this.thesisRepo.updateThesisToFinal(thesis.id, corPath, receiptPath);
+    return this.thesisRepo.updateThesisToFinal(thesis.id, evidence);
   }
 
 

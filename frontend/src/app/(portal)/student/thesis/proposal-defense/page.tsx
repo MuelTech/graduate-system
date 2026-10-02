@@ -9,6 +9,7 @@ import {
   journeyStepFor,
 } from "@/lib/student-thesis-journey";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
+import { RejectedApplicationCorrection } from "@/components/student/rejected-application-correction";
 import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
@@ -306,17 +307,7 @@ export default function ProposalDefensePage() {
             Proposal Defense
           </h2>
         </div>
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Application returned</AlertTitle>
-          <AlertDescription>
-            {proposalStep?.detail ||
-              "Your Proposal Defense application was rejected."}{" "}
-            Update your requirements and resubmit when instructed. A new
-            application form is not shown here to avoid creating a duplicate
-            request.
-          </AlertDescription>
-        </Alert>
+        <RejectedApplicationCorrection stage="PROPOSAL" reason={proposalStep?.detail} />
       </div>
     );
   }

@@ -585,12 +585,24 @@ model ThesisDocument {
   checksumAlgorithm  String?                @map("checksum_algorithm")
   uploadedById       String?                @map("uploaded_by")
   copyNumber         Int?                   @map("copy_number")
+  /**
+   * DL-6: explicit supporting-evidence currentness/version chain.
+   * Scope is (thesisId, defenseStage, docType). Legacy rows default current.
+   * Adviser-manuscript authority remains AdviserCertification.reviewedDocumentId
+   * and is not governed by this flag.
+   */
+  isCurrent          Boolean                @default(true) @map("is_current")
+  supersedesDocumentId String?              @map("supersedes_document_id")
   uploadedAt         DateTime               @map("uploaded_at")
   thesis             ThesisRecord           @relation(fields: [thesisId], references: [id])
   adviserCertReviews AdviserCertification[] @relation("AdviserCertReviewedDoc")
+  supersedes         ThesisDocument?        @relation("ThesisDocumentSupersession", fields: [supersedesDocumentId], references: [id])
+  supersededBy       ThesisDocument[]       @relation("ThesisDocumentSupersession")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
   @@index([storageKey], map: "thesis_documents_storage_key_idx")
+  @@index([supersedesDocumentId])
+  @@index([thesisId, defenseStage, docType, isCurrent], map: "thesis_documents_slot_current_idx")
   @@map("thesis_documents")
 }
 

@@ -244,11 +244,25 @@ router.put(
   thesisController.rejectApplication,
 );
 
-// STUDENT: Resubmit a rejected application (REJECTED -> PENDING)
+// STUDENT: current application + stage evidence (safe DTO) for correction UI.
+router.get(
+  "/defense/current",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getMyCurrentApplication,
+);
+
+// STUDENT: Resubmit a rejected application with optional supporting-evidence
+// replacements (REJECTED -> PENDING). Unchanged evidence is retained.
 router.put(
   "/defense/:id/resubmit",
   authenticateJWT,
   requireRole(["STUDENT"]),
+  secureUpload("defense-evidence").fields([
+    { name: "conceptPaper", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+    { name: "receipt", maxCount: 1 },
+  ]),
   thesisController.resubmitApplication,
 );
 
