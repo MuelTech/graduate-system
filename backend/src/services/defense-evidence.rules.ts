@@ -38,3 +38,30 @@ export function missingRequiredEvidence(
   const present = new Set(currentDocTypes);
   return requiredEvidenceTypes(stage).filter((type) => !present.has(type));
 }
+
+export interface EvidenceSlotIssue {
+  docType: DefenseEvidenceDocType;
+  kind: "MISSING" | "AMBIGUOUS";
+  count: number;
+}
+
+/**
+ * DL-6: every required stage slot must have EXACTLY ONE current row.
+ * 0 → MISSING, 1 → valid, >1 → AMBIGUOUS. Non-required document types are
+ * ignored and never determine supporting-evidence authority.
+ */
+export function validateCurrentEvidenceCounts(
+  stage: DefenseEvidenceStage,
+  counts: Record<string, number>,
+): EvidenceSlotIssue[] {
+  const issues: EvidenceSlotIssue[] = [];
+  for (const docType of requiredEvidenceTypes(stage)) {
+    const count = counts[docType] ?? 0;
+    if (count === 0) {
+      issues.push({ docType, kind: "MISSING", count });
+    } else if (count > 1) {
+      issues.push({ docType, kind: "AMBIGUOUS", count });
+    }
+  }
+  return issues;
+}

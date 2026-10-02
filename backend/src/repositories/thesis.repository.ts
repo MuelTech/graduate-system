@@ -4,7 +4,7 @@ import { DefenseCommitteePolicy } from "../services/defense-committee.policy";
 import { AppError } from "../utils/AppError";
 import type { ManagedUploadInput } from "../storage/managed-upload";
 import {
-  missingRequiredEvidence,
+  validateCurrentEvidenceCounts,
   type DefenseEvidenceDocType,
   type DefenseEvidenceStage,
 } from "../services/defense-evidence.rules";
@@ -386,6 +386,22 @@ export class ThesisRepository {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      // DL-6 FIX1: serialize concurrent initial Title applications per Student.
+      await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${studentId} FOR UPDATE`;
+
+      // After acquiring the lock, re-check the active/blocking-thesis rule.
+      const existing = await tx.thesisRecord.findFirst({
+        where: { studentId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { id: true, status: true },
+      });
+      if (existing && existing.status !== "FAILED") {
+        throw new AppError(
+          "You already have an active Thesis Record in progress.",
+          409,
+        );
+      }
+
       // 1. Create the base Thesis Record linked to the Adviser Assignment
       const thesis = await tx.thesisRecord.create({
         data: {
@@ -422,6 +438,34 @@ export class ThesisRepository {
     evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     return prisma.$transaction(async (tx) => {
+      // DL-6 FIX1: serialize and re-check the exact pre-Proposal stage.
+      await tx.$queryRaw`SELECT thesis_id FROM thesis_records WHERE thesis_id = ${thesisId} FOR UPDATE`;
+      const current = await tx.thesisRecord.findUnique({
+        where: { id: thesisId },
+        select: { stage: true },
+      });
+      if (!current || current.stage !== "TITLE") {
+        throw new AppError(
+          "Proposal application has already been started for this Thesis Record.",
+          409,
+        );
+      }
+      const existing = await tx.thesisDocument.findMany({
+        where: {
+          thesisId,
+          defenseStage: "PROPOSAL",
+          docType: { in: ["COR", "RECEIPT"] },
+          isCurrent: true,
+        },
+        select: { id: true },
+      });
+      if (existing.length > 0) {
+        throw new AppError(
+          "Proposal supporting evidence already exists for this Thesis Record.",
+          409,
+        );
+      }
+
       // New stage application starts a fresh review cycle; clear prior outcome
       // so Title PASSED cannot be mistaken for Proposal PASSED.
       const thesis = await tx.thesisRecord.update({
@@ -447,6 +491,34 @@ export class ThesisRepository {
     evidence: { cor: ManagedUploadInput; receipt: ManagedUploadInput },
   ) {
     return prisma.$transaction(async (tx) => {
+      // DL-6 FIX1: serialize and re-check the exact pre-Final stage.
+      await tx.$queryRaw`SELECT thesis_id FROM thesis_records WHERE thesis_id = ${thesisId} FOR UPDATE`;
+      const current = await tx.thesisRecord.findUnique({
+        where: { id: thesisId },
+        select: { stage: true },
+      });
+      if (!current || current.stage !== "PROPOSAL") {
+        throw new AppError(
+          "Final application has already been started for this Thesis Record.",
+          409,
+        );
+      }
+      const existing = await tx.thesisDocument.findMany({
+        where: {
+          thesisId,
+          defenseStage: "FINAL",
+          docType: { in: ["COR", "RECEIPT"] },
+          isCurrent: true,
+        },
+        select: { id: true },
+      });
+      if (existing.length > 0) {
+        throw new AppError(
+          "Final supporting evidence already exists for this Thesis Record.",
+          409,
+        );
+      }
+
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
         data: { stage: "FINAL", status: "PENDING", outcome: null },
@@ -488,12 +560,17 @@ export class ThesisRepository {
       // Serialize competing resubmissions for this application.
       await tx.$queryRaw`SELECT thesis_id FROM thesis_records WHERE thesis_id = ${thesisId} FOR UPDATE`;
 
-      // Claim the exact REJECTED application for this stage.
-      const claimed = await tx.thesisRecord.updateMany({
-        where: { id: thesisId, studentId, status: "REJECTED", stage },
-        data: { status: "PENDING", rejectionReason: null },
+      // Re-check the exact REJECTED application for this stage.
+      const current = await tx.thesisRecord.findUnique({
+        where: { id: thesisId },
+        select: { studentId: true, status: true, stage: true },
       });
-      if (claimed.count !== 1) {
+      if (
+        !current ||
+        current.studentId !== studentId ||
+        current.status !== "REJECTED" ||
+        current.stage !== stage
+      ) {
         throw new AppError(
           "Only a rejected application for this stage can be resubmitted.",
           409,
@@ -508,7 +585,7 @@ export class ThesisRepository {
           where: { thesisId, defenseStage: stage, docType, isCurrent: true },
           select: { id: true },
         });
-        // Ambiguous legacy current rows: fail closed rather than guess.
+        // Ambiguous legacy current rows: fail closed rather than guess/repair.
         if (currentRows.length > 1) {
           throw new AppError(
             "Multiple current evidence rows found for this slot; refusing to choose an authoritative version.",
@@ -534,19 +611,44 @@ export class ThesisRepository {
         createdIds.push(created.id);
       }
 
-      // Re-check the final effective evidence set after replacements.
+      // Every required stage slot must have EXACTLY ONE current row.
       const currentDocs = await tx.thesisDocument.findMany({
         where: { thesisId, defenseStage: stage, isCurrent: true },
         select: { docType: true },
       });
-      const missing = missingRequiredEvidence(
-        stage,
-        currentDocs.map((d) => d.docType),
-      );
+      const counts: Record<string, number> = {};
+      for (const doc of currentDocs) {
+        counts[doc.docType] = (counts[doc.docType] ?? 0) + 1;
+      }
+      const issues = validateCurrentEvidenceCounts(stage, counts);
+      const ambiguous = issues.filter((i) => i.kind === "AMBIGUOUS");
+      if (ambiguous.length > 0) {
+        throw new AppError(
+          `Ambiguous current supporting evidence: ${ambiguous
+            .map((i) => `${i.docType} (${i.count})`)
+            .join(", ")}.`,
+          409,
+        );
+      }
+      const missing = issues.filter((i) => i.kind === "MISSING");
       if (missing.length > 0) {
         throw new AppError(
-          `Missing current supporting evidence: ${missing.join(", ")}.`,
+          `Missing current supporting evidence: ${missing
+            .map((i) => i.docType)
+            .join(", ")}.`,
           400,
+        );
+      }
+
+      // Finalize the transition only after the evidence shape is authoritative.
+      const claimed = await tx.thesisRecord.updateMany({
+        where: { id: thesisId, studentId, status: "REJECTED", stage },
+        data: { status: "PENDING", rejectionReason: null },
+      });
+      if (claimed.count !== 1) {
+        throw new AppError(
+          "Only a rejected application for this stage can be resubmitted.",
+          409,
         );
       }
 
