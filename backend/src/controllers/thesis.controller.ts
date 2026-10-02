@@ -8,6 +8,10 @@ import { DefenseWorkspaceService } from '../services/defense-workspace.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
+import {
+  cleanupRequestUploads,
+  commitRequestUploads,
+} from '../storage/request-uploads';
 
 function sendEligibilityError(res: Response, error: any): void {
   const missing = (error as { missing?: MissingRequirement[] }).missing;
@@ -152,8 +156,10 @@ export class ThesisController {
         files.cor[0].path,
         files.receipt[0].path
       );
+      commitRequestUploads(req);
       res.status(201).json({ message: 'Title Defense application submitted successfully', result });
     } catch (error: any) {
+      await cleanupRequestUploads(req);
       console.error("APPLY TITLE ERROR:", error);
       sendEligibilityError(res, error);
     }
@@ -176,8 +182,10 @@ export class ThesisController {
         cor.path,
         receipt.path,
       );
+      commitRequestUploads(req);
       res.status(200).json({ message: 'Proposal Defense application submitted successfully', result });
     } catch (error: any) {
+      await cleanupRequestUploads(req);
       sendEligibilityError(res, error);
     }
   };
@@ -199,8 +207,10 @@ export class ThesisController {
         cor.path,
         receipt.path,
       );
+      commitRequestUploads(req);
       res.status(200).json({ message: 'Final Defense application submitted successfully', result });
     } catch (error: any) {
+      await cleanupRequestUploads(req);
       sendEligibilityError(res, error);
     }
   };
@@ -929,8 +939,10 @@ export class ThesisController {
         userId,
         file,
       );
+      commitRequestUploads(req);
       res.status(200).json(result);
     } catch (error: any) {
+      await cleanupRequestUploads(req);
       sendEligibilityError(res, error);
     }
   };
@@ -1069,8 +1081,11 @@ export class ThesisController {
         res.status(400).json({ error: "Final manuscript file is required." });
         return;
       }
-      res.status(200).json(await this.finalAdviserReview.submitManuscriptForReview(userId, file));
+      const result = await this.finalAdviserReview.submitManuscriptForReview(userId, file);
+      commitRequestUploads(req);
+      res.status(200).json(result);
     } catch (error: any) {
+      await cleanupRequestUploads(req);
       sendEligibilityError(res, error);
     }
   };

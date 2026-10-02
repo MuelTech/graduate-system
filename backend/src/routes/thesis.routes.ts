@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
-import { upload } from "../middlewares/upload.middleware";
+import { secureUpload } from "../middlewares/upload.middleware";
 
 const router = Router();
 const thesisController = new ThesisController();
@@ -11,7 +11,7 @@ router.post(
   "/defense/title",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.fields([
+  secureUpload('defense-evidence').fields([
     { name: "conceptPaper", maxCount: 1 },
     { name: "cor", maxCount: 1 },
     { name: "receipt", maxCount: 1 },
@@ -25,7 +25,7 @@ router.post(
   "/defense/proposal",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.fields([
+  secureUpload('defense-evidence').fields([
     { name: "cor", maxCount: 1 },
     { name: "receipt", maxCount: 1 },
   ]),
@@ -37,7 +37,7 @@ router.post(
   "/defense/final",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.fields([
+  secureUpload('defense-evidence').fields([
     { name: "cor", maxCount: 1 },
     { name: "receipt", maxCount: 1 },
   ]),
@@ -57,7 +57,7 @@ router.post(
   "/final-adviser-review/manuscript",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.single("document"),
+  secureUpload("final-manuscript").single("document"),
   thesisController.submitFinalManuscriptForReview,
 );
 
@@ -112,7 +112,7 @@ router.post(
   "/proposal-adviser-review/manuscript",
   authenticateJWT,
   requireRole(["STUDENT"]),
-  upload.single("document"),
+  secureUpload("proposal-manuscript").single("document"),
   thesisController.submitProposalManuscriptForReview,
 );
 

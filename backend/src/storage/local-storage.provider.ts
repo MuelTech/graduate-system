@@ -185,4 +185,69 @@ export class LocalStorageProvider implements StorageProvider {
     await this.assertRealContained(real);
     await fsp.unlink(real);
   }
+
+  // ── DL-2: private temporary/quarantine lifecycle ──────────────────────
+
+  /** Absolute private temporary directory for in-flight uploads. */
+  temporaryRoot(): string {
+    return path.join(this.rootPath, ".tmp");
+  }
+
+  private assertWithinTemp(tempAbsolutePath: string): void {
+    const relative = path.relative(this.temporaryRoot(), tempAbsolutePath);
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new AppError("Access denied", 403);
+    }
+  }
+
+  private async assertRealWithinTemp(realTempPath: string): Promise<void> {
+    const realTempRoot = path.join(await this.realRoot(), ".tmp");
+    const relative = path.relative(realTempRoot, realTempPath);
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new AppError("Access denied", 403);
+    }
+  }
+
+  /**
+   * Moves a validated temporary object to a permanent managed storage key.
+   * Both the temporary source and the permanent destination are contained;
+   * the caller is responsible for having validated content beforehand.
+   */
+  async promoteTemporaryFile(
+    tempAbsolutePath: string,
+    storageKey: string,
+  ): Promise<string> {
+    const normalized = normalizeStorageKey(storageKey);
+    const permanentCandidate = this.keyCandidate(normalized);
+    this.assertLexicallyContained(permanentCandidate);
+    this.assertWithinTemp(tempAbsolutePath);
+
+    let realTemp: string;
+    try {
+      realTemp = await fsp.realpath(tempAbsolutePath);
+    } catch {
+      throw new AppError("Temporary upload not found", 404);
+    }
+    await this.assertRealWithinTemp(realTemp);
+
+    await fsp.mkdir(path.dirname(permanentCandidate), { recursive: true });
+    await fsp.rename(realTemp, permanentCandidate);
+    return permanentCandidate;
+  }
+
+  /** Best-effort temporary cleanup; idempotent for already-missing objects. */
+  async discardTemporaryFile(tempAbsolutePath: string): Promise<void> {
+    this.assertWithinTemp(tempAbsolutePath);
+    try {
+      await fsp.unlink(tempAbsolutePath);
+    } catch {
+      // already removed
+    }
+  }
+
+  /** Removes a per-request temporary directory recursively (idempotent). */
+  async removeTemporaryDir(dirAbsolutePath: string): Promise<void> {
+    this.assertWithinTemp(dirAbsolutePath);
+    await fsp.rm(dirAbsolutePath, { recursive: true, force: true });
+  }
 }

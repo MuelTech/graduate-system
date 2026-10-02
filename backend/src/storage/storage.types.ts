@@ -23,4 +23,15 @@ export interface StorageProvider {
   exists(storageKey: string): Promise<boolean>;
   stat(storageKey: string): Promise<StorageObjectStat | null>;
   delete(storageKey: string): Promise<void>;
+  /** DL-2: absolute private temporary/quarantine directory under the root. */
+  temporaryRoot(): string;
+  /** DL-2: move a validated temporary object to a permanent managed key. */
+  promoteTemporaryFile(
+    tempAbsolutePath: string,
+    storageKey: string,
+  ): Promise<string>;
+  /** DL-2: best-effort removal of a temporary object (idempotent). */
+  discardTemporaryFile(tempAbsolutePath: string): Promise<void>;
+  /** DL-2: remove a per-request temporary directory recursively. */
+  removeTemporaryDir(dirAbsolutePath: string): Promise<void>;
 }

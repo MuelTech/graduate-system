@@ -22,3 +22,11 @@ export {
   isValidStorageKey,
   normalizeStorageKey,
 } from "./storage-key";
+export {
+  DEFAULT_MAX_UPLOAD_BYTES,
+  UPLOAD_POLICIES,
+  getUploadPolicy,
+} from "./upload-policy";
+export type { UploadPolicy, UploadPolicyName } from "./upload-policy";
+export { CHECKSUM_ALGORITHM, UploadPipeline } from "./upload-pipeline";
+export type { PromotedUpload, ValidatedUpload } from "./upload-pipeline";

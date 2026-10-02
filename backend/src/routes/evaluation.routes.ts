@@ -2,17 +2,18 @@
 import { Router } from 'express';
 import { EvaluationController } from '../controllers/evaluation.controller';
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
-import { upload } from '../middlewares/upload.middleware';
+import { secureUpload } from '../middlewares/upload.middleware';
 
 const router = Router();
 const evalController = new EvaluationController();
 
-// STUDENT ONLY: Upload instrument (expecting a file field named 'instrument')
+// STUDENT ONLY: Upload instrument (expecting a file field named 'instrument').
+// DL-2: byte-validated, checksummed, and promoted via the secure upload pipeline.
 router.post(
   '/request', 
   authenticateJWT, 
   requireRole(['STUDENT']), 
-  upload.single('instrument'), 
+  secureUpload('evaluation-instrument').single('instrument'), 
   evalController.submitRequest
 );
 

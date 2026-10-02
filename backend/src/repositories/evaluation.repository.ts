@@ -1,7 +1,29 @@
 import prisma from '../config/database';
 
+/**
+ * DL-2: verified storage metadata for a migrated managed upload.
+ * The file has already been byte-validated and promoted by the secure upload
+ * middleware before the domain service persists this record.
+ */
+export interface EvaluationUploadInput {
+  filePath: string;
+  storageKey?: string | null;
+  storageProvider?: string | null;
+  originalFilename?: string | null;
+  verifiedMimeType?: string | null;
+  sizeBytes?: number | null;
+  checksum?: string | null;
+  checksumAlgorithm?: string | null;
+  uploadedById?: string | null;
+}
+
 export class EvaluationRepository {
-  async createRequest(thesisId: string, type: string | undefined, desc: string | undefined, filePath: string) {
+  async createRequest(
+    thesisId: string,
+    type: string | undefined,
+    desc: string | undefined,
+    upload: EvaluationUploadInput,
+  ) {
     return prisma.$transaction(async (tx) => {
       // 1. Create the Evaluation Request
       const request = await tx.expertEvaluationRequest.create({
@@ -13,12 +35,21 @@ export class EvaluationRepository {
         }
       });
 
-      // 2. Create the Document record so the Admin can download it
+      // 2. Create the Document record so the Admin can download it.
+      //    DL-2: persist managed storage identity + verified metadata.
       await tx.thesisDocument.create({
         data: {
           thesisId,
           docType: 'INSTRUMENTS',
-          filePath: filePath,
+          filePath: upload.filePath,
+          storageKey: upload.storageKey ?? null,
+          storageProvider: upload.storageProvider ?? null,
+          originalFilename: upload.originalFilename ?? null,
+          verifiedMimeType: upload.verifiedMimeType ?? null,
+          sizeBytes: upload.sizeBytes ?? null,
+          checksum: upload.checksum ?? null,
+          checksumAlgorithm: upload.checksumAlgorithm ?? null,
+          uploadedById: upload.uploadedById ?? null,
           uploadedAt: new Date()
         }
       });
