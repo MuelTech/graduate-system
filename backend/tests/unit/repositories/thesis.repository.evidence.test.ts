@@ -357,4 +357,37 @@ describe("ThesisRepository.resubmitWithEvidence", () => {
     });
     expect(result).toEqual({ createdIds: [], supersededIds: [] });
   });
+
+  it("DL-8: audit retains prior rejection reason + replacement chain, no storage internals", async () => {
+    tx().thesisDocument.findMany
+      .mockResolvedValueOnce([{ id: "cor-v1" }])
+      .mockResolvedValueOnce([
+        { docType: "TITLE_PROPOSAL" },
+        { docType: "COR" },
+        { docType: "RECEIPT" },
+      ]);
+    tx().thesisDocument.create.mockResolvedValue({ id: "cor-v2" });
+    const repo = new ThesisRepository();
+    await repo.resubmitWithEvidence({
+      thesisId: "thesis-1",
+      studentId: "student-1",
+      stage: "TITLE",
+      replacements: [{ docType: "COR", upload: upload("cor-v2") }],
+      audit: { actorId: "user-1", description: "resubmit" },
+      previousRejectionReason: "Upload a clearer COR",
+    });
+
+    const auditArg = tx().auditLog.create.mock.calls[0][0];
+    expect(auditArg.data.actionType).toBe("DEFENSE_RESUBMIT");
+    const payload = JSON.parse(auditArg.data.newValue);
+    expect(payload.stage).toBe("TITLE");
+    expect(payload.previousRejectionReason).toBe("Upload a clearer COR");
+    expect(payload.replacements).toEqual([
+      { docType: "COR", supersededDocumentId: "cor-v1", createdDocumentId: "cor-v2" },
+    ]);
+    const serialized = JSON.stringify(payload);
+    expect(serialized).not.toContain("storageKey");
+    expect(serialized).not.toContain("filePath");
+    expect(serialized).not.toContain("checksum");
+  });
 });

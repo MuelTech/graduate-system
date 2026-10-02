@@ -8,6 +8,7 @@ import {
   type DefenseEvidenceDocType,
   type DefenseEvidenceStage,
 } from "../services/defense-evidence.rules";
+import { DEFENSE_REVIEW_ACTIONS } from "../services/defense-review-events";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -553,8 +554,10 @@ export class ThesisRepository {
       upload: ManagedUploadInput;
     }>;
     audit: { actorId: string; description: string };
+    /** DL-8: prior rejection reason, retained in the resubmit audit event. */
+    previousRejectionReason?: string | null;
   }) {
-    const { thesisId, studentId, stage, replacements, audit } = params;
+    const { thesisId, studentId, stage, replacements, audit, previousRejectionReason } = params;
 
     return prisma.$transaction(async (tx) => {
       // Serialize competing resubmissions for this application.
@@ -579,6 +582,11 @@ export class ThesisRepository {
 
       const createdIds: string[] = [];
       const supersededIds: string[] = [];
+      const replacementDetail: Array<{
+        docType: string;
+        supersededDocumentId: string | null;
+        createdDocumentId: string;
+      }> = [];
 
       for (const { docType, upload } of replacements) {
         const currentRows = await tx.thesisDocument.findMany({
@@ -609,6 +617,11 @@ export class ThesisRepository {
           select: { id: true },
         });
         createdIds.push(created.id);
+        replacementDetail.push({
+          docType,
+          supersededDocumentId: supersededId,
+          createdDocumentId: created.id,
+        });
       }
 
       // Every required stage slot must have EXACTLY ONE current row.
@@ -655,11 +668,17 @@ export class ThesisRepository {
       await tx.auditLog.create({
         data: {
           actorId: audit.actorId,
-          actionType: "DEFENSE_RESUBMIT",
+          actionType: DEFENSE_REVIEW_ACTIONS.RESUBMIT,
           targetTable: "thesis_records",
           targetId: thesisId,
           description: audit.description,
-          newValue: JSON.stringify({ createdIds, supersededIds }),
+          newValue: JSON.stringify({
+            stage,
+            previousRejectionReason: previousRejectionReason ?? null,
+            replacements: replacementDetail,
+            createdIds,
+            supersededIds,
+          }),
         },
       });
 
@@ -733,6 +752,68 @@ export class ThesisRepository {
         rejectionReason:
           status === "REJECTED" ? options?.rejectionReason ?? null : null,
       },
+    });
+  }
+
+  /**
+   * DL-8: canonical Admin rejection writes status + reason and the durable
+   * review audit event in one transaction.
+   */
+  async rejectApplication(params: {
+    thesisId: string;
+    actorId: string | null;
+    reason: string;
+    stage: string;
+    fromStatus: string;
+  }) {
+    const { thesisId, actorId, reason, stage, fromStatus } = params;
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.thesisRecord.update({
+        where: { id: thesisId },
+        data: { status: "REJECTED", rejectionReason: reason },
+        select: { id: true, status: true, rejectionReason: true, stage: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId,
+          actionType: DEFENSE_REVIEW_ACTIONS.REJECT,
+          targetTable: "thesis_records",
+          targetId: thesisId,
+          oldValue: fromStatus,
+          newValue: JSON.stringify({ stage, reason }),
+          description: `Defense ${stage} application rejected: ${reason}`,
+        },
+      });
+      return updated;
+    });
+  }
+
+  /** DL-8: canonical Admin approval writes status + audit atomically. */
+  async approveApplication(params: {
+    thesisId: string;
+    actorId: string | null;
+    stage: string;
+    fromStatus: string;
+  }) {
+    const { thesisId, actorId, stage, fromStatus } = params;
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.thesisRecord.update({
+        where: { id: thesisId },
+        data: { status: "APPROVED", rejectionReason: null },
+        select: { id: true, status: true, rejectionReason: true, stage: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId,
+          actionType: DEFENSE_REVIEW_ACTIONS.APPROVE,
+          targetTable: "thesis_records",
+          targetId: thesisId,
+          oldValue: fromStatus,
+          newValue: JSON.stringify({ stage }),
+          description: `Defense ${stage} application approved.`,
+        },
+      });
+      return updated;
     });
   }
 

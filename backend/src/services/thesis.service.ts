@@ -217,12 +217,24 @@ export class ThesisService {
     return this.thesisRepo.getActivePanelistCandidates();
   }
 
-  async rejectApplication(thesisId: string, reason: string) {
+  async rejectApplication(
+    thesisId: string,
+    reason: string,
+    actorId: string | null = null,
+  ) {
     if (!reason || !reason.trim()) {
       throw new AppError('Rejection reason is required.', 400);
     }
-    return this.thesisRepo.updateThesisStatus(thesisId, 'REJECTED', {
-      rejectionReason: reason.trim(),
+    const thesis = await this.thesisRepo.getThesisById(thesisId);
+    if (!thesis) {
+      throw new AppError('Defense application not found.', 404);
+    }
+    return this.thesisRepo.rejectApplication({
+      thesisId,
+      actorId,
+      reason: reason.trim(),
+      stage: thesis.stage,
+      fromStatus: thesis.status,
     });
   }
 
@@ -284,6 +296,7 @@ export class ThesisService {
           requested.length
         } replacement document(s)`,
       },
+      previousRejectionReason: thesis.rejectionReason ?? null,
     });
 
     return { ...result, status: 'PENDING' as const };
@@ -551,7 +564,11 @@ export class ThesisService {
     );
   }
 
-  async updateDefenseStatus(thesisId: string, data: { status: string }) {
+  async updateDefenseStatus(
+    thesisId: string,
+    data: { status: string },
+    actorId: string | null = null,
+  ) {
     const status = String(data.status || '').toUpperCase();
     const thesis = await this.thesisRepo.getThesisById(thesisId);
     if (!thesis) {
@@ -580,6 +597,15 @@ export class ThesisService {
     });
     if (!gate.allowed) {
       throw new AppError(gate.reason || 'Invalid application review transition.', 400);
+    }
+
+    if (status === 'APPROVED') {
+      return this.thesisRepo.approveApplication({
+        thesisId,
+        actorId: actorId ?? null,
+        stage: thesis.stage,
+        fromStatus: thesis.status,
+      });
     }
 
     return this.thesisRepo.updateThesisStatus(

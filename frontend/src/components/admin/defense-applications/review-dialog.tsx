@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiClientRequest } from "@/lib/api.client";
+import type { DefenseDocumentHistory } from "@/types/defense-document-history";
 import {
   CheckCircle2,
   XCircle,
@@ -18,6 +22,8 @@ import {
   MapPin,
   Clock3,
   CalendarDays,
+  History,
+  ShieldCheck,
 } from "lucide-react";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import {
@@ -103,6 +109,280 @@ function VenueDisplay({ value }: { value?: string | null }) {
   return <span className="break-words">{venue.text}</span>;
 }
 
+const MANUSCRIPT_STATUS_LABEL: Record<string, string> = {
+  NONE: "No Adviser review yet",
+  AWAITING_REVIEW: "Awaiting Adviser Review",
+  CHANGES_REQUESTED: "Changes Requested",
+  ISSUED: "Certified by Adviser",
+};
+
+const TIMELINE_LABEL: Record<string, string> = {
+  DEFENSE_APPLICATION_REJECT: "Rejected",
+  DEFENSE_APPLICATION_APPROVE: "Approved",
+  DEFENSE_RESUBMIT: "Resubmitted",
+};
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
+function FilenameOrFallback({ name }: { name: string | null }) {
+  return (
+    <span className="min-w-0 break-words">{name || "Filename unavailable"}</span>
+  );
+}
+
+/**
+ * DL-8: workflow-aware, read-only document history for the open application.
+ * Fetched only while the review dialog is open, and only for this thesis/stage.
+ */
+function DocumentHistorySection({
+  thesisId,
+  stage,
+  onViewDocument,
+  onOpenOfficialRecord,
+}: {
+  thesisId: string;
+  stage: string;
+  onViewDocument: (req: { fetchUrl: string; title: string }) => void;
+  onOpenOfficialRecord: (scheduleId: string) => void;
+}) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["defenseDocumentHistory", thesisId, stage],
+    enabled: !!thesisId,
+    queryFn: async () =>
+      (await apiClientRequest(
+        `/thesis/defense/applications/${thesisId}/document-history?stage=${stage}`,
+      )) as DefenseDocumentHistory,
+  });
+
+  if (isLoading) {
+    return (
+      <p className="text-xs text-(--earist-body-text)">
+        Loading document history…
+      </p>
+    );
+  }
+  if (isError || !data) {
+    return (
+      <p className="text-xs text-red-600">Unable to load document history.</p>
+    );
+  }
+
+  const view = (doc: { id: string }, title: string) =>
+    onViewDocument({
+      fetchUrl: `/api/documents/thesis-document/${doc.id}/file`,
+      title,
+    });
+
+  return (
+    <div className="mt-3 space-y-4 border-t border-(--earist-border-gray) pt-3">
+      {data.reviewTimeline.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
+            Review Timeline
+          </p>
+          <ul className="space-y-1 text-xs text-(--earist-body-text)">
+            {data.reviewTimeline.map((e, i) => (
+              <li
+                key={`${e.type}-${i}`}
+                className="rounded-md bg-(--earist-surface-gray) px-3 py-2"
+              >
+                <span className="font-medium text-(--earist-primary)">
+                  {TIMELINE_LABEL[e.type] ?? e.type}
+                </span>
+                <span> · {formatDateTime(e.timestamp)}</span>
+                {e.actor && <span> · {e.actor.name}</span>}
+                {e.reason && <p className="mt-0.5">Reason: {e.reason}</p>}
+                {e.replacementSummary && (
+                  <p className="mt-0.5">
+                    Previous reason:{" "}
+                    {e.replacementSummary.previousRejectionReason || "—"}
+                    {e.replacementSummary.replacements.length > 0 && (
+                      <>
+                        {" · "}
+                        {e.replacementSummary.replacements
+                          .map((r) =>
+                            r.supersededDocumentId
+                              ? `${r.docType} replaced`
+                              : `${r.docType} added`,
+                          )
+                          .join(", ")}
+                      </>
+                    )}
+                  </p>
+                )}
+                {!e.reason &&
+                  !e.replacementSummary &&
+                  e.description && <p className="mt-0.5">{e.description}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
+          Supporting Evidence
+        </p>
+        <ul className="space-y-1.5">
+          {data.supportingEvidence.map((slot) => (
+            <li
+              key={slot.docType}
+              className="rounded-md bg-(--earist-surface-gray) px-3 py-2"
+            >
+              <p className="text-xs font-medium">
+                {requirementLabel(slot.docType)}
+              </p>
+              {slot.integrityState === "MISSING" && (
+                <p className="text-xs text-amber-700">
+                  No current document recorded.
+                </p>
+              )}
+              {slot.integrityState === "AMBIGUOUS" && (
+                <p className="text-xs text-amber-700">
+                  Data warning: Multiple current versions recorded —
+                  reconciliation required.
+                </p>
+              )}
+              {slot.current && (
+                <div className="mt-0.5 flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0">
+                    <Badge variant="outline" className="mr-1">
+                      Current
+                    </Badge>
+                    <FilenameOrFallback name={slot.current.originalFilename} />
+                    <span className="ml-1 text-(--earist-body-text)">
+                      · {formatDateTime(slot.current.uploadedAt)}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      view(slot.current!, requirementLabel(slot.docType))
+                    }
+                  >
+                    <Eye className="mr-1 h-3 w-3" /> View
+                  </Button>
+                </div>
+              )}
+              {slot.history.map((h) => (
+                <div
+                  key={h.id}
+                  className="mt-0.5 flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="min-w-0">
+                    <Badge variant="outline" className="mr-1">
+                      Previous version
+                    </Badge>
+                    <FilenameOrFallback name={h.originalFilename} />
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      view(
+                        h,
+                        `${requirementLabel(slot.docType)} (previous version)`,
+                      )
+                    }
+                  >
+                    <Eye className="mr-1 h-3 w-3" /> View
+                  </Button>
+                </div>
+              ))}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {data.manuscriptReview && (
+        <div className="rounded-md border border-(--earist-border-gray) p-3">
+          <p className="flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Manuscript — Read-only (Adviser reviewed)
+          </p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline">
+              {MANUSCRIPT_STATUS_LABEL[data.manuscriptReview.certificationStatus] ??
+                data.manuscriptReview.certificationStatus}
+            </Badge>
+            {data.manuscriptReview.adviser && (
+              <span>Adviser: {data.manuscriptReview.adviser.name}</span>
+            )}
+          </p>
+          {data.manuscriptReview.reviewRemarks && (
+            <p className="mt-1 text-xs text-(--earist-body-text)">
+              Remarks: {data.manuscriptReview.reviewRemarks}
+            </p>
+          )}
+          {data.manuscriptReview.signedAt && (
+            <p className="text-xs text-(--earist-body-text)">
+              Issued: {formatDateTime(data.manuscriptReview.signedAt)}
+            </p>
+          )}
+          {data.manuscriptReview.warning && (
+            <p className="mt-1 text-xs text-amber-700">
+              {data.manuscriptReview.warning}
+            </p>
+          )}
+          <ul className="mt-2 space-y-1">
+            {data.manuscriptReview.versions.map((v) => (
+              <li
+                key={v.id}
+                className="flex flex-wrap items-center justify-between gap-2 text-xs"
+              >
+                <span className="min-w-0">
+                  {v.isCertified && (
+                    <Badge className="mr-1 bg-green-100 text-green-800">
+                      Certified by Adviser
+                    </Badge>
+                  )}
+                  {!v.isCertified && v.isReviewedByAdviser && (
+                    <Badge variant="outline" className="mr-1">
+                      Adviser review document
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="mr-1">
+                    {v.isVersionHead ? "Current version head" : "Previous version"}
+                  </Badge>
+                  <FilenameOrFallback name={v.originalFilename} />
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => view(v, "Manuscript version")}
+                >
+                  <Eye className="mr-1 h-3 w-3" /> View
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.officialRecord?.available && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            onOpenOfficialRecord(data.officialRecord!.scheduleId)
+          }
+        >
+          View Official Defense Record (read-only)
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function DefenseApplicationReviewDialog({
   open,
   onOpenChange,
@@ -112,8 +392,10 @@ export function DefenseApplicationReviewDialog({
   isApproving,
   isRejecting,
 }: Props) {
+  const router = useRouter();
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [viewerDoc, setViewerDoc] = useState<{
     fetchUrl: string;
     title: string;
@@ -247,7 +529,18 @@ export function DefenseApplicationReviewDialog({
 
             {/* Requirements */}
             <div>
-              <SectionLabel>Requirements</SectionLabel>
+              <div className="flex items-center justify-between">
+                <SectionLabel>Requirements</SectionLabel>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory((v) => !v)}
+                >
+                  <History className="mr-1 h-3 w-3" />
+                  {showHistory ? "Hide history" : "View history"}
+                </Button>
+              </div>
               <ul className="space-y-1">
                 {(app.thesisDocuments ?? []).map((d) => (
                   <li
@@ -281,6 +574,16 @@ export function DefenseApplicationReviewDialog({
                   </li>
                 )}
               </ul>
+              {showHistory && (
+                <DocumentHistorySection
+                  thesisId={app.thesisId ?? app.id}
+                  stage={app.stage}
+                  onViewDocument={setViewerDoc}
+                  onOpenOfficialRecord={(scheduleId) =>
+                    router.push(`/admin/thesis/defense-records/${scheduleId}`)
+                  }
+                />
+              )}
             </div>
 
             {/* Research Details */}

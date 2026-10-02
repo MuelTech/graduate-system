@@ -156,6 +156,8 @@ export interface ApprovedApplicationDto {
   displayStatus?: string;
   rawApplicationStatus?: string | null;
   id: string;
+  /** DL-8: canonical ThesisRecord id (differs from `id` for History rows). */
+  thesisId?: string;
   stage: "TITLE" | "PROPOSAL" | "FINAL";
   status: string;
   createdAt: string;

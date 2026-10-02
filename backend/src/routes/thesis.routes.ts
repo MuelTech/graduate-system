@@ -244,6 +244,15 @@ router.put(
   thesisController.rejectApplication,
 );
 
+// ADMIN: workflow-aware document history for an exact thesis + defense stage
+// (prior-stage history uses the ThesisRecord id + requested stage).
+router.get(
+  "/defense/applications/:thesisId/document-history",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseApplicationDocumentHistory,
+);
+
 // STUDENT: current application + stage evidence (safe DTO) for correction UI.
 router.get(
   "/defense/current",

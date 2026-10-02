@@ -5,6 +5,7 @@ import { ProposalAdviserReviewService } from '../services/proposal-adviser-revie
 import { FinalAdviserReviewService } from '../services/final-adviser-review.service';
 import { OralEvaluationService } from '../services/oral-evaluation.service';
 import { DefenseWorkspaceService } from '../services/defense-workspace.service';
+import { DefenseApplicationDocumentHistoryService } from '../services/defense-document-history.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -49,6 +50,7 @@ export class ThesisController {
   private finalAdviserReview = new FinalAdviserReviewService();
   private oralEvaluation = new OralEvaluationService();
   private defenseWorkspace = new DefenseWorkspaceService();
+  private defenseDocumentHistory = new DefenseApplicationDocumentHistoryService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -356,9 +358,11 @@ export class ThesisController {
     try {
       const id = req.params.id as string; // thesisId
       // Application review only — never selects a winning title (Title Defense conclusion owns that).
-      const result = await this.thesisService.updateDefenseStatus(id, {
-        status: req.body.status,
-      });
+      const result = await this.thesisService.updateDefenseStatus(
+        id,
+        { status: req.body.status },
+        req.user?.userId ?? null,
+      );
       res.status(200).json({ message: 'Thesis status updated', result });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -368,10 +372,36 @@ export class ThesisController {
   rejectApplication = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const result = await this.thesisService.rejectApplication(id, req.body.reason ?? '');
+      const result = await this.thesisService.rejectApplication(
+        id,
+        req.body.reason ?? '',
+        req.user?.userId ?? null,
+      );
       res.status(200).json({ message: 'Application rejected', result });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  };
+
+  /**
+   * ADMIN: workflow-aware document history for an exact thesis + defense stage.
+   * Stage is requested explicitly (prior-stage History rows belong to the
+   * ThesisRecord, not the DefenseConclusion id).
+   */
+  getDefenseApplicationDocumentHistory = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const thesisId = String(req.params.thesisId ?? '');
+      const stage = String(req.query.stage ?? '');
+      const result = await this.defenseDocumentHistory.getDocumentHistory(
+        thesisId,
+        stage,
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
     }
   };
 
