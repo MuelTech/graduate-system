@@ -23,12 +23,23 @@ export class DatabankRepository {
     }
 
     async findAll() {
+        // DL-9: Admin list must not serialize legacy raw storage paths.
         return prisma.eLibrary.findMany({
-            include: {
+            select: {
+                id: true,
+                thesisId: true,
+                title: true,
+                abstract: true,
+                keywords: true,
+                isPublic: true,
+                publishedAt: true,
+                approvedById: true,
+                createdAt: true,
                 thesis: {
-                    include: {
+                    select: {
+                        id: true,
                         student: {
-                            include: {
+                            select: {
                                 user: {
                                     select: {
                                         firstName: true,

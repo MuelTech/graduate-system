@@ -36,7 +36,22 @@ router.put("/:id/approve", authenticateJWT, requireRole(["ADMIN"]), controller.a
 router.put("/:id/unpublish", authenticateJWT, requireRole(["ADMIN"]), controller.unpublish);
 router.put("/:id/metadata", authenticateJWT, requireRole(["ADMIN"]), controller.editMetadata);
 
-// 3. Protected Student Routes
+// 3. Protected Student archive routes (DL-9 — private Databank registration)
+router.get(
+  "/archive/me",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  controller.getArchiveContext,
+);
+router.post(
+  "/archive",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  controller.registerArchive,
+);
+
+// DEPRECATED compatibility alias: delegates to the safe archive contract and
+// ignores any client-supplied thesisId/title/path authority fields.
 router.post("/", authenticateJWT, requireRole(["STUDENT"]), controller.createEntry);
 
 export default router;

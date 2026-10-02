@@ -1,16 +1,68 @@
 import { Request, Response } from "express";
 import { DatabankService } from "../services/databank.service";
+import { DatabankArchiveService } from "../services/databank-archive.service";
+
+function sendDatabankError(res: Response, error: any): void {
+  res.status(error?.statusCode || 400).json({ error: error.message });
+}
 
 export class DatabankController {
   private service = new DatabankService();
+  private archiveService = new DatabankArchiveService();
 
+  /**
+   * DEPRECATED alias of `POST /databank/archive`.
+   * The legacy JSON contract accepted client-controlled thesisId/title/paths;
+   * those authority fields are now ignored. Only safe private metadata
+   * (abstract/keywords) is considered, and ownership comes from the JWT.
+   */
   createEntry = async (req: Request, res: Response) => {
     try {
-      const data = req.body;
-      const result = await this.service.createEntry(data);
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.archiveService.registerArchive(userId, {
+        abstract: req.body?.abstract,
+        keywords: req.body?.keywords,
+      });
       res.status(201).json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      sendDatabankError(res, error);
+    }
+  };
+
+  /** STUDENT: private archive eligibility + research context + existing archive. */
+  getArchiveContext = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.archiveService.getArchiveContext(userId);
+      res.json(result);
+    } catch (error: any) {
+      sendDatabankError(res, error);
+    }
+  };
+
+  /** STUDENT: register a private Databank archive for the completed research. */
+  registerArchive = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.archiveService.registerArchive(userId, {
+        abstract: req.body?.abstract,
+        keywords: req.body?.keywords,
+      });
+      res.status(201).json(result);
+    } catch (error: any) {
+      sendDatabankError(res, error);
     }
   };
 

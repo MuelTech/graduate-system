@@ -797,7 +797,7 @@ model ELibrary {
   fullPaperPath      String?      @map("full_paper_path")
   respondentDataPath String?      @map("respondent_data_path")
   keywords           String?
-  isPublic           Boolean      @default(true) @map("is_public")
+  isPublic           Boolean      @default(false) @map("is_public")
   publishedAt        DateTime?    @map("published_at") @db.Date
   approvedById       String?      @map("approved_by")
   createdAt          DateTime     @default(now()) @map("created_at")

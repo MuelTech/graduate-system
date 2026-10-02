@@ -108,7 +108,7 @@ export default function StudentRepositoryPage() {
         <Link href="/student/repository/submit">
           <Button className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90">
             <Upload className="mr-2 h-4 w-4" />
-            Submit to Databank
+            Databank Archive
           </Button>
         </Link>
       </div>
