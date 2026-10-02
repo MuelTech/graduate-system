@@ -1,40 +1,20 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { DatabankController } from "../controllers/databank.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
-import jwt from "jsonwebtoken";
 
 const router = Router();
 const controller = new DatabankController();
 
-// Custom inline optional auth for public routes (Does not block missing tokens)
-const optionalAuthJWT = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
+// 1. DEPRECATED public read aliases.
+//    These MUST delegate to the canonical /repository publication service so
+//    they can never expose a private archive or vary their payload by caller
+//    role. They no longer use optional authentication.
+router.get("/public", controller.searchPublic);
+router.get("/public/:id", controller.getEntryById);
 
-  if (!token) {
-    return next();
-  }
-
-  try {
-    const secret = process.env.JWT_SECRET || "";
-    const decoded = jwt.verify(token, secret);
-    (req as any).user = decoded;
-    next();
-  } catch (err) {
-    // If token is invalid, we still let them through as an unauthenticated user
-    next();
-  }
-};
-
-// 1. Public & Hybrid Routes (Optional Auth)
-router.get("/public", optionalAuthJWT, controller.searchPublic);
-router.get("/public/:id", optionalAuthJWT, controller.getEntryById);
-
-// 2. Protected Admin Routes
+// 2. Legacy ADMIN archive list. Publication mutations are NOT served here;
+//    Admin publishes through /repository/admin/entries/:id/publish|unpublish.
 router.get("/", authenticateJWT, requireRole(["ADMIN"]), controller.getAllEntries);
-router.put("/:id/approve", authenticateJWT, requireRole(["ADMIN"]), controller.approveAndPublish);
-router.put("/:id/unpublish", authenticateJWT, requireRole(["ADMIN"]), controller.unpublish);
-router.put("/:id/metadata", authenticateJWT, requireRole(["ADMIN"]), controller.editMetadata);
 
 // 3. Protected Student archive routes (DL-9 — private Databank registration)
 router.get(

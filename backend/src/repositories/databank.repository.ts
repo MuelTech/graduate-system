@@ -1,169 +1,50 @@
-import prisma from '../config/database';
+import prisma from "../config/database";
 
+/**
+ * DL-10: legacy ADMIN archive list only.
+ *
+ * The former generic public `searchPublic` / `findById` (full Thesis graph),
+ * `createEntry` (client-supplied paths), and `updateEntry` (unconditional
+ * publication/metadata mutation) helpers were removed. Retrieval and
+ * publication now flow through `RepositoryPublicationRepository`, which
+ * enforces `isPublic = true` and selects only safe fields.
+ */
 export class DatabankRepository {
-    async createEntry(data: {
-        thesisId: string;
-        title: string;
-        abstract?: string;
-        fullPaperPath?: string;
-        respondentDataPath?: string;
-        keywords?: string;
-    }) {
-        return prisma.eLibrary.create({
-            data: {
-                thesisId: data.thesisId,
-                title: data.title,
-                abstract: data.abstract,
-                fullPaperPath: data.fullPaperPath,
-                respondentDataPath: data.respondentDataPath,
-                keywords: data.keywords,
-                isPublic: false,
-            },
-        });
-    }
-
-    async findAll() {
-        // DL-9: Admin list must not serialize legacy raw storage paths.
-        return prisma.eLibrary.findMany({
-            select: {
-                id: true,
-                thesisId: true,
-                title: true,
-                abstract: true,
-                keywords: true,
-                isPublic: true,
-                publishedAt: true,
-                approvedById: true,
-                createdAt: true,
-                thesis: {
-                    select: {
-                        id: true,
-                        student: {
-                            select: {
-                                user: {
-                                    select: {
-                                        firstName: true,
-                                        lastName: true
-                                    }
-                                },
-                                program: {
-                                    select: {
-                                        programName: true
-                                    }
-                                },
-                            },
-                        },
-                    },
+  async findAll() {
+    // DL-9: Admin list must not serialize legacy raw storage paths.
+    return prisma.eLibrary.findMany({
+      select: {
+        id: true,
+        thesisId: true,
+        title: true,
+        abstract: true,
+        keywords: true,
+        isPublic: true,
+        publishedAt: true,
+        approvedById: true,
+        createdAt: true,
+        thesis: {
+          select: {
+            id: true,
+            student: {
+              select: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
                 },
-            },
-            orderBy: { createdAt: "desc" },
-        });
-    }
-
-    async searchPublic(searchQuery?: string) {
-        return prisma.eLibrary.findMany({
-            where: {
-                isPublic: true,
-                OR: searchQuery ? [
-                    { title: { contains: searchQuery } },
-                    { keywords: { contains: searchQuery } },
-                    {
-                        thesis: {
-                            student: {
-                                user: {
-                                    OR: [
-                                        { firstName: { contains: searchQuery } },
-                                        { lastName: { contains: searchQuery } },
-                                    ],
-                                },
-                            },
-                        },
-                    },
-                    {
-                        thesis: {
-                            student: {
-                                program: {
-                                    programName: { contains: searchQuery },
-                                },
-                            },
-                        },
-                    },
-                ] : undefined,
-            },
-            include: {
-                thesis: {
-                    include: {
-                        student: {
-                            include: {
-                                user: {
-                                    select: {
-                                        firstName: true,
-                                        lastName: true
-                                    }
-                                },
-                                program: {
-                                    select: {
-                                        programName: true
-                                    }
-                                },
-                            },
-                        },
-                    },
+                program: {
+                  select: {
+                    programName: true,
+                  },
                 },
+              },
             },
-            orderBy: {
-                publishedAt: "desc"
-            },
-        });
-    }
-
-    // unified payload with ALL research instruments and certifications
-    async findById(id: string) {
-        return prisma.eLibrary.findUnique({
-            where: { id },
-            include: {
-                thesis: {
-                    include: {
-                        student: {
-                            include: {
-                                user: {
-                                    select: {
-                                        firstName: true,
-                                        lastName: true
-                                    }
-                                },
-                                program: {
-                                    select: {
-                                        programName: true
-                                    }
-                                },
-                            },
-                        },
-                        thesisDocuments: true,
-                        adviserCertifications: true,
-                        statisticianCertification: true,
-                        grammarianCertification: true,
-                        researchVariableForms: true,
-                    },
-                },
-            },
-        });
-    }
-
-    async updateEntry(
-        id: string,
-        data: {
-            isPublic?: boolean;
-            publishedAt?: Date | null;
-            approvedById?: string;
-            title?: string;
-            abstract?: string;
-            keywords?: string;
-        }
-    ) {
-        return prisma.eLibrary.update({
-            where: { id },
-            data,
-        });
-    }
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
 }

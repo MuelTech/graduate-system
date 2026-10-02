@@ -363,39 +363,44 @@ export interface AuditLogItem {
   };
 }
 
-export interface BackendEntry {
-  id: string;
-  title: string;
-  abstract: string;
-  keywords: string;
-  publishedAt: string | null;
-  isPublic: boolean;
-  thesis?: {
-    student?: {
-      studentId: string;
-      user?: {
-        firstName: string;
-        lastName: string;
-      };
-      program?: {
-        programName: string
-      };
-    };
-  };
+/**
+ * DL-10: Research Repository publication projection.
+ *
+ * Public projection is metadata-only and identical for every viewer. The
+ * publication artifact (full text/download) is an OPEN institutional policy, so
+ * it is always unavailable and unresolved.
+ */
+export interface RepositoryArtifactPolicy {
+  available: false;
+  policyResolved: false;
 }
 
-export interface Entry {
+export interface RepositoryPublication {
   id: string;
   title: string;
-  author: string;
-  studentNumber: string;
-  program: string;
-  abstract: string;
+  author: string | null;
+  program: string | null;
+  abstract: string | null;
   keywords: string[];
-  datePublished: string | null;
-  status: string;
-  downloads: number;
-  views: number;
+  publishedAt: string | null;
+  artifact: RepositoryArtifactPolicy;
+}
+
+/** ADMIN-only publication queue read model (no raw paths/files). */
+export interface RepositoryAdminEntry {
+  id: string;
+  title: string;
+  author: string | null;
+  studentNumber: string | null;
+  program: string | null;
+  abstract: string | null;
+  keywords: string[];
+  archiveRegisteredAt: string;
+  publication: {
+    isPublished: boolean;
+    publishedAt: string | null;
+  };
+  artifact: RepositoryArtifactPolicy;
 }
 
 export interface NotificationItem {
