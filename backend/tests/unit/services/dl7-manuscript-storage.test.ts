@@ -10,7 +10,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => {
   const tx = {
     $queryRaw: vi.fn(async () => []),
-    thesisDocument: { create: vi.fn(), updateMany: vi.fn() },
+    thesisDocument: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
     adviserCertification: {
       findFirst: vi.fn(),
       updateMany: vi.fn(),
@@ -54,6 +59,16 @@ function managed(overrides: Partial<ManagedUploadInput> = {}): ManagedUploadInpu
     checksum: "deadbeef",
     checksumAlgorithm: "sha256",
     uploadedById: "student-user",
+    ...overrides,
+  };
+}
+
+/** DL-7: real column identity so exact binding validates. */
+function proposalDoc(overrides: Record<string, unknown> = {}) {
+  return {
+    thesisId: "thesis-1",
+    docType: "PROPOSAL_CHAPTERS",
+    defenseStage: "PROPOSAL",
     ...overrides,
   };
 }
@@ -103,6 +118,9 @@ function proposalCertifiedRow(overrides: Record<string, unknown> = {}) {
     adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
     reviewedDocument: {
       id: "doc-1",
+      thesisId: "thesis-1",
+      docType: "PROPOSAL_CHAPTERS",
+      defenseStage: "PROPOSAL",
       uploadedAt: new Date("2026-10-01T00:00:00Z"),
       originalFilename: "chapters.pdf",
       verifiedMimeType: "application/pdf",
@@ -144,6 +162,8 @@ beforeEach(() => {
   prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
   prismaMock.__tx.adviserCertification.create.mockResolvedValue({});
   prismaMock.__tx.thesisDocument.updateMany.mockResolvedValue({ count: 0 });
+  prismaMock.__tx.thesisDocument.findUnique.mockResolvedValue(null);
+  prismaMock.__tx.thesisDocument.findMany.mockResolvedValue([]);
   prismaMock.__tx.thesisDocument.create.mockImplementation(async (args: any) => ({
     id: "doc-1",
     uploadedAt: new Date(),
@@ -212,6 +232,10 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
       id: "doc-2",
       uploadedAt: new Date(),
     });
+    // Valid exact prior binding (V1) so the new version supersedes it.
+    prismaMock.__tx.thesisDocument.findUnique.mockResolvedValue(
+      proposalDoc({ id: "doc-1" }),
+    );
 
     await svc.submitManuscriptForReview("student-user", managed({ storageKey: "manuscripts/v2" }));
 
@@ -263,10 +287,18 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
     prismaMock.thesisRecord.findUnique.mockResolvedValue(
       makeThesis({
         thesisDocuments: [
-          { id: "doc-newer", uploadedAt: new Date("2026-10-06") },
-          { id: "doc-bound", uploadedAt: new Date("2026-09-01") },
+          proposalDoc({ id: "doc-newer", uploadedAt: new Date("2026-10-06") }),
+          proposalDoc({ id: "doc-bound", uploadedAt: new Date("2026-09-01") }),
         ],
-        adviserCertifications: [proposalCertifiedRow({ reviewedDocumentId: "doc-bound" })],
+        adviserCertifications: [
+          proposalCertifiedRow({
+            reviewedDocumentId: "doc-bound",
+            reviewedDocument: proposalDoc({
+              id: "doc-bound",
+              uploadedAt: new Date("2026-09-01"),
+            }),
+          }),
+        ],
       }),
     );
     const dto = await svc.getStudentReviewState("student-user");

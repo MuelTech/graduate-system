@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => {
   const tx = {
     $queryRaw: vi.fn(async () => []),
-    thesisDocument: { create: vi.fn(), updateMany: vi.fn() },
+    thesisDocument: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
     adviserCertification: {
       findFirst: vi.fn(),
       update: vi.fn(),
@@ -50,8 +55,18 @@ function studentRow() {
   };
 }
 
-function thesisRow(overrides: Record<string, unknown> = {}) {
+/** DL-7: test documents carry real column identity so exact binding validates. */
+function finalDoc<T extends Record<string, unknown>>(doc: T) {
   return {
+    thesisId: "thesis-1",
+    docType: "FINAL_MANUSCRIPT",
+    defenseStage: "FINAL",
+    ...doc,
+  };
+}
+
+function thesisRow(overrides: Record<string, unknown> = {}) {
+  const row = {
     id: "thesis-1",
     student: {
       id: "student-1",
@@ -73,6 +88,17 @@ function thesisRow(overrides: Record<string, unknown> = {}) {
     adviserCertifications: [],
     plagiarismResults: [],
     ...overrides,
+  } as Record<string, unknown>;
+
+  return {
+    ...row,
+    thesisDocuments: ((row.thesisDocuments as any[]) ?? []).map(finalDoc),
+    adviserCertifications: ((row.adviserCertifications as any[]) ?? []).map((c) => ({
+      ...c,
+      reviewedDocument: c.reviewedDocument
+        ? finalDoc(c.reviewedDocument)
+        : (c.reviewedDocument ?? null),
+    })),
   };
 }
 
@@ -127,6 +153,8 @@ describe("FinalAdviserReviewService (CP4)", () => {
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock.__tx));
     prismaMock.__tx.$queryRaw.mockResolvedValue([]);
     prismaMock.__tx.thesisDocument.updateMany.mockResolvedValue({ count: 0 });
+    prismaMock.__tx.thesisDocument.findUnique.mockResolvedValue(null);
+    prismaMock.__tx.thesisDocument.findMany.mockResolvedValue([]);
     prismaMock.__tx.thesisDocument.create.mockImplementation(async (a: any) => ({
       id: "doc-1",
       uploadedAt: new Date(),

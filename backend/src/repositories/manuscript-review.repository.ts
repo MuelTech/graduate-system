@@ -6,6 +6,7 @@ import {
   FINAL_MANUSCRIPT_DOC_STAGE,
   FINAL_MANUSCRIPT_DOC_TYPE,
   FINAL_REVIEW_STAGE,
+  isValidManuscriptBinding,
   PROPOSAL_MANUSCRIPT_DOC_STAGE,
   PROPOSAL_MANUSCRIPT_DOC_TYPE,
   PROPOSAL_REVIEW_STAGE,
@@ -93,8 +94,45 @@ export async function submitManuscriptVersion(params: {
       where: { thesisId, defenseStage: binding.certStage },
       orderBy: { updatedAt: "desc" },
     });
-    // Exact prior workflow manuscript. Legacy unbound history is never guessed.
     const previousBoundDocumentId = existing?.reviewedDocumentId ?? null;
+
+    // DL-7 correction: only an exact same-thesis/stage/type binding is a valid
+    // prior workflow manuscript. An unbound/invalid binding is never guessed.
+    let hasValidPriorBinding = false;
+    if (previousBoundDocumentId) {
+      const boundDocument = await tx.thesisDocument.findUnique({
+        where: { id: previousBoundDocumentId },
+        select: { id: true, thesisId: true, docType: true, defenseStage: true },
+      });
+      hasValidPriorBinding = isValidManuscriptBinding(
+        existing,
+        boundDocument,
+        thesisId,
+        binding.certStage,
+        binding.docType,
+        binding.docStage,
+      );
+    }
+
+    // DL-7 correction: ambiguous legacy history (multiple current heads without
+    // a valid binding) must fail closed; DL-12 owns legacy repair/backfill.
+    if (!hasValidPriorBinding) {
+      const currentHeads = await tx.thesisDocument.findMany({
+        where: {
+          thesisId,
+          defenseStage: binding.docStage,
+          docType: binding.docType,
+          isCurrent: true,
+        },
+        select: { id: true },
+      });
+      if (currentHeads.length > 1) {
+        throw new AppError(
+          "Multiple current manuscript versions exist for this stage without a valid review binding. Contact the Graduate School to reconcile the manuscript history.",
+          409,
+        );
+      }
+    }
 
     // One current version head per slot: demote existing current rows. This is
     // not a nomination of a prior authority; it only keeps the chain coherent.
@@ -123,7 +161,7 @@ export async function submitManuscriptVersion(params: {
         checksumAlgorithm: upload.checksumAlgorithm,
         uploadedById: upload.uploadedById,
         isCurrent: true,
-        supersedesDocumentId: previousBoundDocumentId,
+        supersedesDocumentId: hasValidPriorBinding ? previousBoundDocumentId : null,
         uploadedAt: new Date(),
       },
       select: { id: true },

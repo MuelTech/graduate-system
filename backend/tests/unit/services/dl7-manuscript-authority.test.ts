@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   isAuthoritativePriorProposalManuscript,
+  isValidFinalManuscriptBinding,
+  isValidProposalManuscriptBinding,
   isValidCertifiedFinalManuscript,
   selectCertifiedFinalManuscript,
   selectCertifiedProposalManuscript,
@@ -126,5 +128,88 @@ describe("DL-7 manuscript authority vs isCurrent", () => {
     const result = svc.evaluateApplyProposal(snap);
     expect(result.eligible).toBe(false);
     expect(result.missing.map((m) => m.code)).toContain("ADVISER_CERT");
+  });
+});
+
+describe("DL-7 status-independent manuscript binding identity", () => {
+  const cert = {
+    status: "AWAITING_REVIEW",
+    defenseStage: "PROPOSAL_DEFENSE",
+    reviewedDocumentId: "v1",
+  };
+  const validDoc = {
+    id: "v1",
+    thesisId,
+    docType: "PROPOSAL_CHAPTERS",
+    defenseStage: "PROPOSAL",
+  };
+
+  it("accepts a valid exact binding without requiring ISSUED", () => {
+    expect(isValidProposalManuscriptBinding(cert, validDoc, thesisId)).toBe(true);
+    expect(
+      isValidProposalManuscriptBinding(
+        { ...cert, status: "CHANGES_REQUESTED" },
+        validDoc,
+        thesisId,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects unbound / missing document", () => {
+    expect(
+      isValidProposalManuscriptBinding(
+        { ...cert, reviewedDocumentId: null },
+        null,
+        thesisId,
+      ),
+    ).toBe(false);
+    expect(isValidProposalManuscriptBinding(cert, null, thesisId)).toBe(false);
+  });
+
+  it("rejects wrong docType / wrong stage / cross-thesis / wrong id", () => {
+    expect(
+      isValidProposalManuscriptBinding(cert, { ...validDoc, docType: "COR" }, thesisId),
+    ).toBe(false);
+    expect(
+      isValidProposalManuscriptBinding(cert, { ...validDoc, defenseStage: "FINAL" }, thesisId),
+    ).toBe(false);
+    expect(
+      isValidProposalManuscriptBinding(cert, { ...validDoc, thesisId: "thesis-other" }, thesisId),
+    ).toBe(false);
+    expect(
+      isValidProposalManuscriptBinding(cert, { ...validDoc, id: "v2" }, thesisId),
+    ).toBe(false);
+  });
+
+  it("rejects wrong certification stage", () => {
+    expect(
+      isValidProposalManuscriptBinding(
+        { ...cert, defenseStage: "FINAL_DEFENSE" },
+        validDoc,
+        thesisId,
+      ),
+    ).toBe(false);
+  });
+
+  it("Final binding mirrors Proposal identity", () => {
+    const fCert = {
+      status: "CHANGES_REQUESTED",
+      defenseStage: "FINAL_DEFENSE",
+      reviewedDocumentId: "f1",
+    };
+    const fDoc = {
+      id: "f1",
+      thesisId,
+      docType: "FINAL_MANUSCRIPT",
+      defenseStage: "FINAL",
+    };
+    expect(isValidFinalManuscriptBinding(fCert, fDoc, thesisId)).toBe(true);
+    expect(
+      isValidFinalManuscriptBinding(
+        fCert,
+        { ...fDoc, docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
+        thesisId,
+      ),
+    ).toBe(false);
   });
 });

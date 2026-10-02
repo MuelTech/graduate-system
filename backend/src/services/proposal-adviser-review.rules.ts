@@ -109,6 +109,63 @@ export function isValidCertifiedFinalManuscript(
   );
 }
 
+/**
+ * DL-7: status-independent exact manuscript binding identity.
+ *
+ * A certification's `reviewedDocumentId` is only a valid review/action target
+ * when it resolves to a document on the SAME thesis, with the expected docType
+ * and defenseStage. This deliberately does NOT require `ISSUED`: the same rule
+ * gates review work (AWAITING_REVIEW / CHANGES_REQUESTED) and certification.
+ */
+export function isValidManuscriptBinding(
+  cert: { defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+  certStage: string,
+  docType: string,
+  docStage: string,
+): boolean {
+  if (!cert || !cert.reviewedDocumentId || !doc) return false;
+  if (cert.defenseStage !== certStage) return false;
+  if (doc.id !== cert.reviewedDocumentId) return false;
+  if (doc.thesisId !== thesisId) return false;
+  if (doc.docType !== docType) return false;
+  if (doc.defenseStage !== docStage) return false;
+  return true;
+}
+
+/** DL-7: Proposal-stage exact binding (same thesis, PROPOSAL_CHAPTERS, PROPOSAL). */
+export function isValidProposalManuscriptBinding(
+  cert: { defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+): boolean {
+  return isValidManuscriptBinding(
+    cert,
+    doc,
+    thesisId,
+    PROPOSAL_REVIEW_STAGE,
+    PROPOSAL_MANUSCRIPT_DOC_TYPE,
+    PROPOSAL_MANUSCRIPT_DOC_STAGE,
+  );
+}
+
+/** DL-7: Final-stage exact binding (same thesis, FINAL_MANUSCRIPT, FINAL). */
+export function isValidFinalManuscriptBinding(
+  cert: { defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
+  doc: CertifiedManuscriptDocLike | null | undefined,
+  thesisId: string,
+): boolean {
+  return isValidManuscriptBinding(
+    cert,
+    doc,
+    thesisId,
+    FINAL_REVIEW_STAGE,
+    FINAL_MANUSCRIPT_DOC_TYPE,
+    FINAL_MANUSCRIPT_DOC_STAGE,
+  );
+}
+
 function isValidCertifiedStageManuscript(
   cert: { status: string; defenseStage: string; reviewedDocumentId?: string | null } | null | undefined,
   doc: CertifiedManuscriptDocLike | null | undefined,
@@ -117,15 +174,11 @@ function isValidCertifiedStageManuscript(
   docType: string,
   docStage: string,
 ): boolean {
-  if (!cert || cert.status !== "ISSUED" || cert.defenseStage !== certStage) {
-    return false;
-  }
-  if (!cert.reviewedDocumentId || !doc) return false;
-  if (doc.id !== cert.reviewedDocumentId) return false;
-  if (doc.thesisId !== thesisId) return false;
-  if (doc.docType !== docType) return false;
-  if (doc.defenseStage !== docStage) return false;
-  return true;
+  return (
+    !!cert &&
+    cert.status === "ISSUED" &&
+    isValidManuscriptBinding(cert, doc, thesisId, certStage, docType, docStage)
+  );
 }
 
 /**

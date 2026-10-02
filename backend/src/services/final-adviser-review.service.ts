@@ -19,6 +19,7 @@ import {
   evaluateActiveAdviserGate,
   evaluateCertifyGate,
   evaluateRequestChangesGate,
+  isValidFinalManuscriptBinding,
   mapCertStatusToReviewStatus,
   FINAL_MANUSCRIPT_DOC_STAGE,
   FINAL_MANUSCRIPT_DOC_TYPE,
@@ -228,14 +229,23 @@ export class FinalAdviserReviewService {
       thesis.adviserCertifications.find((c) => c.status === "ISSUED") ??
       thesis.adviserCertifications[0] ??
       null;
-    const boundDocId = cert?.reviewedDocumentId ?? null;
-    // DL-7: exact reviewedDocumentId only; never substitute the latest upload.
-    const manuscript = boundDocId
-      ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+    // DL-7 correction: exact same-thesis/stage/type binding only; invalid or
+    // unbound certifications are never substituted with the latest upload.
+    const candidate = cert?.reviewedDocumentId
+      ? (thesis.thesisDocuments.find((d) => d.id === cert.reviewedDocumentId) ??
         cert?.reviewedDocument ??
         null)
       : null;
-    const reviewStatus = cert ? mapCertStatusToReviewStatus(cert.status) : "NONE";
+    const hasValidBinding = isValidFinalManuscriptBinding(
+      cert,
+      candidate,
+      thesis.id,
+    );
+    const effectiveCert = hasValidBinding ? cert : null;
+    const manuscript = hasValidBinding ? candidate : null;
+    const reviewStatus = effectiveCert
+      ? mapCertStatusToReviewStatus(effectiveCert.status)
+      : "NONE";
     const titleSchedule = thesis.defenseSchedules.find(
       (s) => s.defenseType === "TITLE_DEFENSE",
     );
@@ -259,8 +269,8 @@ export class FinalAdviserReviewService {
             name: `${assignment.adviser.firstName} ${assignment.adviser.lastName}`,
           }
         : null,
-      reviewStatus: manuscript || cert ? reviewStatus : "NONE",
-      reviewRemarks: cert?.reviewRemarks ?? null,
+      reviewStatus: effectiveCert ? reviewStatus : "NONE",
+      reviewRemarks: effectiveCert?.reviewRemarks ?? null,
       manuscript: manuscript
         ? {
             documentId: manuscript.id,
@@ -271,12 +281,14 @@ export class FinalAdviserReviewService {
           }
         : null,
       certification:
-        cert?.status === "ISSUED"
+        effectiveCert && effectiveCert.status === "ISSUED"
           ? {
               issued: true,
-              adviserName: `${cert.adviser.firstName} ${cert.adviser.lastName}`,
-              signedAt: cert.signedAt ? cert.signedAt.toISOString() : null,
-              defenseStage: cert.defenseStage,
+              adviserName: `${effectiveCert.adviser.firstName} ${effectiveCert.adviser.lastName}`,
+              signedAt: effectiveCert.signedAt
+                ? effectiveCert.signedAt.toISOString()
+                : null,
+              defenseStage: effectiveCert.defenseStage,
             }
           : null,
       isAuthorizedAdviser: assignment?.adviser.id === authenticatedUserId,
@@ -452,16 +464,23 @@ export class FinalAdviserReviewService {
       });
       if (!thesis) continue;
       const cert = thesis.adviserCertifications[0] ?? null;
-      // DL-7: exact reviewedDocumentId binding only; legacy unbound rows are
-      // history and are never nominated as current review work.
-      const boundDocId = cert?.reviewedDocumentId ?? null;
-      const manuscript = boundDocId
-        ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+      // DL-7 correction: exact same-thesis/stage/type binding only. Invalid or
+      // unbound certifications never create phantom review work.
+      const candidate = cert?.reviewedDocumentId
+        ? (thesis.thesisDocuments.find((d) => d.id === cert.reviewedDocumentId) ??
           cert?.reviewedDocument ??
           null)
         : null;
-      const status = cert ? mapCertStatusToReviewStatus(cert.status) : "NONE";
-      if (!manuscript && status === "NONE") continue;
+      const hasValidBinding = isValidFinalManuscriptBinding(
+        cert,
+        candidate,
+        thesis.id,
+      );
+      const manuscript = hasValidBinding ? candidate : null;
+      const status = hasValidBinding
+        ? mapCertStatusToReviewStatus(cert!.status)
+        : "NONE";
+      if (!manuscript) continue;
       if (status === "ISSUED") continue;
       items.push({
         thesisId: thesis.id,
@@ -524,14 +543,26 @@ export class FinalAdviserReviewService {
     if (!auth.allowed) throw new AppError(auth.reason, auth.statusCode);
 
     const cert = thesis.adviserCertifications[0] ?? null;
-    const reviewStatus = mapCertStatusToReviewStatus(cert?.status);
+    const candidate = cert?.reviewedDocumentId
+      ? (thesis.thesisDocuments.find((d) => d.id === cert.reviewedDocumentId) ??
+        cert?.reviewedDocument ??
+        null)
+      : null;
+    const hasValidBinding = isValidFinalManuscriptBinding(
+      cert,
+      candidate,
+      thesis.id,
+    );
+    const reviewStatus = hasValidBinding
+      ? mapCertStatusToReviewStatus(cert!.status)
+      : "NONE";
     // CP4-FIX1: Proposal + STRIKE re-checked at mutation time (authorized only).
     await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateRequestChangesGate({
       isActiveAdviser: isActive,
       reviewStatus,
       hasRemarks: Boolean(input.remarks?.trim()),
-      hasReviewedDocument: Boolean(cert?.reviewedDocumentId),
+      hasReviewedDocument: hasValidBinding,
       hasExpectedReviewedDocument: true,
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
@@ -586,12 +617,17 @@ export class FinalAdviserReviewService {
     if (!auth.allowed) throw new AppError(auth.reason, auth.statusCode);
 
     const cert = thesis.adviserCertifications[0] ?? null;
-    const boundDocId = cert?.reviewedDocumentId ?? null;
-    const manuscript = boundDocId
-      ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
+    const candidate = cert?.reviewedDocumentId
+      ? (thesis.thesisDocuments.find((d) => d.id === cert.reviewedDocumentId) ??
         cert?.reviewedDocument ??
         null)
       : null;
+    const hasValidBinding = isValidFinalManuscriptBinding(
+      cert,
+      candidate,
+      thesis.id,
+    );
+    const manuscript = hasValidBinding ? candidate : null;
     const alreadyIssued = thesis.adviserCertifications.some(
       (c) => c.status === "ISSUED",
     );
@@ -599,11 +635,13 @@ export class FinalAdviserReviewService {
     await this.assertFinalReviewPrerequisites(thesisId);
     const gate = evaluateCertifyGate({
       isActiveAdviser: isActive,
-      reviewStatus: mapCertStatusToReviewStatus(cert?.status),
+      reviewStatus: hasValidBinding
+        ? mapCertStatusToReviewStatus(cert!.status)
+        : "NONE",
       hasManuscript: Boolean(manuscript),
       hasSignature: Boolean(input.signatureData?.trim()),
       alreadyIssued,
-      hasReviewedDocument: Boolean(boundDocId),
+      hasReviewedDocument: hasValidBinding,
       hasExpectedReviewedDocument: true,
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
