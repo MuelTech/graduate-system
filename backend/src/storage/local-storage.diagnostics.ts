@@ -198,7 +198,10 @@ export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
       return { ...ZERO_TEMP, unsafeRootDetected: true };
     }
     if (!tempRootInfo.isDirectory()) {
-      return { ...ZERO_TEMP };
+      // A regular file / FIFO / socket / device at the `.tmp` path is a broken
+      // temp-storage configuration: never traverse, report the anomaly, and
+      // return zero counts. The object is never deleted or repaired.
+      return { ...ZERO_TEMP, unsafeRootDetected: true };
     }
 
     let realTempRoot: string;

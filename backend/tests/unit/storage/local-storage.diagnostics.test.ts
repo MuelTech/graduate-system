@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import {
   mkdir,
   mkdtemp,
+  readFile,
   rm,
   symlink,
   utimes,
@@ -294,5 +295,26 @@ describe("DL-11 diagnostic containment hardening", () => {
     expect(serialized).not.toContain("secret-file");
     // Untouched, not deleted or repaired.
     expect(existsSync(path.join(outsideTemp, "secret-file"))).toBe(true);
+  });
+
+  it("flags a non-directory .tmp root as unsafe without touching it", async () => {
+    const { root, diagnostics } = await makeDiag();
+    const tmpFile = path.join(root, ".tmp");
+    await writeFile(tmpFile, "not-a-directory");
+
+    const summary = await diagnostics.tempSummary(24);
+
+    expect(summary).toEqual({
+      requestDirectories: 0,
+      fileCount: 0,
+      totalBytes: 0,
+      oldestModifiedAt: null,
+      staleRequestDirectories: 0,
+      staleFiles: 0,
+      unsafeRootDetected: true,
+    });
+    // Untouched, not deleted or repaired.
+    expect(existsSync(tmpFile)).toBe(true);
+    expect(await readFile(tmpFile, "utf8")).toBe("not-a-directory");
   });
 });
