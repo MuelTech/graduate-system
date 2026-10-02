@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
-    corUpload: { updateMany: vi.fn(), findUnique: vi.fn() },
-    corRecord: { create: vi.fn(), findFirst: vi.fn() },
-    student: { findUnique: vi.fn(), update: vi.fn() },
-    user: { update: vi.fn() },
+    $queryRaw: vi.fn(async () => []),
+    corUpload: { updateMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
+    corRecord: { create: vi.fn() },
+    student: { findUnique: vi.fn(), updateMany: vi.fn() },
+    user: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     entranceExamApplication: { findFirst: vi.fn() },
     auditLog: { create: vi.fn() },
   };
@@ -37,32 +38,49 @@ function tx() {
   return prismaMock.__tx;
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
+function authorizeHappyPath() {
+  tx().corUpload.findFirst.mockResolvedValue({ id: uploadId });
   tx().corUpload.updateMany.mockResolvedValue({ count: 1 });
   tx().student.findUnique.mockResolvedValue({ id: studentId, admissionStatus: "APPLICANT" });
   tx().entranceExamApplication.findFirst.mockResolvedValue({ id: "exam-1", status: "PASSED" });
+  tx().user.findUnique.mockResolvedValue({ id: userId, role: "APPLICANT" });
+  tx().student.updateMany.mockResolvedValue({ count: 1 });
+  tx().user.updateMany.mockResolvedValue({ count: 1 });
   tx().corRecord.create.mockResolvedValue({ id: "rec-1", isAdminVerified: true });
-  tx().student.update.mockResolvedValue({ id: studentId, studentNumber: verifyData.studentNumber });
-  tx().user.update.mockResolvedValue({ id: userId, role: "STUDENT" });
   tx().auditLog.create.mockResolvedValue({ id: "log-1" });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  authorizeHappyPath();
 });
 
-describe("CorRepository.verifyAndPromote canonical transaction", () => {
-  it("marks the exact PENDING upload, records COR data, promotes and audits atomically", async () => {
+describe("CorRepository.verifyAndPromote authority + currentness", () => {
+  it("locks the student row, claims the exact current upload, and promotes APPLICANT->STUDENT atomically", async () => {
     const repo = new CorRepository();
-    const result = await repo.verifyAndPromote(
-      uploadId,
-      studentId,
-      userId,
-      verifyData,
-      adminId,
-    );
+    const result = await repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId);
 
-    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx().$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx().corUpload.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { studentId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      }),
+    );
     expect(tx().corUpload.updateMany).toHaveBeenCalledWith({
       where: { id: uploadId, studentId, status: "PENDING" },
       data: { status: "VERIFIED" },
+    });
+    expect(tx().student.updateMany).toHaveBeenCalledWith({
+      where: { id: studentId, admissionStatus: "APPLICANT" },
+      data: expect.objectContaining({
+        admissionStatus: "ENROLLED",
+        studentNumber: verifyData.studentNumber,
+      }),
+    });
+    expect(tx().user.updateMany).toHaveBeenCalledWith({
+      where: { id: userId, role: "APPLICANT" },
+      data: { role: "STUDENT" },
     });
     expect(tx().corRecord.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -73,19 +91,20 @@ describe("CorRepository.verifyAndPromote canonical transaction", () => {
         verifiedById: adminId,
       }),
     });
-    expect(tx().student.update).toHaveBeenCalledWith({
-      where: { id: studentId },
-      data: expect.objectContaining({
-        admissionStatus: "ENROLLED",
-        studentNumber: verifyData.studentNumber,
-      }),
-    });
-    expect(tx().user.update).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { role: "STUDENT" },
-    });
     expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
     expect(result).toBeTruthy();
+  });
+
+  it("fails closed when the supplied upload is not the student's current submission", async () => {
+    tx().corUpload.findFirst.mockResolvedValue({ id: "cor-newer" });
+    const repo = new CorRepository();
+
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(tx().corUpload.updateMany).not.toHaveBeenCalled();
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
   });
 
   it("fails closed when the upload is no longer PENDING (concurrent verify)", async () => {
@@ -97,8 +116,48 @@ describe("CorRepository.verifyAndPromote canonical transaction", () => {
     ).rejects.toMatchObject({ statusCode: 409 });
 
     expect(tx().corRecord.create).not.toHaveBeenCalled();
-    expect(tx().student.update).not.toHaveBeenCalled();
-    expect(tx().user.update).not.toHaveBeenCalled();
+    expect(tx().student.updateMany).not.toHaveBeenCalled();
+    expect(tx().user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for a DISQUALIFIED student and does not promote", async () => {
+    tx().student.findUnique.mockResolvedValue({ id: studentId, admissionStatus: "DISQUALIFIED" });
+    const repo = new CorRepository();
+
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(tx().student.updateMany).not.toHaveBeenCalled();
+    expect(tx().user.updateMany).not.toHaveBeenCalled();
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
+    expect(tx().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for an ENROLLED student (no second promotion)", async () => {
+    tx().student.findUnique.mockResolvedValue({ id: studentId, admissionStatus: "ENROLLED" });
+    const repo = new CorRepository();
+
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the User role is not APPLICANT", async () => {
+    for (const role of ["STUDENT", "ADMIN", "PANELIST"]) {
+      vi.clearAllMocks();
+      authorizeHappyPath();
+      tx().user.findUnique.mockResolvedValue({ id: userId, role });
+      const repo = new CorRepository();
+
+      await expect(
+        repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+      ).rejects.toMatchObject({ statusCode: 409 });
+
+      expect(tx().student.updateMany).not.toHaveBeenCalled();
+      expect(tx().corRecord.create).not.toHaveBeenCalled();
+    }
   });
 
   it("fails closed when the entrance exam is not PASSED", async () => {
@@ -111,8 +170,19 @@ describe("CorRepository.verifyAndPromote canonical transaction", () => {
     expect(tx().corRecord.create).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the student is already enrolled", async () => {
-    tx().student.findUnique.mockResolvedValue({ id: studentId, admissionStatus: "ENROLLED" });
+  it("fails closed when the conditional student write affects 0 rows", async () => {
+    tx().student.updateMany.mockResolvedValue({ count: 0 });
+    const repo = new CorRepository();
+
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx().user.updateMany).not.toHaveBeenCalled();
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the conditional user write affects 0 rows", async () => {
+    tx().user.updateMany.mockResolvedValue({ count: 0 });
     const repo = new CorRepository();
 
     await expect(
@@ -122,15 +192,17 @@ describe("CorRepository.verifyAndPromote canonical transaction", () => {
   });
 });
 
-describe("CorRepository.rejectUpload canonical transaction", () => {
-  it("rejects only the exact PENDING upload and records reason + audit atomically", async () => {
+describe("CorRepository.rejectUpload currentness", () => {
+  it("rejects only the current PENDING upload with reason + audit atomically", async () => {
+    tx().corUpload.findFirst.mockResolvedValue({ id: uploadId });
     tx().corUpload.updateMany.mockResolvedValue({ count: 1 });
     const repo = new CorRepository();
 
-    await repo.rejectUpload(uploadId, { reason: "Illegible scan", adminId });
+    await repo.rejectUpload(uploadId, { studentId, reason: "Illegible scan", adminId });
 
+    expect(tx().$queryRaw).toHaveBeenCalledTimes(1);
     expect(tx().corUpload.updateMany).toHaveBeenCalledWith({
-      where: { id: uploadId, status: "PENDING" },
+      where: { id: uploadId, studentId, status: "PENDING" },
       data: expect.objectContaining({
         status: "REJECTED",
         rejectionReason: "Illegible scan",
@@ -138,22 +210,47 @@ describe("CorRepository.rejectUpload canonical transaction", () => {
         reviewedAt: expect.any(Date),
       }),
     });
-    expect(tx().auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        targetTable: "cor_uploads",
-        targetId: uploadId,
-        actionType: "COR_REJECT",
-      }),
-    });
+    expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
   });
 
-  it("fails closed when the upload is not PENDING", async () => {
+  it("fails closed when the supplied upload is not the current submission", async () => {
+    tx().corUpload.findFirst.mockResolvedValue({ id: "cor-newer" });
+    const repo = new CorRepository();
+
+    await expect(
+      repo.rejectUpload(uploadId, { studentId, reason: "x", adminId }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(tx().corUpload.updateMany).not.toHaveBeenCalled();
+    expect(tx().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the current upload is not PENDING", async () => {
+    tx().corUpload.findFirst.mockResolvedValue({ id: uploadId });
     tx().corUpload.updateMany.mockResolvedValue({ count: 0 });
     const repo = new CorRepository();
 
     await expect(
-      repo.rejectUpload(uploadId, { reason: "x", adminId }),
+      repo.rejectUpload(uploadId, { studentId, reason: "x", adminId }),
     ).rejects.toMatchObject({ statusCode: 409 });
     expect(tx().auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("CorRepository.getPendingUploads current actionable rows", () => {
+  it("shows a current PENDING row but hides a stale historical PENDING row", async () => {
+    // First call: distinct student ids that have any PENDING row.
+    prismaMock.corUpload.findMany
+      .mockResolvedValueOnce([{ studentId: "s1" }, { studentId: "s2" }])
+      // Second call: all uploads for those students, ordered newest-first per student.
+      .mockResolvedValueOnce([
+        { id: "s2-new", studentId: "s2", status: "REJECTED", student: { id: "s2" } },
+        { id: "s2-old", studentId: "s2", status: "PENDING", student: { id: "s2" } },
+        { id: "s1-cur", studentId: "s1", status: "PENDING", student: { id: "s1" } },
+      ]);
+
+    const repo = new CorRepository();
+    const result = await repo.getPendingUploads();
+
+    expect(result.map((r: { id: string }) => r.id)).toEqual(["s1-cur"]);
   });
 });

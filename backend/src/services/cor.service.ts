@@ -164,10 +164,15 @@ export class CorService {
         return this.corRepository.getPendingUploads();
     }
 
-    /** The single current PENDING upload id for a student (legacy delegation). */
+    /**
+     * The Student's current PENDING submission id, or null when the latest
+     * submission is not PENDING. Used by legacy delegation so it can never
+     * resolve a stale historical PENDING row.
+     */
     async findPendingUploadIdForStudent(studentId: string): Promise<string | null> {
-        const upload = await this.corRepository.getPendingUploadByStudentId(studentId);
-        return upload?.id ?? null;
+        const current = await this.corRepository.getCurrentUploadByStudentId(studentId);
+        if (!current || current.status !== "PENDING") return null;
+        return current.id;
     }
 
     /**
@@ -196,8 +201,14 @@ export class CorService {
         }
 
         const student = upload.student;
-        if (student.admissionStatus === "ENROLLED") {
-            throw new AppError("Student is already enrolled.", 409);
+        if (student.admissionStatus !== "APPLICANT") {
+            throw new AppError("Only an APPLICANT can be promoted to Student.", 409);
+        }
+        if (student.user.role !== "APPLICANT") {
+            throw new AppError(
+                "Only an APPLICANT account can be promoted to Student.",
+                409,
+            );
         }
 
         const hasPassedExam = await this.corRepository.checkPassedExam(student.id);
@@ -267,6 +278,7 @@ export class CorService {
         }
 
         return this.corRepository.rejectUpload(corUploadId, {
+            studentId: upload.studentId,
             reason: trimmed,
             adminId,
         });

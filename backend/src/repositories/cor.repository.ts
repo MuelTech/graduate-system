@@ -28,10 +28,13 @@ export class CorRepository {
     }
 
     /**
-     * DL-2 FIX1: atomic upload + required upload audit boundary.
-     * Either the CorUpload row and its audit record both commit, or neither
-     * does — so a committed upload can never be left pointing at a file that
-     * request cleanup deleted.
+     * DL-2 FIX1 / DL-3 FIX1: atomic upload + required upload audit boundary,
+     * serialized per Student by locking the authoritative Student row.
+     *
+     * The Student-row lock serializes competing submissions for the same
+     * applicant, so the existence checks inside the transaction are
+     * authoritative: two concurrent uploads cannot both create an active
+     * PENDING COR. History (e.g. prior REJECTED rows) is never mutated.
      */
     async createUploadWithAudit(
         uploadData: Prisma.CorUploadUncheckedCreateInput,
@@ -44,6 +47,30 @@ export class CorRepository {
         },
     ) {
         return prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${uploadData.studentId} FOR UPDATE`;
+
+            const active = await tx.corUpload.findFirst({
+                where: { studentId: uploadData.studentId, status: 'PENDING' },
+                select: { id: true },
+            });
+            if (active) {
+                throw new AppError(
+                    'You already have a pending COR upload. Please wait for it to be reviewed before uploading a new one.',
+                    409,
+                );
+            }
+
+            const verified = await tx.corUpload.findFirst({
+                where: { studentId: uploadData.studentId, status: 'VERIFIED' },
+                select: { id: true },
+            });
+            if (verified) {
+                throw new AppError(
+                    'Your COR is already verified. A verified COR cannot be replaced.',
+                    409,
+                );
+            }
+
             const upload = await tx.corUpload.create({
                 data: uploadData,
                 select: UPLOAD_SELECT,
@@ -73,6 +100,15 @@ export class CorRepository {
         });
     }
 
+    /** The Student's current/latest submission overall (any status). */
+    async getCurrentUploadByStudentId(studentId: string) {
+        return prisma.corUpload.findFirst({
+            where: { studentId },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            select: { id: true, status: true },
+        });
+    }
+
     async getActiveUploadByStudentId(studentId: string) {
         return prisma.corUpload.findFirst({
             where: {
@@ -84,9 +120,23 @@ export class CorRepository {
         });
     }
 
+    /**
+     * DL-3 FIX1: only current actionable PENDING submissions are review tasks.
+     * A student's latest upload overall must itself be PENDING; stale legacy
+     * PENDING rows that are not the current submission are hidden (never
+     * deleted or mutated).
+     */
     async getPendingUploads() {
-        return prisma.corUpload.findMany({
-            where: { status: 'PENDING', corRecord: null },
+        const pendingStudents = await prisma.corUpload.findMany({
+            where: { status: 'PENDING' },
+            select: { studentId: true },
+            distinct: ['studentId'],
+        });
+        if (pendingStudents.length === 0) return [];
+
+        const studentIds = pendingStudents.map((row) => row.studentId);
+        const rows = await prisma.corUpload.findMany({
+            where: { studentId: { in: studentIds } },
             select: {
                 ...UPLOAD_SELECT,
                 student: {
@@ -97,8 +147,21 @@ export class CorRepository {
                     },
                 },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+                { studentId: 'asc' },
+                { createdAt: 'desc' },
+                { id: 'desc' },
+            ],
         });
+
+        const seen = new Set<string>();
+        const current: typeof rows = [];
+        for (const row of rows) {
+            if (seen.has(row.studentId)) continue;
+            seen.add(row.studentId);
+            if (row.status === 'PENDING') current.push(row);
+        }
+        return current;
     }
 
     async getUploadById(id: string) {
@@ -117,20 +180,11 @@ export class CorRepository {
     async getUploadByStudentIdLatest(studentId: string) {
         return prisma.corUpload.findFirst({
             where: { studentId },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             include: {
                 corRecord: true,
                 reviewedBy: { select: { firstName: true, lastName: true } },
             },
-        });
-    }
-
-    /** The single current PENDING upload eligible for verify/reject. */
-    async getPendingUploadByStudentId(studentId: string) {
-        return prisma.corUpload.findFirst({
-            where: { studentId, status: 'PENDING' },
-            orderBy: { createdAt: 'desc' },
-            select: UPLOAD_SELECT,
         });
     }
 
@@ -163,18 +217,33 @@ export class CorRepository {
     }
 
     /**
-     * DL-3 canonical rejection: only the exact PENDING upload may be rejected.
-     * Rejection reason + reviewer + timestamp are persisted explicitly, with
-     * the audit entry committed in the same transaction. Historical rejected
-     * rows/files are never mutated or deleted.
+     * DL-3 canonical rejection: only the Student's exact current PENDING
+     * submission may be rejected. The Student row is locked so a concurrent
+     * submission cannot change which row is current mid-transaction. Rejection
+     * reason + reviewer + timestamp and the audit entry commit atomically;
+     * historical rejected rows/files are never mutated or deleted.
      */
     async rejectUpload(
         corUploadId: string,
-        opts: { reason: string; adminId: string },
+        opts: { studentId: string; reason: string; adminId: string },
     ) {
         return prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${opts.studentId} FOR UPDATE`;
+
+            const latest = await tx.corUpload.findFirst({
+                where: { studentId: opts.studentId },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                select: { id: true },
+            });
+            if (!latest || latest.id !== corUploadId) {
+                throw new AppError(
+                    'Only the current COR submission can be rejected.',
+                    409,
+                );
+            }
+
             const updated = await tx.corUpload.updateMany({
-                where: { id: corUploadId, status: 'PENDING' },
+                where: { id: corUploadId, studentId: opts.studentId, status: 'PENDING' },
                 data: {
                     status: 'REJECTED',
                     rejectionReason: opts.reason,
@@ -220,6 +289,17 @@ export class CorRepository {
      * concurrent second verification cannot create a duplicate CorRecord,
      * promote twice, or overwrite the Student Number.
      */
+    /**
+     * DL-3 canonical verify + promote. One transaction performs the entire
+     * authority transition and required audit.
+     *
+     * Authority is exact: the Student must be APPLICANT and the account User
+     * must be APPLICANT. Any other state (DISQUALIFIED, ENROLLED, wrong role)
+     * fails closed and rolls back, including the preliminary COR claim.
+     * Conditional writes with affected-row checks prevent concurrent/inconsistent
+     * state changes from being overwritten. The Student row is locked so a
+     * concurrent submission cannot change which upload is current mid-transaction.
+     */
     async verifyAndPromote(
         corUploadId: string,
         studentId: string,
@@ -234,12 +314,27 @@ export class CorRepository {
         adminId: string
     ) {
         return prisma.$transaction(async (tx) => {
-            // 1. Claim the exact PENDING upload (fail closed if already handled).
+            // 0. Serialize per Student (also blocks concurrent upload creation).
+            await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${studentId} FOR UPDATE`;
+
+            // 1. The supplied upload must be the Student's current submission.
+            const latest = await tx.corUpload.findFirst({
+                where: { studentId },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                select: { id: true },
+            });
+            if (!latest || latest.id !== corUploadId) {
+                throw new AppError(
+                    'Only the current COR submission can be reviewed.',
+                    409,
+                );
+            }
+
+            // 2. Claim the exact PENDING upload (fail closed if already handled).
             const updatedUpload = await tx.corUpload.updateMany({
                 where: { id: corUploadId, studentId, status: 'PENDING' },
                 data: { status: 'VERIFIED' },
             });
-
             if (updatedUpload.count !== 1) {
                 throw new AppError(
                     'Only a pending COR upload can be verified.',
@@ -247,15 +342,19 @@ export class CorRepository {
                 );
             }
 
-            // 2. Re-check promotion eligibility inside the transaction.
+            // 3. Exact Student authority: must be APPLICANT.
             const student = await tx.student.findUnique({ where: { id: studentId } });
             if (!student) {
                 throw new AppError('Student profile not found.', 404);
             }
-            if (student.admissionStatus === 'ENROLLED') {
-                throw new AppError('Student is already enrolled.', 409);
+            if (student.admissionStatus !== 'APPLICANT') {
+                throw new AppError(
+                    'Only an APPLICANT can be promoted to Student.',
+                    409,
+                );
             }
 
+            // 4. Entrance exam gate re-checked inside the transaction.
             const passedExam = await tx.entranceExamApplication.findFirst({
                 where: { studentId, status: 'PASSED' },
             });
@@ -266,7 +365,47 @@ export class CorRepository {
                 );
             }
 
-            // 3. Verified COR record with Admin-confirmed data.
+            // 5. Exact account authority: must be APPLICANT.
+            const user = await tx.user.findUnique({ where: { id: userId } });
+            if (!user) {
+                throw new AppError('Applicant account not found.', 404);
+            }
+            if (user.role !== 'APPLICANT') {
+                throw new AppError(
+                    'Only an APPLICANT account can be promoted to Student.',
+                    409,
+                );
+            }
+
+            // 6. Conditional promotion writes (affected-row checks close races).
+            const promotedStudent = await tx.student.updateMany({
+                where: { id: studentId, admissionStatus: 'APPLICANT' },
+                data: {
+                    admissionStatus: 'ENROLLED',
+                    studentNumber: verificationData.studentNumber,
+                    enrollmentDate: new Date(),
+                    residencyStartDate: new Date(),
+                },
+            });
+            if (promotedStudent.count !== 1) {
+                throw new AppError(
+                    'Applicant state changed. Refresh and try again.',
+                    409,
+                );
+            }
+
+            const promotedUser = await tx.user.updateMany({
+                where: { id: userId, role: 'APPLICANT' },
+                data: { role: 'STUDENT' },
+            });
+            if (promotedUser.count !== 1) {
+                throw new AppError(
+                    'Applicant account state changed. Refresh and try again.',
+                    409,
+                );
+            }
+
+            // 7. Verified COR record with Admin-confirmed data.
             const corRecord = await tx.corRecord.create({
                 data: {
                     corUploadId,
@@ -281,24 +420,7 @@ export class CorRepository {
                 },
             });
 
-            // 4. Promote the Student.
-            const updatedStudent = await tx.student.update({
-                where: { id: studentId },
-                data: {
-                    admissionStatus: 'ENROLLED',
-                    studentNumber: verificationData.studentNumber,
-                    enrollmentDate: new Date(),
-                    residencyStartDate: new Date(),
-                },
-            });
-
-            // 5. APPLICANT → STUDENT.
-            const updatedUser = await tx.user.update({
-                where: { id: userId },
-                data: { role: 'STUDENT' },
-            });
-
-            // 6. Authoritative audit within the same boundary.
+            // 8. Authoritative audit within the same boundary.
             await tx.auditLog.create({
                 data: {
                     actorId: adminId,
@@ -314,7 +436,7 @@ export class CorRepository {
                 },
             });
 
-            return { corRecord, updatedStudent, updatedUser };
+            return { corRecord };
         });
     }
 

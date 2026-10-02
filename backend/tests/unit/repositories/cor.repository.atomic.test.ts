@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
-    corUpload: { create: vi.fn() },
+    $queryRaw: vi.fn(async () => []),
+    corUpload: { create: vi.fn(), findFirst: vi.fn() },
     auditLog: { create: vi.fn() },
   };
   return {
@@ -32,17 +33,22 @@ const audit = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  prismaMock.__tx.corUpload.findFirst.mockResolvedValue(null);
+  prismaMock.__tx.corUpload.create.mockResolvedValue({ id: "cor-1" });
+  prismaMock.__tx.auditLog.create.mockResolvedValue({ id: "log-1" });
 });
 
 describe("CorRepository atomic upload + audit boundary", () => {
-  it("writes the upload row and its audit record inside one transaction", async () => {
-    prismaMock.__tx.corUpload.create.mockResolvedValue({ id: "cor-1" });
-    prismaMock.__tx.auditLog.create.mockResolvedValue({ id: "log-1" });
-
+  it("locks the student row, writes the upload and audit inside one transaction", async () => {
     const repo = new CorRepository();
     const result = await repo.createUploadWithAudit(uploadData as never, audit);
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.__tx.$queryRaw).toHaveBeenCalledTimes(1);
+    // The authoritative Student-row lock must precede the existence checks.
+    expect(
+      prismaMock.__tx.$queryRaw.mock.invocationCallOrder[0],
+    ).toBeLessThan(prismaMock.__tx.corUpload.findFirst.mock.invocationCallOrder[0]);
     expect(prismaMock.__tx.corUpload.create).toHaveBeenCalledTimes(1);
     expect(prismaMock.__tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -55,12 +61,37 @@ describe("CorRepository atomic upload + audit boundary", () => {
   });
 
   it("propagates a failure in the audit boundary so the transaction rolls back", async () => {
-    prismaMock.__tx.corUpload.create.mockResolvedValue({ id: "cor-1" });
     prismaMock.__tx.auditLog.create.mockRejectedValue(new Error("audit down"));
 
     const repo = new CorRepository();
     await expect(
       repo.createUploadWithAudit(uploadData as never, audit),
     ).rejects.toThrow("audit down");
+  });
+
+  it("fails closed when an active PENDING upload already exists (concurrent upload guard)", async () => {
+    // First findFirst = PENDING check → an existing active row.
+    prismaMock.__tx.corUpload.findFirst.mockResolvedValueOnce({ id: "cor-existing" });
+
+    const repo = new CorRepository();
+    await expect(
+      repo.createUploadWithAudit(uploadData as never, audit),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.corUpload.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a VERIFIED upload already exists", async () => {
+    prismaMock.__tx.corUpload.findFirst
+      .mockResolvedValueOnce(null) // no PENDING
+      .mockResolvedValueOnce({ id: "cor-verified" }); // VERIFIED present
+
+    const repo = new CorRepository();
+    await expect(
+      repo.createUploadWithAudit(uploadData as never, audit),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.corUpload.create).not.toHaveBeenCalled();
   });
 });

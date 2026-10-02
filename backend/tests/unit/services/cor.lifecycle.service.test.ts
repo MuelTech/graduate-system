@@ -6,7 +6,7 @@ const repo = vi.hoisted(() => ({
   getActiveUploadByStudentId: vi.fn(),
   getVerifiedUploadByStudentId: vi.fn(),
   getUploadByStudentIdLatest: vi.fn(),
-  getPendingUploadByStudentId: vi.fn(),
+  getCurrentUploadByStudentId: vi.fn(),
   getUploadById: vi.fn(),
   createUploadWithAudit: vi.fn(),
   verifyAndPromote: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("../../../src/repositories/cor.repository", () => ({
     getActiveUploadByStudentId = repo.getActiveUploadByStudentId;
     getVerifiedUploadByStudentId = repo.getVerifiedUploadByStudentId;
     getUploadByStudentIdLatest = repo.getUploadByStudentIdLatest;
-    getPendingUploadByStudentId = repo.getPendingUploadByStudentId;
+    getCurrentUploadByStudentId = repo.getCurrentUploadByStudentId;
     getUploadById = repo.getUploadById;
     createUploadWithAudit = repo.createUploadWithAudit;
     verifyAndPromote = repo.verifyAndPromote;
@@ -144,7 +144,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
       id: "student-1",
       userId: "user-1",
       admissionStatus: "APPLICANT",
-      user: { email: "a@b.c", firstName: "Ana", lastName: "Dela" },
+      user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
     },
   };
 
@@ -244,6 +244,20 @@ describe("CorService.verifyCor canonical verify + promote", () => {
 });
 
 describe("CorService.rejectCor canonical rejection", () => {
+  beforeEach(() => {
+    repo.getUploadById.mockResolvedValue({
+      id: "cor-1",
+      status: "PENDING",
+      studentId: "student-1",
+      student: {
+        id: "student-1",
+        userId: "user-1",
+        admissionStatus: "APPLICANT",
+        user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
+      },
+    });
+  });
+
   it("requires a rejection reason", async () => {
     const svc = new CorService();
     await expect(svc.rejectCor("cor-1", "admin-1", "   ")).rejects.toMatchObject({
@@ -252,13 +266,34 @@ describe("CorService.rejectCor canonical rejection", () => {
     expect(repo.rejectUpload).not.toHaveBeenCalled();
   });
 
-  it("delegates rejection to the canonical transaction", async () => {
+  it("delegates rejection to the canonical transaction with the owning student", async () => {
     repo.rejectUpload.mockResolvedValue({ id: "cor-1", status: "REJECTED" });
     const svc = new CorService();
     await svc.rejectCor("cor-1", "admin-1", "  Illegible scan  ");
     expect(repo.rejectUpload).toHaveBeenCalledWith("cor-1", {
+      studentId: "student-1",
       reason: "Illegible scan",
       adminId: "admin-1",
     });
+  });
+});
+
+describe("CorService.findPendingUploadIdForStudent currentness", () => {
+  it("returns the id only when the current submission is PENDING", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-cur", status: "PENDING" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBe("cor-cur");
+  });
+
+  it("returns null when the current submission is REJECTED (no fallback to older PENDING)", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-new", status: "REJECTED" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBeNull();
+  });
+
+  it("returns null when the current submission is VERIFIED", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-ver", status: "VERIFIED" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBeNull();
   });
 });
