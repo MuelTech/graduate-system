@@ -18,11 +18,12 @@ import {
   Lock,
 } from "lucide-react";
 
-type UploadState = "idle" | "uploading" | "pending" | "verified";
+type UploadState = "idle" | "uploading" | "pending" | "verified" | "rejected";
 
 export default function ApplicantCORUploadPage() {
   const { data: session } = useSession();
   const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [rejectionReason, setRejectionReason] = useState<string>("");
   const [examStatus, setExamStatus] = useState<string>("none");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -35,7 +36,18 @@ export default function ApplicantCORUploadPage() {
       try {
         const data = await apiClientRequest("/cor/my-upload");
         if (data && data.status) {
-          setUploadState(data.status); // "pending" or "verified"
+          // Backend returns canonical uppercase enum values.
+          const status = String(data.status).toUpperCase();
+          if (status === "PENDING") {
+            setUploadState("pending");
+          } else if (status === "VERIFIED") {
+            setUploadState("verified");
+          } else if (status === "REJECTED") {
+            setUploadState("rejected");
+            setRejectionReason(data.rejectionReason || "");
+          } else {
+            setUploadState("idle");
+          }
         }
       } catch (error) {
         console.log("No existing upload found or error:", error);
@@ -161,6 +173,18 @@ export default function ApplicantCORUploadPage() {
         </Alert>
       )}
 
+      {uploadState === "rejected" && (
+        <Alert className="border-red-200 bg-red-50">
+          <X className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-700">
+            <span className="font-semibold">COR rejected.</span>{" "}
+            {rejectionReason
+              ? `Reason: ${rejectionReason}`
+              : "Please review the requirements and upload a new COR."}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {examStatus !== "passed" ? (
         <Card>
           <CardContent className="py-8">
@@ -180,12 +204,16 @@ export default function ApplicantCORUploadPage() {
             </div>
           </CardContent>
         </Card>
-      ) : (uploadState === "idle" || uploadState === "uploading") && (
+      ) : (uploadState === "idle" ||
+          uploadState === "uploading" ||
+          uploadState === "rejected") && (
         <>
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                How to Upload Your COR
+                {uploadState === "rejected"
+                  ? "Upload a New COR"
+                  : "How to Upload Your COR"}
               </CardTitle>
             </CardHeader>
             <CardContent>

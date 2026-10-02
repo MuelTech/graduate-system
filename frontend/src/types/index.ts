@@ -471,10 +471,16 @@ export interface ExamApplicationDetail {
 
 export interface CorUploadDetail {
   id: string;
+  status: string;
   ocrStatus: string;
-  filePath: string;
-  originalFilename: string;
+  originalFilename: string | null;
+  detectedMimeType: string | null;
+  sizeBytes: number | null;
   uploadedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  reviewedBy: { firstName: string; lastName: string } | null;
+  isCurrent: boolean;
   corRecord: CorRecordDetail | null;
 }
 

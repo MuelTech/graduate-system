@@ -79,7 +79,7 @@ export class AdminApplicantRepository {
 
       let corStatus = "NONE";
       if (corUpload) {
-        corStatus = corUpload.corRecord?.isAdminVerified ? "VERIFIED" : "PENDING";
+        corStatus = String(corUpload.status || "NONE");
       }
 
       return {
@@ -157,6 +157,12 @@ export class AdminApplicantRepository {
                 },
               },
             },
+            reviewedBy: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -210,48 +216,6 @@ export class AdminApplicantRepository {
         validatedAt: status === "validated" ? new Date() : null,
         adminNotes: adminNotes || null,
       },
-    });
-  }
-
-  async updateCorVerification(
-    corRecordId: string,
-    verified: boolean,
-    verificationMethod?: string,
-    verifiedById?: string
-  ) {
-    return prisma.corRecord.update({
-      where: { id: corRecordId },
-      data: {
-        isAdminVerified: verified,
-        verificationMethod: verificationMethod as any || null,
-        verifiedById: verifiedById || null,
-        verifiedAt: verified ? new Date() : null,
-      },
-    });
-  }
-
-  async promoteToStudent(studentId: string, studentNumber: string) {
-    return prisma.$transaction(async (tx) => {
-      await tx.student.update({
-        where: { id: studentId },
-        data: {
-          admissionStatus: "ENROLLED",
-          enrollmentDate: new Date(),
-          studentNumber: studentNumber,
-        },
-      });
-
-      const student = await tx.student.findUnique({ where: { id: studentId } });
-      if (student) {
-        await tx.user.update({
-          where: { id: student.userId },
-          data: {
-            role: "STUDENT",
-          },
-        });
-      }
-
-      return { studentNumber };
     });
   }
 

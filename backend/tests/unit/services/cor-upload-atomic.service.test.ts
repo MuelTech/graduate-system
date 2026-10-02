@@ -9,6 +9,7 @@ const repo = vi.hoisted(() => ({
   findStudentByUserId: vi.fn(),
   checkPassedExam: vi.fn(),
   getActiveUploadByStudentId: vi.fn(),
+  getVerifiedUploadByStudentId: vi.fn(),
   createUploadWithAudit: vi.fn(),
 }));
 
@@ -17,6 +18,7 @@ vi.mock("../../../src/repositories/cor.repository", () => ({
     findStudentByUserId = repo.findStudentByUserId;
     checkPassedExam = repo.checkPassedExam;
     getActiveUploadByStudentId = repo.getActiveUploadByStudentId;
+    getVerifiedUploadByStudentId = repo.getVerifiedUploadByStudentId;
     createUploadWithAudit = repo.createUploadWithAudit;
     createUpload = vi.fn();
     createAuditLog = vi.fn();
@@ -45,6 +47,7 @@ beforeEach(() => {
   repo.findStudentByUserId.mockResolvedValue({ id: "student-1" });
   repo.checkPassedExam.mockResolvedValue({ id: "exam-1" });
   repo.getActiveUploadByStudentId.mockResolvedValue(null);
+  repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
 });
 
 async function makeUploadFile(): Promise<string> {
@@ -66,8 +69,8 @@ describe("DL-2 FIX1 COR atomic persistence boundary", () => {
 
     expect(result.id).toBe("cor-1");
     expect(repo.createUploadWithAudit).toHaveBeenCalledTimes(1);
-    // Detected PDF is renamed with the correct extension and kept.
-    expect(existsSync(filePath + ".pdf")).toBe(true);
+    // DL-3: the managed object is NOT renamed; storageKey keeps resolving to it.
+    expect(existsSync(filePath)).toBe(true);
   });
 
   it("audit/persistence failure: no row retained and the file is removed", async () => {
@@ -82,6 +85,6 @@ describe("DL-2 FIX1 COR atomic persistence boundary", () => {
       } as Express.Multer.File),
     ).rejects.toThrow(/audit boundary failed/);
 
-    expect(existsSync(filePath + ".pdf")).toBe(false);
+    expect(existsSync(filePath)).toBe(false);
   });
 });

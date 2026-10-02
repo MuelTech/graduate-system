@@ -92,13 +92,8 @@ export class AdminApplicantController {
     try {
       const id = req.params.id as string;
       const adminId = (req as any).user.userId;
-      const { verificationMethod } = req.body;
 
-      if (!verificationMethod) {
-        throw new AppError("Verification method is required!", 400);
-      }
-
-      const result = await this.service.verifyCor(id, adminId, { verificationMethod });
+      const result = await this.service.verifyCor(id, adminId, req.body);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {

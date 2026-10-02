@@ -20,7 +20,6 @@ import {
   XCircle,
   AlertTriangle,
   Shield,
-  RotateCcw,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminApplicantDetail } from "@/types";
@@ -33,8 +32,6 @@ export default function ApplicantDetailPage() {
   const applicantId = params.id as string;
 
   const [rejectNotes, setRejectNotes] = useState("");
-  const [corReason, setCorReason] = useState("");
-  const [verifyMethod, setVerifyMethod] = useState<"manual" | "qr_auto" | "ocr_auto">("manual");
 
   const { data: applicant, isLoading } = useQuery<AdminApplicantDetail>({
     queryKey: ["adminApplicantDetail", applicantId],
@@ -69,58 +66,6 @@ export default function ApplicantDetailPage() {
     onSuccess: (data) => {
       toast.success(data.message);
       setRejectNotes("");
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const verifyCorMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/cor/verify`, {
-        method: "PUT",
-        body: JSON.stringify({ verificationMethod: verifyMethod }),
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const rejectCorMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/cor/reject`, {
-        method: "PUT",
-        body: JSON.stringify({ reason: corReason }),
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      setCorReason("");
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const promoteMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/promote`, {
-        method: "PUT",
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      toast.info(`Credentials: Username: ${data.credentials.username}, Password: ${data.credentials.password}`);
       queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
       queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
     },
@@ -219,7 +164,8 @@ export default function ApplicantDetailPage() {
     });
   };
 
-  const isEligibleForPromotion = applicant?.examStatus === "PASSED" && applicant?.corStatus === "VERIFIED";
+  // DL-3: COR verification/promotion is authored exclusively by the canonical
+  // COR Validation workflow. This detail view is read-only for COR authority.
 
   if (isLoading) {
     return (
@@ -470,75 +416,80 @@ export default function ApplicantDetailPage() {
               {getCorBadge(applicant.corStatus)}
             </div>
 
-            {applicant.corUploads[0] && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <p><span className="text-gray-500">Uploaded:</span> {formatDateTime(applicant.corUploads[0].uploadedAt)}</p>
-                  <p><span className="text-gray-500">OCR Status:</span> {applicant.corUploads[0].ocrStatus}</p>
-                  {applicant.corUploads[0].corRecord && (
-                    <>
-                      <p><span className="text-gray-500">Reg No:</span> {applicant.corUploads[0].corRecord.registrationNumber}</p>
-                      <p><span className="text-gray-500">Academic Year:</span> {applicant.corUploads[0].corRecord.academicYear}</p>
-                      <p><span className="text-gray-500">Semester:</span> {applicant.corUploads[0].corRecord.semester}</p>
-                      <p><span className="text-gray-500">Program:</span> {applicant.corUploads[0].corRecord.extractedProgramName}</p>
-                      {applicant.corUploads[0].corRecord.verifiedBy && (
-                        <p><span className="text-gray-500">Verified By:</span> {applicant.corUploads[0].corRecord.verifiedBy.firstName} {applicant.corUploads[0].corRecord.verifiedBy.lastName}</p>
+            {applicant.corUploads.length > 0 && (
+              <div className="space-y-3">
+                {applicant.corUploads.map((upload) => (
+                  <div key={upload.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">
+                        {upload.originalFilename || "COR file"}
+                        {upload.isCurrent && (
+                          <span className="ml-2 text-xs text-blue-600">
+                            (current)
+                          </span>
+                        )}
+                      </p>
+                      {getCorBadge(upload.status)}
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <p>
+                        <span className="text-gray-500">Uploaded:</span>{" "}
+                        {formatDateTime(upload.uploadedAt)}
+                      </p>
+                      {upload.reviewedAt && (
+                        <p>
+                          <span className="text-gray-500">Reviewed:</span>{" "}
+                          {formatDateTime(upload.reviewedAt)}
+                        </p>
                       )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {applicant.corStatus !== "VERIFIED" && applicant.corUploads[0] && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => verifyCorMutation.mutate()}
-                  disabled={verifyCorMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  {verifyCorMutation.isPending ? "Verifying..." : "Verify COR"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (corReason) {
-                      rejectCorMutation.mutate();
-                    }
-                  }}
-                  disabled={rejectCorMutation.isPending || !corReason}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {rejectCorMutation.isPending ? "Rejecting..." : "Reject"}
-                </Button>
-              </div>
-            )}
-
-            {applicant.corStatus !== "VERIFIED" && applicant.corUploads[0] && (
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-sm text-gray-500">Verification Method</label>
-                  <select
-                    value={verifyMethod}
-                    onChange={(e) => setVerifyMethod(e.target.value as any)}
-                    className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                  >
-                    <option value="manual">Manual</option>
-                    <option value="qr_auto">QR Auto</option>
-                    <option value="ocr_auto">OCR Auto</option>
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="text-sm text-gray-500">Rejection Reason (required for reject)</label>
-                  <input
-                    type="text"
-                    value={corReason}
-                    onChange={(e) => setCorReason(e.target.value)}
-                    placeholder="Enter rejection reason..."
-                    className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
-                  />
-                </div>
+                      {upload.reviewedBy && (
+                        <p>
+                          <span className="text-gray-500">Reviewed By:</span>{" "}
+                          {upload.reviewedBy.firstName} {upload.reviewedBy.lastName}
+                        </p>
+                      )}
+                      {upload.rejectionReason && (
+                        <p className="md:col-span-2">
+                          <span className="text-gray-500">Reason:</span>{" "}
+                          {upload.rejectionReason}
+                        </p>
+                      )}
+                      {upload.corRecord && (
+                        <>
+                          <p>
+                            <span className="text-gray-500">Reg No:</span>{" "}
+                            {upload.corRecord.registrationNumber}
+                          </p>
+                          <p>
+                            <span className="text-gray-500">Academic Year:</span>{" "}
+                            {upload.corRecord.academicYear}
+                          </p>
+                          <p>
+                            <span className="text-gray-500">Semester:</span>{" "}
+                            {upload.corRecord.semester}
+                          </p>
+                          {upload.corRecord.verifiedBy && (
+                            <p>
+                              <span className="text-gray-500">Verified By:</span>{" "}
+                              {upload.corRecord.verifiedBy.firstName}{" "}
+                              {upload.corRecord.verifiedBy.lastName}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-gray-500">
+                  COR verification and promotion are performed in the canonical
+                  COR Validation workflow (one-step Verify &amp; Promote).
+                </p>
+                <Link href="/admin/exam/cor">
+                  <Button variant="outline" className="w-full">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Open COR Validation
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
@@ -589,20 +540,10 @@ export default function ApplicantDetailPage() {
               </div>
             </div>
 
-            {isEligibleForPromotion && applicant.admissionStatus === "APPLICANT" && (
-              <Button
-                onClick={() => {
-                  if (confirm("Are you sure you want to promote this applicant to Student? Credentials will be sent via email.")) {
-                    promoteMutation.mutate();
-                  }
-                }}
-                disabled={promoteMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <GraduationCap className="mr-2 h-4 w-4" />
-                {promoteMutation.isPending ? "Promoting..." : "Promote to Student"}
-              </Button>
-            )}
+            <p className="text-xs text-gray-500">
+              Promotion to Student is applied atomically by the canonical COR
+              Verify &amp; Promote action, not from this page.
+            </p>
           </div>
         </CardContent>
       </Card>

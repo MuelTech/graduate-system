@@ -1,9 +1,10 @@
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { AppError } from '../utils/AppError';
 
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
-// Fields safe to return to clients — never includes filePath
+// Fields safe to return to clients — never includes filePath or storageKey
 const UPLOAD_SELECT = {
     id: true,
     studentId: true,
@@ -11,6 +12,9 @@ const UPLOAD_SELECT = {
     detectedMimeType: true,
     status: true,
     ocrStatus: true,
+    rejectionReason: true,
+    reviewedById: true,
+    reviewedAt: true,
     uploadedAt: true,
     createdAt: true,
 } as const;
@@ -104,6 +108,48 @@ export class CorRepository {
                 student: {
                     include: { user: true },
                 },
+                reviewedBy: { select: { firstName: true, lastName: true } },
+            },
+        });
+    }
+
+    /** Latest upload of any status — the Applicant's current submission. */
+    async getUploadByStudentIdLatest(studentId: string) {
+        return prisma.corUpload.findFirst({
+            where: { studentId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                corRecord: true,
+                reviewedBy: { select: { firstName: true, lastName: true } },
+            },
+        });
+    }
+
+    /** The single current PENDING upload eligible for verify/reject. */
+    async getPendingUploadByStudentId(studentId: string) {
+        return prisma.corUpload.findFirst({
+            where: { studentId, status: 'PENDING' },
+            orderBy: { createdAt: 'desc' },
+            select: UPLOAD_SELECT,
+        });
+    }
+
+    async getVerifiedUploadByStudentId(studentId: string) {
+        return prisma.corUpload.findFirst({
+            where: { studentId, status: 'VERIFIED' },
+            orderBy: { createdAt: 'desc' },
+            select: UPLOAD_SELECT,
+        });
+    }
+
+    /** Full COR submission history (newest first) for authorized Admin views. */
+    async getUploadHistoryByStudentId(studentId: string) {
+        return prisma.corUpload.findMany({
+            where: { studentId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                corRecord: true,
+                reviewedBy: { select: { firstName: true, lastName: true } },
             },
         });
     }
@@ -116,11 +162,50 @@ export class CorRepository {
         return record?.filePath ?? null;
     }
 
-    async updateUploadStatus(id: string, status: 'VERIFIED' | 'REJECTED') {
-        return prisma.corUpload.update({
-            where: { id },
-            data: { status },
-            select: UPLOAD_SELECT,
+    /**
+     * DL-3 canonical rejection: only the exact PENDING upload may be rejected.
+     * Rejection reason + reviewer + timestamp are persisted explicitly, with
+     * the audit entry committed in the same transaction. Historical rejected
+     * rows/files are never mutated or deleted.
+     */
+    async rejectUpload(
+        corUploadId: string,
+        opts: { reason: string; adminId: string },
+    ) {
+        return prisma.$transaction(async (tx) => {
+            const updated = await tx.corUpload.updateMany({
+                where: { id: corUploadId, status: 'PENDING' },
+                data: {
+                    status: 'REJECTED',
+                    rejectionReason: opts.reason,
+                    reviewedById: opts.adminId,
+                    reviewedAt: new Date(),
+                },
+            });
+
+            if (updated.count !== 1) {
+                throw new AppError(
+                    'Only pending COR uploads can be rejected.',
+                    409,
+                );
+            }
+
+            await tx.auditLog.create({
+                data: {
+                    actorId: opts.adminId,
+                    actionType: 'COR_REJECT',
+                    targetTable: 'cor_uploads',
+                    targetId: corUploadId,
+                    description: `COR rejected: ${opts.reason}`,
+                    oldValue: JSON.stringify({ status: 'PENDING' }),
+                    newValue: JSON.stringify({
+                        status: 'REJECTED',
+                        reason: opts.reason,
+                    }),
+                },
+            });
+
+            return { id: corUploadId, status: 'REJECTED' as const };
         });
     }
 
@@ -128,6 +213,13 @@ export class CorRepository {
         return prisma.corUpload.delete({ where: { id } });
     }
 
+    /**
+     * DL-3 canonical verify + promote. One transaction performs the entire
+     * authority transition and required audit. Concurrency fails closed via
+     * the conditional PENDING→VERIFIED update (count must be exactly 1), so a
+     * concurrent second verification cannot create a duplicate CorRecord,
+     * promote twice, or overwrite the Student Number.
+     */
     async verifyAndPromote(
         corUploadId: string,
         studentId: string,
@@ -136,22 +228,45 @@ export class CorRepository {
             registrationNumber?: string;
             academicYear?: string;
             semester?: string;
-            studentNumber?: string;
+            studentNumber: string;
+            verificationMethod: string;
         },
         adminId: string
     ) {
         return prisma.$transaction(async (tx) => {
-            // 1. Mark upload as verified
+            // 1. Claim the exact PENDING upload (fail closed if already handled).
             const updatedUpload = await tx.corUpload.updateMany({
                 where: { id: corUploadId, studentId, status: 'PENDING' },
                 data: { status: 'VERIFIED' },
             });
 
             if (updatedUpload.count !== 1) {
-                throw new Error('Only a pending COR upload can be verified.');
+                throw new AppError(
+                    'Only a pending COR upload can be verified.',
+                    409,
+                );
             }
 
-            // 2. Create the CorRecord as verified
+            // 2. Re-check promotion eligibility inside the transaction.
+            const student = await tx.student.findUnique({ where: { id: studentId } });
+            if (!student) {
+                throw new AppError('Student profile not found.', 404);
+            }
+            if (student.admissionStatus === 'ENROLLED') {
+                throw new AppError('Student is already enrolled.', 409);
+            }
+
+            const passedExam = await tx.entranceExamApplication.findFirst({
+                where: { studentId, status: 'PASSED' },
+            });
+            if (!passedExam) {
+                throw new AppError(
+                    'Applicant has not passed the entrance exam.',
+                    403,
+                );
+            }
+
+            // 3. Verified COR record with Admin-confirmed data.
             const corRecord = await tx.corRecord.create({
                 data: {
                     corUploadId,
@@ -160,12 +275,13 @@ export class CorRepository {
                     academicYear: verificationData.academicYear,
                     semester: verificationData.semester as any,
                     isAdminVerified: true,
+                    verificationMethod: verificationData.verificationMethod as any,
                     verifiedById: adminId,
                     verifiedAt: new Date(),
                 },
             });
 
-            // 3. Promote the Student
+            // 4. Promote the Student.
             const updatedStudent = await tx.student.update({
                 where: { id: studentId },
                 data: {
@@ -176,10 +292,26 @@ export class CorRepository {
                 },
             });
 
-            // 4. Update User Role
+            // 5. APPLICANT → STUDENT.
             const updatedUser = await tx.user.update({
                 where: { id: userId },
                 data: { role: 'STUDENT' },
+            });
+
+            // 6. Authoritative audit within the same boundary.
+            await tx.auditLog.create({
+                data: {
+                    actorId: adminId,
+                    actionType: 'COR_VERIFY',
+                    targetTable: 'cor_uploads',
+                    targetId: corUploadId,
+                    description: `COR verified and student enrolled: ${verificationData.studentNumber}`,
+                    oldValue: JSON.stringify({ status: 'PENDING' }),
+                    newValue: JSON.stringify({
+                        status: 'VERIFIED',
+                        studentNumber: verificationData.studentNumber,
+                    }),
+                },
             });
 
             return { corRecord, updatedStudent, updatedUser };

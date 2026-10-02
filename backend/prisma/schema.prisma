@@ -35,6 +35,7 @@ model User {
   auditLogsAsActor                   AuditLog[]                @relation("AuditLogActor")
   chatbotFaqsCreated                 ChatbotFaq[]              @relation("FaqCreatedBy")
   corRecordsVerified                 CorRecord[]               @relation("CorRecordVerifiedBy")
+  corUploadsReviewed                 CorUpload[]               @relation("CorUploadReviewedBy")
   curriculumWaiversApproved          CurriculumWaiver[]        @relation("WaiverApprovedBy")
   curriculumWaiversRecommended       CurriculumWaiver[]        @relation("WaiverRecommendedBy")
   customRolesCreated                 CustomRole[]              @relation("CustomRoleCreatedBy")
@@ -339,6 +340,14 @@ model CorUpload {
   checksum          String?        @map("checksum")
   checksumAlgorithm String?        @map("checksum_algorithm")
   uploadedById      String?        @map("uploaded_by")
+  /**
+   * DL-3: COR review/rejection metadata. Nullable and backward-compatible;
+   * legacy rows simply have no review history. Rejection reason is stored
+   * explicitly rather than parsed from audit free-text.
+   */
+  rejectionReason   String?        @map("rejection_reason") @db.Text
+  reviewedById      String?        @map("reviewed_by")
+  reviewedAt        DateTime?      @map("reviewed_at")
   status           CorUploadStatus @default(PENDING) @map("status")
   ocrStatus        OcrStatus       @default(PENDING) @map("ocr_status")
   ocrErrorMessage  String?         @map("ocr_error_message")
@@ -346,10 +355,12 @@ model CorUpload {
   processedAt      DateTime?       @map("processed_at")
   createdAt        DateTime        @default(now()) @map("created_at")
   corRecord        CorRecord?
+  reviewedBy       User?           @relation("CorUploadReviewedBy", fields: [reviewedById], references: [id])
   student          Student         @relation(fields: [studentId], references: [id])
 
   @@index([studentId], map: "cor_uploads_student_id_fkey")
   @@index([storageKey], map: "cor_uploads_storage_key_idx")
+  @@index([reviewedById])
   @@map("cor_uploads")
 }
 

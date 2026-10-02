@@ -62,10 +62,16 @@ export interface ExamApplicationDetail {
 
 export interface CorUploadDetail {
   id: string;
+  status: string;
   ocrStatus: string;
-  filePath: string;
-  originalFilename: string;
+  originalFilename: string | null;
+  detectedMimeType: string | null;
+  sizeBytes: number | null;
   uploadedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  reviewedBy: { firstName: string; lastName: string } | null;
+  isCurrent: boolean;
   corRecord: CorRecordDetail | null;
 }
 
@@ -93,7 +99,13 @@ export interface RejectWaiverInput {
 }
 
 export interface VerifyCorInput {
-  verificationMethod: "manual" | "qr_auto" | "ocr_auto";
+  studentNumber?: string;
+  academicYear?: string;
+  semester?: string;
+  registrationNumber?: string;
+  /** Compatibility aliases accepted from legacy callers. */
+  verificationMethod?: string;
+  method?: string;
 }
 
 export interface RejectCorInput {

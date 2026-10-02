@@ -78,6 +78,31 @@ export default function AdminCORValidationPage() {
     verifyMutation.mutate(selectedCor);
   };
 
+  const rejectMutation = useMutation({
+    mutationFn: async ({
+      uploadId,
+      reason,
+    }: {
+      uploadId: string;
+      reason: string;
+    }) => {
+      return await apiClientRequest(`/cor/reject/${uploadId}`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingCors"] });
+      setShowRejectModal(false);
+      setRejectReason("");
+      setSelectedCor(null);
+      alert("COR rejected. The applicant may resubmit a new COR.");
+    },
+    onError: (error: Error) => {
+      alert("Rejection failed: " + error.message);
+    },
+  });
+
   const corQueue = pendingUploads.map((u) => ({
     id: u.id,
     name: `${u.student.user.firstName} ${u.student.user.lastName}`,
@@ -466,11 +491,13 @@ export default function AdminCORValidationPage() {
                 Cancel
               </Button>
               <Button
-                disabled={!rejectReason.trim()}
+                disabled={!rejectReason.trim() || rejectMutation.isPending}
                 onClick={() => {
-                  setShowRejectModal(false);
-                  setRejectReason("");
-                  // Handle reject logic here later
+                  if (!selectedCor || !rejectReason.trim()) return;
+                  rejectMutation.mutate({
+                    uploadId: selectedCor,
+                    reason: rejectReason.trim(),
+                  });
                 }}
                 className={`flex-1 ${
                   rejectReason.trim()
@@ -479,7 +506,7 @@ export default function AdminCORValidationPage() {
                 }`}
               >
                 <XCircle className="mr-2 h-4 w-4" />
-                Reject COR
+                {rejectMutation.isPending ? "Rejecting..." : "Reject COR"}
               </Button>
             </div>
           </div>
