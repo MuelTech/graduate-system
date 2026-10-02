@@ -117,4 +117,73 @@ describe("DL-2 FIX1 manuscript persistence boundary", () => {
 
     expect(existsSync(permanent)).toBe(false);
   });
+
+  function makeManagedReq(permanent: string, key: string) {
+    const req: any = {
+      user: { userId: "student-user" },
+      file: {
+        path: permanent,
+        originalname: "chapters.pdf",
+        storageMeta: {
+          storageKey: key,
+          storageProvider: "local",
+          originalFilename: "chapters.pdf",
+          verifiedMimeType: "application/pdf",
+          sizeBytes: 15,
+          checksum: "checksum-value",
+          checksumAlgorithm: "sha256",
+        },
+      },
+    };
+    registerPromotedUpload(req, key, storageProvider);
+    return req;
+  }
+
+  it("Proposal: controller forwards DL-2 managed metadata to the service", async () => {
+    proposal.submitManuscriptForReview.mockResolvedValue(undefined);
+    proposal.getStudentReviewState.mockResolvedValue({});
+    const { key, permanent } = await stagePromotedFile();
+
+    await controller.submitProposalManuscriptForReview(
+      makeManagedReq(permanent, key),
+      makeRes(),
+    );
+
+    expect(proposal.submitManuscriptForReview).toHaveBeenCalledWith(
+      "student-user",
+      expect.objectContaining({
+        filePath: permanent,
+        storageKey: key,
+        storageProvider: "local",
+        originalFilename: "chapters.pdf",
+        verifiedMimeType: "application/pdf",
+        sizeBytes: 15,
+        checksum: "checksum-value",
+        checksumAlgorithm: "sha256",
+        uploadedById: "student-user",
+      }),
+    );
+  });
+
+  it("Final: controller forwards DL-2 managed metadata to the service", async () => {
+    finalReview.submitManuscriptForReview.mockResolvedValue(undefined);
+    finalReview.getStudentReviewState.mockResolvedValue({});
+    const { key, permanent } = await stagePromotedFile();
+
+    await controller.submitFinalManuscriptForReview(
+      makeManagedReq(permanent, key),
+      makeRes(),
+    );
+
+    expect(finalReview.submitManuscriptForReview).toHaveBeenCalledWith(
+      "student-user",
+      expect.objectContaining({
+        filePath: permanent,
+        storageKey: key,
+        verifiedMimeType: "application/pdf",
+        checksum: "checksum-value",
+        uploadedById: "student-user",
+      }),
+    );
+  });
 });

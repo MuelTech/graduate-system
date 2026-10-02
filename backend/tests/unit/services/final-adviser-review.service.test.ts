@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
-    thesisDocument: { create: vi.fn() },
+    $queryRaw: vi.fn(async () => []),
+    thesisDocument: { create: vi.fn(), updateMany: vi.fn() },
     adviserCertification: {
       findFirst: vi.fn(),
       update: vi.fn(),
@@ -75,6 +76,21 @@ function thesisRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function managed(overrides: Record<string, unknown> = {}) {
+  return {
+    filePath: "uploads/final.pdf",
+    storageKey: "manuscripts/test-final",
+    storageProvider: "local",
+    originalFilename: "final.pdf",
+    verifiedMimeType: "application/pdf",
+    sizeBytes: 2048,
+    checksum: "def",
+    checksumAlgorithm: "sha256",
+    uploadedById: "student-user",
+    ...overrides,
+  };
+}
+
 describe("FinalAdviserReviewService (CP4)", () => {
   const svc = new FinalAdviserReviewService();
 
@@ -109,6 +125,8 @@ describe("FinalAdviserReviewService (CP4)", () => {
     prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
     prismaMock.thesisRecord.findUnique.mockResolvedValue(thesisRow());
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock.__tx));
+    prismaMock.__tx.$queryRaw.mockResolvedValue([]);
+    prismaMock.__tx.thesisDocument.updateMany.mockResolvedValue({ count: 0 });
     prismaMock.__tx.thesisDocument.create.mockImplementation(async (a: any) => ({
       id: "doc-1",
       uploadedAt: new Date(),
@@ -138,10 +156,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
         ],
       }),
     );
-    await svc.submitManuscriptForReview("student-user", {
-      path: "uploads/final.pdf",
-      originalname: "final.pdf",
-    } as Express.Multer.File);
+    await svc.submitManuscriptForReview("student-user", managed());
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -157,10 +172,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
   it("Test 3: no active Adviser rejects Final manuscript submit", async () => {
     prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/x.pdf",
-        originalname: "x.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
     ).rejects.toThrow(/active Thesis Adviser/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
   });

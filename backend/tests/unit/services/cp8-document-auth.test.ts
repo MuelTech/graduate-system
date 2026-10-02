@@ -12,6 +12,8 @@ function makeRecord(opts: {
   defenseStage?: string | null;
   docType?: string | null;
   adviserIds?: string[];
+  /** DL-7: optional version-head flag for supersession authorization tests. */
+  isCurrent?: boolean;
   certs?: Array<{
     defenseStage: string;
     status: string;
@@ -28,6 +30,7 @@ function makeRecord(opts: {
     thesisId,
     defenseStage: opts.defenseStage ?? null,
     docType: opts.docType ?? null,
+    isCurrent: opts.isCurrent ?? true,
     thesis: {
       id: thesisId,
       student: {
@@ -280,5 +283,29 @@ describe("CP8 Final→prior-Proposal document authorization", () => {
         "thesis-1",
       ),
     ).toBe(false);
+  });
+
+  it("DL-7: certified prior Proposal is accessible even when isCurrent=false", () => {
+    const record = makeRecord({
+      id: "doc-proposal-a",
+      defenseStage: "PROPOSAL",
+      docType: "PROPOSAL_CHAPTERS",
+      certs: certifiedProposalCert,
+      schedules: finalOnlySchedules,
+      isCurrent: false,
+    });
+    expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(true);
+  });
+
+  it("DL-7: superseded Proposal revision stays denied even when isCurrent=true", () => {
+    const record = makeRecord({
+      id: "doc-proposal-b",
+      defenseStage: "PROPOSAL",
+      docType: "PROPOSAL_CHAPTERS",
+      certs: certifiedProposalCert,
+      schedules: finalOnlySchedules,
+      isCurrent: true,
+    });
+    expect(canPanelistAccessThesisDocument(record, "final-panelist")).toBe(false);
   });
 });

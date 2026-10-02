@@ -973,7 +973,10 @@ export class ThesisController {
         res.status(400).json({ error: "Proposal manuscript file is required." });
         return;
       }
-      await this.proposalAdviserReview.submitManuscriptForReview(userId, file);
+      await this.proposalAdviserReview.submitManuscriptForReview(
+        userId,
+        managedUploadFromMulter(file, userId),
+      );
       // DL-2 FIX1: the authoritative transaction has committed — protect the
       // managed file before any fallible post-commit read.
       commitRequestUploads(req);
@@ -1120,7 +1123,10 @@ export class ThesisController {
         res.status(400).json({ error: "Final manuscript file is required." });
         return;
       }
-      await this.finalAdviserReview.submitManuscriptForReview(userId, file);
+      await this.finalAdviserReview.submitManuscriptForReview(
+        userId,
+        managedUploadFromMulter(file, userId),
+      );
       // DL-2 FIX1: protect the committed managed file before any post-commit read.
       commitRequestUploads(req);
       res

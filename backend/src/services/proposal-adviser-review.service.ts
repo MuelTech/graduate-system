@@ -5,17 +5,18 @@
  * Active Adviser requests changes or certifies with e-signature.
  * Only ISSUED PROPOSAL_DEFENSE certifications satisfy ADVISER_CERT.
  */
-import { fileTypeFromFile } from "file-type";
-import fs from "fs/promises";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import type { ManagedUploadInput } from "../storage/managed-upload";
+import {
+  PROPOSAL_MANUSCRIPT_BINDING,
+  submitManuscriptVersion,
+} from "../repositories/manuscript-review.repository";
 import {
   evaluateActiveAdviserGate,
   evaluateCertifyGate,
   evaluateRequestChangesGate,
   evaluateSubmitManuscriptGate,
-  isAllowedProposalManuscriptMime,
-  isValidCertifiedProposalManuscript,
   mapCertStatusToReviewStatus,
   PROPOSAL_REVIEW_STAGE,
   type ProposalReviewStatus,
@@ -34,6 +35,9 @@ export interface ProposalAdviserReviewDto {
   manuscript: {
     documentId: string;
     uploadedAt: string | null;
+    originalFilename: string | null;
+    verifiedMimeType: string | null;
+    sizeBytes: number | null;
   } | null;
   certification: {
     issued: boolean;
@@ -53,15 +57,6 @@ export interface AdviserReviewQueueItem {
   reviewRemarks: string | null;
   manuscriptDocumentId: string | null;
   manuscriptUploadedAt: string | null;
-}
-
-async function safeUnlink(filePath: string | null | undefined) {
-  if (!filePath) return;
-  try {
-    await fs.unlink(filePath);
-  } catch {
-    // best-effort cleanup
-  }
 }
 
 export class ProposalAdviserReviewService {
@@ -159,13 +154,14 @@ export class ProposalAdviserReviewService {
       thesis.adviserCertifications.find((c) => c.status === "ISSUED") ??
       thesis.adviserCertifications[0] ??
       null;
-    // CP3-FIX1: current review manuscript is cert.reviewedDocumentId (not latest upload).
+    // DL-7: current review manuscript is cert.reviewedDocumentId only. Legacy
+    // unbound rows are history; never substitute the latest upload as authority.
     const boundDocId = cert?.reviewedDocumentId ?? null;
     const manuscript = boundDocId
       ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
         cert?.reviewedDocument ??
         null)
-      : (thesis.thesisDocuments[0] ?? null);
+      : null;
     const reviewStatus = cert
       ? mapCertStatusToReviewStatus(cert.status)
       : "NONE";
@@ -194,6 +190,9 @@ export class ProposalAdviserReviewService {
         ? {
             documentId: manuscript.id,
             uploadedAt: manuscript.uploadedAt.toISOString(),
+            originalFilename: manuscript.originalFilename ?? null,
+            verifiedMimeType: manuscript.verifiedMimeType ?? null,
+            sizeBytes: manuscript.sizeBytes ?? null,
           }
         : null,
       certification:
@@ -244,11 +243,10 @@ export class ProposalAdviserReviewService {
    */
   async submitManuscriptForReview(
     userId: string,
-    file: Express.Multer.File,
+    upload: ManagedUploadInput,
   ): Promise<void> {
     const { student, thesis } = await this.findThesisForStudent(userId);
     if (!thesis) {
-      await safeUnlink(file?.path);
       throw new AppError(
         "No active Thesis Record found. Complete Title Defense first.",
         400,
@@ -295,25 +293,10 @@ export class ProposalAdviserReviewService {
     const gate = evaluateSubmitManuscriptGate({
       hasActiveAdviser: Boolean(assignment),
       titleStageComplete,
-      hasManuscriptFile: Boolean(file?.path),
+      hasManuscriptFile: Boolean(upload?.filePath || upload?.storageKey),
     });
     if (!gate.allowed) {
-      await safeUnlink(file?.path);
       throw new AppError(gate.reason, gate.statusCode);
-    }
-
-    // Magic-byte validation for manuscript files.
-    const detected = await fileTypeFromFile(file.path);
-    const mime = detected?.mime ?? null;
-    // file-type may not detect .doc; allow extension fallback for legacy Word.
-    const ext = file.originalname?.toLowerCase()?.split(".").pop() ?? "";
-    const extOk = ["pdf", "doc", "docx"].includes(ext);
-    if (!isAllowedProposalManuscriptMime(mime) && !(extOk && !mime)) {
-      await safeUnlink(file.path);
-      throw new AppError(
-        "Invalid Proposal manuscript file type. Allowed: PDF, DOC, DOCX.",
-        400,
-      );
     }
 
     // CP3-FIX1: reject AFTER ISSUED before any ThesisDocument row is created.
@@ -325,90 +308,17 @@ export class ProposalAdviserReviewService {
       },
     });
     if (existingIssued) {
-      await safeUnlink(file.path);
-      throw new AppError(
-        "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
-        409,
-      );
+      throw new AppError(PROPOSAL_MANUSCRIPT_BINDING.issuedMessage, 409);
     }
 
-    const adviserId = assignment!.adviserId;
-
-    try {
-      await prisma.$transaction(async (tx) => {
-        // CP3-FIX2: re-check ISSUED inside the transaction (race with Adviser certify).
-        const existingIssuedInTx = await tx.adviserCertification.findFirst({
-          where: {
-            thesisId: thesis.id,
-            defenseStage: PROPOSAL_REVIEW_STAGE,
-            status: "ISSUED",
-          },
-        });
-        if (existingIssuedInTx) {
-          throw new AppError(
-            "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
-            409,
-          );
-        }
-
-        const document = await tx.thesisDocument.create({
-          data: {
-            thesisId: thesis.id,
-            docType: MANUSCRIPT_DOC_TYPE,
-            defenseStage: "PROPOSAL",
-            filePath: file.path,
-            uploadedAt: new Date(),
-          },
-        });
-
-        // Bind the new manuscript as the current review cycle document.
-        const existing = await tx.adviserCertification.findFirst({
-          where: { thesisId: thesis.id, defenseStage: PROPOSAL_REVIEW_STAGE },
-          orderBy: { updatedAt: "desc" },
-        });
-
-        if (existing) {
-          // Atomic conditional write: never downgrade an ISSUED certification.
-          const updated = await tx.adviserCertification.updateMany({
-            where: {
-              id: existing.id,
-              status: { not: "ISSUED" },
-            },
-            data: {
-              status: "AWAITING_REVIEW",
-              reviewRemarks:
-                existing.status === "CHANGES_REQUESTED"
-                  ? existing.reviewRemarks
-                  : null,
-              reviewedDocumentId: document.id,
-              adviserId,
-              signatureData: null,
-              signedAt: null,
-              certifiedAt: null,
-            },
-          });
-          if (updated.count === 0) {
-            throw new AppError(
-              "Proposal Adviser Certification is already issued. Contact the Graduate School if a new review is required.",
-              409,
-            );
-          }
-        } else {
-          await tx.adviserCertification.create({
-            data: {
-              thesisId: thesis.id,
-              adviserId,
-              defenseStage: PROPOSAL_REVIEW_STAGE,
-              status: "AWAITING_REVIEW",
-              reviewedDocumentId: document.id,
-            },
-          });
-        }
-      });
-    } catch (err) {
-      await safeUnlink(file.path);
-      throw err;
-    }
+    // DL-2 already validated/promoted the object; the domain service owns
+    // academic authority only and never performs raw filesystem cleanup.
+    await submitManuscriptVersion({
+      thesisId: thesis.id,
+      adviserId: assignment!.adviserId,
+      upload: { ...upload, uploadedById: upload.uploadedById ?? userId },
+      binding: PROPOSAL_MANUSCRIPT_BINDING,
+    });
   }
 
   /** Adviser review queue — only students where caller is the active adviser. */
@@ -457,19 +367,16 @@ export class ProposalAdviserReviewService {
       });
       if (!thesis) continue;
       const cert = thesis.adviserCertifications[0] ?? null;
-      // CP3-FIX2: queue follows reviewedDocumentId when a binding exists.
+      // DL-7: queue follows the exact reviewedDocumentId binding only. Legacy
+      // unbound manuscripts are not nominated as current review work.
       const boundDocId = cert?.reviewedDocumentId ?? null;
       const manuscript = boundDocId
         ? (thesis.thesisDocuments.find((d) => d.id === boundDocId) ??
           cert?.reviewedDocument ??
           null)
-        : (thesis.thesisDocuments[0] ?? null);
-      const status = cert
-        ? mapCertStatusToReviewStatus(cert.status)
-        : manuscript
-          ? "NONE"
-          : "NONE";
-      // Queue only when there is review work (manuscript present and not issued).
+        : null;
+      const status = cert ? mapCertStatusToReviewStatus(cert.status) : "NONE";
+      // Queue only when there is review work (bound manuscript and not issued).
       if (!manuscript && status === "NONE") continue;
       if (status === "ISSUED") continue;
 

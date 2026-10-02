@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
-    thesisDocument: { create: vi.fn() },
+    $queryRaw: vi.fn(async () => []),
+    thesisDocument: { create: vi.fn(), updateMany: vi.fn() },
     adviserCertification: {
       findFirst: vi.fn(),
       update: vi.fn(),
@@ -75,6 +76,21 @@ function thesisRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function managed(overrides: Record<string, unknown> = {}) {
+  return {
+    filePath: "uploads/manuscript.pdf",
+    storageKey: "manuscripts/test-proposal",
+    storageProvider: "local",
+    originalFilename: "chapters.pdf",
+    verifiedMimeType: "application/pdf",
+    sizeBytes: 1024,
+    checksum: "abc",
+    checksumAlgorithm: "sha256",
+    uploadedById: "student-user",
+    ...overrides,
+  };
+}
+
 describe("ProposalAdviserReviewService (CP3)", () => {
   const svc = new ProposalAdviserReviewService();
 
@@ -109,6 +125,8 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
     prismaMock.thesisRecord.findUnique.mockResolvedValue(thesisRow());
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock.__tx));
+    prismaMock.__tx.$queryRaw.mockResolvedValue([]);
+    prismaMock.__tx.thesisDocument.updateMany.mockResolvedValue({ count: 0 });
     prismaMock.__tx.thesisDocument.create.mockImplementation(async (args: any) => ({
       id: "doc-1",
       uploadedAt: new Date(),
@@ -140,10 +158,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         ],
       }),
     );
-    const file = {
-      path: "uploads/manuscript.pdf",
-      originalname: "chapters.pdf",
-    } as Express.Multer.File;
+    const file = managed();
     await svc.submitManuscriptForReview("student-user", file);
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.create).toHaveBeenCalledWith(
@@ -163,10 +178,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
   it("Test 2: no active Adviser rejects manuscript submit", async () => {
     prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/x.pdf",
-        originalname: "x.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
     ).rejects.toThrow(/active Thesis Adviser/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
   });
@@ -268,10 +280,10 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         ],
       }),
     );
-    await svc.submitManuscriptForReview("student-user", {
-      path: "uploads/revised.pdf",
-      originalname: "revised.pdf",
-    } as Express.Multer.File);
+    await svc.submitManuscriptForReview("student-user", managed({
+      filePath: "uploads/revised.pdf",
+      originalFilename: "revised.pdf",
+    }));
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -377,10 +389,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       defenseStage: "PROPOSAL_DEFENSE",
     });
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/late.pdf",
-        originalname: "late.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/late.pdf", originalFilename: "late.pdf" })),
     ).rejects.toThrow(/already issued/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
@@ -401,10 +410,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/race.pdf",
-        originalname: "race.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race.pdf", originalFilename: "race.pdf" })),
     ).rejects.toThrow(/already issued/i);
 
     // No manuscript committed; no downgrade update.
@@ -431,10 +437,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/race2.pdf",
-        originalname: "race2.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race2.pdf", originalFilename: "race2.pdf" })),
     ).rejects.toThrow(/already issued/i);
   });
 
@@ -715,10 +718,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", {
-        path: "uploads/x.pdf",
-        originalname: "x.pdf",
-      } as Express.Multer.File),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
     ).rejects.toThrow(/already issued/i);
 
     await expect(
