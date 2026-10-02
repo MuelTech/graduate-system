@@ -29,6 +29,52 @@ export interface StorageConfig {
   isProduction: boolean;
 }
 
+/**
+ * DL-11: operational diagnostics configuration.
+ *
+ * These settings only *classify* health output; they never drive deletion,
+ * repair, or retention. `staleTempHours` labels temporary uploads as stale for
+ * reporting. `minFreePercent` is optional: when unset, capacity pressure stays
+ * unclassified (null) rather than inventing an institutional threshold.
+ */
+export const DEFAULT_STALE_TEMP_HOURS = 24;
+
+export interface StorageOperationsConfig {
+  staleTempHours: number;
+  minFreePercent: number | null;
+}
+
+export interface ResolveStorageOperationsConfigInput {
+  staleTempHours?: string | number;
+  minFreePercent?: string | number;
+}
+
+export function resolveStorageOperationsConfig(
+  input: ResolveStorageOperationsConfigInput = {},
+): StorageOperationsConfig {
+  const parsedHours =
+    typeof input.staleTempHours === "number"
+      ? input.staleTempHours
+      : Number.parseInt(String(input.staleTempHours ?? ""), 10);
+  const staleTempHours =
+    Number.isFinite(parsedHours) && parsedHours > 0
+      ? parsedHours
+      : DEFAULT_STALE_TEMP_HOURS;
+
+  let minFreePercent: number | null = null;
+  if (input.minFreePercent !== undefined && input.minFreePercent !== "") {
+    const parsed =
+      typeof input.minFreePercent === "number"
+        ? input.minFreePercent
+        : Number.parseFloat(String(input.minFreePercent));
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
+      minFreePercent = parsed;
+    }
+  }
+
+  return { staleTempHours, minFreePercent };
+}
+
 const DISPOSABLE_BUILD_DIRS = ["dist", "build", ".next"];
 const PUBLIC_WEBROOT_SEGMENTS = new Set(["public", "static"]);
 

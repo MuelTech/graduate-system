@@ -637,6 +637,12 @@ Useful technical/Admin health information may include:
 
 Do not expose arbitrary folder browsing, physical rename/move, or unrestricted delete controls.
 
+Operational backup/restore and monitoring guidance (single-node private local storage) is documented in:
+
+`docs/operations/storage-backup-restore.md`
+
+The Admin storage health surface is read-only (detect/report/diagnose only). It has no delete, repair, move, rename, checksum-rewrite, or backfill controls.
+
 ---
 
 ## 16. Admin document authority

@@ -82,6 +82,15 @@ export const UPLOAD_POLICIES = {
 
 export type UploadPolicyName = keyof typeof UPLOAD_POLICIES;
 
+/**
+ * DL-11: the deduplicated set of managed permanent namespaces. Health/scan
+ * derive this from `UPLOAD_POLICIES` instead of duplicating the prefix strings
+ * in multiple modules. `.tmp` is intentionally NOT a managed namespace.
+ */
+export const MANAGED_STORAGE_PREFIXES: readonly string[] = Array.from(
+  new Set(Object.values(UPLOAD_POLICIES).map((entry) => entry.storagePrefix)),
+);
+
 export function getUploadPolicy(name: UploadPolicyName): UploadPolicy {
   const found = (UPLOAD_POLICIES as Record<string, UploadPolicy | undefined>)[
     name

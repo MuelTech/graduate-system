@@ -12,6 +12,10 @@ import {
 import type { StorageProvider } from "./storage.types";
 import { UploadPipeline } from "./upload-pipeline";
 import {
+  UploadTelemetry,
+  uploadTelemetry as defaultUploadTelemetry,
+} from "./upload-telemetry";
+import {
   getUploadPolicy,
   type UploadPolicy,
   type UploadPolicyName,
@@ -89,7 +93,10 @@ function mapMulterError(error: unknown): AppError {
   return new AppError("Upload failed.", 400);
 }
 
-export function createSecureUpload(provider: StorageProvider): SecureUploadFactory {
+export function createSecureUpload(
+  provider: StorageProvider,
+  telemetry: UploadTelemetry = defaultUploadTelemetry,
+): SecureUploadFactory {
   const pipeline = new UploadPipeline(provider);
 
   async function requestTempDir(req: object): Promise<string> {
@@ -120,12 +127,32 @@ export function createSecureUpload(provider: StorageProvider): SecureUploadFacto
     policy: UploadPolicy,
   ): Promise<void> {
     for (const file of collectFiles(req)) {
-      const validated = await pipeline.validateAndHash(
-        file.path,
-        file.originalname,
-        policy,
-      );
-      const promoted = await pipeline.promote(validated, policy);
+      let validated;
+      try {
+        validated = await pipeline.validateAndHash(
+          file.path,
+          file.originalname,
+          policy,
+        );
+      } catch (error) {
+        // Best-effort: telemetry must never change the upload outcome.
+        telemetry.recordFailure(
+          "VALIDATION",
+          (error as { statusCode?: number })?.statusCode,
+        );
+        throw error;
+      }
+
+      let promoted;
+      try {
+        promoted = await pipeline.promote(validated, policy);
+      } catch (error) {
+        telemetry.recordFailure(
+          "PROMOTION",
+          (error as { statusCode?: number })?.statusCode,
+        );
+        throw error;
+      }
 
       file.path = promoted.absolutePath;
       file.filename = path.basename(promoted.absolutePath);
@@ -153,15 +180,22 @@ export function createSecureUpload(provider: StorageProvider): SecureUploadFacto
 
   function compose(parser: RequestHandler, policy: UploadPolicy): RequestHandler {
     return (req, res, next) => {
+      telemetry.recordAttempt();
       parser(req, res, (err) => {
         if (err) {
-          void cleanupRequestUploads(req, provider).finally(() =>
-            next(mapMulterError(err)),
+          const mapped = mapMulterError(err);
+          telemetry.recordFailure(
+            err instanceof multer.MulterError ? "MULTIPART" : "TEMP_STORAGE",
+            mapped.statusCode,
           );
+          void cleanupRequestUploads(req, provider).finally(() => next(mapped));
           return;
         }
         promoteFiles(req, policy)
-          .then(() => next())
+          .then(() => {
+            telemetry.recordSuccess();
+            next();
+          })
           .catch((error) => {
             void cleanupRequestUploads(req, provider).finally(() =>
               next(mapMulterError(error)),
