@@ -80,12 +80,6 @@ export function resolveStorageConfig(
       );
     }
 
-    if (root === cwd) {
-      throw new StorageConfigError(
-        `Production storage root must not be the application directory itself: ${root}`,
-      );
-    }
-
     for (const buildDir of DISPOSABLE_BUILD_DIRS) {
       const forbidden = path.resolve(cwd, buildDir);
       if (isInside(forbidden, root)) {
@@ -93,6 +87,17 @@ export function resolveStorageConfig(
           `Production storage root must not resolve inside the disposable build directory "${buildDir}": ${root}`,
         );
       }
+    }
+
+    // Canonical Document Lifecycle rule: production storage must live outside
+    // the disposable application release/webroot. Reject the application
+    // directory itself and anything underneath it. Uses path.relative
+    // containment (not naive string-prefix matching), so sibling paths such as
+    // /srv/app-private remain valid.
+    if (isInside(cwd, root)) {
+      throw new StorageConfigError(
+        `Production storage root must be outside the application directory: ${root}`,
+      );
     }
   }
 

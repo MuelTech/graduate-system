@@ -94,6 +94,57 @@ describe("storage configuration", () => {
     ).toThrow(StorageConfigError);
   });
 
+  it("rejects a production root directly below the application directory", () => {
+    expect(() =>
+      resolveStorageConfig({
+        uploadDir: "/srv/app/uploads",
+        nodeEnv: "production",
+        cwd: "/srv/app",
+      }),
+    ).toThrow(StorageConfigError);
+  });
+
+  it("rejects a deeper production root underneath the application directory", () => {
+    expect(() =>
+      resolveStorageConfig({
+        uploadDir: "/srv/app/private/documents",
+        nodeEnv: "production",
+        cwd: "/srv/app",
+      }),
+    ).toThrow(StorageConfigError);
+  });
+
+  it("rejects an explicit relative production root that resolves inside the application directory", () => {
+    expect(() =>
+      resolveStorageConfig({
+        uploadDir: "./uploads",
+        nodeEnv: "production",
+        cwd: "/srv/app",
+      }),
+    ).toThrow(StorageConfigError);
+  });
+
+  it("accepts a sibling external persistent production root", () => {
+    const config = resolveStorageConfig({
+      uploadDir: "/srv/graduate-private-storage",
+      nodeEnv: "production",
+      cwd: "/srv/app",
+    });
+    expect(config.isProduction).toBe(true);
+    expect(config.root).toBe(path.resolve("/srv/graduate-private-storage"));
+  });
+
+  it("does not use naive string-prefix matching for containment", () => {
+    // /srv/app-private shares a string prefix with /srv/app but is not inside it.
+    const config = resolveStorageConfig({
+      uploadDir: "/srv/app-private/documents",
+      nodeEnv: "production",
+      cwd: "/srv/app",
+    });
+    expect(config.isProduction).toBe(true);
+    expect(config.root).toBe(path.resolve("/srv/app-private/documents"));
+  });
+
   it("rejects a root that points at an existing file", async () => {
     const filePath = path.join(workDir, "not-a-dir.txt");
     await writeFile(filePath, "x");
