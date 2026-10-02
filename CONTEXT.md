@@ -1,879 +1,890 @@
 # Project Context: EARIST Graduate School Information System
 
-> **Agent Instruction**: Always read this file FIRST before implementing any feature. This ensures consistency with the existing codebase patterns.
+> **Agent instruction:** Read this file first for project orientation, then read the canonical documents listed below before implementing or changing any domain behavior.
+>
+> **Important:** `CONTEXT.md` is an onboarding/index document. It is **not** the highest authority for detailed Defense or Document Lifecycle rules. When this file and a canonical source-of-truth document differ, the canonical source-of-truth document wins.
 
 ---
 
-## Architecture Overview
+## 1. Current project state
 
+Repository:
+
+`MuelTech/graduate-system`
+
+Active initiative branch:
+
+`refactor/document-lifecycle`
+
+Document Lifecycle documentation baseline:
+
+`8815f68e0242a84bf8b235b7f9914af8249243e5`  
+`docs: define document lifecycle architecture`
+
+The branch was created from the accepted/current Defense correction branch checkpoint:
+
+`refactor/defense-workflow-corrections`  
+`ef62ff302386142ebab098668102cdf7a6e429e3`
+
+Document Lifecycle production implementation has **not** started yet. The next implementation package is **DL-1 — Core storage metadata and provider abstraction** after this context refresh is reviewed.
+
+### Historical Defense checkpoint
+
+The backend/domain correction pass CP1-CP10 was completed and accepted. CP10 was accepted at:
+
+`5de128505cfe356388c441ff3aa7c3ed0756eb11`
+
+Seven later frontend/docs integration commits advanced the Defense correction branch to `ef62ff...`. Those later commits did not change the accepted backend Defense semantics.
+
+Do not resume old WP/CP roadmaps as if they were pending work. They are implementation history unless a current canonical plan explicitly references them.
+
+---
+
+## 2. Canonical documentation hierarchy
+
+Read these in this order for work that touches Thesis/Defense or documents.
+
+### Tier 1 — canonical business/domain rules
+
+1. `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`
+2. `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`
+
+### Tier 2 — current technical design
+
+3. `docs/superpowers/specs/2026-09-26-defense-session-workflow-design.md`
+4. `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`
+
+### Tier 3 — current implementation plans
+
+5. `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md` — completed correction history/reference
+6. `docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md` — active plan
+
+### Tier 4 — implementation reference/history
+
+7. `docs/superpowers/STUDENT_THESIS_JOURNEY_IMPLEMENTATION_REFERENCE.md`
+
+Historical documents remain useful background but are superseded where they conflict with newer canonical sources, especially:
+
+- `docs/superpowers/specs/2026-09-25-student-thesis-journey-design.md`
+- `docs/superpowers/plans/2026-09-25-student-thesis-journey-refactor.md`
+
+### Conflict rule
+
+When sources disagree:
+
+```text
+Current repository code
++ current canonical SOURCE_OF_TRUTH
++ current accepted spec/plan
+        ↓
+wins over
+        ↓
+old CONTEXT.md text / old plans / comments / retired branches
 ```
+
+Do not infer EARIST institutional policy from stale code, old documents, or UI labels.
+
+---
+
+## 3. System overview
+
+```text
 ┌─────────────────────────────────────────────────────────┐
-│                    FRONTEND (Next.js)                    │
-│                    http://localhost:3000                  │
+│                    FRONTEND (Next.js)                   │
+│                    App Router                           │
 ├─────────────────────────────────────────────────────────┤
-│  App Router │ shadcn/ui │ TanStack Query │ NextAuth v5  │
+│ shadcn/ui │ Tailwind │ TanStack Query │ NextAuth       │
 └─────────────────────────────────────────────────────────┘
                            │
-                    Bearer Token (JWT)
+                       JWT/API
                            │
 ┌─────────────────────────────────────────────────────────┐
-│                    BACKEND (Express.js)                  │
-│                    http://localhost:5000/api              │
+│                    BACKEND (Express)                    │
 ├─────────────────────────────────────────────────────────┤
-│  Controller → Service → Repository → Prisma ORM         │
+│ Route → Controller → Service → Repository → Prisma     │
 └─────────────────────────────────────────────────────────┘
                            │
-                    MySQL (MariaDB)
+                    MariaDB / MySQL
 ```
+
+Use package manifests as the authority for exact dependency versions. Current major technologies include:
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- TanStack Query
+- NextAuth
+- Express
+- Prisma
+- MariaDB/MySQL
+- JWT
+- Multer
+- `file-type`
+- `pdf-lib`
+- Tesseract.js dependency exists, but OCR is **not** the primary COR extraction strategy
+- PM2/Nginx deployment direction
 
 ---
 
-## Tech Stack
+## 4. Repository structure
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| Frontend | Next.js (App Router) | 16.x |
-| Language | TypeScript | 5.x |
-| UI Library | shadcn/ui | v4 (base-nova style) |
-| Styling | Tailwind CSS | v4 |
-| State Management | TanStack Query (React Query) | v5 |
-| Authentication | NextAuth.js | v5 (beta) |
-| Backend | Express.js | 5.x |
-| ORM | Prisma | v7 |
-| Database | MariaDB (MySQL-compatible) | - |
-| Auth Tokens | JWT (jsonwebtoken) | - |
-| Password Hashing | bcryptjs | - |
-| File Upload | Multer | v2 |
-| File Type Detection | file-type | v22 |
-| PDF Generation | pdf-lib | - |
-| AI Chatbot | Qwen + LangChain RAG | - |
-| AI Runtime | Ollama (local) | - |
-| Vector Store | ChromaDB | - |
-| OCR | Tesseract.js | - |
-| Plagiarism Check | STRIKE API | - |
-| Data Visualization | Chart.js | - |
-| Deployment | PM2 + Nginx | - |
-
----
-
-## System Workflow (12 Phases)
-
-| Phase | Description |
-|-------|-------------|
-| Phase 1 | System Users & Access Levels (Admin, Panelist, Applicant/Student, Custom Roles) |
-| Phase 2 | Entrance Examination (Pinnacle registration → Alignment Check → Exam → COR Upload) |
-| Phase 3 | Comprehensive Examination (Manual/Admin-Verified, face-to-face paper-based) |
-| Phase 4 | Student Portal Features (Dashboard, Profile, Curriculum, AI Chatbot, Notifications) |
-| Phase 5 | Panelist Portal (Defense participation, Scoring, E-Signatures) |
-| Phase 6 | Thesis/Dissertation Workflow Overview (3 sequential defense stages) |
-| Phase 7 | Title Defense (Student proposes 3 titles → Panel selects 1) |
-| Phase 8 | Proposal Defense (Chapters 1-3 defense) |
-| Phase 9 | Final Defense (Complete manuscript defense + STRIKE plagiarism check) |
-| Phase 10 | Research Databank & Repository (Digital storage, public access) |
-| Phase 11 | Additional Processes (Expert Evaluation, E-Signatures, Adviser Management, Analytics, Settings) |
-| Phase 12 | Master Workflow Summary (Complete journey from admission to completion) |
-
----
-
-## AI & RAG Architecture (Planned)
-
-```
-Student asks chatbot
-        ↓
-Retriever finds related content (ChromaDB)
-        ↓
-Qwen generates contextual response via LangChain
-```
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| LLM | Qwen2.5:7B | Generate responses |
-| AI Runtime | Ollama | Local model hosting |
-| RAG Framework | LangChain | Query processing pipeline |
-| Vector Store | ChromaDB | Store document embeddings |
-| OCR | Tesseract.js | Extract text from COR documents |
-
----
-
-## Folder Structure
-
-```
+```text
 graduate-system/
 ├── frontend/
 │   └── src/
-│       ├── app/                    # Next.js App Router
-│       │   ├── (auth)/            # Login, Register (no layout wrapper)
-│       │   ├── (public)/          # Landing, Programs, Repository, FAQ, About
-│       │   ├── (portal)/          # Role-based dashboards
-│       │   │   ├── admin/         # Admin portal pages
-│       │   │   ├── student/       # Student portal pages
-│       │   │   ├── applicant/     # Applicant portal pages
-│       │   │   └── panelist/      # Panelist portal pages
-│       │   ├── api/auth/          # NextAuth catch-all route
-│       │   └── api/documents/     # Document proxy to backend
+│       ├── app/
+│       │   ├── (auth)/
+│       │   ├── (public)/
+│       │   └── (portal)/
+│       │       ├── admin/
+│       │       ├── applicant/
+│       │       ├── student/
+│       │       └── panelist/
 │       ├── components/
-│       │   ├── ui/                # shadcn/ui primitives
-│       │   ├── landing/           # Landing page components
-│       │   ├── layout/            # NotificationBell
-│       │   ├── providers/         # SessionProvider, QueryProvider
-│       │   └── chatbot/           # AI chatbot widget
 │       ├── lib/
-│       │   ├── api.client.ts      # Client-side API helper
-│       │   ├── api.server.ts      # Server-side API helper
-│       │   └── utils.ts           # cn() utility
 │       ├── types/
-│       │   └── index.ts           # Shared TypeScript interfaces
-│       ├── auth.ts                # NextAuth config
-│       └── middleware.ts          # Route protection
-│
+│       ├── auth.ts
+│       └── middleware.ts
 ├── backend/
-│   └── src/
-│       ├── controllers/           # Request handlers
-│       ├── services/              # Business logic
-│       ├── repositories/          # Data access (Prisma)
-│       ├── routes/                # Express route definitions
-│       ├── middlewares/           # auth, upload
-│       ├── interfaces/            # TypeScript interfaces
-│       ├── config/                # database.ts (PrismaClient)
-│       └── utils/                 # AppError, file.utils (PRIVATE_UPLOAD_ROOT), email mock
+│   ├── src/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── repositories/
+│   │   ├── routes/
+│   │   ├── middlewares/
+│   │   ├── interfaces/
+│   │   ├── config/
+│   │   └── utils/
 │   └── prisma/
-│       ├── schema.prisma          # Database schema (40+ models)
-│       └── seed.ts                # Test data seeder
+│       ├── schema.prisma
+│       ├── migrations/
+│       └── seed.ts
+└── docs/
+    └── superpowers/
+        ├── *_SOURCE_OF_TRUTH.md
+        ├── specs/
+        └── plans/
 ```
 
 ---
 
-## Coding Conventions
+## 5. Coding conventions
 
-### File Naming
-| Location | Convention | Example |
-|----------|------------|---------|
-| Backend files | kebab-case | `auth.controller.ts`, `thesis.service.ts` |
-| Frontend components | kebab-case | `chatbot-widget.tsx`, `notification-bell.tsx` |
-| Next.js pages | page.tsx | `dashboard/page.tsx` |
-| Types/Interfaces | PascalCase exports | `PanelistAssignmentData` |
+### Backend layering
 
-### Database
-| Element | Convention | Example |
-|---------|------------|---------|
-| Table names | snake_case | `thesis_records`, `oral_exam_scores` |
-| Column names | snake_case with `@map()` | `userId` → `user_id` |
-| Model names | PascalCase | `ThesisRecord`, `OralExamScore` |
-| Enums | SCREAMING_SNAKE | `UserRole.ADMIN`, `ThesisStage.TITLE` |
+Primary pattern:
 
-### API Routes
-| Rule | Example |
-|------|---------|
-| Lowercase | `/api/panelists` |
-| Plural nouns | `/api/memos`, `/api/notifications` |
-| Nested resources | `/api/thesis/defense/title` |
-| Action verbs | `/api/thesis/defense/:id/status` |
-
----
-
-## Backend Patterns
-
-### 3-Layer Architecture
-```
+```text
 Route → Controller → Service → Repository → Prisma
 ```
 
-### Controller Pattern
-```typescript
-import { Request, Response } from "express";
-import { SomeService } from "../services/some.service";
-import { AppError } from "../utils/AppError";
+Responsibilities:
 
-export class SomeController {
-    private someService = new SomeService();
+- **Route:** authentication, role middleware, multipart middleware, route composition.
+- **Controller:** HTTP request/response mapping and basic boundary checks.
+- **Service:** business rules, authorization decisions not handled by generic middleware, lifecycle logic.
+- **Repository:** Prisma/data access and database transaction implementation.
+- **Prisma schema/migrations:** durable model and constraints.
 
-    methodName = async (req: Request, res: Response): Promise<void> => {
-        try {
-            const result = await this.someService.methodName(req.body);
-            res.status(200).json(result);
-        } catch (error: unknown) {
-            if (error instanceof AppError) {
-                res.status(error.statusCode).json({ error: error.message });
-            } else if (error instanceof Error) {
-                res.status(400).json({ error: error.message });
-            } else {
-                res.status(500).json({ error: "An unexpected error occurred." });
-            }
-        }
-    };
-}
-```
+Do not bypass established layers casually. However, existing patterns are **not immutable**: the active Document Lifecycle work intentionally refactors storage/upload plumbing while preserving domain behavior.
 
-### Service Pattern
-```typescript
-import { SomeRepository } from '../repositories/some.repository';
-import { AppError } from '../utils/AppError';
+### Database
 
-export class SomeService {
-    private someRepository = new SomeRepository();
+- Prisma model names: PascalCase.
+- Mapped table/column names: snake_case.
+- New schema changes require new migrations.
+- Do not rewrite historical migrations unless a concrete replay defect is proven.
+- Use transactions for multi-record authority transitions.
 
-    async methodName(data: InputType): Promise<OutputType> {
-        // 1. Validate
-        if (!data.field) {
-            throw new AppError("Field is required!", 400);
-        }
+### Frontend
 
-        // 2. Business logic
-        const result = await this.someRepository.findSomething(data.field);
-        if (!result) {
-            throw new AppError("Not found!", 404);
-        }
+- Reuse existing UI components before adding duplicates.
+- Use the shared `DataTableFilter` for Admin list filters where applicable.
+- Use TanStack Query for client data fetching/mutations.
+- Follow established EARIST CSS variables.
+- Backend/domain state remains authoritative; UI state must not invent academic progression.
 
-        // 3. Return
-        return result;
-    }
-}
-```
+### Error handling
 
-### Repository Pattern
-```typescript
-import prisma from '../config/database';
-import { Prisma } from '@prisma/client';
-
-export class SomeRepository {
-    async findSomething(id: string) {
-        return prisma.someModel.findUnique({
-            where: { id },
-            include: { relatedModel: true }
-        });
-    }
-
-    async createSomething(data: Prisma.SomeModelCreateInput) {
-        return prisma.someModel.create({ data });
-    }
-
-    // Atomic transactions
-    async complexOperation(data1: any, data2: any) {
-        return prisma.$transaction(async (tx) => {
-            const result1 = await tx.model1.create({ data: data1 });
-            const result2 = await tx.model2.create({ 
-                data: { ...data2, model1: { connect: { id: result1.id } } }
-            });
-            return result1;
-        });
-    }
-}
-```
-
-### Pagination & Filtering Pattern (Hybrid)
-
-Use **server-side** pagination and filtering for read-only data tables where the user browses, searches, and filters records. Use **client-side** pagination and filtering for small bounded datasets or pages where all data is needed for interactive workflows (e.g., selecting an item to act on it).
-
-| Approach | When to use | Example |
-|----------|-------------|---------|
-| **Server-side** | Read-only list/table, dataset grows over time, user searches/filters across many records | Score Review, Applicants, Students |
-| **Client-side** | Small bounded dataset, all data needed for interaction, dataset won't grow significantly | Exam Slots, Grading Queue (needs all items for essay grading form) |
-
-#### Server-Side Pattern
-
-Admin list endpoints that are read-only and grow over time MUST accept `page`, `pageSize`, and `search` query params and return `{ data, total, page, pageSize }`.
-
-```typescript
-// Repository: accept params, return [data, total]
-async findManyPaginated(params: {
-    page: number;
-    pageSize: number;
-    search?: string;
-    [filterKey: string]: unknown;
-}) {
-    const { page, pageSize, search, ...filters } = params;
-    const where = buildWhereClause(filters, search);
-
-    const [data, total] = await prisma.$transaction([
-        prisma.model.findMany({
-            where,
-            skip: (page - 1) * pageSize,
-            take: pageSize,
-            include: { /* relations */ },
-            orderBy: { createdAt: 'desc' },
-        }),
-        prisma.model.count({ where }),
-    ]);
-
-    return { data, total, page, pageSize };
-}
-```
-
-```typescript
-// Controller: parse query params, pass to service
-const { page = 1, pageSize = 10, search, ...filters } = req.query;
-const result = await this.service.findManyPaginated({
-    page: Number(page),
-    pageSize: Number(pageSize),
-    search: search as string,
-    ...filters,
-});
-res.status(200).json(result);
-```
-
-### Route Pattern
-```typescript
-import { Router } from "express";
-import { SomeController } from "../controllers/some.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
-import { upload } from "../middlewares/upload.middleware";
-
-const router = Router();
-const someController = new SomeController();
-
-// Public route
-router.get("/public", someController.getPublicData);
-
-// Authenticated route
-router.get("/protected", authenticateJWT, someController.getProtectedData);
-
-// Role-restricted route
-router.post("/admin-only", authenticateJWT, requireRole(["ADMIN"]), someController.adminAction);
-
-// File upload route
-router.post("/upload", authenticateJWT, requireRole(["STUDENT"]), 
-    upload.single("file"), someController.uploadFile);
-
-// Multiple file upload
-router.post("/multi-upload", authenticateJWT, 
-    upload.fields([
-        { name: "document", maxCount: 1 },
-        { name: "cor", maxCount: 1 },
-    ]),
-    someController.multiUpload
-);
-
-export default router;
-```
-
-### Error Handling
-```typescript
-import { AppError } from "../utils/AppError";
-
-// Custom error class
-export class AppError extends Error {
-    constructor(
-        public message: string,
-        public statusCode: number,
-        public isOperational = true
-    ) {
-        super(message);
-    }
-}
-
-// Usage in services
-throw new AppError("Email is already registered!", 409);
-throw new AppError("Not found!", 404);
-throw new AppError("Unauthorized!", 401);
-```
+Use `AppError` for expected operational errors and preserve meaningful HTTP status codes.
 
 ---
 
-## Frontend Patterns
+## 6. Accepted Defense Workflow summary
 
-### API Client Usage
-```typescript
-// Client-side (in "use client" components)
-import { apiClientRequest } from "@/lib/api.client";
+This is a short orientation only. The Defense source of truth controls all details.
 
-const data = await apiClientRequest("/endpoint");
-const result = await apiClientRequest("/endpoint", {
-    method: "POST",
-    body: JSON.stringify(payload)
-});
+### 6.1 Title Defense
+
+Canonical progression:
+
+```text
+Title deliberation
+→ Rapporteur finalizes notes
+→ AWAITING_CONCLUSION
+→ Chairman explicitly records formal result
+   + selects official title when PASSED
+→ RAP FOR_SIGNATURE
+→ required signatures
+→ RAP FINALIZED
+→ Title stage complete
+→ Adviser Request unlocks
 ```
 
-### TanStack Query Pattern
-```typescript
-"use client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
+Title completion requires all three:
 
-export default function SomePage() {
-    const queryClient = useQueryClient();
+1. formal Title outcome = PASSED;
+2. one official selected title;
+3. matching Title RAP = FINALIZED.
 
-    // Fetch data
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["dataKey"],
-        queryFn: async () => {
-            const res = await apiClientRequest("/endpoint");
-            return Array.isArray(res) ? res : [];
-        },
-    });
+Title does **not** use Proposal/Final Group I/II numerical scoring.
 
-    // Mutation
-    const mutation = useMutation({
-        mutationFn: async (payload: PayloadType) => {
-            return await apiClientRequest("/endpoint", {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["dataKey"] });
-        }
-    });
+### 6.2 Proposal / Final Defense
 
-    // Trigger mutation
-    mutation.mutate(payload);
-}
+Canonical progression:
+
+```text
+Evaluator DRAFT
+→ evaluator e-sign/finalize
+→ all required evaluator records FINALIZED
+→ persistent Oral Examination Summary
+→ Rapporteur finalizes notes
+→ Chairman successfully reviews detailed Summary
+→ Chairman explicitly records formal result
+→ RAP FOR_SIGNATURE
+→ PARTIALLY_SIGNED
+→ FINALIZED
+→ stage complete
 ```
 
-### Server Component Pattern
-```typescript
-import { auth } from "@/auth";
+Critical rules:
 
-export default async function SomePage() {
-    const session = await auth();
-    const apiUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
-    
-    const res = await fetch(`${apiUrl}/api/endpoint`, {
-        headers: { Authorization: `Bearer ${session?.user?.accessToken}` },
-        cache: "no-store",
-    });
-    
-    const data = await res.json();
-    return <div>...</div>;
-}
-```
+- scores/averages never automatically PASS or FAIL the defense;
+- the Chairman records the formal academic result for the exact defense session;
+- Chairman authority comes from authenticated session assignment, not broad account role alone;
+- Proposal/Final result submission requires successful detailed Summary loading;
+- only actual assigned evaluators with FINALIZED scores contribute to the Summary;
+- Facilitator, Rapporteur, Adviser, legacy non-evaluators, and drafts are excluded unless a future confirmed policy explicitly changes evaluator status;
+- `finalRating` remains nullable where the average-to-rating institutional formula is unresolved.
 
-### Component Pattern
-```typescript
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { SomeIcon } from "lucide-react";
+### 6.3 RAP
 
-export default function SomeComponent() {
-    return (
-        <Card className="overflow-hidden transition-all hover:shadow-md">
-            <div className="h-1.5 w-full bg-(--earist-primary)"></div>
-            <CardContent className="p-5">
-                <Badge className="bg-purple-100 text-purple-700">Status</Badge>
-                <Button className="bg-(--earist-primary) hover:bg-(--earist-primary)/90">
-                    Action
-                </Button>
-            </CardContent>
-        </Card>
-    );
-}
-```
+Canonical active lifecycle:
 
-### Data Table Filter & Pagination Pattern
+`FOR_SIGNATURE → PARTIALLY_SIGNED → FINALIZED`
 
-Never implement filter state, filter logic, or pagination UI inline in a page. Always use `DataTableFilter` for the filter bar. Use server-side pagination for read-only tables that grow over time; client-side is acceptable for small bounded datasets (see Pagination & Filtering Pattern).
+Only `FINALIZED` completes the stage.
 
-```typescript
-// components/admin/data-table-filter.tsx
-// Shared filter component — use on ALL admin list pages
-// Props: search config, filter dropdowns, callbacks
-// Handles: search input with icon, Select dropdowns, clear button, page reset
+Current centralized signatory policy uses Chairman + evaluator Panelist roles. Do not silently add Facilitator, Rapporteur, Adviser, or Dean as required signatories.
 
-<DataTableFilter
-    search={{ placeholder: "Search by name or ID..." }}
-    filters={[
-        { key: "status", label: "Status", value: statusFilter, options: ["PASSED", "FAILED"], onChange: setStatusFilter },
-        { key: "program", label: "Program", value: programFilter, options: uniquePrograms, onChange: setProgramFilter },
-    ]}
-    onClear={clearFilters}
-/>
-```
+RAP is system-owned. Students do not upload/reupload RAP.
 
-```typescript
-// TanStack Query: include filter + pagination params in queryKey
-const { data, isLoading } = useQuery({
-    queryKey: ["scoreReview", page, searchQuery, statusFilter, programFilter],
-    queryFn: async () => {
-        const params = new URLSearchParams({
-            page: page.toString(),
-            pageSize: "10",
-            search: searchQuery,
-            status: statusFilter,
-            program: programFilter,
-        });
-        return apiClientRequest(`/exam/scores/review?${params.toString()}`);
-    },
-});
+### 6.4 Defense authority boundaries
 
-// Use server response for pagination
-const items = data?.data || [];
-const total = data?.total || 0;
-const totalPages = Math.ceil(total / 10);
-```
-
-### Styling with EARIST Brand Colors
-```tsx
-// Use CSS variables for brand colors
-<div className="text-(--earist-primary)">Primary text</div>
-<div className="bg-(--earist-accent)">Gold background</div>
-<Button className="bg-(--earist-primary) hover:bg-(--earist-primary)/90">
-
-// Available brand colors:
-// --earist-primary: #8B1A1A (deep red/maroon)
-// --earist-secondary: #A83240 (lighter red)
-// --earist-accent: #D4A843 (gold)
-// --earist-body-text: body text color
-// --earist-border-gray: border color
-```
+- **Evaluator:** own evaluation only.
+- **Rapporteur:** session notes and irreversible note finalization.
+- **Chairman:** formal result for the exact assigned session.
+- **RAP signatory:** own signature slot only.
+- **Admin:** scheduling and read-only official Defense Records; no score/notes/title/result edits and no RAP lifecycle override.
+- **Student:** own workflow and own authorized official records; no other evaluator Criteria.
+- **Facilitator:** no digital action currently.
+- **Adviser:** no evaluator scoring unless explicitly configured/confirmed.
 
 ---
 
-## Document Upload & Viewing System
+## 7. Adviser Request / GS-020
 
-### Architecture
+Title completion unlocks Adviser Request.
 
-```
-Browser (localhost:3000)
-  │
-  ├─ DocumentViewer component ──fetch──→ /api/documents/[...path] (Next.js proxy)
-  │                                         │
-  │                                    auth() session token
-  │                                         │
-  │                                    ──→ Backend /api/documents/:modelType/:id/file
-  │                                              │
-  │                                     authenticateJWT → DocumentService
-  │                                              │
-  │                                     ModelRegistry lookup → ownership check → stream file
-  │
-  └─ Applicant upload ──fetch (FormData)──→ /api/cor/upload (Backend directly)
+Canonical flow:
+
+```text
+Student selects eligible candidate
+→ requested Adviser CONFORME / Decline
+→ Dean decision
+→ active AdviserAssignment only after Dean approval
 ```
 
-### File Upload Pattern
+Rules:
 
-**Upload middleware** (`backend/src/middlewares/upload.middleware.ts`):
-- Uses `crypto.randomBytes(24)` for filenames — never derives from user input
-- Uses `PRIVATE_UPLOAD_ROOT` from `file.utils.ts` as the destination
-- No client-trusting MIME filter — actual validation happens in the service layer via `file-type` magic bytes
-- File size limit from `MAX_FILE_SIZE` env var (default 5MB)
-
-**Service-level file validation** (e.g., `cor.service.ts`):
-1. Validate student exists and has passed entrance exam
-2. Check for duplicate active uploads (prevent orphaned files)
-3. Validate file contents via `file-type` (`fileTypeFromFile`) — reject if not PDF/JPEG/PNG
-4. Rename file to correct extension based on detected MIME type
-5. Store `detectedMimeType` in the database
-6. **Cleanup on any error**: delete the file if DB insert fails, validation fails, or any business rule is violated
-
-```typescript
-// Correct pattern for file upload with validation
-import { fileTypeFromFile } from "file-type";
-
-async uploadCor(userId: string, file: Express.Multer.File) {
-    // 1. Business validation
-    const student = await this.repo.findStudentByUserId(userId);
-    if (!student) { await this.safeDeleteFile(file.path); throw new AppError("...", 404); }
-
-    // 2. Magic-byte validation (do NOT trust client MIME)
-    const detected = await fileTypeFromFile(file.path);
-    if (!detected?.mime || !ALLOWED_MIME_TYPES.includes(detected.mime)) {
-        await this.safeDeleteFile(file.path);
-        throw new AppError("Invalid file content.", 400);
-    }
-
-    // 3. Rename to correct extension
-    const correctExt = EXTENSION_MAP[detected.mime];
-    if (correctExt && !file.path.endsWith(correctExt)) {
-        const newPath = file.path + correctExt;
-        await fs.rename(file.path, newPath);
-        file.path = newPath;
-    }
-
-    // 4. DB insert with cleanup on failure
-    try {
-        return await this.repo.createUpload({ ... });
-    } catch (error) {
-        await this.safeDeleteFile(file.path);
-        throw error;
-    }
-}
-```
-
-### Document Viewing Pattern
-
-**Document proxy** (`frontend/src/app/api/documents/[...path]/route.ts`):
-- Server-side only: uses `auth()` session token, never trusts browser Authorization header
-- Streams `response.body` directly (no `arrayBuffer()` buffering)
-- Validates path: exactly `[modelType, id, "file"]`
-- Model type allowlist: `cor-upload`, `thesis-document`, `rap-report`, `student-requirement`, `plagiarism-result`
-- Non-2xx responses passed through as-is (JSON errors from backend)
-- Document headers (`Cache-Control`, `Content-Disposition`, `X-Content-Type-Options`) only on 2xx
-
-**Document service** (`backend/src/services/document.service.ts`):
-- `MODEL_REGISTRY` maps model types to Prisma models, file fields, includes, and owner resolution
-- **Ownership check**: owner (student's userId), admin, or authorized panelist
-- **Path traversal prevention**: `path.basename()` strips directory components, `path.relative()` validates within `PRIVATE_UPLOAD_ROOT`
-- **Symlink prevention**: `fs.realpath()` resolves symlinks before path check
-- **Active user check**: disabled users cannot view documents
-- **Audit logging**: successful views and denied access attempts are logged
-- **MIME detection**: from file extension via `MIME_MAP`
-
-**DocumentViewer component** (`frontend/src/components/ui/document-viewer.tsx`):
-- Only accepts relative `/api/` paths (prevents JWT exfiltration)
-- Uses typed NextAuth session for token (no `as any`)
-- Streams response as blob, creates object URL for PDF iframe or image
-- Abort controller cleanup on unmount/close
-- Blob URL revocation on cleanup
-- `react-hooks/set-state-in-effect` compliant: loading state set via open/URL change transition effect, not synchronous in fetch effect
-
-### File Path Resolution
-
-The `filePath` stored in the database can be:
-- Absolute: `D:\...\backend\uploads\abc123.pdf` (from multer)
-- Relative: `uploads/abc123.pdf` (from older uploads)
-
-Resolution logic:
-```typescript
-// document.service.ts
-let resolvedPath = path.isAbsolute(storedPath)
-    ? storedPath
-    : path.join(PRIVATE_UPLOAD_ROOT, path.basename(storedPath));
-
-// Resolve symlinks
-resolvedPath = await fs.realpath(resolvedPath);
-
-// Validate within upload root
-const realUploadRoot = await fs.realpath(PRIVATE_UPLOAD_ROOT);
-const relative = path.relative(realUploadRoot, resolvedPath);
-if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new AppError("Access denied", 403);
-}
-```
-
-### Security Rules for Document Features
-
-1. **Never trust client MIME types** — use `file-type` magic-byte validation
-2. **Never use `file.originalname` for physical filenames** — use `crypto.randomBytes`
-3. **Always clean up files on error** — delete the uploaded file if any validation or DB operation fails
-4. **Never expose `filePath` in API responses** — use safe field selection in repository queries
-5. **Sanitize filenames in Content-Disposition headers** — strip to `[a-zA-Z0-9._-]`, max 255 chars
-6. **Validate file paths with `fs.realpath()`** — prevents symlink escapes
-7. **Check user `isActive` status** — disabled users cannot view documents
-8. **Log audit events** — upload, verify, reject, view, denied access
-9. **Prevent duplicate active uploads** — check for existing PENDING uploads before allowing new ones
-10. **Stream responses** — use `response.body` streaming, not `arrayBuffer()` buffering
-
-### COR Upload Status Lifecycle
-
-```
-Applicant uploads COR → PENDING
-  │
-  ├─ Admin verifies → VERIFIED (student promoted to ENROLLED)
-  │
-  └─ Admin rejects → REJECTED (applicant can re-upload)
-```
-
-### Future: Thesis Document & Panelist Document Interaction
-
-The document system is designed to extend to the thesis journey and panelist workflows:
-
-| Feature | Model Type | Owner | Extra Auth |
-|---------|-----------|-------|------------|
-| COR upload/view | `cor-upload` | Student (via userId) | Admin |
-| Thesis documents | `thesis-document` | Student (via thesis→student) | Panelist (if assigned to defense) |
-| RAP report | `rap-report` | Admin only | — |
-| Student requirements | `student-requirement` | Student (via userId) | Admin |
-| Plagiarism results | `plagiarism-result` | Student (via thesis→student) | Admin |
-
-**Planned thesis document features**:
-- Students upload thesis chapters during proposal/final defense stages
-- Panelists view and download thesis documents during defense
-- Panelists score and annotate documents
-- E-signatures on thesis approval forms
-- STRIKE plagiarism check results as viewable documents
-
-**To add a new document type**:
-1. Add model to `MODEL_REGISTRY` in `document.service.ts`
-2. Add model type to `ALLOWED_MODEL_TYPES` in the Next.js proxy route
-3. Add ownership resolution logic (`getOwnerId`, `getExtraAuthCheck`)
-4. Store files using the same upload middleware pattern
-5. Use `safeDeleteFile()` cleanup pattern on all error paths
+- pending request is not an active AdviserAssignment;
+- CONFORME alone is not Dean approval;
+- candidate source derives from the passed Title ODP under the accepted policy;
+- Facilitator and Rapporteur are excluded;
+- external panelists cannot receive new Adviser Requests or become active advisers;
+- internal panelist adviser availability must respect `isAvailableAsAdviser`;
+- Student does not upload generated GS-020.
 
 ---
 
-## Authentication Flow
+## 8. Proposal / Final manuscript authority
 
-### Login Flow
-```
-1. Frontend: signIn("credentials", { email, password })
-2. NextAuth: authorize() → POST /api/auth/login
-3. Backend: Find user → bcrypt.compare() → jwt.sign()
-4. NextAuth: Store JWT in session → Redirect to /{role}/dashboard
+### Proposal pre-defense
+
+```text
+active Adviser
+→ Student manuscript
+→ Adviser review
+→ REQUEST CHANGES / resubmit as needed
+→ Adviser e-signs Proposal Adviser Certification
+→ exact certified manuscript becomes authoritative
+→ Student supplies Proposal COR + receipt/proof
+→ Admin review/scheduling
 ```
 
-### Multi-Role Login
-| Role | Login Fields |
-|------|--------------|
-| Applicant | Applicant ID + Password |
-| Student | Student ID + Birthdate + Password |
-| Admin/Panelist | Email + Password |
+The Proposal Defense application must **not** ask the Student to upload a duplicate Proposal manuscript.
 
-### Route Protection (middleware.ts)
-```typescript
-// Checks session + role, redirects unauthorized users
-if (path.startsWith("/applicant") && role !== "applicant") {
-    return NextResponse.redirect(new URL(`/${role}/dashboard`, req.url));
-}
+### Final pre-defense
+
+```text
+Proposal complete + active Adviser
+→ Final manuscript
+→ centralized STRIKE check if configured
+→ Adviser review
+→ REQUEST CHANGES / resubmit as needed
+→ Final Adviser Certification
+→ exact certified Final manuscript becomes authoritative
+→ Student supplies Final COR + receipt/proof
+→ Admin review/scheduling
 ```
+
+Proposal and Final certifications are distinct records.
+
+### Exact-document rule
+
+For Proposal and Final, the authoritative current manuscript is the exact:
+
+`AdviserCertification.reviewedDocumentId`
+
+Never replace this with a generic “latest ThesisDocument” fallback.
+
+After certification is `ISSUED`, ordinary Student replacement is blocked.
 
 ---
 
-## Database Schema Reference
+## 9. Document Lifecycle initiative
 
-### Key Models (40+)
-| Model | Purpose |
-|-------|---------|
-| User | Central identity (email, password, role) |
-| Student | Student profile linked to User |
-| Panelist | Panelist profile linked to User |
-| Program | Graduate programs |
-| UndergraduateProgram | Undergraduate programs |
-| ThesisRecord | Core thesis pipeline entity |
-| DefenseSchedule | Defense scheduling |
-| PanelAssignment | Panelist assignments |
-| OralExamScore | Defense grading |
-| RapReport | RAP Report generation |
-| RapReportSignature | E-signatures |
-| EntranceExamApplication | Exam applications |
-| ExamSlot | Exam scheduling |
-| CorUpload | COR uploads (with status: PENDING/VERIFIED/REJECTED) |
-| CorRecord | COR verification |
-| ApplicantBridgingWaiver | Program alignment waivers |
-| Notification | In-app notifications |
-| Memo | Announcements |
-| SystemSetting | System configuration |
-| AuditLog | Admin action tracking |
+The system is moving from several ad-hoc upload paths to one secure document infrastructure with domain-specific authority layered on top.
 
-### Key Enums
-| Enum | Values |
-|------|--------|
-| UserRole | ADMIN, STUDENT, PANELIST, CUSTOM, APPLICANT |
-| AdmissionStatus | APPLICANT, PENDING_WAIVER, CLEARED, ENROLLED, etc. |
-| ThesisStage | TITLE, PROPOSAL, FINAL |
-| ThesisStatus | PENDING, SCHEDULED, PASSED, FAILED, REVISION |
-| DefenseType | TITLE_DEFENSE, PROPOSAL_DEFENSE, FINAL_DEFENSE |
-| AlignmentStatus | ALIGNED, PENDING_WAIVER, CLEARED |
-| CorUploadStatus | PENDING, VERIFIED, REJECTED |
+### 9.1 Non-negotiable principles
 
----
+- Files are private by default.
+- Every upload is bound server-side to an authenticated actor and business context.
+- Client MIME/filename/extension are not authoritative.
+- Workflow authority determines the official version; “latest upload” is not a universal authority rule.
+- Rejected/superseded documents are not silently overwritten.
+- Storage paths/keys are implementation details, not public API contracts.
+- Admin, Adviser, evaluator, Chairman, and system-owned records retain separate authorities.
+- Databank and Research Repository remain separate business concepts.
 
-## Existing Components to Reuse
+### 9.2 Target metadata capability
 
-### shadcn/ui Primitives
-- Alert, Badge, Button, Card, Input, Label, Select, Separator, Tabs, Textarea, Sonner (toasts)
+Where applicable, managed documents should support:
 
-### Custom Components
-- `ChatbotWidget` - AI chatbot (currently keyword-based)
-- `NotificationBell` - Real-time notifications with polling
-- `DataTableFilter` - Reusable search + dropdown filter bar for admin list pages
+- uploader and upload time;
+- reviewer, review time, review status, review remarks;
+- version and/or `supersedesDocumentId`;
+- original filename;
+- verified MIME type;
+- size in bytes;
+- checksum (target SHA-256);
+- stable storage key/provider abstraction;
+- domain context (Applicant COR, thesis, defense stage, application, archive/publication, etc.);
+- optional extraction/scan status.
 
-### Layout Components
-- Sidebar navigation (collapsible)
-- Role-based portal layouts
-- Dashboard bento grid layout
+Do **not** assume all metadata must live in one universal mega-table. Shared storage metadata plus domain records is acceptable if authority is clear.
 
-### Landing Page Components (11)
-- Navbar, HeroSection, ProgramsSection, HowItWorksSection
-- RepositorySection, AnnouncementsSection, CtaSection
-- FeaturesSection, PortalSection, Footer
+### 9.3 Target upload flow
 
-### Portal Page Routes
+```text
+authenticate / authorize business action
+→ enforce multipart count + size limits
+→ temporary/private write
+→ actual content-type / magic-byte validation
+→ size + checksum
+→ optional extraction/security processing
+→ DB/domain metadata transaction
+→ promote/commit permanent object
+→ cleanup on any failure
+```
 
-| Portal | Routes |
-|--------|--------|
-| **Applicant** | `/applicant/dashboard`, `/applicant/profile`, `/applicant/alignment`, `/applicant/schedule`, `/applicant/exam`, `/applicant/results`, `/applicant/cor-upload`, `/applicant/notifications` |
-| **Student** | `/student/dashboard`, `/student/profile`, `/student/curriculum`, `/student/journey`, `/student/thesis/*`, `/student/plagiarism`, `/student/repository`, `/student/notifications` |
-| **Panelist** | `/panelist/dashboard`, `/panelist/profile`, `/panelist/defenses`, `/panelist/materials`, `/panelist/scoring/[id]`, `/panelist/signatures`, `/panelist/repository`, `/panelist/notifications` |
-| **Admin** | `/admin/dashboard`, `/admin/users/*`, `/admin/exam/*`, `/admin/thesis/*`, `/admin/repository`, `/admin/memos`, `/admin/calendar`, `/admin/analytics`, `/admin/settings`, `/admin/notifications` |
-
-### Email Notification Triggers
-
-| Trigger | Template Key | Recipient |
-|---------|--------------|-----------|
-| Exam slot confirmed | `exam_slot_confirmed` | Applicant |
-| Exam results released | `ecat_result_pass` / `ecat_result_fail` | Applicant |
-| COR verified | `cor_verified_promotion` | Applicant → Student |
-| Defense scheduled | `defense_scheduled` | Student + Panelists |
-| RAP Report distributed | `rap_distributed` | All Panelists |
-| STRIKE result | `strike_result` | Student |
-| Adviser assigned | `adviser_assigned` | Student + Adviser |
-| Memo broadcast | `memo_broadcast` | Targeted audience |
-
-### Key Status Flows
-
-| Status | Badge Color | Trigger |
-|--------|-------------|---------|
-| `applicant` | Gray | Initial registration |
-| `pending_waiver` | Amber | Program misaligned, waiver required |
-| `cleared` | Blue | Waiver validated, scheduling unlocked |
-| `Exam Scheduled` | Blue | Slot selected and locked |
-| `Exam Passed` | Green | MCQ + essay graded |
-| `COR Pending` | Gold | COR uploaded, awaiting verification |
-| `enrolled` | Green | COR verified, full Student access |
+The exact filesystem/object-store transaction choreography may differ, but failed requests must not leak unbounded orphan files and accepted DB records must not silently reference missing objects.
 
 ---
 
-## Development Workflow
+## 10. Current upload/storage implementation audit
 
-### Adding a New Feature
-1. **Backend**: Create route → controller → service → repository
-2. **Frontend**: Create page in appropriate portal folder
-3. **Filters**: If the page has a data table, use `DataTableFilter` component + server-side pagination (see Frontend Patterns)
-4. **Types**: Add interfaces to `src/types/index.ts`
-5. **Schema**: Add model to `prisma/schema.prisma` if needed
-6. **File uploads** (if applicable): Use upload middleware + `file-type` validation + `safeDeleteFile` cleanup pattern (see Document Upload & Viewing System)
-7. **Document viewing** (if applicable): Add model to `MODEL_REGISTRY` + proxy allowlist + ownership check (see Document Upload & Viewing System)
-8. **Audit logging** (if applicable): Log security events via repository `createAuditLog()` method
+### KEEP
 
-### Testing
-- Backend: `npm run dev` (port 5000)
-- Frontend: `npm run dev` (port 3000)
-- Database: MariaDB on port 3306
+- `PRIVATE_UPLOAD_ROOT` concept;
+- direct `/uploads` access is blocked;
+- authenticated `/api/documents/.../file` retrieval;
+- random server-generated physical filenames;
+- `file-type` magic-byte validation in Applicant COR and Adviser manuscript flows;
+- Applicant COR cleanup on validation/DB failure;
+- Applicant COR transactional verify/promote path;
+- Proposal/Final exact `reviewedDocumentId` authority;
+- stage-aware Panelist ThesisDocument access;
+- CP8 narrow access to authoritative prior Proposal during Final.
 
-### Common Commands
+### REFACTOR
+
+- shared Multer writes into the current upload root before all business validation;
+- Title/Proposal/Final supporting COR/receipt files do not yet share the same strong validation/cleanup pipeline;
+- `ThesisDocument` lacks original filename, verified MIME, size, checksum, uploader, version/supersession metadata;
+- current document MIME serving can fall back incorrectly for random extensionless stored filenames;
+- `filePath` couples domain rows to storage implementation;
+- Applicant COR has overlapping Admin service/routes that should converge on one authority;
+- existing OCR-related schema/dependency must not be treated as proof that OCR is the active/primary extraction strategy.
+
+### REPLACE / COMPLETE
+
+- Student Databank submission currently contains mock/fabricated upload behavior;
+- current Repository/Databank frontend route contracts contain mismatches with backend routes;
+- current `ELibrary` model/service usage conflates archive/publication concepts more than the target design permits.
+
+### ADD
+
+- storage provider abstraction + stable `storageKey`;
+- shared per-document upload policy;
+- checksum and richer metadata;
+- version/supersession lifecycle;
+- generic failure cleanup/orphan detection;
+- integrity/storage-health reporting;
+- native COR PDF extraction service;
+- OCR fallback interface;
+- production persistence/backup/restore guidance and verification.
+
+---
+
+## 11. Applicant COR lifecycle
+
+Applicant COR is enrollment evidence uploaded after the required entrance-exam gate.
+
+Current canonical target flow:
+
+```text
+Applicant passes required exam gate
+→ uploads COR
+→ secure validation/storage
+→ native PDF text extraction when possible
+→ extracted values become suggestions
+→ Admin reviews actual COR + suggested values
+→ Admin confirms/corrects values
+→ one transaction:
+     verify COR
+     save confirmed data
+     enroll Student profile
+     assign Student Number
+     APPLICANT → STUDENT
+→ commit
+```
+
+### Critical authority rule
+
+**PDF extraction or OCR must never automatically promote an Applicant to Student.**
+
+Extraction is assistive only. Admin verification remains authoritative.
+
+### Extraction priority
+
+For PDF COR documents:
+
+1. **native PDF text extraction first** for PDFs with a usable text layer;
+2. deterministic COR-template parsing after authoritative EARIST sample(s) are provided;
+3. OCR only as fallback for scanned/image-only or unusable-text PDFs;
+4. manual review remains a safe fallback.
+
+The target Node implementation should expose a native PDF extraction strategy with positional text information. The current design prefers PDF.js/`pdfjs-dist` for this purpose, subject to implementation review.
+
+Do not hardcode EARIST COR labels/coordinates until representative official COR format(s) are supplied.
+
+### COR resubmission
+
+- PENDING upload may block a second active pending upload.
+- REJECTED upload must allow resubmission.
+- New submission becomes a new version/history item; do not silently overwrite the rejected file.
+- Admin should be able to review the current version and history.
+
+---
+
+## 12. COR / receipt terminology
+
+There is **no payment-processing feature** in this system.
+
+“Receipt” means a Student-uploaded **file/image used as proof for thesis/defense requirements**.
+
+Do not add:
+
+- payment gateway logic;
+- billing;
+- online transaction processing;
+- payment settlement/status integration.
+
+Use language such as:
+
+- COR;
+- receipt/proof;
+- supporting evidence;
+- supporting requirement document.
+
+---
+
+## 13. Databank vs Research Repository
+
+These must not be treated as synonyms.
+
+### Research Databank
+
+Controlled archival/source collection for institutional research records.
+
+May include:
+
+- archival metadata;
+- approved archival manuscript reference;
+- controlled/restricted materials where policy permits;
+- publication-readiness state.
+
+Private/restricted by default.
+
+### Research Repository
+
+Publication/discovery layer derived from approved archival material.
+
+May expose only explicitly permitted:
+
+- title;
+- author;
+- program/year;
+- abstract;
+- keywords;
+- approved publication artifact;
+- permitted view/download behavior.
+
+### Critical privacy rule
+
+Respondent/raw participant data must **not** become public merely because a record is published.
+
+The exact rules for respondent data, research instruments, Repository download access, and post-Final archival manuscript remain institutional-policy questions.
+
+### Avoid duplicate upload architecture
+
+Preferred direction:
+
+```text
+managed authoritative document
+        ↓
+Databank/archive reference
+        ↓
+explicit publication decision
+        ↓
+Repository projection/access
+```
+
+Do not build three unrelated physical upload pipelines for Defense, Databank, and Repository when a verified managed document can be referenced safely.
+
+---
+
+## 14. Storage and retrieval security
+
+### Current retrieval model
+
+Files are served through authorized application endpoints rather than direct public paths.
+
+Preserve:
+
+- authentication;
+- owner/domain authorization;
+- active-user checks;
+- stage-aware Panelist checks;
+- path/root containment;
+- symlink-safe realpath validation for local storage;
+- no-store behavior for sensitive records;
+- audit logging for material views/denials.
+
+### Target production storage
+
+Development default `UPLOAD_DIR=./uploads` is not a production architecture decision.
+
+For single-node deployment, persistent local private storage is acceptable when:
+
+- outside disposable application release directories;
+- outside public webroot;
+- owned/permissioned for the service account;
+- backed up together with database state;
+- capacity/integrity monitored;
+- restore procedure is tested.
+
+The storage abstraction must permit future S3-compatible/shared storage without changing Defense or Applicant domain rules.
+
+---
+
+## 15. Storage monitoring
+
+Storage monitoring is an operational feature, not a generic file manager.
+
+Useful technical/Admin health information may include:
+
+- total managed objects/bytes;
+- free/capacity threshold for local disk;
+- stale temporary uploads;
+- failed uploads;
+- orphan physical objects;
+- DB references whose file is missing;
+- checksum mismatches from explicit integrity scans;
+- reliable backup-status signal if deployment exposes one.
+
+Do not expose arbitrary folder browsing, physical rename/move, or unrestricted delete controls.
+
+---
+
+## 16. Admin document authority
+
+Admin document management must be workflow-aware.
+
+### Admin may
+
+- view documents they are authorized to review;
+- verify/reject/request replacement where Admin owns that authority;
+- see document history/metadata;
+- inspect official records read-only where applicable;
+- access storage health if the role/policy permits.
+
+### Admin must not automatically gain power to
+
+- replace certified Proposal/Final manuscripts;
+- edit evaluator Criteria;
+- edit the Oral Examination Summary;
+- change Chairman conclusions;
+- override RAP signatures/lifecycle;
+- replace system-owned Adviser Certification/RAP records;
+- publish restricted research material without an explicit publication decision.
+
+---
+
+## 17. Committee policy — known and unresolved
+
+Confirmed client shorthand:
+
+- Master's: 5 panelists + 1 Facilitator + 1 Rapporteur.
+- Doctoral: 6 panelists + 1 Facilitator + 1 Rapporteur.
+
+Current forms add nuance, especially Master's GS-006 Adviser vs Panelist rows.
+
+Do not hardcode “5 Master's scorers” until evaluator/adviser interpretation is confirmed.
+
+Keep evaluator/signatory policy centralized and derived from functional assignments rather than printed labels alone.
+
+Known unresolved committee questions include:
+
+- exact Master's evaluator count;
+- Adviser scoring/concurrence behavior;
+- whether the same person may be evaluator + Rapporteur;
+- stage-to-stage committee reuse/re-defense policy.
+
+---
+
+## 18. Other unresolved institutional decisions
+
+Do not invent these:
+
+- Proposal/Final average-to-rating boundaries;
+- GS-011 Adviser concurrence / Dean attestation e-sign details;
+- exact RAP printed layout;
+- re-defense/multiple-attempt policy;
+- broad account terminology refactor from `PANELIST` to a wider faculty model;
+- exact post-Final clearance/corrected archival manuscript authority;
+- exact file-type policy by document category beyond confirmed current behavior;
+- Research Databank retention;
+- Repository publication/download rules;
+- respondent-data/instrument access;
+- formal retention/deletion periods;
+- malware scanning/CDR requirement/provider.
+
+When implementation reaches one of these boundaries, fail closed or surface the decision rather than inventing policy.
+
+---
+
+## 19. Data and privacy rules
+
+- Backend/domain records are authoritative over UI display state.
+- Application `APPROVED` is not Defense `PASSED`.
+- Scheduled is not completed.
+- Scores complete is not formal conclusion.
+- Average is not automatic PASS/FAIL.
+- PASSED is not RAP FINALIZED.
+- Adviser CONFORME is not Dean approval.
+- Requested Adviser is not active Adviser.
+- Current Proposal/Final authority is not arbitrary document history.
+- Files are private unless an explicit workflow/publication policy says otherwise.
+- Ordinary APIs should not serialize raw Base64 signature image payloads.
+- Signature images belong only in authorized official rendering/use.
+
+---
+
+## 20. Testing and validation conventions
+
+Use package-appropriate checks.
+
+Backend packages commonly require:
+
+- focused unit/integration tests;
+- backend build/typecheck;
+- Prisma generate/migration validation when schema changes;
+- deterministic fixture checks when relevant.
+
+Frontend packages commonly require:
+
+- typecheck/lint/build as available;
+- focused functional inspection;
+- manual browser QA when executable.
+
+Document/storage packages additionally need negative tests for:
+
+- MIME spoofing;
+- unsupported content;
+- oversized uploads;
+- failed-transaction cleanup;
+- unauthorized retrieval;
+- path traversal/symlink escape;
+- missing objects;
+- version/supersession behavior;
+- legacy `filePath` compatibility;
+- persistence across deployment/restart assumptions where environment permits.
+
+Do not turn every bounded package into an unrelated full-system rewrite.
+
+---
+
+## 21. Work-package and review protocol
+
+The project owner uses a strict package/review workflow.
+
+For every implementation package:
+
+1. verify the exact remote branch HEAD before work;
+2. read current canonical docs;
+3. implement one bounded package only;
+4. run package-appropriate validation;
+5. commit and push;
+6. report exact changed files, tests/build, migration status, worktree/push state;
+7. stop;
+8. independent review verifies the **actual remote commit/diff** rather than trusting the implementation report;
+9. only an accepted package allows progression to the next package.
+
+If rejected, fix the same package. Do not advance automatically.
+
+No merge, force push, branch deletion, or unrelated feature work unless explicitly authorized.
+
+---
+
+## 22. Active Document Lifecycle package roadmap
+
+Current active plan:
+
+```text
+DL-0  Documentation/audit baseline — COMPLETE
+↓
+DL-1  Core storage metadata + provider abstraction — NEXT
+↓
+DL-2  Secure upload pipeline + cleanup
+↓
+DL-3  Applicant COR lifecycle consolidation
+↓
+DL-4  Native COR PDF extraction framework
+↓
+DL-5  EARIST COR parser — BLOCKED until COR sample is supplied
+↓
+DL-6  Defense supporting evidence lifecycle
+↓
+DL-7  Proposal/Final manuscript integration
+↓
+DL-8  Admin document review/history
+↓
+DL-9  Research Databank archival refactor
+↓
+DL-10 Research Repository publication separation
+↓
+DL-11 Storage health/operations
+↓
+DL-12 Migration/backfill + production-readiness verification
+```
+
+The exact active plan is maintained in:
+
+`docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md`
+
+If this summary and the active plan differ, the active plan wins.
+
+---
+
+## 23. Development commands
+
+Use package scripts from the current manifests.
+
+Typical backend:
+
 ```bash
-# Backend
-cd backend && npm run dev
-
-# Frontend
-cd frontend && npm run dev
-
-# Database migrations
-cd backend && npx prisma migrate dev
-
-# Seed database
-cd backend && npx prisma db seed
+cd backend
+npm run build
+npm test
+npx prisma generate
+npx prisma migrate dev
+npx prisma db seed
 ```
 
-### Deployment Setup
+Typical frontend:
+
 ```bash
-# Backend (PM2)
-pm2 start dist/index.js --name "graduate-backend"
-
-# Frontend (PM2)
-pm2 start npm --name "graduate-frontend" -- run start
-
-# Nginx config
-# Proxy / → localhost:3000 (Frontend)
-# Proxy /api → localhost:5000 (Backend)
+cd frontend
+npm run dev
+npm run build
 ```
 
----
-
-## Important Notes
-
-1. **Never modify existing patterns** - Follow the 3-layer architecture exactly
-2. **Use existing components** - Check `components/ui/` before creating new ones
-3. **Follow naming conventions** - kebab-case files, PascalCase components
-4. **Use brand colors** - Always use `--earist-*` CSS variables
-5. **Handle errors consistently** - Use AppError class with proper status codes
-6. **Validate at boundaries** - User input validation in controllers/services
-7. **Atomic operations** - Use Prisma transactions for multi-table operations
-8. **Pagination & filtering approach** - Use server-side pagination for read-only data tables that grow over time. Use client-side pagination for small bounded datasets or interactive workflows. See Pagination & Filtering Pattern (Hybrid).
-9. **Reuse DataTableFilter** - Never implement filter state or UI inline. Use the shared DataTableFilter component on all admin list pages.
-10. **File upload security** - Never trust client MIME types. Use `file-type` magic-byte validation. Use `crypto.randomBytes` for filenames. Always clean up files on error. See Document Upload & Viewing System section.
-11. **Document viewing security** - Never expose `filePath` in API responses. Validate paths with `fs.realpath()`. Check `isActive` on users. Use the document proxy for same-origin requests. See Document Upload & Viewing System section.
-12. **Audit logging** - Log security-relevant events (uploads, views, verifications, denials) using the existing `AuditLog` model via repository `createAuditLog()` methods.
+Do not assume every command is required for every package. Run the checks appropriate to the changed scope.
 
 ---
 
-*Last updated: September 2026 — Document upload/viewing security hardening, COR status lifecycle, file-type validation, audit logging, future thesis/panelist document plans*
+## 24. Important implementation rules
+
+1. Read this file for orientation, then read the relevant canonical source-of-truth/spec/plan.
+2. Preserve accepted business behavior unless an approved canonical document explicitly changes it.
+3. Do not treat old plans, retired branches, comments, or UI text as institutional authority.
+4. Do not add new policy to resolve an ambiguity.
+5. Use backend checks for security/authority; hiding a frontend button is not authorization.
+6. Use transactions for atomic multi-record authority transitions.
+7. Keep storage mechanics separate from domain authority.
+8. Never trust client MIME/filename/extension as proof of content.
+9. Never expose private storage paths as public document URLs.
+10. Clean up failed uploads and design for orphan/missing-object detection.
+11. Use exact certified Proposal/Final document authority via `reviewedDocumentId`.
+12. Do not let scoring auto-conclude a defense.
+13. Do not let document extraction auto-promote an Applicant.
+14. Do not turn Databank publication into automatic Repository publication.
+15. Do not create a generic Admin filesystem manager.
+16. Do not implement payment processing; receipt is supporting proof only.
+17. Keep changes bounded to the requested work package.
+18. Verify actual remote state before review or next-package planning.
+
+---
+
+## 25. Quick start for a fresh coding-agent session
+
+Before implementing:
+
+1. confirm branch = `refactor/document-lifecycle`;
+2. confirm remote HEAD;
+3. read this `CONTEXT.md`;
+4. read:
+   - `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`;
+   - `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`;
+   - `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`;
+   - `docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md`;
+5. inspect the actual current code involved in the assigned package;
+6. implement only that package;
+7. stop and report for independent review.
+
+---
+
+*Updated: 2026-10-02 — refreshed after accepted Defense Workflow corrections and creation of the Document Lifecycle architecture. This file is intentionally an onboarding/index document; canonical source-of-truth files govern detailed domain behavior.*
