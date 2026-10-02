@@ -229,12 +229,19 @@ export class ThesisService {
     if (!thesis) {
       throw new AppError('Defense application not found.', 404);
     }
+    // Friendly preflight; the repository transaction authoritatively re-checks
+    // PENDING + stage before committing the decision.
+    if (thesis.status !== 'PENDING') {
+      throw new AppError(
+        'Only a pending defense application can be rejected.',
+        409,
+      );
+    }
     return this.thesisRepo.rejectApplication({
       thesisId,
       actorId,
       reason: reason.trim(),
-      stage: thesis.stage,
-      fromStatus: thesis.status,
+      stage: thesis.stage as 'TITLE' | 'PROPOSAL' | 'FINAL',
     });
   }
 
@@ -610,8 +617,7 @@ export class ThesisService {
       return this.thesisRepo.approveApplication({
         thesisId,
         actorId: actorId ?? null,
-        stage: thesis.stage,
-        fromStatus: thesis.status,
+        stage: thesis.stage as 'TITLE' | 'PROPOSAL' | 'FINAL',
       });
     }
 

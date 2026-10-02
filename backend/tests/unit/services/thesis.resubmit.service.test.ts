@@ -8,6 +8,9 @@ const repo = vi.hoisted(() => ({
   getProposedTitles: vi.fn(),
   getActiveThesis: vi.fn(),
   getEvidenceHistory: vi.fn(),
+  findNonCancelledSchedules: vi.fn(),
+  rejectApplication: vi.fn(),
+  approveApplication: vi.fn(),
 }));
 
 vi.mock("../../../src/repositories/thesis.repository", () => ({
@@ -19,6 +22,9 @@ vi.mock("../../../src/repositories/thesis.repository", () => ({
     getProposedTitles = repo.getProposedTitles;
     getActiveThesis = repo.getActiveThesis;
     getEvidenceHistory = repo.getEvidenceHistory;
+    findNonCancelledSchedules = repo.findNonCancelledSchedules;
+    rejectApplication = repo.rejectApplication;
+    approveApplication = repo.approveApplication;
   },
 }));
 
@@ -93,6 +99,99 @@ describe("ThesisService rejection canonical guard", () => {
     await expect(
       svc.updateDefenseStatus("thesis-1", { status: "REJECTED" }, "admin-1"),
     ).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe("ThesisService application decision guards", () => {
+  it("PENDING -> APPROVED delegates to the atomic claim", async () => {
+    repo.getThesisById.mockResolvedValue({
+      id: "thesis-1",
+      studentId: "s",
+      status: "PENDING",
+      stage: "PROPOSAL",
+    });
+    repo.findNonCancelledSchedules.mockResolvedValue([]);
+    repo.approveApplication.mockResolvedValue({
+      id: "thesis-1",
+      status: "APPROVED",
+      rejectionReason: null,
+      stage: "PROPOSAL",
+    });
+    const svc = new ThesisService();
+    await svc.updateDefenseStatus("thesis-1", { status: "APPROVED" }, "admin-1");
+    expect(repo.approveApplication).toHaveBeenCalledWith({
+      thesisId: "thesis-1",
+      actorId: "admin-1",
+      stage: "PROPOSAL",
+    });
+  });
+
+  it("REJECTED -> APPROVED is rejected before persistence", async () => {
+    repo.getThesisById.mockResolvedValue({
+      id: "thesis-1",
+      studentId: "s",
+      status: "REJECTED",
+      stage: "PROPOSAL",
+    });
+    repo.findNonCancelledSchedules.mockResolvedValue([]);
+    const svc = new ThesisService();
+    await expect(
+      svc.updateDefenseStatus("thesis-1", { status: "APPROVED" }, "admin-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.approveApplication).not.toHaveBeenCalled();
+  });
+
+  it("PENDING -> REJECTED delegates to the atomic claim", async () => {
+    repo.getThesisById.mockResolvedValue({
+      id: "thesis-1",
+      studentId: "s",
+      status: "PENDING",
+      stage: "TITLE",
+    });
+    repo.rejectApplication.mockResolvedValue({
+      id: "thesis-1",
+      status: "REJECTED",
+      rejectionReason: "x",
+      stage: "TITLE",
+    });
+    const svc = new ThesisService();
+    await svc.rejectApplication("thesis-1", "x", "admin-1");
+    expect(repo.rejectApplication).toHaveBeenCalledWith({
+      thesisId: "thesis-1",
+      actorId: "admin-1",
+      reason: "x",
+      stage: "TITLE",
+    });
+  });
+
+  it("APPROVED / SCHEDULED / PASSED cannot be rejected", async () => {
+    const svc = new ThesisService();
+    for (const status of ["APPROVED", "SCHEDULED", "PASSED"]) {
+      repo.getThesisById.mockResolvedValue({
+        id: "thesis-1",
+        studentId: "s",
+        status,
+        stage: "TITLE",
+      });
+      await expect(
+        svc.rejectApplication("thesis-1", "x", "admin-1"),
+      ).rejects.toMatchObject({ statusCode: 409 });
+    }
+    expect(repo.rejectApplication).not.toHaveBeenCalled();
+  });
+
+  it("rejection still requires a reason", async () => {
+    repo.getThesisById.mockResolvedValue({
+      id: "thesis-1",
+      studentId: "s",
+      status: "PENDING",
+      stage: "TITLE",
+    });
+    const svc = new ThesisService();
+    await expect(
+      svc.rejectApplication("thesis-1", "   ", "admin-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.rejectApplication).not.toHaveBeenCalled();
   });
 });
 

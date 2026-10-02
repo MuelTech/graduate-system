@@ -101,10 +101,20 @@ export interface ReviewTimelineEventDto {
   } | null;
 }
 
+export interface DefenseHistoryApplicationState {
+  /** True only when the requested stage is the live ThesisRecord stage. */
+  isCurrentStage: boolean;
+  currentThesisStage: DefenseHistoryStage;
+  /** Live status — null for a prior stage (never reconstructed). */
+  status: string | null;
+  /** Live rejection reason — null for a prior stage. */
+  rejectionReason: string | null;
+}
+
 export interface DefenseDocumentHistoryDto {
   thesisId: string;
   stage: DefenseHistoryStage;
-  application: { status: string; rejectionReason: string | null };
+  application: DefenseHistoryApplicationState;
   supportingEvidence: SupportingEvidenceSlotDto[];
   manuscriptReview: ManuscriptReviewDto | null;
   reviewTimeline: ReviewTimelineEventDto[];
@@ -193,19 +203,27 @@ export class DefenseApplicationDocumentHistoryService {
     const docs = await this.repo.getStageDocuments(thesisId, stage);
     const supportingEvidence = this.buildSupportingEvidence(stage, docs);
     const manuscriptReview = await this.buildManuscriptReview(stage, thesisId, docs);
-    const reviewTimeline = await this.buildReviewTimeline(thesisId);
+    const reviewTimeline = await this.buildReviewTimeline(thesisId, stage);
 
     const schedule = await this.repo.getStageScheduleId(
       thesisId,
       STAGE_DEFENSE_TYPE[stage],
     );
 
+    // Never reuse the current ThesisRecord status for a prior-stage request.
+    const isCurrentStage = stage === thesis.stage;
+    const currentThesisStage = thesis.stage as DefenseHistoryStage;
+
     return {
       thesisId,
       stage,
       application: {
-        status: thesis.status,
-        rejectionReason: thesis.rejectionReason ?? null,
+        isCurrentStage,
+        currentThesisStage,
+        status: isCurrentStage ? thesis.status : null,
+        rejectionReason: isCurrentStage
+          ? thesis.rejectionReason ?? null
+          : null,
       },
       supportingEvidence,
       manuscriptReview,
@@ -307,9 +325,14 @@ export class DefenseApplicationDocumentHistoryService {
 
   private async buildReviewTimeline(
     thesisId: string,
+    stage: DefenseHistoryStage,
   ): Promise<ReviewTimelineEventDto[]> {
     const events = await this.repo.getReviewAuditEvents(thesisId);
-    return events.map((event) => {
+    return events
+      // DL-8 FIX1: stage-specific timeline. The structured payload `stage` is
+      // the only authority; legacy/unscoped events are never guessed.
+      .filter((event) => parseAuditObject(event.newValue)?.stage === stage)
+      .map((event) => {
       const parsed = parseAuditObject(event.newValue);
       const base: ReviewTimelineEventDto = {
         type: event.actionType,

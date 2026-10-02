@@ -324,7 +324,10 @@ describe("DL-8 review timeline + privacy", () => {
     });
     const dto = await svc.getDocumentHistory("thesis-1", "TITLE");
 
-    expect(dto.reviewTimeline[0].type).toBe("DEFENSE_APPLICATION_REJECT");
+    expect(dto.reviewTimeline.map((e) => e.type)).toEqual([
+      "DEFENSE_APPLICATION_REJECT",
+      "DEFENSE_RESUBMIT",
+    ]);
     expect(dto.reviewTimeline[0].reason).toBe("Upload a clearer COR");
     expect(dto.reviewTimeline[0].actor?.name).toBe("Ada Admin");
 
@@ -335,9 +338,54 @@ describe("DL-8 review timeline + privacy", () => {
       { docType: "COR", supersededDocumentId: "cor-v1", createdDocumentId: "cor-v2" },
     ]);
 
-    // Legacy event must not fabricate structured replacements.
-    expect(dto.reviewTimeline[2].replacementSummary).toBeNull();
-    expect(dto.reviewTimeline[2].description).toBe("legacy resubmit");
+    // Legacy unscoped event is excluded from the stage-specific timeline.
+    expect(
+      dto.reviewTimeline.some((e) => e.description === "legacy resubmit"),
+    ).toBe(false);
+  });
+
+  it("returns only the requested stage's structured events", async () => {
+    const structured = (stage: string, reason?: string) => ({
+      actionType: "DEFENSE_APPLICATION_REJECT",
+      oldValue: "PENDING",
+      newValue: JSON.stringify(reason ? { stage, reason } : { stage }),
+      description: `${stage} event`,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      actor: null,
+    });
+    const { svc } = makeService({
+      audit: [
+        structured("TITLE"),
+        structured("PROPOSAL", "proposal reason"),
+        structured("FINAL"),
+        {
+          actionType: "DEFENSE_RESUBMIT",
+          oldValue: null,
+          newValue: JSON.stringify({ createdIds: ["x"], supersededIds: ["y"] }),
+          description: "legacy unscoped",
+          createdAt: new Date("2026-01-02T00:00:00Z"),
+          actor: null,
+        },
+      ],
+    });
+
+    expect(
+      (await svc.getDocumentHistory("thesis-1", "TITLE")).reviewTimeline.map(
+        (e) => e.description,
+      ),
+    ).toEqual(["TITLE event"]);
+    expect(
+      (await svc.getDocumentHistory("thesis-1", "PROPOSAL")).reviewTimeline.map(
+        (e) => e.description,
+      ),
+    ).toEqual(["PROPOSAL event"]);
+    const finalDto = await svc.getDocumentHistory("thesis-1", "FINAL");
+    expect(finalDto.reviewTimeline.map((e) => e.description)).toEqual([
+      "FINAL event",
+    ]);
+    expect(
+      finalDto.reviewTimeline.some((e) => e.description === "legacy unscoped"),
+    ).toBe(false);
   });
 
   it("keeps the live rejection reason for a currently rejected application", async () => {
@@ -351,8 +399,33 @@ describe("DL-8 review timeline + privacy", () => {
       },
     });
     const dto = await svc.getDocumentHistory("thesis-1", "TITLE");
+    expect(dto.application.isCurrentStage).toBe(true);
+    expect(dto.application.currentThesisStage).toBe("TITLE");
     expect(dto.application.status).toBe("REJECTED");
     expect(dto.application.rejectionReason).toBe("Live reason");
+  });
+
+  it("does not reuse current-stage state for a prior-stage request", async () => {
+    const { svc } = makeService({
+      thesis: {
+        id: "thesis-1",
+        stage: "FINAL",
+        status: "PENDING",
+        rejectionReason: null,
+        studentId: "s",
+      },
+    });
+
+    const prior = await svc.getDocumentHistory("thesis-1", "PROPOSAL");
+    expect(prior.stage).toBe("PROPOSAL");
+    expect(prior.application.isCurrentStage).toBe(false);
+    expect(prior.application.currentThesisStage).toBe("FINAL");
+    expect(prior.application.status).toBeNull();
+    expect(prior.application.rejectionReason).toBeNull();
+
+    const current = await svc.getDocumentHistory("thesis-1", "FINAL");
+    expect(current.application.isCurrentStage).toBe(true);
+    expect(current.application.status).toBe("PENDING");
   });
 
   it("exposes official schedule availability when present", async () => {

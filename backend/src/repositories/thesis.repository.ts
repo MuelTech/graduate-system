@@ -756,64 +756,78 @@ export class ThesisRepository {
   }
 
   /**
-   * DL-8: canonical Admin rejection writes status + reason and the durable
-   * review audit event in one transaction.
+   * DL-8 / FIX1: canonical Admin rejection atomically claims a PENDING
+   * application for the exact stage, then writes the durable review audit.
+   * The conditional UPDATE locks the row and is the authority — a stale or
+   * already-decided application cannot be rejected.
    */
   async rejectApplication(params: {
     thesisId: string;
     actorId: string | null;
     reason: string;
-    stage: string;
-    fromStatus: string;
+    stage: "TITLE" | "PROPOSAL" | "FINAL";
   }) {
-    const { thesisId, actorId, reason, stage, fromStatus } = params;
+    const { thesisId, actorId, reason, stage } = params;
     return prisma.$transaction(async (tx) => {
-      const updated = await tx.thesisRecord.update({
-        where: { id: thesisId },
+      const claimed = await tx.thesisRecord.updateMany({
+        where: { id: thesisId, status: "PENDING", stage },
         data: { status: "REJECTED", rejectionReason: reason },
-        select: { id: true, status: true, rejectionReason: true, stage: true },
       });
+      if (claimed.count !== 1) {
+        throw new AppError(
+          "Application review state changed. Refresh and try again.",
+          409,
+        );
+      }
       await tx.auditLog.create({
         data: {
           actorId,
           actionType: DEFENSE_REVIEW_ACTIONS.REJECT,
           targetTable: "thesis_records",
           targetId: thesisId,
-          oldValue: fromStatus,
+          oldValue: "PENDING",
           newValue: JSON.stringify({ stage, reason }),
           description: `Defense ${stage} application rejected: ${reason}`,
         },
       });
-      return updated;
+      return { id: thesisId, status: "REJECTED", rejectionReason: reason, stage };
     });
   }
 
-  /** DL-8: canonical Admin approval writes status + audit atomically. */
+  /**
+   * DL-8 / FIX1: canonical Admin approval atomically claims a PENDING
+   * application for the exact stage, then writes the decision audit. Only one
+   * decision (approve/reject) can win for a given pending state.
+   */
   async approveApplication(params: {
     thesisId: string;
     actorId: string | null;
-    stage: string;
-    fromStatus: string;
+    stage: "TITLE" | "PROPOSAL" | "FINAL";
   }) {
-    const { thesisId, actorId, stage, fromStatus } = params;
+    const { thesisId, actorId, stage } = params;
     return prisma.$transaction(async (tx) => {
-      const updated = await tx.thesisRecord.update({
-        where: { id: thesisId },
+      const claimed = await tx.thesisRecord.updateMany({
+        where: { id: thesisId, status: "PENDING", stage },
         data: { status: "APPROVED", rejectionReason: null },
-        select: { id: true, status: true, rejectionReason: true, stage: true },
       });
+      if (claimed.count !== 1) {
+        throw new AppError(
+          "Application review state changed. Refresh and try again.",
+          409,
+        );
+      }
       await tx.auditLog.create({
         data: {
           actorId,
           actionType: DEFENSE_REVIEW_ACTIONS.APPROVE,
           targetTable: "thesis_records",
           targetId: thesisId,
-          oldValue: fromStatus,
+          oldValue: "PENDING",
           newValue: JSON.stringify({ stage }),
           description: `Defense ${stage} application approved.`,
         },
       });
-      return updated;
+      return { id: thesisId, status: "APPROVED", rejectionReason: null, stage };
     });
   }
 

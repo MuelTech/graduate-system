@@ -65,10 +65,17 @@ export interface DefenseReviewTimelineEvent {
   } | null;
 }
 
+export interface DefenseHistoryApplicationState {
+  isCurrentStage: boolean;
+  currentThesisStage: DefenseHistoryStage;
+  status: string | null;
+  rejectionReason: string | null;
+}
+
 export interface DefenseDocumentHistory {
   thesisId: string;
   stage: DefenseHistoryStage;
-  application: { status: string; rejectionReason: string | null };
+  application: DefenseHistoryApplicationState;
   supportingEvidence: DefenseSupportingEvidenceSlot[];
   manuscriptReview: DefenseManuscriptReview | null;
   reviewTimeline: DefenseReviewTimelineEvent[];
