@@ -135,7 +135,7 @@ describe("CorExtractionService native PDF path", () => {
 
     expect(result.status).toBe("FAILED");
     expect(result.method).toBe("NATIVE_PDF");
-    expect(result.diagnostic).toMatch(/extraction failed/i);
+    expect(result.diagnostic).toBe("Native PDF parsing failed.");
   });
 
   it("persists FAILED when the storage path cannot be resolved", async () => {
@@ -156,7 +156,38 @@ describe("CorExtractionService native PDF path", () => {
     const result = await service.processUpload("cor-4");
 
     expect(result.status).toBe("FAILED");
+    expect(result.diagnostic).toBe("Unable to read stored COR document.");
     expect(storage.resolveReadPath).toHaveBeenCalled();
+  });
+
+  it("never persists a private filesystem path from a read error", async () => {
+    const privatePath =
+      "/var/lib/graduate-system/private/cor/secret-file.pdf";
+    const { service, extractionRepository } = makeHarness({
+      id: "cor-path",
+      storageKey: null,
+      storageProvider: null,
+      // Resolves, but the file does not exist: fs.readFile throws ENOENT whose
+      // message embeds this absolute path.
+      filePath: privatePath,
+      detectedMimeType: "application/pdf",
+      originalFilename: "cor.pdf",
+    });
+
+    const result = await service.processUpload("cor-path");
+
+    expect(result.status).toBe("FAILED");
+    expect(result.diagnostic).toBe("Unable to read stored COR document.");
+    expect(result.diagnostic).not.toContain(privatePath);
+    expect(result.diagnostic).not.toContain("graduate-system");
+    expect(result.diagnostic).not.toContain("/var/lib");
+
+    const calls = extractionRepository.upsertResult.mock.calls;
+    const persisted = calls[calls.length - 1]?.[1] as {
+      diagnostic: string | null;
+    };
+    expect(persisted.diagnostic).toBe("Unable to read stored COR document.");
+    expect(JSON.stringify(persisted)).not.toContain(privatePath);
   });
 });
 

@@ -13,11 +13,12 @@ A comprehensive Graduate School Management System with AI-powered features inclu
 - **Authentication:** NextAuth
 
 ### Backend
-- **Runtime:** Node.js
+- **Runtime:** Node.js (v22.13.0 or higher)
 - **Framework:** Express.js
 - **ORM:** Prisma
 - **Database:** MySQL
 - **Authentication:** JWT
+- **Document extraction:** PDF.js (`pdfjs-dist`) native PDF text extraction
 
 ### AI Layer
 - **LLM:** Qwen (via Ollama)
@@ -31,7 +32,7 @@ A comprehensive Graduate School Management System with AI-powered features inclu
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
+- Node.js (v22.13.0 or higher) — required by `pdfjs-dist` and Prisma on the backend
 - MySQL (v8 or higher)
 - npm or yarn
 - Ollama (for AI features)

@@ -10,15 +10,29 @@ import {
   UnavailableOcrExtractor,
   type OcrExtractor,
 } from "./ocr.extractor";
-import type {
-  CorExtractionResult,
-  ExtractedPage,
-} from "./cor-extraction.types";
+import { boundExtractionPages, capExtractedText } from "./extraction-bounds";
+import type { CorExtractionResult } from "./cor-extraction.types";
 
 const PDF_MIME = "application/pdf";
-const MAX_PERSISTED_PAGES = 100;
-const MAX_PERSISTED_ITEMS = 20_000;
-const MAX_DIAGNOSTIC_CHARS = 500;
+
+/**
+ * DL-4: controlled, client-safe extraction diagnostics.
+ *
+ * Only these values are ever persisted and surfaced to Admin DTOs/UI. Raw
+ * `Error.message` values are never persisted because Node filesystem errors can
+ * embed absolute private storage paths; parser errors can embed implementation
+ * detail. Internal technical errors are intentionally not persisted.
+ */
+const DIAGNOSTIC = {
+  NON_PDF:
+    "Native PDF extraction does not apply to this upload; manual review required.",
+  NO_USEFUL_TEXT:
+    "No useful native text found; manual review required.",
+  READ_FAILED: "Unable to read stored COR document.",
+  PARSE_FAILED: "Native PDF parsing failed.",
+} as const;
+
+const READ_ERROR_CODES = new Set(["ENOENT", "EACCES", "EPERM", "EISDIR"]);
 
 /**
  * DL-4: best-effort native COR extraction orchestrator.
@@ -51,14 +65,13 @@ export class CorExtractionService {
     return result;
   }
 
-  /** Caps page count and overall positional-item budget for persistence. */
-  private boundPages(pages: ExtractedPage[]): ExtractedPage[] {
-    let budget = MAX_PERSISTED_ITEMS;
-    return pages.slice(0, MAX_PERSISTED_PAGES).map((page) => {
-      const items = budget > 0 ? page.items.slice(0, budget) : [];
-      budget -= items.length;
-      return { ...page, items };
-    });
+  /** Maps an internal error to a controlled, path-free persisted diagnostic. */
+  private sanitizeDiagnostic(error: unknown): string {
+    const code = (error as { code?: string } | null)?.code;
+    if (code && READ_ERROR_CODES.has(code)) {
+      return DIAGNOSTIC.READ_FAILED;
+    }
+    return DIAGNOSTIC.PARSE_FAILED;
   }
 
   async processUpload(corUploadId: string): Promise<CorExtractionResult> {
@@ -81,8 +94,7 @@ export class CorExtractionService {
           text: null,
           pages: null,
           suggestions: null,
-          diagnostic:
-            "Native PDF extraction does not apply to this upload; OCR strategy may be applicable later.",
+          diagnostic: DIAGNOSTIC.NON_PDF,
         }),
       );
     }
@@ -105,7 +117,7 @@ export class CorExtractionService {
         storageKey: source.storageKey,
         filePath: source.filePath,
       });
-    } catch (error) {
+    } catch {
       return this.persist(
         corUploadId,
         this.terminal({
@@ -116,7 +128,7 @@ export class CorExtractionService {
           text: null,
           pages: null,
           suggestions: null,
-          diagnostic: `Unable to resolve COR file for extraction: ${this.message(error)}`,
+          diagnostic: DIAGNOSTIC.READ_FAILED,
         }),
       );
     }
@@ -132,8 +144,8 @@ export class CorExtractionService {
             method: "NATIVE_PDF",
             extractorVersion: this.native.version,
             pageCount: native.pageCount,
-            text: native.text,
-            pages: this.boundPages(native.pages),
+            text: capExtractedText(native.text),
+            pages: boundExtractionPages(native.pages),
             suggestions: null,
             diagnostic: null,
           }),
@@ -155,8 +167,7 @@ export class CorExtractionService {
           text: null,
           pages: null,
           suggestions: null,
-          diagnostic:
-            "No useful native text found; OCR fallback is applicable but not implemented in DL-4.",
+          diagnostic: DIAGNOSTIC.NO_USEFUL_TEXT,
         }),
       );
     } catch (error) {
@@ -170,16 +181,9 @@ export class CorExtractionService {
           text: null,
           pages: null,
           suggestions: null,
-          diagnostic: `Native extraction failed: ${this.message(error)}`,
+          diagnostic: this.sanitizeDiagnostic(error),
         }),
       );
     }
-  }
-
-  private message(error: unknown): string {
-    const text = error instanceof Error ? error.message : String(error);
-    return text.length > MAX_DIAGNOSTIC_CHARS
-      ? text.slice(0, MAX_DIAGNOSTIC_CHARS)
-      : text;
   }
 }
