@@ -236,11 +236,16 @@ export class ProposalAdviserReviewService {
   /**
    * Student uploads/resubmits Proposal Chapters 1–3 for Adviser review.
    * Does NOT submit the Proposal defense application to Admin.
+   *
+   * DL-2 FIX1: returns immediately after the authoritative transaction
+   * commits. The caller marks the request upload committed BEFORE any
+   * post-commit read, so a later read/response failure can never delete a file
+   * that a committed ThesisDocument/AdviserCertification already references.
    */
   async submitManuscriptForReview(
     userId: string,
     file: Express.Multer.File,
-  ): Promise<ProposalAdviserReviewDto> {
+  ): Promise<void> {
     const { student, thesis } = await this.findThesisForStudent(userId);
     if (!thesis) {
       await safeUnlink(file?.path);
@@ -404,8 +409,6 @@ export class ProposalAdviserReviewService {
       await safeUnlink(file.path);
       throw err;
     }
-
-    return this.getStudentReviewState(userId);
   }
 
   /** Adviser review queue — only students where caller is the active adviser. */

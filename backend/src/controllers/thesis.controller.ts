@@ -935,12 +935,13 @@ export class ThesisController {
         res.status(400).json({ error: "Proposal manuscript file is required." });
         return;
       }
-      const result = await this.proposalAdviserReview.submitManuscriptForReview(
-        userId,
-        file,
-      );
+      await this.proposalAdviserReview.submitManuscriptForReview(userId, file);
+      // DL-2 FIX1: the authoritative transaction has committed — protect the
+      // managed file before any fallible post-commit read.
       commitRequestUploads(req);
-      res.status(200).json(result);
+      res
+        .status(200)
+        .json(await this.proposalAdviserReview.getStudentReviewState(userId));
     } catch (error: any) {
       await cleanupRequestUploads(req);
       sendEligibilityError(res, error);
@@ -1081,9 +1082,12 @@ export class ThesisController {
         res.status(400).json({ error: "Final manuscript file is required." });
         return;
       }
-      const result = await this.finalAdviserReview.submitManuscriptForReview(userId, file);
+      await this.finalAdviserReview.submitManuscriptForReview(userId, file);
+      // DL-2 FIX1: protect the committed managed file before any post-commit read.
       commitRequestUploads(req);
-      res.status(200).json(result);
+      res
+        .status(200)
+        .json(await this.finalAdviserReview.getStudentReviewState(userId));
     } catch (error: any) {
       await cleanupRequestUploads(req);
       sendEligibilityError(res, error);

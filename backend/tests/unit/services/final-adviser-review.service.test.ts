@@ -138,7 +138,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
         ],
       }),
     );
-    const dto = await svc.submitManuscriptForReview("student-user", {
+    await svc.submitManuscriptForReview("student-user", {
       path: "uploads/final.pdf",
       originalname: "final.pdf",
     } as Express.Multer.File);
@@ -150,6 +150,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
         }),
       }),
     );
+    const dto = await svc.getStudentReviewState("student-user");
     expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
   });
 

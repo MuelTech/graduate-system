@@ -333,11 +333,14 @@ export class FinalAdviserReviewService {
   /**
    * Student uploads/resubmits Final manuscript for Adviser review.
    * Does NOT submit the Final defense application to Admin.
+   *
+   * DL-2 FIX1: returns immediately after the authoritative transaction
+   * commits (see ProposalAdviserReviewService for the invariant rationale).
    */
   async submitManuscriptForReview(
     userId: string,
     file: Express.Multer.File,
-  ): Promise<FinalAdviserReviewDto> {
+  ): Promise<void> {
     const { student, thesis } = await this.findThesisForStudent(userId);
     if (!thesis) {
       await safeUnlink(file?.path);
@@ -484,7 +487,6 @@ export class FinalAdviserReviewService {
       await safeUnlink(file.path);
       throw err;
     }
-    return this.getStudentReviewState(userId);
   }
 
   async listReviewTasks(adviserUserId: string): Promise<FinalReviewQueueItem[]> {

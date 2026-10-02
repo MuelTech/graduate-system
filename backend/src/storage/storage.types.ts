@@ -25,6 +25,8 @@ export interface StorageProvider {
   delete(storageKey: string): Promise<void>;
   /** DL-2: absolute private temporary/quarantine directory under the root. */
   temporaryRoot(): string;
+  /** DL-2: safely create/return a real per-request temp dir (symlink-safe). */
+  ensureTemporaryDirectory(name: string): Promise<string>;
   /** DL-2: move a validated temporary object to a permanent managed key. */
   promoteTemporaryFile(
     tempAbsolutePath: string,

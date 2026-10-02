@@ -81,20 +81,23 @@ export class CorService {
                 uploadedAt: new Date(),
             };
 
-            const upload = await this.corRepository.createUpload(uploadData);
-
-            await this.corRepository.createAuditLog(
-                userId,
-                "COR_UPLOAD",
-                upload.id,
-                `COR uploaded by applicant: ${file.originalname}`,
-                undefined,
-                JSON.stringify({ originalFilename: file.originalname, detectedMimeType: detectedMime }),
+            // DL-2 FIX1: upload row + required upload audit commit atomically.
+            const upload = await this.corRepository.createUploadWithAudit(
+                uploadData,
+                {
+                    actorId: userId,
+                    actionType: "COR_UPLOAD",
+                    description: `COR uploaded by applicant: ${file.originalname}`,
+                    newValue: JSON.stringify({
+                        originalFilename: file.originalname,
+                        detectedMimeType: detectedMime,
+                    }),
+                },
             );
 
             return upload;
         } catch (error) {
-            // Cleanup file if database insert fails
+            // Cleanup file if the atomic upload persistence rolls back
             await this.safeDeleteFile(file.path);
             throw error;
         }

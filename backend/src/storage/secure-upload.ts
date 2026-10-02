@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import fs from "fs";
 import path from "path";
 import multer from "multer";
 import type { RequestHandler } from "express";
@@ -93,12 +92,12 @@ function mapMulterError(error: unknown): AppError {
 export function createSecureUpload(provider: StorageProvider): SecureUploadFactory {
   const pipeline = new UploadPipeline(provider);
 
-  function requestTempDir(req: object): string {
+  async function requestTempDir(req: object): Promise<string> {
     const anyReq = req as { __dl2TempDir?: string };
     if (anyReq.__dl2TempDir) return anyReq.__dl2TempDir;
     const id = crypto.randomBytes(16).toString("hex");
-    const dir = path.join(provider.temporaryRoot(), id);
-    fs.mkdirSync(dir, { recursive: true });
+    // Symlink-safe: rejects an escaping `.tmp` before any write is accepted.
+    const dir = await provider.ensureTemporaryDirectory(id);
     setRequestTempDir(req, dir, provider);
     anyReq.__dl2TempDir = dir;
     return dir;
@@ -106,11 +105,9 @@ export function createSecureUpload(provider: StorageProvider): SecureUploadFacto
 
   const storage: multer.StorageEngine = multer.diskStorage({
     destination: (req, _file, cb) => {
-      try {
-        cb(null, requestTempDir(req));
-      } catch (error) {
-        cb(error as Error, "");
-      }
+      requestTempDir(req)
+        .then((dir) => cb(null, dir))
+        .catch((error) => cb(error as Error, ""));
     },
     filename: (_req, _file, cb) => {
       // Server-controlled random name; never derived from client input.

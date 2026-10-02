@@ -188,66 +188,176 @@ export class LocalStorageProvider implements StorageProvider {
 
   // ── DL-2: private temporary/quarantine lifecycle ──────────────────────
 
-  /** Absolute private temporary directory for in-flight uploads. */
+  /** Absolute private temporary directory for in-flight uploads (lexical). */
   temporaryRoot(): string {
     return path.join(this.rootPath, ".tmp");
   }
 
-  private assertWithinTemp(tempAbsolutePath: string): void {
-    const relative = path.relative(this.temporaryRoot(), tempAbsolutePath);
-    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
-      throw new AppError("Access denied", 403);
-    }
+  private isRealInside(parent: string, child: string): boolean {
+    const relative = path.relative(parent, child);
+    return (
+      relative !== "" &&
+      !relative.startsWith("..") &&
+      !path.isAbsolute(relative)
+    );
   }
 
-  private async assertRealWithinTemp(realTempPath: string): Promise<void> {
-    const realTempRoot = path.join(await this.realRoot(), ".tmp");
-    const relative = path.relative(realTempRoot, realTempPath);
-    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+  /**
+   * Creates/returns a real directory for trusted relative segments, refusing to
+   * traverse an escaping symlink at any level. Each existing component is
+   * resolved and must remain inside the real private root; missing components
+   * are created one level at a time so a symlinked parent cannot redirect the
+   * write outside the root.
+   */
+  private async ensureRealDirectory(segments: string[]): Promise<string> {
+    const realRoot = await this.realRoot();
+    let current = realRoot;
+
+    for (const segment of segments) {
+      if (!segment || segment === "." || segment === "..") {
+        throw new AppError("Access denied", 403);
+      }
+      const next = path.join(current, segment);
+      let info: fs.Stats | null;
+      try {
+        info = await fsp.lstat(next);
+      } catch {
+        info = null;
+      }
+
+      if (info) {
+        if (info.isSymbolicLink()) {
+          const real = await fsp.realpath(next);
+          if (!this.isRealInside(realRoot, real)) {
+            throw new AppError("Access denied", 403);
+          }
+          current = real;
+        } else if (info.isDirectory()) {
+          current = next;
+        } else {
+          throw new AppError("Access denied", 403);
+        }
+      } else {
+        await fsp.mkdir(next);
+        current = next;
+      }
+    }
+
+    return current;
+  }
+
+  private async resolveRealTempRoot(): Promise<string> {
+    const realRoot = await this.realRoot();
+    let realTempRoot: string;
+    try {
+      realTempRoot = await fsp.realpath(path.join(realRoot, ".tmp"));
+    } catch {
+      realTempRoot = path.join(realRoot, ".tmp");
+    }
+    if (!this.isRealInside(realRoot, realTempRoot)) {
       throw new AppError("Access denied", 403);
     }
+    return realTempRoot;
+  }
+
+  /**
+   * Resolves a temporary object to its real path, enforcing real temp-root
+   * containment. Missing objects return null (or 404 when required).
+   */
+  private async resolveRealTempTarget(
+    candidate: string,
+    options: { required: boolean },
+  ): Promise<string | null> {
+    const realTempRoot = await this.resolveRealTempRoot();
+    let real: string;
+    try {
+      real = await fsp.realpath(candidate);
+    } catch {
+      if (options.required) {
+        throw new AppError("Temporary upload not found", 404);
+      }
+      return null;
+    }
+    if (!this.isRealInside(realTempRoot, real)) {
+      throw new AppError("Access denied", 403);
+    }
+    return real;
+  }
+
+  /**
+   * Safely creates and returns a private per-request temp directory under the
+   * real temporary root. An escaping `.tmp` symlink is rejected before any
+   * directory or file is created.
+   */
+  async ensureTemporaryDirectory(name: string): Promise<string> {
+    if (
+      !name ||
+      name === "." ||
+      name === ".." ||
+      !/^[A-Za-z0-9._-]+$/.test(name)
+    ) {
+      throw new AppError("Access denied", 403);
+    }
+
+    await this.ensureRealDirectory([".tmp", name]);
+
+    const realTempRoot = await this.resolveRealTempRoot();
+    const realDir = await fsp.realpath(path.join(realTempRoot, name));
+    if (!this.isRealInside(realTempRoot, realDir)) {
+      throw new AppError("Access denied", 403);
+    }
+    return realDir;
   }
 
   /**
    * Moves a validated temporary object to a permanent managed storage key.
-   * Both the temporary source and the permanent destination are contained;
-   * the caller is responsible for having validated content beforehand.
+   * The temporary source must resolve inside the real temporary root, and every
+   * permanent destination directory must resolve inside the real private root
+   * (escaping namespace symlinks are rejected). Random keys never overwrite.
    */
   async promoteTemporaryFile(
     tempAbsolutePath: string,
     storageKey: string,
   ): Promise<string> {
     const normalized = normalizeStorageKey(storageKey);
-    const permanentCandidate = this.keyCandidate(normalized);
-    this.assertLexicallyContained(permanentCandidate);
-    this.assertWithinTemp(tempAbsolutePath);
+    const segments = normalized.split("/");
+    const fileName = segments.pop() as string;
 
-    let realTemp: string;
-    try {
-      realTemp = await fsp.realpath(tempAbsolutePath);
-    } catch {
-      throw new AppError("Temporary upload not found", 404);
+    const realTemp = await this.resolveRealTempTarget(tempAbsolutePath, {
+      required: true,
+    });
+    const realParent = await this.ensureRealDirectory(segments);
+    const target = path.join(realParent, fileName);
+
+    const existing = await fsp.lstat(target).catch(() => null);
+    if (existing) {
+      // Random keys should never collide; never overwrite or follow a link.
+      throw new AppError("Access denied", 403);
     }
-    await this.assertRealWithinTemp(realTemp);
 
-    await fsp.mkdir(path.dirname(permanentCandidate), { recursive: true });
-    await fsp.rename(realTemp, permanentCandidate);
-    return permanentCandidate;
+    await fsp.rename(realTemp as string, target);
+    return target;
   }
 
   /** Best-effort temporary cleanup; idempotent for already-missing objects. */
   async discardTemporaryFile(tempAbsolutePath: string): Promise<void> {
-    this.assertWithinTemp(tempAbsolutePath);
-    try {
-      await fsp.unlink(tempAbsolutePath);
-    } catch {
-      // already removed
-    }
+    const real = await this.resolveRealTempTarget(tempAbsolutePath, {
+      required: false,
+    });
+    if (!real) return;
+    await fsp.unlink(real);
   }
 
-  /** Removes a per-request temporary directory recursively (idempotent). */
+  /**
+   * Removes a per-request temporary directory recursively (idempotent). The
+   * directory must resolve inside the real temp root; nested symlinks are
+   * unlinked, never followed, so an external target cannot be deleted.
+   */
   async removeTemporaryDir(dirAbsolutePath: string): Promise<void> {
-    this.assertWithinTemp(dirAbsolutePath);
-    await fsp.rm(dirAbsolutePath, { recursive: true, force: true });
+    const real = await this.resolveRealTempTarget(dirAbsolutePath, {
+      required: false,
+    });
+    if (!real) return;
+    await fsp.rm(real, { recursive: true, force: true });
   }
 }

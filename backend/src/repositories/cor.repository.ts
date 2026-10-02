@@ -23,6 +23,44 @@ export class CorRepository {
         });
     }
 
+    /**
+     * DL-2 FIX1: atomic upload + required upload audit boundary.
+     * Either the CorUpload row and its audit record both commit, or neither
+     * does — so a committed upload can never be left pointing at a file that
+     * request cleanup deleted.
+     */
+    async createUploadWithAudit(
+        uploadData: Prisma.CorUploadUncheckedCreateInput,
+        audit: {
+            actorId: string | null;
+            actionType: string;
+            description: string;
+            oldValue?: string;
+            newValue?: string;
+        },
+    ) {
+        return prisma.$transaction(async (tx) => {
+            const upload = await tx.corUpload.create({
+                data: uploadData,
+                select: UPLOAD_SELECT,
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    actorId: audit.actorId,
+                    actionType: audit.actionType,
+                    targetTable: "cor_uploads",
+                    targetId: upload.id,
+                    description: audit.description,
+                    oldValue: audit.oldValue ?? null,
+                    newValue: audit.newValue ?? null,
+                },
+            });
+
+            return upload;
+        });
+    }
+
     async getUploadByStudentId(studentId: string) {
         return prisma.corUpload.findFirst({
             where: { studentId },

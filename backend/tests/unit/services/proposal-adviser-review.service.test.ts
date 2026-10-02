@@ -144,7 +144,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       path: "uploads/manuscript.pdf",
       originalname: "chapters.pdf",
     } as Express.Multer.File;
-    const dto = await svc.submitManuscriptForReview("student-user", file);
+    await svc.submitManuscriptForReview("student-user", file);
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -154,6 +154,8 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         }),
       }),
     );
+    // DL-2 FIX1: post-commit state is read separately by the controller.
+    const dto = await svc.getStudentReviewState("student-user");
     expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
     expect(dto.certification).toBeNull();
   });
@@ -266,7 +268,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         ],
       }),
     );
-    const dto = await svc.submitManuscriptForReview("student-user", {
+    await svc.submitManuscriptForReview("student-user", {
       path: "uploads/revised.pdf",
       originalname: "revised.pdf",
     } as Express.Multer.File);
@@ -283,6 +285,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
         }),
       }),
     );
+    const dto = await svc.getStudentReviewState("student-user");
     expect(dto.reviewStatus).toBe("AWAITING_REVIEW");
   });
 
