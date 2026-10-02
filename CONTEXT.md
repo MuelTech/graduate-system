@@ -643,6 +643,12 @@ Operational backup/restore and monitoring guidance (single-node private local st
 
 The Admin storage health surface is read-only (detect/report/diagnose only). It has no delete, repair, move, rename, checksum-rewrite, or backfill controls.
 
+Production readiness, legacy storage metadata backfill (dry-run/apply CLI), and deployment verification are documented in:
+
+`docs/operations/document-lifecycle-production-readiness.md`
+
+Backfill is an explicit operator action only (never automatic, never in the Admin UI), adds metadata pointing at the existing contained object, and never copies/moves/deletes files or removes `filePath`.
+
 ---
 
 ## 16. Admin document authority

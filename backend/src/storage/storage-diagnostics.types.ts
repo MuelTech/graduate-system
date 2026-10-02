@@ -65,6 +65,26 @@ export interface TempSummary {
 
 export type LegacyProbeResult = "OK" | "MISSING" | "UNSAFE";
 
+/**
+ * DL-12: result of probing a legacy `filePath` for metadata backfill. On OK the
+ * returned `storageKey` is raw/internal only (must never be serialized).
+ */
+export type LegacyBackfillProbeResult =
+  | { status: "OK"; storageKey: string; sizeBytes: number; checksum: string }
+  | { status: "MISSING" }
+  | { status: "UNSAFE" }
+  | { status: "INVALID_KEY" };
+
+/**
+ * Narrow capability used by the backfill service. Kept separate from
+ * `StorageDiagnosticsProvider` so DL-11 fakes are unaffected and a future
+ * provider can implement backfill probing independently.
+ */
+export interface LegacyStorageProbe {
+  readonly providerName: string;
+  legacyBackfillProbe(filePath: string): Promise<LegacyBackfillProbeResult>;
+}
+
 export interface StorageDiagnosticsProvider {
   readonly providerName: string;
   listManagedObjects(

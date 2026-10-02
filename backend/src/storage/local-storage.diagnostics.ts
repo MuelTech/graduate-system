@@ -3,10 +3,13 @@ import fsp from "fs/promises";
 import path from "path";
 import { calculateFileSha256 } from "../utils/checksum";
 import type { LocalStorageProvider } from "./local-storage.provider";
+import { normalizeStorageKey } from "./storage-key";
 import type {
   CapacityAvailability,
+  LegacyBackfillProbeResult,
   LegacyOrUnclassifiedSummary,
   LegacyProbeResult,
+  LegacyStorageProbe,
   ManagedObjectInfo,
   ManagedObjectListing,
   ObjectProbe,
@@ -46,7 +49,9 @@ function isRealInside(parent: string, child: string): boolean {
   );
 }
 
-export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
+export class LocalStorageDiagnostics
+  implements StorageDiagnosticsProvider, LegacyStorageProbe
+{
   readonly providerName: string;
 
   constructor(private readonly provider: LocalStorageProvider) {
@@ -367,6 +372,59 @@ export class LocalStorageDiagnostics implements StorageDiagnosticsProvider {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * DL-12: derive backfill metadata from the actual contained object. Uses the
+   * provider's existing legacy resolution semantics (absolute path used as-is,
+   * relative path joined to the private root by basename) so backfill preserves
+   * the exact object current retrieval resolves. Read-only.
+   */
+  async legacyBackfillProbe(
+    filePath: string,
+  ): Promise<LegacyBackfillProbeResult> {
+    let real: string;
+    try {
+      real = await this.provider.resolveLegacyFilePathReadPath(filePath);
+    } catch (error) {
+      return (error as { statusCode?: number })?.statusCode === 403
+        ? { status: "UNSAFE" }
+        : { status: "MISSING" };
+    }
+
+    let info;
+    try {
+      info = await fsp.stat(real);
+    } catch {
+      return { status: "MISSING" };
+    }
+    if (!info.isFile()) return { status: "UNSAFE" };
+
+    const realRoot = await this.provider.realRoot();
+    const relative = path.relative(realRoot, real);
+    if (
+      relative === "" ||
+      relative.startsWith("..") ||
+      path.isAbsolute(relative)
+    ) {
+      return { status: "UNSAFE" };
+    }
+
+    const storageKey = toPosix(relative);
+    try {
+      normalizeStorageKey(storageKey);
+    } catch {
+      return { status: "INVALID_KEY" };
+    }
+
+    let checksum: string;
+    try {
+      checksum = await calculateFileSha256(real);
+    } catch {
+      return { status: "MISSING" };
+    }
+
+    return { status: "OK", storageKey, sizeBytes: info.size, checksum };
   }
 
   async legacyFileProbe(filePath: string): Promise<LegacyProbeResult> {
