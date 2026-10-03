@@ -685,7 +685,7 @@ model OralExamScore {
    * CP7: identity/stage snapshot for reproducible official Criteria output.
    */
   officialSnapshot         Json?                @map("official_snapshot")
-  updatedAt                DateTime             @updatedAt @map("updated_at")
+  updatedAt                DateTime             @default(now()) @updatedAt @map("updated_at")
   panel                    PanelAssignment      @relation(fields: [panelId], references: [id])
   schedule                 DefenseSchedule      @relation(fields: [scheduleId], references: [id])
 
@@ -907,7 +907,7 @@ model AdviserCertification {
    */
   signedAt           DateTime?       @map("signed_at")
   createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
   adviser            User            @relation("AdviserCertIssuer", fields: [adviserId], references: [id])
   thesis             ThesisRecord    @relation(fields: [thesisId], references: [id])
   reviewedDocument   ThesisDocument? @relation("AdviserCertReviewedDoc", fields: [reviewedDocumentId], references: [id])
