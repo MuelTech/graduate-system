@@ -7,6 +7,8 @@
 **Status:** Next implementation plan after completed WP1–WP13  
 **Execution rule:** One correction package per coding-agent session. Stop and report before starting the next package.
 
+> **2026-10-04 Title Defense supersession:** Do not use any Title-specific sequence in this historical plan that makes Rapporteur finalization a prerequisite to Chairman conclusion. The current rule is defined in `docs/superpowers/specs/2026-10-04-title-defense-workflow-correction.md` and the canonical SOT.
+
 ## 1. Read first
 
 In this order:
@@ -292,12 +294,19 @@ The system displays grades/averages but does not auto-PASS/FAIL.
 
 ```text
 panel deliberation
-→ selected official title
-→ Rapporteur Title RAP
-→ Chairman formal result
-→ required Title RAP signatures
+→ Chairman records panel-agreed formal result
+→ if PASSED: Chairman records exactly one official selected title
+
+in parallel:
+Rapporteur captures/saves draft notes
+→ Rapporteur finalizes Title minutes/RAP when ready
+
+then:
+→ required Title RAP signatures/finalization
 → Title COMPLETE only when PASSED + selected title + RAP FINALIZED
 ```
+
+Chairman conclusion must not wait for Rapporteur finalization.
 
 ### Authorization
 

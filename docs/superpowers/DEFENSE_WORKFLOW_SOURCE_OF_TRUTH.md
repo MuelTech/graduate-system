@@ -26,7 +26,13 @@ The implementation sequence is:
 
 - `docs/superpowers/plans/2026-09-26-post-qa-defense-workflow-corrections.md`
 
-Where older sections of this SOT or the 2026-09-25 Student Thesis Journey documents conflict with the following rules, the 2026-09-26 correction wins:
+The latest Title Defense sequencing correction is:
+
+- `docs/superpowers/specs/2026-10-04-title-defense-workflow-correction.md`
+
+For Title-specific ordering, Chairman conclusion authority, and Rapporteur independence, the 2026-10-04 correction supersedes conflicting 2026-09-26 design/plan wording.
+
+Where older sections of this SOT or the 2026-09-25 Student Thesis Journey documents conflict with the following rules, the current correction rules win:
 
 1. **Title Defense is a three-title deliberation/selection workflow, not the Proposal/Final Group I/II numerical scoring workflow.**
 2. Title Defense completes only when the formal Title result is `PASSED`, one official title is selected, and the required Title RAP is finalized/signed.
@@ -41,6 +47,8 @@ Where older sections of this SOT or the 2026-09-25 Student Thesis Journey docume
 11. Proposal revisions remain in the Proposal RAP and are checked against the Final manuscript during Final Defense; there is no separate Proposal-revision upload/clearance gate.
 12. Student defense pages must distinguish submitted, approved/waiting schedule, scheduled, active/finalizing, and completed states rather than collapsing them into a generic WAITING message.
 13. The current Defense Lobby is a prototype. The target is a role-aware Defense Workspace with evaluator action + Student document viewing, and a separate Rapporteur workspace behavior.
+14. **Title Defense Chairman conclusion must not wait for Rapporteur notes/RAP finalization.** After panel deliberation, the Chairman may record the panel-agreed formal result and, when `PASSED`, exactly one official selected title.
+15. Rapporteur draft/finalize work is independent of Chairman conclusion eligibility. A finalized/signed Title RAP remains mandatory for Title-stage completion and Adviser Request unlock.
 
 ## 1. Purpose
 
@@ -200,12 +208,12 @@ flowchart TD
 4. Student files Title Defense application.
 5. Admin reviews application requirements.
 6. Approved application enters committee assignment and scheduling.
-7. Title Defense is conducted.
-8. Evaluator scores and session notes are completed.
-9. Authorized conclusion records the official defense outcome.
-10. For a passed Title Defense, one of the three proposed titles is selected as the official research title.
+7. Title Defense is conducted and the panel deliberates over the three proposed titles.
+8. After deliberation, the Chairman may record the panel-agreed official outcome without waiting for Rapporteur finalization.
+9. If the Title result is `PASSED`, the Chairman records exactly one official selected title from the student's submitted proposals.
+10. In parallel, the Rapporteur may capture/save draft defense notes and finalize the official Title minutes/RAP when its required content is complete.
 11. The required Title RAP/signatures are finalized.
-12. Adviser Request becomes available; the student selects an eligible adviser candidate from the student's own Title Defense panel.
+12. Adviser Request becomes available only after the Title result is `PASSED`, one official title is selected, and the required Title RAP is finalized/signed; the student then selects an eligible adviser candidate from the student's own Title Defense panel.
 13. Adviser CONFORME/acceptance and Dean approval are completed before an active `AdviserAssignment` is created.
 14. Student files Proposal Defense application.
 15. Proposal is reviewed, scheduled, conducted, and formally concluded.
@@ -360,6 +368,9 @@ These are engineering rules, not UI suggestions.
 13. Frontend requirement badges are informational; backend/domain rules are authoritative.
 14. Adviser Request after Title Defense must derive candidates from the student's own passed Title Defense ODP, not from the unrestricted faculty directory.
 15. A requested adviser must not become an active `AdviserAssignment` until the required Adviser CONFORME/acceptance and Dean approval sequence is complete.
+16. Title Defense formal conclusion eligibility must not depend on Rapporteur notes/RAP finalization.
+17. Title Defense must not require Proposal/Final-style numerical evaluator-score completion before the Chairman can record the formal result.
+18. Chairman conclusion alone must not mark the Title stage complete; Title completion still requires `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
 
 ---
 
@@ -434,7 +445,7 @@ Comprehensive Examination PASSED
         ↓
 Title Defense
         ↓
-formal PASSED + official selected title
+formal PASSED + official selected title + finalized/signed required Title RAP
         ↓
 Adviser Request
         ↓
@@ -568,34 +579,38 @@ flowchart TD
 
 During the defense:
 
-- Only users designated as evaluators may submit scores/evaluations.
-- Rapporteur captures required notes/minutes if that is the confirmed responsibility.
+- Title Defense is a three-title deliberation/selection workflow; it does **not** use the Proposal/Final numerical Group I/II evaluator-completion gate.
+- The panel deliberates over the student's three submitted title proposals.
+- Rapporteur captures required notes/minutes and may save drafts while the defense is active.
 - Facilitator performs session facilitation and is non-evaluator by default.
-- One submitted title is selected as the approved research title during formal conclusion.
+- After panel deliberation, the Chairman records the panel-agreed formal result and, when `PASSED`, exactly one submitted title as the official research title.
+- Chairman conclusion eligibility must **not** depend on the Rapporteur having finalized the notes/RAP.
+- Rapporteur finalization may occur independently when the official minutes/RAP content is ready; it remains required for stage completion.
 
 ### 8.6 Formal Conclusion
 
-The system must not pass the Title stage merely because all scores are submitted.
+The Chairman is the formal Title result authority. The Title conclusion action must not be gated by Proposal/Final-style evaluator-score completion or by Rapporteur notes/RAP finalization.
 
 ```text
-All required evaluator scores submitted
+Title Defense conducted
               ↓
-       AWAITING_CONCLUSION
+Panel deliberates on the 3 submitted titles
               ↓
-Authorized user reviews:
-- score summary
-- evaluator recommendations
-- rapporteur/session notes
-- proposed titles
+Chairman may record the panel-agreed formal result
               ↓
-Select official outcome
-              ↓
-If PASSED: select exactly one official title
+If PASSED: select exactly one official submitted title
               ↓
 Create official conclusion record
+
+In parallel:
+Rapporteur captures/saves draft notes
               ↓
-Create RAP workflow
+Rapporteur finalizes official minutes/RAP when ready
+              ↓
+Required RAP signatures/finalization
 ```
+
+If the implementation retains an `AWAITING_CONCLUSION` session status, entering that status must not require finalized Rapporteur notes/RAP.
 
 ### 8.7 Title Stage Completion
 
@@ -2044,10 +2059,10 @@ RAP / signatures:
 4. Admin approval does not select an official title.
 5. Admin approval does not unlock Proposal.
 6. Scheduling rejects invalid committee composition.
-7. All evaluator scores submitted does not mark Title as PASSED.
-8. Title cannot be formally passed without selecting one of the submitted titles.
-9. Only one official title is selected after conclusion.
-10. Proposal stays locked until Title completion rules are met.
+7. Title Defense has no Proposal/Final-style numerical evaluator-score completion prerequisite; score state must not gate Chairman conclusion.
+8. After panel deliberation, the Chairman can record the formal Title result and selected title without waiting for Rapporteur notes/RAP finalization; a `PASSED` result requires exactly one submitted title.
+9. Rapporteur Save Draft and Finalize are both supported workflow actions; Chairman conclusion alone does not complete the Title stage.
+10. Adviser Request/Proposal stay locked until Title completion rules are met: `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
 
 ### Proposal
 

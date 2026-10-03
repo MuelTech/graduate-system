@@ -8,6 +8,8 @@
 
 ---
 
+> **2026-10-04 Title Defense correction:** Title-specific sequencing in this document is superseded where necessary by `docs/superpowers/specs/2026-10-04-title-defense-workflow-correction.md`. After panel deliberation, Chairman conclusion/selected-title entry must not wait for Rapporteur notes/RAP finalization. Title completion still requires the finalized/signed required Title RAP.
+
 ## 1. Purpose
 
 This document captures the workflow corrections discovered after WP1–WP13 manual QA and the client/form clarifications gathered on 2026-09-26. The completed Student Thesis Journey branch was first integrated into `refactor/defense-workflow`; implementation of these corrections continues on `refactor/defense-workflow-corrections`.
@@ -55,10 +57,11 @@ APPROVED
 Admin schedules defense + assigns committee
         ↓
 Title Defense
-- panel reviews 3 proposed titles
-- one official title is selected
-- Rapporteur records minutes/recommendations
-- Chairman records formal result
+- panel reviews 3 proposed titles and deliberates
+- Chairman records the panel-agreed formal result
+- if PASSED, Chairman records exactly one official selected title
+- Rapporteur records/saves draft minutes in parallel and finalizes when ready
+- Chairman conclusion does not wait for Rapporteur finalization
         ↓
 Title RAP sent for required digital signatures
         ↓
@@ -207,6 +210,8 @@ Do not require Proposal/Final-style numerical Group I / Group II scoring to comp
 ### 5.3 Title conclusion and completion
 
 The Chairman is the formal result authority.
+
+After panel deliberation, the Chairman must be able to record the panel-agreed Title result and selected title without waiting for Rapporteur notes/RAP finalization. Rapporteur finalization is a separate responsibility and remains part of stage completion, not a prerequisite to the Chairman's academic decision.
 
 For a successful Title stage, the system must have:
 
@@ -511,7 +516,9 @@ Draft notes are internal. Student must not see live unfinished notes.
 
 ### 11.2 Finalization
 
-After deliberation/evaluations are complete, the Rapporteur finalizes the official summary/RAP content.
+For Title Defense, the Rapporteur may save draft notes during/after deliberation and finalizes the official minutes/RAP when the required content is ready. That finalization must not gate the Chairman's ability to record the panel-agreed Title result.
+
+For Proposal/Final, evaluator-finalization requirements remain governed by their own stage rules.
 
 The system then routes the RAP to the required signatories for digital e-signature.
 
