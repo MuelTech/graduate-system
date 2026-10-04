@@ -580,37 +580,45 @@ flowchart TD
 During the defense:
 
 - Title Defense is a three-title deliberation/selection workflow; it does **not** use the Proposal/Final numerical Group I/II evaluator-completion gate.
+- A newly scheduled Title session is still pre-defense. Scheduling alone must not make formal conclusion or Rapporteur finalization available.
+- The assigned session Chairman explicitly starts the Title Defense, transitioning the session from `SCHEDULED` to `IN_PROGRESS`. This start action means the defense/deliberation phase has begun; it is **not** an academic result.
 - The panel deliberates over the student's three submitted title proposals.
 - Rapporteur captures required notes/minutes and may save drafts while the defense is active.
 - Facilitator performs session facilitation and is non-evaluator by default.
 - After panel deliberation, the Chairman records the panel-agreed formal result and, when `PASSED`, exactly one submitted title as the official research title.
 - Chairman conclusion eligibility must **not** depend on the Rapporteur having finalized the notes/RAP.
-- Rapporteur finalization may occur independently when the official minutes/RAP content is ready; it remains required for stage completion.
+- Rapporteur finalization may occur independently once the Title session is active/post-defense and the official minutes/RAP content is ready; it remains required for stage completion.
 
 ### 8.6 Formal Conclusion
 
 The Chairman is the formal Title result authority. The Title conclusion action must not be gated by Proposal/Final-style evaluator-score completion or by Rapporteur notes/RAP finalization.
 
 ```text
-Title Defense conducted
-              ↓
+SCHEDULED
+   ↓
+Assigned Chairman starts Title Defense
+   ↓
+IN_PROGRESS
+   ↓
 Panel deliberates on the 3 submitted titles
-              ↓
+   ↓
 Chairman may record the panel-agreed formal result
-              ↓
+   ↓
 If PASSED: select exactly one official submitted title
-              ↓
+   ↓
 Create official conclusion record
 
-In parallel:
+In parallel after the session is active:
 Rapporteur captures/saves draft notes
-              ↓
+   ↓
 Rapporteur finalizes official minutes/RAP when ready
-              ↓
+   ↓
 Required RAP signatures/finalization
 ```
 
-If the implementation retains an `AWAITING_CONCLUSION` session status, entering that status must not require finalized Rapporteur notes/RAP.
+A merely `SCHEDULED` Title session is not conclusion-ready and its notes cannot be finalized as completed defense minutes. Chairman conclusion is allowed only from the active conclusion phase (`IN_PROGRESS` or `AWAITING_CONCLUSION`) and remains independent of Rapporteur finalization.
+
+If the implementation uses `AWAITING_CONCLUSION`, Rapporteur finalization may move an active Title session there when no formal conclusion exists; it must never be required before the Chairman can conclude.
 
 ### 8.7 Title Stage Completion
 
@@ -2059,10 +2067,11 @@ RAP / signatures:
 4. Admin approval does not select an official title.
 5. Admin approval does not unlock Proposal.
 6. Scheduling rejects invalid committee composition.
-7. Title Defense has no Proposal/Final-style numerical evaluator-score completion prerequisite; score state must not gate Chairman conclusion.
-8. After panel deliberation, the Chairman can record the formal Title result and selected title without waiting for Rapporteur notes/RAP finalization; a `PASSED` result requires exactly one submitted title.
-9. Rapporteur Save Draft and Finalize are both supported workflow actions; Chairman conclusion alone does not complete the Title stage.
-10. Adviser Request/Proposal stay locked until Title completion rules are met: `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
+7. A merely `SCHEDULED` Title session cannot be concluded or have its defense minutes finalized; the assigned Chairman starts the session, which moves it to `IN_PROGRESS`.
+8. Title Defense has no Proposal/Final-style numerical evaluator-score completion prerequisite; score state must not gate Chairman conclusion.
+9. After panel deliberation, the Chairman can record the formal Title result and selected title from `IN_PROGRESS` / `AWAITING_CONCLUSION` without waiting for Rapporteur notes/RAP finalization; a `PASSED` result requires exactly one submitted title.
+10. Rapporteur Save Draft and Finalize are both supported workflow actions after the session is active; Chairman conclusion alone does not complete the Title stage.
+11. Adviser Request/Proposal stay locked until Title completion rules are met: `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
 
 ### Proposal
 

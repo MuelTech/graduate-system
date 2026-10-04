@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-04  
 **Branch:** `workflow/title-defense`  
-**Status:** CONFIRMED_PROJECT_DESIGN after manual Title Defense QA; implementation pending  
+**Status:** CONFIRMED_PROJECT_DESIGN; implemented on `workflow/title-defense`, pending manual acceptance QA  
 **Canonical parent:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`
 
 ---
@@ -52,7 +52,17 @@ Finalize control
 
 ## 3. Correct Title Defense role model
 
-After the defense is in the appropriate post-deliberation phase, Chairman and Rapporteur responsibilities are independent:
+A scheduled Title session is still pre-defense. The assigned Chairman explicitly starts the Title Defense, which transitions the session:
+
+```text
+SCHEDULED
+→ Chairman: Start Title Defense
+→ IN_PROGRESS
+```
+
+This start action is operational state only; it does not record an academic result. Formal conclusion and Rapporteur finalization are unavailable while the session is merely `SCHEDULED`.
+
+Once the session is active, Chairman and Rapporteur responsibilities are independent:
 
 ```text
                  PANEL DELIBERATION
@@ -84,13 +94,20 @@ The diagram shows responsibility independence, not a requirement that the two ac
 
 ## 4. Chairman conclusion rule
 
+Session-state rule:
+
+- `SCHEDULED` is pre-defense and is not conclusion-ready.
+- Assigned Chairman starts the Title session: `SCHEDULED → IN_PROGRESS`.
+- Chairman may record the formal result only from the active conclusion phase: `IN_PROGRESS` or `AWAITING_CONCLUSION`.
+- Starting the Title Defense must not depend on the Rapporteur.
+
 After panel deliberation:
 
 - Chairman may record the panel-agreed formal Title result without waiting for Rapporteur notes/RAP finalization.
 - If the result is `PASSED`, Chairman must record exactly one official title from the student's submitted three titles.
 - Title Defense does not use the Proposal/Final Group I/II numerical evaluator-completion gate.
 - Rapporteur draft/finalization state must not be used as a Chairman authorization or eligibility prerequisite.
-- If `AWAITING_CONCLUSION` remains an implementation status, entry into that state must not require finalized Rapporteur notes/RAP.
+- If Rapporteur finalization moves an unconcluded active Title session to `AWAITING_CONCLUSION`, the Chairman may still conclude from that state; Rapporteur finalization is not a prerequisite.
 
 The Chairman records the panel's decision; the Chairman is not modeled as independently choosing a title outside panel deliberation.
 
@@ -98,8 +115,9 @@ The Chairman records the panel's decision; the Chairman is not modeled as indepe
 
 The assigned Rapporteur:
 
-- may capture notes while the defense is active;
-- may save draft notes repeatedly;
+- may capture/save draft notes as permitted by the workspace;
+- may not finalize a merely `SCHEDULED` Title session as completed defense minutes;
+- may finalize once the Title session is `IN_PROGRESS`, `AWAITING_CONCLUSION`, or already `CONCLUDED`;
 - must be able to execute the intended Finalize action when required content/validation is satisfied;
 - owns the official defense minutes/RAP workflow for the session;
 - does not control whether the Chairman may record the academic conclusion.
@@ -126,13 +144,15 @@ Therefore:
 
 ## 7. Implementation boundaries
 
-In scope for the later bounded implementation pass:
+Implemented scope on `workflow/title-defense`:
 
 - remove the Title-specific code/state guard that makes Chairman conclusion wait for Rapporteur finalization;
 - fix the Rapporteur Finalize action end-to-end;
+- add the bounded Chairman-only Title start transition `SCHEDULED → IN_PROGRESS`;
 - keep authorization based on assigned session role;
 - preserve selected-title validation;
 - preserve full Title-stage completion / Adviser Request gate;
+- make deferred Title RAP creation converge safely once both formal conclusion and finalized Rapporteur minutes exist;
 - add focused backend/frontend tests for the corrected ordering and finalization path.
 
 Out of scope:
@@ -148,22 +168,24 @@ Out of scope:
 
 The Title correction is not accepted until all of the following are verified:
 
-1. A scheduled/conducted Title Defense can reach the correct Chairman conclusion phase without Rapporteur finalization.
-2. Chairman can record the panel-agreed formal result while Rapporteur notes are still draft.
-3. A `PASSED` Title conclusion requires exactly one valid submitted title.
-4. Rapporteur **Save Draft** continues to work.
-5. Rapporteur **Finalize** successfully completes its intended server/domain transition and the UI refreshes to the resulting state.
-6. Unauthorized non-Chairman users cannot record the formal conclusion.
-7. Unauthorized non-Rapporteur users cannot edit/finalize Rapporteur notes.
-8. Chairman conclusion by itself does not mark Title `COMPLETE`.
-9. Adviser Request remains locked until `PASSED` + selected title + required finalized/signed Title RAP.
-10. Proposal/Final workflows are unchanged by this bounded correction.
+1. A merely `SCHEDULED` Title session cannot be formally concluded or have its defense minutes finalized.
+2. Assigned Chairman can use **Start Title Defense** to move `SCHEDULED → IN_PROGRESS`.
+3. Chairman can record the panel-agreed formal result while Rapporteur notes are still draft once the session is active.
+4. A `PASSED` Title conclusion requires exactly one valid submitted title.
+5. Rapporteur **Save Draft** continues to work.
+6. Rapporteur **Finalize** successfully completes its intended server/domain transition and the UI refreshes to the resulting state.
+7. Chairman-first and Rapporteur-first ordering both converge on exactly one Title RAP once both prerequisites exist.
+8. Unauthorized non-Chairman users cannot start or record the formal conclusion.
+9. Unauthorized non-Rapporteur users cannot edit/finalize Rapporteur notes.
+10. Chairman conclusion by itself does not mark Title `COMPLETE`.
+11. Adviser Request remains locked until `PASSED` + selected title + required finalized/signed Title RAP.
+12. Proposal/Final workflows are unchanged by this bounded correction.
 
 ## 9. Next step
 
-After this documentation correction is reviewed for consistency, inspect the current Title implementation and produce one bounded coding task for `workflow/title-defense`.
+Run manual acceptance QA against the implemented `workflow/title-defense` branch. Do not proceed to Adviser Request / Proposal until the Title stage is manually accepted.
 
-Do not implement code from an older sequence that says:
+Do not restore code from an older sequence that says:
 
 ```text
 Rapporteur finalized
