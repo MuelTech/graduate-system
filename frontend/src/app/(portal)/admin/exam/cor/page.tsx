@@ -6,72 +6,108 @@ import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   FileText,
-  Clock,
-  CheckCircle2,
-  XCircle,
   Eye,
-  Upload,
-  X,
-  GraduationCap,
+  CheckCircle2,
+  Clock,
   AlertTriangle,
-  Shield,
+  XCircle,
   Loader2,
+  GraduationCap,
+  X,
 } from "lucide-react";
-import { PendingCorUpload as PendingUpload } from "@/types";
+import { PendingCorUpload as PendingUpload, Program } from "@/types";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 
-function normalizeForDisplay(value: string | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
-  const text = String(value).trim();
-  return text.length > 0 ? text : null;
+type FieldStatus = "MATCH" | "DIFFERENT" | "NO_DATA" | "NOT_EXTRACTED";
+
+type ConfirmForm = {
+  surname: string;
+  firstName: string;
+  middleNameOrInitial: string;
+  email: string;
+  programId: string;
+  studentNumber: string;
+  registrationNumber: string;
+};
+
+const EMPTY_FORM: ConfirmForm = {
+  surname: "",
+  firstName: "",
+  middleNameOrInitial: "",
+  email: "",
+  programId: "",
+  studentNumber: "",
+  registrationNumber: "",
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Collapses repeated whitespace and trims. */
+function collapse(value: string | null | undefined): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
 }
 
-function CompareValue({
-  value,
-  emptyLabel,
-}: {
-  value: string | null | undefined;
-  emptyLabel: string;
-}) {
-  const text = normalizeForDisplay(value);
-  if (!text) {
+/** Lower-cased, whitespace-collapsed form for comparison only. */
+function normalizeForCompare(value: string | null | undefined): string {
+  return collapse(value).toLowerCase();
+}
+
+/** Resolves an extracted COR Program string to a unique existing Program id. */
+function resolveProgramId(
+  corProgram: string | null | undefined,
+  programs: Program[],
+): string {
+  const target = normalizeForCompare(corProgram);
+  if (!target) return "";
+  const matches = programs.filter(
+    (p) => normalizeForCompare(p.programName) === target,
+  );
+  return matches.length === 1 ? matches[0].id : "";
+}
+
+function StatusBadge({ status }: { status: FieldStatus }) {
+  switch (status) {
+    case "MATCH":
+      return <Badge className="bg-green-100 text-green-700">Match</Badge>;
+    case "DIFFERENT":
+      return <Badge className="bg-amber-100 text-amber-700">Different</Badge>;
+    case "NO_DATA":
+      return (
+        <Badge className="bg-slate-100 text-slate-700">No existing data</Badge>
+      );
+    default:
+      return (
+        <Badge className="bg-slate-100 text-slate-600">Not extracted</Badge>
+      );
+  }
+}
+
+function MutedValue({ value, emptyLabel }: { value: string; emptyLabel: string }) {
+  if (!value) {
     return (
-      <span className="text-sm italic text-(--earist-body-text)">
-        {emptyLabel}
-      </span>
+      <span className="text-sm italic text-(--earist-body-text)">{emptyLabel}</span>
     );
   }
-  return <span className="text-sm text-(--earist-secondary)">{text}</span>;
-}
-
-function ComparisonRow({
-  label,
-  baseline,
-  cor,
-}: {
-  label: string;
-  baseline: string | null;
-  cor: string | null;
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-2 border-t border-(--earist-border-gray) py-3 sm:grid-cols-[7rem_1fr_1fr] sm:gap-4">
-      <p className="text-xs font-semibold text-(--earist-body-text)">{label}</p>
-      <div>
-        <p className="mb-0.5 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
-          Applicant / System
-        </p>
-        <CompareValue value={baseline} emptyLabel="Not available" />
-      </div>
-      <div>
-        <p className="mb-0.5 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
-          COR suggestion
-        </p>
-        <CompareValue value={cor} emptyLabel="Not extracted" />
-      </div>
-    </div>
-  );
+  return <span className="text-sm text-(--earist-secondary)">{value}</span>;
 }
 
 export default function AdminCORValidationPage() {
@@ -87,28 +123,30 @@ export default function AdminCORValidationPage() {
     },
   });
 
+  const { data: programsData } = useQuery<{
+    graduatePrograms: Program[];
+    undergraduatePrograms: Program[];
+  }>({
+    queryKey: ["programs"],
+    queryFn: async () =>
+      (await apiClientRequest("/programs")) || { graduatePrograms: [] },
+  });
+  const graduatePrograms = programsData?.graduatePrograms ?? [];
+
   const [selectedCor, setSelectedCor] = useState<string | null>(null);
+  const [form, setForm] = useState<ConfirmForm>(EMPTY_FORM);
+  const [formError, setFormError] = useState("");
   const [showVerifyConfirm, setShowVerifyConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<{ url: string; title: string } | null>(null);
 
-  /**
-   * COR-4: editable Admin confirmation values only. Initialized from the
-   * selected COR's extraction suggestions when the verification form opens, so
-   * values never leak between applicants and are never auto-submitted.
-   */
-  const [formData, setFormData] = useState({
-    studentNumber: "",
-    registrationNumber: "",
-  });
-
   const corQueue = pendingUploads.map((u) => ({
     id: u.id,
     firstName: u.student.user.firstName,
     lastName: u.student.user.lastName,
-    name: `${u.student.user.firstName} ${u.student.user.lastName}`,
+    name: `${u.student.user.firstName} ${u.student.user.lastName}`.trim(),
     email: u.student.user.email,
     programId: u.student.programId,
     programName: u.student.program?.programName ?? null,
@@ -124,66 +162,133 @@ export default function AdminCORValidationPage() {
   }));
 
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);
+  const suggestions = selectedCorData?.suggestions ?? null;
+
+  function setField<K extends keyof ConfirmForm>(key: K, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (formError) setFormError("");
+  }
+
+  function buildInitialForm(upload: (typeof corQueue)[number]): ConfirmForm {
+    const s = upload.suggestions;
+    return {
+      surname: s?.studentName?.surname ?? "",
+      firstName: s?.studentName?.firstName ?? "",
+      middleNameOrInitial: s?.studentName?.middleNameOrInitial ?? "",
+      email: s?.emailAddress ?? "",
+      programId: resolveProgramId(s?.program, graduatePrograms),
+      studentNumber: s?.studentNumber ?? "",
+      registrationNumber: s?.registrationNumber ?? "",
+    };
+  }
 
   function closeVerify() {
     setShowVerifyConfirm(false);
-    setFormData({ studentNumber: "", registrationNumber: "" });
   }
 
   function handleSelectCor(id: string) {
+    const upload = corQueue.find((c) => c.id === id);
     setSelectedCor(id);
+    // COR-AUTH-2: reinitialize every confirmation field for the newly selected
+    // COR so values never leak between queued applicants.
+    setForm(upload ? buildInitialForm(upload) : EMPTY_FORM);
+    setFormError("");
     setShowVerifyConfirm(false);
     setShowRejectModal(false);
     setRejectReason("");
-    setFormData({ studentNumber: "", registrationNumber: "" });
   }
+
+  const emailValid = EMAIL_PATTERN.test(form.email.trim());
+  const canVerify = Boolean(
+    form.surname.trim() &&
+      form.firstName.trim() &&
+      emailValid &&
+      form.programId &&
+      form.studentNumber.trim(),
+  );
+
+  const confirmedName = collapse(
+    `${form.firstName} ${form.middleNameOrInitial} ${form.surname}`,
+  );
+  const selectedProgramName =
+    graduatePrograms.find((p) => p.id === form.programId)?.programName ?? "—";
+
+  const applicantName = selectedCorData
+    ? collapse(`${selectedCorData.firstName} ${selectedCorData.lastName}`)
+    : "";
+
+  const nameStatus: FieldStatus = (() => {
+    const hasSuggestion = Boolean(
+      suggestions?.studentName?.surname ||
+        suggestions?.studentName?.firstName ||
+        suggestions?.studentName?.middleNameOrInitial,
+    );
+    if (!hasSuggestion) return "NOT_EXTRACTED";
+    if (!normalizeForCompare(applicantName)) return "NO_DATA";
+    return normalizeForCompare(applicantName) === normalizeForCompare(confirmedName)
+      ? "MATCH"
+      : "DIFFERENT";
+  })();
+
+  const emailStatus: FieldStatus = (() => {
+    if (!collapse(suggestions?.emailAddress)) return "NOT_EXTRACTED";
+    if (!normalizeForCompare(selectedCorData?.email)) return "NO_DATA";
+    return normalizeForCompare(selectedCorData?.email) === normalizeForCompare(form.email)
+      ? "MATCH"
+      : "DIFFERENT";
+  })();
+
+  const programStatus: FieldStatus = (() => {
+    if (!collapse(suggestions?.program)) return "NOT_EXTRACTED";
+    if (!selectedCorData?.programId) return "NO_DATA";
+    return selectedCorData.programId === form.programId ? "MATCH" : "DIFFERENT";
+  })();
 
   function openVerify() {
     if (!selectedCorData) return;
-    const suggestions = selectedCorData.suggestions;
-    // Initialize strictly from the selected COR; never reuse previous values.
-    setFormData({
-      studentNumber: suggestions?.studentNumber ?? "",
-      registrationNumber: suggestions?.registrationNumber ?? "",
-    });
+    if (!canVerify) {
+      setFormError(
+        "Confirm the COR Surname, First Name, Email, Program, and Student Number before verifying.",
+      );
+      return;
+    }
+    setFormError("");
     setShowVerifyConfirm(true);
   }
 
   const verifyMutation = useMutation({
-    mutationFn: async (payload: {
-      uploadId: string;
-      studentNumber: string;
-      registrationNumber: string;
-    }) => {
-      // COR-4: only the Admin-confirmed v1 values are sent. Academic Year,
-      // Semester, term/year inferences, DOB, password and extracted identity
-      // fields are intentionally omitted.
-      return await apiClientRequest(`/cor/verify/${payload.uploadId}`, {
+    mutationFn: async (payload: Record<string, string>) =>
+      // COR-AUTH-1 authority payload only — the confirmed Student Number,
+      // Registration Number, name, email and existing Program id. No deferred
+      // fields and no client-chosen verification method.
+      apiClientRequest(`/cor/verify/${selectedCor}`, {
         method: "POST",
-        body: JSON.stringify({
-          studentNumber: payload.studentNumber,
-          registrationNumber: payload.registrationNumber,
-        }),
-      });
-    },
+        body: JSON.stringify(payload),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pendingCors"] });
-      closeVerify();
+      setShowVerifyConfirm(false);
       setSelectedCor(null);
+      setForm(EMPTY_FORM);
+      setFormError("");
       alert("COR verified. The applicant has been promoted to Student.");
     },
     onError: (error: Error) => {
-      // Keep the form and its typed corrections intact on failure.
-      alert("Verification failed: " + error.message);
+      // Keep the Admin's typed corrections/selections intact.
+      setFormError(error.message || "Verification failed.");
     },
   });
 
-  function handleVerify() {
+  function handleConfirmVerify() {
     if (!selectedCorData) return;
     verifyMutation.mutate({
-      uploadId: selectedCorData.id,
-      studentNumber: formData.studentNumber.trim(),
-      registrationNumber: formData.registrationNumber.trim(),
+      studentNumber: form.studentNumber.trim(),
+      registrationNumber: form.registrationNumber.trim(),
+      surname: form.surname.trim(),
+      firstName: form.firstName.trim(),
+      middleNameOrInitial: form.middleNameOrInitial.trim(),
+      email: form.email.trim(),
+      programId: form.programId,
     });
   }
 
@@ -194,17 +299,17 @@ export default function AdminCORValidationPage() {
     }: {
       uploadId: string;
       reason: string;
-    }) => {
-      return await apiClientRequest(`/cor/reject/${uploadId}`, {
+    }) =>
+      apiClientRequest(`/cor/reject/${uploadId}`, {
         method: "POST",
         body: JSON.stringify({ reason }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pendingCors"] });
       setShowRejectModal(false);
       setRejectReason("");
       setSelectedCor(null);
+      setForm(EMPTY_FORM);
       alert("COR rejected. The applicant may resubmit a new COR.");
     },
     onError: (error: Error) => {
@@ -218,7 +323,7 @@ export default function AdminCORValidationPage() {
         return (
           <Badge className="bg-green-100 text-green-700">
             <CheckCircle2 className="mr-1 h-3 w-3" />
-            Text ready
+            Extraction complete
           </Badge>
         );
       case "PROCESSING":
@@ -258,12 +363,16 @@ export default function AdminCORValidationPage() {
           COR Validation
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Review the uploaded Certificate of Registration, compare it with the
-          applicant record, and verify enrollment.
+          Review the actual COR and confirm the values that will become the
+          Student&apos;s system record.
+        </p>
+        <p className="mt-1 text-xs text-(--earist-body-text)">
+          Applicant data is provisional. Confirmed COR values replace Name,
+          Email, and Program after verification. Differences do not
+          automatically reject the COR.
         </p>
       </div>
 
-      {/* Summary */}
       <div className="flex gap-2">
         <Badge className="bg-amber-100 text-amber-700">
           {corQueue.length} Pending
@@ -295,7 +404,7 @@ export default function AdminCORValidationPage() {
                     : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="truncate pr-2">
                     <p className="truncate text-sm font-semibold text-(--earist-primary)">
                       {cor.name}
@@ -320,140 +429,313 @@ export default function AdminCORValidationPage() {
         {/* COR Detail View */}
         {selectedCorData ? (
           <div className="space-y-4 lg:col-span-2">
-            {/* COR Preview */}
+            {/* Applicant summary */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-(--earist-primary)">
+                  COR Verification — {applicantName}
+                </p>
+                <p className="text-xs text-(--earist-body-text)">
+                  {selectedCorData.email} ·{" "}
+                  {selectedCorData.programName ?? selectedCorData.programId}
+                </p>
+              </div>
+              {getExtractionBadge(selectedCorData.extractionStatus)}
+            </div>
+
+            {/* 1. Uploaded Document */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  Uploaded COR
+                  1. Uploaded Document
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex h-40 items-center justify-center rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                  <div className="text-center">
-                    <FileText className="mx-auto mb-2 h-10 w-10 text-(--earist-body-text)/40" />
-                    <p className="text-sm text-(--earist-body-text)">
-                      {selectedCorData.originalFilename}
-                    </p>
-                    <p className="text-xs text-(--earist-body-text)">
-                      {selectedCorData.name}
-                    </p>
-                    <Button
-                      variant="link"
-                      className="mt-2"
-                      onClick={() => {
-                        setSelectedDoc({
-                          url: `/api/documents/cor-upload/${selectedCorData.id}/file`,
-                          title: `${selectedCorData.name} — COR`,
-                        });
-                        setViewerOpen(true);
-                      }}
-                    >
-                      <Eye className="mr-2 h-4 w-4" /> View Document
-                    </Button>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-(--earist-border-gray) px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <FileText className="h-5 w-5 shrink-0 text-(--earist-body-text)/60" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-(--earist-secondary)">
+                        {selectedCorData.originalFilename}
+                      </p>
+                      <p className="text-[10px] text-(--earist-body-text)">
+                        Uploaded {selectedCorData.uploadDate}
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDoc({
+                        url: `/api/documents/cor-upload/${selectedCorData.id}/file`,
+                        title: `${applicantName} — COR`,
+                      });
+                      setViewerOpen(true);
+                    }}
+                  >
+                    <Eye className="mr-2 h-4 w-4" /> View COR
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Applicant vs COR extraction */}
+            {/* 2. Review & Confirm COR Data */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                    Applicant vs COR extraction
-                  </CardTitle>
-                  {getExtractionBadge(selectedCorData.extractionStatus)}
-                </div>
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  2. Review &amp; Confirm COR Data
+                </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0">
-                <p className="mb-1 text-xs text-(--earist-body-text)">
-                  The Applicant / System column is existing account data. The COR
-                  suggestion column is assistive extraction output and is never
-                  authoritative.
-                </p>
-                <ComparisonRow
-                  label="Name"
-                  baseline={selectedCorData.name}
-                  cor={selectedCorData.suggestions?.studentName?.raw ?? null}
-                />
-                <ComparisonRow
-                  label="Program"
-                  baseline={selectedCorData.programName}
-                  cor={selectedCorData.suggestions?.program ?? null}
-                />
-                <ComparisonRow
-                  label="College"
-                  baseline={null}
-                  cor={selectedCorData.suggestions?.college ?? null}
-                />
-                <ComparisonRow
-                  label="Email"
-                  baseline={selectedCorData.email}
-                  cor={selectedCorData.suggestions?.emailAddress ?? null}
-                />
+              <CardContent className="space-y-3">
+                {/* Name */}
+                <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-(--earist-primary)">Name</p>
+                    <StatusBadge status={nameStatus} />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Current Applicant
+                      </p>
+                      <MutedValue value={applicantName} emptyLabel="No existing data" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Confirmed COR
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="surname" className="text-xs">Surname</Label>
+                          <Input
+                            id="surname"
+                            value={form.surname}
+                            onChange={(e) => setField("surname", e.target.value)}
+                            placeholder="Surname"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="firstName" className="text-xs">First Name</Label>
+                          <Input
+                            id="firstName"
+                            value={form.firstName}
+                            onChange={(e) => setField("firstName", e.target.value)}
+                            placeholder="First name"
+                          />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor="middleName" className="text-xs">
+                            Middle Name / Initial
+                          </Label>
+                          <Input
+                            id="middleName"
+                            value={form.middleNameOrInitial}
+                            onChange={(e) =>
+                              setField("middleNameOrInitial", e.target.value)
+                            }
+                            placeholder="Optional"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="border-t border-(--earist-border-gray) pt-3 text-xs text-(--earist-body-text)">
-                  <p>
-                    Student Number and Registration Number are proposed in the
-                    verification form and become authoritative only after you
-                    confirm.
+                {/* Email */}
+                <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-(--earist-primary)">Email</p>
+                    <StatusBadge status={emailStatus} />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Current Applicant
+                      </p>
+                      <MutedValue
+                        value={selectedCorData.email}
+                        emptyLabel="No existing data"
+                      />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Confirmed COR
+                      </p>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setField("email", e.target.value)}
+                        placeholder="name@example.com"
+                        aria-invalid={form.email.length > 0 && !emailValid}
+                      />
+                      {form.email.length > 0 && !emailValid && (
+                        <p className="mt-1 text-[10px] text-red-600">
+                          Enter a valid email address.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Program */}
+                <div className="rounded-lg border border-(--earist-border-gray) p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-(--earist-primary)">Program</p>
+                    <StatusBadge status={programStatus} />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Current Applicant
+                      </p>
+                      <MutedValue
+                        value={selectedCorData.programName ?? ""}
+                        emptyLabel="No existing data"
+                      />
+                      <p className="mt-1 text-[11px] text-(--earist-body-text)">
+                        COR extracted:{" "}
+                        {collapse(suggestions?.program) || "Not extracted"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                        Confirmed COR (existing Program)
+                      </p>
+                      <Select
+                        value={form.programId || null}
+                        onValueChange={(v) => setField("programId", v ?? "")}
+                      >
+                        <SelectTrigger id="program" className="w-full">
+                          <SelectValue placeholder="Select existing program…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {graduatePrograms.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.programName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!form.programId && (
+                        <p className="mt-1 text-[10px] text-(--earist-body-text)">
+                          Select the existing program that matches the COR.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-(--earist-body-text)">
+                  Confirmed COR Name, Email, and Program will replace the
+                  provisional Applicant values when verification is completed.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 3. Confirm Student Credentials */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  3. Confirm Student Credentials
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="studentNumber" className="text-xs">
+                    Student Number <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="studentNumber"
+                    value={form.studentNumber}
+                    onChange={(e) => setField("studentNumber", e.target.value)}
+                    placeholder="e.g. 2026-GS-00123"
+                  />
+                  <p className="text-[10px] text-(--earist-body-text)">
+                    {collapse(suggestions?.studentNumber)
+                      ? "Proposed from extraction — edit if needed."
+                      : "No extracted value; enter the confirmed Student Number."}
                   </p>
-                  {(selectedCorData.extractionMethod ||
-                    selectedCorData.processedAt ||
-                    selectedCorData.parserVersion) && (
-                    <p className="mt-1">
-                      Extraction: {selectedCorData.extractionMethod ?? "—"}
-                      {selectedCorData.parserVersion
-                        ? ` · parser ${selectedCorData.parserVersion}`
-                        : ""}
-                      {selectedCorData.extractorVersion
-                        ? ` · extractor ${selectedCorData.extractorVersion}`
-                        : ""}
-                      {selectedCorData.processedAt
-                        ? ` · ${new Date(selectedCorData.processedAt).toLocaleString()}`
-                        : ""}
-                    </p>
-                  )}
-                  {selectedCorData.diagnostic && (
-                    <p className="mt-1">{selectedCorData.diagnostic}</p>
-                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="registrationNumber" className="text-xs">
+                    Registration Number
+                  </Label>
+                  <Input
+                    id="registrationNumber"
+                    value={form.registrationNumber}
+                    onChange={(e) => setField("registrationNumber", e.target.value)}
+                    placeholder="Optional"
+                  />
+                  <p className="text-[10px] text-(--earist-body-text)">
+                    {collapse(suggestions?.registrationNumber)
+                      ? "Proposed from extraction — edit if needed."
+                      : "No extracted value; optional."}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
+            {/* 4. Extraction Details */}
+            <details className="rounded-lg border border-(--earist-border-gray) bg-white px-4 py-3 text-sm">
+              <summary className="cursor-pointer text-xs font-semibold text-(--earist-secondary)">
+                4. Extraction details
+              </summary>
+              <div className="mt-2 space-y-1 text-xs text-(--earist-body-text)">
+                <p>Status: {selectedCorData.extractionStatus}</p>
+                <p>Method: {selectedCorData.extractionMethod ?? "—"}</p>
+                <p>Parser version: {selectedCorData.parserVersion ?? "—"}</p>
+                <p>Extractor version: {selectedCorData.extractorVersion ?? "—"}</p>
+                <p>
+                  Processed:{" "}
+                  {selectedCorData.processedAt
+                    ? new Date(selectedCorData.processedAt).toLocaleString()
+                    : "—"}
+                </p>
+                {selectedCorData.diagnostic && (
+                  <p>Diagnostic: {selectedCorData.diagnostic}</p>
+                )}
+              </div>
+            </details>
+
+            {/* 5. Actions */}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => setShowRejectModal(true)}
+                className="text-red-600 hover:bg-red-50 sm:w-40"
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Reject COR
+              </Button>
               <Button
                 onClick={openVerify}
+                disabled={!canVerify}
                 className="flex-1 bg-green-600 text-white hover:bg-green-700"
               >
                 <GraduationCap className="mr-2 h-4 w-4" />
                 Verify &amp; Promote to Student
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowRejectModal(true)}
-                className="flex-1 text-red-600 hover:bg-red-50"
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Reject COR
-              </Button>
             </div>
+            {formError && (
+              <p className="text-sm text-red-600" role="alert">
+                {formError}
+              </p>
+            )}
           </div>
         ) : (
           <div className="lg:col-span-2">
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-                    <Upload className="h-8 w-8 text-(--earist-body-text)/40" />
-                  </div>
+                  <GraduationCap className="mb-3 h-10 w-10 text-(--earist-body-text)/40" />
                   <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
                     Select a COR to Review
                   </h3>
                   <p className="text-sm text-(--earist-body-text)">
-                    Click an applicant from the queue to view their uploaded COR
-                    and compare it with the applicant record.
+                    Choose an applicant from the queue to open the actual COR and
+                    confirm the values that will become their Student record.
                   </p>
                 </div>
               </CardContent>
@@ -462,133 +744,69 @@ export default function AdminCORValidationPage() {
         )}
       </div>
 
-      {/* Verify Confirmation Modal */}
-      {showVerifyConfirm && selectedCorData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Verify COR &amp; Promote
-              </h3>
-              <button
-                onClick={closeVerify}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mb-4 space-y-3">
-              <div className="rounded-lg bg-green-50 p-4">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-green-600" />
-                  <p className="text-sm font-semibold text-green-700">
-                    Admin verification
-                  </p>
-                </div>
-                <p className="mt-2 text-xs text-green-600">
-                  You are the verification authority. Review the actual COR
-                  document, then confirm the values below. Extracted values are
-                  proposals until you confirm them.
-                </p>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                    Student Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.studentNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        studentNumber: e.target.value,
-                      })
-                    }
-                    placeholder="e.g. 2026-GS-00123"
-                    className="w-full rounded-md border border-(--earist-border-gray) px-3 py-2 text-sm"
-                  />
-                  <p className="mt-1 text-[10px] text-(--earist-body-text)">
-                    {selectedCorData.suggestions?.studentNumber
-                      ? "Proposed from COR extraction — edit if needed."
-                      : "No extracted value; enter the confirmed Student Number."}
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                    Registration Number
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.registrationNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        registrationNumber: e.target.value,
-                      })
-                    }
-                    placeholder="Enter registration number if available"
-                    className="w-full rounded-md border border-(--earist-border-gray) px-3 py-2 text-sm"
-                  />
-                  <p className="mt-1 text-[10px] text-(--earist-body-text)">
-                    {selectedCorData.suggestions?.registrationNumber
-                      ? "Proposed from COR extraction — edit if needed."
-                      : "No extracted value; optional."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-600" />
-                  <p className="text-xs font-semibold text-blue-700">
-                    Account credentials
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-blue-600">
-                  This form does not generate, reset, or display a password.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={closeVerify}
-                className="flex-1"
-                disabled={verifyMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleVerify}
-                disabled={
-                  verifyMutation.isPending || !formData.studentNumber.trim()
-                }
-                className="flex-1 bg-green-600 text-white hover:bg-green-700"
-              >
-                {verifyMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                )}
-                Confirm Verification
-              </Button>
-            </div>
+      {/* Final verification confirmation dialog */}
+      <Dialog open={showVerifyConfirm} onOpenChange={setShowVerifyConfirm}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Verify this COR and promote the Applicant?</DialogTitle>
+            <DialogDescription>
+              These confirmed COR values will become the Student&apos;s system
+              profile. The same account is retained and the existing password is
+              kept — no password is generated or displayed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-sm">
+            <SummaryRow label="Name" value={confirmedName} />
+            <SummaryRow label="Email" value={form.email.trim()} />
+            <SummaryRow label="Program" value={selectedProgramName} />
+            <SummaryRow label="Student Number" value={form.studentNumber.trim()} />
+            {form.registrationNumber.trim() && (
+              <SummaryRow
+                label="Registration Number"
+                value={form.registrationNumber.trim()}
+              />
+            )}
           </div>
-        </div>
-      )}
+          <p className="text-xs text-(--earist-body-text)">
+            The COR will be marked verified and the Applicant will become a
+            Student. Differences from the provisional Applicant data are expected
+            and are not errors.
+          </p>
+          {formError && (
+            <p className="text-sm text-red-600" role="alert">
+              {formError}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeVerify}
+              disabled={verifyMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmVerify}
+              disabled={verifyMutation.isPending || !canVerify}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {verifyMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              )}
+              Confirm Verification
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Modal */}
       {showRejectModal && selectedCorData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Reject COR
-              </h3>
+              <h3 className="text-lg font-bold text-(--earist-primary)">Reject COR</h3>
               <button
                 onClick={() => {
                   setShowRejectModal(false);
@@ -613,16 +831,16 @@ export default function AdminCORValidationPage() {
               </div>
               <div className="rounded-lg bg-(--earist-surface-gray) p-3">
                 <p className="text-sm font-semibold text-(--earist-primary)">
-                  {selectedCorData.name}
+                  {applicantName}
                 </p>
                 <p className="text-xs text-(--earist-body-text)">
                   {selectedCorData.programName ?? selectedCorData.programId}
                 </p>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
+                <Label className="mb-1 block text-xs">
                   Reason for Rejection <span className="text-red-500">*</span>
-                </label>
+                </Label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
@@ -674,6 +892,17 @@ export default function AdminCORValidationPage() {
           title={selectedDoc.title}
         />
       )}
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="text-xs font-medium text-(--earist-body-text)">{label}</span>
+      <span className="text-right text-sm text-(--earist-secondary)">
+        {value || "—"}
+      </span>
     </div>
   );
 }

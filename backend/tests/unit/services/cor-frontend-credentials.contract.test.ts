@@ -2,29 +2,53 @@ import { readFileSync } from "fs";
 import { describe, expect, it } from "vitest";
 
 /**
- * COR-8: static contract guards for the accepted frontend COR credential
- * surfaces. These read source text (no frontend unit-test framework exists);
- * this matches the accepted COR-7 source-contract style. The COR-9 browser
- * walkthrough remains separate.
+ * Static contract guards for the accepted frontend COR credential surfaces.
+ * These read source text (no frontend unit-test framework exists); this matches
+ * the accepted COR-7 source-contract style. The COR-9 browser walkthrough
+ * remains separate. The Admin COR contract reflects the 2026-10-05 authority
+ * correction / COR-AUTH-2.
  */
-describe("COR-8 frontend credential contracts", () => {
-  it("Admin COR form is extraction-assisted with no Academic Year/Semester and no password claim", () => {
+describe("COR frontend credential contracts", () => {
+  it("Admin COR page sends the COR-AUTH-1 confirmation payload with no deferred authority fields", () => {
     const page = readFileSync(
       "../frontend/src/app/(portal)/admin/exam/cor/page.tsx",
       "utf8",
     );
 
-    expect(page).toContain("studentNumber");
-    expect(page).toContain("registrationNumber");
-    // The v1 form removed AY/Semester inputs (a code comment may name them).
-    expect(page).not.toMatch(/academicYear/i);
-    expect(page).not.toContain("FIRST_SEM");
-    expect(page).not.toMatch(/formData\.semester/);
-    expect(page).toContain(
-      "This form does not generate, reset, or display a password.",
-    );
-    expect(page).not.toMatch(/date of birth/i);
+    // A. Confirmed authority fields are present/editable.
+    for (const field of [
+      "studentNumber",
+      "registrationNumber",
+      "surname",
+      "firstName",
+      "middleNameOrInitial",
+      "email",
+      "programId",
+    ]) {
+      expect(page).toContain(field);
+    }
+
+    // F. Program options come from the existing graduate Program endpoint.
+    expect(page).toContain('"/programs"');
+    expect(page).toContain("graduatePrograms");
+
+    // D. The authorized private document route is still used.
+    expect(page).toContain("/api/documents/cor-upload/");
+
+    // G. Required fields gate the final Verify action; final summary exists.
+    expect(page).toContain("canVerify");
+    expect(page).toContain("Confirm Verification");
+
+    // J. No password/default-password claim; existing password retained wording.
     expect(page).not.toContain("default_password");
+    expect(page).not.toMatch(/default password|initial password|last name in all caps/i);
+    expect(page).toMatch(/existing password/i);
+
+    // B/C. No deferred or non-authoritative fields in the verification flow.
+    expect(page).not.toMatch(/academicYear|semester|curriculumYear/i);
+    expect(page).not.toMatch(/dateOfBirth|birthdate|date of birth/i);
+    expect(page).not.toMatch(/verificationMethod/);
+    expect(page).not.toMatch(/college/i);
   });
 
   it("Student login sends only Student Number + password to NextAuth", () => {
