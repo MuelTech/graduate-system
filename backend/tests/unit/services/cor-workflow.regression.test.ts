@@ -43,13 +43,14 @@ import { AuthService } from "../../../src/services/auth.service";
 process.env.JWT_SECRET = "cor8-unit-test-secret";
 
 /**
- * COR-8 case 11: cross-package continuity regression.
+ * COR-AUTH cross-package continuity regression.
  *
- * Promotion must change ONLY the existing User role — never the password. The
- * Student must then authenticate through Student login using the confirmed
- * Student Number and the SAME original password.
+ * Promotion keeps the SAME User and the SAME password while synchronizing the
+ * Admin-confirmed COR profile fields (Name/Email/Program). The Student must then
+ * authenticate through Student login using the confirmed Student Number and the
+ * SAME original password.
  */
-describe("COR-8 promotion -> Student login original-password continuity", () => {
+describe("COR-AUTH promotion -> Student login original-password continuity", () => {
   const ORIGINAL_PASSWORD = "synthetic-original-pw";
   const EXISTING_HASH = "synthetic-existing-hash";
   const STUDENT_NUMBER = "2026-GS-00123";
@@ -66,7 +67,7 @@ describe("COR-8 promotion -> Student login original-password continuity", () => 
     bcryptMock.compare.mockResolvedValue(true);
   });
 
-  it("changes only the role on promotion and still accepts the original password for Student login", async () => {
+  it("synchronizes the confirmed COR profile fields and still accepts the original password for Student login", async () => {
     // 1. Canonical COR verification/promotion.
     corRepo.getUploadById.mockResolvedValue({
       id: "cor-1",
@@ -100,6 +101,12 @@ describe("COR-8 promotion -> Student login original-password continuity", () => 
     >;
     expect(forwarded.studentNumber).toBe(STUDENT_NUMBER);
     expect(forwarded.email).toBe(CONFIRMED.email);
+    // COR-AUTH-3: the confirmed COR name + Program are forwarded as authority.
+    expect(forwarded.firstName).toBe(
+      `${CONFIRMED.firstName} ${CONFIRMED.middleNameOrInitial}`,
+    );
+    expect(forwarded.lastName).toBe(CONFIRMED.surname);
+    expect(forwarded.programId).toBe(CONFIRMED.programId);
     // Promotion carries no password material of any kind.
     expect(JSON.stringify(forwarded)).not.toMatch(/password|hash|birthdate|dob/i);
 

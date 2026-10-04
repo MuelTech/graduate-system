@@ -7,7 +7,7 @@ const prismaMock = vi.hoisted(() => {
     corRecord: { create: vi.fn() },
     student: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
-    program: { findUnique: vi.fn() },
+    program: { findUnique: vi.fn(), create: vi.fn() },
     entranceExamApplication: { findFirst: vi.fn() },
     auditLog: { create: vi.fn() },
   };
@@ -136,6 +136,55 @@ describe("CorRepository.verifyAndPromote authority + currentness", () => {
     });
     expect(tx().user.update).not.toHaveBeenCalled();
     expect(JSON.stringify(userWrite)).not.toMatch(/password/i);
+  });
+
+  it("writes only the accepted authority fields and re-checks an existing Program", async () => {
+    const repo = new CorRepository();
+    await repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId);
+
+    // COR-AUTH-3: exact Student/User/CorRecord write sets. This locks out
+    // password/DOB/residency/college/history fields by construction.
+    const studentWrite = tx().student.updateMany.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(Object.keys(studentWrite.data).sort()).toEqual([
+      "admissionStatus",
+      "enrollmentDate",
+      "programId",
+      "studentNumber",
+    ]);
+
+    const userWrite = tx().user.updateMany.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(Object.keys(userWrite.data).sort()).toEqual([
+      "email",
+      "firstName",
+      "lastName",
+      "role",
+    ]);
+
+    const recordWrite = tx().corRecord.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(Object.keys(recordWrite.data).sort()).toEqual([
+      "corUploadId",
+      "isAdminVerified",
+      "registrationNumber",
+      "studentId",
+      "verificationMethod",
+      "verifiedAt",
+      "verifiedById",
+    ]);
+
+    // Program authority uses an EXISTING Program only (re-checked, never created)
+    // and passes the existing Program id — never the raw COR Program string.
+    expect(tx().program.findUnique).toHaveBeenCalledWith({
+      where: { id: verifyData.programId },
+      select: { id: true },
+    });
+    expect(tx().program.create).not.toHaveBeenCalled();
+    expect(studentWrite.data.programId).toBe(verifyData.programId);
   });
 
   it("fails closed when the selected Program no longer exists", async () => {

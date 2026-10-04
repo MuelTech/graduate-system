@@ -44,6 +44,18 @@ describe("COR frontend credential contracts", () => {
     expect(page).toContain("canVerify");
     expect(page).toContain("Confirm Verification");
 
+    // H/I. Match / Different / No existing data / Not extracted statuses are
+    // present and presentation-only (explicit Admin verification remains).
+    for (const label of [
+      "Match",
+      "Different",
+      "No existing data",
+      "Not extracted",
+    ]) {
+      expect(page).toContain(label);
+    }
+    expect(page).toContain("StatusBadge");
+
     // J. No password/default-password claim; existing password retained wording.
     expect(page).not.toContain("default_password");
     expect(page).not.toMatch(/default password|initial password|last name in all caps/i);

@@ -279,6 +279,11 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     );
     expect(forwarded).not.toHaveProperty("academicYear");
     expect(forwarded).not.toHaveProperty("semester");
+    // COR-AUTH-3: College has no authority and no password-like field is sent.
+    expect(forwarded).not.toHaveProperty("college");
+    expect(JSON.stringify(forwarded)).not.toMatch(
+      /password|passwordHash|birthdate|dateOfBirth|residency|college|academicYear|semester/i,
+    );
   });
 
   it("trims and forwards a confirmed Registration Number", async () => {
