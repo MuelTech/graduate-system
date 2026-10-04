@@ -8,6 +8,13 @@ import { CorExtractionService } from "../extraction/cor-extraction.service";
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 /** DL-3: human Admin verification is the only promotion authority. */
 const CANONICAL_VERIFICATION_METHOD = "ADMIN_MANUAL";
+/** Basic email shape check (mirrors the frontend login/registration convention). */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Collapses repeated whitespace and trims; never returns null. */
+function normalizeWhitespace(value: unknown): string {
+    return String(value ?? "").replace(/\s+/g, " ").trim();
+}
 
 interface ManagedFile extends Express.Multer.File {
   storageMeta?: {
@@ -27,10 +34,19 @@ interface ManagedFile extends Express.Multer.File {
  * Academic Year, Semester, Curriculum Year, Year Level, residency and the COR
  * extraction fields are NOT part of the v1 verification contract. The
  * verification method is server-controlled (see CANONICAL_VERIFICATION_METHOD).
+ *
+ * COR-AUTH-1 (2026-10-05 authority correction): the Admin-confirmed COR
+ * identity/enrollment values are authoritative for `User.firstName`,
+ * `User.lastName`, `User.email`, and `Student.programId`.
  */
 interface VerifyCorData {
   studentNumber?: string;
   registrationNumber?: string;
+  surname?: string;
+  firstName?: string;
+  middleNameOrInitial?: string;
+  email?: string;
+  programId?: string;
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -208,6 +224,35 @@ export class CorService {
         ).trim();
         const registrationNumber = trimmedRegistrationNumber || undefined;
 
+        // COR-AUTH-1: the Admin-confirmed COR identity/enrollment values are the
+        // authority boundary. Reject when any required confirmed value is absent.
+        const surname = normalizeWhitespace(data.surname);
+        if (!surname) {
+            throw new AppError("Confirmed COR surname is required.", 400);
+        }
+        const givenName = normalizeWhitespace(data.firstName);
+        if (!givenName) {
+            throw new AppError("Confirmed COR first name is required.", 400);
+        }
+        const middleNameOrInitial = normalizeWhitespace(data.middleNameOrInitial);
+        const userFirstName = middleNameOrInitial
+            ? `${givenName} ${middleNameOrInitial}`
+            : givenName;
+        const userLastName = surname;
+
+        const email = String(data.email ?? "").trim();
+        if (!email) {
+            throw new AppError("Confirmed COR email is required.", 400);
+        }
+        if (!EMAIL_PATTERN.test(email)) {
+            throw new AppError("Confirmed COR email is invalid.", 400);
+        }
+
+        const programId = String(data.programId ?? "").trim();
+        if (!programId) {
+            throw new AppError("Confirmed Program is required.", 400);
+        }
+
         const upload = await this.corRepository.getUploadById(corUploadId);
         if (!upload) throw new AppError("COR Upload not found.", 404);
         if (upload.status !== "PENDING") {
@@ -239,12 +284,25 @@ export class CorService {
                 {
                     studentNumber,
                     registrationNumber,
+                    firstName: userFirstName,
+                    lastName: userLastName,
+                    email,
+                    programId,
                     verificationMethod: CANONICAL_VERIFICATION_METHOD,
                 },
                 adminId,
             );
         } catch (error) {
             if (isUniqueConstraintError(error)) {
+                const target = String(
+                    (error as { meta?: { target?: unknown } }).meta?.target ?? "",
+                ).toLowerCase();
+                if (target.includes("email")) {
+                    throw new AppError(
+                        "The confirmed email is already in use by another account.",
+                        409,
+                    );
+                }
                 throw new AppError(
                     "Student Number is already in use. Choose a unique value.",
                     409,
@@ -258,8 +316,11 @@ export class CorService {
         // value. The notification tells the Student to keep using their existing
         // account password with the confirmed Student Number.
         try {
-            await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
-                student_name: student.user.firstName,
+            // COR-AUTH-1: the Admin-confirmed COR email is now the authoritative
+            // User.email, so the handoff notification targets it — not the stale
+            // provisional Applicant email.
+            await EmailService.sendTemplateEmail(email, "credential_dispatch", {
+                student_name: userFirstName,
                 student_number: studentNumber,
                 portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
             });

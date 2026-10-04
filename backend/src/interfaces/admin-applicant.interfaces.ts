@@ -110,6 +110,16 @@ export interface RejectWaiverInput {
 export interface VerifyCorInput {
   studentNumber?: string;
   registrationNumber?: string;
+  /** Admin-confirmed COR surname -> `User.lastName`. */
+  surname?: string;
+  /** Admin-confirmed COR given name. */
+  firstName?: string;
+  /** Optional confirmed COR middle name/initial (concatenated into `User.firstName`). */
+  middleNameOrInitial?: string;
+  /** Admin-confirmed COR email -> `User.email`. */
+  email?: string;
+  /** Admin-confirmed existing Program id -> `Student.programId`. */
+  programId?: string;
 }
 
 export interface RejectCorInput {

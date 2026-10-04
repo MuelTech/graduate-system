@@ -53,6 +53,13 @@ describe("COR-8 promotion -> Student login original-password continuity", () => 
   const ORIGINAL_PASSWORD = "synthetic-original-pw";
   const EXISTING_HASH = "synthetic-existing-hash";
   const STUDENT_NUMBER = "2026-GS-00123";
+  const CONFIRMED = {
+    surname: "Dela Cruz",
+    firstName: "Juan",
+    middleNameOrInitial: "Santos",
+    email: "juan.delacruz@example.com",
+    programId: "prog-1",
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,6 +91,7 @@ describe("COR-8 promotion -> Student login original-password continuity", () => 
     const corService = new CorService();
     await corService.verifyCor("cor-1", "admin-1", {
       studentNumber: STUDENT_NUMBER,
+      ...CONFIRMED,
     });
 
     const forwarded = corRepo.verifyAndPromote.mock.calls[0][3] as Record<
@@ -91,6 +99,7 @@ describe("COR-8 promotion -> Student login original-password continuity", () => 
       unknown
     >;
     expect(forwarded.studentNumber).toBe(STUDENT_NUMBER);
+    expect(forwarded.email).toBe(CONFIRMED.email);
     // Promotion carries no password material of any kind.
     expect(JSON.stringify(forwarded)).not.toMatch(/password|hash|birthdate|dob/i);
 

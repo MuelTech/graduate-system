@@ -153,6 +153,15 @@ describe("CorService.uploadCor guarded upload", () => {
 });
 
 describe("CorService.verifyCor canonical verify + promote", () => {
+  // COR-AUTH-1: Admin-confirmed COR identity/enrollment values.
+  const confirmed = {
+    surname: "DELA CRUZ",
+    firstName: "JUAN",
+    middleNameOrInitial: "SANTOS",
+    email: "juan.delacruz@example.com",
+    programId: "prog-1",
+  };
+
   const pendingUpload = {
     id: "cor-1",
     status: "PENDING",
@@ -169,7 +178,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.getUploadById.mockResolvedValue(pendingUpload);
     repo.verifyAndPromote.mockResolvedValue({
       corRecord: { id: "rec-1" },
-      updatedStudent: { studentNumber: "2026-GS-00123" },
+      updatedStudent: { studentNumber: "2026-GS-00123", ...confirmed },
       updatedUser: { role: "STUDENT" },
     });
   });
@@ -177,7 +186,58 @@ describe("CorService.verifyCor canonical verify + promote", () => {
   it("requires an explicit Student Number", async () => {
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "   " }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "   ", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("requires Admin-confirmed COR surname, first name, email, and Program", async () => {
+    const svc = new CorService();
+    // Missing surname.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        firstName: "JUAN",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    // Missing first name.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        surname: "DELA CRUZ",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    // Missing Program selection.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        ...confirmed,
+        programId: "",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid confirmed email", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        ...confirmed,
+        email: "not-an-email",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to Applicant/extraction values when confirmation is missing", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
@@ -185,7 +245,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
   it("does not require or validate Academic Year / Semester (v1 authority)", async () => {
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
     ).resolves.toBeTruthy();
 
     const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
@@ -200,6 +260,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: " 2026-GS-00123 ",
+      ...confirmed,
       method: "OCR",
       verificationMethod: "LEGACY",
       academicYear: "1999-2000",
@@ -224,6 +285,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: "2026-GS-00123",
+      ...confirmed,
       registrationNumber: "  REG-123  ",
     });
 
@@ -237,6 +299,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: "2026-GS-00123",
+      ...confirmed,
       registrationNumber: "   ",
     });
 
@@ -251,7 +314,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.getUploadById.mockResolvedValue({ ...pendingUpload, status: "REJECTED" });
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
@@ -260,7 +323,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.checkPassedExam.mockResolvedValue(null);
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
     ).rejects.toMatchObject({ statusCode: 403 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
@@ -269,6 +332,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     const result = await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: " 2026-GS-00123 ",
+      ...confirmed,
     });
 
     expect(repo.verifyAndPromote).toHaveBeenCalledWith(
@@ -277,6 +341,10 @@ describe("CorService.verifyCor canonical verify + promote", () => {
       "user-1",
       expect.objectContaining({
         studentNumber: "2026-GS-00123",
+        firstName: "JUAN SANTOS",
+        lastName: "DELA CRUZ",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
         verificationMethod: "ADMIN_MANUAL",
       }),
       "admin-1",
@@ -292,13 +360,25 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.verifyAndPromote.mockRejectedValue(conflict);
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("maps a duplicate confirmed email (P2002) to a controlled conflict", async () => {
+    const conflict = Object.assign(new Error("Unique constraint failed"), {
+      code: "P2002",
+      meta: { target: ["email"] },
+    });
+    repo.verifyAndPromote.mockRejectedValue(conflict);
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
   it("sends credential_dispatch with only the safe variables (no password)", async () => {
     const svc = new CorService();
-    await svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" });
+    await svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed });
 
     expect(emailMock.sendTemplateEmail).toHaveBeenCalledTimes(1);
     const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
@@ -308,9 +388,9 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     ];
     const [to, templateKey, variables] = call;
 
-    expect(to).toBe("a@b.c");
+    expect(to).toBe("juan.delacruz@example.com");
     expect(templateKey).toBe("credential_dispatch");
-    expect(variables.student_name).toBe("Ana");
+    expect(variables.student_name).toBe("JUAN SANTOS");
     // The Admin-confirmed canonical Student Number flows through unchanged.
     expect(variables.student_number).toBe("2026-GS-00123");
     expect(typeof variables.portal_link).toBe("string");
@@ -330,6 +410,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: "  2026-GS-00123  ",
+      ...confirmed,
     });
 
     const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
@@ -345,7 +426,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
 
     await expect(
-      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
     ).resolves.toBeTruthy();
 
     expect(repo.verifyAndPromote).toHaveBeenCalledTimes(1);

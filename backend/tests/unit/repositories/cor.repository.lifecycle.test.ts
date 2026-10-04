@@ -7,6 +7,7 @@ const prismaMock = vi.hoisted(() => {
     corRecord: { create: vi.fn() },
     student: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
+    program: { findUnique: vi.fn() },
     entranceExamApplication: { findFirst: vi.fn() },
     auditLog: { create: vi.fn() },
   };
@@ -28,6 +29,10 @@ const uploadId = "cor-1";
 
 const verifyData = {
   studentNumber: "2026-GS-00123",
+  firstName: "Juan Santos",
+  lastName: "Dela Cruz",
+  email: "juan.delacruz@example.com",
+  programId: "prog-1",
   verificationMethod: "ADMIN_MANUAL",
 };
 
@@ -41,6 +46,7 @@ function authorizeHappyPath() {
   tx().student.findUnique.mockResolvedValue({ id: studentId, admissionStatus: "APPLICANT" });
   tx().entranceExamApplication.findFirst.mockResolvedValue({ id: "exam-1", status: "PASSED" });
   tx().user.findUnique.mockResolvedValue({ id: userId, role: "APPLICANT" });
+  tx().program.findUnique.mockResolvedValue({ id: "prog-1" });
   tx().student.updateMany.mockResolvedValue({ count: 1 });
   tx().user.updateMany.mockResolvedValue({ count: 1 });
   tx().corRecord.create.mockResolvedValue({ id: "rec-1", isAdminVerified: true });
@@ -77,7 +83,12 @@ describe("CorRepository.verifyAndPromote authority + currentness", () => {
     });
     expect(tx().user.updateMany).toHaveBeenCalledWith({
       where: { id: userId, role: "APPLICANT" },
-      data: { role: "STUDENT" },
+      data: expect.objectContaining({
+        role: "STUDENT",
+        firstName: verifyData.firstName,
+        lastName: verifyData.lastName,
+        email: verifyData.email,
+      }),
     });
     expect(tx().corRecord.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -92,11 +103,16 @@ describe("CorRepository.verifyAndPromote authority + currentness", () => {
     expect(result).toBeTruthy();
 
     // COR-5: residency start is never inferred from the verification timestamp.
+    // COR-AUTH-1: Program is synchronized; historical Applicant data is not.
     const studentWrite = tx().student.updateMany.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
     expect(studentWrite.data).not.toHaveProperty("residencyStartDate");
-    expect(studentWrite.data).not.toHaveProperty("programId");
+    expect(studentWrite.data).toMatchObject({
+      programId: verifyData.programId,
+    });
+    expect(studentWrite.data).not.toHaveProperty("pinnacleApplicantId");
+    expect(studentWrite.data).not.toHaveProperty("dateOfBirth");
 
     // COR-5: a blank Registration Number persists as null, and the deferred
     // term fields are not populated by the v1 transaction.
@@ -107,13 +123,50 @@ describe("CorRepository.verifyAndPromote authority + currentness", () => {
     expect(recordWrite.data).not.toHaveProperty("academicYear");
     expect(recordWrite.data).not.toHaveProperty("semester");
 
-    // COR-5: promotion retains the account and password; only the role changes.
+    // COR-AUTH-1: promotion synchronizes the Admin-confirmed COR identity
+    // (name/email) and still retains the account/password.
     const userWrite = tx().user.updateMany.mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(userWrite.data).toEqual({ role: "STUDENT" });
+    expect(userWrite.data).toEqual({
+      role: "STUDENT",
+      firstName: verifyData.firstName,
+      lastName: verifyData.lastName,
+      email: verifyData.email,
+    });
     expect(tx().user.update).not.toHaveBeenCalled();
     expect(JSON.stringify(userWrite)).not.toMatch(/password/i);
+  });
+
+  it("fails closed when the selected Program no longer exists", async () => {
+    tx().program.findUnique.mockResolvedValue(null);
+
+    const repo = new CorRepository();
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(tx().student.updateMany).not.toHaveBeenCalled();
+    expect(tx().user.updateMany).not.toHaveBeenCalled();
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
+    expect(tx().auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects the transaction when the confirmed email is already owned by another User", async () => {
+    const conflict = Object.assign(new Error("Unique constraint failed"), {
+      code: "P2002",
+      meta: { target: ["email"] },
+    });
+    tx().user.updateMany.mockRejectedValue(conflict);
+
+    const repo = new CorRepository();
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toMatchObject({ code: "P2002" });
+
+    // The User write is the authority point; nothing downstream commits.
+    expect(tx().corRecord.create).not.toHaveBeenCalled();
+    expect(tx().auditLog.create).not.toHaveBeenCalled();
   });
 
   it("stores a confirmed Registration Number on the CorRecord when provided", async () => {

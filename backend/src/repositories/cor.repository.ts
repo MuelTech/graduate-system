@@ -336,6 +336,10 @@ export class CorRepository {
         verificationData: {
             registrationNumber?: string;
             studentNumber: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            programId: string;
             verificationMethod: string;
         },
         adminId: string
@@ -404,12 +408,27 @@ export class CorRepository {
                 );
             }
 
+            // COR-AUTH-1: the Admin-confirmed Program must still exist. Programs
+            // are never created or fuzzy-matched here; selection is Admin-owned.
+            const program = await tx.program.findUnique({
+                where: { id: verificationData.programId },
+                select: { id: true },
+            });
+            if (!program) {
+                throw new AppError(
+                    'The selected Program no longer exists. Refresh and try again.',
+                    409,
+                );
+            }
+
             // 6. Conditional promotion writes (affected-row checks close races).
             const promotedStudent = await tx.student.updateMany({
                 where: { id: studentId, admissionStatus: 'APPLICANT' },
                 data: {
                     admissionStatus: 'ENROLLED',
                     studentNumber: verificationData.studentNumber,
+                    // COR-AUTH-1: Admin-confirmed existing Program.
+                    programId: verificationData.programId,
                     // System enrollment/promotion confirmation timing only. It
                     // is NOT official residency start; `residencyStartDate` is
                     // deliberately never assigned from the verification time.
@@ -425,7 +444,13 @@ export class CorRepository {
 
             const promotedUser = await tx.user.updateMany({
                 where: { id: userId, role: 'APPLICANT' },
-                data: { role: 'STUDENT' },
+                data: {
+                    role: 'STUDENT',
+                    // COR-AUTH-1: Admin-confirmed COR identity becomes authoritative.
+                    firstName: verificationData.firstName,
+                    lastName: verificationData.lastName,
+                    email: verificationData.email,
+                },
             });
             if (promotedUser.count !== 1) {
                 throw new AppError(
