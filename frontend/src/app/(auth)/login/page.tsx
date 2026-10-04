@@ -84,14 +84,30 @@ export default function LoginPage() {
 
     try {
       // --- NextAuth Sign-In Logic ---
-      const res = await signIn("credentials", {
-        redirect: false,
-        role: role,
-        email: email,
-        password: password,
-        applicantId: applicantId,
-        studentNumber: studentNumber,
-      });
+      // COR-6 FIX1: send only the credentials for the selected role.
+      let res: Awaited<ReturnType<typeof signIn>> | undefined;
+      if (role === "applicant") {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          applicantId,
+          password,
+        });
+      } else if (role === "student") {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          studentNumber,
+          password,
+        });
+      } else {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          email,
+          password,
+        });
+      }
 
       if (res?.error) {
         if (res.error === "CredentialsSignin") {

@@ -14,11 +14,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         studentNumber: { type: "text" },
       },
       async authorize(credentials) {
+        const role = String(credentials?.role ?? "");
+        const password = String(credentials?.password ?? "");
+
+        // COR-6 FIX1: construct a bounded, role-specific backend payload so an
+        // unrelated credential field is never forwarded.
+        const payload =
+          role === "applicant"
+            ? { role, applicantId: credentials?.applicantId, password }
+            : role === "student"
+              ? { role, studentNumber: credentials?.studentNumber, password }
+              : { role, email: credentials?.email, password };
+
         const apiUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
         const res = await fetch(`${apiUrl}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(credentials),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (res.ok && data.token && data.user) {
