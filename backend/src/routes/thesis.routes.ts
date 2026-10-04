@@ -458,6 +458,15 @@ router.post(
   thesisController.concludeDefense,
 );
 
+// 2026-10-04: Title Defense start — assigned Chairman, SCHEDULED → IN_PROGRESS.
+// Scheduling alone is not a formal result; deliberation must be started first.
+router.post(
+  "/defense/:scheduleId/start",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.startDefense,
+);
+
 // CP7: Rapporteur finalize defense notes (irreversible)
 router.post(
   "/defense/:scheduleId/rapporteur/finalize",

@@ -927,6 +927,27 @@ export class ThesisController {
     }
   };
 
+  startDefense = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const scheduleId = req.params.scheduleId as string;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      res
+        .status(200)
+        .json(
+          await this.defenseWorkspace.startTitleDefense(scheduleId, userId),
+        );
+    } catch (error: any) {
+      res.status(error?.statusCode || 400).json({ error: error.message });
+    }
+  };
+
   public getLobbyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const scheduleId = req.params.scheduleId as string;

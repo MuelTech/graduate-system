@@ -65,6 +65,7 @@ vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 vi.mock("../../../src/services/rap-report.service", () => ({
   RapReportService: class {
     createRapAfterConclusion = createRapAfterConclusion;
+    ensureRapAfterTitlePrerequisites = ensureRapAfterTitlePrerequisites;
     signRapSlot = vi.fn();
     recomputeRapStatus = vi.fn();
     getStudentRapAccess = vi.fn();
@@ -78,6 +79,7 @@ vi.mock("../../../src/services/rap-report.service", () => ({
 }));
 
 const createRapAfterConclusion = vi.fn();
+const ensureRapAfterTitlePrerequisites = vi.fn();
 
 import { ThesisRepository } from "../../../src/repositories/thesis.repository";
 import { AppError } from "../../../src/utils/AppError";
@@ -213,6 +215,8 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
       id: "rap-1",
       status: "FOR_SIGNATURE",
     });
+    ensureRapAfterTitlePrerequisites.mockReset();
+    ensureRapAfterTitlePrerequisites.mockResolvedValue(null);
     prismaMock.__tx.defenseConclusion.create.mockResolvedValue({ id: "c-1" });
     prismaMock.__tx.thesisRecord.update.mockResolvedValue({});
     prismaMock.__tx.defenseSchedule.update.mockResolvedValue({});
@@ -220,12 +224,12 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     prismaMock.__tx.thesisTitle.update.mockResolvedValue({});
   });
 
-  it("Title conclusion is allowed while notes are still draft; RAP creation is deferred", async () => {
+  it("Title conclusion is allowed while notes are still draft; deferred RAP check converges", async () => {
     prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
       scheduleFixture({
         finalizerId: null,
         notesFinalizedAt: null,
-        sessionStatus: "SCHEDULED",
+        sessionStatus: "IN_PROGRESS",
       }),
     );
 
@@ -238,9 +242,32 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     expect(prismaMock.__tx.defenseSchedule.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { sessionStatus: "CONCLUDED" } }),
     );
-    // RAP must not be created until the minutes are finalized.
+    // RAP must not be created inline (minutes still draft); the convergent
+    // ensure is invoked after commit and is a no-op until minutes are finalized.
     expect(createRapAfterConclusion).not.toHaveBeenCalled();
+    expect(ensureRapAfterTitlePrerequisites).toHaveBeenCalledWith("sched-1");
     expect(result.rapReport).toBeNull();
+  });
+
+  it("pre-defense SCHEDULED Title cannot be formally concluded", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        sessionStatus: "SCHEDULED",
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+    expect(ensureRapAfterTitlePrerequisites).not.toHaveBeenCalled();
   });
 
   it("Title conclusion before scheduling is rejected (session-state correctness)", async () => {

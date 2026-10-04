@@ -196,7 +196,7 @@ describe("CP7 Title conclusion selected-title rules", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("Title Chairman may conclude while Rapporteur notes are still draft (scheduled)", () => {
+  it("pre-defense SCHEDULED Title cannot be formally concluded", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
@@ -210,8 +210,8 @@ describe("CP7 Title conclusion selected-title rules", () => {
       },
       "PASSED",
     );
-    expect(result.ok).toBe(true);
-    expect(result.outcome).toBe("PASSED");
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(409);
   });
 
   it("Title Chairman may conclude while Rapporteur notes are still draft (in progress)", () => {
@@ -220,6 +220,24 @@ describe("CP7 Title conclusion selected-title rules", () => {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
         sessionStatus: "IN_PROGRESS",
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("PASSED");
+  });
+
+  it("Title Chairman may conclude from AWAITING_CONCLUSION as well", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "AWAITING_CONCLUSION",
         rapporteurNotesFinalized: false,
         oralSummaryExists: false,
         evaluatorAssignments: 0,
@@ -254,7 +272,7 @@ describe("CP7 Title conclusion selected-title rules", () => {
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
-        sessionStatus: "SCHEDULED",
+        sessionStatus: "IN_PROGRESS",
         sessionRole: "PANELIST",
         isSessionChairman: false,
         rapporteurNotesFinalized: false,
@@ -274,7 +292,7 @@ describe("CP7 Title conclusion selected-title rules", () => {
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
-        sessionStatus: "SCHEDULED",
+        sessionStatus: "IN_PROGRESS",
         rapporteurNotesFinalized: false,
         oralSummaryExists: false,
         evaluatorAssignments: 0,

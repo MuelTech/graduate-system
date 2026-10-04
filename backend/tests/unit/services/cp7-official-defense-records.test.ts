@@ -400,6 +400,14 @@ describe("CP7 Rapporteur notes finalization", () => {
       defenseType: "TITLE_DEFENSE",
       venueOrLink: "Room 101",
       rapporteurNotes: "Final minutes",
+      rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
+      rapporteurNotesFinalizedById: "user-r",
+    });
+    prismaMock.__tx.panelAssignment.findFirst.mockResolvedValue({
+      id: "pr",
+      scheduleId: "sched-1",
+      userId: "user-r",
+      role: "RAPPORTEUR",
     });
     prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
       { userId: "user-c", role: "CHAIRMAN" },
@@ -421,6 +429,24 @@ describe("CP7 Rapporteur notes finalization", () => {
       status: "FOR_SIGNATURE",
       generatedById: "user-r",
     });
+  });
+
+  it("pre-defense SCHEDULED Title notes cannot be finalized as completed defense minutes", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      ...scheduleBase,
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "SCHEDULED",
+    });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pr",
+      scheduleId: "sched-1",
+      userId: "user-r",
+      role: "RAPPORTEUR",
+    });
+    await expect(
+      svc.finalizeDefenseNotes("sched-1", "user-r"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseSchedule.updateMany).not.toHaveBeenCalled();
   });
 
   it("rejects empty notes before finalization", async () => {
@@ -453,6 +479,93 @@ describe("CP7 Rapporteur notes finalization", () => {
     await expect(svc.finalizeDefenseNotes("sched-1", "user-r")).rejects.toMatchObject(
       { statusCode: 409 },
     );
+  });
+});
+
+describe("2026-10-04 Title deferred RAP convergence", () => {
+  const svc = new RapReportService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mockTitlePrerequisitesReady() {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      defenseType: "TITLE_DEFENSE",
+      venueOrLink: "Room 101",
+      rapporteurNotes: "Final minutes",
+      rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
+      rapporteurNotesFinalizedById: "user-r",
+    });
+    prismaMock.__tx.panelAssignment.findFirst.mockResolvedValue({
+      id: "pr",
+      scheduleId: "sched-1",
+      userId: "user-r",
+      role: "RAPPORTEUR",
+    });
+    prismaMock.__tx.defenseConclusion.findUnique.mockResolvedValue({
+      thesisId: "thesis-1",
+      outcome: "PASSED",
+      selectedTitle: { titleText: "Title One" },
+    });
+    prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
+      { userId: "user-c", role: "CHAIRMAN" },
+      { userId: "user-p", role: "PANELIST" },
+    ]);
+    prismaMock.__tx.rapReport.create.mockResolvedValue({
+      id: "rap-1",
+      status: "FOR_SIGNATURE",
+      generatedById: "user-r",
+    });
+    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 2 });
+  }
+
+  it("does nothing until both prerequisites exist", async () => {
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue(null);
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      defenseType: "TITLE_DEFENSE",
+      venueOrLink: null,
+      rapporteurNotes: "draft",
+      rapporteurNotesFinalizedAt: null,
+      rapporteurNotesFinalizedById: null,
+    });
+    const result = await svc.ensureRapAfterTitlePrerequisites("sched-1");
+    expect(result).toBeNull();
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+  });
+
+  it("creates exactly one RAP + signature slots when both prerequisites exist (idempotent on repeat)", async () => {
+    mockTitlePrerequisitesReady();
+    prismaMock.__tx.rapReport.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "rap-1", status: "FOR_SIGNATURE" });
+
+    const first = await svc.ensureRapAfterTitlePrerequisites("sched-1");
+    expect(first?.id).toBe("rap-1");
+    expect(prismaMock.__tx.rapReport.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.__tx.rapReportSignature.createMany).toHaveBeenCalledTimes(1);
+    const createData = prismaMock.__tx.rapReport.create.mock.calls[0][0].data;
+    expect(createData.generatedById).toBe("user-r");
+
+    const second = await svc.ensureRapAfterTitlePrerequisites("sched-1");
+    expect(second?.id).toBe("rap-1");
+    expect(prismaMock.__tx.rapReport.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("unique race (P2002) converges on the existing RAP without throwing", async () => {
+    mockTitlePrerequisitesReady();
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue(null);
+    prismaMock.__tx.rapReport.create.mockRejectedValue({ code: "P2002" });
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      id: "rap-1",
+      status: "FOR_SIGNATURE",
+    });
+
+    const result = await svc.ensureRapAfterTitlePrerequisites("sched-1");
+    expect(result?.id).toBe("rap-1");
+    expect(prismaMock.rapReport.findUnique).toHaveBeenCalledWith({
+      where: { scheduleId: "sched-1" },
+    });
   });
 });
 

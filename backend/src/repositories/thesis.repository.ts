@@ -1198,7 +1198,7 @@ export class ThesisRepository {
     );
     const rapService = new RapReportService();
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const schedule = await tx.defenseSchedule.findUnique({
         where: { id: scheduleId },
         include: {
@@ -1239,16 +1239,12 @@ export class ThesisRepository {
 
       if (isTitle) {
         // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-        // independently of Rapporteur notes/RAP finalization. Only require that the
-        // session has progressed past scheduling.
-        const titleActiveStatuses = [
-          "SCHEDULED",
-          "IN_PROGRESS",
-          "AWAITING_CONCLUSION",
-        ];
+        // independently of Rapporteur notes/RAP finalization. Scheduling alone does
+        // not mean the defense occurred; require the active deliberation phase.
+        const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
         if (!titleActiveStatuses.includes(String(schedule.sessionStatus))) {
           throw new AppError(
-            "Title Defense formal result may be recorded only after the defense has been scheduled/conducted.",
+            "Title Defense formal result may be recorded only after the defense has been started (in progress).",
             409,
           );
         }
@@ -1455,8 +1451,16 @@ export class ThesisRepository {
         });
       }
 
-      return { conclusion, rapReport };
+      return { conclusion, rapReport, isTitle };
     });
+
+    let finalRap = result.rapReport;
+    if (result.isTitle && !finalRap) {
+      // Convergent deferred Title RAP: safe even when the formal conclusion and
+      // the Rapporteur's finalized minutes commit in near-simultaneous transactions.
+      finalRap = await rapService.ensureRapAfterTitlePrerequisites(scheduleId);
+    }
+    return { conclusion: result.conclusion, rapReport: finalRap };
   }
 
   // CP7-FIX2: Admin RAP list — explicit select; never expose signatureData.

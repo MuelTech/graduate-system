@@ -55,6 +55,8 @@ export interface DefenseWorkspaceDto {
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
+    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
+    canStartTitleDefense: boolean;
   };
   documents: Array<{
     id: string;
@@ -403,25 +405,35 @@ export class DefenseWorkspaceService {
     ).length;
     const notesFinalizedAt = schedule.rapporteurNotesFinalizedAt ?? null;
     const isChairman = role === "CHAIRMAN";
+    const sessionStatusValue = String(schedule.sessionStatus);
     const canFinalizeRapporteurNotes =
-      role === "RAPPORTEUR" && !notesFinalizedAt;
+      role === "RAPPORTEUR" &&
+      !notesFinalizedAt &&
+      (!isTitleDefense ||
+        sessionStatusValue === "IN_PROGRESS" ||
+        sessionStatusValue === "AWAITING_CONCLUSION" ||
+        sessionStatusValue === "CONCLUDED");
     const canViewFinalizedRapporteurNotes =
       Boolean(notesFinalizedAt) &&
       (isChairman || role === "RAPPORTEUR") &&
       !schedule.conclusion;
     const summaryReady = Boolean(schedule.oralExamSummary);
-    const sessionStatusValue = String(schedule.sessionStatus);
     const isTitleConclusionPhase =
-      defenseType === "TITLE_DEFENSE" &&
-      (sessionStatusValue === "SCHEDULED" ||
-        sessionStatusValue === "IN_PROGRESS" ||
+      isTitleDefense &&
+      (sessionStatusValue === "IN_PROGRESS" ||
         sessionStatusValue === "AWAITING_CONCLUSION");
+    const canStartTitleDefense =
+      isTitleDefense &&
+      isChairman &&
+      !schedule.conclusion &&
+      sessionStatusValue === "SCHEDULED";
     // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-    // independently of Rapporteur notes/RAP finalization.
+    // independently of Rapporteur notes/RAP finalization, but only once the
+    // defense has actually started (not merely SCHEDULED).
     const canRecordFormalResult =
       isChairman &&
       !schedule.conclusion &&
-      (defenseType === "TITLE_DEFENSE"
+      (isTitleDefense
         ? isTitleConclusionPhase
         : sessionStatusValue === "AWAITING_CONCLUSION" &&
           Boolean(notesFinalizedAt) &&
@@ -456,6 +468,7 @@ export class DefenseWorkspaceService {
         canFinalizeRapporteurNotes,
         canRecordFormalResult,
         canViewFinalizedRapporteurNotes,
+        canStartTitleDefense,
       },
       documents: docs,
       proposedTitles:
@@ -544,6 +557,73 @@ export class DefenseWorkspaceService {
       finalizedAt: rap.finalizedAt ? rap.finalizedAt.toISOString() : null,
       decisionsAndRecommendations: rap.decisionsAndRecommendations ?? null,
     };
+  }
+
+  /**
+   * 2026-10-04 Title correction: the assigned Chairman explicitly starts a
+   * scheduled Title Defense, moving it SCHEDULED → IN_PROGRESS. This is the
+   * earliest phase in which the panel has begun deliberation, so the Chairman
+   * may record the formal result and the Rapporteur may finalize minutes.
+   *
+   * Idempotent while already active; never touches Proposal/Final sessions.
+   */
+  async startTitleDefense(
+    scheduleId: string,
+    userId: string,
+  ): Promise<{ started: true; sessionStatus: string }> {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: {
+        defenseType: true,
+        sessionStatus: true,
+        conclusion: { select: { id: true } },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+    if (String(schedule.defenseType) !== "TITLE_DEFENSE") {
+      throw new AppError(
+        "Only Title Defense uses the digital start action.",
+        400,
+      );
+    }
+
+    const assignment = await this.resolveOwnAssignment(scheduleId, userId);
+    if (String(assignment.role) !== "CHAIRMAN") {
+      throw new AppError(
+        "Only the assigned session Chairman may start the Title Defense.",
+        403,
+      );
+    }
+    if (schedule.conclusion) {
+      throw new AppError("Defense has already been concluded.", 409);
+    }
+
+    const status = String(schedule.sessionStatus);
+    if (status === "IN_PROGRESS" || status === "AWAITING_CONCLUSION") {
+      return { started: true, sessionStatus: status };
+    }
+    if (status !== "SCHEDULED") {
+      throw new AppError(
+        "Title Defense can be started only from a scheduled session.",
+        409,
+      );
+    }
+
+    const result = await prisma.defenseSchedule.updateMany({
+      where: { id: scheduleId, sessionStatus: "SCHEDULED" },
+      data: { sessionStatus: "IN_PROGRESS" },
+    });
+    if (result.count === 0) {
+      const refreshed = await prisma.defenseSchedule.findUnique({
+        where: { id: scheduleId },
+        select: { sessionStatus: true },
+      });
+      return {
+        started: true,
+        sessionStatus: String(refreshed?.sessionStatus ?? "IN_PROGRESS"),
+      };
+    }
+    return { started: true, sessionStatus: "IN_PROGRESS" };
   }
 
   /** CP6/CP7: only the session Rapporteur may write draft notes; locked after finalization. */

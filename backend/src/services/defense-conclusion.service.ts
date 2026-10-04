@@ -93,17 +93,14 @@ export function validateConclusionPreconditions(
 
   if (isTitle) {
     // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-    // independently of Rapporteur notes/RAP finalization. Title has no Group I/II
-    // scoring, so evaluator completion and the Oral Exam Summary are not required.
-    // Only require that the session has progressed past scheduling.
-    const titleActiveStatuses = [
-      "SCHEDULED",
-      "IN_PROGRESS",
-      "AWAITING_CONCLUSION",
-    ];
+    // independently of Rapporteur notes/RAP finalization. Scheduling alone does
+    // not mean the defense occurred, so the session must be in the active
+    // deliberation phase. Title has no Group I/II scoring, so evaluator
+    // completion and the Oral Exam Summary are not required.
+    const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
     if (!titleActiveStatuses.includes(String(input.sessionStatus))) {
       errors.push(
-        "Title Defense formal result may be recorded only after the defense has been scheduled/conducted.",
+        "Title Defense formal result may be recorded only after the defense has been started (in progress).",
       );
       return { ok: false, errors, outcome: null, statusCode: 409 };
     }

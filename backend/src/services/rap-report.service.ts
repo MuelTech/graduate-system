@@ -108,6 +108,92 @@ export class RapReportService {
   }
 
   /**
+   * 2026-10-04 Title correction: converge on exactly one official Title RAP once
+   * BOTH the formal conclusion and the finalized Rapporteur minutes exist.
+   *
+   * Safe under near-simultaneous Chairman/Rapporteur transactions:
+   * - reads committed state in its own transaction after the caller commits;
+   * - idempotent (no-op when a RAP already exists);
+   * - a unique race (P2002) converges on the RAP created by the other path.
+   */
+  async ensureRapAfterTitlePrerequisites(scheduleId: string) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const existing = await tx.rapReport.findUnique({
+          where: { scheduleId },
+        });
+        if (existing) return existing;
+
+        const schedule = await tx.defenseSchedule.findUnique({
+          where: { id: scheduleId },
+          select: {
+            defenseType: true,
+            venueOrLink: true,
+            rapporteurNotes: true,
+            rapporteurNotesFinalizedAt: true,
+            rapporteurNotesFinalizedById: true,
+          },
+        });
+        if (!schedule || String(schedule.defenseType) !== "TITLE_DEFENSE") {
+          return null;
+        }
+        if (
+          !schedule.rapporteurNotesFinalizedAt ||
+          !schedule.rapporteurNotes ||
+          !schedule.rapporteurNotesFinalizedById
+        ) {
+          return null;
+        }
+
+        // generatedById must be the assigned Rapporteur who finalized the notes.
+        const finalizerAssignment = await tx.panelAssignment.findFirst({
+          where: {
+            scheduleId,
+            userId: schedule.rapporteurNotesFinalizedById,
+            role: "RAPPORTEUR",
+          },
+          select: { id: true },
+        });
+        if (!finalizerAssignment) return null;
+
+        const conclusion = await tx.defenseConclusion.findUnique({
+          where: { scheduleId },
+          select: {
+            thesisId: true,
+            outcome: true,
+            selectedTitle: { select: { titleText: true } },
+          },
+        });
+        if (!conclusion) return null;
+
+        const officialTitle = conclusion.selectedTitle?.titleText ?? null;
+        const content = buildRapContent({
+          defenseType: "TITLE_DEFENSE",
+          officialTitle,
+          outcome: String(conclusion.outcome),
+          rapporteurNotes: schedule.rapporteurNotes,
+        });
+
+        return this.createRapAfterConclusion(tx, {
+          scheduleId,
+          thesisId: conclusion.thesisId,
+          defenseType: "TITLE_DEFENSE",
+          venue: schedule.venueOrLink ?? null,
+          selectedTitle: officialTitle,
+          decisionsAndRecommendations: content,
+          generatedById: schedule.rapporteurNotesFinalizedById,
+        });
+      });
+    } catch (err: unknown) {
+      // Unique-race convergence: the other path created the RAP first.
+      if ((err as { code?: string })?.code === "P2002") {
+        return prisma.rapReport.findUnique({ where: { scheduleId } });
+      }
+      throw err;
+    }
+  }
+
+  /**
    * CP7-FIX1: own-slot CAS only. Aggregate recompute runs AFTER commit so
    * concurrent final signers both commit first, then recompute converges.
    */

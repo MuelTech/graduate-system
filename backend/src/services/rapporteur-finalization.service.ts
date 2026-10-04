@@ -10,11 +10,9 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { isNumericalDefenseType } from "./official-defense-record.service";
-import { RapReportService, buildRapContent } from "./rap-report.service";
+import { RapReportService } from "./rap-report.service";
 
 const committeePolicy = new DefenseCommitteePolicy();
-
-type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export interface FinalizeNotesResult {
   finalized: true;
@@ -75,10 +73,10 @@ export class RapporteurFinalizationService {
 
     if (isTitle) {
       const status = String(schedule.sessionStatus);
-      const finalizableStatuses = ["SCHEDULED", "IN_PROGRESS", "CONCLUDED"];
+      const finalizableStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION", "CONCLUDED"];
       if (!finalizableStatuses.includes(status)) {
         throw new AppError(
-          "Title defense notes may be finalized only while the session is active or after the formal result is recorded.",
+          "Title defense notes may be finalized only after the defense has started (in progress) or after the formal result is recorded.",
           409,
         );
       }
@@ -114,9 +112,7 @@ export class RapporteurFinalizationService {
 
     const finalizedAt = new Date();
     const isTitleStillActive =
-      isTitle &&
-      (schedule.sessionStatus === "SCHEDULED" ||
-        schedule.sessionStatus === "IN_PROGRESS");
+      isTitle && schedule.sessionStatus === "IN_PROGRESS";
 
     await prisma.$transaction(async (tx) => {
       const result = await tx.defenseSchedule.updateMany({
@@ -126,7 +122,11 @@ export class RapporteurFinalizationService {
           ...(isTitle
             ? {
                 sessionStatus: {
-                  in: ["SCHEDULED", "IN_PROGRESS", "CONCLUDED"] as never[],
+                  in: [
+                    "IN_PROGRESS",
+                    "AWAITING_CONCLUSION",
+                    "CONCLUDED",
+                  ] as never[],
                 },
               }
             : { sessionStatus: "AWAITING_CONCLUSION" as never }),
@@ -146,18 +146,14 @@ export class RapporteurFinalizationService {
           409,
         );
       }
-
-      // 2026-10-04: deferred Title RAP — generate once both the formal conclusion
-      // and the finalized minutes exist.
-      if (isTitle) {
-        await this.ensureRapAfterConcludedTitle(
-          tx,
-          scheduleId,
-          userId,
-          schedule,
-        );
-      }
     });
+
+    // 2026-10-04: deferred Title RAP — converge on exactly one RAP once both the
+    // formal conclusion and the finalized minutes exist. Runs after commit so it
+    // observes the committed state of a near-simultaneous Chairman action.
+    if (isTitle) {
+      await new RapReportService().ensureRapAfterTitlePrerequisites(scheduleId);
+    }
 
     const updated = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -174,59 +170,6 @@ export class RapporteurFinalizationService {
       finalizedById: updated?.rapporteurNotesFinalizedById ?? userId,
       sessionStatus: String(updated?.sessionStatus ?? "AWAITING_CONCLUSION"),
     };
-  }
-
-  /**
-   * 2026-10-04 Title correction: create the official Title RAP once both the formal
-   * conclusion and the finalized minutes exist. Idempotent — no-op when a RAP already
-   * exists or the conclusion has not been recorded yet.
-   */
-  private async ensureRapAfterConcludedTitle(
-    tx: PrismaTx,
-    scheduleId: string,
-    rapporteurUserId: string,
-    schedule: {
-      defenseType: unknown;
-      venueOrLink: string | null;
-      rapporteurNotes: string | null;
-    },
-  ): Promise<void> {
-    const existing = await tx.rapReport.findUnique({
-      where: { scheduleId },
-      select: { id: true },
-    });
-    if (existing) return;
-
-    const conclusion = await tx.defenseConclusion.findUnique({
-      where: { scheduleId },
-      select: {
-        id: true,
-        thesisId: true,
-        outcome: true,
-        selectedTitleId: true,
-        selectedTitle: { select: { titleText: true } },
-      },
-    });
-    if (!conclusion) return;
-
-    const defenseType = String(schedule.defenseType);
-    const officialTitle = conclusion.selectedTitle?.titleText ?? null;
-    const content = buildRapContent({
-      defenseType,
-      officialTitle,
-      outcome: String(conclusion.outcome),
-      rapporteurNotes: schedule.rapporteurNotes,
-    });
-
-    await new RapReportService().createRapAfterConclusion(tx, {
-      scheduleId,
-      thesisId: conclusion.thesisId,
-      defenseType,
-      venue: schedule.venueOrLink ?? null,
-      selectedTitle: officialTitle,
-      decisionsAndRecommendations: content,
-      generatedById: rapporteurUserId,
-    });
   }
 
   /** Draft notes remain editable only before finalization. */

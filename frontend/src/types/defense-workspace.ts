@@ -41,6 +41,8 @@ export interface DefenseWorkspace {
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
+    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
+    canStartTitleDefense: boolean;
   };
   documents: Array<{
     id: string;

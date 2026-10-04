@@ -54,14 +54,22 @@ export function ChairmanConclusionPanel({
     evals.evaluatorAssignments > 0 &&
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
+  const sessionStatus = workspace.schedule.sessionStatus;
+  const titleReadyForConclusion =
+    isTitle &&
+    (sessionStatus === "IN_PROGRESS" || sessionStatus === "AWAITING_CONCLUSION");
+  const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
+
   // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
   // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-  // independently of Rapporteur notes/RAP finalization.
+  // independently of Rapporteur notes/RAP finalization, but only once the defense
+  // has actually started (not while merely SCHEDULED).
   const canSubmit =
     !concluded &&
     Boolean(outcome) &&
     (isTitle
-      ? outcome !== "PASSED" || Boolean(selectedTitleId)
+      ? titleReadyForConclusion &&
+        (outcome !== "PASSED" || Boolean(selectedTitleId))
       : notesReady &&
         summaryReady &&
         evalsComplete &&
@@ -90,6 +98,22 @@ export function ChairmanConclusionPanel({
     },
   });
 
+  const startDefense = useMutation({
+    mutationFn: async () =>
+      apiClientRequest(`/thesis/defense/${scheduleId}/start`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["defenseWorkspace", scheduleId],
+      });
+    },
+    onError: (e: Error) => {
+      console.error(e.message);
+    },
+  });
+
   if (concluded) {
     return (
       <Card>
@@ -107,6 +131,31 @@ export function ChairmanConclusionPanel({
               ? " — finalized."
               : " — awaiting required evaluator signatures."}
           </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isTitle && canStartTitleDefense) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Title Defense Deliberation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-(--earist-body-text)">
+            This session is scheduled. Start the Title Defense to begin panel
+            deliberation. The formal result can be recorded once deliberation is
+            in progress; Rapporteur minutes are not required first.
+          </p>
+          <Button
+            type="button"
+            disabled={startDefense.isPending}
+            onClick={() => startDefense.mutate()}
+            className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
+          >
+            Start Title Defense
+          </Button>
         </CardContent>
       </Card>
     );
