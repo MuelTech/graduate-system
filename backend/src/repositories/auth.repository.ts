@@ -15,14 +15,16 @@ export class AuthRepository {
         });
     }
 
-    async findStudentByStudentNumber(studentNumber: string, dob?: Date): Promise <(Student & { user: User}) | null> {
-         const whereClause: Prisma.StudentWhereInput = { studentNumber };
-         if (dob) {
-            whereClause.dateOfBirth = dob;
-         }
-
+    /**
+     * COR-6: Student login identifier lookup — Student Number only.
+     *
+     * The linked User is included so the service can enforce User role and
+     * bcrypt password verification. Date of Birth is NOT part of the
+     * authentication lookup (it remains profile data only).
+     */
+    async findStudentByStudentNumber(studentNumber: string): Promise <(Student & { user: User}) | null> {
          return prisma.student.findFirst({
-            where: whereClause,
+            where: { studentNumber },
             include: { user: true }
          });
     }

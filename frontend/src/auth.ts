@@ -11,8 +11,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { type: "text" },
         password: { type: "password" },
         applicantId: { type: "text" },
-        studentId: { type: "text" },
-        birthdate: { type: "text" },
+        studentNumber: { type: "text" },
       },
       async authorize(credentials) {
         const apiUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
