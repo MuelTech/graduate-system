@@ -404,6 +404,8 @@ model CorExtraction {
   status           CorExtractionStatus   @default(PENDING) @map("status")
   method           CorExtractionMethod?  @map("method")
   extractorVersion String?               @map("extractor_version")
+  /** COR-2: EARIST COR parser version, distinct from the extractor version. */
+  parserVersion    String?               @map("parser_version")
   pageCount        Int?                  @map("page_count")
   /** Bounded normalized extracted text (never the full unbounded document). */
   text             String?               @map("text") @db.LongText

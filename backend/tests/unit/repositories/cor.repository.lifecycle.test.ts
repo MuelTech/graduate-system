@@ -253,4 +253,28 @@ describe("CorRepository.getPendingUploads current actionable rows", () => {
 
     expect(result.map((r: { id: string }) => r.id)).toEqual(["s1-cur"]);
   });
+
+  it("exposes persisted extraction suggestions and extractor/parser versions to the pending review path", async () => {
+    prismaMock.corUpload.findMany
+      .mockResolvedValueOnce([{ studentId: "s1" }])
+      .mockResolvedValueOnce([]);
+
+    const repo = new CorRepository();
+    await repo.getPendingUploads();
+
+    const secondCall = prismaMock.corUpload.findMany.mock.calls[1]?.[0] as {
+      select: { extraction: { select: Record<string, unknown> } };
+    };
+    expect(secondCall.select.extraction.select).toEqual(
+      expect.objectContaining({
+        status: true,
+        method: true,
+        processedAt: true,
+        diagnostic: true,
+        suggestions: true,
+        parserVersion: true,
+        extractorVersion: true,
+      }),
+    );
+  });
 });

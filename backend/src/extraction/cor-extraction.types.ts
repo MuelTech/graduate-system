@@ -69,7 +69,13 @@ export interface CorExtractionSuggestions {
 export interface CorExtractionResult {
   status: CorExtractionStatusValue;
   method: CorExtractionMethodValue | null;
+  /** Native PDF extractor implementation version. */
   extractorVersion: string | null;
+  /**
+   * COR-2: EARIST COR parser version, kept distinct from `extractorVersion`.
+   * Null when no parser ran (non-PDF, no useful text, or failure).
+   */
+  parserVersion: string | null;
   pageCount: number | null;
   text: string | null;
   pages: ExtractedPage[] | null;

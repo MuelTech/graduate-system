@@ -12,6 +12,10 @@ import {
 } from "./ocr.extractor";
 import { boundExtractionPages, capExtractedText } from "./extraction-bounds";
 import type { CorExtractionResult } from "./cor-extraction.types";
+import {
+  EARIST_COR_PARSER_VERSION,
+  parseEaristCorText,
+} from "./earist-cor.parser";
 
 const PDF_MIME = "application/pdf";
 
@@ -90,6 +94,7 @@ export class CorExtractionService {
           status: "MANUAL_REQUIRED",
           method: "MANUAL",
           extractorVersion: null,
+          parserVersion: null,
           pageCount: null,
           text: null,
           pages: null,
@@ -103,6 +108,7 @@ export class CorExtractionService {
       status: "PROCESSING",
       method: "NATIVE_PDF",
       extractorVersion: this.native.version,
+      parserVersion: null,
       pageCount: null,
       text: null,
       pages: null,
@@ -124,6 +130,7 @@ export class CorExtractionService {
           status: "FAILED",
           method: "NATIVE_PDF",
           extractorVersion: this.native.version,
+          parserVersion: null,
           pageCount: null,
           text: null,
           pages: null,
@@ -137,16 +144,20 @@ export class CorExtractionService {
       const native = await this.native.extract(localPath);
 
       if (hasUsefulNativeText(native.text)) {
+        // COR-2: typed, bounded parser suggestions for Admin review. Missing
+        // fields yield partial suggestions; they never fail the extraction.
+        const suggestions = parseEaristCorText(native.text);
         return this.persist(
           corUploadId,
           this.terminal({
             status: "COMPLETED",
             method: "NATIVE_PDF",
             extractorVersion: this.native.version,
+            parserVersion: EARIST_COR_PARSER_VERSION,
             pageCount: native.pageCount,
             text: capExtractedText(native.text),
             pages: boundExtractionPages(native.pages),
-            suggestions: null,
+            suggestions,
             diagnostic: null,
           }),
         );
@@ -163,6 +174,7 @@ export class CorExtractionService {
           status: "MANUAL_REQUIRED",
           method: "NATIVE_PDF",
           extractorVersion: this.native.version,
+          parserVersion: null,
           pageCount: native.pageCount,
           text: null,
           pages: null,
@@ -177,6 +189,7 @@ export class CorExtractionService {
           status: "FAILED",
           method: "NATIVE_PDF",
           extractorVersion: this.native.version,
+          parserVersion: null,
           pageCount: null,
           text: null,
           pages: null,

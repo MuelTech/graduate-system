@@ -15,6 +15,7 @@ export class CorExtractionRepository {
       status: result.status,
       method: result.method,
       extractorVersion: result.extractorVersion,
+      parserVersion: result.parserVersion,
       pageCount: result.pageCount,
       text: result.text,
       pages: (result.pages ?? null) as never,

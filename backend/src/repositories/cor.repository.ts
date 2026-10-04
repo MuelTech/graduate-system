@@ -165,8 +165,11 @@ export class CorRepository {
                     select: {
                         status: true,
                         method: true,
+                        extractorVersion: true,
+                        parserVersion: true,
                         processedAt: true,
                         diagnostic: true,
+                        suggestions: true,
                     },
                 },
             },
