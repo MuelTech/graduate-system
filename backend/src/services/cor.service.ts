@@ -6,7 +6,6 @@ import { EmailService } from "./email.service";
 import { CorExtractionService } from "../extraction/cor-extraction.service";
 
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
-const ALLOWED_SEMESTERS = ["FIRST_SEM", "SECOND_SEM", "SUMMER"];
 /** DL-3: human Admin verification is the only promotion authority. */
 const CANONICAL_VERIFICATION_METHOD = "ADMIN_MANUAL";
 
@@ -22,14 +21,16 @@ interface ManagedFile extends Express.Multer.File {
   };
 }
 
+/**
+ * COR-5 canonical v1 Admin verification inputs. Only the Admin-confirmed
+ * Student Number and an optional Registration Number are v1 authority.
+ * Academic Year, Semester, Curriculum Year, Year Level, residency and the COR
+ * extraction fields are NOT part of the v1 verification contract. The
+ * verification method is server-controlled (see CANONICAL_VERIFICATION_METHOD).
+ */
 interface VerifyCorData {
   studentNumber?: string;
-  academicYear?: string;
-  semester?: string;
   registrationNumber?: string;
-  /** Compatibility aliases accepted from legacy callers. */
-  verificationMethod?: string;
-  method?: string;
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -200,13 +201,12 @@ export class CorService {
             throw new AppError("Student Number is required.", 400);
         }
 
-        const semester = data.semester ? String(data.semester).trim() : undefined;
-        if (semester && !ALLOWED_SEMESTERS.includes(semester)) {
-            throw new AppError(
-                "Invalid semester. Use FIRST_SEM, SECOND_SEM, or SUMMER.",
-                400,
-            );
-        }
+        // COR-5: Registration Number is optional. A blank/whitespace value is
+        // treated as absent (null) rather than an authoritative empty string.
+        const trimmedRegistrationNumber = String(
+            data.registrationNumber ?? "",
+        ).trim();
+        const registrationNumber = trimmedRegistrationNumber || undefined;
 
         const upload = await this.corRepository.getUploadById(corUploadId);
         if (!upload) throw new AppError("COR Upload not found.", 404);
@@ -238,9 +238,7 @@ export class CorService {
                 student.userId,
                 {
                     studentNumber,
-                    academicYear: data.academicYear,
-                    semester,
-                    registrationNumber: data.registrationNumber,
+                    registrationNumber,
                     verificationMethod: CANONICAL_VERIFICATION_METHOD,
                 },
                 adminId,

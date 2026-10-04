@@ -165,33 +165,81 @@ describe("CorService.verifyCor canonical verify + promote", () => {
   it("requires an explicit Student Number", async () => {
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", {
-        studentNumber: "   ",
-        academicYear: "2026-2027",
-        semester: "FIRST_SEM",
-      }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "   " }),
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
 
-  it("rejects an invalid semester value", async () => {
+  it("does not require or validate Academic Year / Semester (v1 authority)", async () => {
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", {
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+    ).resolves.toBeTruthy();
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded).not.toHaveProperty("academicYear");
+    expect(forwarded).not.toHaveProperty("semester");
+  });
+
+  it("ignores client method/verificationMethod and legacy term fields", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: " 2026-GS-00123 ",
+      method: "OCR",
+      verificationMethod: "LEGACY",
+      academicYear: "1999-2000",
+      semester: "SUMMER",
+    } as never);
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded).toEqual(
+      expect.objectContaining({
         studentNumber: "2026-GS-00123",
-        semester: "BOGUS",
+        verificationMethod: "ADMIN_MANUAL",
       }),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    );
+    expect(forwarded).not.toHaveProperty("academicYear");
+    expect(forwarded).not.toHaveProperty("semester");
+  });
+
+  it("trims and forwards a confirmed Registration Number", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      registrationNumber: "  REG-123  ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as {
+      registrationNumber?: string;
+    };
+    expect(forwarded.registrationNumber).toBe("REG-123");
+  });
+
+  it("normalizes a blank Registration Number to absent, not an empty string", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      registrationNumber: "   ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as {
+      registrationNumber?: string;
+    };
+    expect(forwarded.registrationNumber).toBeUndefined();
+    expect(forwarded.registrationNumber).not.toBe("");
   });
 
   it("rejects a non-PENDING upload", async () => {
     repo.getUploadById.mockResolvedValue({ ...pendingUpload, status: "REJECTED" });
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", {
-        studentNumber: "2026-GS-00123",
-        semester: "FIRST_SEM",
-      }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
@@ -200,10 +248,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.checkPassedExam.mockResolvedValue(null);
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", {
-        studentNumber: "2026-GS-00123",
-        semester: "FIRST_SEM",
-      }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
     ).rejects.toMatchObject({ statusCode: 403 });
     expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
@@ -212,9 +257,6 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     const svc = new CorService();
     const result = await svc.verifyCor("cor-1", "admin-1", {
       studentNumber: " 2026-GS-00123 ",
-      academicYear: "2026-2027",
-      semester: "FIRST_SEM",
-      method: "manual",
     });
 
     expect(repo.verifyAndPromote).toHaveBeenCalledWith(
@@ -223,8 +265,6 @@ describe("CorService.verifyCor canonical verify + promote", () => {
       "user-1",
       expect.objectContaining({
         studentNumber: "2026-GS-00123",
-        academicYear: "2026-2027",
-        semester: "FIRST_SEM",
         verificationMethod: "ADMIN_MANUAL",
       }),
       "admin-1",
@@ -240,10 +280,7 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     repo.verifyAndPromote.mockRejectedValue(conflict);
     const svc = new CorService();
     await expect(
-      svc.verifyCor("cor-1", "admin-1", {
-        studentNumber: "2026-GS-00123",
-        semester: "FIRST_SEM",
-      }),
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 });

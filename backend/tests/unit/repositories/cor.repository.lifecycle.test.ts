@@ -28,9 +28,6 @@ const uploadId = "cor-1";
 
 const verifyData = {
   studentNumber: "2026-GS-00123",
-  academicYear: "2026-2027",
-  semester: "FIRST_SEM",
-  registrationNumber: "",
   verificationMethod: "ADMIN_MANUAL",
 };
 
@@ -93,6 +90,60 @@ describe("CorRepository.verifyAndPromote authority + currentness", () => {
     });
     expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
     expect(result).toBeTruthy();
+
+    // COR-5: residency start is never inferred from the verification timestamp.
+    const studentWrite = tx().student.updateMany.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(studentWrite.data).not.toHaveProperty("residencyStartDate");
+    expect(studentWrite.data).not.toHaveProperty("programId");
+
+    // COR-5: a blank Registration Number persists as null, and the deferred
+    // term fields are not populated by the v1 transaction.
+    const recordWrite = tx().corRecord.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(recordWrite.data.registrationNumber).toBeNull();
+    expect(recordWrite.data).not.toHaveProperty("academicYear");
+    expect(recordWrite.data).not.toHaveProperty("semester");
+
+    // COR-5: promotion retains the account and password; only the role changes.
+    const userWrite = tx().user.updateMany.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(userWrite.data).toEqual({ role: "STUDENT" });
+    expect(tx().user.update).not.toHaveBeenCalled();
+    expect(JSON.stringify(userWrite)).not.toMatch(/password/i);
+  });
+
+  it("stores a confirmed Registration Number on the CorRecord when provided", async () => {
+    const repo = new CorRepository();
+    await repo.verifyAndPromote(
+      uploadId,
+      studentId,
+      userId,
+      { ...verifyData, registrationNumber: "REG-123" },
+      adminId,
+    );
+
+    const recordWrite = tx().corRecord.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(recordWrite.data.registrationNumber).toBe("REG-123");
+  });
+
+  it("rejects the transaction if the audit write fails after the promotion writes", async () => {
+    tx().auditLog.create.mockRejectedValue(new Error("audit down"));
+
+    const repo = new CorRepository();
+    await expect(
+      repo.verifyAndPromote(uploadId, studentId, userId, verifyData, adminId),
+    ).rejects.toThrow("audit down");
+
+    // The failure escapes the single transaction boundary, so a real database
+    // would roll back the earlier promotion writes (no partial transition).
+    expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
+    expect(tx().corRecord.create).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed when the supplied upload is not the student's current submission", async () => {

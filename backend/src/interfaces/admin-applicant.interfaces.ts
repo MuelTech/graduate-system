@@ -109,12 +109,7 @@ export interface RejectWaiverInput {
 
 export interface VerifyCorInput {
   studentNumber?: string;
-  academicYear?: string;
-  semester?: string;
   registrationNumber?: string;
-  /** Compatibility aliases accepted from legacy callers. */
-  verificationMethod?: string;
-  method?: string;
 }
 
 export interface RejectCorInput {

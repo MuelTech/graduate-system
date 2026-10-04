@@ -335,8 +335,6 @@ export class CorRepository {
         userId: string,
         verificationData: {
             registrationNumber?: string;
-            academicYear?: string;
-            semester?: string;
             studentNumber: string;
             verificationMethod: string;
         },
@@ -412,8 +410,10 @@ export class CorRepository {
                 data: {
                     admissionStatus: 'ENROLLED',
                     studentNumber: verificationData.studentNumber,
+                    // System enrollment/promotion confirmation timing only. It
+                    // is NOT official residency start; `residencyStartDate` is
+                    // deliberately never assigned from the verification time.
                     enrollmentDate: new Date(),
-                    residencyStartDate: new Date(),
                 },
             });
             if (promotedStudent.count !== 1) {
@@ -439,9 +439,12 @@ export class CorRepository {
                 data: {
                     corUploadId,
                     studentId,
-                    registrationNumber: verificationData.registrationNumber || '',
-                    academicYear: verificationData.academicYear,
-                    semester: verificationData.semester as any,
+                    // COR-5: only the Admin-confirmed Registration Number is
+                    // persisted, as a clean nullable value (null when absent).
+                    // Academic Year / Semester are not v1 verification authority
+                    // and are intentionally left null.
+                    registrationNumber:
+                        verificationData.registrationNumber?.trim() || null,
                     isAdminVerified: true,
                     verificationMethod: verificationData.verificationMethod as any,
                     verifiedById: adminId,

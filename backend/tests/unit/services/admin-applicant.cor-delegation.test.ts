@@ -69,9 +69,8 @@ describe("AdminApplicantService COR delegation to canonical authority", () => {
 
     const svc = new AdminApplicantService();
     const result = await svc.verifyCor("student-1", "admin-1", {
-      verificationMethod: "manual",
       studentNumber: "2026-GS-1",
-    } as never);
+    });
 
     expect(cor.findPendingUploadIdForStudent).toHaveBeenCalledWith("student-1");
     expect(cor.verifyCor).toHaveBeenCalledWith(
@@ -88,7 +87,7 @@ describe("AdminApplicantService COR delegation to canonical authority", () => {
 
     const svc = new AdminApplicantService();
     await expect(
-      svc.verifyCor("student-1", "admin-1", { verificationMethod: "manual" } as never),
+      svc.verifyCor("student-1", "admin-1", {}),
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(cor.verifyCor).not.toHaveBeenCalled();
   });
