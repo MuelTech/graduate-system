@@ -46,9 +46,13 @@ const emailMock = vi.hoisted(() => ({
 vi.mock("../../../src/services/email.service", () => ({
   EmailService: { sendTemplateEmail: emailMock.sendTemplateEmail },
 }));
+const extractionMock = vi.hoisted(() => ({
+  processUpload: vi.fn(async () => ({ status: "PENDING" })),
+}));
+
 vi.mock("../../../src/extraction/cor-extraction.service", () => ({
   CorExtractionService: class {
-    processUpload = vi.fn(async () => ({ status: "PENDING" }));
+    processUpload = extractionMock.processUpload;
   },
 }));
 
@@ -80,6 +84,7 @@ beforeEach(() => {
   repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
   repo.createUploadWithAudit.mockResolvedValue({ id: "cor-1", status: "PENDING" });
   emailMock.sendTemplateEmail.mockResolvedValue(undefined);
+  extractionMock.processUpload.mockResolvedValue({ status: "PENDING" });
 });
 
 describe("CorService.uploadCor guarded upload", () => {
@@ -98,6 +103,8 @@ describe("CorService.uploadCor guarded upload", () => {
       statusCode: 403,
     });
     expect(repo.createUploadWithAudit).not.toHaveBeenCalled();
+    // COR-8: the exam gate blocks persistence AND extraction processing.
+    expect(extractionMock.processUpload).not.toHaveBeenCalled();
   });
 
   it("blocks a second upload while a PENDING COR exists", async () => {
@@ -397,5 +404,56 @@ describe("CorService.findPendingUploadIdForStudent currentness", () => {
     repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-ver", status: "VERIFIED" });
     const svc = new CorService();
     await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBeNull();
+  });
+});
+
+describe("COR-8 reject -> resubmit continuity", () => {
+  it("rejects the current PENDING COR, keeps history, then allows a replacement upload without promotion", async () => {
+    const currentPending = {
+      id: "cor-1",
+      status: "PENDING",
+      studentId: "student-1",
+      student: {
+        id: "student-1",
+        userId: "user-1",
+        admissionStatus: "APPLICANT",
+        user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
+      },
+    };
+
+    // 1. Admin rejects the current PENDING COR.
+    repo.getUploadById.mockResolvedValue(currentPending);
+    repo.rejectUpload.mockResolvedValue({ id: "cor-1", status: "REJECTED" });
+    const svc = new CorService();
+
+    await svc.rejectCor("cor-1", "admin-1", "Illegible scan");
+
+    expect(repo.rejectUpload).toHaveBeenCalledWith("cor-1", {
+      studentId: "student-1",
+      reason: "Illegible scan",
+      adminId: "admin-1",
+    });
+    // Rejection never promotes or mutates the account.
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+
+    // 2. Rejection leaves no active PENDING/VERIFIED submission, so the
+    //    Applicant may submit a replacement COR as a NEW row.
+    repo.getActiveUploadByStudentId.mockResolvedValue(null);
+    repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
+    repo.createUploadWithAudit.mockResolvedValue({ id: "cor-2", status: "PENDING" });
+
+    const replacement = await svc.uploadCor("user-1", managedFile());
+
+    expect(replacement.id).toBe("cor-2");
+    expect(repo.createUploadWithAudit).toHaveBeenCalledTimes(1);
+    const [replacementData] = repo.createUploadWithAudit.mock.calls[0];
+    expect(replacementData).toMatchObject({
+      studentId: "student-1",
+      status: "PENDING",
+    });
+    // A new upload row is created; the historical rejected row is untouched
+    // (rejection is not overwritten or deleted as the authority mechanism).
+    expect(repo.rejectUpload).toHaveBeenCalledTimes(1);
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
   });
 });

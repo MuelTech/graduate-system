@@ -1,0 +1,126 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const corRepo = vi.hoisted(() => ({
+  getUploadById: vi.fn(),
+  checkPassedExam: vi.fn(),
+  verifyAndPromote: vi.fn(),
+}));
+
+vi.mock("../../../src/repositories/cor.repository", () => ({
+  CorRepository: class {
+    getUploadById = corRepo.getUploadById;
+    checkPassedExam = corRepo.checkPassedExam;
+    verifyAndPromote = corRepo.verifyAndPromote;
+  },
+}));
+
+vi.mock("../../../src/extraction/cor-extraction.service", () => ({
+  CorExtractionService: class {
+    processUpload = vi.fn(async () => ({ status: "PENDING" }));
+  },
+}));
+
+vi.mock("../../../src/services/email.service", () => ({
+  EmailService: { sendTemplateEmail: vi.fn(async () => undefined) },
+}));
+
+const authRepo = vi.hoisted(() => ({
+  findStudentByStudentNumber: vi.fn(),
+}));
+
+vi.mock("../../../src/repositories/auth.repository", () => ({
+  AuthRepository: class {
+    findStudentByStudentNumber = authRepo.findStudentByStudentNumber;
+  },
+}));
+
+const bcryptMock = vi.hoisted(() => ({ compare: vi.fn() }));
+vi.mock("bcryptjs", () => ({ default: bcryptMock }));
+
+import { CorService } from "../../../src/services/cor.service";
+import { AuthService } from "../../../src/services/auth.service";
+
+process.env.JWT_SECRET = "cor8-unit-test-secret";
+
+/**
+ * COR-8 case 11: cross-package continuity regression.
+ *
+ * Promotion must change ONLY the existing User role — never the password. The
+ * Student must then authenticate through Student login using the confirmed
+ * Student Number and the SAME original password.
+ */
+describe("COR-8 promotion -> Student login original-password continuity", () => {
+  const ORIGINAL_PASSWORD = "synthetic-original-pw";
+  const EXISTING_HASH = "synthetic-existing-hash";
+  const STUDENT_NUMBER = "2026-GS-00123";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    bcryptMock.compare.mockResolvedValue(true);
+  });
+
+  it("changes only the role on promotion and still accepts the original password for Student login", async () => {
+    // 1. Canonical COR verification/promotion.
+    corRepo.getUploadById.mockResolvedValue({
+      id: "cor-1",
+      status: "PENDING",
+      studentId: "student-1",
+      student: {
+        id: "student-1",
+        userId: "user-1",
+        admissionStatus: "APPLICANT",
+        user: {
+          email: "a@b.c",
+          firstName: "Ana",
+          lastName: "Dela",
+          role: "APPLICANT",
+          passwordHash: EXISTING_HASH,
+        },
+      },
+    });
+    corRepo.checkPassedExam.mockResolvedValue({ id: "exam-1", status: "PASSED" });
+    corRepo.verifyAndPromote.mockResolvedValue({ corRecord: { id: "rec-1" } });
+
+    const corService = new CorService();
+    await corService.verifyCor("cor-1", "admin-1", {
+      studentNumber: STUDENT_NUMBER,
+    });
+
+    const forwarded = corRepo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded.studentNumber).toBe(STUDENT_NUMBER);
+    // Promotion carries no password material of any kind.
+    expect(JSON.stringify(forwarded)).not.toMatch(/password|hash|birthdate|dob/i);
+
+    // 2. Student login after promotion with the ORIGINAL password.
+    authRepo.findStudentByStudentNumber.mockResolvedValue({
+      id: "student-1",
+      studentNumber: STUDENT_NUMBER,
+      user: {
+        id: "user-1",
+        email: "a@b.c",
+        role: "STUDENT",
+        mustChangePassword: false,
+        passwordHash: EXISTING_HASH,
+      },
+    });
+
+    const authService = new AuthService();
+    const result = await authService.login({
+      role: "student",
+      studentNumber: STUDENT_NUMBER,
+      password: ORIGINAL_PASSWORD,
+    });
+
+    // The existing password hash is compared against the supplied original
+    // password — no password was generated or reset by promotion.
+    expect(bcryptMock.compare).toHaveBeenCalledWith(
+      ORIGINAL_PASSWORD,
+      EXISTING_HASH,
+    );
+    expect(result.user.role).toBe("STUDENT");
+    expect(result.token).toBeTruthy();
+  });
+});
