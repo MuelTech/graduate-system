@@ -48,19 +48,66 @@ These fields need not all live on one universal table. The architecture may use 
 
 Canonical flow:
 
-Applicant passes required entrance-exam gate -> uploads COR -> secure validation/storage -> native PDF text extraction when possible -> extracted values shown as suggestions -> Admin compares against the actual COR -> Admin confirms/corrects values -> one transaction verifies the COR and promotes Applicant to Student.
+Applicant passes required entrance-exam gate -> uploads COR -> secure validation/storage -> native PDF text extraction when possible -> parser produces review suggestions -> Admin compares suggestions against the actual COR and Applicant record -> Admin confirms/corrects values -> one transaction verifies the COR and promotes Applicant to Student.
 
 Rules:
 
 - Applicant may upload PDF/JPEG/PNG only according to the confirmed COR policy. Current backend already validates magic bytes for these types.
-- Native PDF text extraction is first priority for text-based PDFs. OCR is fallback for scanned/image-only PDFs and may remain deferred initially.
-- Extracted values and confirmed values are different concepts.
+- Native PDF text extraction is first priority for text-based PDFs. OCR remains deferred for scanned/image-only inputs unless separately approved.
+- Extracted values and Admin-confirmed values are different concepts.
+- Extraction never promotes an Applicant automatically.
 - Admin verification is mandatory before role promotion.
-- Promotion must remain transactional: verified COR, confirmed student data, enrollment state, Student number, and `APPLICANT -> STUDENT` role transition must not partially commit.
+- Promotion remains transactional: verified COR, confirmed Student Number, enrollment/admission state, `APPLICANT -> STUDENT` role transition, and audit must not partially commit.
 - A rejected COR may be resubmitted. The rejected version remains auditable; the next upload becomes the current pending version.
 - A pending COR blocks another active pending upload, but a rejected upload must not permanently block resubmission.
 
-Target extracted fields will be finalized after authoritative EARIST COR samples are supplied. Expected candidates include Student Number, Name, Program, Department/College, academic year, and semester. Do not invent parser rules before samples are available.
+### 4.1 First authoritative parser scope (2026-10-04)
+
+An actual EARIST COR sample is now available. The first supported parser scope is intentionally narrow.
+
+Extract as Admin review suggestions:
+
+- Student Number
+- Registration Number
+- Student Name
+- Program
+- College
+- Email Address
+
+The observed COR name order is `SURNAME, FIRST NAME MIDDLE NAME/INITIAL`. Preserve the raw name suggestion and parse comparison components only where unambiguous. Extraction must not silently overwrite the User/Student identity record.
+
+For this v1 promotion flow, defer:
+
+- Academic Year
+- Semester / Term
+- Curriculum Year
+- residency derivation
+- Year Level / Major / Gender / Age
+- subject/course rows, units, section, schedule, room, faculty
+- fee/payment/receipt/signature/registrar fields
+
+The uploaded COR may be from a later enrollment period, so its Academic Year/Term must not be assumed to equal first enrollment or residency start. Admin verification time must also not become an implicit residency start.
+
+### 4.2 Student credential handoff
+
+After Admin verification:
+
+- the confirmed Student Number becomes the Student login identifier
+- the same existing User account is retained
+- the existing password is retained
+- the User role changes from `APPLICANT` to `STUDENT`
+- Applicant login must fail for the promoted account
+- Student login uses Student Number + existing password
+- Date of Birth remains profile data and is not a normal Student login credential
+- credential notifications must not invent, expose, or claim a new/default password when none was created
+
+This is a bounded COR-related authentication change. Admin, Panelist, Other-role authentication, JWT/session structure, password hashing, and forgot-password behavior remain outside this slice unless a direct regression requires a minimal compatibility fix.
+
+### 4.3 Curriculum/residency separation
+
+Curriculum Checklist is a separate future Student-progress module. COR subject rows do not define the complete curriculum.
+
+The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal/Final Defense is not an authoritative rule and must not be hard-coded without client confirmation.
 
 ## 5. Defense document lifecycle
 
