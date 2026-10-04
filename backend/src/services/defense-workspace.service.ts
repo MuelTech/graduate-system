@@ -386,13 +386,18 @@ export class DefenseWorkspaceService {
             ? "DRAFT"
             : "NOT_STARTED";
 
-    // CP7 readiness
+    // CP7 readiness. Title has no numerical evaluators (2026-10-04 correction),
+    // so it must never expose an evaluator-completion gate that would block
+    // Rapporteur note finalization.
+    const isTitleDefense = defenseType === "TITLE_DEFENSE";
     const evaluatorRoles = committeePolicy
       .getEvaluatorRoles(defenseType as never)
       .map(String);
-    const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
-      evaluatorRoles.includes(String(p.role)),
-    );
+    const evaluatorAssignments = isTitleDefense
+      ? []
+      : schedule.panelAssignments.filter((p) =>
+          evaluatorRoles.includes(String(p.role)),
+        );
     const finalizedEvaluations = evaluatorAssignments.filter(
       (p) => evaluationByPanel.get(p.id) === "FINALIZED",
     ).length;
@@ -405,12 +410,22 @@ export class DefenseWorkspaceService {
       (isChairman || role === "RAPPORTEUR") &&
       !schedule.conclusion;
     const summaryReady = Boolean(schedule.oralExamSummary);
+    const sessionStatusValue = String(schedule.sessionStatus);
+    const isTitleConclusionPhase =
+      defenseType === "TITLE_DEFENSE" &&
+      (sessionStatusValue === "SCHEDULED" ||
+        sessionStatusValue === "IN_PROGRESS" ||
+        sessionStatusValue === "AWAITING_CONCLUSION");
+    // 2026-10-04 Title correction: the Chairman records the panel-agreed result
+    // independently of Rapporteur notes/RAP finalization.
     const canRecordFormalResult =
       isChairman &&
       !schedule.conclusion &&
-      String(schedule.sessionStatus) === "AWAITING_CONCLUSION" &&
-      Boolean(notesFinalizedAt) &&
-      (defenseType === "TITLE_DEFENSE" || summaryReady);
+      (defenseType === "TITLE_DEFENSE"
+        ? isTitleConclusionPhase
+        : sessionStatusValue === "AWAITING_CONCLUSION" &&
+          Boolean(notesFinalizedAt) &&
+          summaryReady);
 
     return {
       schedule: {
@@ -542,6 +557,7 @@ export class DefenseWorkspaceService {
       select: {
         sessionStatus: true,
         rapporteurNotesFinalizedAt: true,
+        defenseType: true,
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
@@ -562,9 +578,15 @@ export class DefenseWorkspaceService {
       );
     }
 
-    // Allow notes while session is active/finalizing; block closed sessions.
-    const status = schedule.sessionStatus;
-    if (status === "CONCLUDED" || status === "CANCELLED") {
+    // 2026-10-04 Title correction: the Chairman may record the formal result
+    // before the Rapporteur finalizes, so Title notes stay editable after
+    // conclusion until they are finalized.
+    const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
+    const blockedStatuses = isTitle
+      ? ["CANCELLED"]
+      : ["CONCLUDED", "CANCELLED"];
+    const status = String(schedule.sessionStatus);
+    if (blockedStatuses.includes(status)) {
       throw new AppError(
         "Defense notes are closed for this session.",
         409,
@@ -575,7 +597,7 @@ export class DefenseWorkspaceService {
       where: {
         id: scheduleId,
         rapporteurNotesFinalizedAt: null,
-        sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] },
+        sessionStatus: { notIn: blockedStatuses as never },
       },
       data: { rapporteurNotes: notes },
     });

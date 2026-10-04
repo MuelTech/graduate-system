@@ -55,13 +55,15 @@ export function ChairmanConclusionPanel({
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
   // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
+  // 2026-10-04 Title correction: the Chairman records the panel-agreed result
+  // independently of Rapporteur notes/RAP finalization.
   const canSubmit =
     !concluded &&
-    notesReady &&
     Boolean(outcome) &&
     (isTitle
       ? outcome !== "PASSED" || Boolean(selectedTitleId)
-      : summaryReady &&
+      : notesReady &&
+        summaryReady &&
         evalsComplete &&
         detailedSummaryReady === true &&
         !detailedSummaryLoading &&
@@ -116,7 +118,7 @@ export function ChairmanConclusionPanel({
         <CardTitle className="text-sm">Formal Academic Result</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!notesReady ? (
+        {!isTitle && !notesReady ? (
           <p className="text-sm text-amber-800">
             Waiting for Rapporteur to finalize defense notes.
           </p>

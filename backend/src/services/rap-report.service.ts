@@ -20,6 +20,34 @@ export interface RapCreationInput {
   generatedById: string;
 }
 
+export interface RapContentInput {
+  defenseType: string;
+  officialTitle: string | null;
+  outcome: string;
+  rapporteurNotes: string | null;
+  panelRecommendations?: string | null;
+}
+
+/**
+ * Shared RAP content builder. Used by both the formal-conclusion transaction
+ * and the deferred Title RAP generation after Rapporteur finalization.
+ */
+export function buildRapContent(input: RapContentInput): string {
+  return [
+    `Defense Type: ${input.defenseType}`,
+    input.officialTitle ? `Official Title: ${input.officialTitle}` : null,
+    `Formal Outcome: ${input.outcome}`,
+    "",
+    "=== RAPPORTEUR FINALIZED NOTES ===",
+    input.rapporteurNotes ?? "",
+    input.panelRecommendations
+      ? `\n=== EVALUATOR RECOMMENDATIONS ===\n${input.panelRecommendations}`
+      : null,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+}
+
 export class RapReportService {
   /**
    * Create the official RAP exactly once after formal conclusion.

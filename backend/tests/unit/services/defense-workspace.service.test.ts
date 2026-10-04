@@ -314,4 +314,45 @@ describe("DefenseWorkspaceService (CP6)", () => {
     })();
     expect(titleWs.documents.map((d) => d.id)).toEqual(["d-title"]);
   });
+
+  it("2026-10-04: Title Chairman may record result with draft notes and no evaluator-progress gate", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        rapporteurNotesFinalizedAt: null,
+      }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-chair",
+      role: "CHAIRMAN",
+    });
+    const ws = await svc.getWorkspace("sched-1", "u-chair");
+    expect(ws.capabilities.canRecordFormalResult).toBe(true);
+    // Title has no numerical evaluator-completion gate.
+    expect(ws.evaluationProgress.evaluatorAssignments).toBe(0);
+    expect(ws.evaluationProgress.finalizedEvaluations).toBe(0);
+  });
+
+  it("2026-10-04: Title Rapporteur may save notes after conclusion until finalized", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "CONCLUDED",
+        rapporteurNotesFinalizedAt: null,
+      }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-rap",
+      scheduleId: "sched-1",
+      userId: "u-rap",
+      role: "RAPPORTEUR",
+    });
+    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+    await expect(
+      svc.saveRapporteurNotes("sched-1", "u-rap", "post-conclusion notes"),
+    ).resolves.toEqual({ saved: true });
+  });
 });

@@ -705,11 +705,13 @@ export class ThesisController {
       res.status(200).json({
         message: "Formal defense result recorded.",
         conclusion: result.conclusion,
-        rapReport: {
-          id: result.rapReport.id,
-          status: result.rapReport.status,
-          generatedAt: result.rapReport.generatedAt,
-        },
+        rapReport: result.rapReport
+          ? {
+              id: result.rapReport.id,
+              status: result.rapReport.status,
+              generatedAt: result.rapReport.generatedAt,
+            }
+          : null,
       });
     } catch (error: any) {
       sendEligibilityError(res, error);

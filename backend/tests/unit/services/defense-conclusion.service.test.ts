@@ -195,6 +195,97 @@ describe("CP7 Title conclusion selected-title rules", () => {
     );
     expect(result.ok).toBe(true);
   });
+
+  it("Title Chairman may conclude while Rapporteur notes are still draft (scheduled)", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("PASSED");
+  });
+
+  it("Title Chairman may conclude while Rapporteur notes are still draft (in progress)", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "IN_PROGRESS",
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("Title conclusion is rejected while the session is still UNSCHEDULED", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "UNSCHEDULED",
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(409);
+  });
+
+  it("Title non-Chairman cannot conclude even with draft notes", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        sessionRole: "PANELIST",
+        isSessionChairman: false,
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: "b",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
+  });
+
+  it("Title PASSED with draft notes still requires a selected title", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        rapporteurNotesFinalized: false,
+        oralSummaryExists: false,
+        evaluatorAssignments: 0,
+        finalizedEvaluatorScores: 0,
+        selectedTitleId: null,
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+  });
 });
 
 describe("CP7 outcome safety", () => {

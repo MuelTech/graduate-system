@@ -22,7 +22,7 @@ const prismaMock = vi.hoisted(() => {
       findUnique: vi.fn(),
       create: vi.fn(),
     },
-    defenseConclusion: { create: vi.fn() },
+    defenseConclusion: { create: vi.fn(), findUnique: vi.fn() },
     rapReport: {
       create: vi.fn(),
       update: vi.fn(),
@@ -312,13 +312,13 @@ describe("CP7 Rapporteur notes finalization", () => {
     });
     prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
     prismaMock.oralExamScore.count.mockResolvedValue(1);
-    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
     expect(result.finalized).toBe(true);
     expect(result.finalizedById).toBe("user-r");
     expect(result.finalizedAt).toBeTruthy();
-    const updateArgs = prismaMock.defenseSchedule.updateMany.mock.calls[0][0];
+    const updateArgs = prismaMock.__tx.defenseSchedule.updateMany.mock.calls[0][0];
     expect(updateArgs.data.rapporteurNotesFinalizedById).toBe("user-r");
     expect(updateArgs.data.rapporteurNotesFinalizedAt).toBeInstanceOf(Date);
   });
@@ -352,12 +352,75 @@ describe("CP7 Rapporteur notes finalization", () => {
       userId: "user-r",
       role: "RAPPORTEUR",
     });
-    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
     expect(result.sessionStatus).toBe("AWAITING_CONCLUSION");
     expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
     expect(prismaMock.defenseConclusion.create).not.toHaveBeenCalled();
+  });
+
+  it("Title finalize after conclusion persists finalized notes and generates the deferred RAP once", async () => {
+    const concludedTitle = {
+      ...scheduleBase,
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "CONCLUDED",
+      rapporteurNotesFinalizedAt: null,
+      rapporteurNotesFinalizedById: null,
+    };
+    let scheduleReads = 0;
+    prismaMock.defenseSchedule.findUnique.mockImplementation(async () => {
+      scheduleReads += 1;
+      return scheduleReads === 1
+        ? concludedTitle
+        : {
+            sessionStatus: "CONCLUDED",
+            rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
+            rapporteurNotesFinalizedById: "user-r",
+          };
+    });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pr",
+      scheduleId: "sched-1",
+      userId: "user-r",
+      role: "RAPPORTEUR",
+    });
+    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+
+    // Deferred RAP generation transaction (Title conclusion already exists).
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue(null);
+    prismaMock.__tx.defenseConclusion.findUnique.mockResolvedValue({
+      id: "c-1",
+      thesisId: "thesis-1",
+      outcome: "PASSED",
+      selectedTitleId: "t1",
+      selectedTitle: { titleText: "Title One" },
+    });
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
+      defenseType: "TITLE_DEFENSE",
+      venueOrLink: "Room 101",
+      rapporteurNotes: "Final minutes",
+    });
+    prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
+      { userId: "user-c", role: "CHAIRMAN" },
+      { userId: "user-p", role: "PANELIST" },
+    ]);
+    prismaMock.__tx.rapReport.create.mockResolvedValue({
+      id: "rap-1",
+      status: "FOR_SIGNATURE",
+      generatedAt: new Date(),
+    });
+    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 2 });
+
+    const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
+    expect(result.finalized).toBe(true);
+    expect(prismaMock.__tx.rapReport.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.__tx.rapReport.create.mock.calls[0][0].data).toMatchObject({
+      scheduleId: "sched-1",
+      defenseType: "TITLE_DEFENSE",
+      status: "FOR_SIGNATURE",
+      generatedById: "user-r",
+    });
   });
 
   it("rejects empty notes before finalization", async () => {

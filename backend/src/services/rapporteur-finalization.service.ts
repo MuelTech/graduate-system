@@ -1,13 +1,20 @@
 /**
  * CP7 — Rapporteur defense-notes finalization.
  * Irreversible content lock that feeds the RAP. Never records academic outcome.
+ *
+ * 2026-10-04 Title correction: the Chairman may record the Title result before the
+ * Rapporteur finalizes. When that happens, the official Title RAP is generated here,
+ * once, as soon as the finalized minutes exist.
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { isNumericalDefenseType } from "./official-defense-record.service";
+import { RapReportService, buildRapContent } from "./rap-report.service";
 
 const committeePolicy = new DefenseCommitteePolicy();
+
+type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export interface FinalizeNotesResult {
   finalized: true;
@@ -37,7 +44,8 @@ export class RapporteurFinalizationService {
    * Finalize defense notes (irreversible).
    *
    * Proposal/Final: all evaluators FINALIZED + session AWAITING_CONCLUSION + notes non-empty.
-   * Title: session SCHEDULED/IN_PROGRESS + notes non-empty; then → AWAITING_CONCLUSION.
+   * Title: session SCHEDULED/IN_PROGRESS/CONCLUDED + notes non-empty. A Title result may
+   * be recorded before the notes are finalized, so the deferred RAP is generated here.
    */
   async finalizeDefenseNotes(
     scheduleId: string,
@@ -67,9 +75,10 @@ export class RapporteurFinalizationService {
 
     if (isTitle) {
       const status = String(schedule.sessionStatus);
-      if (status !== "SCHEDULED" && status !== "IN_PROGRESS") {
+      const finalizableStatuses = ["SCHEDULED", "IN_PROGRESS", "CONCLUDED"];
+      if (!finalizableStatuses.includes(status)) {
         throw new AppError(
-          "Title defense notes may be finalized only while the session is active.",
+          "Title defense notes may be finalized only while the session is active or after the formal result is recorded.",
           409,
         );
       }
@@ -104,27 +113,51 @@ export class RapporteurFinalizationService {
     }
 
     const finalizedAt = new Date();
-    const result = await prisma.defenseSchedule.updateMany({
-      where: {
-        id: scheduleId,
-        rapporteurNotesFinalizedAt: null,
-        ...(isTitle
-          ? { sessionStatus: { in: ["SCHEDULED", "IN_PROGRESS"] as never[] } }
-          : { sessionStatus: "AWAITING_CONCLUSION" as never }),
-      },
-      data: {
-        rapporteurNotesFinalizedAt: finalizedAt,
-        rapporteurNotesFinalizedById: userId,
-        ...(isTitle ? { sessionStatus: "AWAITING_CONCLUSION" as never } : {}),
-      },
-    });
+    const isTitleStillActive =
+      isTitle &&
+      (schedule.sessionStatus === "SCHEDULED" ||
+        schedule.sessionStatus === "IN_PROGRESS");
 
-    if (result.count === 0) {
-      throw new AppError(
-        "Defense notes state changed. Refresh and try again.",
-        409,
-      );
-    }
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.defenseSchedule.updateMany({
+        where: {
+          id: scheduleId,
+          rapporteurNotesFinalizedAt: null,
+          ...(isTitle
+            ? {
+                sessionStatus: {
+                  in: ["SCHEDULED", "IN_PROGRESS", "CONCLUDED"] as never[],
+                },
+              }
+            : { sessionStatus: "AWAITING_CONCLUSION" as never }),
+        },
+        data: {
+          rapporteurNotesFinalizedAt: finalizedAt,
+          rapporteurNotesFinalizedById: userId,
+          ...(isTitleStillActive
+            ? { sessionStatus: "AWAITING_CONCLUSION" as never }
+            : {}),
+        },
+      });
+
+      if (result.count === 0) {
+        throw new AppError(
+          "Defense notes state changed. Refresh and try again.",
+          409,
+        );
+      }
+
+      // 2026-10-04: deferred Title RAP — generate once both the formal conclusion
+      // and the finalized minutes exist.
+      if (isTitle) {
+        await this.ensureRapAfterConcludedTitle(
+          tx,
+          scheduleId,
+          userId,
+          schedule,
+        );
+      }
+    });
 
     const updated = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -141,6 +174,59 @@ export class RapporteurFinalizationService {
       finalizedById: updated?.rapporteurNotesFinalizedById ?? userId,
       sessionStatus: String(updated?.sessionStatus ?? "AWAITING_CONCLUSION"),
     };
+  }
+
+  /**
+   * 2026-10-04 Title correction: create the official Title RAP once both the formal
+   * conclusion and the finalized minutes exist. Idempotent — no-op when a RAP already
+   * exists or the conclusion has not been recorded yet.
+   */
+  private async ensureRapAfterConcludedTitle(
+    tx: PrismaTx,
+    scheduleId: string,
+    rapporteurUserId: string,
+    schedule: {
+      defenseType: unknown;
+      venueOrLink: string | null;
+      rapporteurNotes: string | null;
+    },
+  ): Promise<void> {
+    const existing = await tx.rapReport.findUnique({
+      where: { scheduleId },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    const conclusion = await tx.defenseConclusion.findUnique({
+      where: { scheduleId },
+      select: {
+        id: true,
+        thesisId: true,
+        outcome: true,
+        selectedTitleId: true,
+        selectedTitle: { select: { titleText: true } },
+      },
+    });
+    if (!conclusion) return;
+
+    const defenseType = String(schedule.defenseType);
+    const officialTitle = conclusion.selectedTitle?.titleText ?? null;
+    const content = buildRapContent({
+      defenseType,
+      officialTitle,
+      outcome: String(conclusion.outcome),
+      rapporteurNotes: schedule.rapporteurNotes,
+    });
+
+    await new RapReportService().createRapAfterConclusion(tx, {
+      scheduleId,
+      thesisId: conclusion.thesisId,
+      defenseType,
+      venue: schedule.venueOrLink ?? null,
+      selectedTitle: officialTitle,
+      decisionsAndRecommendations: content,
+      generatedById: rapporteurUserId,
+    });
   }
 
   /** Draft notes remain editable only before finalization. */

@@ -69,6 +69,12 @@ vi.mock("../../../src/services/rap-report.service", () => ({
     recomputeRapStatus = vi.fn();
     getStudentRapAccess = vi.fn();
   },
+  buildRapContent: (input: {
+    defenseType: string;
+    outcome: string;
+    rapporteurNotes: string | null;
+  }) =>
+    `Defense Type: ${input.defenseType}\n${input.outcome}\n${input.rapporteurNotes ?? ""}`,
 }));
 
 const createRapAfterConclusion = vi.fn();
@@ -79,15 +85,17 @@ import { AppError } from "../../../src/utils/AppError";
 function scheduleFixture({
   finalizerId,
   notesFinalizedAt = new Date("2026-09-28T11:00:00Z"),
+  sessionStatus = "AWAITING_CONCLUSION",
 }: {
   finalizerId: string | null;
   notesFinalizedAt?: Date | null;
+  sessionStatus?: string;
 }) {
   return {
     id: "sched-1",
     thesisId: "thesis-1",
     defenseType: "TITLE_DEFENSE",
-    sessionStatus: "AWAITING_CONCLUSION",
+    sessionStatus,
     venueOrLink: "Room 1",
     rapporteurNotes: "Official minutes",
     rapporteurNotesFinalizedAt: notesFinalizedAt,
@@ -192,6 +200,67 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
     expect(createRapAfterConclusion.mock.calls[0][1].generatedById).not.toBe(
       "chair-1",
     );
+  });
+});
+
+describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur finalization", () => {
+  const repo = new ThesisRepository();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    createRapAfterConclusion.mockReset();
+    createRapAfterConclusion.mockResolvedValue({
+      id: "rap-1",
+      status: "FOR_SIGNATURE",
+    });
+    prismaMock.__tx.defenseConclusion.create.mockResolvedValue({ id: "c-1" });
+    prismaMock.__tx.thesisRecord.update.mockResolvedValue({});
+    prismaMock.__tx.defenseSchedule.update.mockResolvedValue({});
+    prismaMock.__tx.thesisTitle.updateMany.mockResolvedValue({});
+    prismaMock.__tx.thesisTitle.update.mockResolvedValue({});
+  });
+
+  it("Title conclusion is allowed while notes are still draft; RAP creation is deferred", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        sessionStatus: "SCHEDULED",
+      }),
+    );
+
+    const result = await repo.concludeDefense("sched-1", "chair-1", {
+      outcome: "PASSED",
+      selectedTitleId: "t1",
+    });
+
+    expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.__tx.defenseSchedule.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { sessionStatus: "CONCLUDED" } }),
+    );
+    // RAP must not be created until the minutes are finalized.
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+    expect(result.rapReport).toBeNull();
+  });
+
+  it("Title conclusion before scheduling is rejected (session-state correctness)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        sessionStatus: "UNSCHEDULED",
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
   });
 });
 

@@ -89,22 +89,39 @@ export function validateConclusionPreconditions(
     return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
-    errors.push(
-      "Formal conclusion requires the session to be awaiting conclusion after evaluator and Rapporteur readiness.",
-    );
-    return { ok: false, errors, outcome: null, statusCode: 409 };
-  }
-
-  if (!input.rapporteurNotesFinalized) {
-    errors.push(
-      "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
-    );
-    statusCode = 409;
-  }
-
   const isTitle = String(input.defenseType) === "TITLE_DEFENSE";
-  if (!isTitle) {
+
+  if (isTitle) {
+    // 2026-10-04 Title correction: the Chairman records the panel-agreed result
+    // independently of Rapporteur notes/RAP finalization. Title has no Group I/II
+    // scoring, so evaluator completion and the Oral Exam Summary are not required.
+    // Only require that the session has progressed past scheduling.
+    const titleActiveStatuses = [
+      "SCHEDULED",
+      "IN_PROGRESS",
+      "AWAITING_CONCLUSION",
+    ];
+    if (!titleActiveStatuses.includes(String(input.sessionStatus))) {
+      errors.push(
+        "Title Defense formal result may be recorded only after the defense has been scheduled/conducted.",
+      );
+      return { ok: false, errors, outcome: null, statusCode: 409 };
+    }
+  } else {
+    if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
+      errors.push(
+        "Formal conclusion requires the session to be awaiting conclusion.",
+      );
+      return { ok: false, errors, outcome: null, statusCode: 409 };
+    }
+
+    if (!input.rapporteurNotesFinalized) {
+      errors.push(
+        "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+      );
+      statusCode = 409;
+    }
+
     if (
       input.evaluatorAssignments <= 0 ||
       input.finalizedEvaluatorScores < input.evaluatorAssignments
