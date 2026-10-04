@@ -26,18 +26,46 @@ export interface Program {
   programName: string;
 }
 
+/**
+ * COR-3: assistive EARIST COR parser suggestions. Suggestion-only evidence for
+ * Admin comparison; never authoritative profile data.
+ */
+export interface CorStudentNameSuggestion {
+  raw: string | null;
+  surname: string | null;
+  firstName: string | null;
+  middleNameOrInitial: string | null;
+}
+
+export interface CorExtractionSuggestions {
+  studentNumber: string | null;
+  registrationNumber: string | null;
+  studentName: CorStudentNameSuggestion | null;
+  program: string | null;
+  college: string | null;
+  emailAddress: string | null;
+}
+
+/** COR-2/COR-3: persisted extraction metadata + suggestions for Admin review. */
+export interface CorExtractionReview {
+  status: string;
+  method: string | null;
+  extractorVersion: string | null;
+  parserVersion: string | null;
+  processedAt: string | null;
+  diagnostic: string | null;
+  suggestions: CorExtractionSuggestions | null;
+}
+
 export interface PendingCorUpload {
   id: string;
   originalFilename: string;
   createdAt: string;
-  extraction?: {
-    status: string;
-    method: string | null;
-    processedAt: string | null;
-    diagnostic: string | null;
-  } | null;
+  extraction?: CorExtractionReview | null;
+  /** Applicant/system baseline (authoritative) for suggestion comparison. */
   student: {
     programId: string;
+    program: Program | null;
     user: {
       firstName: string;
       lastName: string;

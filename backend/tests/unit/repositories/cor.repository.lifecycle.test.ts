@@ -277,4 +277,196 @@ describe("CorRepository.getPendingUploads current actionable rows", () => {
       }),
     );
   });
+
+  it("exposes the Applicant baseline (name, email, programId, programName) separately from COR suggestions", async () => {
+    const row = {
+      id: "cor-1",
+      studentId: "s1",
+      originalFilename: "cor.pdf",
+      status: "PENDING",
+      student: {
+        id: "s1",
+        programId: "prog-1",
+        program: { id: "prog-1", programName: "Master in Information Technology" },
+        user: {
+          firstName: "Applicant",
+          lastName: "Baseline",
+          email: "applicant.baseline@example.com",
+        },
+      },
+      extraction: {
+        status: "COMPLETED",
+        method: "NATIVE_PDF",
+        extractorVersion: "native-1",
+        parserVersion: "earist-cor-parser@1",
+        processedAt: new Date(),
+        diagnostic: null,
+        suggestions: {
+          studentNumber: "123-45678A",
+          registrationNumber: "1234567890",
+          studentName: {
+            raw: "DELA CRUZ, JUAN SANTOS",
+            surname: "DELA CRUZ",
+            firstName: "JUAN",
+            middleNameOrInitial: "SANTOS",
+          },
+          program: "Master in Information Technology",
+          college: "Graduate School",
+          emailAddress: "juan.delacruz@example.com",
+        },
+      },
+    };
+
+    prismaMock.corUpload.findMany
+      .mockResolvedValueOnce([{ studentId: "s1" }])
+      .mockResolvedValueOnce([row]);
+
+    const repo = new CorRepository();
+    const result = await repo.getPendingUploads();
+
+    const select = prismaMock.corUpload.findMany.mock.calls[1]?.[0]?.select as {
+      student: { select: Record<string, unknown> };
+      extraction: { select: Record<string, unknown> };
+    };
+
+    // Applicant baseline is sourced from Student/Program relations.
+    expect(select.student.select.programId).toBe(true);
+    expect(select.student.select.program).toEqual({
+      select: { id: true, programName: true },
+    });
+    expect(select.student.select.user).toEqual({
+      select: { firstName: true, lastName: true, email: true },
+    });
+
+    // Extraction suggestions + version metadata.
+    expect(select.extraction.select).toEqual(
+      expect.objectContaining({
+        status: true,
+        method: true,
+        extractorVersion: true,
+        parserVersion: true,
+        processedAt: true,
+        diagnostic: true,
+        suggestions: true,
+      }),
+    );
+
+    // Raw extraction text/pages and private storage fields are never exposed.
+    expect(select.extraction.select).not.toHaveProperty("text");
+    expect(select.extraction.select).not.toHaveProperty("pages");
+    expect(JSON.stringify(select)).not.toMatch(/filePath|storageKey/);
+
+    // Both authorities are returned intact and separately.
+    expect(result[0].student.user.firstName).toBe("Applicant");
+    expect(result[0].student.program.programName).toBe(
+      "Master in Information Technology",
+    );
+    expect(result[0].extraction.suggestions?.studentNumber).toBe("123-45678A");
+  });
+
+  it("keeps a conflicting COR suggestion from overwriting the Applicant baseline", async () => {
+    const row = {
+      id: "cor-1",
+      studentId: "s1",
+      originalFilename: "cor.pdf",
+      status: "PENDING",
+      student: {
+        id: "s1",
+        programId: "prog-1",
+        program: { id: "prog-1", programName: "Authoritative Program" },
+        user: {
+          firstName: "Applicant",
+          lastName: "Baseline",
+          email: "applicant.baseline@example.com",
+        },
+      },
+      extraction: {
+        status: "COMPLETED",
+        method: "NATIVE_PDF",
+        extractorVersion: "native-1",
+        parserVersion: "earist-cor-parser@1",
+        processedAt: new Date(),
+        diagnostic: null,
+        suggestions: {
+          studentNumber: "999-99999Z",
+          registrationNumber: "0000000000",
+          studentName: {
+            raw: "DIFFERENT, PERSON",
+            surname: "DIFFERENT",
+            firstName: "PERSON",
+            middleNameOrInitial: null,
+          },
+          program: "Some Other Program",
+          college: "Some Other College",
+          emailAddress: "different.person@example.com",
+        },
+      },
+    };
+
+    prismaMock.corUpload.findMany
+      .mockResolvedValueOnce([{ studentId: "s1" }])
+      .mockResolvedValueOnce([row]);
+
+    const repo = new CorRepository();
+    const result = await repo.getPendingUploads();
+
+    // Baseline is untouched by the conflicting suggestion.
+    expect(result[0].student.user.firstName).toBe("Applicant");
+    expect(result[0].student.user.email).toBe("applicant.baseline@example.com");
+    expect(result[0].student.program.programName).toBe("Authoritative Program");
+    // Suggestion remains separate comparison evidence.
+    expect(result[0].extraction.suggestions?.studentName?.raw).toBe(
+      "DIFFERENT, PERSON",
+    );
+    expect(result[0].extraction.suggestions?.program).toBe("Some Other Program");
+  });
+
+  it("remains backward-compatible when extraction or suggestions are null", async () => {
+    prismaMock.corUpload.findMany
+      .mockResolvedValueOnce([{ studentId: "s1" }, { studentId: "s2" }])
+      .mockResolvedValueOnce([
+        {
+          id: "cor-1",
+          studentId: "s1",
+          originalFilename: "cor.pdf",
+          status: "PENDING",
+          student: {
+            id: "s1",
+            programId: "prog-1",
+            program: { id: "prog-1", programName: "Program One" },
+            user: { firstName: "A", lastName: "One", email: "a.one@example.com" },
+          },
+          extraction: null,
+        },
+        {
+          id: "cor-2",
+          studentId: "s2",
+          originalFilename: "cor2.pdf",
+          status: "PENDING",
+          student: {
+            id: "s2",
+            programId: "prog-2",
+            program: { id: "prog-2", programName: "Program Two" },
+            user: { firstName: "B", lastName: "Two", email: "b.two@example.com" },
+          },
+          extraction: {
+            status: "MANUAL_REQUIRED",
+            method: "MANUAL",
+            extractorVersion: null,
+            parserVersion: null,
+            processedAt: null,
+            diagnostic: "No useful native text found; manual review required.",
+            suggestions: null,
+          },
+        },
+      ]);
+
+    const repo = new CorRepository();
+    const result = await repo.getPendingUploads();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].extraction).toBeNull();
+    expect(result[1].extraction?.parserVersion).toBeNull();
+    expect(result[1].extraction?.suggestions).toBeNull();
+  });
 });

@@ -158,6 +158,9 @@ export class CorRepository {
                     select: {
                         id: true,
                         programId: true,
+                        program: {
+                            select: { id: true, programName: true },
+                        },
                         user: { select: { firstName: true, lastName: true, email: true } },
                     },
                 },
