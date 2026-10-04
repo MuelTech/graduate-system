@@ -39,8 +39,12 @@ vi.mock("fs/promises", () => ({
   default: { unlink: vi.fn(async () => undefined) },
   unlink: vi.fn(async () => undefined),
 }));
+const emailMock = vi.hoisted(() => ({
+  sendTemplateEmail: vi.fn(async () => undefined),
+}));
+
 vi.mock("../../../src/services/email.service", () => ({
-  EmailService: { sendTemplateEmail: vi.fn(async () => undefined) },
+  EmailService: { sendTemplateEmail: emailMock.sendTemplateEmail },
 }));
 vi.mock("../../../src/extraction/cor-extraction.service", () => ({
   CorExtractionService: class {
@@ -75,6 +79,7 @@ beforeEach(() => {
   repo.getActiveUploadByStudentId.mockResolvedValue(null);
   repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
   repo.createUploadWithAudit.mockResolvedValue({ id: "cor-1", status: "PENDING" });
+  emailMock.sendTemplateEmail.mockResolvedValue(undefined);
 });
 
 describe("CorService.uploadCor guarded upload", () => {
@@ -282,6 +287,61 @@ describe("CorService.verifyCor canonical verify + promote", () => {
     await expect(
       svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
     ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("sends credential_dispatch with only the safe variables (no password)", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" });
+
+    expect(emailMock.sendTemplateEmail).toHaveBeenCalledTimes(1);
+    const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
+      string,
+      string,
+      Record<string, unknown>,
+    ];
+    const [to, templateKey, variables] = call;
+
+    expect(to).toBe("a@b.c");
+    expect(templateKey).toBe("credential_dispatch");
+    expect(variables.student_name).toBe("Ana");
+    // The Admin-confirmed canonical Student Number flows through unchanged.
+    expect(variables.student_number).toBe("2026-GS-00123");
+    expect(typeof variables.portal_link).toBe("string");
+    expect(Object.keys(variables).sort()).toEqual([
+      "portal_link",
+      "student_name",
+      "student_number",
+    ]);
+
+    const serialized = JSON.stringify(variables);
+    expect(serialized).not.toMatch(
+      /default_password|passwordHash|password|birthdate|dateOfBirth/i,
+    );
+  });
+
+  it("uses the normalized Student Number in the notification", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "  2026-GS-00123  ",
+    });
+
+    const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
+      string,
+      string,
+      Record<string, unknown>,
+    ];
+    expect(call[2].student_number).toBe("2026-GS-00123");
+  });
+
+  it("keeps email failure non-authoritative (no rollback, no retry)", async () => {
+    emailMock.sendTemplateEmail.mockRejectedValue(new Error("smtp down"));
+    const svc = new CorService();
+
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+    ).resolves.toBeTruthy();
+
+    expect(repo.verifyAndPromote).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -45,7 +45,7 @@ const faqCategories = [
       {
         question: "What happens after my COR is verified?",
         answer:
-          "Once your COR is verified by the Administrator, you will be promoted to Student role. Your credentials (Student Number and initial password based on your Date of Birth) will be sent to your registered email address.",
+          "Once your COR is verified by the Administrator, your account is promoted to the Student role. You will be notified of your confirmed Student Number and you sign in through the Student portal using that Student Number together with your existing account password. If you have forgotten your password, use the \"Forgot your password?\" option on the login page.",
       },
     ],
   },

@@ -254,11 +254,13 @@ export class CorService {
         }
 
         // Non-authoritative side effect. A mail failure must not undo promotion.
+        // COR-7: provide only safe variables — never a password or password-like
+        // value. The notification tells the Student to keep using their existing
+        // account password with the confirmed Student Number.
         try {
             await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
                 student_name: student.user.firstName,
                 student_number: studentNumber,
-                default_password: student.user.lastName.toUpperCase(),
                 portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
             });
         } catch (emailError) {

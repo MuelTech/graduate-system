@@ -13,7 +13,7 @@ const emailRepository = new EmailRepository();
 const TEMPLATE_VARIABLES: Record<string, string[]> = {
   ecat_result_pass: ["student_name", "portal_link"],
   ecat_result_fail: ["student_name", "portal_link"],
-  credential_dispatch: ["student_name", "student_number", "default_password", "portal_link"],
+  credential_dispatch: ["student_name", "student_number", "portal_link"],
   defense_schedule: ["student_name", "defense_date", "defense_time", "venue"],
   cor_verified: ["student_name", "portal_link"],
   bridging_waiver_validated: ["student_name", "portal_link"],

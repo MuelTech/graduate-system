@@ -1007,9 +1007,9 @@ async function main() {
         },
         {
           templateKey: "credential_dispatch",
-          subject: "Welcome! Your Student Credentials",
+          subject: "COR Verified: Your Student Account",
           bodyHtml:
-            "<p>Dear {{student_name}},</p><p>Congratulations, you are now officially enrolled.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Your Default Password is: <strong>{{default_password}}</strong> (Your Last Name in ALL CAPS)</p><p>Please login to your portal immediately to change your password: {{portal_link}}</p>",
+            "<p>Dear {{student_name}},</p><p>Your Certificate of Registration (COR) has been verified and your account is now a Student account.</p><p>Your Student Number is: <strong>{{student_number}}</strong></p><p>Sign in through the Student portal using your Student Number and your existing account password.</p><p>If you have forgotten your password, use the \"Forgot your password?\" option on the login page.</p><p>Portal: {{portal_link}}</p>",
         },
         {
           templateKey: "defense_schedule",
