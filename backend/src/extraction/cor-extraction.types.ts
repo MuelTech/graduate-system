@@ -41,6 +41,30 @@ export interface NativePdfExtraction {
   pages: ExtractedPage[];
 }
 
+/**
+ * COR-1: deterministic EARIST COR parser output.
+ *
+ * Suggestion-only evidence for Admin review. These values are never
+ * authoritative profile data and must never promote an Applicant; Admin
+ * confirmation remains the sole verification authority.
+ */
+export interface CorStudentNameSuggestion {
+  /** COR-displayed name after safe whitespace normalization. */
+  raw: string;
+  surname: string | null;
+  firstName: string | null;
+  middleNameOrInitial: string | null;
+}
+
+export interface CorExtractionSuggestions {
+  studentNumber: string | null;
+  registrationNumber: string | null;
+  studentName: CorStudentNameSuggestion | null;
+  program: string | null;
+  college: string | null;
+  emailAddress: string | null;
+}
+
 /** Persistable extraction result for one CorUpload. */
 export interface CorExtractionResult {
   status: CorExtractionStatusValue;
@@ -49,8 +73,12 @@ export interface CorExtractionResult {
   pageCount: number | null;
   text: string | null;
   pages: ExtractedPage[] | null;
-  /** Future parser suggestions; stays null/empty until DL-5. */
-  suggestions: unknown | null;
+  /**
+   * COR-1 parser suggestions; null until the parser is wired into the
+   * extraction pipeline (COR-2). Admin review consumes these as suggestions
+   * only.
+   */
+  suggestions: CorExtractionSuggestions | null;
   diagnostic: string | null;
   processedAt: Date | null;
 }

@@ -17,6 +17,12 @@ export {
 } from "./extraction-bounds";
 export { CorExtractionService } from "./cor-extraction.service";
 export {
+  EARIST_COR_PARSER_VERSION,
+  EaristCorParser,
+  collapseOverprintText,
+  parseEaristCorText,
+} from "./earist-cor.parser";
+export {
   UnavailableOcrExtractor,
   type OcrExtractor,
   type OcrExtractionInput,
