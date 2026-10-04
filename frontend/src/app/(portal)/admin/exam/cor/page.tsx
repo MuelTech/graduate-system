@@ -44,7 +44,6 @@ type ConfirmForm = {
   firstName: string;
   middleNameOrInitial: string;
   email: string;
-  programId: string;
   studentNumber: string;
   registrationNumber: string;
 };
@@ -54,7 +53,6 @@ const EMPTY_FORM: ConfirmForm = {
   firstName: "",
   middleNameOrInitial: "",
   email: "",
-  programId: "",
   studentNumber: "",
   registrationNumber: "",
 };
@@ -123,7 +121,11 @@ export default function AdminCORValidationPage() {
     },
   });
 
-  const { data: programsData } = useQuery<{
+  const {
+    data: programsData,
+    isLoading: programsLoading,
+    isError: programsError,
+  } = useQuery<{
     graduatePrograms: Program[];
     undergraduatePrograms: Program[];
   }>({
@@ -135,6 +137,7 @@ export default function AdminCORValidationPage() {
 
   const [selectedCor, setSelectedCor] = useState<string | null>(null);
   const [form, setForm] = useState<ConfirmForm>(EMPTY_FORM);
+  const [programSelection, setProgramSelection] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [showVerifyConfirm, setShowVerifyConfirm] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -164,6 +167,14 @@ export default function AdminCORValidationPage() {
   const selectedCorData = corQueue.find((c) => c.id === selectedCor);
   const suggestions = selectedCorData?.suggestions ?? null;
 
+  // COR-AUTH-2 FIX1: preselect a uniquely, exactly matched existing Program by
+  // DERIVING it during render — so it applies whenever the graduate Program list
+  // finishes loading — while a manual Admin selection always takes precedence.
+  // No effect (avoids cascading setState), no fuzzy matching, no Program
+  // creation, and no other edited field is ever reset.
+  const autoProgramId = resolveProgramId(suggestions?.program, graduatePrograms);
+  const confirmedProgramId = programSelection ?? autoProgramId;
+
   function setField<K extends keyof ConfirmForm>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (formError) setFormError("");
@@ -176,7 +187,6 @@ export default function AdminCORValidationPage() {
       firstName: s?.studentName?.firstName ?? "",
       middleNameOrInitial: s?.studentName?.middleNameOrInitial ?? "",
       email: s?.emailAddress ?? "",
-      programId: resolveProgramId(s?.program, graduatePrograms),
       studentNumber: s?.studentNumber ?? "",
       registrationNumber: s?.registrationNumber ?? "",
     };
@@ -192,6 +202,7 @@ export default function AdminCORValidationPage() {
     // COR-AUTH-2: reinitialize every confirmation field for the newly selected
     // COR so values never leak between queued applicants.
     setForm(upload ? buildInitialForm(upload) : EMPTY_FORM);
+    setProgramSelection(null);
     setFormError("");
     setShowVerifyConfirm(false);
     setShowRejectModal(false);
@@ -203,7 +214,7 @@ export default function AdminCORValidationPage() {
     form.surname.trim() &&
       form.firstName.trim() &&
       emailValid &&
-      form.programId &&
+      confirmedProgramId &&
       form.studentNumber.trim(),
   );
 
@@ -211,7 +222,7 @@ export default function AdminCORValidationPage() {
     `${form.firstName} ${form.middleNameOrInitial} ${form.surname}`,
   );
   const selectedProgramName =
-    graduatePrograms.find((p) => p.id === form.programId)?.programName ?? "—";
+    graduatePrograms.find((p) => p.id === confirmedProgramId)?.programName ?? "—";
 
   const applicantName = selectedCorData
     ? collapse(`${selectedCorData.firstName} ${selectedCorData.lastName}`)
@@ -241,7 +252,7 @@ export default function AdminCORValidationPage() {
   const programStatus: FieldStatus = (() => {
     if (!collapse(suggestions?.program)) return "NOT_EXTRACTED";
     if (!selectedCorData?.programId) return "NO_DATA";
-    return selectedCorData.programId === form.programId ? "MATCH" : "DIFFERENT";
+    return selectedCorData.programId === confirmedProgramId ? "MATCH" : "DIFFERENT";
   })();
 
   function openVerify() {
@@ -288,7 +299,7 @@ export default function AdminCORValidationPage() {
       firstName: form.firstName.trim(),
       middleNameOrInitial: form.middleNameOrInitial.trim(),
       email: form.email.trim(),
-      programId: form.programId,
+      programId: confirmedProgramId,
     });
   }
 
@@ -452,7 +463,7 @@ export default function AdminCORValidationPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-(--earist-border-gray) px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <FileText className="h-5 w-5 shrink-0 text-(--earist-body-text)/60" />
                     <div className="min-w-0">
                       <p className="truncate text-sm text-(--earist-secondary)">
@@ -462,6 +473,7 @@ export default function AdminCORValidationPage() {
                         Uploaded {selectedCorData.uploadDate}
                       </p>
                     </div>
+                    {getExtractionBadge(selectedCorData.extractionStatus)}
                   </div>
                   <Button
                     variant="outline"
@@ -604,11 +616,20 @@ export default function AdminCORValidationPage() {
                         Confirmed COR (existing Program)
                       </p>
                       <Select
-                        value={form.programId || null}
-                        onValueChange={(v) => setField("programId", v ?? "")}
+                        value={confirmedProgramId || null}
+                        onValueChange={(v) => setProgramSelection(v ?? "")}
+                        disabled={programsLoading || programsError}
                       >
                         <SelectTrigger id="program" className="w-full">
-                          <SelectValue placeholder="Select existing program…" />
+                          <SelectValue
+                            placeholder={
+                              programsLoading
+                                ? "Loading programs…"
+                                : programsError
+                                  ? "Programs unavailable"
+                                  : "Select existing program…"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {graduatePrograms.map((p) => (
@@ -618,7 +639,17 @@ export default function AdminCORValidationPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {!form.programId && (
+                      {programsLoading && (
+                        <p className="mt-1 text-[10px] text-(--earist-body-text)">
+                          Loading programs…
+                        </p>
+                      )}
+                      {programsError && (
+                        <p className="mt-1 text-[10px] text-red-600">
+                          Could not load the Program list. Refresh and try again.
+                        </p>
+                      )}
+                      {!programsLoading && !programsError && !confirmedProgramId && (
                         <p className="mt-1 text-[10px] text-(--earist-body-text)">
                           Select the existing program that matches the COR.
                         </p>

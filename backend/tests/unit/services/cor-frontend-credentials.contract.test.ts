@@ -31,6 +31,11 @@ describe("COR frontend credential contracts", () => {
     // F. Program options come from the existing graduate Program endpoint.
     expect(page).toContain('"/programs"');
     expect(page).toContain("graduatePrograms");
+    // FIX1: a unique exact-match preselects safely; manual selection is guarded.
+    expect(page).toContain("resolveProgramId");
+    expect(page).toContain("programSelection");
+    expect(page).toMatch(/Loading programs/i);
+    expect(page).not.toMatch(/createProgram|create program/i);
 
     // D. The authorized private document route is still used.
     expect(page).toContain("/api/documents/cor-upload/");
