@@ -2790,11 +2790,28 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     );
   }
 
+  // K) title-qa@ — fresh Title Defense walkthrough account.
+  //    CompExam PASSED and no thesis, for manually filing + scheduling the
+  //    2026-10-04 Title Defense correction (Start → Conclude → Rapporteur/RAP).
+  await ensureStudent({
+    email: "title-qa@earist.edu.ph",
+    first: "Quincy",
+    last: "Titleqa",
+    studentNumber: "2026-1013",
+    programId: masters.id,
+    compExam: "PASSED",
+  });
+  console.log(
+    "  scenario title-qa@earist.edu.ph → CompExam PASSED, no thesis (file + schedule Title)",
+  );
+
   console.log("Defense workflow refactor fixtures ready.");
   console.log("  Password for all fixtures: password123");
   console.log("  Manual QA map:");
   console.log("    title-ready@ / title-blocked@ / title-pending@ / title-approved@");
-  console.log("    proposal-ready@ / proposal-blocked-vars@ / revision-blocked@");
+  console.log(
+    "    title-qa@ / proposal-ready@ / proposal-blocked-vars@ / revision-blocked@",
+  );
   console.log("    final-ready@ / scores-awaiting@ / doctoral-ready@");
   console.log(
     "    proposal-review-pending@ / final-review-pending@ (smoke may APPROVE; reseed to reset)",
