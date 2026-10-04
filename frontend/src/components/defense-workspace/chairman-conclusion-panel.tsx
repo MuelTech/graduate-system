@@ -60,6 +60,19 @@ export function ChairmanConclusionPanel({
     (sessionStatus === "IN_PROGRESS" || sessionStatus === "AWAITING_CONCLUSION");
   const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
 
+  /**
+   * Human-readable label for a proposed-title id. Base UI's SelectValue renders
+   * the raw value (a UUID) unless given a mapping, so the trigger must resolve it
+   * here while the controlled/submitted value stays the title id.
+   */
+  const selectedTitleLabel = (titleId: string) => {
+    const index = workspace.proposedTitles.findIndex((t) => t.id === titleId);
+    const title = index >= 0 ? workspace.proposedTitles[index] : null;
+    return title
+      ? `Title ${index + 1}: ${title.titleText.slice(0, 80)}`
+      : null;
+  };
+
   // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
   // 2026-10-04 Title correction: the Chairman records the panel-agreed result
   // independently of Rapporteur notes/RAP finalization, but only once the defense
@@ -237,7 +250,11 @@ export function ChairmanConclusionPanel({
                   onValueChange={(v) => setSelectedTitleId(v ?? "")}
                 >
                   <SelectTrigger id="title">
-                    <SelectValue placeholder="Select one proposed title…" />
+                    <SelectValue placeholder="Select one proposed title…">
+                      {selectedTitleId
+                        ? selectedTitleLabel(selectedTitleId)
+                        : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {workspace.proposedTitles.map((t, i) => (
