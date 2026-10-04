@@ -3,8 +3,10 @@
 **Date:** 2026-10-04  
 **Branch:** `workflow/cor-extraction-autofill`  
 **Base:** `workflow/title-defense` @ `cfbf4a69fb5ebec1117e1615192f546969651938`  
-**Status:** Approved implementation design for the first authoritative EARIST COR parser slice.  
-**Scope:** Applicant COR extraction, Admin-assisted verification, Applicant-to-Student promotion, and the directly related Student login credential handoff.
+**Status:** Approved implementation design, revised 2026-10-05 to make Admin-confirmed COR identity/enrollment data authoritative at promotion.  
+**Scope:** Applicant COR extraction, Admin-assisted verification, authoritative COR-to-Student profile synchronization, Applicant-to-Student promotion, and the directly related Student login credential handoff.
+
+> **2026-10-05 authority correction:** This revision supersedes the earlier v1 rule that COR Name, Email, and Program were comparison-only and must not overwrite Applicant data. Applicant-entered identity/enrollment data is provisional. The actual uploaded COR remains the evidence of record; extraction remains suggestion-only; after Admin reviews the actual COR and confirms/corrects the values, the Admin-confirmed COR Name, Email, Program, Student Number, and Registration Number become the authoritative values used by the promotion transaction. College is not part of the active verification contract.
 
 ## 1. Problem statement
 
@@ -32,26 +34,33 @@ APPLICANT
   -> passes required Entrance Examination gate
   -> uploads COR
   -> system extracts review suggestions
-  -> Admin compares suggestions with the actual COR and Applicant record
-  -> Admin corrects/accepts values
-  -> one transaction verifies COR and promotes account
+  -> Admin compares suggestions with the actual COR and provisional Applicant record
+  -> Admin confirms/corrects the COR-derived values
+  -> one transaction verifies COR, synchronizes authoritative Student profile data, and promotes account
   -> STUDENT
 ~~~
 
-Extraction is assistive only. A successful parser result never has promotion authority.
+Extraction is assistive only. A successful parser result never has promotion authority. Applicant-entered Name, Email, and Program remain provisional until the COR is verified. The Admin-confirmed COR values—not the raw parser output—become authoritative during the verified promotion transaction.
 
 ## 3. Authority rules
 
 1. Admin verification remains mandatory.
 2. The actual uploaded COR remains the evidence of record.
-3. Extracted values are suggestions, not authoritative profile data.
-4. Admin may correct suggested values before verification.
-5. Only Admin-confirmed values enter the authoritative promotion transaction.
-6. `Student.studentNumber` becomes authoritative only after verification.
-7. Promotion keeps the same `User` account and password; it changes the role from `APPLICANT` to `STUDENT`.
-8. Applicant login must no longer work after promotion.
-9. Student login must work using the confirmed Student Number and the existing password.
-10. Date of Birth remains profile data but is not a normal Student login credential.
+3. Extraction is suggestion-only. Raw parser output never writes authoritative profile data and never promotes an Applicant.
+4. Applicant-entered Name, Email, and Program are provisional admission data until COR verification.
+5. Admin reviews the actual COR and may correct extraction suggestions before verification.
+6. Only Admin-confirmed COR values enter the authoritative promotion transaction.
+7. After verification, the confirmed COR Name becomes the authoritative `User.firstName` / `User.lastName` identity for this workflow.
+8. After verification, the confirmed COR Email becomes the authoritative `User.email`.
+9. After verification, the confirmed COR Program becomes the authoritative `Student.programId`, but only by resolving to an existing `Program`; the workflow must not auto-create or fuzzy-guess a Program.
+10. `Student.studentNumber` becomes authoritative only after verification.
+11. Registration Number is stored with the verified COR record/reference.
+12. College is not part of the active authoritative COR verification contract and must not drive Student profile persistence.
+13. Promotion keeps the same `User` account and password; it changes the role from `APPLICANT` to `STUDENT`.
+14. Applicant login must no longer work after promotion.
+15. Student login must work using the confirmed Student Number and the existing password.
+16. Date of Birth remains profile data but is not a normal Student login credential.
+17. Existing Applicant ID and Entrance Exam records remain historical admission evidence; COR synchronization must not rewrite that history.
 
 ## 4. First supported EARIST COR field contract
 
@@ -59,12 +68,11 @@ Extraction is assistive only. A successful parser result never has promotion aut
 
 | Field | Parser output | Admin use | Authoritative effect after confirmation |
 |---|---|---|---|
-| Student Number | string | editable | saved to `Student.studentNumber`; becomes Student login identifier |
-| Registration Number | string | editable | stored with the verified COR record/reference |
-| Student Name | raw + parsed components | comparison | identity evidence only in v1; do not silently overwrite User name fields |
-| Program | string | comparison | identity/enrollment evidence only in v1; do not silently change program |
-| College | string | comparison | evidence only in v1 |
-| Email Address | string | comparison | evidence only in v1; do not silently overwrite account email |
+| Student Number | string | editable confirmation | saved to `Student.studentNumber`; becomes Student login identifier |
+| Registration Number | string | editable confirmation | stored with the verified COR record/reference |
+| Student Name | raw + parsed components | editable/confirmable identity review | confirmed surname -> `User.lastName`; confirmed first name plus middle name/initial -> `User.firstName` |
+| Program | string | comparison + existing-Program resolution | confirmed value resolves to an existing `Program` and updates `Student.programId` |
+| Email Address | string | editable/confirmable identity review | confirmed value updates `User.email` |
 
 ### 4.2 COR name format
 
@@ -91,6 +99,9 @@ Rules:
 - Preserve the COR spelling in the raw suggestion.
 - If the format is ambiguous, leave parsed components partial/null and require Admin review.
 - Do not mutate the Applicant/User name automatically from extraction.
+- During Admin confirmation, map the verified COR surname to `User.lastName`.
+- For the current schema, map the verified COR first name plus any middle name/initial to `User.firstName`.
+- The current parser does not authoritatively model suffix; do not invent or infer a suffix as part of this correction.
 
 ## 5. Explicitly deferred fields
 
@@ -138,10 +149,11 @@ In particular, the existing promotion code must not silently establish `residenc
     middleNameOrInitial
   },
   program,
-  college,
   emailAddress
 }
 ~~~
+
+College is no longer part of the active verification/review contract. Existing parser/type compatibility may temporarily retain a legacy `college` suggestion, but no Admin verification UI or authoritative persistence may depend on it; a later cleanup may remove that inert field if doing so is worthwhile.
 
 The parser should be deterministic, versioned, and testable independently from upload/storage.
 
@@ -166,17 +178,29 @@ The Admin COR review must show both authorities at the same time:
 Minimum review presentation:
 
 ~~~text
+Identity / enrollment review
+Field     Current Applicant data   Confirmed COR value   Status
+Name      provisional value        [ editable ]           Match | Different | No existing data | Not extracted
+Email     provisional value        [ editable ]           Match | Different | No existing data | Not extracted
+Program   provisional value        [ existing Program ]   Match | Different | No existing data | Not extracted
+
+Student credentials
 Student Number       [ extracted suggestion, editable ]
 Registration Number  [ extracted suggestion, editable ]
-
-Identity comparison
-Name       Applicant value  <-> COR suggestion
-Program    Applicant value  <-> COR suggestion
-College                     <-> COR suggestion
-Email      Applicant value  <-> COR suggestion
 ~~~
 
-The UI may show match/mismatch indicators, but mismatch must not automatically reject or overwrite data.
+Status semantics:
+
+- **Match** — normalized Applicant and COR values agree.
+- **Different** — they differ; after Admin confirmation, the confirmed COR value replaces the provisional Applicant value.
+- **No existing data** — the Applicant record has no comparable value and the COR supplies one.
+- **Not extracted** — extraction did not produce a reliable value; Admin must inspect the actual COR and provide/confirm the required value before verification.
+- These statuses are review aids only. They never auto-reject, auto-promote, or write data.
+- Red/destructive styling is reserved for actual validation or verification errors, not ordinary COR differences.
+
+The actual COR document must remain visible/openable during review. Name, Email, and Program confirmation must be explicit human review steps. Program confirmation must resolve to an existing Program record; if no unique safe mapping exists, the Admin must select the correct existing Program while viewing the COR.
+
+College is not shown as a comparison row and is not part of the promotion form.
 
 The current Academic Year and Semester verification fields are removed from this v1 Admin promotion form.
 
@@ -191,22 +215,35 @@ The transaction must continue to fail closed unless:
 - the linked User role is exactly `APPLICANT`
 - the required Entrance Examination gate is passed
 - the Admin-confirmed Student Number is present and valid for persistence
+- the Admin-confirmed COR Name is present and safely parseable into the current User name fields
+- the Admin-confirmed COR Email passes the existing email validation and is not owned by another User
+- the Admin-confirmed COR Program resolves to exactly one existing `Program` selected/confirmed by the Admin
 
-The same transaction should:
+The same transaction should atomically:
 
 - mark the exact COR submission `VERIFIED`
 - persist the confirmed COR record/reference data
 - assign the confirmed Student Number
+- update `User.firstName` / `User.lastName` from the Admin-confirmed COR Name
+- update `User.email` from the Admin-confirmed COR Email
+- update `Student.programId` to the Admin-confirmed existing Program
 - set the admission state to the accepted enrolled/student state
 - change `User.role` from `APPLICANT` to `STUDENT`
 - write the audit record
+
+Conflict behavior:
+
+- If the confirmed email is already owned by another User, verification must fail with a controlled conflict and the whole transaction must roll back.
+- If the COR Program cannot be mapped/selected to one existing Program, verification must stop; never create a Program automatically and never fuzzy-guess one.
+- A difference between provisional Applicant data and the confirmed COR is not itself an error; it is the expected synchronization case.
 
 It must not:
 
 - create a second User account
 - reset or replace the password
 - derive residency start from verification time
-- auto-change name, email, or program based only on extraction
+- write Name, Email, or Program from raw extraction without Admin confirmation
+- rewrite historical Applicant ID or Entrance Exam records
 - grant thesis eligibility merely because the role became `STUDENT`
 
 ## 9. Student credential handoff
@@ -245,6 +282,8 @@ Sign in through the Student portal using your Student Number and your existing a
 
 Do not email plaintext passwords.
 
+After a successful promotion, send the credential notification to the **Admin-confirmed COR email address**, because that email has become the authoritative `User.email`. Do not send the handoff notification to a stale provisional Applicant email when the two differ.
+
 ## 11. Current-state corrections captured by this design
 
 The implementation must reconcile these known current behaviors:
@@ -255,6 +294,9 @@ The implementation must reconcile these known current behaviors:
 - Admin COR UI currently describes DOB/default-password credential behavior inconsistently.
 - `credential_dispatch` currently includes a `default_password` variable based on last name even though promotion does not actually reset the stored password.
 - current promotion assigns `residencyStartDate = new Date()`; this conflicts with the now-deferred residency policy and must not remain an implicit authority rule.
+- **Post-COR-8 correction:** the accepted implementation currently keeps Applicant Name, Email, and Program after promotion. That behavior is now superseded. These fields must be synchronized from Admin-confirmed COR values during the canonical promotion transaction.
+- **Post-COR-8 correction:** the current Admin comparison UI treats COR identity values as comparison-only and shows College. The revised workflow must instead support explicit confirmation of Name, Email, and Program, remove College from the active review workflow, and show Match/Different/No existing data/Not extracted status aids.
+- **Post-COR-8 correction:** the current notification path uses the pre-promotion Applicant email object. After authoritative email synchronization, the handoff notification must target the confirmed COR email.
 
 ## 12. Out of scope
 
@@ -279,16 +321,26 @@ The current working assumption that `Thesis 1` may correspond to Title Defense a
 
 The branch is ready for acceptance when all of the following are demonstrated:
 
-1. A supported native-text EARIST COR yields suggestions for Student Number, Registration Number, Name, Program, College, and Email.
-2. Partial/missing suggestions do not invalidate an otherwise valid upload.
-3. Admin sees the actual COR and suggestions together and can correct values.
-4. Academic Year, Semester, Curriculum Year, residency, and subjects are not used by this v1 promotion form.
-5. No extraction result can promote an Applicant without Admin verification.
-6. Admin confirmation persists the Student Number and performs the existing atomic `APPLICANT -> STUDENT` transition.
-7. The same User/password is retained.
-8. Applicant login fails after promotion.
-9. Student login succeeds with Student Number + existing password, without DOB.
-10. DOB remains stored as profile data.
-11. Credential messaging does not send or invent a default password.
-12. Promotion no longer establishes residency start from the Admin verification timestamp.
-13. Existing Admin/Panelist/Other login behavior remains unchanged.
+1. A supported native-text EARIST COR yields suggestions for Student Number, Registration Number, Name, Program, and Email.
+2. College does not participate in the active Admin verification or authoritative Student profile synchronization.
+3. Partial/missing suggestions do not invalidate an otherwise valid upload; missing required confirmation values are resolved by Admin review of the actual COR.
+4. Admin sees the actual COR, provisional Applicant values, COR suggestions, and explicit confirmation controls together.
+5. Name, Email, and Program rows show clear Match / Different / No existing data / Not extracted review status without auto-rejection.
+6. Academic Year, Semester, Curriculum Year, residency, and subjects are not used by this v1 promotion form.
+7. No extraction result can promote or overwrite an Applicant without Admin verification.
+8. Admin confirmation atomically persists Student Number and Registration Number, synchronizes confirmed COR Name/Email/Program, and performs the `APPLICANT -> STUDENT` transition.
+9. A duplicate confirmed email fails closed and rolls back the transaction.
+10. Program synchronization uses an existing Program only; ambiguous/missing mapping blocks verification and never creates or fuzzy-guesses a Program.
+11. The same User/password is retained.
+12. The credential notification is sent to the confirmed COR email and contains no generated/default/plaintext password.
+13. Applicant login fails after promotion.
+14. Student login succeeds with Student Number + existing password, without DOB.
+15. DOB remains stored as profile data.
+16. Promotion does not establish residency start from the Admin verification timestamp.
+17. Existing Applicant ID / Entrance Exam history and Admin/Panelist/Other login behavior remain unchanged.
+
+## 15. Supersession and COR-9 pause
+
+This 2026-10-05 authority correction is newer than the original comparison-only v1 rule. Where older COR-1 through COR-8 documentation, comments, tests, or UI copy conflict with this section for Name, Email, Program, College, or notification recipient, this revised design is authoritative for subsequent work.
+
+COR-9 manual end-to-end acceptance is paused until the authority synchronization, Admin review UX, and regression corrections defined in the implementation plan are implemented and accepted.

@@ -4,17 +4,30 @@
 **Branch:** `workflow/cor-extraction-autofill`  
 **Design:** `docs/superpowers/specs/2026-10-04-cor-extraction-student-credential-handoff-design.md`  
 **Implementation mode:** Execute one bounded task at a time. Commit after each accepted task unless a smaller atomic split is more appropriate. Do not expand into Curriculum Checklist, residency policy, continuing COR history, or Defense work.
+**Revision:** 2026-10-05 authority correction. Applicant Name/Email/Program are provisional until COR verification; Admin-confirmed COR values become authoritative at promotion. This supersedes earlier comparison-only/no-overwrite language in COR-1 through COR-8.
 
 ## Pre-implementation rules
 
 - Read `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md` first.
 - Read the design document above.
 - Preserve the existing secure upload/storage and transactional promotion authority.
-- Extraction is suggestion-only.
+- Extraction is suggestion-only; raw parser output is never profile authority.
+- The actual COR plus Admin confirmation is the authority boundary. Admin-confirmed COR Name, Email, Program, Student Number, and Registration Number become authoritative during promotion.
+- College is not part of the active verification/persistence contract.
 - Do not commit the real COR sample or any real student PII to the repository.
 - Use synthetic fixtures based on the supported text layout.
 - Do not implement OCR in this slice.
 - If existing code conflicts with the approved design, the approved design overrides legacy comments/UI text for this branch.
+
+---
+
+## Supersession note for accepted COR-1 through COR-8
+
+COR-1 through COR-8 below describe the historical accepted packages. Their parser, storage, auth, password, residency, and promotion-safety decisions remain valid except where explicitly superseded by the **Post-COR-8 authority correction** later in this plan.
+
+In particular, any earlier statement that Name, Email, or Program are comparison-only / must not overwrite Applicant data is superseded. Any earlier Admin UI requirement to show College is also superseded.
+
+Do not rewrite accepted Git history. Implement the correction as new bounded packages after COR-8.
 
 ---
 
@@ -298,6 +311,156 @@ Relevant backend and frontend test suites pass with no Defense workflow regressi
 
 ---
 
+## Post-COR-8 authority correction
+
+COR-9 was attempted after COR-8 but could not be executed safely because no disposable full-stack QA environment was available. Before COR-9 is retried, implement and accept the following correction packages.
+
+### COR-AUTH-1 — Make Admin-confirmed COR identity/enrollment data authoritative
+
+#### Goal
+
+Update the canonical atomic `verifyAndPromote` path so verified COR data replaces provisional Applicant Name, Email, and Program while preserving the same User/password and all existing fail-closed gates.
+
+#### Required behavior
+
+- Verification request carries Admin-confirmed:
+  - Student Number
+  - Registration Number (optional if absent on the actual COR)
+  - COR Name components needed by the current schema
+  - COR Email
+  - existing Program selection/resolution
+- Name mapping for the current schema:
+  - COR surname -> `User.lastName`
+  - COR first name + middle name/initial -> `User.firstName`
+  - do not invent suffix data
+- Email:
+  - trim and validate using existing email rules
+  - update `User.email` in the same transaction
+  - if another User already owns the confirmed email, fail with a controlled conflict and roll back everything
+- Program:
+  - update `Student.programId` only to an existing Program selected/resolved from the actual COR
+  - normalized unique match may pre-resolve
+  - no fuzzy guessing
+  - no automatic Program creation
+  - ambiguous/no safe match blocks verification until Admin resolves it
+- Student Number, Registration Number, role/admission transition, current-PENDING gate, exam gate, audit, concurrency, password preservation, and residency rules remain unchanged.
+- Do not rewrite Applicant ID or Entrance Exam history.
+- Return/use the confirmed email after the transaction so `credential_dispatch` goes to the new authoritative email, not the stale Applicant email.
+
+#### Tests
+
+Cover at minimum:
+
+- Different Applicant Name -> confirmed COR Name persists.
+- Different Applicant Email -> confirmed COR Email persists.
+- Different Applicant Program -> confirmed existing Program persists.
+- Matching values still succeed.
+- Duplicate confirmed email -> entire transaction rolls back; COR remains unverified and no role/profile partial write is accepted.
+- Missing/ambiguous Program mapping -> verification blocked before authoritative transition.
+- Raw extraction alone still cannot write Name/Email/Program.
+- Password hash remains untouched.
+- Applicant ID / Entrance Exam history untouched.
+- Notification recipient is the confirmed COR email.
+- Existing exactly-once/current-PENDING/concurrency tests remain green.
+
+#### Acceptance
+
+One atomic Admin-authorized transaction synchronizes the confirmed COR identity/enrollment data and promotes exactly once, with no partial write on conflict.
+
+---
+
+### COR-AUTH-2 — Redesign Admin COR verification review/confirmation UX
+
+#### Goal
+
+Make the Admin UI clearly show what provisional Applicant values will be replaced by the verified COR and remove the debug-like comparison presentation.
+
+#### Required behavior
+
+Keep the actual private COR document viewer.
+
+Primary review rows:
+
+- Name
+- Email
+- Program
+
+Do not show College in the active comparison/verification workflow.
+
+Each row shows:
+
+- Current Applicant data
+- COR/confirmed value
+- status:
+  - Match
+  - Different
+  - No existing data
+  - Not extracted
+
+Status is a review aid only:
+
+- no auto-reject
+- no auto-promote
+- no persistence until explicit Admin confirmation
+- red/destructive styling only for actual errors; ordinary differences should use non-destructive warning styling
+
+Name and Email:
+
+- pre-fill from COR extraction when available
+- editable so Admin can correct extraction against the actual COR
+
+Program:
+
+- show extracted COR Program
+- show/respect the matched existing Program if uniquely resolvable
+- allow Admin to choose the correct existing Program when needed
+- never offer implicit Program creation from the COR string
+
+Student Number and Registration Number remain in a separate **Confirm Student Credentials** section and are editable.
+
+The UI must explain:
+
+- Applicant values are provisional
+- confirmed COR values will replace Name/Email/Program at verification
+- differences do not automatically reject the COR
+- the existing account/password is retained
+
+Keep extraction diagnostics secondary/collapsible rather than the primary visual focus where practical.
+
+#### Acceptance
+
+Admin can view the actual COR, immediately understand Match/Different states, correct Name/Email/Program/Student Number/Registration Number, resolve Program to an existing record, and explicitly verify/promote.
+
+---
+
+### COR-AUTH-3 — Regression coverage for revised COR authority
+
+#### Required cases
+
+1. Raw extraction remains suggestion-only.
+2. Admin-confirmed COR Name replaces provisional Applicant name.
+3. Admin-confirmed COR Email replaces provisional Applicant email.
+4. Admin-confirmed COR Program replaces provisional Applicant Program using an existing Program.
+5. College has no active promotion/profile authority.
+6. Duplicate confirmed email fails closed with no partial promotion.
+7. Missing/ambiguous Program mapping blocks verification.
+8. Match/Different/No existing data/Not extracted statuses do not auto-reject or auto-promote.
+9. Student Number and Registration Number confirmation remains correct.
+10. Same User id and password hash are retained.
+11. Applicant ID and Entrance Exam history are unchanged.
+12. Notification is addressed to the confirmed COR email and still contains no plaintext/default password.
+13. Applicant login fails after promotion.
+14. Student login succeeds with confirmed Student Number + original password.
+15. DOB remains profile data and is not required for Student login.
+16. `residencyStartDate` remains unaffected.
+17. Exactly-once/current-PENDING/concurrency and Defense regressions remain green.
+
+#### Acceptance
+
+Focused and full regression suites pass with no weakening of existing COR/Defense authority tests.
+
+---
+
 ## COR-9 — Manual end-to-end QA
 
 Use a disposable/synthetic Applicant account and a privacy-safe test COR equivalent to the supported layout.
@@ -309,16 +472,16 @@ Use a disposable/synthetic Applicant account and a privacy-safe test COR equival
 3. Confirm extraction status and suggestions.
 4. Open Admin COR Validation.
 5. Open the actual COR document.
-6. Compare Applicant vs COR name/program/email.
-7. Confirm or correct Student Number and Registration Number.
+6. Compare provisional Applicant vs COR Name/Program/Email and confirm the UI statuses (Match / Different / No existing data / Not extracted).
+7. Confirm/correct COR Name and Email, resolve Program to the correct existing Program, and confirm/correct Student Number and Registration Number. College is not part of the verification workflow.
 8. Verify & Promote.
-9. Confirm COR is VERIFIED and Applicant is now STUDENT.
+9. Confirm COR is VERIFIED, Applicant is now STUDENT, and the Student/User Name, Email, Program, and Student Number equal the Admin-confirmed COR values.
 10. Attempt old Applicant login -> must fail because role is no longer Applicant.
 11. Student login with confirmed Student Number + original password -> must succeed.
 12. Confirm Student login asks for no DOB.
 13. Confirm DOB still exists in Student profile data.
 14. Confirm no residency start was created from the verification timestamp.
-15. Confirm notification text uses Student Number + existing password semantics.
+15. Confirm notification is addressed to the confirmed COR email and uses Student Number + existing password semantics.
 
 Record screenshots/results for manual acceptance, but do not commit real personal data.
 
@@ -326,7 +489,7 @@ Record screenshots/results for manual acceptance, but do not commit real persona
 
 ## Completion boundary
 
-This implementation is complete when COR-1 through COR-9 satisfy their acceptance criteria.
+This implementation is complete only when COR-1 through COR-8, COR-AUTH-1 through COR-AUTH-3, and the retried COR-9 satisfy their acceptance criteria.
 
 Do not continue directly into:
 
