@@ -1,312 +1,691 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Eye, Search, Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { AdminApplicantListItem } from "@/types";
+import type {
+  AdminApplicantListRow,
+  AdminApplicantStage,
+  Program,
+} from "@/types";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  Clock,
+  Eye,
+  RefreshCw,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
+
+const PAGE_SIZE = 10;
+
+/** Cache key holding the last successfully loaded page (error fallback). */
+const LAST_GOOD_KEY = ["adminApplicants", "lastGood"] as const;
+
+type StageFilter = "ALL" | AdminApplicantStage;
+
+const STAGE_OPTIONS: { value: StageFilter; label: string }[] = [
+  { value: "ALL", label: "All Stages" },
+  { value: "ALIGNMENT", label: "Program Alignment" },
+  { value: "EXAM", label: "Entrance Examination" },
+  { value: "COR", label: "COR / Enrollment" },
+];
+
+const ALL_PROGRAMS = "ALL";
+
+/* --------------------------------------------------------------- utilities */
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function alignmentIsComplete(status: string | null): boolean {
+  return status === "ALIGNED" || status === "CLEARED";
+}
+
+type StepState = "COMPLETE" | "CURRENT" | "WAITING";
+
+/** Concise, human-readable current admission condition (no raw enums). */
+function currentStateLabel(row: AdminApplicantListRow): string {
+  if (row.admissionStage === "ALIGNMENT") {
+    return row.alignmentStatus === "PENDING_WAIVER"
+      ? "Bridging waiver pending"
+      : "Alignment status unavailable";
+  }
+
+  if (row.admissionStage === "EXAM") {
+    switch (row.examStatus) {
+      case "NOT_SCHEDULED":
+        return "Ready to schedule entrance exam";
+      case "PENDING":
+        return "Entrance exam scheduled";
+      case "APPROVED":
+        return "Entrance exam approved";
+      case "TAKEN":
+        return "Entrance exam awaiting grading";
+      case "APPEALED":
+        return "Exam appeal awaiting review";
+      case "FAILED":
+        return "Entrance exam failed";
+      case "DISQUALIFIED":
+        return "Disqualified from entrance exam";
+      default:
+        return "Entrance examination in progress";
+    }
+  }
+
+  switch (row.corStatus) {
+    case "NONE":
+      return "Exam passed — awaiting COR upload";
+    case "PENDING":
+      return "COR awaiting verification";
+    case "REJECTED":
+      return "COR rejected — awaiting resubmission";
+    case "VERIFIED":
+      return "COR verified";
+    default:
+      return "COR / enrollment in progress";
+  }
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/* ------------------------------------------------------------- components */
+
+function StepMarker({ state }: { state: StepState }) {
+  if (state === "COMPLETE") {
+    return (
+      <CheckCircle2
+        className="h-4 w-4 shrink-0 text-(--earist-success)"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (state === "CURRENT") {
+    return (
+      <CircleDot
+        className="h-4 w-4 shrink-0 text-(--earist-primary)"
+        aria-hidden="true"
+      />
+    );
+  }
+  return (
+    <Clock
+      className="h-4 w-4 shrink-0 text-(--earist-body-text)/50"
+      aria-hidden="true"
+    />
+  );
+}
+
+const STEP_STATE_WORD: Record<StepState, string> = {
+  COMPLETE: "complete",
+  CURRENT: "current",
+  WAITING: "waiting",
+};
+
+function AdmissionProgress({ row }: { row: AdminApplicantListRow }) {
+  const alignmentComplete = alignmentIsComplete(row.alignmentStatus);
+  const steps: { key: string; label: string; state: StepState }[] = [
+    {
+      key: "alignment",
+      label: "Alignment",
+      state: alignmentComplete ? "COMPLETE" : "CURRENT",
+    },
+    {
+      key: "exam",
+      label: "Exam",
+      state: !alignmentComplete
+        ? "WAITING"
+        : row.hasPassedExam
+          ? "COMPLETE"
+          : "CURRENT",
+    },
+    {
+      key: "cor",
+      label: "COR",
+      state: row.hasPassedExam ? "CURRENT" : "WAITING",
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {steps.map((step, index) => (
+        <span key={step.key} className="inline-flex items-center gap-1.5">
+          {index > 0 && (
+            <ChevronRight
+              className="h-3 w-3 text-(--earist-body-text)/40"
+              aria-hidden="true"
+            />
+          )}
+          <StepMarker state={step.state} />
+          <span
+            className={cn(
+              "text-xs",
+              step.state === "CURRENT"
+                ? "font-semibold text-(--earist-primary)"
+                : "text-(--earist-body-text)",
+            )}
+          >
+            {step.label}
+          </span>
+          <span className="sr-only">{STEP_STATE_WORD[step.state]}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[860px] table-fixed border-collapse">
+        <colgroup>
+          <col className="w-[24%]" />
+          <col className="w-[20%]" />
+          <col className="w-[24%]" />
+          <col className="w-[17%]" />
+          <col className="w-[9%]" />
+          <col className="w-[6%]" />
+        </colgroup>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+function TableHead() {
+  return (
+    <thead>
+      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Applicant
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Program
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Admission Progress
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Current State
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Registered
+        </th>
+        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
+          Action
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <TableShell>
+      <TableHead />
+      <tbody aria-hidden="true">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <tr
+            key={index}
+            className="border-b border-(--earist-border-gray) last:border-0"
+          >
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-2 h-3 w-24" />
+              <Skeleton className="mt-2 h-3 w-40" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-28" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-40" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-32" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-20" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="ml-auto h-8 w-8 rounded-md" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableShell>
+  );
+}
+
+function EmptyState({
+  filtered,
+  onClear,
+}: {
+  filtered: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+      {filtered ? (
+        <Search className="h-8 w-8 text-(--earist-body-text)/40" aria-hidden="true" />
+      ) : (
+        <Users className="h-8 w-8 text-(--earist-body-text)/40" aria-hidden="true" />
+      )}
+      <p className="text-sm font-medium text-(--earist-primary)">
+        {filtered
+          ? "No applicants match the current filters."
+          : "No active applicants."}
+      </p>
+      <p className="max-w-sm text-sm text-(--earist-body-text)">
+        {filtered
+          ? "Try a different search term, program, or admission stage."
+          : "Applicants still progressing through admission will appear here."}
+      </p>
+      {filtered && (
+        <Button variant="outline" size="sm" onClick={onClear}>
+          Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ErrorState({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+      <AlertCircle className="h-8 w-8 text-(--earist-secondary)" aria-hidden="true" />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Unable to load applicants
+        </p>
+        <p className="text-sm text-(--earist-body-text)">
+          Something went wrong while loading the list. Please try again.
+        </p>
+      </div>
+      <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
+        <RefreshCw
+          className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+          aria-hidden="true"
+        />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
 
 export default function AdminApplicantsPage() {
   const [search, setSearch] = useState("");
+  const [programId, setProgramId] = useState<string>(ALL_PROGRAMS);
+  const [stage, setStage] = useState<StageFilter>("ALL");
   const [page, setPage] = useState(1);
-  const [alignmentFilter, setAlignmentFilter] = useState("");
-  const [examFilter, setExamFilter] = useState("");
-  const [corFilter, setCorFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["adminApplicants", page, search, alignmentFilter, examFilter, corFilter, statusFilter],
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const trimmedSearch = debouncedSearch.trim();
+  const queryClient = useQueryClient();
+
+  const programsQuery = useQuery({
+    queryKey: ["programs"],
+    queryFn: async () => apiClientRequest("/programs"),
+  });
+  const graduatePrograms: Program[] = programsQuery.data?.graduatePrograms ?? [];
+
+  const applicantsQuery = useQuery({
+    queryKey: ["adminApplicants", page, trimmedSearch, programId, stage],
     queryFn: async () => {
       const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: "10",
-        search,
-        alignment: alignmentFilter,
-        exam: examFilter,
-        cor: corFilter,
-        status: statusFilter,
+        page: String(page),
+        pageSize: String(PAGE_SIZE),
       });
-      const res = await apiClientRequest(`/admin/applicants?${params.toString()}`);
-      return res;
+      if (trimmedSearch) params.set("search", trimmedSearch);
+      if (programId !== ALL_PROGRAMS) params.set("programId", programId);
+      if (stage !== "ALL") params.set("stage", stage);
+      const data = await apiClientRequest(`/admin/applicants?${params.toString()}`);
+      // Retain the last successful page for graceful failure recovery.
+      queryClient.setQueryData(LAST_GOOD_KEY, data);
+      return data;
     },
+    placeholderData: keepPreviousData,
   });
 
-  const applicants: AdminApplicantListItem[] = data?.applicants || [];
-  const total = data?.total || 0;
-  const totalPages = Math.ceil(total / 10);
+  const isLoading = applicantsQuery.isLoading;
+  const isFetching = applicantsQuery.isFetching;
+  const isError = applicantsQuery.isError;
 
-  const getAlignmentBadge = (status: string) => {
-    switch (status) {
-      case "ALIGNED":
-        return <Badge className="bg-green-100 text-green-700">Aligned</Badge>;
-      case "PENDING_WAIVER":
-        return <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>;
-      case "CLEARED":
-        return <Badge className="bg-blue-100 text-blue-700">Cleared</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+  // Graceful failure recovery: fall back to the last successfully loaded page
+  // (read from the query cache, not local state) instead of blanking the list.
+  const lastGoodData = queryClient.getQueryData<{
+    applicants: AdminApplicantListRow[];
+    total: number;
+  }>(LAST_GOOD_KEY);
+  const effectiveData =
+    applicantsQuery.data ?? (isError ? lastGoodData : undefined);
+  const hasUsableData = effectiveData != null;
+
+  const rows: AdminApplicantListRow[] = effectiveData?.applicants ?? [];
+  const total: number = effectiveData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isFiltered =
+    trimmedSearch !== "" || programId !== ALL_PROGRAMS || stage !== "ALL";
+
+  const clearFilters = () => {
+    setSearch("");
+    setProgramId(ALL_PROGRAMS);
+    setStage("ALL");
+    setPage(1);
   };
 
-  const getExamBadge = (status: string) => {
-    switch (status) {
-      case "NOT_SCHEDULED":
-        return <Badge variant="outline">Not Scheduled</Badge>;
-      case "SCHEDULED":
-        return <Badge className="bg-blue-100 text-blue-700">Scheduled</Badge>;
-      case "PASSED":
-        return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
-      case "FAILED":
-        return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  const programLabel =
+    programId === ALL_PROGRAMS
+      ? "All Programs"
+      : (graduatePrograms.find((program) => program.id === programId)
+          ?.programName ?? "All Programs");
+  const stageLabel =
+    STAGE_OPTIONS.find((option) => option.value === stage)?.label ??
+    "All Stages";
 
-  const getCorBadge = (status: string) => {
-    switch (status) {
-      case "NONE":
-        return <Badge variant="outline">--</Badge>;
-      case "PENDING":
-        return <Badge className="bg-amber-100 text-amber-700">Pending</Badge>;
-      case "VERIFIED":
-        return <Badge className="bg-green-100 text-green-700">Verified</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getAdmissionBadge = (status: string) => {
-    switch (status) {
-      case "APPLICANT":
-        return <Badge variant="outline">Applicant</Badge>;
-      case "ENROLLED":
-        return <Badge className="bg-green-100 text-green-700">Enrolled</Badge>;
-      case "DISQUALIFIED":
-        return <Badge className="bg-red-100 text-red-700">Disqualified</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  const pageNumbers = (() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (page <= 3) return [1, 2, 3, 4, 5];
+    if (page >= totalPages - 2)
+      return Array.from({ length: 5 }, (_, i) => totalPages - 4 + i);
+    return [page - 2, page - 1, page, page + 1, page + 2];
+  })();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Applicant Management
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Manage all applicants and their application status
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Applicants"
+        description="Monitor active applicants and their progress from program alignment through entrance examination and COR verification."
+      />
 
-      {/* Search and Filters */}
+      {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 text-gray-400 -translate-y-1/2" />
-              <Input
-                placeholder="Search by name, email, Pinnacle ID, or program..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:min-w-[220px] sm:flex-1">
+              <label
+                htmlFor="applicant-search"
+                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+              >
+                Search
+              </label>
+              <div className="relative">
+                <Search
+                  className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-(--earist-body-text)/60"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="applicant-search"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search by name, email, or Pinnacle ID"
+                  className="pl-9"
+                />
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={alignmentFilter}
-                onChange={(e) => {
-                  setAlignmentFilter(e.target.value);
+
+            <div className="w-full sm:w-56">
+              <label
+                htmlFor="filter-program"
+                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+              >
+                Program
+              </label>
+              <Select
+                value={programId}
+                onValueChange={(value) => {
+                  setProgramId(value ?? ALL_PROGRAMS);
                   setPage(1);
                 }}
-                className="px-3 py-2 border rounded-md text-sm"
               >
-                <option value="">All Alignment</option>
-                <option value="ALIGNED">Aligned</option>
-                <option value="PENDING_WAIVER">Pending Waiver</option>
-                <option value="CLEARED">Cleared</option>
-              </select>
-              <select
-                value={examFilter}
-                onChange={(e) => {
-                  setExamFilter(e.target.value);
+                <SelectTrigger id="filter-program" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={programLabel}
+                  >
+                    {programLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_PROGRAMS}>All Programs</SelectItem>
+                  {graduatePrograms.map((program) => (
+                    <SelectItem key={program.id} value={program.id}>
+                      {program.programName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-48">
+              <label
+                htmlFor="filter-stage"
+                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+              >
+                Admission Stage
+              </label>
+              <Select
+                value={stage}
+                onValueChange={(value) => {
+                  setStage((value as StageFilter) ?? "ALL");
                   setPage(1);
                 }}
-                className="px-3 py-2 border rounded-md text-sm"
               >
-                <option value="">All Exam Status</option>
-                <option value="NOT_SCHEDULED">Not Scheduled</option>
-                <option value="SCHEDULED">Scheduled</option>
-                <option value="PASSED">Passed</option>
-                <option value="FAILED">Failed</option>
-              </select>
-              <select
-                value={corFilter}
-                onChange={(e) => {
-                  setCorFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="">All COR Status</option>
-                <option value="NONE">None</option>
-                <option value="PENDING">Pending</option>
-                <option value="VERIFIED">Verified</option>
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="">All Admission Status</option>
-                <option value="APPLICANT">Applicant</option>
-                <option value="ENROLLED">Enrolled</option>
-                <option value="DISQUALIFIED">Disqualified</option>
-              </select>
+                <SelectTrigger id="filter-stage" className="w-full">
+                  <span className="flex-1 truncate text-left" title={stageLabel}>
+                    {stageLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 sm:ml-auto sm:pb-0.5">
+              {isFetching && !isLoading && (
+                <span className="text-xs text-(--earist-body-text)" role="status">
+                  Updating…
+                </span>
+              )}
+              {isFiltered && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Clear filters
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Applicants Table */}
-      <Card>
-        <CardContent className="p-0">
+      {/* Background-refetch recovery banner (keeps usable rows visible) */}
+      {isError && hasUsableData && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-light-red) px-4 py-2.5">
+          <p className="text-sm text-(--earist-body-text)">
+            Couldn&apos;t refresh the list. Showing the most recent results.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => applicantsQuery.refetch()}
+            disabled={isFetching}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* List */}
+      <Card className="overflow-hidden py-0">
+        <CardContent className="min-w-0 p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-sm text-gray-500 animate-pulse">Loading applicants...</p>
-            </div>
-          ) : applicants.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-gray-500">No applicants found</p>
-            </div>
+            <TableSkeleton />
+          ) : isError && !hasUsableData ? (
+            <ErrorState
+              onRetry={() => applicantsQuery.refetch()}
+              retrying={isFetching}
+            />
+          ) : rows.length === 0 ? (
+            <EmptyState filtered={isFiltered} onClear={clearFilters} />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Pinnacle ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Program</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Alignment</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Exam</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">COR</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+            <TableShell>
+              <TableHead />
+              <tbody>
+                {rows.map((applicant) => (
+                  <tr
+                    key={applicant.id}
+                    className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
+                  >
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-medium break-words text-(--earist-primary)">
+                        {applicant.firstName} {applicant.lastName}
+                      </p>
+                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                        {applicant.pinnacleApplicantId || "No Pinnacle ID"}
+                      </p>
+                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                        {applicant.email}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <p className="text-sm break-words text-(--earist-body-text)">
+                        {applicant.program?.programName ?? "—"}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <AdmissionProgress row={applicant} />
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <p className="text-sm break-words text-(--earist-body-text)">
+                        {currentStateLabel(applicant)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className="text-xs whitespace-nowrap text-(--earist-body-text)">
+                        {formatDate(applicant.createdAt)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right align-top">
+                      <Link
+                        href={`/admin/users/applicants/${applicant.id}`}
+                        aria-label={`View applicant ${applicant.firstName} ${applicant.lastName}`}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "ml-auto",
+                        )}
+                      >
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {applicants.map((applicant) => (
-                    <tr key={applicant.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {applicant.firstName} {applicant.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500">{applicant.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {applicant.pinnacleApplicantId}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {applicant.program.programName}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {getAlignmentBadge(applicant.alignmentStatus)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {getExamBadge(applicant.examStatus)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {getCorBadge(applicant.corStatus)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {getAdmissionBadge(applicant.admissionStatus)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/admin/users/applicants/${applicant.id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </TableShell>
           )}
         </CardContent>
       </Card>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, total)} of {total} applicants
+      {!isLoading && rows.length > 0 && (
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-sm text-(--earist-body-text)">
+            Showing {(page - 1) * PAGE_SIZE + 1} to{" "}
+            {Math.min(page * PAGE_SIZE, total)} of {total} applicant
+            {total === 1 ? "" : "s"}
           </p>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage(page - 1)}
-                  className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum: number;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      onClick={() => setPage(pageNum)}
-                      isActive={page === pageNum}
-                      className="cursor-pointer"
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to previous page"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </PaginationItem>
+                {pageNumbers.map((pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <Button
+                      variant={page === pageNumber ? "outline" : "ghost"}
+                      size="icon"
+                      aria-label={`Go to page ${pageNumber}`}
+                      aria-current={page === pageNumber ? "page" : undefined}
+                      onClick={() => setPage(pageNumber)}
                     >
-                      {pageNum}
-                    </PaginationLink>
+                      {pageNumber}
+                    </Button>
                   </PaginationItem>
-                );
-              })}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setPage(page + 1)}
-                  className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+                ))}
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to next page"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       )}
     </div>

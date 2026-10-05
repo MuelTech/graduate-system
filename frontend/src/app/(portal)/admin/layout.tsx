@@ -283,7 +283,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ${
+        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
           collapsed ? "lg:ml-17" : "lg:ml-65"
         }`}
       >

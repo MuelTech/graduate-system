@@ -1,17 +1,25 @@
 // backend/src/repositories/admin-applicant.repository.ts
 
 import prisma from "../config/database";
-import { Prisma } from "@prisma/client";
-import { AdminApplicantListQuery } from "../interfaces/admin-applicant.interfaces";
+import {
+  AdminApplicantListQuery,
+  AdminApplicantListRow,
+} from "../interfaces/admin-applicant.interfaces";
+import {
+  buildApplicantListWhere,
+  deriveAdmissionStage,
+  hasAuthoritativePassedExam,
+} from "../services/admin-applicant-list.rules";
 
 export class AdminApplicantRepository {
   async countApplicants(filters: AdminApplicantListQuery): Promise<number> {
-    const where = this.buildWhereClause(filters);
-    return prisma.student.count({ where });
+    return prisma.student.count({ where: buildApplicantListWhere(filters) });
   }
 
-  async findApplicants(filters: AdminApplicantListQuery) {
-    const where = this.buildWhereClause(filters);
+  async findApplicants(
+    filters: AdminApplicantListQuery,
+  ): Promise<AdminApplicantListRow[]> {
+    const where = buildApplicantListWhere(filters);
     const page = filters.page || 1;
     const pageSize = filters.pageSize || 10;
     const skip = (page - 1) * pageSize;
@@ -33,33 +41,12 @@ export class AdminApplicantRepository {
           },
         },
         examApplications: {
-          include: {
-            score: {
-              select: {
-                multipleChoiceScore: true,
-                essayScore: true,
-                totalScore: true,
-              },
-            },
-            slot: {
-              select: {
-                examDate: true,
-                examTime: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 1,
+          select: { id: true, status: true, createdAt: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         },
         corUploads: {
-          include: {
-            corRecord: {
-              select: {
-                isAdminVerified: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
+          select: { id: true, status: true, createdAt: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 1,
         },
       },
@@ -69,18 +56,11 @@ export class AdminApplicantRepository {
     });
 
     return students.map((student) => {
-      const examApp = student.examApplications[0];
-      const corUpload = student.corUploads[0];
-
-      let examStatus = "NOT_SCHEDULED";
-      if (examApp) {
-        examStatus = examApp.status;
-      }
-
-      let corStatus = "NONE";
-      if (corUpload) {
-        corStatus = String(corUpload.status || "NONE");
-      }
+      const hasPassedExam = hasAuthoritativePassedExam(
+        student.examApplications,
+      );
+      const latestExam = student.examApplications[0];
+      const latestCor = student.corUploads[0];
 
       return {
         id: student.id,
@@ -89,17 +69,14 @@ export class AdminApplicantRepository {
         email: student.user.email,
         pinnacleApplicantId: student.pinnacleApplicantId || "",
         program: student.program,
-        alignmentStatus: student.alignmentStatus || "ALIGNED",
-        examStatus,
-        examScores: examApp?.score
-          ? {
-              mcq: Number(examApp.score.multipleChoiceScore),
-              essay: Number(examApp.score.essayScore),
-              total: Number(examApp.score.totalScore),
-            }
-          : null,
-        corStatus,
-        admissionStatus: student.admissionStatus,
+        alignmentStatus: student.alignmentStatus ?? null,
+        admissionStage: deriveAdmissionStage({
+          alignmentStatus: student.alignmentStatus,
+          hasPassedExam,
+        }),
+        examStatus: latestExam ? latestExam.status : "NOT_SCHEDULED",
+        hasPassedExam,
+        corStatus: latestCor ? String(latestCor.status) : "NONE",
         createdAt: student.createdAt.toISOString(),
       };
     });
@@ -246,31 +223,5 @@ export class AdminApplicantRepository {
         newValue: newValue || null,
       },
     });
-  }
-
-  private buildWhereClause(filters: AdminApplicantListQuery): Prisma.StudentWhereInput {
-    const where: Prisma.StudentWhereInput = {
-      user: { role: "APPLICANT" },
-    };
-
-    if (filters.search) {
-      where.OR = [
-        { user: { firstName: { contains: filters.search } } },
-        { user: { lastName: { contains: filters.search } } },
-        { user: { email: { contains: filters.search } } },
-        { pinnacleApplicantId: { contains: filters.search } },
-        { program: { programName: { contains: filters.search } } },
-      ];
-    }
-
-    if (filters.alignment) {
-      where.alignmentStatus = filters.alignment as any;
-    }
-
-    if (filters.status) {
-      where.admissionStatus = filters.status as any;
-    }
-
-    return where;
   }
 }

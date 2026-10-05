@@ -4,17 +4,39 @@ export interface AdminApplicantListQuery {
   page?: number;
   pageSize?: number;
   search?: string;
-  alignment?: string;
-  exam?: string;
-  cor?: string;
-  status?: string;
+  programId?: string;
+  /** Presentation-only admission stage filter (never persisted). */
+  stage?: string;
 }
 
 export interface AdminApplicantListResponse {
-  applicants: AdminApplicantListItem[];
+  applicants: AdminApplicantListRow[];
   total: number;
   page: number;
   pageSize: number;
+}
+
+/**
+ * List projection for the active-Applicant registry.
+ * `admissionStage` is a read-model projection, not domain authority.
+ */
+export interface AdminApplicantListRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  pinnacleApplicantId: string;
+  program: { id: string; programName: string };
+  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
+  alignmentStatus: string | null;
+  admissionStage: "ALIGNMENT" | "EXAM" | "COR";
+  /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
+  examStatus: string;
+  /** Canonical passed-exam gate (authoritative existence of PASSED). */
+  hasPassedExam: boolean;
+  /** Latest current COR upload status, or "NONE". */
+  corStatus: string;
+  createdAt: string;
 }
 
 export interface AdminApplicantListItem {

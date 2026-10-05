@@ -482,6 +482,31 @@ export interface AdminApplicantListItem {
   createdAt: string;
 }
 
+export type AdminApplicantStage = "ALIGNMENT" | "EXAM" | "COR";
+
+/**
+ * Admin Applicants LIST row projection. `admissionStage` is a presentation/
+ * read-model stage only — never persisted and never domain authority.
+ */
+export interface AdminApplicantListRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  pinnacleApplicantId: string;
+  program: { id: string; programName: string };
+  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
+  alignmentStatus: string | null;
+  admissionStage: AdminApplicantStage;
+  /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
+  examStatus: string;
+  /** Canonical passed-exam gate (authoritative existence of PASSED). */
+  hasPassedExam: boolean;
+  /** Latest current COR upload status, or "NONE". */
+  corStatus: string;
+  createdAt: string;
+}
+
 export interface AdminApplicantDetail extends AdminApplicantListItem {
   cellphone: string;
   dateOfBirth: string;
