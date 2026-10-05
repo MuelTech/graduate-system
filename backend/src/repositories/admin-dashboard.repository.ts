@@ -59,12 +59,19 @@ export class DashboardRepository {
   /** All thesis records, newest-first per student, for pipeline derivation. */
   async getThesisRecordsForPipeline(): Promise<ThesisRecordInput[]> {
     const rows = await prisma.thesisRecord.findMany({
-      select: { studentId: true, stage: true, createdAt: true, id: true },
+      select: {
+        studentId: true,
+        stage: true,
+        status: true,
+        createdAt: true,
+        id: true,
+      },
       orderBy: [{ studentId: "asc" }, { createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((row) => ({
       studentId: row.studentId,
       stage: row.stage,
+      status: row.status,
       createdAt: row.createdAt,
       id: row.id,
     }));

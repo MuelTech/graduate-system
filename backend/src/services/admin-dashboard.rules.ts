@@ -18,6 +18,8 @@ export interface ThesisPipelineRow {
 export interface ThesisRecordInput {
   studentId: string;
   stage: string;
+  /** Authoritative ThesisStatus — a latest FAILED record is not an active attempt. */
+  status: string;
   createdAt: Date;
   id: string;
 }
@@ -77,6 +79,10 @@ function isLaterThan(
  * place from TITLE -> PROPOSAL -> FINAL; a new record is only created after a
  * previous attempt is FAILED). Selecting the latest record per student avoids
  * double-counting historical attempts as simultaneous current stages.
+ *
+ * A latest FAILED record is a terminal attempt, not a current one: the thesis
+ * creation workflow only permits a new Title Defense when the latest record's
+ * status is FAILED. Such a student is therefore outside the active pipeline.
  */
 export function buildThesisPipeline(
   records: ThesisRecordInput[],
@@ -95,6 +101,8 @@ export function buildThesisPipeline(
     FINAL: 0,
   };
   for (const record of latestByStudent.values()) {
+    // Latest FAILED attempt is not an active/current stage.
+    if (String(record.status ?? "").toUpperCase() === "FAILED") continue;
     const stage = normalizeStage(record.stage);
     if (stage) counts[stage] += 1;
   }

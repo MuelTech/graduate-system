@@ -70,9 +70,38 @@ describe("DashboardRepository authoritative metrics", () => {
     await repo.getThesisRecordsForPipeline();
 
     expect(prismaMock.thesisRecord.findMany).toHaveBeenCalledWith({
-      select: { studentId: true, stage: true, createdAt: true, id: true },
+      select: {
+        studentId: true,
+        stage: true,
+        status: true,
+        createdAt: true,
+        id: true,
+      },
       orderBy: [{ studentId: "asc" }, { createdAt: "desc" }, { id: "desc" }],
     });
+  });
+
+  it("preserves ThesisRecord.status so the pipeline can exclude failed attempts", async () => {
+    prismaMock.thesisRecord.findMany.mockResolvedValue([
+      {
+        studentId: "s1",
+        stage: "TITLE",
+        status: "FAILED",
+        createdAt: new Date("2026-01-01"),
+        id: "s1-1",
+      },
+    ]);
+    const repo = new DashboardRepository();
+
+    await expect(repo.getThesisRecordsForPipeline()).resolves.toEqual([
+      {
+        studentId: "s1",
+        stage: "TITLE",
+        status: "FAILED",
+        createdAt: new Date("2026-01-01"),
+        id: "s1-1",
+      },
+    ]);
   });
 
   it("loads only ENROLLED students for the enrollment snapshot", async () => {
