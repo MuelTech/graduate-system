@@ -476,7 +476,7 @@ The current `--destructive` token shares a similar red family with the brand pri
 
 Do not introduce page-local “status colors” as new hardcoded hex values. If the existing semantic palette is insufficient, introduce/refine a token in a bounded design-foundation package rather than inventing a one-off color.
 
-## 13.1 Suggested semantic families
+## 13.4 Suggested semantic families
 
 ### Success / completed
 
