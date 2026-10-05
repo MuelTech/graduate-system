@@ -241,6 +241,7 @@ Top-level dashboard pages normally do not need breadcrumbs.
 ---
 
 ## UX-IA-02 — Portal shells are separately implemented and may drift
+**Status:** PARTIALLY ADDRESSED — UIUX-1 established an accepted Admin shell baseline; Applicant/Student/Panelist shells remain iterative.
 
 **Priority:** P1  
 **Area:** Navigation / maintainability / consistency  
@@ -331,6 +332,7 @@ Do not change domain behavior merely to make navigation simpler.
 ---
 
 ## UX-PAGE-01 — No shared PageHeader pattern
+**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on the Admin Dashboard; adoption remains page-by-page.
 
 **Priority:** P1  
 **Area:** Page hierarchy
@@ -410,6 +412,7 @@ Prefer borders and restrained shadows. Avoid nested-card visual noise.
 ---
 
 ## UX-PAGE-04 — Approved visual exemplars do not yet exist under a formal rule
+**Status:** RESOLVED AS A FOUNDATION — Admin Dashboard + restrained Admin shell is the first Approved Reference Implementation at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`.
 
 **Priority:** P1  
 **Area:** Consistency / iteration
@@ -547,6 +550,7 @@ Do not add duplicate toast systems.
 ---
 
 ## UX-FBK-03 — Loading states rely too often on plain text or local ad hoc markup
+**Status:** PARTIALLY ADDRESSED — shared `Skeleton` and a structural dashboard loading composition are now accepted; legacy pages still require iterative remediation.
 
 **Priority:** P1  
 **Area:** Perceived performance / consistency
@@ -616,7 +620,40 @@ Use the narrowest useful error surface.
 
 ---
 
+## UX-FBK-06 — Async rendering and table layout instability can cause visible flicker
+
+**Priority:** P1  
+**Area:** Perceived performance / layout stability  
+**Status:** SYSTEM-WIDE RULE DOCUMENTED — UIUX-1 is the first accepted structural-skeleton exemplar; legacy list/table pages remain iterative work.
+
+Representative legacy patterns can visibly shift because:
+
+- loading markup occupies far less space than the final table/content;
+- loading, empty, and loaded states are not always cleanly separated;
+- ordinary API data may be manually copied through effect/local-state flows;
+- content-driven table widths may change after real values arrive;
+- filters/pagination/refetch may temporarily collapse an established surface.
+
+### Recommendation
+
+Follow the playbook's layout-stability and state-ownership rules:
+
+- distinguish initial loading, confirmed empty, error, and background refetch;
+- use structural skeletons when final structure is known;
+- keep stable table/header/tool/filter structure mounted when practical;
+- preserve already-usable data during background refetch when safe;
+- define intentional column behavior (fixed, bounded, flexible, wrap, or deliberate truncation);
+- keep ordinary server state in the established query/cache layer when appropriate;
+- derive computed values directly instead of synchronizing duplicate derived state through effects;
+- use `useState` for genuine local interaction state and `useEffect` for real synchronization/side effects rather than treating either API as forbidden;
+- manually check for loading -> empty -> loaded flashes, column-width jumps, overflow, and major layout shifts.
+
+This is a quality rule, not a mandate to rewrite every existing page at once.
+
+---
+
 ## UX-COMP-01 — High-value shared design primitives are missing
+**Status:** PARTIALLY ADDRESSED — `PageHeader` and `Skeleton` were added and accepted in UIUX-1; remaining primitives stay demand-driven.
 
 **Priority:** P1  
 **Area:** Design system
@@ -826,6 +863,7 @@ Consider a summary/header area followed by clearly separated sections. Use cards
 ---
 
 ## UX-RWD-01 — Responsive behavior should be task-specific
+**Status:** PARTIALLY ADDRESSED — UIUX-1 improved Admin shell/mobile behavior and Dashboard narrow-layout handling; every future package still requires target-specific review.
 
 **Priority:** P1  
 **Area:** Responsive design
@@ -852,6 +890,7 @@ Responsive success is not merely “nothing overflows”.
 ---
 
 ## UX-A11Y-01 — Tooltip/focus support is needed for icon-only and collapsed navigation states
+**Status:** PARTIALLY ADDRESSED — UIUX-1 added accessible names, focus-visible treatment, aria-current/expanded semantics, and stronger Admin sidebar states; broader portal coverage remains iterative.
 
 **Priority:** P1  
 **Area:** Accessibility
@@ -1060,7 +1099,7 @@ Existing pages were created at different times and may contain legacy inconsiste
 
 Only pages/components explicitly listed as Approved Reference Implementations in the playbook may be used as visual precedent.
 
-At initial audit time, no page is formally designated as a system-wide approved UI/UX reference.
+The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`. Other legacy pages remain non-authoritative unless explicitly registered.
 
 ---
 
@@ -1125,6 +1164,8 @@ Prefer current project implementations where appropriate:
 - Textarea
 - Separator
 - Pagination
+- PageHeader
+- Skeleton
 - Sonner
 - Lucide icons
 - Tailwind utilities and current CSS variables
@@ -1134,11 +1175,9 @@ Prefer current project implementations where appropriate:
 Add only through bounded packages where justified:
 
 - Breadcrumbs
-- PageHeader
 - AlertDialog
 - Tooltip
 - DropdownMenu
-- Skeleton
 - EmptyState
 - DataTable composition/pattern
 - WorkflowStepper / Timeline
@@ -1178,23 +1217,34 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Initial state: none formally designated.**
+**Current state: one formally designated reference.**
 
-A page or shared pattern may be added here only after:
+## Admin Dashboard + restrained Admin shell
 
-1. it is implemented under this UI/UX initiative;
-2. manual UI/UX review is completed;
-3. workflow behavior remains correct;
-4. the implementation is explicitly accepted as a reusable precedent.
+- Accepted commit: `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`
+- Primary paths:
+  - `frontend/src/app/(portal)/admin/dashboard/page.tsx`
+  - `frontend/src/app/(portal)/admin/layout.tsx`
+  - `frontend/src/components/ui/page-header.tsx`
+  - `frontend/src/components/ui/skeleton.tsx`
+- Pattern type: wide operational Admin dashboard + Admin portal-shell visual baseline.
+- Reusable precedent:
+  - PageHeader/page-identity hierarchy;
+  - shell-owned spacing/gutters;
+  - restrained surface/brand treatment;
+  - structural loading skeleton and explicit empty/error behavior;
+  - accessible sidebar state/focus/mobile treatment;
+  - separation of Admin-owned actions from workflow monitoring;
+  - user-facing content that reflects domain authority.
+- Page-specific; do not copy blindly:
+  - Dashboard KPIs/metrics/queues;
+  - exact Dashboard section composition;
+  - Admin routes/permissions;
+  - Thesis/COR/Defense/RAP read-model semantics.
 
-Future entries should record:
+See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and reuse rules.
 
-- reference name;
-- path(s);
-- accepted commit;
-- page/pattern type;
-- what may be reused;
-- what is page-specific and must not be copied.
+Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
 
 ---
 

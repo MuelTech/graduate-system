@@ -687,6 +687,22 @@ Use spinner/progress for:
 
 Avoid page-wide blank screens with only “Loading...” when a skeleton can preserve context.
 
+### 19.1.1 Layout stability during asynchronous rendering
+
+Loading behavior must preserve spatial context and avoid unnecessary layout shift.
+
+Requirements:
+
+- initial loading, confirmed empty, error, and background refetch are different states;
+- do not render an empty state until a successful response confirms there are no records;
+- when the final structure is known, use structural skeletons that approximate the final dimensions rather than replacing a large surface with a tiny loading label;
+- preserve already-usable data during background refetch when safe instead of collapsing the page back to an initial-loading state;
+- keep stable page/table shells mounted during routine filter, pagination, or refetch transitions when practical;
+- reserve predictable space for asynchronous controls, status badges, avatars, and other elements when their late appearance would noticeably shift surrounding content;
+- a loading treatment should reduce uncertainty without creating a fake progress story.
+
+The practical goal is not zero pixel movement in every case. It is to prevent avoidable loading -> empty -> loaded flashes, table-width jumps, and major content reflow.
+
 ## 19.2 Empty state
 
 A reusable EmptyState should support:
@@ -716,6 +732,21 @@ Choose the narrowest correct level:
 Error copy should explain recovery when possible.
 
 Do not leak raw backend stack traces or implementation details.
+
+## 19.4 State ownership and effects
+
+Do not ban `useState` or `useEffect`. Choose state ownership based on what the state represents.
+
+Preferred ownership:
+
+- ordinary API/server state -> TanStack Query or the established query/cache layer when appropriate;
+- data derived from existing state -> direct computation; use `useMemo` only when the computation or referential stability genuinely benefits from it;
+- genuine temporary interaction state -> local `useState` (for example dialog open/close, selected row, sidebar state, draft input, search/filter controls);
+- effects -> real synchronization or side effects such as browser/DOM APIs, subscriptions, timers, storage persistence/restoration, imperative focus/scroll, canvas, or third-party integration.
+
+Avoid duplicating query/server data into local state or synchronizing derived values through `useEffect + setState` without a clear reason.
+
+When client-only information is required, avoid using a mount-time effect to make a major first-render layout correction if responsive CSS, a stable initial state, or another declarative approach can solve the same problem.
 
 ---
 
@@ -805,6 +836,30 @@ Prefer:
 
 Do not hide the only important action behind an overflow menu just for visual minimalism.
 
+## 21.3 Table layout stability
+
+Record-heavy pages must define intentional column behavior instead of relying on accidental content-driven sizing.
+
+For each important column, decide whether it is:
+
+- fixed/stable width;
+- bounded;
+- flexible;
+- wrapping;
+- intentionally truncating with another way to access the full value.
+
+`table-fixed` is not mandatory. The requirement is predictable behavior appropriate to the data.
+
+During asynchronous transitions:
+
+- preserve the toolbar/table frame and header when practical;
+- use skeleton rows that follow the final column structure when a table skeleton is useful;
+- avoid replacing an established table with a tiny loading block during ordinary pagination/filter/refetch;
+- preserve prior usable rows while the next query loads when that is safe and understandable;
+- keep pagination/action areas spatially stable where practical;
+- use stable row keys;
+- long names, programs, emails, badges, and action controls must not cause avoidable column jumps or horizontal page overflow.
+
 ---
 
 # 22. Record-detail pages
@@ -884,6 +939,8 @@ Review:
 - touch targets.
 
 Do not solve mobile merely by shrinking text.
+
+Prefer CSS breakpoints and intrinsic layout for first-render responsiveness. Do not use post-mount JavaScript state correction for basic mobile/desktop layout when CSS can express the same behavior without flicker.
 
 Possible adaptations:
 
@@ -1061,19 +1118,36 @@ Do not copy:
 
 ## Initial approved-reference registry
 
-None yet.
+### Reference: Admin Dashboard + restrained Admin shell
 
-Future format:
-
-### Reference: <name>
-
-- Path:
-- Accepted commit:
-- Pattern type:
+- Paths:
+  - `frontend/src/app/(portal)/admin/dashboard/page.tsx`
+  - `frontend/src/app/(portal)/admin/layout.tsx`
+  - `frontend/src/components/ui/page-header.tsx`
+  - `frontend/src/components/ui/skeleton.tsx`
+- Accepted commit: `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`
+- Implementation chain:
+  - `b82cb448ba46fc2ce3b2ed0b0b48304fe73c3a06` — Admin Dashboard + restrained shell refinement
+  - `89a233f3e7a6cea0ac49208a0a0726fe1ab634be` — accepted FIX for active thesis-pipeline semantics and long Program-name visibility
+- Pattern type: wide operational Admin dashboard + Admin portal-shell visual baseline.
 - Reuse:
+  - shell-owned outer gutters and page rhythm;
+  - PageHeader ownership of page identity;
+  - restrained neutral surfaces with EARIST brand emphasis;
+  - dashboard section hierarchy based on operational priority rather than arbitrary counts;
+  - structural Skeleton loading, explicit empty/error states, and restrained functional motion;
+  - accessible sidebar active/focus/collapse/mobile behavior;
+  - clear separation between Admin-owned action queues and workflow monitoring;
+  - user-facing wording that reflects authoritative domain meaning rather than raw implementation terminology.
 - Do not copy:
+  - Dashboard-specific KPIs, metrics, queue definitions, section order, or backend read model into unrelated pages;
+  - Admin-only routes, navigation, permissions, or shell behavior into other roles;
+  - Thesis/COR/Defense/RAP semantics into other domains;
+  - dashboard card composition where a table, form, detail page, or workflow view better fits the task.
 
-Existing legacy pages are not visual authority merely because they already exist.
+This reference is concrete precedent, not a requirement that future screens become dashboard-like. Reuse only the parts that match the target page type and task.
+
+Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 
 ---
 
@@ -1114,6 +1188,8 @@ Before changing code, identify:
 - current authoritative state source;
 - current actions and permissions;
 - current loading/error/empty behavior;
+- state ownership and asynchronous-rendering risks;
+- table/column/layout-stability risks where applicable;
 - responsive risks;
 - reusable components already present.
 
@@ -1158,6 +1234,9 @@ Check changed screens in real runtime when executable:
 - narrow/mobile where applicable;
 - keyboard basics;
 - loading/error/empty paths that can be exercised;
+- no avoidable loading -> empty -> loaded flash;
+- no unexpected table-column or major layout shift during data transitions;
+- background refetch behavior when relevant;
 - main action;
 - destructive confirmation if changed;
 - workflow state preservation.
