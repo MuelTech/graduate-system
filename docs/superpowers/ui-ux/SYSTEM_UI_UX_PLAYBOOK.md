@@ -273,33 +273,37 @@ Avoid duplicate page titles in the portal header and page body.
 
 ## 10.2 Page type and width
 
-Use task-based width:
+Use task-based width. These are the initial canonical content-width baselines:
 
-### Narrow
+### Narrow — `max-w-3xl` / 48rem / 768px
 
-For:
+Use for:
 
 - focused forms;
 - confirmation/review flows;
 - reading-oriented content.
 
-### Medium
+### Medium — `max-w-6xl` / 72rem / 1152px
 
-For:
+Use for:
 
 - record detail;
 - workflow review;
 - mixed form/detail pages.
 
-### Wide
+### Wide — full available portal content width
 
-For:
+Use for:
 
 - data tables;
 - dashboards;
 - dense management surfaces.
 
-Do not set max width arbitrarily per page.
+Wide pages should not invent a smaller max-width merely for visual symmetry.
+
+A page may use a narrower inner section inside a wider page when the task genuinely benefits from it, but the reason must come from content/task needs rather than arbitrary styling.
+
+Do not set max width independently per page when one of these categories already fits.
 
 ## 10.3 Section hierarchy
 
@@ -316,19 +320,73 @@ Avoid creating a titled section for trivial single-line content.
 
 # 11. Spacing and rhythm
 
-Use a small consistent spacing vocabulary.
+Use a small canonical spacing vocabulary based on the existing Tailwind 4px grid.
 
-Recommended intent, not immutable raw values:
+## 11.1 Canonical spacing scale
 
-- tight: icon + label, badge groups, inline controls;
-- compact: related form elements;
-- normal: content blocks within a section;
-- section: major groups within a page;
-- page: separation between header and major page content.
+| Intent | Value | Preferred utility examples | Typical use |
+| --- | ---: | --- | --- |
+| Micro | 4px | `gap-1`, `p-1` | icon micro-spacing, very tight metadata |
+| Tight | 8px | `gap-2`, `space-y-2` | icon + label, badge groups, label → control |
+| Compact | 12px | `gap-3`, `p-3` | compact related controls, small grouped content |
+| Standard | 16px | `gap-4`, `p-4` | normal content blocks, field groups, mobile surface padding |
+| Section | 24px | `gap-6`, `p-6` | standard section separation, desktop surface padding |
+| Major | 32px | `gap-8`, `p-8` | major page-section separation |
+| Exceptional | 48px | `gap-12`, `py-12` | rare large separation / empty-state breathing room |
+
+Do not create arbitrary 18px, 22px, 27px, 35px, or similar values unless a component-level requirement proves necessary.
+
+## 11.2 Outer page padding
+
+Initial baseline:
+
+- mobile: **16px** — `p-4`;
+- tablet/small desktop: **24px** — `sm:p-6`;
+- large desktop: **32px** — `xl:p-8` only where the page/shell benefits from the additional space.
+
+The portal shell or shared PageContainer should own outer page padding. Individual pages must not add a second equivalent outer padding layer and create accidental double gutters.
+
+## 11.3 Section rhythm
+
+Default intent:
+
+- PageHeader → first major content: **24px**;
+- normal major sections: **24px**;
+- visually distinct major workflow/record groups: **32px** when needed;
+- related content inside one section: **16px**;
+- tight metadata/action clusters: **8–12px**.
+
+Prefer `space-y-6` / `gap-6` as the normal page-section rhythm before reaching for larger separation.
+
+## 11.4 Card and surface padding
+
+Use:
+
+- compact surface: **12–16px**;
+- standard surface: **16px mobile**, up to **24px desktop** when content density allows.
+
+Existing shadcn Card defaults are a valid starting point. Do not override every Card to larger padding merely to make it feel “premium”.
+
+## 11.5 Form spacing
+
+Default intent:
+
+- label → control/helper relationship: **8px**;
+- related controls inside one field group: **8–12px**;
+- field → field: **16px**;
+- form section → form section: **24px**.
+
+Long forms may use 24px between complex field groups, but ordinary forms should not become excessively tall.
+
+## 11.6 Action spacing
+
+- buttons in one action group: **8px**;
+- icon + button label: use the shared Button component defaults;
+- primary/secondary action groups may use **8–12px** depending on available width.
 
 Prefer shared containers/components over repeating magic margin/padding values everywhere.
 
-When an approved reference implementation exists for the same page type, match its rhythm unless a real task difference requires otherwise.
+When an Approved Reference Implementation exists for the same page type, match its rhythm unless a real task difference requires otherwise.
 
 ---
 
@@ -336,23 +394,38 @@ When an approved reference implementation exists for the same page type, match i
 
 Typography must communicate hierarchy before color does.
 
-Use a compact scale:
+## 12.1 Canonical application type scale
 
-- page title;
-- section title;
-- subsection/card title;
-- body;
-- supporting/body-muted;
-- label;
-- small metadata/caption.
+Use the following initial baseline inside authenticated portals:
 
-Rules:
+| Role | Size | Weight | Preferred utility intent |
+| --- | ---: | ---: | --- |
+| Page title | 24px mobile / 30px desktop | 700 | `text-2xl sm:text-3xl font-bold` |
+| Section title | 20px | 600 | `text-xl font-semibold` |
+| Subsection / prominent card title | 16px | 600 | `text-base font-semibold` |
+| Standard body | 14px | 400 | `text-sm` |
+| Reading/explanatory body | 16px | 400 | `text-base` when longer-form readability benefits |
+| Form label | 14px | 500–600 | `text-sm font-medium` / `font-semibold` only when emphasis is justified |
+| Supporting / muted text | 14px | 400 | `text-sm text-muted-foreground` |
+| Table header / compact metadata | 12px | 600 | `text-xs font-semibold` |
+| Caption / timestamp / tertiary metadata | 12px | 400–500 | `text-xs` |
+
+Use the smallest number of type levels that still makes hierarchy obvious.
+
+## 12.2 Typography rules
 
 - avoid oversized marketing-style headings inside authenticated portals;
-- body text should remain comfortably readable;
-- table text may be denser than reading text but must remain legible;
+- page titles should normally use the PageHeader rather than one-off heading styling;
+- standard operational body text is generally 14px;
+- use 16px body text for reading-heavy descriptions or long-form content where readability matters more than density;
+- table text may be dense but must remain legible;
 - do not rely on all-caps for hierarchy except compact table/header metadata where appropriate;
-- avoid coloring every heading with a strong brand color.
+- avoid coloring every heading with strong brand color;
+- do not use font size alone to imply domain authority or destructive severity.
+
+## 12.3 Font family
+
+The current system-wide family remains the existing Calibri/Segoe UI-oriented stack until a separate bounded font decision is approved.
 
 Font-family changes are system-level decisions. Do not change fonts in one page only.
 
@@ -360,9 +433,29 @@ Font-family changes are system-level decisions. Do not change fonts in one page 
 
 # 13. Color and brand usage
 
-Current EARIST tokens are the starting foundation.
+Current EARIST tokens are the canonical starting palette.
 
-Use neutral surfaces for most of the interface.
+## 13.1 Current canonical palette
+
+| Token / intent | Value |
+| --- | --- |
+| EARIST primary | `#8B1A1A` |
+| EARIST secondary | `#A83240` |
+| EARIST accent / gold | `#D4A843` |
+| Light red surface | `#FDF0F0` |
+| Cream surface | `#FFF8EC` |
+| Main neutral surface | `#F4F6F9` |
+| Border gray | `#D0D7E3` |
+| Body text | `#4A4A5A` |
+| Success | `#1E7E4E` |
+| Warning | `#9B5C00` |
+| Base content surface | `#FFFFFF` |
+
+Use CSS variables / semantic component variants instead of hardcoding these hex values repeatedly in pages.
+
+## 13.2 Brand usage
+
+The visual balance should be predominantly neutral. Strong EARIST brand color is reserved for meaningful emphasis rather than coloring every surface.
 
 Strong brand red should primarily support:
 
@@ -371,9 +464,17 @@ Strong brand red should primarily support:
 - selected/active states;
 - deliberate emphasis.
 
-Gold accent should be restrained.
+Gold accent should be restrained and should not compete with the primary action.
+
+Avoid simultaneous strong red on page title + icon + border + card + badge + button unless the semantic context genuinely requires it.
+
+## 13.3 Semantic color discipline
 
 Semantic state colors must not be overridden merely to create visual variety.
+
+The current `--destructive` token shares a similar red family with the brand primary. Therefore semantics must come from component role and context, not from hex color alone.
+
+Do not introduce page-local “status colors” as new hardcoded hex values. If the existing semantic palette is insufficient, introduce/refine a token in a bounded design-foundation package rather than inventing a one-off color.
 
 ## 13.1 Suggested semantic families
 
@@ -428,30 +529,54 @@ Color must never be the only status signal.
 
 ---
 
-# 14. Surfaces, cards, borders, and elevation
+# 14. Surfaces, cards, borders, radius, and elevation
 
 Use cards to group meaningfully distinct content, not as default decoration.
 
+## 14.1 Surface hierarchy
+
 Default application surface preference:
 
-- neutral/white surface;
-- subtle border;
-- little or no shadow.
+- page background: neutral `--background` / EARIST surface gray;
+- normal content surface: white/card surface + subtle border/ring;
+- grouped card/section: same neutral content language with only enough separation to show grouping;
+- overlay/floating UI: stronger elevation is allowed.
 
-Use stronger elevation for:
+## 14.2 Radius baseline
 
-- dialogs;
-- dropdowns/popovers;
-- temporary floating UI.
+The existing root radius is `0.625rem` (**10px**) and remains the base.
+
+Use the existing component radius system rather than page-local arbitrary radii:
+
+- compact controls: approximately **8px** / shared `rounded-md`-level treatment;
+- standard controls/cards: approximately **10px** / shared `rounded-lg` treatment;
+- prominent grouped surfaces: approximately **14px** / `rounded-xl` only where the existing component or composition calls for it;
+- pill shapes: `rounded-full` only for badges, avatars, compact status chips, and controls that are intentionally pill-shaped.
+
+Do not mix many radius styles on the same page for decoration.
+
+## 14.3 Elevation baseline
+
+Use:
+
+- ordinary static surface: border/ring with **no shadow** by default;
+- slight separation where needed: **shadow-sm**;
+- dialogs/dropdowns/popovers/floating overlays: stronger overlay elevation such as **shadow-lg** when supported by the shared primitive.
+
+Avoid `shadow-md` / `shadow-lg` on ordinary static cards.
+
+## 14.4 Borders
+
+Use the shared border token and subtle separators before stronger shadow.
+
+Colored borders are semantic accents, not a default section-decoration technique.
 
 Avoid:
 
 - card inside card inside card;
 - thick colored top borders on every section;
-- shadow-md/shadow-lg on ordinary static content;
-- multiple competing accent colors in one task area.
-
-Rounded corners should follow the project's radius tokens and a small set of reusable variants.
+- multiple competing accent colors in one task area;
+- arbitrary page-local radius/shadow recipes.
 
 ---
 
