@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type {
@@ -74,20 +73,6 @@ const STAGE_LABEL: Record<AdminApplicantStage, string> = {
   ALIGNMENT: "Program Alignment",
   EXAM: "Entrance Examination",
   COR: "COR / Enrollment",
-};
-
-const ADMISSION_STATUS_LABEL: Record<string, string> = {
-  APPLICANT: "Applicant",
-  ENROLLED: "Enrolled",
-  GRADUATED: "Graduated",
-  DISMISSED: "Dismissed",
-};
-
-const ROLE_LABEL: Record<string, string> = {
-  APPLICANT: "Applicant",
-  STUDENT: "Student",
-  ADMIN: "Administrator",
-  PANELIST: "Panelist",
 };
 
 const PROGRAM_TYPE_LABEL: Record<string, string> = {
@@ -361,17 +346,15 @@ function DetailSkeleton() {
         <Skeleton className="h-8 w-64 max-w-full" />
         <Skeleton className="h-4 w-80 max-w-full" />
       </div>
-      <Skeleton className="h-36 w-full rounded-xl" />
+      <Skeleton className="h-28 w-full rounded-xl" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="lg:col-span-2">
           <Skeleton className="h-96 w-full rounded-xl" />
         </div>
-        <div className="space-y-6">
-          <Skeleton className="h-56 w-full rounded-xl" />
-          <Skeleton className="h-44 w-full rounded-xl" />
+        <div>
+          <Skeleton className="h-72 w-full rounded-xl" />
         </div>
       </div>
-      <Skeleton className="h-48 w-full rounded-xl" />
     </div>
   );
 }
@@ -626,10 +609,6 @@ export default function ApplicantDetailPage() {
   const programName = applicant.program?.programName ?? MISSING;
   const programType = applicant.program?.programType ?? null;
   const isDoctoral = programType === "DOCTORAL";
-  const admissionStatusLabel = labelFor(
-    ADMISSION_STATUS_LABEL,
-    applicant.admissionStatus,
-  );
 
   return (
     <div className="space-y-6">
@@ -647,8 +626,8 @@ export default function ApplicantDetailPage() {
 
       {/* Current Admission State */}
       <Card>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <CardContent>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-semibold text-(--earist-body-text)">
                 Current Admission State
@@ -660,11 +639,10 @@ export default function ApplicantDetailPage() {
                 {currentStateLabel(applicant)}
               </p>
             </div>
-            <Badge variant="outline" className="shrink-0">
-              {admissionStatusLabel}
-            </Badge>
+            <div className="sm:shrink-0">
+              <AdmissionProgress applicant={applicant} />
+            </div>
           </div>
-          <AdmissionProgress applicant={applicant} />
         </CardContent>
       </Card>
 
@@ -687,86 +665,56 @@ export default function ApplicantDetailPage() {
         </div>
 
         {/* Context column */}
-        <aside className="space-y-6">
-          <SectionCard title="Applicant Information">
-            <dl className="grid grid-cols-1 gap-3">
-              <DataRow label="Pinnacle Applicant ID">
-                {applicant.pinnacleApplicantId || MISSING}
-              </DataRow>
-              <DataRow label="Email">{applicant.email || MISSING}</DataRow>
-              <DataRow label="Cellphone">
-                {applicant.cellphone || MISSING}
-              </DataRow>
-              <DataRow label="Date of Birth">
-                {formatDate(applicant.dateOfBirth)}
-              </DataRow>
-              <DataRow label="Registered">
-                {formatDate(applicant.createdAt)}
-              </DataRow>
-            </dl>
-          </SectionCard>
+        <aside>
+          <SectionCard title="Applicant Details">
+            <div className="space-y-5">
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold text-(--earist-secondary)">
+                  Personal Information
+                </h3>
+                <dl className="grid grid-cols-1 gap-3">
+                  <DataRow label="Pinnacle Applicant ID">
+                    {applicant.pinnacleApplicantId || MISSING}
+                  </DataRow>
+                  <DataRow label="Email">{applicant.email || MISSING}</DataRow>
+                  <DataRow label="Cellphone">
+                    {applicant.cellphone || MISSING}
+                  </DataRow>
+                  <DataRow label="Date of Birth">
+                    {formatDate(applicant.dateOfBirth)}
+                  </DataRow>
+                  <DataRow label="Registered">
+                    {formatDate(applicant.createdAt)}
+                  </DataRow>
+                </dl>
+              </section>
 
-          <SectionCard title="Academic Background">
-            <dl className="grid grid-cols-1 gap-3">
-              <DataRow label="Applying for">{programName}</DataRow>
-              <DataRow label="Program level">
-                {labelFor(PROGRAM_TYPE_LABEL, programType, MISSING)}
-              </DataRow>
-              {isDoctoral ? (
-                <DataRow label="Previous Master's program">
-                  {applicant.previousMastersProgram?.programName ?? MISSING}
-                </DataRow>
-              ) : (
-                <DataRow label="Previous academic program">
-                  {applicant.undergraduateProgram?.programName ?? MISSING}
-                </DataRow>
-              )}
-            </dl>
-          </SectionCard>
+              <Separator />
 
-          <SectionCard title="Account Access">
-            <dl className="grid grid-cols-1 gap-3">
-              <DataRow label="Login identifier">
-                {applicant.pinnacleApplicantId || MISSING}
-              </DataRow>
-              <DataRow label="Account role">
-                {labelFor(ROLE_LABEL, applicant.role, MISSING)}
-              </DataRow>
-            </dl>
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold text-(--earist-secondary)">
+                  Academic Background
+                </h3>
+                <dl className="grid grid-cols-1 gap-3">
+                  <DataRow label="Applying for">{programName}</DataRow>
+                  <DataRow label="Program level">
+                    {labelFor(PROGRAM_TYPE_LABEL, programType, MISSING)}
+                  </DataRow>
+                  {isDoctoral ? (
+                    <DataRow label="Previous Master's program">
+                      {applicant.previousMastersProgram?.programName ?? MISSING}
+                    </DataRow>
+                  ) : (
+                    <DataRow label="Previous academic program">
+                      {applicant.undergraduateProgram?.programName ?? MISSING}
+                    </DataRow>
+                  )}
+                </dl>
+              </section>
+            </div>
           </SectionCard>
         </aside>
       </div>
-
-      {/* Activity History */}
-      <SectionCard
-        title="Activity History"
-        description="Recent recorded actions for this applicant."
-      >
-        {applicant.activityLog.length === 0 ? (
-          <p className="py-6 text-center text-sm text-(--earist-body-text)">
-            No recorded activity yet.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {applicant.activityLog.map((entry, index) => (
-              <li key={`${entry.timestamp}-${index}`} className="flex gap-3">
-                <span
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-(--earist-primary)/60"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-sm break-words text-foreground">
-                    {entry.description}
-                  </p>
-                  <p className="text-xs break-words text-(--earist-body-text)">
-                    {formatDateTime(entry.timestamp)} · {entry.actor}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </SectionCard>
     </div>
   );
 }

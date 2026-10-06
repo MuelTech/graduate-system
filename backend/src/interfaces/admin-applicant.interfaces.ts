@@ -62,8 +62,6 @@ export interface AdminApplicantDetail {
   pinnacleApplicantId: string;
   cellphone: string | null;
   dateOfBirth: string | null;
-  /** Authoritative `User.role` (e.g. APPLICANT / STUDENT). */
-  role: string;
   program: { id: string; programName: string; programType: string } | null;
   /** Undergraduate prerequisite relation (Master's applicants). */
   undergraduateProgram: { id: string; programName: string } | null;
@@ -84,7 +82,6 @@ export interface AdminApplicantDetail {
   corUploads: CorUploadDetail[];
   admissionStatus: string;
   enrollmentDate: string | null;
-  activityLog: ActivityLogEntry[];
   createdAt: string;
 }
 
@@ -138,13 +135,6 @@ export interface CorRecordDetail {
   verificationMethod: string | null;
   verifiedBy: { firstName: string; lastName: string } | null;
   verifiedAt: string | null;
-}
-
-export interface ActivityLogEntry {
-  timestamp: string;
-  action: string;
-  description: string;
-  actor: string;
 }
 
 export interface RejectWaiverInput {

@@ -41,8 +41,6 @@ export class AdminApplicantService {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const activityLog = await this.repository.findActivityLog(id);
-
     const examApp = student.examApplications[0];
     const corUpload = student.corUploads[0];
 
@@ -62,7 +60,6 @@ export class AdminApplicantService {
       pinnacleApplicantId: student.pinnacleApplicantId || "",
       cellphone: student.cellphone ?? null,
       dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
-      role: student.user.role,
       program: student.program
         ? {
             id: student.program.id,
@@ -155,7 +152,6 @@ export class AdminApplicantService {
             }
           : null,
       })),
-      activityLog,
       createdAt: student.createdAt.toISOString(),
     };
   }

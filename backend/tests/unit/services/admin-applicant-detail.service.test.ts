@@ -6,13 +6,11 @@ vi.mock("../../../src/services/cor.service", () => ({
 
 const repo = vi.hoisted(() => ({
   findStudentById: vi.fn(),
-  findActivityLog: vi.fn(),
 }));
 
 vi.mock("../../../src/repositories/admin-applicant.repository", () => ({
   AdminApplicantRepository: class {
     findStudentById = repo.findStudentById;
-    findActivityLog = repo.findActivityLog;
   },
 }));
 
@@ -38,7 +36,6 @@ function detailStudent(overrides: Record<string, unknown> = {}) {
       firstName: "Ana",
       lastName: "Dela",
       email: "ana@example.com",
-      role: "APPLICANT",
     },
     createdAt: new Date("2026-01-01"),
     ...overrides,
@@ -58,7 +55,6 @@ function examApp(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  repo.findActivityLog.mockResolvedValue([]);
 });
 
 describe("AdminApplicantService academic background", () => {
@@ -157,6 +153,17 @@ describe("AdminApplicantService alignment + admission stage", () => {
 
     expect(detail.admissionStage).toBe("COR");
     expect(detail.hasPassedExam).toBe(true);
+  });
+});
+
+describe("AdminApplicantService removed profile-only projections", () => {
+  it("does not expose the removed role/activityLog detail fields", async () => {
+    repo.findStudentById.mockResolvedValue(detailStudent());
+
+    const detail = await new AdminApplicantService().getApplicantDetail("s1");
+
+    expect(detail).not.toHaveProperty("role");
+    expect(detail).not.toHaveProperty("activityLog");
   });
 });
 

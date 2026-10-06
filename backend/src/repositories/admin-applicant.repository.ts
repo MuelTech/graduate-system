@@ -91,7 +91,6 @@ export class AdminApplicantRepository {
             firstName: true,
             lastName: true,
             email: true,
-            role: true,
           },
         },
         program: {
@@ -161,31 +160,6 @@ export class AdminApplicantRepository {
         },
       },
     });
-  }
-
-  async findActivityLog(studentId: string) {
-    const logs = await prisma.auditLog.findMany({
-      where: { targetId: studentId },
-      include: {
-        actor: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-
-    return logs.map((log) => ({
-      timestamp: log.createdAt.toISOString(),
-      action: log.actionType,
-      description: log.description || log.actionType,
-      actor: log.actor
-        ? `${log.actor.firstName} ${log.actor.lastName}`
-        : "System",
-    }));
   }
 
   async updateAlignmentStatus(studentId: string, status: string) {

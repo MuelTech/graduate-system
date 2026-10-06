@@ -16,7 +16,6 @@ vi.mock("../../../src/services/cor.service", () => ({
 
 const repo = vi.hoisted(() => ({
   findStudentById: vi.fn(),
-  findActivityLog: vi.fn(),
   createAuditLog: vi.fn(),
   updateAlignmentStatus: vi.fn(),
   updateWaiverStatus: vi.fn(),
@@ -25,7 +24,6 @@ const repo = vi.hoisted(() => ({
 vi.mock("../../../src/repositories/admin-applicant.repository", () => ({
   AdminApplicantRepository: class {
     findStudentById = repo.findStudentById;
-    findActivityLog = repo.findActivityLog;
     createAuditLog = repo.createAuditLog;
     updateAlignmentStatus = repo.updateAlignmentStatus;
     updateWaiverStatus = repo.updateWaiverStatus;
@@ -58,7 +56,6 @@ function student(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  repo.findActivityLog.mockResolvedValue([]);
 });
 
 describe("AdminApplicantService COR delegation to canonical authority", () => {
