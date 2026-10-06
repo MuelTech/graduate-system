@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -41,9 +41,6 @@ import {
 } from "lucide-react";
 
 const PAGE_SIZE = 10;
-
-/** Cache key holding the last successfully loaded page (error fallback). */
-const LAST_GOOD_KEY = ["adminApplicants", "lastGood"] as const;
 
 type StageFilter = "ALL" | AdminApplicantStage;
 
@@ -341,7 +338,8 @@ function ErrorState({
           Unable to load applicants
         </p>
         <p className="text-sm text-(--earist-body-text)">
-          Something went wrong while loading the list. Please try again.
+          The applicant list for the current view could not be loaded. Please
+          try again.
         </p>
       </div>
       <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
@@ -365,7 +363,6 @@ export default function AdminApplicantsPage() {
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const trimmedSearch = debouncedSearch.trim();
-  const queryClient = useQueryClient();
 
   const programsQuery = useQuery({
     queryKey: ["programs"],
@@ -383,10 +380,7 @@ export default function AdminApplicantsPage() {
       if (trimmedSearch) params.set("search", trimmedSearch);
       if (programId !== ALL_PROGRAMS) params.set("programId", programId);
       if (stage !== "ALL") params.set("stage", stage);
-      const data = await apiClientRequest(`/admin/applicants?${params.toString()}`);
-      // Retain the last successful page for graceful failure recovery.
-      queryClient.setQueryData(LAST_GOOD_KEY, data);
-      return data;
+      return apiClientRequest(`/admin/applicants?${params.toString()}`);
     },
     placeholderData: keepPreviousData,
   });
@@ -394,19 +388,22 @@ export default function AdminApplicantsPage() {
   const isLoading = applicantsQuery.isLoading;
   const isFetching = applicantsQuery.isFetching;
   const isError = applicantsQuery.isError;
+  const isPlaceholderData = applicantsQuery.isPlaceholderData;
+  const isPaused = applicantsQuery.fetchStatus === "paused";
+  const hasData = applicantsQuery.data != null;
 
-  // Graceful failure recovery: fall back to the last successfully loaded page
-  // (read from the query cache, not local state) instead of blanking the list.
-  const lastGoodData = queryClient.getQueryData<{
-    applicants: AdminApplicantListRow[];
-    total: number;
-  }>(LAST_GOOD_KEY);
-  const effectiveData =
-    applicantsQuery.data ?? (isError ? lastGoodData : undefined);
-  const hasUsableData = effectiveData != null;
+  // Query-key-scoped data only. A different filter/search/page is a different
+  // query key: while that request is in flight its previous-key rows may remain
+  // for layout stability, but once it fails or is paused we must NOT present
+  // unrelated rows as the result of the newly selected filter.
+  const filterRequestFailed = (isError || isPaused) && isPlaceholderData;
+  const loadFailedWithoutData = isError && !hasData;
+  // A same-query background refetch failure may retain its own usable rows.
+  const sameQueryRefetchFailed =
+    (isError || isPaused) && hasData && !isPlaceholderData;
 
-  const rows: AdminApplicantListRow[] = effectiveData?.applicants ?? [];
-  const total: number = effectiveData?.total ?? 0;
+  const rows: AdminApplicantListRow[] = applicantsQuery.data?.applicants ?? [];
+  const total: number = applicantsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const isFiltered =
     trimmedSearch !== "" || programId !== ALL_PROGRAMS || stage !== "ALL";
@@ -449,7 +446,7 @@ export default function AdminApplicantsPage() {
             <div className="w-full sm:min-w-[220px] sm:flex-1">
               <label
                 htmlFor="applicant-search"
-                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
                 Search
               </label>
@@ -471,10 +468,10 @@ export default function AdminApplicantsPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-56">
+            <div className="w-full sm:w-72">
               <label
                 htmlFor="filter-program"
-                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
                 Program
               </label>
@@ -493,10 +490,19 @@ export default function AdminApplicantsPage() {
                     {programLabel}
                   </span>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_PROGRAMS}>All Programs</SelectItem>
+                <SelectContent className="min-w-[min(92vw,24rem)]">
+                  <SelectItem
+                    value={ALL_PROGRAMS}
+                    className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                  >
+                    All Programs
+                  </SelectItem>
                   {graduatePrograms.map((program) => (
-                    <SelectItem key={program.id} value={program.id}>
+                    <SelectItem
+                      key={program.id}
+                      value={program.id}
+                      className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                    >
                       {program.programName}
                     </SelectItem>
                   ))}
@@ -507,7 +513,7 @@ export default function AdminApplicantsPage() {
             <div className="w-full sm:w-48">
               <label
                 htmlFor="filter-stage"
-                className="mb-1 block text-xs font-medium text-(--earist-body-text)"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
                 Admission Stage
               </label>
@@ -550,8 +556,8 @@ export default function AdminApplicantsPage() {
         </CardContent>
       </Card>
 
-      {/* Background-refetch recovery banner (keeps usable rows visible) */}
-      {isError && hasUsableData && (
+      {/* Same-query background refetch failure: keep usable rows + restrained feedback */}
+      {sameQueryRefetchFailed && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-light-red) px-4 py-2.5">
           <p className="text-sm text-(--earist-body-text)">
             Couldn&apos;t refresh the list. Showing the most recent results.
@@ -572,7 +578,7 @@ export default function AdminApplicantsPage() {
         <CardContent className="min-w-0 p-0">
           {isLoading ? (
             <TableSkeleton />
-          ) : isError && !hasUsableData ? (
+          ) : filterRequestFailed || loadFailedWithoutData ? (
             <ErrorState
               onRetry={() => applicantsQuery.refetch()}
               retrying={isFetching}
@@ -589,7 +595,7 @@ export default function AdminApplicantsPage() {
                     className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
                   >
                     <td className="px-4 py-3 align-top">
-                      <p className="font-medium break-words text-(--earist-primary)">
+                      <p className="text-sm font-semibold break-words text-foreground">
                         {applicant.firstName} {applicant.lastName}
                       </p>
                       <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
