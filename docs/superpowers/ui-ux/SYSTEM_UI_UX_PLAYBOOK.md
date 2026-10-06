@@ -1147,6 +1147,36 @@ Do not copy:
 
 This reference is concrete precedent, not a requirement that future screens become dashboard-like. Reuse only the parts that match the target page type and task.
 
+### Reference: Admin Applicants list
+
+- Primary path:
+  - `frontend/src/app/(portal)/admin/users/applicants/page.tsx`
+- Supporting read-model/rules path:
+  - `backend/src/services/admin-applicant-list.rules.ts`
+- Accepted commit: `ac5b54e424c4fb8849262b2a2f64a45c95743a82`
+- Implementation chain:
+  - `6845e545a66f1c9ca8b7d46eb402aad333edbe13` — Applicants admission-journey registry refinement
+  - `ac5b54e424c4fb8849262b2a2f64a45c95743a82` — accepted FIX for long Program-name readability, typography hierarchy, stage-filter consistency, and query-safe failure behavior
+- Pattern type: wide Admin record-management/list page with search, filters, pagination, workflow-state projection, and one dominant row action.
+- Reuse:
+  - the shared PageHeader hierarchy established by the Admin reference;
+  - compact filter surfaces with discoverable labels, reversible filters, and clear no-results behavior;
+  - canonical list typography: 14px operational/form/primary row text, 12px compact table headers and genuinely secondary metadata, with neutral primary row identity rather than repeated strong brand color;
+  - fixed canonical type sizes with deliberate responsive breakpoints rather than continuously fluid scaling; browser zoom and OS/accessibility scaling must remain usable;
+  - bounded selectors whose opened option list keeps long authoritative names fully readable; local wrapping/wider popup treatment is preferred over silently clipping meaningful values;
+  - intentional table column sizing, local horizontal overflow when necessary, and stable structural Skeleton rows;
+  - distinction between initial loading, same-query background refresh, confirmed empty, and query-specific failure;
+  - query-cache behavior that never presents unrelated previous-filter rows as if they matched a newly requested filter after failure;
+  - a single clear row action when one dominant action exists;
+  - human-readable workflow/current-state text derived from authoritative backend/read-model state rather than raw enum labels.
+- Do not copy:
+  - Applicant-specific Admission Progress stages, Current State mappings, active-Applicant scope, Entrance Exam semantics, COR semantics, or Program/Stage filter rules into unrelated domains;
+  - the exact six-column schema into pages whose comparison task requires different information;
+  - a frontend-derived workflow model when the target domain lacks authoritative backend state;
+  - table presentation into detail/form/workflow screens where another composition is more appropriate.
+
+The Applicants reference demonstrates a list-page pattern, not a universal DataTable abstraction. Extract shared table/filter primitives only when repeated accepted screens prove the need.
+
 Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 
 ---

@@ -332,7 +332,7 @@ Do not change domain behavior merely to make navigation simpler.
 ---
 
 ## UX-PAGE-01 — No shared PageHeader pattern
-**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on the Admin Dashboard; adoption remains page-by-page.
+**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on both the Admin Dashboard and Admin Applicants list; adoption remains page-by-page.
 
 **Priority:** P1  
 **Area:** Page hierarchy
@@ -412,7 +412,7 @@ Prefer borders and restrained shadows. Avoid nested-card visual noise.
 ---
 
 ## UX-PAGE-04 — Approved visual exemplars do not yet exist under a formal rule
-**Status:** RESOLVED AS A FOUNDATION — Admin Dashboard + restrained Admin shell is the first Approved Reference Implementation at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`.
+**Status:** RESOLVED AS A FOUNDATION — the approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be` and the Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`.
 
 **Priority:** P1  
 **Area:** Consistency / iteration
@@ -624,7 +624,7 @@ Use the narrowest useful error surface.
 
 **Priority:** P1  
 **Area:** Perceived performance / layout stability  
-**Status:** SYSTEM-WIDE RULE DOCUMENTED — UIUX-1 is the first accepted structural-skeleton exemplar; legacy list/table pages remain iterative work.
+**Status:** SYSTEM-WIDE RULE DOCUMENTED — UIUX-1 established the first structural-skeleton exemplar, and UIUX-2A Admin Applicants is now the accepted record-list exemplar for stable table/filter/refetch behavior; legacy list/table pages remain iterative work.
 
 Representative legacy patterns can visibly shift because:
 
@@ -704,6 +704,7 @@ Add them only when an accepted screen requirement benefits from them.
 ---
 
 ## UX-COMP-03 — Tables need a shared application-level pattern
+**Status:** PARTIALLY ADDRESSED — UIUX-2A Admin Applicants establishes an accepted table/filter/list-page reference at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`; a system-wide shared DataTable abstraction remains demand-driven.
 
 **Priority:** P1  
 **Area:** Admin efficiency
@@ -728,6 +729,24 @@ A raw table component alone is not enough. Management pages may need consistent 
 Define a shared DataTable pattern built from existing project components and established filters.
 
 Do not force every list into a table. Cards may be more appropriate on mobile or for small heterogeneous records.
+
+### Accepted UIUX-2A checkpoint — Admin Applicants list
+
+The accepted Applicants list demonstrates the current record-management baseline:
+
+- search + bounded Program and Admission Stage filters;
+- readable long selector values without making the whole filter bar oversized;
+- 14px form labels and primary operational row text, 12px table headers/secondary metadata;
+- neutral primary row identity with restrained EARIST red reserved for deliberate emphasis/current state;
+- structural table Skeletons and intentional column widths;
+- stable refetch behavior without loading -> empty -> loaded flashes;
+- query-specific failure handling that does not misrepresent stale rows from another filter as current results;
+- explicit empty/no-results behavior;
+- local horizontal table scrolling on constrained widths;
+- a single dominant row action;
+- human-readable workflow-state projection backed by authoritative server/read-model rules.
+
+Applicant-specific admission stages and COR/Entrance Exam semantics remain domain-specific and must not be generalized into unrelated list pages.
 
 ---
 
@@ -948,6 +967,7 @@ For changed interaction-heavy screens, manually verify:
 ---
 
 ## UX-VIS-01 — Typography currently lacks a documented application hierarchy
+**Status:** RESOLVED AS A FOUNDATION — the canonical application type scale is documented in the playbook and was validated on both the Admin Dashboard and UIUX-2A Admin Applicants. The accepted operational baseline keeps primary reading/form/table-row text at 14px, compact table headers and genuinely secondary metadata at 12px, and uses deliberate responsive breakpoints while preserving browser/accessibility zoom.
 
 **Priority:** P1  
 **Area:** Visual language
