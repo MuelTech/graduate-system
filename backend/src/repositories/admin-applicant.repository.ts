@@ -91,15 +91,23 @@ export class AdminApplicantRepository {
             firstName: true,
             lastName: true,
             email: true,
+            role: true,
           },
         },
         program: {
           select: {
             id: true,
             programName: true,
+            programType: true,
           },
         },
         undergraduateProgram: {
+          select: {
+            id: true,
+            programName: true,
+          },
+        },
+        previousMastersProgram: {
           select: {
             id: true,
             programName: true,
@@ -120,7 +128,7 @@ export class AdminApplicantRepository {
             score: true,
             slot: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         },
         corUploads: {
           include: {
@@ -149,7 +157,7 @@ export class AdminApplicantRepository {
               },
             },
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         },
       },
     });

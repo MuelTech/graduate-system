@@ -11,6 +11,10 @@ import {
 } from "../interfaces/admin-applicant.interfaces";
 import { AppError } from "../utils/AppError";
 import { CorService } from "./cor.service";
+import {
+  deriveAdmissionStage,
+  hasAuthoritativePassedExam,
+} from "./admin-applicant-list.rules";
 
 export class AdminApplicantService {
   private repository = new AdminApplicantRepository();
@@ -42,15 +46,13 @@ export class AdminApplicantService {
     const examApp = student.examApplications[0];
     const corUpload = student.corUploads[0];
 
-    let examStatus = "NOT_SCHEDULED";
-    if (examApp) {
-      examStatus = examApp.status;
-    }
-
-    let corStatus = "NONE";
-    if (corUpload) {
-      corStatus = String(corUpload.status || "NONE");
-    }
+    const examStatus = examApp ? examApp.status : "NOT_SCHEDULED";
+    const corStatus = corUpload ? String(corUpload.status || "NONE") : "NONE";
+    const hasPassedExam = hasAuthoritativePassedExam(student.examApplications);
+    const admissionStage = deriveAdmissionStage({
+      alignmentStatus: student.alignmentStatus,
+      hasPassedExam,
+    });
 
     return {
       id: student.id,
@@ -58,20 +60,32 @@ export class AdminApplicantService {
       lastName: student.user.lastName,
       email: student.user.email,
       pinnacleApplicantId: student.pinnacleApplicantId || "",
-      cellphone: student.cellphone || "",
-      dateOfBirth: student.dateOfBirth?.toISOString() || "",
-      program: student.program,
-      undergraduateCourse: student.undergraduateProgram?.programName || "",
-      alignmentStatus: student.alignmentStatus || "ALIGNED",
-      isProgramAligned: student.isProgramAligned || false,
-      examStatus,
-      examScores: examApp?.score
+      cellphone: student.cellphone ?? null,
+      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
+      role: student.user.role,
+      program: student.program
         ? {
-            mcq: Number(examApp.score.multipleChoiceScore),
-            essay: Number(examApp.score.essayScore),
-            total: Number(examApp.score.totalScore),
+            id: student.program.id,
+            programName: student.program.programName,
+            programType: student.program.programType,
           }
         : null,
+      undergraduateProgram: student.undergraduateProgram
+        ? {
+            id: student.undergraduateProgram.id,
+            programName: student.undergraduateProgram.programName,
+          }
+        : null,
+      previousMastersProgram: student.previousMastersProgram
+        ? {
+            id: student.previousMastersProgram.id,
+            programName: student.previousMastersProgram.programName,
+          }
+        : null,
+      alignmentStatus: student.alignmentStatus ?? null,
+      admissionStage,
+      examStatus,
+      hasPassedExam,
       corStatus,
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() || null,
@@ -90,21 +104,13 @@ export class AdminApplicantService {
       examApplications: student.examApplications.map((app) => ({
         id: app.id,
         status: app.status,
-        slot: app.slot
+        examSlot: app.slot
           ? {
               examDate: app.slot.examDate.toISOString(),
-              examTime: app.slot.examTime,
-              venueOrLink: "",
+              examTime: app.slot.examTime.toISOString(),
             }
           : null,
-        examScores: app.score
-          ? {
-              multipleChoiceScore: Number(app.score.multipleChoiceScore),
-              essayScore: Number(app.score.essayScore),
-              totalScore: Number(app.score.totalScore),
-            }
-          : null,
-      })) as any,
+      })),
       corUploads: student.corUploads.map((upload, index) => ({
         id: upload.id,
         status: String(upload.status || "NONE"),
@@ -151,7 +157,7 @@ export class AdminApplicantService {
       })),
       activityLog,
       createdAt: student.createdAt.toISOString(),
-    } as any;
+    };
   }
 
   async validateWaiver(

@@ -507,16 +507,38 @@ export interface AdminApplicantListRow {
   createdAt: string;
 }
 
-export interface AdminApplicantDetail extends AdminApplicantListItem {
-  cellphone: string;
-  dateOfBirth: string;
-  undergraduateCourse: string;
-  isProgramAligned: boolean;
+export interface AdminApplicantDetail {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  pinnacleApplicantId: string;
+  cellphone: string | null;
+  dateOfBirth: string | null;
+  /** Authoritative `User.role` (e.g. APPLICANT / STUDENT). */
+  role: string;
+  program: { id: string; programName: string; programType: string } | null;
+  /** Undergraduate prerequisite relation (Master's applicants). */
+  undergraduateProgram: { id: string; programName: string } | null;
+  /** Previous Master's relation (Doctoral applicants). */
+  previousMastersProgram: { id: string; programName: string } | null;
+  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
+  alignmentStatus: string | null;
+  /** Presentation/read-model stage only — never persisted, never authority. */
+  admissionStage: AdminApplicantStage;
+  /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
+  examStatus: string;
+  /** Canonical passed-exam gate (authoritative existence of PASSED). */
+  hasPassedExam: boolean;
+  /** Latest current COR upload status, or "NONE". */
+  corStatus: string;
   bridgingWaiver: BridgingWaiverDetail | null;
   examApplications: ExamApplicationDetail[];
   corUploads: CorUploadDetail[];
+  admissionStatus: string;
   enrollmentDate: string | null;
   activityLog: ActivityLogEntry[];
+  createdAt: string;
 }
 
 export interface BridgingWaiverDetail {
@@ -531,8 +553,8 @@ export interface BridgingWaiverDetail {
 export interface ExamApplicationDetail {
   id: string;
   status: string;
-  examSlot: { examDate: string; examTime: string; venueOrLink: string } | null;
-  examScores: { multipleChoiceScore: number; essayScore: number; totalScore: number } | null;
+  /** Single canonical schedule contract; null when no authoritative slot. */
+  examSlot: { examDate: string; examTime: string } | null;
 }
 
 export interface CorExtractionSummary {

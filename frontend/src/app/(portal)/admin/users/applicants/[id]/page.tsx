@@ -1,567 +1,772 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { apiClientRequest } from "@/lib/api.client";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import type {
+  AdminApplicantDetail,
+  AdminApplicantStage,
+  ExamApplicationDetail,
+} from "@/types";
 import {
-  ArrowLeft,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  GraduationCap,
-  FileText,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Shield,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Clock,
+  RefreshCw,
+  Users,
 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminApplicantDetail } from "@/types";
-import { toast } from "sonner";
+
+/* --------------------------------------------------------------- formatting */
+
+const MISSING = "—";
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return MISSING;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return MISSING;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return MISSING;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return MISSING;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatTime(iso: string | null | undefined): string {
+  if (!iso) return MISSING;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return MISSING;
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function alignmentIsComplete(status: string | null | undefined): boolean {
+  return status === "ALIGNED" || status === "CLEARED";
+}
+
+const STAGE_LABEL: Record<AdminApplicantStage, string> = {
+  ALIGNMENT: "Program Alignment",
+  EXAM: "Entrance Examination",
+  COR: "COR / Enrollment",
+};
+
+const ADMISSION_STATUS_LABEL: Record<string, string> = {
+  APPLICANT: "Applicant",
+  ENROLLED: "Enrolled",
+  GRADUATED: "Graduated",
+  DISMISSED: "Dismissed",
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  APPLICANT: "Applicant",
+  STUDENT: "Student",
+  ADMIN: "Administrator",
+  PANELIST: "Panelist",
+};
+
+const PROGRAM_TYPE_LABEL: Record<string, string> = {
+  MASTERS: "Master's",
+  DOCTORAL: "Doctoral",
+};
+
+const WAIVER_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pending",
+  VALIDATED: "Validated",
+  REJECTED: "Rejected",
+};
+
+function alignmentLabel(status: string | null): string {
+  switch (status) {
+    case "ALIGNED":
+      return "Aligned";
+    case "CLEARED":
+      return "Cleared";
+    case "PENDING_WAIVER":
+      return "Bridging waiver pending";
+    default:
+      return "Alignment status unavailable";
+  }
+}
+
+/** Concise, human-readable current admission condition (no raw enums). */
+function currentStateLabel(a: AdminApplicantDetail): string {
+  if (a.admissionStage === "ALIGNMENT") {
+    return a.alignmentStatus === "PENDING_WAIVER"
+      ? "Bridging waiver pending"
+      : "Alignment status unavailable";
+  }
+  if (a.admissionStage === "EXAM") {
+    return examStateLabel(a.examStatus);
+  }
+  switch (a.corStatus) {
+    case "NONE":
+      return "Exam passed — awaiting COR upload";
+    case "PENDING":
+      return "COR awaiting verification";
+    case "REJECTED":
+      return "COR rejected — awaiting resubmission";
+    case "VERIFIED":
+      return "COR verified";
+    default:
+      return "COR / enrollment in progress";
+  }
+}
+
+function examStateLabel(status: string): string {
+  switch (status) {
+    case "NOT_SCHEDULED":
+      return "Ready to schedule entrance exam";
+    case "PENDING":
+      return "Entrance exam scheduled";
+    case "APPROVED":
+      return "Entrance exam approved";
+    case "TAKEN":
+      return "Entrance exam awaiting grading";
+    case "APPEALED":
+      return "Exam appeal awaiting review";
+    case "PASSED":
+      return "Entrance exam passed";
+    case "FAILED":
+      return "Entrance exam failed";
+    case "DISQUALIFIED":
+      return "Disqualified from entrance exam";
+    default:
+      return "Entrance examination in progress";
+  }
+}
+
+/**
+ * Entrance Examination section wording, gated by the canonical admission stage.
+ * The exam is not actionable until alignment is complete (Playbook §7 semantics),
+ * so an incomplete alignment must not read as "ready to schedule".
+ */
+function examSectionState(a: AdminApplicantDetail): string {
+  if (a.hasPassedExam) return "Entrance exam passed";
+  if (!alignmentIsComplete(a.alignmentStatus)) {
+    return "Waiting for program alignment";
+  }
+  return examStateLabel(a.examStatus);
+}
+
+/**
+ * COR / Enrollment section wording, gated by the authoritative PASSED exam.
+ * COR review becomes relevant only after the entrance exam is passed.
+ */
+function corSectionState(a: AdminApplicantDetail): string {
+  if (!a.hasPassedExam) {
+    return "Available after the entrance exam is passed";
+  }
+  return corStateLabel(a.corStatus);
+}
+
+function corStateLabel(status: string): string {
+  switch (status) {
+    case "NONE":
+      return "Awaiting COR upload";
+    case "PENDING":
+      return "Awaiting verification";
+    case "REJECTED":
+      return "Rejected — awaiting resubmission";
+    case "VERIFIED":
+      return "Verified";
+    default:
+      return "COR / enrollment in progress";
+  }
+}
+
+function labelFor<T extends string>(
+  map: Record<string, string>,
+  value: T | string | null | undefined,
+  fallback = MISSING,
+): string {
+  if (!value) return fallback;
+  return map[value] ?? value;
+}
+
+/* -------------------------------------------------------------- small parts */
+
+type StepState = "COMPLETE" | "CURRENT" | "WAITING";
+
+const STEP_STATE_WORD: Record<StepState, string> = {
+  COMPLETE: "complete",
+  CURRENT: "current",
+  WAITING: "waiting",
+};
+
+function StepMarker({ state }: { state: StepState }) {
+  if (state === "COMPLETE") {
+    return (
+      <CheckCircle2
+        className="h-4 w-4 shrink-0 text-(--earist-success)"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (state === "CURRENT") {
+    return (
+      <CircleDot
+        className="h-4 w-4 shrink-0 text-(--earist-primary)"
+        aria-hidden="true"
+      />
+    );
+  }
+  return (
+    <Clock
+      className="h-4 w-4 shrink-0 text-(--earist-body-text)/50"
+      aria-hidden="true"
+    />
+  );
+}
+
+function AdmissionProgress({ applicant }: { applicant: AdminApplicantDetail }) {
+  const alignmentComplete = alignmentIsComplete(applicant.alignmentStatus);
+  const steps: { key: string; label: string; state: StepState }[] = [
+    {
+      key: "alignment",
+      label: "Alignment",
+      state: alignmentComplete ? "COMPLETE" : "CURRENT",
+    },
+    {
+      key: "exam",
+      label: "Entrance Exam",
+      state: !alignmentComplete
+        ? "WAITING"
+        : applicant.hasPassedExam
+          ? "COMPLETE"
+          : "CURRENT",
+    },
+    {
+      key: "cor",
+      label: "COR",
+      state: applicant.hasPassedExam ? "CURRENT" : "WAITING",
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {steps.map((step, index) => (
+        <span key={step.key} className="inline-flex items-center gap-1.5">
+          {index > 0 && (
+            <ChevronRight
+              className="h-3 w-3 text-(--earist-body-text)/40"
+              aria-hidden="true"
+            />
+          )}
+          <StepMarker state={step.state} />
+          <span
+            className={cn(
+              "text-xs",
+              step.state === "CURRENT"
+                ? "font-semibold text-(--earist-primary)"
+                : "text-(--earist-body-text)",
+            )}
+          >
+            {step.label}
+          </span>
+          <span className="sr-only">{STEP_STATE_WORD[step.state]}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function DataRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <dt className="text-sm text-(--earist-body-text)">{label}</dt>
+      <dd className="text-sm font-medium break-words text-foreground">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="text-base font-semibold text-(--earist-secondary)">
+            {title}
+          </CardTitle>
+          {description ? (
+            <p className="text-xs text-(--earist-body-text)">{description}</p>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function ModuleLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+    >
+      {label}
+      <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------ async states */
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <Skeleton className="h-4 w-48" />
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64 max-w-full" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <Skeleton className="h-36 w-full rounded-xl" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Skeleton className="h-96 w-full rounded-xl" />
+        </div>
+        <div className="space-y-6">
+          <Skeleton className="h-56 w-full rounded-xl" />
+          <Skeleton className="h-44 w-full rounded-xl" />
+        </div>
+      </div>
+      <Skeleton className="h-48 w-full rounded-xl" />
+    </div>
+  );
+}
+
+function StateFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Applicants", href: "/admin/users/applicants" },
+          { label: "Applicant" },
+        ]}
+      />
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+          {children}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NotFoundState() {
+  return (
+    <StateFrame>
+      <Users className="h-8 w-8 text-(--earist-body-text)/40" aria-hidden="true" />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Applicant not found
+        </p>
+        <p className="max-w-sm text-sm text-(--earist-body-text)">
+          This applicant record does not exist or is no longer available.
+        </p>
+      </div>
+      <Link
+        href="/admin/users/applicants"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+      >
+        Back to Applicants
+      </Link>
+    </StateFrame>
+  );
+}
+
+function ErrorState({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <StateFrame>
+      <AlertCircle
+        className="h-8 w-8 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Unable to load applicant
+        </p>
+        <p className="max-w-sm text-sm text-(--earist-body-text)">
+          Something went wrong while loading this applicant record. Please try
+          again.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
+          <RefreshCw
+            className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+            aria-hidden="true"
+          />
+          Retry
+        </Button>
+        <Link
+          href="/admin/users/applicants"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          Back to Applicants
+        </Link>
+      </div>
+    </StateFrame>
+  );
+}
+
+/* --------------------------------------------------- journey sub-sections */
+
+function AlignmentSection({ applicant }: { applicant: AdminApplicantDetail }) {
+  const alignmentComplete = alignmentIsComplete(applicant.alignmentStatus);
+  const waiver = applicant.bridgingWaiver;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-base font-semibold text-(--earist-secondary)">
+          Program Alignment
+        </h3>
+        {!alignmentComplete && (
+          <ModuleLink
+            href="/admin/exam/waiver"
+            label="Open Waiver Validation"
+          />
+        )}
+      </div>
+
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <DataRow label="Current state">
+          {alignmentLabel(applicant.alignmentStatus)}
+        </DataRow>
+        {waiver ? (
+          <>
+            <DataRow label="Bridging waiver">
+              {labelFor(WAIVER_STATUS_LABEL, waiver.status, "Status unavailable")}
+            </DataRow>
+            {waiver.validatedAt ? (
+              <DataRow label="Validated on">
+                {formatDateTime(waiver.validatedAt)}
+              </DataRow>
+            ) : null}
+            {waiver.validatedBy ? (
+              <DataRow label="Validated by">
+                {`${waiver.validatedBy.firstName} ${waiver.validatedBy.lastName}`}
+              </DataRow>
+            ) : null}
+            {waiver.adminNotes ? (
+              <div className="sm:col-span-2">
+                <DataRow label="Administrative note">
+                  {waiver.adminNotes}
+                </DataRow>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
+function ExamSection({ applicant }: { applicant: AdminApplicantDetail }) {
+  const latestExam: ExamApplicationDetail | undefined =
+    applicant.examApplications[0];
+  const slot = latestExam?.examSlot ?? null;
+  const showLink =
+    applicant.admissionStage === "EXAM" ||
+    applicant.examStatus !== "NOT_SCHEDULED";
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-base font-semibold text-(--earist-secondary)">
+          Entrance Examination
+        </h3>
+        {showLink && (
+          <ModuleLink href="/admin/exam/applications" label="Open Exam Applications" />
+        )}
+      </div>
+
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <DataRow label="Current state">
+          {examSectionState(applicant)}
+        </DataRow>
+        {slot ? (
+          <>
+            <DataRow label="Scheduled date">{formatDate(slot.examDate)}</DataRow>
+            <DataRow label="Scheduled time">{formatTime(slot.examTime)}</DataRow>
+          </>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
+function CorSection({ applicant }: { applicant: AdminApplicantDetail }) {
+  const currentCor = applicant.corUploads[0] ?? null;
+  const corRecord = currentCor?.corRecord ?? null;
+  const showLink =
+    applicant.admissionStage === "COR" || applicant.corStatus !== "NONE";
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-base font-semibold text-(--earist-secondary)">
+          COR / Enrollment
+        </h3>
+        {showLink && (
+          <ModuleLink href="/admin/exam/cor" label="Open COR Validation" />
+        )}
+      </div>
+
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <DataRow label="Current state">
+          {corSectionState(applicant)}
+        </DataRow>
+        {currentCor?.uploadedAt ? (
+          <DataRow label="Latest upload">{formatDateTime(currentCor.uploadedAt)}</DataRow>
+        ) : null}
+        {corRecord?.isVerified ? (
+          <>
+            {corRecord.registrationNumber ? (
+              <DataRow label="Registration no.">
+                {corRecord.registrationNumber}
+              </DataRow>
+            ) : null}
+            {corRecord.academicYear ? (
+              <DataRow label="Academic year">{corRecord.academicYear}</DataRow>
+            ) : null}
+            {corRecord.semester ? (
+              <DataRow label="Semester">{corRecord.semester}</DataRow>
+            ) : null}
+          </>
+        ) : null}
+        {applicant.corStatus === "REJECTED" && currentCor?.rejectionReason ? (
+          <div className="sm:col-span-2">
+            <DataRow label="Rejection reason">
+              {currentCor.rejectionReason}
+            </DataRow>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
 
 export default function ApplicantDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const applicantId = params.id as string;
 
-  const [rejectNotes, setRejectNotes] = useState("");
-
-  const { data: applicant, isLoading } = useQuery<AdminApplicantDetail>({
-    queryKey: ["adminApplicantDetail", applicantId],
-    queryFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}`);
-    },
-  });
-
-  const validateWaiverMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/waiver/validate`, {
-        method: "PUT",
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const rejectWaiverMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/waiver/reject`, {
-        method: "PUT",
-        body: JSON.stringify({ adminNotes: rejectNotes }),
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      setRejectNotes("");
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const resetStrikesMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClientRequest(`/admin/applicants/${applicantId}/strikes/reset`, {
-        method: "PUT",
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["adminApplicantDetail", applicantId] });
-      queryClient.invalidateQueries({ queryKey: ["adminApplicants"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const getAlignmentBadge = (status: string) => {
-    switch (status) {
-      case "ALIGNED":
-        return <Badge className="bg-green-100 text-green-700">Aligned</Badge>;
-      case "PENDING_WAIVER":
-        return <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>;
-      case "CLEARED":
-        return <Badge className="bg-blue-100 text-blue-700">Cleared</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getExamBadge = (status: string) => {
-    switch (status) {
-      case "NOT_SCHEDULED":
-        return <Badge variant="outline">Not Scheduled</Badge>;
-      case "SCHEDULED":
-        return <Badge className="bg-blue-100 text-blue-700">Scheduled</Badge>;
-      case "PASSED":
-        return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
-      case "FAILED":
-        return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getCorBadge = (status: string) => {
-    switch (status) {
-      case "NONE":
-        return <Badge variant="outline">--</Badge>;
-      case "PENDING":
-        return <Badge className="bg-amber-100 text-amber-700">Pending</Badge>;
-      case "VERIFIED":
-        return <Badge className="bg-green-100 text-green-700">Verified</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getAdmissionBadge = (status: string) => {
-    switch (status) {
-      case "APPLICANT":
-        return <Badge variant="outline">Applicant</Badge>;
-      case "ENROLLED":
-        return <Badge className="bg-green-100 text-green-700">Enrolled</Badge>;
-      case "DISQUALIFIED":
-        return <Badge className="bg-red-100 text-red-700">Disqualified</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+  const { data, isLoading, isError, error, isFetching, refetch } =
+    useQuery<AdminApplicantDetail>({
+      queryKey: ["adminApplicantDetail", applicantId],
+      queryFn: () => apiClientRequest(`/admin/applicants/${applicantId}`),
+      retry: false,
     });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
-  // DL-3: COR verification/promotion is authored exclusively by the canonical
-  // COR Validation workflow. This detail view is read-only for COR authority.
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-gray-500 animate-pulse">Loading applicant details...</p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
-  if (!applicant) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertTriangle className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-gray-500">Applicant not found</p>
-        <Link href="/admin/users/applicants">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Applicants
-          </Button>
-        </Link>
-      </div>
-    );
+  const statusCode = error instanceof ApiError ? error.statusCode : undefined;
+  if (isError && statusCode === 404) {
+    return <NotFoundState />;
   }
+
+  if (isError || !data) {
+    return <ErrorState onRetry={() => refetch()} retrying={isFetching} />;
+  }
+
+  const applicant = data;
+  const fullName = `${applicant.firstName} ${applicant.lastName}`;
+  const programName = applicant.program?.programName ?? MISSING;
+  const programType = applicant.program?.programType ?? null;
+  const isDoctoral = programType === "DOCTORAL";
+  const admissionStatusLabel = labelFor(
+    ADMISSION_STATUS_LABEL,
+    applicant.admissionStatus,
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/admin/users/applicants">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Applicant Profile
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            {applicant.firstName} {applicant.lastName} — {applicant.pinnacleApplicantId}
-          </p>
+      <Breadcrumb
+        items={[
+          { label: "Applicants", href: "/admin/users/applicants" },
+          { label: fullName },
+        ]}
+      />
+
+      <PageHeader
+        title={fullName}
+        description={`${applicant.pinnacleApplicantId || "No Pinnacle ID"} · ${programName}`}
+      />
+
+      {/* Current Admission State */}
+      <Card>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-semibold text-(--earist-body-text)">
+                Current Admission State
+              </p>
+              <p className="text-lg font-semibold text-(--earist-primary)">
+                {STAGE_LABEL[applicant.admissionStage]}
+              </p>
+              <p className="text-sm text-(--earist-body-text)">
+                {currentStateLabel(applicant)}
+              </p>
+            </div>
+            <Badge variant="outline" className="shrink-0">
+              {admissionStatusLabel}
+            </Badge>
+          </div>
+          <AdmissionProgress applicant={applicant} />
+        </CardContent>
+      </Card>
+
+      {/* Main record area */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Main column — Admission Journey */}
+        <div className="space-y-6 lg:col-span-2">
+          <SectionCard
+            title="Admission Journey"
+            description="Where this applicant is across alignment, entrance examination, and COR."
+          >
+            <div className="space-y-6">
+              <AlignmentSection applicant={applicant} />
+              <Separator />
+              <ExamSection applicant={applicant} />
+              <Separator />
+              <CorSection applicant={applicant} />
+            </div>
+          </SectionCard>
         </div>
+
+        {/* Context column */}
+        <aside className="space-y-6">
+          <SectionCard title="Applicant Information">
+            <dl className="grid grid-cols-1 gap-3">
+              <DataRow label="Pinnacle Applicant ID">
+                {applicant.pinnacleApplicantId || MISSING}
+              </DataRow>
+              <DataRow label="Email">{applicant.email || MISSING}</DataRow>
+              <DataRow label="Cellphone">
+                {applicant.cellphone || MISSING}
+              </DataRow>
+              <DataRow label="Date of Birth">
+                {formatDate(applicant.dateOfBirth)}
+              </DataRow>
+              <DataRow label="Registered">
+                {formatDate(applicant.createdAt)}
+              </DataRow>
+            </dl>
+          </SectionCard>
+
+          <SectionCard title="Academic Background">
+            <dl className="grid grid-cols-1 gap-3">
+              <DataRow label="Applying for">{programName}</DataRow>
+              <DataRow label="Program level">
+                {labelFor(PROGRAM_TYPE_LABEL, programType, MISSING)}
+              </DataRow>
+              {isDoctoral ? (
+                <DataRow label="Previous Master's program">
+                  {applicant.previousMastersProgram?.programName ?? MISSING}
+                </DataRow>
+              ) : (
+                <DataRow label="Previous academic program">
+                  {applicant.undergraduateProgram?.programName ?? MISSING}
+                </DataRow>
+              )}
+            </dl>
+          </SectionCard>
+
+          <SectionCard title="Account Access">
+            <dl className="grid grid-cols-1 gap-3">
+              <DataRow label="Login identifier">
+                {applicant.pinnacleApplicantId || MISSING}
+              </DataRow>
+              <DataRow label="Account role">
+                {labelFor(ROLE_LABEL, applicant.role, MISSING)}
+              </DataRow>
+            </dl>
+          </SectionCard>
+        </aside>
       </div>
 
-      {/* Profile Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Full Name</p>
-                <p className="font-medium">{applicant.firstName} {applicant.lastName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{applicant.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Pinnacle Applicant ID</p>
-                <p className="font-medium">{applicant.pinnacleApplicantId}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Phone</p>
-                <p className="font-medium">{applicant.cellphone || "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Date of Birth</p>
-                <p className="font-medium">{formatDate(applicant.dateOfBirth)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Program</p>
-                <p className="font-medium">{applicant.program.programName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Undergraduate Course</p>
-                <p className="font-medium">{applicant.undergraduateCourse || "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Registered</p>
-                <p className="font-medium">{formatDate(applicant.createdAt)}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Program Alignment */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Program Alignment
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                {getAlignmentBadge(applicant.alignmentStatus)}
-              </div>
-            </div>
-
-            {applicant.bridgingWaiver && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-2">Bridging Waiver</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <p><span className="text-gray-500">Status:</span> {applicant.bridgingWaiver.status}</p>
-                  <p><span className="text-gray-500">Downloaded:</span> {formatDateTime(applicant.bridgingWaiver.waiverFormDownloadedAt || "")}</p>
-                  {applicant.bridgingWaiver.validatedBy && (
-                    <p><span className="text-gray-500">Validated By:</span> {applicant.bridgingWaiver.validatedBy.firstName} {applicant.bridgingWaiver.validatedBy.lastName}</p>
-                  )}
-                  {applicant.bridgingWaiver.adminNotes && (
-                    <p className="col-span-2"><span className="text-gray-500">Notes:</span> {applicant.bridgingWaiver.adminNotes}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {applicant.alignmentStatus === "PENDING_WAIVER" && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => validateWaiverMutation.mutate()}
-                  disabled={validateWaiverMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  {validateWaiverMutation.isPending ? "Validating..." : "Validate Waiver"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (rejectNotes) {
-                      rejectWaiverMutation.mutate();
-                    }
-                  }}
-                  disabled={rejectWaiverMutation.isPending || !rejectNotes}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {rejectWaiverMutation.isPending ? "Rejecting..." : "Reject"}
-                </Button>
-              </div>
-            )}
-
-            {applicant.alignmentStatus === "PENDING_WAIVER" && (
-              <div>
-                <label className="text-sm text-gray-500">Rejection Notes (required for reject)</label>
-                <Textarea
-                  value={rejectNotes}
-                  onChange={(e) => setRejectNotes(e.target.value)}
-                  placeholder="Enter rejection reason..."
-                  className="mt-1"
+      {/* Activity History */}
+      <SectionCard
+        title="Activity History"
+        description="Recent recorded actions for this applicant."
+      >
+        {applicant.activityLog.length === 0 ? (
+          <p className="py-6 text-center text-sm text-(--earist-body-text)">
+            No recorded activity yet.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {applicant.activityLog.map((entry, index) => (
+              <li key={`${entry.timestamp}-${index}`} className="flex gap-3">
+                <span
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-(--earist-primary)/60"
+                  aria-hidden="true"
                 />
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Entrance Examination */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Entrance Examination
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                {getExamBadge(applicant.examStatus)}
-              </div>
-              {applicant.examScores && (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-500">Scores</p>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="text-gray-500">MCQ</p>
-                      <p className="font-medium">{applicant.examScores.mcq}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Essay</p>
-                      <p className="font-medium">{applicant.examScores.essay}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Total</p>
-                      <p className="font-medium">{applicant.examScores.total}</p>
-                    </div>
-                  </div>
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-sm break-words text-foreground">
+                    {entry.description}
+                  </p>
+                  <p className="text-xs break-words text-(--earist-body-text)">
+                    {formatDateTime(entry.timestamp)} · {entry.actor}
+                  </p>
                 </div>
-              )}
-            </div>
-            {applicant.examApplications[0]?.examSlot && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-2">Scheduled Exam</p>
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-gray-500">Date:</span> {formatDate(applicant.examApplications[0].examSlot.examDate)}</p>
-                  <p><span className="text-gray-500">Time:</span> {applicant.examApplications[0].examSlot.examTime}</p>
-                  <p><span className="text-gray-500">Venue:</span> {applicant.examApplications[0].examSlot.venueOrLink}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Certificate of Registration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Certificate of Registration (COR)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              {getCorBadge(applicant.corStatus)}
-            </div>
-
-            {applicant.corUploads.length > 0 && (
-              <div className="space-y-3">
-                {applicant.corUploads.map((upload) => (
-                  <div key={upload.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-700">
-                        {upload.originalFilename || "COR file"}
-                        {upload.isCurrent && (
-                          <span className="ml-2 text-xs text-blue-600">
-                            (current)
-                          </span>
-                        )}
-                      </p>
-                      {getCorBadge(upload.status)}
-                    </div>
-                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <p>
-                        <span className="text-gray-500">Uploaded:</span>{" "}
-                        {formatDateTime(upload.uploadedAt)}
-                      </p>
-                      {upload.reviewedAt && (
-                        <p>
-                          <span className="text-gray-500">Reviewed:</span>{" "}
-                          {formatDateTime(upload.reviewedAt)}
-                        </p>
-                      )}
-                      {upload.reviewedBy && (
-                        <p>
-                          <span className="text-gray-500">Reviewed By:</span>{" "}
-                          {upload.reviewedBy.firstName} {upload.reviewedBy.lastName}
-                        </p>
-                      )}
-                      {upload.extraction && (
-                        <p>
-                          <span className="text-gray-500">Extraction:</span>{" "}
-                          {upload.extraction.status}
-                          {upload.extraction.method
-                            ? ` (${upload.extraction.method})`
-                            : ""}
-                        </p>
-                      )}
-                      {upload.extraction?.diagnostic && (
-                        <p className="md:col-span-2">
-                          <span className="text-gray-500">Extraction note:</span>{" "}
-                          {upload.extraction.diagnostic}
-                        </p>
-                      )}
-                      {upload.rejectionReason && (
-                        <p className="md:col-span-2">
-                          <span className="text-gray-500">Reason:</span>{" "}
-                          {upload.rejectionReason}
-                        </p>
-                      )}
-                      {upload.corRecord && (
-                        <>
-                          <p>
-                            <span className="text-gray-500">Reg No:</span>{" "}
-                            {upload.corRecord.registrationNumber}
-                          </p>
-                          <p>
-                            <span className="text-gray-500">Academic Year:</span>{" "}
-                            {upload.corRecord.academicYear}
-                          </p>
-                          <p>
-                            <span className="text-gray-500">Semester:</span>{" "}
-                            {upload.corRecord.semester}
-                          </p>
-                          {upload.corRecord.verifiedBy && (
-                            <p>
-                              <span className="text-gray-500">Verified By:</span>{" "}
-                              {upload.corRecord.verifiedBy.firstName}{" "}
-                              {upload.corRecord.verifiedBy.lastName}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs text-gray-500">
-                  COR verification and promotion are performed in the canonical
-                  COR Validation workflow (one-step Verify &amp; Promote).
-                </p>
-                <Link href="/admin/exam/cor">
-                  <Button variant="outline" className="w-full">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Open COR Validation
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Admission Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
-            Admission Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-500">Current Status</p>
-              {getAdmissionBadge(applicant.admissionStatus)}
-            </div>
-
-            {applicant.enrollmentDate && (
-              <div>
-                <p className="text-sm text-gray-500">Enrollment Date</p>
-                <p className="font-medium">{formatDate(applicant.enrollmentDate)}</p>
-              </div>
-            )}
-
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-2">Eligibility Check</p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  {applicant.examStatus === "PASSED" ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span className="text-sm">Entrance Exam Passed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {applicant.corStatus === "VERIFIED" ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <span className="text-sm">COR Verified</span>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              Promotion to Student is applied atomically by the canonical COR
-              Verify &amp; Promote action, not from this page.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   );
 }
