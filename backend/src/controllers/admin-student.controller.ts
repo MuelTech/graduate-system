@@ -15,7 +15,6 @@ export class AdminStudentController {
         pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : 10,
         search: (req.query.search as string) || "",
         program: (req.query.program as string) || "",
-        thesisStage: (req.query.thesisStage as string) || "",
         status: (req.query.status as string) || "",
       };
       const result = await this.service.listStudents(query);
