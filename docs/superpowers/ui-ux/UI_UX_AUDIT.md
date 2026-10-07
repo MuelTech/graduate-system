@@ -756,7 +756,7 @@ The accepted Exam Records list adds a second operational-table precedent:
 - no KPI cards are required when they do not improve the record-monitoring task;
 - persisted exam statuses are projected into human-readable list states without adding new persisted enums (`PENDING/APPROVED → Scheduled`, `TAKEN → Needs Essay Grading`, `PASSED → Passed`, `FAILED → Failed`, `APPEALED → Appeal Pending`, `DISQUALIFIED → Disqualified`);
 - `APPEALED` is display-only on this accepted main page; the existing missed-exam appeal mutation semantics remain outside UIUX-2C;
-- Score Management is intentionally still separate and transitional; showing **Needs Essay Grading** does not mean grading has already been migrated;
+- UIUX-2D/UIUX-2E completed the transition: **Needs Essay Grading** now opens the accepted Exam Record detail for grading, and the separate Score Management workspace is retired;
 - structural Skeleton/error/empty/no-match states and one restrained View action preserve list stability and scope.
 
 The exact entrance-exam state mapping is domain-specific and must not become a generic table convention.
@@ -852,7 +852,7 @@ Continue to reuse the established shared DataTableFilter where applicable rather
 ---
 
 ## UX-DTL-01 — Record-detail pages need a consistent information hierarchy
-**Status:** PARTIALLY ADDRESSED — UIUX-2B Admin Applicant Profile is the accepted person-centric record-detail exemplar at `74a836886727ec5f808819566235400da5e0c95b`; other detail domains remain iterative.
+**Status:** PARTIALLY ADDRESSED — UIUX-2B Admin Applicant Profile is the accepted person-centric record-detail exemplar at `74a836886727ec5f808819566235400da5e0c95b`, and UIUX-2D Admin Entrance Exam Record detail is the accepted operational/state-aware detail exemplar at `ee7bfca95faa9de1abec624d15fffc49614ce222`; other detail domains remain iterative.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -880,10 +880,26 @@ A typical detail page should prioritize:
 
 Exact ordering can vary by task. Do not add a generic timeline merely because audit rows exist; incomplete or entity-scoped audit data must not be presented as a complete record lifecycle.
 
+### Accepted UIUX-2D/UIUX-2E checkpoint — Entrance Exam Record detail and Score Management retirement
+
+The accepted entrance-exam detail establishes a second concrete detail-page pattern:
+
+- list → nested detail uses shared Breadcrumb + PageHeader identity and keeps broader person/admission context in Applicant Profile;
+- **Current Exam State** appears before exam metadata and state-aware Assessment;
+- Scheduled records show an unavailable assessment rather than empty scoring surfaces;
+- **Needs Essay Grading** shows read-only auto-graded MCQ, deterministic submitted ESSAY responses, and the bounded essay-score mutation;
+- Passed/Failed records show the persisted assessment result, actual grader identity when recorded, and the result-email action;
+- no frontend PASS/FAIL preview/threshold is introduced, no fake grading timestamp is shown, and queue success is not presented as email delivery;
+- `GET /exam/applications/:id` is the bounded ADMIN-only detail read model;
+- `POST /exam/scores/:id/grade` and `POST /exam/scores/:id/send-email` remain intentionally retained action routes and do not require renaming for UI consistency;
+- UIUX-2E retired the standalone Score Management navigation/workspace at `8adea9f3bdb6797d8861212ecd92b9106a183c0d`; `/admin/exam/scores` is redirect-only, while `GET /exam/scores/queue` and `GET /exam/scores/review` are retired;
+- **Needs Essay Grading** replaces the old Essay Grading Queue entry point, while Passed/Failed Exam Record detail replaces the old Score Review workspace;
+- missed-exam appeal mutation behavior remains unresolved/read-only and outside this accepted package.
+
 ---
 
 ## UX-DTL-02 — Important status/action information should not be buried in long card stacks
-**Status:** PARTIALLY ADDRESSED — UIUX-2B replaced the legacy equal-weight Applicant Profile card stack with a Current Admission State summary, one grouped Admission Journey, and one compact Applicant Details surface.
+**Status:** PARTIALLY ADDRESSED — UIUX-2B replaced the legacy equal-weight Applicant Profile card stack with a Current Admission State summary, one grouped Admission Journey, and one compact Applicant Details surface; UIUX-2D similarly leads Entrance Exam Record detail with Current Exam State before compact Exam Information and state-dependent Assessment.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -1064,7 +1080,7 @@ Avoid ornamental page animations that delay task completion.
 ---
 
 ## UX-CONT-01 — Terminology needs a cross-screen consistency pass
-**Status:** PARTIALLY ADDRESSED — UIUX-2C replaced the ambiguous Admin Exam Management label **Applications** with the task-oriented **Exam Records / Entrance Exam Records** while intentionally preserving the legacy technical route and backend model. Cross-screen terminology remains iterative.
+**Status:** PARTIALLY ADDRESSED — UIUX-2C replaced the ambiguous Admin Exam Management label **Applications** with the task-oriented **Exam Records / Entrance Exam Records** while intentionally preserving the legacy technical route and backend model; UIUX-2E then retired **Score Management** as a separate Admin destination after its grading/result responsibilities moved into Exam Record detail. Cross-screen terminology remains iterative.
 
 **Priority:** P0  
 **Area:** Content design
@@ -1135,7 +1151,7 @@ Existing pages were created at different times and may contain legacy inconsiste
 
 Only pages/components explicitly listed as Approved Reference Implementations in the playbook may be used as visual precedent.
 
-The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`, and Admin Entrance Exam Records list at `9e03e0192e6131149c172a90e0ea6531017247b0`. Other legacy pages remain non-authoritative unless explicitly registered.
+The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`, Admin Entrance Exam Records list at `9e03e0192e6131149c172a90e0ea6531017247b0`, and Admin Entrance Exam Record detail at `ee7bfca95faa9de1abec624d15fffc49614ce222`. Other legacy pages remain non-authoritative unless explicitly registered.
 
 ---
 
@@ -1253,7 +1269,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: four formally designated references.**
+**Current state: five formally designated references.**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1313,13 +1329,39 @@ Each must still be broken into bounded implementation packages.
   - one process record per row with compact person identity rather than duplicating the full person/profile surface;
   - exact authoritative Program filtering + human-readable presentation-only state projection;
   - five-column operational table with no decorative KPI layer when the list itself answers the task;
-  - structural query loading/error/empty/no-match treatment and one dominant row action.
+  - structural query loading/error/empty/no-match treatment and one dominant **View** action into nested detail.
 - Domain/transition boundaries:
   - `PENDING/APPROVED → Scheduled`, `TAKEN → Needs Essay Grading`, `PASSED → Passed`, `FAILED → Failed`, `APPEALED → Appeal Pending`, and `DISQUALIFIED → Disqualified` are presentation mappings only;
-  - Score Management remains a transitional separate workspace; grading/detail migration is not yet accepted;
-  - appeal mutation semantics were not redesigned; the main list only exposes the `APPEALED` state safely;
+  - UIUX-2D/UIUX-2E completed the former Score Management transition: grading/result work now belongs to Exam Record detail;
+  - `APPEALED` remains read-only context in the accepted flow; appeal mutation semantics were not redesigned;
   - COR Validation and Waiver Validation were not changed.
-- Page-specific; do not generalize entrance-exam state semantics or transitional links into unrelated list domains.
+- Page-specific; do not generalize entrance-exam state semantics into unrelated list domains.
+
+## Admin Entrance Exam Record detail
+
+- Accepted detail/grading commit: `ee7bfca95faa9de1abec624d15fffc49614ce222`
+- Accepted Score Management retirement follow-up: `8adea9f3bdb6797d8861212ecd92b9106a183c0d`
+- Pattern type: medium-width, state-aware operational record detail.
+- Reusable precedent:
+  - Breadcrumb + PageHeader establish nested record identity and parent navigation;
+  - current authoritative state precedes compact metadata and state-dependent work;
+  - unavailable states are explicit rather than rendered as empty score controls;
+  - mutable grading controls appear only in the authoritative state that permits them;
+  - completed results are read-only and show recorded grader identity when available;
+  - result notification is a record action with accurate queued-not-delivered feedback;
+  - bounded backend read models may expose existing authoritative detail without duplicating person/profile ownership.
+- Architecture checkpoint:
+  - `GET /exam/applications/:id` is the ADMIN-only detail read model;
+  - `POST /exam/scores/:id/grade` and `POST /exam/scores/:id/send-email` are intentionally retained and do not require renaming just because the UI moved into Exam Records;
+  - `/admin/exam/scores` is compatibility redirect only;
+  - `GET /exam/scores/queue` and `GET /exam/scores/review` are retired;
+  - the old Essay Grading Queue is replaced operationally by **Needs Essay Grading** on Exam Records, and the old Score Review workspace is replaced by Passed/Failed Exam Record detail.
+- Authority boundaries:
+  - no frontend score-to-PASS/FAIL rule was introduced;
+  - no grading timestamp or email-delivery state is fabricated;
+  - missed-exam appeal actions remain outside this accepted pattern;
+  - COR/Waiver/Exam Slots/Exam Questions were not changed.
+- Page-specific; do not generalize entrance-exam scoring/result semantics into unrelated detail pages.
 
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
