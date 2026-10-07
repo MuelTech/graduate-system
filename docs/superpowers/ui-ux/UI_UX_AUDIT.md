@@ -331,7 +331,7 @@ Do not change domain behavior merely to make navigation simpler.
 ---
 
 ## UX-PAGE-01 — No shared PageHeader pattern
-**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on the Admin Dashboard, Admin Applicants list, and Admin Applicant Profile; adoption remains page-by-page.
+**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on the Admin Dashboard, Admin Applicants list, Admin Applicant Profile, and Admin Entrance Exam Records list; adoption remains page-by-page.
 
 **Priority:** P1  
 **Area:** Page hierarchy
@@ -411,7 +411,7 @@ Prefer borders and restrained shadows. Avoid nested-card visual noise.
 ---
 
 ## UX-PAGE-04 — Approved visual exemplars do not yet exist under a formal rule
-**Status:** RESOLVED AS A FOUNDATION — the approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, the Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, and the Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`.
+**Status:** RESOLVED AS A FOUNDATION — the approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, the Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, the Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`, and the Admin Entrance Exam Records list at `9e03e0192e6131149c172a90e0ea6531017247b0`.
 
 **Priority:** P1  
 **Area:** Consistency / iteration
@@ -702,7 +702,7 @@ Add them only when an accepted screen requirement benefits from them.
 ---
 
 ## UX-COMP-03 — Tables need a shared application-level pattern
-**Status:** PARTIALLY ADDRESSED — UIUX-2A Admin Applicants establishes an accepted table/filter/list-page reference at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`; a system-wide shared DataTable abstraction remains demand-driven.
+**Status:** PARTIALLY ADDRESSED — UIUX-2A Admin Applicants and UIUX-2C Admin Entrance Exam Records now provide two accepted table/filter/list-page references at `ac5b54e424c4fb8849262b2a2f64a45c95743a82` and `9e03e0192e6131149c172a90e0ea6531017247b0`; a system-wide shared DataTable abstraction remains demand-driven.
 
 **Priority:** P1  
 **Area:** Admin efficiency
@@ -745,6 +745,21 @@ The accepted Applicants list demonstrates the current record-management baseline
 - human-readable workflow-state projection backed by authoritative server/read-model rules.
 
 Applicant-specific admission stages and COR/Entrance Exam semantics remain domain-specific and must not be generalized into unrelated list pages.
+
+### Accepted UIUX-2C checkpoint — Admin Entrance Exam Records list
+
+The accepted Exam Records list adds a second operational-table precedent:
+
+- user-facing **Exam Records** terminology replaces ambiguous **Applications** while the legacy technical route remains `/admin/exam/applications`;
+- one row represents one entrance-exam record, not another Applicant profile;
+- compact Search + exact Program-ID + Exam State filters lead directly into a five-column operational table: Applicant, Program, Exam Schedule, Exam State, Action;
+- no KPI cards are required when they do not improve the record-monitoring task;
+- persisted exam statuses are projected into human-readable list states without adding new persisted enums (`PENDING/APPROVED → Scheduled`, `TAKEN → Needs Essay Grading`, `PASSED → Passed`, `FAILED → Failed`, `APPEALED → Appeal Pending`, `DISQUALIFIED → Disqualified`);
+- `APPEALED` is display-only on this accepted main page; the existing missed-exam appeal mutation semantics remain outside UIUX-2C;
+- Score Management is intentionally still separate and transitional; showing **Needs Essay Grading** does not mean grading has already been migrated;
+- structural Skeleton/error/empty/no-match states and one restrained View action preserve list stability and scope.
+
+The exact entrance-exam state mapping is domain-specific and must not become a generic table convention.
 
 ---
 
@@ -1049,6 +1064,7 @@ Avoid ornamental page animations that delay task completion.
 ---
 
 ## UX-CONT-01 — Terminology needs a cross-screen consistency pass
+**Status:** PARTIALLY ADDRESSED — UIUX-2C replaced the ambiguous Admin Exam Management label **Applications** with the task-oriented **Exam Records / Entrance Exam Records** while intentionally preserving the legacy technical route and backend model. Cross-screen terminology remains iterative.
 
 **Priority:** P0  
 **Area:** Content design
@@ -1119,7 +1135,7 @@ Existing pages were created at different times and may contain legacy inconsiste
 
 Only pages/components explicitly listed as Approved Reference Implementations in the playbook may be used as visual precedent.
 
-The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, and Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`. Other legacy pages remain non-authoritative unless explicitly registered.
+The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`, and Admin Entrance Exam Records list at `9e03e0192e6131149c172a90e0ea6531017247b0`. Other legacy pages remain non-authoritative unless explicitly registered.
 
 ---
 
@@ -1237,7 +1253,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: three formally designated references.**
+**Current state: four formally designated references.**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1287,6 +1303,23 @@ Each must still be broken into bounded implementation packages.
   - do not expose a generic “Activity History” unless the source represents a complete enough lifecycle for that label;
   - audit infrastructure remains separate from whether a profile chooses to render history.
 - Page-specific; do not generalize Applicant Alignment/Exam/COR progression or academic-prerequisite semantics into unrelated records.
+
+## Admin Entrance Exam Records list
+
+- Accepted commit: `9e03e0192e6131149c172a90e0ea6531017247b0`
+- Pattern type: wide entrance-exam operational record list.
+- Reusable precedent:
+  - task-oriented **Exam Records** terminology may replace a misleading legacy technical label without requiring a route/schema rename;
+  - one process record per row with compact person identity rather than duplicating the full person/profile surface;
+  - exact authoritative Program filtering + human-readable presentation-only state projection;
+  - five-column operational table with no decorative KPI layer when the list itself answers the task;
+  - structural query loading/error/empty/no-match treatment and one dominant row action.
+- Domain/transition boundaries:
+  - `PENDING/APPROVED → Scheduled`, `TAKEN → Needs Essay Grading`, `PASSED → Passed`, `FAILED → Failed`, `APPEALED → Appeal Pending`, and `DISQUALIFIED → Disqualified` are presentation mappings only;
+  - Score Management remains a transitional separate workspace; grading/detail migration is not yet accepted;
+  - appeal mutation semantics were not redesigned; the main list only exposes the `APPEALED` state safely;
+  - COR Validation and Waiver Validation were not changed.
+- Page-specific; do not generalize entrance-exam state semantics or transitional links into unrelated list domains.
 
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 

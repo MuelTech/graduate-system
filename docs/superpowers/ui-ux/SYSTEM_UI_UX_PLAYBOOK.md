@@ -176,6 +176,10 @@ Examples:
 
 Do not create a new sidebar destination merely because a database model exists.
 
+Accepted Exam Management precedent: UIUX-2C uses the user-facing label **Exam Records** for the entrance-exam operational list while intentionally keeping the existing technical route `/admin/exam/applications` and backend application model/endpoint unchanged. One row represents one entrance-exam record, not a second Applicant profile. The list owns exam-specific schedule/state monitoring; person-level admission context remains with Applicants / Applicant Profile. A clearer user-facing task label may differ from a legacy technical route when domain behavior is unchanged and the distinction is documented.
+
+The accepted Exam Records main page does **not** yet replace Score Management. `TAKEN` records are surfaced as **Needs Essay Grading** to expose the pending operational state, but essay grading/detail migration and any later retirement of Score Management require a separate accepted package. Existing COR Validation and Waiver Validation placement/behavior is unchanged by this precedent.
+
 ## 8.2 Preserve accepted terminology
 
 A single domain concept should use one consistent user-facing name unless the context genuinely changes the meaning.
@@ -1219,6 +1223,49 @@ The Applicants reference demonstrates a list-page pattern, not a universal DataT
   - “history” UI merely because audit rows exist; history labels must match the completeness and meaning of their source data.
 
 This reference establishes the current detail-page precedent, not a universal profile template. Preserve the hierarchy and ownership principles while adapting sections to the target record’s real task and domain authority.
+
+### Reference: Admin Entrance Exam Records list
+
+- Primary path:
+  - `frontend/src/app/(portal)/admin/exam/applications/page.tsx`
+- Navigation label path:
+  - `frontend/src/app/(portal)/admin/layout.tsx`
+- Accepted commit: `9e03e0192e6131149c172a90e0ea6531017247b0`
+- Pattern type: wide operational Admin record list for one domain-specific process record per row.
+- User-facing information architecture:
+  - sidebar/page terminology is **Exam Records / Entrance Exam Records** even though the legacy route remains `/admin/exam/applications`;
+  - one row represents an entrance-exam record, not a duplicate Applicant registry;
+  - the accepted list focuses on Applicant, Program, Exam Schedule, Exam State, and one restrained row action;
+  - Applicant identity is intentionally compact (name + Pinnacle ID), while broader person/admission context remains owned by Applicants / Applicant Profile;
+  - no KPI/statistic-card layer is required when filters + the operational table answer the page task directly.
+- Accepted presentation-only state projection from persisted `ExamAppStatus`:
+  - `PENDING` / `APPROVED` → **Scheduled**;
+  - `TAKEN` → **Needs Essay Grading**;
+  - `PASSED` → **Passed**;
+  - `FAILED` → **Failed**;
+  - `APPEALED` → **Appeal Pending**;
+  - `DISQUALIFIED` → **Disqualified**;
+  - unknown/unrecognized values fail visibly as **Unknown** rather than inventing a domain transition.
+- Reuse:
+  - compact Search + exact Program-ID + Exam State filters with reversible Clear behavior;
+  - human-readable state labels may project authoritative enums without creating new persisted statuses;
+  - structural table Skeletons, explicit initial-error Retry, and distinct empty vs filtered-no-results states;
+  - stable wide-table composition with local horizontal overflow on constrained widths;
+  - one dominant row action when full record work belongs to a later detail surface.
+- Deliberate boundaries in the accepted main page:
+  - no essay-grading controls were migrated into the list;
+  - Score Management remains available as a transitional separate workspace until a later accepted detail/grading package replaces its responsibilities;
+  - Passed/Failed records may retain the transitional **View Scores** link;
+  - `APPEALED` is display-only as **Appeal Pending** here; the existing missed-exam appeal transition semantics were not redesigned and Approve/Reject controls are intentionally absent;
+  - no backend/schema/status-transition changes were part of UIUX-2C;
+  - COR Validation and Waiver Validation were not changed.
+- Do not copy:
+  - these exact ExamAppStatus labels into unrelated workflows;
+  - the legacy `/applications` route name as user-facing terminology merely because it exists technically;
+  - the transitional Score Management link as a permanent information-architecture requirement;
+  - exam-specific schedule/result semantics into Applicant, Thesis, Defense, or other record lists.
+
+This reference establishes the accepted entrance-exam **main-list** baseline only. It does not yet establish the final Exam Record detail, essay-grading, result-notification, or appeal-review pattern.
 
 Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 
