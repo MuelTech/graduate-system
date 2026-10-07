@@ -266,8 +266,6 @@ export default function ExamRecordDetailPage() {
         queryKey: ["examRecord", applicationId],
       });
       queryClient.invalidateQueries({ queryKey: ["examRecords"] });
-      queryClient.invalidateQueries({ queryKey: ["gradingQueue"] });
-      queryClient.invalidateQueries({ queryKey: ["scoreReview"] });
     },
     onError: (error: Error) =>
       toast.error(error.message || "Failed to save essay grade."),

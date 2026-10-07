@@ -259,45 +259,6 @@ export class ExamRepository {
         };
     }
 
-    async getGradingQueue() {
-        const applications = await prisma.entranceExamApplication.findMany({
-            where: {
-                status: 'TAKEN' // Only fetch exams that are submitted and needed grading
-            },
-            include: {
-                student: {
-                    include: {
-                        user: true
-                    }
-                },
-                program: true,
-                score: true,
-                answers: {
-                    where: {
-                        question: {
-                            type: 'ESSAY'
-                        }
-                    },
-                    include: {
-                        question: true
-                    }
-                }
-            },
-            orderBy: { examDate: 'asc' }
-        });
-
-        // Make MCQ total dynamic based on current questions
-        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-        
-        return applications.map(app => ({
-            ...app,
-            program: {
-                ...app.program,
-                examMcqTotal: mcqTotal
-            }
-        }));
-    }
-
     async gradeEssay(
         applicationId: string,
         essayScore: number,
@@ -346,41 +307,6 @@ export class ExamRepository {
                 data: { status: finalStatus }
             });
         });
-    }
-
-    async getScoreReview() {
-        const applications = await prisma.entranceExamApplication.findMany({
-            where: {
-                status: {
-                    in: ['PASSED', 'FAILED']
-                }
-            },
-            include: {
-                student: {
-                    include: {
-                        user: true
-                    }
-                },
-                program: true,
-                score: {
-                    include: {
-                        gradedBy: true
-                    }
-                },
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        // Make MCQ total dynamic based on current questions
-        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-
-        return applications.map(app => ({
-            ...app,
-            program: {
-                ...app.program,
-                examMcqTotal: mcqTotal
-            }
-        }));
     }
 
     async getApplicationDetailsForEmail(applicationId: string) {

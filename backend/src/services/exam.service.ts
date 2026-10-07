@@ -295,10 +295,6 @@ export class ExamService {
     };
   }
 
-  async getGradingQueue() {
-    return this.examRepo.getGradingQueue();
-  }
-
   async gradeEssay(
     applicationId: string,
     essayScore: number,
@@ -309,10 +305,6 @@ export class ExamService {
     }
 
     return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
-  }
-
-  async getScoreReview() {
-    return this.examRepo.getScoreReview();
   }
 
   async confirmResultAndEmail(applicationId: string) {

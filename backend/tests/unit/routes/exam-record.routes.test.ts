@@ -48,3 +48,29 @@ describe("Exam record detail route", () => {
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
   });
 });
+
+describe("UIUX-2E retired Score Management read routes", () => {
+  it("no longer exposes GET /scores/queue", () => {
+    expect(findRoute(layers, "/scores/queue", "get")).toBeUndefined();
+  });
+
+  it("no longer exposes GET /scores/review", () => {
+    expect(findRoute(layers, "/scores/review", "get")).toBeUndefined();
+  });
+});
+
+describe("UIUX-2E retained Score mutation routes", () => {
+  it("POST /scores/:id/grade stays ADMIN-only", () => {
+    const route = findRoute(layers, "/scores/:id/grade", "post");
+    expect(route).toBeDefined();
+    expect(route?.stack.length).toBe(3);
+    expect(route?.stack[0]?.handle).toBe(authenticateJWT);
+  });
+
+  it("POST /scores/:id/send-email stays ADMIN-only", () => {
+    const route = findRoute(layers, "/scores/:id/send-email", "post");
+    expect(route).toBeDefined();
+    expect(route?.stack.length).toBe(3);
+    expect(route?.stack[0]?.handle).toBe(authenticateJWT);
+  });
+});

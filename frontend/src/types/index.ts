@@ -726,35 +726,3 @@ export interface ExamRecordDetail {
     essayAnswer: string | null;
   }[];
 }
-
-export interface ExamAppResponse {
-  id: string;
-  createdAt: string;
-  examDate?: string;
-  student: {
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      username?: string;
-    };
-  };
-    program: {
-      programName: string;
-      examMcqTotal?: number;
-      examEssayTotal?: number;
-      examPassingScore?: number;
-    };
-    score?: {
-      multipleChoiceScore?: number;
-      essayScore?: number;
-      totalScore?: number;
-      status?: string;
-      updatedAt?: string;
-      gradedBy?: {
-        firstName: string;
-        lastName: string;
-      };
-    };
-    answers?: Array<{ essayAnswer?: string }>;
-  }
