@@ -216,7 +216,8 @@ function TableSkeleton() {
           >
             <td className="px-4 py-3 align-top">
               <Skeleton className="h-4 w-32" />
-              <Skeleton className="mt-2 h-3 w-44" />
+              <Skeleton className="mt-2 h-3 w-24" />
+              <Skeleton className="mt-2 h-3 w-40" />
             </td>
             <td className="px-4 py-3 align-top">
               <Skeleton className="h-4 w-32" />
@@ -565,7 +566,10 @@ export default function AdminStudentsPage() {
                         {student.firstName} {student.lastName}
                       </p>
                       <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                        {student.studentNumber} · {student.email}
+                        {student.studentNumber}
+                      </p>
+                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                        {student.email}
                       </p>
                     </td>
                     <td className="px-4 py-3 align-top">
