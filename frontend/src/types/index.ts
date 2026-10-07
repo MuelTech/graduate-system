@@ -671,16 +671,6 @@ export interface AdminStudentDetail extends AdminStudentListItem {
   adviserAssignment: { adviser: { firstName: string; lastName: string }; assignedDate: string } | null;
 }
 
-export interface Application {
-  id: string;
-  name: string;
-  email: string;
-  pinnacleId: string;
-  program: string;
-  scheduledSlot: string;
-  status: string;
-}
-
 export interface ApiApplication {
   id: string;
   slot?: {
@@ -696,6 +686,7 @@ export interface ApiApplication {
     pinnacleApplicantId?: string;
   };
   program: {
+    id: string;
     programName: string;
   };
   status: string;
