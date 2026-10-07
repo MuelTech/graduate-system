@@ -1491,6 +1491,11 @@ async function main() {
     "./journey-fixtures"
   );
   await seedStudentThesisJourneyFixtures(prisma, passwordHash);
+
+  // UIUX-2D FIXTURE — a persisted TAKEN exam record awaiting essay grading, so
+  // the Exam Record detail page can be reviewed manually.
+  console.log("Seeding UIUX essay-grading review fixture...");
+  await seedEssayGradingReviewFixture(passwordHash);
 }
 
 /** Idempotent fixtures for manual testing of the defense workflow refactor. */
@@ -2817,6 +2822,196 @@ async function seedDefenseWorkflowFixtures(passwordHash: string) {
     "    proposal-review-pending@ / final-review-pending@ (smoke may APPROVE; reseed to reset)",
   );
   console.log("  Panelists panelist1@ … panelist10@ for full 7/8-person committees.");
+}
+
+/**
+ * UIUX-2D FIXTURE — deterministic, idempotent, RESETTABLE.
+ *
+ * Creates a clearly identifiable Applicant whose entrance exam application is
+ * permanently in TAKEN / PENDING-grading state so the Essay Grading UI on
+ * /admin/exam/applications/[id] can be reviewed manually.
+ *
+ * Dev/test data only. It does not change grading, PASS/FAIL, auth, appeal, or
+ * schema behavior.
+ *
+ *   Applicant : uiux.essay.fixture@earist.edu.ph (password123)
+ *   Pinnacle  : PIN-UIUX-GRADE-001
+ *   Exam state: TAKEN -> "Needs Essay Grading" (MCQ 18/20, essay ungraded)
+ */
+async function seedEssayGradingReviewFixture(passwordHash: string) {
+  const FIXTURE_EMAIL = "uiux.essay.fixture@earist.edu.ph";
+  const FIXTURE_PINNACLE = "PIN-UIUX-GRADE-001";
+  const FIXTURE_PROGRAM_NAME = "UIUX Fixture — Essay Grading Review";
+  const FIXTURE_MCQ_MAX = 20;
+  const FIXTURE_ESSAY_MAX = 30;
+  const FIXTURE_SLOT_DATE = new Date("2026-10-15T00:00:00.000Z");
+  const FIXTURE_SLOT_TIME = new Date("2026-10-15T09:00:00.000Z");
+  const FIXTURE_ESSAY_QUESTION =
+    "UIUX Fixture — Discuss how graduate research has shaped your professional practice.";
+  const FIXTURE_ESSAY_RESPONSE = [
+    "Graduate research has reshaped how I approach my work. Rather than relying on habit or seniority, I now frame everyday problems as questions, gather evidence before acting, and treat my first explanation as a hypothesis to be tested rather than a conclusion to defend.",
+    "Engaging with the literature taught me to read critically and to separate strong evidence from claims that are merely persuasive. In my current role this has changed how I mentor colleagues: instead of handing down answers, I help them articulate a question clearly, choose a small measurable change, and interpret the result honestly, including when it contradicts what we expected.",
+    "The discipline of writing has been just as formative. Drafting and revising the same argument across several versions forced me to notice gaps in my reasoning and to make my language more precise. I carry that habit into reports and briefings, where I now distinguish clearly between what the data show and what I still need to verify.",
+    "I expect this research to continue that growth. My goal is not only to complete the study, but to build a repeatable practice of inquiry that improves how my team and I make decisions long after the project ends.",
+  ].join("\n\n");
+
+  // 1. Fixture-specific Program so the visible score maximums stay isolated from
+  //    every other program/applicant (a shared Program must not be mutated).
+  let program = await prisma.program.findFirst({
+    where: { programName: FIXTURE_PROGRAM_NAME },
+  });
+  if (!program) {
+    program = await prisma.program.create({
+      data: {
+        programName: FIXTURE_PROGRAM_NAME,
+        programType: "MASTERS",
+        department: "UIUX Fixture",
+        maxResidencyYears: 5,
+        examMcqTotal: FIXTURE_MCQ_MAX,
+        examEssayTotal: FIXTURE_ESSAY_MAX,
+      },
+    });
+  } else {
+    program = await prisma.program.update({
+      where: { id: program.id },
+      data: {
+        examMcqTotal: FIXTURE_MCQ_MAX,
+        examEssayTotal: FIXTURE_ESSAY_MAX,
+      },
+    });
+  }
+
+  // 2. Fixture-specific ExamSlot for this program.
+  let slot = await prisma.examSlot.findFirst({
+    where: { programId: program.id, examDate: FIXTURE_SLOT_DATE },
+  });
+  if (!slot) {
+    slot = await prisma.examSlot.create({
+      data: {
+        programId: program.id,
+        examDate: FIXTURE_SLOT_DATE,
+        examTime: FIXTURE_SLOT_TIME,
+        maxSlots: 5,
+        isActive: true,
+      },
+    });
+  }
+
+  // 3. Fixture Applicant user + Student (email is unique -> idempotent).
+  const fixtureUser = await prisma.user.upsert({
+    where: { email: FIXTURE_EMAIL },
+    update: { firstName: "UIUX", lastName: "Essay Fixture" },
+    create: {
+      email: FIXTURE_EMAIL,
+      passwordHash,
+      firstName: "UIUX",
+      lastName: "Essay Fixture",
+      role: "APPLICANT",
+      student: {
+        create: {
+          pinnacleApplicantId: FIXTURE_PINNACLE,
+          programId: program.id,
+          admissionStatus: "APPLICANT",
+          isProgramAligned: true,
+          alignmentStatus: "ALIGNED",
+        },
+      },
+    },
+  });
+  const fixtureStudent = await prisma.student.update({
+    where: { userId: fixtureUser.id },
+    data: {
+      pinnacleApplicantId: FIXTURE_PINNACLE,
+      programId: program.id,
+      admissionStatus: "APPLICANT",
+      isProgramAligned: true,
+      alignmentStatus: "ALIGNED",
+    },
+  });
+
+  // 4. An ESSAY question (reuse an existing one; never duplicate on reseed).
+  let essayQuestion = await prisma.examQuestion.findFirst({
+    where: { type: "ESSAY" },
+    orderBy: { order: "asc" },
+  });
+  if (!essayQuestion) {
+    essayQuestion = await prisma.examQuestion.create({
+      data: {
+        questionText: FIXTURE_ESSAY_QUESTION,
+        type: "ESSAY",
+        order: 1,
+      },
+    });
+  }
+
+  // 5. Exam application pinned to TAKEN (resettable on reseed).
+  const existingApplication = await prisma.entranceExamApplication.findFirst({
+    where: { studentId: fixtureStudent.id },
+  });
+  const application = existingApplication
+    ? await prisma.entranceExamApplication.update({
+        where: { id: existingApplication.id },
+        data: {
+          programId: program.id,
+          slotId: slot.id,
+          examDate: FIXTURE_SLOT_DATE,
+          examTime: FIXTURE_SLOT_TIME,
+          status: "TAKEN",
+        },
+      })
+    : await prisma.entranceExamApplication.create({
+        data: {
+          studentId: fixtureStudent.id,
+          programId: program.id,
+          slotId: slot.id,
+          examDate: FIXTURE_SLOT_DATE,
+          examTime: FIXTURE_SLOT_TIME,
+          status: "TAKEN",
+        },
+      });
+
+  // 6. Pending score: MCQ recorded (auto-graded), essay/total ungraded.
+  await prisma.entranceExamScore.upsert({
+    where: { applicationId: application.id },
+    update: {
+      multipleChoiceScore: 18,
+      essayScore: null,
+      totalScore: null,
+      status: "PENDING",
+      gradedById: null,
+    },
+    create: {
+      applicationId: application.id,
+      multipleChoiceScore: 18,
+      essayScore: null,
+      totalScore: null,
+      status: "PENDING",
+    },
+  });
+
+  // 7. Submitted essay response (unique application+question -> idempotent).
+  await prisma.applicantAnswer.upsert({
+    where: {
+      applicationId_questionId: {
+        applicationId: application.id,
+        questionId: essayQuestion.id,
+      },
+    },
+    update: { essayAnswer: FIXTURE_ESSAY_RESPONSE },
+    create: {
+      applicationId: application.id,
+      questionId: essayQuestion.id,
+      essayAnswer: FIXTURE_ESSAY_RESPONSE,
+    },
+  });
+
+  console.log("UIUX essay-grading review fixture ready.");
+  console.log(`  Applicant : ${FIXTURE_EMAIL} (password123)`);
+  console.log(`  Pinnacle  : ${FIXTURE_PINNACLE}`);
+  console.log(`  Exam record: /admin/exam/applications/${application.id}`);
+  console.log(
+    "  State     : TAKEN / Needs Essay Grading (MCQ 18/20, essay ungraded).",
+  );
 }
 
 main()
