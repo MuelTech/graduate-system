@@ -162,13 +162,13 @@ function ThesisProgressCell({
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] table-fixed border-collapse">
+      <table className="w-full min-w-[860px] table-fixed border-collapse">
         <colgroup>
-          <col className="w-[30%]" />
-          <col className="w-[24%]" />
+          <col className="w-[26%]" />
+          <col className="w-[22%]" />
+          <col className="w-[15%]" />
+          <col className="w-[17%]" />
           <col className="w-[14%]" />
-          <col className="w-[16%]" />
-          <col className="w-[10%]" />
           <col className="w-[6%]" />
         </colgroup>
         {children}
@@ -470,7 +470,7 @@ export default function AdminStudentsPage() {
               </Select>
             </div>
 
-            <div className="w-full sm:w-52">
+            <div className="w-full sm:w-48">
               <label
                 htmlFor="filter-status"
                 className="mb-1 block text-sm font-medium text-(--earist-body-text)"
