@@ -17,6 +17,7 @@ router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.get
 
 // Routes for Admin Exam Applications
 router.get('/applications', authenticateJWT, requireRole(['ADMIN']), examController.getAllApplications);
+router.get('/applications/:id', authenticateJWT, requireRole(['ADMIN']), examController.getApplicationDetail);
 
 // APPLICANT ONLY: Get applicant status
 router.get('/status', authenticateJWT, requireRole(['APPLICANT']), examController.getApplicantStatus);

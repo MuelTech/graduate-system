@@ -692,6 +692,41 @@ export interface ApiApplication {
   status: string;
 }
 
+/**
+ * Bounded ADMIN read model for a single Entrance Exam Record detail.
+ * Never includes correct-answer/option data.
+ */
+export interface ExamRecordDetail {
+  id: string;
+  status: string;
+  student: {
+    id: string;
+    pinnacleApplicantId: string | null;
+    user: { firstName: string; lastName: string; email: string };
+  };
+  program: {
+    id: string;
+    programName: string;
+    /** Configured maximum when present; null = not authoritatively available. */
+    examMcqTotal: number | null;
+    examEssayTotal: number | null;
+  };
+  slot: { id: string; examDate: string; examTime: string };
+  score: {
+    multipleChoiceScore: number | null;
+    essayScore: number | null;
+    totalScore: number | null;
+    status: string;
+    gradedBy: { id: string; firstName: string; lastName: string } | null;
+  } | null;
+  essayAnswers: {
+    questionId: string;
+    questionText: string;
+    order: number;
+    essayAnswer: string | null;
+  }[];
+}
+
 export interface ExamAppResponse {
   id: string;
   createdAt: string;

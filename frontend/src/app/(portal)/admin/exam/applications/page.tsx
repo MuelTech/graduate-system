@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,15 +21,15 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
+import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  deriveExamState,
+  EXAM_STATE_FILTERS,
+  formatExamDate,
+  formatExamTime,
+  type ExamStateFilter,
+  type ExamStateKey,
+} from "@/lib/exam-record-state";
 import type { ApiApplication, Program } from "@/types";
 import {
   AlertCircle,
@@ -46,99 +45,6 @@ import {
 const PAGE_SIZE = 10;
 const ALL = "ALL";
 const MISSING = "—";
-
-/* ------------------------------------------------------------ exam state */
-
-type ExamStateKey =
-  | "SCHEDULED"
-  | "NEEDS_GRADING"
-  | "PASSED"
-  | "FAILED"
-  | "APPEAL_PENDING"
-  | "DISQUALIFIED"
-  | "UNKNOWN";
-
-type ExamStateFilter = "ALL" | Exclude<ExamStateKey, "UNKNOWN">;
-
-/**
- * Presentation-only projection of the authoritative `ExamAppStatus`.
- * Never persisted; no new domain state is introduced.
- */
-function deriveExamState(status: string): ExamStateKey {
-  switch (status) {
-    case "PENDING":
-    case "APPROVED":
-      return "SCHEDULED";
-    case "TAKEN":
-      return "NEEDS_GRADING";
-    case "PASSED":
-      return "PASSED";
-    case "FAILED":
-      return "FAILED";
-    case "APPEALED":
-      return "APPEAL_PENDING";
-    case "DISQUALIFIED":
-      return "DISQUALIFIED";
-    default:
-      return "UNKNOWN";
-  }
-}
-
-const STATE_LABEL: Record<ExamStateKey, string> = {
-  SCHEDULED: "Scheduled",
-  NEEDS_GRADING: "Needs Essay Grading",
-  PASSED: "Passed",
-  FAILED: "Failed",
-  APPEAL_PENDING: "Appeal Pending",
-  DISQUALIFIED: "Disqualified",
-  UNKNOWN: "Unknown",
-};
-
-/** Border-first, text-carrying badge. Color is never the only signal. */
-const STATE_BADGE_CLASS: Record<ExamStateKey, string> = {
-  SCHEDULED: "text-(--earist-secondary)",
-  NEEDS_GRADING: "text-(--earist-warning)",
-  PASSED: "text-(--earist-success)",
-  FAILED: "text-destructive",
-  APPEAL_PENDING: "text-(--earist-warning)",
-  DISQUALIFIED: "text-(--earist-body-text)",
-  UNKNOWN: "text-(--earist-body-text)",
-};
-
-const STATE_FILTERS: { value: ExamStateFilter; label: string }[] = [
-  { value: "ALL", label: "All States" },
-  { value: "SCHEDULED", label: "Scheduled" },
-  { value: "NEEDS_GRADING", label: "Needs Essay Grading" },
-  { value: "PASSED", label: "Passed" },
-  { value: "FAILED", label: "Failed" },
-  { value: "APPEAL_PENDING", label: "Appeal Pending" },
-  { value: "DISQUALIFIED", label: "Disqualified" },
-];
-
-/* -------------------------------------------------------------- formatting */
-
-/** Parse a wall-clock ISO date without a UTC->local day shift. */
-function formatExamDate(iso: string | null): string {
-  if (!iso) return MISSING;
-  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
-  if (!year || !month || !day) return MISSING;
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatExamTime(iso: string | null): string {
-  if (!iso) return MISSING;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return MISSING;
-  return date.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 /* --------------------------------------------------------------- row model */
 
@@ -169,14 +75,6 @@ function toRow(app: ApiApplication): ExamRecordRow {
 }
 
 /* -------------------------------------------------------------- table parts */
-
-function StateBadge({ state }: { state: ExamStateKey }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium", STATE_BADGE_CLASS[state])}>
-      {STATE_LABEL[state]}
-    </Badge>
-  );
-}
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
@@ -324,23 +222,6 @@ function ErrorState({
   );
 }
 
-function DetailItem({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0 space-y-0.5">
-      <dt className="text-xs text-(--earist-body-text)">{label}</dt>
-      <dd className="text-sm font-medium break-words text-foreground">
-        {children}
-      </dd>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------- page */
 
 export default function ExamRecordsPage() {
@@ -348,7 +229,6 @@ export default function ExamRecordsPage() {
   const [programId, setProgramId] = useState(ALL);
   const [examState, setExamState] = useState<ExamStateFilter>("ALL");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<ExamRecordRow | null>(null);
 
   const recordsQuery = useQuery<ApiApplication[]>({
     queryKey: ["examRecords"],
@@ -403,7 +283,7 @@ export default function ExamRecordsPage() {
       : (programs.find((program) => program.id === programId)?.programName ??
         "All Programs");
   const examStateLabel =
-    STATE_FILTERS.find((option) => option.value === examState)?.label ??
+    EXAM_STATE_FILTERS.find((option) => option.value === examState)?.label ??
     "All States";
 
   const pageNumbers = (() => {
@@ -420,9 +300,6 @@ export default function ExamRecordsPage() {
       currentPage + 2,
     ];
   })();
-
-  const isScoreState =
-    selected?.state === "PASSED" || selected?.state === "FAILED";
 
   return (
     <div className="space-y-6">
@@ -525,7 +402,7 @@ export default function ExamRecordsPage() {
                   </span>
                 </SelectTrigger>
                 <SelectContent>
-                  {STATE_FILTERS.map((option) => (
+                  {EXAM_STATE_FILTERS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -607,17 +484,19 @@ export default function ExamRecordsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <StateBadge state={record.state} />
+                      <ExamStateBadge state={record.state} />
                     </td>
                     <td className="px-4 py-3 text-right align-top">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelected(record)}
+                      <Link
+                        href={`/admin/exam/applications/${record.id}`}
                         aria-label={`View exam record for ${record.name || "applicant"}`}
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "icon" }),
+                          "ml-auto",
+                        )}
                       >
                         <Eye className="h-4 w-4" aria-hidden="true" />
-                      </Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -682,73 +561,6 @@ export default function ExamRecordsPage() {
           )}
         </div>
       )}
-
-      {/* Transitional read-only exam record summary */}
-      <Dialog
-        open={selected !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Exam Record</DialogTitle>
-            <DialogDescription>
-              Read-only summary. Grading and result operations are handled in
-              their owning modules.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selected && (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                <p className="text-sm font-semibold break-words text-foreground">
-                  {selected.name || MISSING}
-                </p>
-                <p className="mt-0.5 text-xs text-(--earist-body-text)">
-                  {selected.pinnacleId || "No Pinnacle ID"}
-                </p>
-              </div>
-
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <DetailItem label="Program">
-                  {selected.programName}
-                </DetailItem>
-                <DetailItem label="Exam Schedule">
-                  {selected.examDate ? (
-                    <>
-                      {formatExamDate(selected.examDate)}
-                      <span className="text-(--earist-body-text)">
-                        {" · "}
-                        {formatExamTime(selected.examTime)}
-                      </span>
-                    </>
-                  ) : (
-                    MISSING
-                  )}
-                </DetailItem>
-                <DetailItem label="Exam State">
-                  <StateBadge state={selected.state} />
-                </DetailItem>
-              </dl>
-            </div>
-          )}
-
-          <DialogFooter>
-            {isScoreState && (
-              <Link
-                href="/admin/exam/scores"
-                className={cn(buttonVariants({ variant: "outline" }))}
-              >
-                View Scores
-              </Link>
-            )}
-            <DialogClose render={<Button variant="outline" />}>
-              Close
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

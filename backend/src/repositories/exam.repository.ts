@@ -107,6 +107,87 @@ export class ExamRepository {
         });
     }
 
+    /**
+     * Bounded ADMIN detail read model for one exam record.
+     * Only authoritative fields; essay answers are ESSAY-only and deterministically
+     * ordered; no correct-answer/option data is selected.
+     */
+    async getApplicationDetail(applicationId: string) {
+        return prisma.entranceExamApplication.findUnique({
+            where: { id: applicationId },
+            select: {
+                id: true,
+                status: true,
+                student: {
+                    select: {
+                        id: true,
+                        pinnacleApplicantId: true,
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                program: {
+                    select: {
+                        id: true,
+                        programName: true,
+                        examMcqTotal: true,
+                        examEssayTotal: true,
+                    },
+                },
+                slot: {
+                    select: {
+                        id: true,
+                        examDate: true,
+                        examTime: true,
+                    },
+                },
+                score: {
+                    select: {
+                        multipleChoiceScore: true,
+                        essayScore: true,
+                        totalScore: true,
+                        status: true,
+                        gradedBy: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                    },
+                },
+                answers: {
+                    where: {
+                        question: {
+                            type: "ESSAY",
+                        },
+                    },
+                    select: {
+                        questionId: true,
+                        essayAnswer: true,
+                        question: {
+                            select: {
+                                id: true,
+                                questionText: true,
+                                order: true,
+                                type: true,
+                            },
+                        },
+                    },
+                    orderBy: [
+                        { question: { order: "asc" } },
+                        { questionId: "asc" },
+                    ],
+                },
+            },
+        });
+    }
+
         async getAppealedExams() {
         return prisma.entranceExamApplication.findMany({
             where: { status: 'APPEALED' },

@@ -1,6 +1,8 @@
 import { ExamRepository } from "../repositories/exam.repository";
 import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
+import { AppError } from "../utils/AppError";
+import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 
 export class ExamService {
   private examRepo = new ExamRepository();
@@ -148,6 +150,70 @@ export class ExamService {
 
   async getAllApplications() {
     return this.examRepo.getAllApplications();
+  }
+
+  /**
+   * Bounded ADMIN detail read model. Maps the authoritative repository projection
+   * into a safe DTO (Decimals -> numbers, Dates -> ISO strings). Read-only.
+   */
+  async getApplicationDetail(
+    applicationId: string,
+  ): Promise<ExamRecordDetail> {
+    const app = await this.examRepo.getApplicationDetail(applicationId);
+    if (!app) {
+      throw new AppError("Exam record not found.", 404);
+    }
+
+    const toNumberOrNull = (value: unknown): number | null =>
+      value === null || value === undefined ? null : Number(value);
+
+    return {
+      id: app.id,
+      status: app.status,
+      student: {
+        id: app.student.id,
+        pinnacleApplicantId: app.student.pinnacleApplicantId,
+        user: {
+          firstName: app.student.user.firstName,
+          lastName: app.student.user.lastName,
+          email: app.student.user.email,
+        },
+      },
+      program: {
+        id: app.program.id,
+        programName: app.program.programName,
+        examMcqTotal: app.program.examMcqTotal,
+        examEssayTotal: app.program.examEssayTotal,
+      },
+      slot: {
+        id: app.slot.id,
+        examDate: app.slot.examDate.toISOString(),
+        examTime: app.slot.examTime.toISOString(),
+      },
+      score: app.score
+        ? {
+            multipleChoiceScore: toNumberOrNull(
+              app.score.multipleChoiceScore,
+            ),
+            essayScore: toNumberOrNull(app.score.essayScore),
+            totalScore: toNumberOrNull(app.score.totalScore),
+            status: app.score.status,
+            gradedBy: app.score.gradedBy
+              ? {
+                  id: app.score.gradedBy.id,
+                  firstName: app.score.gradedBy.firstName,
+                  lastName: app.score.gradedBy.lastName,
+                }
+              : null,
+          }
+        : null,
+      essayAnswers: app.answers.map((answer) => ({
+        questionId: answer.questionId,
+        questionText: answer.question.questionText,
+        order: answer.question.order,
+        essayAnswer: answer.essayAnswer,
+      })),
+    };
   }
 
   async appealMissedExam(userId: string) {

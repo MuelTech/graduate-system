@@ -155,6 +155,25 @@ export class ExamController {
     }
   };
 
+  getApplicationDetail = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const detail = await this.examService.getApplicationDetail(id);
+      res.status(200).json(detail);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
   appealMissedExam = async (
     req: AuthenticatedRequest,
     res: Response,
