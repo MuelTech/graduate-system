@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
-  student: { findMany: vi.fn(), count: vi.fn() },
+  student: { findMany: vi.fn(), count: vi.fn(), findUnique: vi.fn() },
 }));
 
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
@@ -152,5 +152,116 @@ describe("AdminStudentRepository projection", () => {
       admissionStatus: "GRADUATED",
       program: { id: "prog-1", programName: "MSIT" },
     });
+  });
+});
+
+function detailStudent(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "s1",
+    studentNumber: "2026-00123",
+    cellphone: "+639170000000",
+    dateOfBirth: new Date("1998-01-15T00:00:00.000Z"),
+    admissionStatus: "ENROLLED",
+    enrollmentDate: new Date("2026-06-01T00:00:00.000Z"),
+    curriculumType: "NEW",
+    alignmentStatus: "ALIGNED",
+    residencyStartDate: null,
+    userId: "u1",
+    user: { firstName: "Juan", lastName: "Dela Cruz", email: "juan@example.com" },
+    program: { id: "prog-1", programName: "MSIT" },
+    compExamRecords: [],
+    adviserAssignments: [],
+    residencyTracking: null,
+    ...overrides,
+  };
+}
+
+describe("AdminStudentRepository.findStudentDetailById", () => {
+  it("returns null when the student does not exist", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(null);
+    expect(
+      await new AdminStudentRepository().findStudentDetailById("missing"),
+    ).toBeNull();
+  });
+
+  it("maps an explicit detail DTO and reports missing records honestly", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(detailStudent());
+
+    const detail = await new AdminStudentRepository().findStudentDetailById("s1");
+
+    expect(detail).toMatchObject({
+      id: "s1",
+      firstName: "Juan",
+      lastName: "Dela Cruz",
+      email: "juan@example.com",
+      studentNumber: "2026-00123",
+      cellphone: "+639170000000",
+      admissionStatus: "ENROLLED",
+      curriculumType: "NEW",
+      alignmentStatus: "ALIGNED",
+      program: { id: "prog-1", programName: "MSIT" },
+      compExam: null,
+      adviserAssignment: null,
+      residency: null,
+    });
+    expect(detail?.dateOfBirth).toBe("1998-01-15T00:00:00.000Z");
+    expect(detail?.enrollmentDate).toBe("2026-06-01T00:00:00.000Z");
+  });
+
+  it("reports the latest comprehensive exam status when a record exists", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(
+      detailStudent({
+        compExamRecords: [
+          { status: "PASSED", createdAt: new Date("2026-07-01T00:00:00.000Z") },
+          { status: "FAILED", createdAt: new Date("2026-05-01T00:00:00.000Z") },
+        ],
+      }),
+    );
+
+    const detail = await new AdminStudentRepository().findStudentDetailById("s1");
+
+    expect(detail?.compExam).toEqual({
+      status: "PASSED",
+      recordedAt: "2026-07-01T00:00:00.000Z",
+    });
+  });
+
+  it("maps residency and the active adviser assignment", async () => {
+    prismaMock.student.findUnique.mockResolvedValue(
+      detailStudent({
+        residencyTracking: {
+          startDate: new Date("2026-06-01T00:00:00.000Z"),
+          maxYears: 5,
+        },
+        adviserAssignments: [
+          {
+            assignedDate: new Date("2026-08-01T00:00:00.000Z"),
+            adviser: { id: "adv-1", firstName: "Maria", lastName: "Santos" },
+          },
+        ],
+      }),
+    );
+
+    const detail = await new AdminStudentRepository().findStudentDetailById("s1");
+
+    expect(detail?.residency).toEqual({
+      startDate: "2026-06-01T00:00:00.000Z",
+      maxYears: 5,
+    });
+    expect(detail?.adviserAssignment).toEqual({
+      adviserId: "adv-1",
+      adviserName: "Maria Santos",
+      assignedDate: "2026-08-01T00:00:00.000Z",
+    });
+  });
+});
+
+describe("AdminStudentRepository.findStudentUserId", () => {
+  it("returns the owning user id or null", async () => {
+    prismaMock.student.findUnique.mockResolvedValue({ userId: "u1" });
+    expect(await new AdminStudentRepository().findStudentUserId("s1")).toBe("u1");
+
+    prismaMock.student.findUnique.mockResolvedValue(null);
+    expect(await new AdminStudentRepository().findStudentUserId("s1")).toBeNull();
   });
 });

@@ -1,398 +1,750 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { apiClientRequest } from "@/lib/api.client";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
-  ArrowLeft,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  GraduationCap,
-  FileText,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  BookOpen,
-  Shield,
-  Clock,
-} from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminStudentDetail } from "@/types";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { AdminStudentDetail } from "@/types";
+import type {
+  JourneyStepView,
+  StudentThesisJourney,
+} from "@/types/student-thesis-journey";
+import {
+  defenseStatusDescription,
+  defenseStatusHeading,
+  formatDefenseDate,
+  formatDefenseTime,
+  journeyLabelFor,
+  sessionStatusLabel,
+} from "@/lib/student-thesis-journey";
 import { toast } from "sonner";
+import {
+  AlertCircle,
+  CheckCircle2,
+  CircleDot,
+  Clock,
+  KeyRound,
+  Lock,
+  RefreshCw,
+  Users,
+} from "lucide-react";
+
+const MISSING = "—";
+
+/* --------------------------------------------------------------- formatting */
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return MISSING;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return MISSING;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/* ------------------------------------------------------------ presentation */
+
+const ADMISSION_STATUS_LABEL: Record<string, string> = {
+  ENROLLED: "Enrolled",
+  GRADUATED: "Graduated",
+  DISMISSED: "Dismissed",
+};
+
+const ADMISSION_STATUS_CLASS: Record<string, string> = {
+  ENROLLED: "text-(--earist-success)",
+  GRADUATED: "text-(--earist-secondary)",
+  DISMISSED: "text-destructive",
+};
+
+const COMP_EXAM_LABEL: Record<string, string> = {
+  PENDING: "Pending",
+  PASSED: "Passed",
+  FAILED: "Failed",
+};
+
+const ALIGNMENT_LABEL: Record<string, string> = {
+  ALIGNED: "Aligned",
+  PENDING_WAIVER: "Bridging waiver pending",
+  CLEARED: "Cleared",
+};
+
+const JOURNEY_STATE_LABEL: Record<string, string> = {
+  COMPLETED: "Completed",
+  CURRENT: "Current",
+  AVAILABLE: "Available",
+  WAITING: "Waiting",
+  LOCKED: "Locked",
+};
+
+const JOURNEY_STATE_CLASS: Record<string, string> = {
+  COMPLETED: "text-(--earist-success)",
+  CURRENT: "text-(--earist-primary)",
+  AVAILABLE: "text-(--earist-secondary)",
+  WAITING: "text-(--earist-warning)",
+  LOCKED: "text-(--earist-body-text)",
+};
+
+function admissionStatusLabel(status: string): string {
+  return ADMISSION_STATUS_LABEL[status] ?? status;
+}
+
+function compExamLabel(status: string): string {
+  return COMP_EXAM_LABEL[status] ?? status;
+}
+
+function defenseKindForStep(
+  key: JourneyStepView["key"],
+): "Title" | "Proposal" | "Final" {
+  if (key === "PROPOSAL_DEFENSE") return "Proposal";
+  if (key === "FINAL_DEFENSE") return "Final";
+  return "Title";
+}
+
+/* -------------------------------------------------------------- components */
+
+function SectionCard({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-base font-semibold text-(--earist-secondary)">
+              {title}
+            </h2>
+            {description ? (
+              <p className="text-xs text-(--earist-body-text)">{description}</p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DataRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <dt className="text-xs text-(--earist-body-text)">{label}</dt>
+      <dd className="text-sm font-medium break-words text-foreground">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+function AdmissionStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("font-medium", ADMISSION_STATUS_CLASS[status])}
+    >
+      {admissionStatusLabel(status)}
+    </Badge>
+  );
+}
+
+function JourneyStateIcon({ state }: { state: string }) {
+  if (state === "COMPLETED") {
+    return (
+      <CheckCircle2
+        className="h-4 w-4 text-(--earist-success)"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (state === "CURRENT") {
+    return (
+      <CircleDot
+        className="h-4 w-4 text-(--earist-primary)"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (state === "AVAILABLE") {
+    return (
+      <CircleDot
+        className="h-4 w-4 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (state === "WAITING") {
+    return (
+      <Clock className="h-4 w-4 text-(--earist-warning)" aria-hidden="true" />
+    );
+  }
+  return (
+    <Lock
+      className="h-4 w-4 text-(--earist-body-text)/60"
+      aria-hidden="true"
+    />
+  );
+}
+
+function JourneyStepRow({ step }: { step: JourneyStepView }) {
+  const kind = defenseKindForStep(step.key);
+  const session = step.defenseSession;
+  const showBlocker = step.state === "LOCKED" && Boolean(step.lockReason);
+
+  return (
+    <li className="flex gap-3">
+      <div className="mt-0.5 shrink-0">
+        <JourneyStateIcon state={step.state} />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">
+            {journeyLabelFor(step.key, step.label)}
+          </p>
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-medium",
+              JOURNEY_STATE_CLASS[step.state] ??
+                "text-(--earist-body-text)",
+            )}
+          >
+            {JOURNEY_STATE_LABEL[step.state] ?? step.state}
+          </Badge>
+        </div>
+
+        {showBlocker ? (
+          <p className="text-sm text-(--earist-warning)">{step.lockReason}</p>
+        ) : step.detail ? (
+          <p className="text-sm break-words text-(--earist-body-text)">
+            {step.detail}
+          </p>
+        ) : null}
+
+        {step.defenseStatus ? (
+          <p className="text-xs text-(--earist-body-text)">
+            {defenseStatusHeading(step.defenseStatus, "Defense status")} —{" "}
+            {defenseStatusDescription(step.defenseStatus, kind, null)}
+          </p>
+        ) : null}
+
+        {session ? (
+          <p className="text-xs text-(--earist-body-text)">
+            {session.sessionStatus
+              ? `${sessionStatusLabel(session.sessionStatus)} · `
+              : ""}
+            {formatDefenseDate(session.defenseDate)} ·{" "}
+            {formatDefenseTime(session.defenseTime)}
+            {session.venueOrLink ? ` · ${session.venueOrLink}` : ""}
+          </p>
+        ) : null}
+
+        {step.nextAction && step.state !== "COMPLETED" ? (
+          <p className="text-xs text-(--earist-body-text)">
+            Next: {step.nextAction}
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+/* ------------------------------------------------------------ async states */
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <Skeleton className="h-4 w-56" />
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64 max-w-full" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <Skeleton className="h-28 w-full rounded-xl" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Skeleton className="h-96 w-full rounded-xl" />
+        </div>
+        <div className="space-y-6">
+          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StateFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Students", href: "/admin/users/students" },
+          { label: "Student Profile" },
+        ]}
+      />
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+          {children}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NotFoundState() {
+  return (
+    <StateFrame>
+      <Users
+        className="h-8 w-8 text-(--earist-body-text)/40"
+        aria-hidden="true"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Student not found
+        </p>
+        <p className="max-w-sm text-sm text-(--earist-body-text)">
+          This student record does not exist or is no longer available.
+        </p>
+      </div>
+      <Link
+        href="/admin/users/students"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+      >
+        Back to Students
+      </Link>
+    </StateFrame>
+  );
+}
+
+function ErrorState({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <StateFrame>
+      <AlertCircle
+        className="h-8 w-8 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Unable to load student
+        </p>
+        <p className="max-w-sm text-sm text-(--earist-body-text)">
+          Something went wrong while loading this student record. Please try
+          again.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          disabled={retrying}
+        >
+          <RefreshCw
+            className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+            aria-hidden="true"
+          />
+          Retry
+        </Button>
+        <Link
+          href="/admin/users/students"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          Back to Students
+        </Link>
+      </div>
+    </StateFrame>
+  );
+}
+
+/* -------------------------------------------------------------------- page */
 
 export default function StudentDetailPage() {
   const params = useParams();
-  const queryClient = useQueryClient();
   const studentId = params.id as string;
+  const queryClient = useQueryClient();
 
-  const { data: student, isLoading } = useQuery<AdminStudentDetail>({
+  const [compExamAction, setCompExamAction] = useState<
+    "PASSED" | "FAILED" | null
+  >(null);
+
+  const studentQuery = useQuery<AdminStudentDetail>({
     queryKey: ["adminStudentDetail", studentId],
-    queryFn: async () => {
-      return await apiClientRequest(`/admin/students/${studentId}`);
-    },
+    queryFn: () => apiClientRequest(`/admin/students/${studentId}`),
+    retry: false,
+  });
+
+  const journeyQuery = useQuery<StudentThesisJourney>({
+    queryKey: ["adminStudentJourney", studentId],
+    queryFn: () => apiClientRequest(`/admin/students/${studentId}/journey`),
+    retry: false,
   });
 
   const markCompExamMutation = useMutation({
-    mutationFn: async (status: "PASSED" | "FAILED") => {
-      return await apiClientRequest(`/admin/students/${studentId}/comprehensive-exam`, {
+    mutationFn: (status: "PASSED" | "FAILED") =>
+      apiClientRequest(`/admin/students/${studentId}/comprehensive-exam`, {
         method: "PUT",
         body: JSON.stringify({ status }),
+      }),
+    onSuccess: (data: { message?: string }) => {
+      toast.success(data?.message ?? "Comprehensive exam status updated.");
+      setCompExamAction(null);
+      queryClient.invalidateQueries({
+        queryKey: ["adminStudentDetail", studentId],
       });
-    },
-    onSuccess: (data) => {
-      toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["adminStudentDetail", studentId] });
+      queryClient.invalidateQueries({
+        queryKey: ["adminStudentJourney", studentId],
+      });
       queryClient.invalidateQueries({ queryKey: ["adminStudents"] });
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
-  const getCompExamBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return <Badge className="bg-gray-100 text-gray-500">Pending</Badge>;
-      case "PASSED":
-        return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
-      case "FAILED":
-        return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status || "--"}</Badge>;
-    }
-  };
+  if (studentQuery.isLoading) {
+    return <DetailSkeleton />;
+  }
 
-  const getThesisStageBadge = (stage: string) => {
-    switch (stage) {
-      case "TITLE":
-        return <Badge className="bg-blue-100 text-blue-700">Title Defense</Badge>;
-      case "PROPOSAL":
-        return <Badge className="bg-amber-100 text-amber-700">Proposal Defense</Badge>;
-      case "FINAL":
-        return <Badge className="bg-purple-100 text-purple-700">Final Defense</Badge>;
-      case "COMPLETED":
-        return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
-      case "NONE":
-        return <Badge variant="outline">None</Badge>;
-      default:
-        return <Badge variant="outline">{stage}</Badge>;
-    }
-  };
+  const statusCode =
+    studentQuery.error instanceof ApiError
+      ? studentQuery.error.statusCode
+      : undefined;
+  if (studentQuery.isError && statusCode === 404) {
+    return <NotFoundState />;
+  }
 
-  const getThesisStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return <Badge className="bg-gray-100 text-gray-500">Pending</Badge>;
-      case "SCHEDULED":
-        return <Badge className="bg-blue-100 text-blue-700">Scheduled</Badge>;
-      case "PASSED":
-        return <Badge className="bg-green-100 text-green-700">Passed</Badge>;
-      case "FAILED":
-        return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
-      case "REVISION":
-        return <Badge className="bg-amber-100 text-amber-700">Revision</Badge>;
-      default:
-        return <Badge variant="outline">{status || "--"}</Badge>;
-    }
-  };
-
-  const getAdmissionBadge = (status: string) => {
-    switch (status) {
-      case "ENROLLED":
-        return <Badge className="bg-green-100 text-green-700">Active</Badge>;
-      case "GRADUATED":
-        return <Badge className="bg-blue-100 text-blue-700">Graduated</Badge>;
-      case "ON_LEAVE":
-        return <Badge className="bg-amber-100 text-amber-700">On Leave</Badge>;
-      case "DISMISSED":
-        return <Badge className="bg-red-100 text-red-700">Dismissed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getAlignmentBadge = (status: string) => {
-    switch (status) {
-      case "ALIGNED":
-        return <Badge className="bg-green-100 text-green-700">Aligned</Badge>;
-      case "PENDING_WAIVER":
-        return <Badge className="bg-amber-100 text-amber-700">Pending Waiver</Badge>;
-      case "CLEARED":
-        return <Badge className="bg-blue-100 text-blue-700">Cleared</Badge>;
-      default:
-        return <Badge variant="outline">{status || "--"}</Badge>;
-    }
-  };
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  if (isLoading) {
+  if (studentQuery.isError || !studentQuery.data) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-gray-500 animate-pulse">Loading student details...</p>
-      </div>
+      <ErrorState
+        onRetry={() => studentQuery.refetch()}
+        retrying={studentQuery.isFetching}
+      />
     );
   }
 
-  if (!student) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertTriangle className="mb-4 h-12 w-12 text-gray-300" />
-        <p className="text-gray-500">Student not found</p>
-        <Link href="/admin/users/students">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Students
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  const student = studentQuery.data;
+  const fullName = `${student.firstName} ${student.lastName}`.trim();
+  const programName = student.program?.programName ?? MISSING;
+  const journey = journeyQuery.data;
+  const currentStep =
+    journey?.steps.find((step) => step.key === journey.currentStep) ?? null;
+
+  // Only active students may have a Comprehensive Exam recorded.
+  const canRecordCompExam = student.admissionStatus === "ENROLLED";
+
+  const summaryNext =
+    currentStep?.state === "LOCKED"
+      ? currentStep.lockReason
+      : (currentStep?.nextAction ?? null);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/admin/users/students">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h2 className="text-2xl font-bold text-(--earist-primary)">
-            Student Profile
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            {student.firstName} {student.lastName} — {student.studentNumber}
+      <Breadcrumb
+        items={[
+          { label: "Students", href: "/admin/users/students" },
+          { label: "Student Profile" },
+        ]}
+      />
+
+      <PageHeader
+        title={fullName || "Student"}
+        description={`${student.studentNumber ?? "No student number"} · ${programName} · ${admissionStatusLabel(student.admissionStatus)}`}
+      />
+
+      {/* Current Academic State */}
+      <Card>
+        <CardContent className="space-y-4">
+          <p className="text-xs font-semibold text-(--earist-body-text)">
+            Current Academic State
           </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-1">
+              <p className="text-xs text-(--earist-body-text)">Student Status</p>
+              <AdmissionStatusBadge status={student.admissionStatus} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-(--earist-body-text)">
+                Comprehensive Exam
+              </p>
+              <p className="text-sm font-medium text-foreground">
+                {student.compExam
+                  ? compExamLabel(student.compExam.status)
+                  : "Not recorded"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-(--earist-body-text)">
+                Current Thesis Stage
+              </p>
+              <p className="text-sm font-medium text-foreground">
+                {journeyQuery.isLoading
+                  ? "Loading…"
+                  : currentStep
+                    ? `${journeyLabelFor(currentStep.key, currentStep.label)} · ${JOURNEY_STATE_LABEL[currentStep.state] ?? currentStep.state}`
+                    : journeyQuery.isError
+                      ? "Unavailable"
+                      : MISSING}
+              </p>
+            </div>
+          </div>
+          {summaryNext ? (
+            <p className="max-w-2xl text-sm text-(--earist-body-text)">
+              {currentStep?.state === "LOCKED" ? "Blocked: " : "Next: "}
+              {summaryNext}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Academic Journey — dominant content */}
+        <div className="space-y-6 lg:col-span-2">
+          <SectionCard
+            title="Academic Journey"
+            description="Authoritative progression derived from formal defense records."
+            action={
+              <Link
+                href="/admin/thesis/defense-records"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                Defense Records
+              </Link>
+            }
+          >
+            {journeyQuery.isLoading ? (
+              <ul className="space-y-4" aria-busy="true">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <li key={index} className="flex gap-3">
+                    <Skeleton className="h-4 w-4 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-64 max-w-full" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : journeyQuery.isError ? (
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-6 py-10 text-center">
+                <AlertCircle
+                  className="h-7 w-7 text-(--earist-secondary)"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    Academic journey unavailable
+                  </p>
+                  <p className="max-w-sm text-sm text-(--earist-body-text)">
+                    Student details loaded, but the thesis journey could not be
+                    retrieved.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => journeyQuery.refetch()}
+                  disabled={journeyQuery.isFetching}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      journeyQuery.isFetching && "animate-spin",
+                    )}
+                    aria-hidden="true"
+                  />
+                  Retry
+                </Button>
+              </div>
+            ) : journey && journey.steps.length > 0 ? (
+              <ol className="space-y-5">
+                {journey.steps.map((step) => (
+                  <JourneyStepRow key={step.key} step={step} />
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-(--earist-body-text)">
+                No thesis journey is available for this student yet.
+              </p>
+            )}
+          </SectionCard>
+        </div>
+
+        {/* Supporting context */}
+        <div className="space-y-6">
+          <SectionCard title="Comprehensive Examination">
+            <dl className="grid grid-cols-1 gap-3">
+              <DataRow label="Status">
+                {student.compExam
+                  ? compExamLabel(student.compExam.status)
+                  : "Not recorded"}
+              </DataRow>
+              {student.compExam?.recordedAt ? (
+                <DataRow label="Record created">
+                  {formatDate(student.compExam.recordedAt)}
+                </DataRow>
+              ) : null}
+            </dl>
+
+            {canRecordCompExam ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  size="sm"
+                  className="bg-(--earist-success) text-white hover:bg-(--earist-success)/90"
+                  onClick={() => setCompExamAction("PASSED")}
+                  disabled={markCompExamMutation.isPending}
+                >
+                  Mark as Passed
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setCompExamAction("FAILED")}
+                  disabled={markCompExamMutation.isPending}
+                >
+                  Mark as Failed
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-(--earist-body-text)">
+                Examination recording is available for enrolled students only.
+              </p>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Student & Academic Details">
+            <dl className="grid grid-cols-1 gap-3">
+              <DataRow label="Full Name">{fullName || MISSING}</DataRow>
+              <DataRow label="Student Number">
+                {student.studentNumber ?? MISSING}
+              </DataRow>
+              <DataRow label="Email">{student.email || MISSING}</DataRow>
+              <DataRow label="Contact Number">
+                {student.cellphone ?? MISSING}
+              </DataRow>
+              <DataRow label="Program">{programName}</DataRow>
+              <DataRow label="Enrollment Date">
+                {formatDate(student.enrollmentDate)}
+              </DataRow>
+              <DataRow label="Curriculum Type">
+                {student.curriculumType ?? MISSING}
+              </DataRow>
+              {student.alignmentStatus ? (
+                <DataRow label="Alignment Status">
+                  {ALIGNMENT_LABEL[student.alignmentStatus] ??
+                    student.alignmentStatus}
+                </DataRow>
+              ) : null}
+              <DataRow label="Residency Start">
+                {student.residency?.startDate
+                  ? formatDate(student.residency.startDate)
+                  : MISSING}
+              </DataRow>
+              <DataRow label="Max Residency (Years)">
+                {student.residency?.maxYears ?? MISSING}
+              </DataRow>
+              <DataRow label="Active Adviser">
+                {student.adviserAssignment
+                  ? student.adviserAssignment.adviserName
+                  : "Not assigned"}
+              </DataRow>
+            </dl>
+          </SectionCard>
+
+          <SectionCard
+            title="Account Support"
+            description="Assistance for this student's portal account."
+          >
+            <DataRow label="Account Email">
+              {student.email || MISSING}
+            </DataRow>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              title="Password recovery is not yet available"
+              className="w-full sm:w-auto"
+            >
+              <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
+              Reset Student Password
+            </Button>
+            <p className="text-xs text-(--earist-body-text)">
+              Password recovery will be available through an authorized
+              administrator.
+            </p>
+          </SectionCard>
         </div>
       </div>
 
-      {/* Profile Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Full Name</p>
-                <p className="font-medium">{student.firstName} {student.lastName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Student Number</p>
-                <p className="font-medium">{student.studentNumber}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{student.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Phone</p>
-                <p className="font-medium">{student.cellphone || "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Date of Birth</p>
-                <p className="font-medium">{formatDate(student.dateOfBirth)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Program</p>
-                <p className="font-medium">{student.program.programName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Enrollment Date</p>
-                <p className="font-medium">{formatDate(student.enrollmentDate)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Shield className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                {getAdmissionBadge(student.admissionStatus)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Comprehensive Exam */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Comprehensive Examination
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Current Status</p>
-                {getCompExamBadge(student.compExamStatus)}
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Strike Count</p>
-                <p className="font-medium">{student.compExamStrikes}</p>
-              </div>
-            </div>
-
-            {student.compExamRecords.length > 0 && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-2">Exam History</p>
-                <div className="space-y-2">
-                  {student.compExamRecords.map((record, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">{formatDate(record.createdAt)}</span>
-                      {getCompExamBadge(record.status)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {student.compExamStatus !== "PASSED" && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    if (confirm("Mark comprehensive exam as PASSED?")) {
-                      markCompExamMutation.mutate("PASSED");
-                    }
-                  }}
-                  disabled={markCompExamMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  {markCompExamMutation.isPending ? "Updating..." : "Mark as Passed"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (confirm("Mark comprehensive exam as FAILED? This will increment the strike count.")) {
-                      markCompExamMutation.mutate("FAILED");
-                    }
-                  }}
-                  disabled={markCompExamMutation.isPending}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {markCompExamMutation.isPending ? "Updating..." : "Mark as Failed"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Thesis Progress */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Thesis Progress
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Current Stage</p>
-              {getThesisStageBadge(student.thesisStage)}
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              {getThesisStatusBadge(student.thesisStatus)}
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Adviser</p>
-              {student.adviserAssignment ? (
-                <div>
-                  <p className="font-medium">
-                    {student.adviserAssignment.adviser.firstName} {student.adviserAssignment.adviser.lastName}
-                  </p>
-                  <p className="text-xs text-gray-500">Assigned: {formatDate(student.adviserAssignment.assignedDate)}</p>
-                </div>
-              ) : (
-                <Badge className="bg-amber-100 text-amber-700">Not Assigned</Badge>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Academic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" />
-            Academic Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Residency Start</p>
-                <p className="font-medium">{formatDate(student.residencyStartDate)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Max Residency (Years)</p>
-                <p className="font-medium">{student.residencyMaxYears ?? "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Curriculum Type</p>
-                <p className="font-medium">{student.curriculumType || "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Shield className="h-4 w-4 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Alignment Status</p>
-                {getAlignmentBadge(student.alignmentStatus)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Comprehensive Exam confirmation */}
+      <Dialog
+        open={compExamAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setCompExamAction(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Mark comprehensive exam as{" "}
+              {compExamAction === "FAILED" ? "Failed" : "Passed"}?
+            </DialogTitle>
+            <DialogDescription>
+              {compExamAction === "FAILED"
+                ? "This records a failed comprehensive examination for this student."
+                : "This records a passing comprehensive examination result for this student."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              variant={compExamAction === "FAILED" ? "destructive" : "default"}
+              disabled={markCompExamMutation.isPending}
+              onClick={() => {
+                if (compExamAction) markCompExamMutation.mutate(compExamAction);
+              }}
+            >
+              {markCompExamMutation.isPending ? "Saving…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

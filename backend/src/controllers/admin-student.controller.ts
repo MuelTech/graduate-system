@@ -46,6 +46,22 @@ export class AdminStudentController {
     }
   };
 
+  getStudentJourney = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const result = await this.service.getStudentJourney(id);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
   updateCompExamStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;

@@ -2,6 +2,7 @@
 
 import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
+import { AdminStudentDetail } from "../interfaces/admin-student.interfaces";
 
 export interface AdminStudentListQuery {
   page?: number;
@@ -178,6 +179,98 @@ export class AdminStudentRepository {
       lastName: student.user.lastName,
       email: student.user.email,
     };
+  }
+
+  /**
+   * Explicit, bounded detail projection for the Admin Student Profile.
+   * Missing records are represented as null — never fabricated.
+   */
+  async findStudentDetailById(
+    studentId: string,
+  ): Promise<AdminStudentDetail | null> {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: {
+          select: { firstName: true, lastName: true, email: true },
+        },
+        program: {
+          select: { id: true, programName: true },
+        },
+        compExamRecords: {
+          select: { status: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        },
+        adviserAssignments: {
+          where: { isActive: true },
+          select: {
+            assignedDate: true,
+            adviser: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { assignedDate: "desc" },
+          take: 1,
+        },
+        residencyTracking: {
+          select: { startDate: true, maxYears: true },
+        },
+      },
+    });
+
+    if (!student) return null;
+
+    const compExam = student.compExamRecords[0] ?? null;
+    const assignment = student.adviserAssignments[0] ?? null;
+    const residencyStart =
+      student.residencyTracking?.startDate ?? student.residencyStartDate ?? null;
+    const residencyMax = student.residencyTracking?.maxYears ?? null;
+    const hasResidency = residencyStart !== null || residencyMax !== null;
+
+    return {
+      id: student.id,
+      firstName: student.user.firstName,
+      lastName: student.user.lastName,
+      email: student.user.email,
+      studentNumber: student.studentNumber ?? null,
+      cellphone: student.cellphone ?? null,
+      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
+      program: student.program
+        ? { id: student.program.id, programName: student.program.programName }
+        : null,
+      admissionStatus: student.admissionStatus,
+      enrollmentDate: student.enrollmentDate?.toISOString() ?? null,
+      curriculumType: student.curriculumType ?? null,
+      alignmentStatus: student.alignmentStatus ?? null,
+      residency: hasResidency
+        ? {
+            startDate: residencyStart ? residencyStart.toISOString() : null,
+            maxYears: residencyMax,
+          }
+        : null,
+      compExam: compExam
+        ? {
+            status: compExam.status,
+            recordedAt: compExam.createdAt.toISOString(),
+          }
+        : null,
+      adviserAssignment: assignment
+        ? {
+            adviserId: assignment.adviser.id,
+            adviserName: `${assignment.adviser.firstName} ${assignment.adviser.lastName}`,
+            assignedDate: assignment.assignedDate?.toISOString() ?? null,
+          }
+        : null,
+    };
+  }
+
+  /** Light identity lookup used to reuse the authoritative journey read model. */
+  async findStudentUserId(studentId: string): Promise<string | null> {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { userId: true },
+    });
+    return student?.userId ?? null;
   }
 
   async updateCompExamStatus(studentId: string, status: "PENDING" | "PASSED" | "FAILED") {

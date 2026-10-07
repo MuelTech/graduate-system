@@ -660,15 +660,27 @@ export interface AdminStudentListItem {
   enrollmentDate: string | null;
 }
 
-export interface AdminStudentDetail extends AdminStudentListItem {
-  cellphone: string;
-  dateOfBirth: string;
-  curriculumType: string;
-  alignmentStatus: string;
-  residencyStartDate: string | null;
-  residencyMaxYears: number | null;
-  compExamRecords: { status: string; createdAt: string }[];
-  adviserAssignment: { adviser: { firstName: string; lastName: string }; assignedDate: string } | null;
+export interface AdminStudentDetail {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  studentNumber: string | null;
+  cellphone: string | null;
+  dateOfBirth: string | null;
+  program: { id: string; programName: string } | null;
+  admissionStatus: string;
+  enrollmentDate: string | null;
+  curriculumType: string | null;
+  alignmentStatus: string | null;
+  residency: { startDate: string | null; maxYears: number | null } | null;
+  /** Latest recorded Comprehensive Exam status; null when no record exists. */
+  compExam: { status: string; recordedAt: string | null } | null;
+  adviserAssignment: {
+    adviserId: string;
+    adviserName: string;
+    assignedDate: string | null;
+  } | null;
 }
 
 export interface ApiApplication {
