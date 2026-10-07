@@ -239,6 +239,8 @@ Example:
 
 Thesis Management > Defense Records > Defense Session > Summary
 
+Accepted nested-detail precedent: the Admin Applicant Profile uses the shared `Breadcrumb` as `Applicants / <Applicant Name>`, with a clickable parent and non-clickable `aria-current="page"` record label. This establishes the reusable list → person-detail wayfinding pattern without requiring every record type to use the same number of breadcrumb levels.
+
 ## 9.3 Back links
 
 Use a Back link when it improves task flow, but do not use it as the only hierarchy cue on deep pages.
@@ -1176,6 +1178,47 @@ This reference is concrete precedent, not a requirement that future screens beco
   - table presentation into detail/form/workflow screens where another composition is more appropriate.
 
 The Applicants reference demonstrates a list-page pattern, not a universal DataTable abstraction. Extract shared table/filter primitives only when repeated accepted screens prove the need.
+
+### Reference: Admin Applicant Profile / detail
+
+- Primary path:
+  - `frontend/src/app/(portal)/admin/users/applicants/[id]/page.tsx`
+- Shared primitive introduced:
+  - `frontend/src/components/ui/breadcrumb.tsx`
+- Supporting read-model paths:
+  - `backend/src/services/admin-applicant.service.ts`
+  - `backend/src/repositories/admin-applicant.repository.ts`
+- Accepted commit: `74a836886727ec5f808819566235400da5e0c95b`
+- Implementation chain:
+  - `81333c29e7889eaf3c4b454fc2c0e57adffed69f` — initial Applicant Profile/detail refinement
+  - `74a836886727ec5f808819566235400da5e0c95b` — accepted density/read-model cleanup removing redundant Account Access and incomplete Activity History
+- Pattern type: person-centric, cross-workflow Admin record-detail page that summarizes authoritative state while delegating process operations to their owning modules.
+- Reuse:
+  - breadcrumb → PageHeader → current-state summary → primary record content hierarchy;
+  - the record/person name as PageHeader identity rather than a generic “Profile” heading;
+  - a restrained Current Admission State surface that combines human-readable condition with compact workflow progression;
+  - one dominant workflow/detail surface plus one compact contextual-detail surface instead of equal-weight card stacks;
+  - consolidated metadata/academic context using description-list semantics and content-driven height;
+  - structural detail Skeletons that approximate the final composition and distinct loading/error/not-found states;
+  - bounded backend read-model additions when the page needs existing authoritative data such as Program type or prerequisite academic relations;
+  - fail-closed presentation when authoritative workflow data is absent or null;
+  - contextual links to the operational workspace that owns the action instead of duplicating mutations on the profile.
+- Information-architecture rule:
+  - a person/profile detail is a longitudinal overview of the record;
+  - dedicated management modules remain the authoritative operational workspaces for Waiver, Entrance Exam, COR, and similar process-specific work;
+  - summary pages may show current status and key context, but should not recreate full queues, attempt history, review diagnostics, or mutation workflows owned elsewhere.
+- Deliberate exclusions from the accepted profile:
+  - no redundant Account Access block when identity/account type adds no actionable support value;
+  - no “Activity History” projection when the available audit query does not represent a complete lifecycle; keep audit infrastructure intact and build a normalized timeline only as a separate feature if later justified;
+  - no standalone duplicate Admission Status/eligibility card when the Admission Journey already communicates the same progression;
+  - no inline Waiver validation/rejection, Exam operations, COR Verify/Reject/Promote, or password/account-recovery controls.
+- Do not copy:
+  - Applicant-specific Alignment → Entrance Exam → COR semantics into unrelated domains;
+  - Applicant-specific prerequisite labels into Student/Thesis/Defense details without domain authority;
+  - the exact 2/3 + 1/3 composition when another record type has different content density;
+  - “history” UI merely because audit rows exist; history labels must match the completeness and meaning of their source data.
+
+This reference establishes the current detail-page precedent, not a universal profile template. Preserve the hierarchy and ownership principles while adapting sections to the target record’s real task and domain authority.
 
 Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 

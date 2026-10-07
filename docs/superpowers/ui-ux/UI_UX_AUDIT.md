@@ -212,14 +212,13 @@ Priority does not automatically define implementation order. Dependencies and bo
 # 7. Findings
 
 ## UX-IA-01 — No shared breadcrumb system for nested routes
+**Status:** PARTIALLY ADDRESSED — UIUX-2B introduced and accepted the shared `Breadcrumb` on the Admin Applicant Profile at `74a836886727ec5f808819566235400da5e0c95b`; broader nested-route adoption remains page-by-page.
 
 **Priority:** P1  
 **Area:** Navigation / information architecture  
-**Observed state:** No shared breadcrumb component was found in the current frontend component inventory.
+**Observed state:** A shared breadcrumb component now exists and has an accepted list → person-detail reference, but nested location context is not yet consistently represented across the rest of the system.
 
-The system has nested list → detail → sub-detail flows, but nested location context is not consistently represented.
-
-Some pages use local Back links. This helps return navigation but does not provide a consistent hierarchy model.
+Some pages still use only local Back links. This helps return navigation but does not provide a consistent hierarchy model.
 
 ### Risk
 
@@ -332,7 +331,7 @@ Do not change domain behavior merely to make navigation simpler.
 ---
 
 ## UX-PAGE-01 — No shared PageHeader pattern
-**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on both the Admin Dashboard and Admin Applicants list; adoption remains page-by-page.
+**Status:** PARTIALLY ADDRESSED — shared `PageHeader` now exists and is accepted on the Admin Dashboard, Admin Applicants list, and Admin Applicant Profile; adoption remains page-by-page.
 
 **Priority:** P1  
 **Area:** Page hierarchy
@@ -412,7 +411,7 @@ Prefer borders and restrained shadows. Avoid nested-card visual noise.
 ---
 
 ## UX-PAGE-04 — Approved visual exemplars do not yet exist under a formal rule
-**Status:** RESOLVED AS A FOUNDATION — the approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be` and the Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`.
+**Status:** RESOLVED AS A FOUNDATION — the approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, the Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, and the Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`.
 
 **Priority:** P1  
 **Area:** Consistency / iteration
@@ -653,14 +652,13 @@ This is a quality rule, not a mandate to rewrite every existing page at once.
 ---
 
 ## UX-COMP-01 — High-value shared design primitives are missing
-**Status:** PARTIALLY ADDRESSED — `PageHeader` and `Skeleton` were added and accepted in UIUX-1; remaining primitives stay demand-driven.
+**Status:** PARTIALLY ADDRESSED — `PageHeader` and `Skeleton` were added and accepted in UIUX-1, and `Breadcrumb` was added and accepted in UIUX-2B; remaining primitives stay demand-driven.
 
 **Priority:** P1  
 **Area:** Design system
 
 High-value candidates not currently present as reusable primitives include:
 
-- Breadcrumbs;
 - PageHeader;
 - AlertDialog;
 - Tooltip;
@@ -839,6 +837,7 @@ Continue to reuse the established shared DataTableFilter where applicable rather
 ---
 
 ## UX-DTL-01 — Record-detail pages need a consistent information hierarchy
+**Status:** PARTIALLY ADDRESSED — UIUX-2B Admin Applicant Profile is the accepted person-centric record-detail exemplar at `74a836886727ec5f808819566235400da5e0c95b`; other detail domains remain iterative.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -862,13 +861,14 @@ A typical detail page should prioritize:
 4. key metadata;
 5. workflow/requirements;
 6. supporting detail;
-7. history/audit material.
+7. history/audit material only when the source accurately represents the history being claimed.
 
-Exact ordering can vary by task.
+Exact ordering can vary by task. Do not add a generic timeline merely because audit rows exist; incomplete or entity-scoped audit data must not be presented as a complete record lifecycle.
 
 ---
 
 ## UX-DTL-02 — Important status/action information should not be buried in long card stacks
+**Status:** PARTIALLY ADDRESSED — UIUX-2B replaced the legacy equal-weight Applicant Profile card stack with a Current Admission State summary, one grouped Admission Journey, and one compact Applicant Details surface.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -1119,7 +1119,7 @@ Existing pages were created at different times and may contain legacy inconsiste
 
 Only pages/components explicitly listed as Approved Reference Implementations in the playbook may be used as visual precedent.
 
-The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`. Other legacy pages remain non-authoritative unless explicitly registered.
+The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, and Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`. Other legacy pages remain non-authoritative unless explicitly registered.
 
 ---
 
@@ -1175,6 +1175,7 @@ Prefer current project implementations where appropriate:
 - Card
 - Dialog
 - Badge
+- Breadcrumb
 - Alert
 - Input
 - Label
@@ -1194,7 +1195,6 @@ Prefer current project implementations where appropriate:
 
 Add only through bounded packages where justified:
 
-- Breadcrumbs
 - AlertDialog
 - Tooltip
 - DropdownMenu
@@ -1237,16 +1237,11 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: one formally designated reference.**
+**Current state: three formally designated references.**
 
 ## Admin Dashboard + restrained Admin shell
 
 - Accepted commit: `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`
-- Primary paths:
-  - `frontend/src/app/(portal)/admin/dashboard/page.tsx`
-  - `frontend/src/app/(portal)/admin/layout.tsx`
-  - `frontend/src/components/ui/page-header.tsx`
-  - `frontend/src/components/ui/skeleton.tsx`
 - Pattern type: wide operational Admin dashboard + Admin portal-shell visual baseline.
 - Reusable precedent:
   - PageHeader/page-identity hierarchy;
@@ -1254,15 +1249,46 @@ Each must still be broken into bounded implementation packages.
   - restrained surface/brand treatment;
   - structural loading skeleton and explicit empty/error behavior;
   - accessible sidebar state/focus/mobile treatment;
-  - separation of Admin-owned actions from workflow monitoring;
-  - user-facing content that reflects domain authority.
-- Page-specific; do not copy blindly:
-  - Dashboard KPIs/metrics/queues;
-  - exact Dashboard section composition;
-  - Admin routes/permissions;
-  - Thesis/COR/Defense/RAP read-model semantics.
+  - separation of Admin-owned actions from workflow monitoring.
+- Page-specific; do not copy Dashboard KPIs, queue definitions, or workflow read-model semantics into unrelated pages.
 
-See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and reuse rules.
+## Admin Applicants list
+
+- Accepted commit: `ac5b54e424c4fb8849262b2a2f64a45c95743a82`
+- Pattern type: wide record-management/list page.
+- Reusable precedent:
+  - compact search/filter/pagination composition;
+  - 14px operational text with 12px compact table headers/secondary metadata;
+  - readable long authoritative selector values;
+  - stable structural table loading and query-safe refresh/error behavior;
+  - intentional columns, local horizontal overflow when needed, and one dominant row action;
+  - human-readable workflow projection backed by authoritative server/read-model rules.
+- Page-specific; do not generalize Applicant admission stages, Exam/COR semantics, or exact table schema.
+
+## Admin Applicant Profile / detail
+
+- Accepted commit: `74a836886727ec5f808819566235400da5e0c95b`
+- Implementation chain:
+  - `81333c29e7889eaf3c4b454fc2c0e57adffed69f` — initial detail refinement;
+  - `74a836886727ec5f808819566235400da5e0c95b` — accepted density/read-model FIX.
+- Pattern type: person-centric, cross-workflow record-detail page.
+- Reusable precedent:
+  - shared Breadcrumb for list → record wayfinding;
+  - record name as PageHeader identity;
+  - prominent but restrained authoritative current-state summary;
+  - compact workflow progression plus a grouped journey/details surface;
+  - one compact contextual metadata/academic-details surface rather than many equal-weight cards;
+  - detail Skeleton/error/not-found states shaped like the final page;
+  - bounded backend read-model support for already-authoritative data;
+  - contextual links to owning operational modules instead of duplicated mutations.
+- Information-architecture precedent:
+  - profile/detail = longitudinal overview;
+  - process-specific management modules = authoritative operational workspaces;
+  - do not expose a generic “Activity History” unless the source represents a complete enough lifecycle for that label;
+  - audit infrastructure remains separate from whether a profile chooses to render history.
+- Page-specific; do not generalize Applicant Alignment/Exam/COR progression or academic-prerequisite semantics into unrelated records.
+
+See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
 
