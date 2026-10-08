@@ -94,34 +94,32 @@ const SESSION_BADGE_CLASS: Record<string, string> = {
 
 function ListSkeleton() {
   return (
-    <div className="grid gap-3 xl:grid-cols-2" aria-busy="true" aria-live="polite">
-      {Array.from({ length: 6 }).map((_, index) => (
+    <div className="space-y-4" aria-busy="true" aria-live="polite">
+      {Array.from({ length: 5 }).map((_, index) => (
         <Card key={index} className="min-w-0 gap-0 py-0">
-          <CardContent className="flex h-full flex-col p-0">
-            <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
+          <CardContent className="p-0">
+            <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-5 lg:px-6">
               <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-5 w-40 max-w-full" />
-                <Skeleton className="h-4 w-64 max-w-full" />
+                <Skeleton className="h-6 w-52 max-w-full" />
+                <Skeleton className="h-4 w-72 max-w-full" />
               </div>
-              <Skeleton className="h-6 w-24 shrink-0 rounded-full" />
+              <Skeleton className="h-7 w-36 max-w-full rounded-full" />
             </div>
-            <div className="flex gap-3 px-4 pb-3 sm:px-5">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-20" />
+            <div className="grid gap-5 border-y border-(--earist-border-gray) bg-(--earist-surface-gray)/40 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3 lg:px-6">
+              {Array.from({ length: 3 }).map((_, itemIndex) => (
+                <div key={itemIndex} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-40 max-w-full" />
+                  <Skeleton className="h-4 w-32 max-w-full" />
+                </div>
+              ))}
             </div>
-            <div className="grid gap-3 border-y border-(--earist-border-gray) bg-(--earist-surface-gray)/40 px-4 py-3 sm:grid-cols-2 sm:px-5">
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-4 w-36 max-w-full" />
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 lg:px-6">
+              <Skeleton className="h-4 w-32" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-11 w-40" />
+                <Skeleton className="h-11 w-40" />
               </div>
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-4 w-40 max-w-full" />
-              </div>
-            </div>
-            <div className="mt-auto flex flex-wrap justify-end gap-2 px-4 py-3 sm:px-5">
-              <Skeleton className="h-9 w-32" />
-              <Skeleton className="h-9 w-32" />
             </div>
           </CardContent>
         </Card>
@@ -218,8 +216,8 @@ function MetaItem({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <dt className="text-xs text-(--earist-body-text)">{label}</dt>
-      <dd className="mt-1 text-sm leading-5 font-medium break-words text-foreground">
+      <dt className="text-sm font-medium text-(--earist-body-text)">{label}</dt>
+      <dd className="mt-1.5 text-base leading-6 font-medium break-words text-foreground">
         {children}
       </dd>
     </div>
@@ -383,7 +381,7 @@ export default function PanelistDefensesPage() {
                     setPage(1);
                   }}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none",
+                    "rounded-md px-4 py-2 text-base font-medium transition-colors focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none",
                     quick === filter.value
                       ? "bg-white text-(--earist-primary) shadow-sm"
                       : "text-(--earist-body-text) hover:bg-white/60",
@@ -416,7 +414,7 @@ export default function PanelistDefensesPage() {
                     setPage(1);
                   }}
                   placeholder="Search by student name, number, or program..."
-                  className="pl-9"
+                  className="h-11 pl-9 text-base"
                 />
               </div>
             </div>
@@ -435,7 +433,7 @@ export default function PanelistDefensesPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger id="filter-stage" className="w-full">
+                <SelectTrigger id="filter-stage" className="h-11 w-full text-base">
                   <span className="flex-1 truncate text-left">
                     {stageLabelText}
                   </span>
@@ -466,7 +464,7 @@ export default function PanelistDefensesPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger id="filter-session" className="w-full">
+                <SelectTrigger id="filter-session" className="h-11 w-full text-base">
                   <span className="flex-1 truncate text-left">
                     {sessionLabelText}
                   </span>
@@ -529,7 +527,7 @@ export default function PanelistDefensesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState filtered onClear={clearFilters} />
       ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="space-y-4">
           {pageItems.map((assignment) => {
             const schedule = assignment.schedule;
             const student = schedule?.thesis?.student;
@@ -555,22 +553,22 @@ export default function PanelistDefensesPage() {
 
             return (
               <Card key={assignment.id} className="min-w-0 gap-0 py-0">
-                <CardContent className="flex h-full flex-col p-0">
-                  {/* Keep the student and status together; no far-right action rail. */}
-                  <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
+                <CardContent className="p-0">
+                  {/* Readable student identity and a separate session status. */}
+                  <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-5 lg:px-6">
                     <div className="min-w-0 flex-1">
-                      <p className="text-base leading-6 font-semibold break-words text-foreground">
+                      <h2 className="text-xl leading-7 font-semibold break-words text-foreground">
                         {studentName}
-                      </p>
-                      <p className="mt-0.5 text-sm leading-5 break-words text-(--earist-body-text)">
-                        {identityMeta || "—"}
+                      </h2>
+                      <p className="mt-1 text-sm leading-6 break-words text-(--earist-body-text) sm:text-base">
+                        {identityMeta || "Student details unavailable"}
                       </p>
                     </div>
                     <Badge
                       variant="outline"
-                      aria-label={`Session status: ${sessionStatusLabel(status)}`}
+                      aria-label={"Session status: " + sessionStatusLabel(status)}
                       className={cn(
-                        "max-w-full text-xs font-medium whitespace-normal",
+                        "max-w-full px-3 py-1 text-sm font-medium whitespace-normal",
                         SESSION_BADGE_CLASS[status] ??
                           "text-(--earist-body-text)",
                       )}
@@ -579,40 +577,41 @@ export default function PanelistDefensesPage() {
                     </Badge>
                   </div>
 
-                  {/* Stage and role: immediately visible, not scattered across columns. */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-3 text-sm sm:px-5">
-                    <span className="font-semibold text-(--earist-primary)">
-                      {defenseStageLabel(schedule?.defenseType)} Defense
-                    </span>
-                    <span className="text-(--earist-body-text)" aria-hidden="true">
-                      ·
-                    </span>
-                    <span className="text-(--earist-body-text)">
-                      Role: <span className="font-medium text-foreground">{roleLabel(assignment.role)}</span>
-                    </span>
-                  </div>
+                  {/* One full-width, three-part information row avoids tiny scattered metadata. */}
+                  <dl className="grid gap-x-6 gap-y-5 border-y border-(--earist-border-gray) bg-(--earist-surface-gray)/40 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3 lg:px-6">
+                    <MetaItem label="Defense & Role">
+                      <span className="block font-semibold text-(--earist-primary)">
+                        {defenseStageLabel(schedule?.defenseType)} Defense
+                      </span>
+                      <span className="mt-1 block font-normal text-(--earist-body-text)">
+                        Your role: <span className="font-medium text-foreground">{roleLabel(assignment.role)}</span>
+                      </span>
+                    </MetaItem>
 
-                  {/* Date/time and venue share one compact, readable information band. */}
-                  <dl className="grid gap-3 border-y border-(--earist-border-gray) bg-(--earist-surface-gray)/40 px-4 py-3 sm:grid-cols-2 sm:gap-4 sm:px-5">
                     <MetaItem label="Schedule">
-                      <span className="inline-flex items-start gap-1.5">
+                      <span className="flex items-start gap-2">
                         <CalendarClock
-                          className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)"
+                          className="mt-1 h-4 w-4 shrink-0 text-(--earist-secondary)"
                           aria-hidden="true"
                         />
                         <span>
-                          {hasSchedule
-                            ? `${formatWallDate(wallDate)} · ${formatWallTime(wallTime)}`
-                            : "Not scheduled yet"}
+                          {hasSchedule ? (
+                            <>
+                              <span className="block">{formatWallDate(wallDate)}</span>
+                              <span className="block font-normal text-(--earist-body-text)">
+                                {formatWallTime(wallTime)}
+                              </span>
+                            </>
+                          ) : (
+                            "Not scheduled yet"
+                          )}
                         </span>
                       </span>
                     </MetaItem>
+
                     <MetaItem
-                      label={
-                        venue.kind === "online"
-                          ? "Online Meeting"
-                          : "Defense Venue"
-                      }
+                      label={venue.kind === "online" ? "Online Meeting" : "Defense Venue"}
+                      className="sm:col-span-2 lg:col-span-1"
                     >
                       <VenueContent
                         venue={venue}
@@ -622,54 +621,50 @@ export default function PanelistDefensesPage() {
                     </MetaItem>
                   </dl>
 
-                  {evalRelevant ? (
-                    <p className="px-4 py-2 text-sm sm:px-5">
-                      <span className="text-(--earist-body-text)">My evaluation: </span>
-                      <span className="font-medium text-foreground">
-                        {evaluationStatusLabel(assignment.evaluationStatus)}
-                      </span>
-                    </p>
-                  ) : null}
-
-                  {/* Secondary document access first, one dominant workflow action last. */}
-                  <div
-                    className={cn(
-                      "mt-auto flex flex-wrap items-center justify-end gap-2 px-4 py-3 sm:px-5",
-                      evalRelevant && "border-t border-(--earist-border-gray)/60",
-                    )}
-                  >
-                    {!isCancelled && scheduleId ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-center sm:w-auto"
-                        onClick={() => setManuscript({ scheduleId, studentName })}
-                      >
-                        <FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                        View Manuscript
-                      </Button>
-                    ) : null}
-                    {action.kind === "workspace" && scheduleId ? (
-                      <Link
-                        href={`/panelist/defense-workspace/${scheduleId}`}
-                        aria-label={`${action.label} for ${studentName}`}
-                        className={cn(
-                          buttonVariants({ size: "sm" }),
-                          "w-full justify-center sm:w-auto",
-                        )}
-                      >
-                        {action.label}
-                        <ChevronRight
-                          className="ml-1 h-4 w-4"
-                          aria-hidden="true"
-                        />
-                      </Link>
+                  {/* Personal progress is distinct from session status; actions remain large. */}
+                  <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+                    {evalRelevant ? (
+                      <p className="text-base leading-6">
+                        <span className="text-(--earist-body-text)">My Evaluation: </span>
+                        <span className="font-semibold text-foreground">
+                          {evaluationStatusLabel(assignment.evaluationStatus)}
+                        </span>
+                      </p>
                     ) : (
-                      <span className="self-center text-sm text-(--earist-body-text)">
-                        {action.label}
-                      </span>
+                      <span aria-hidden="true" className="hidden sm:block" />
                     )}
+
+                    <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                      {!isCancelled && scheduleId ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 w-full justify-center px-5 text-base font-medium sm:w-auto"
+                          onClick={() => setManuscript({ scheduleId, studentName })}
+                        >
+                          <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
+                          View Manuscript
+                        </Button>
+                      ) : null}
+
+                      {action.kind === "workspace" && scheduleId ? (
+                        <Link
+                          href={"/panelist/defense-workspace/" + scheduleId}
+                          aria-label={action.label + " for " + studentName}
+                          className={cn(
+                            buttonVariants({ size: "default" }),
+                            "h-11 w-full justify-center px-5 text-base font-semibold sm:w-auto",
+                          )}
+                        >
+                          {action.label}
+                          <ChevronRight className="ml-1.5 h-5 w-5" aria-hidden="true" />
+                        </Link>
+                      ) : (
+                        <span className="self-center text-base font-medium text-(--earist-body-text)">
+                          {action.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
