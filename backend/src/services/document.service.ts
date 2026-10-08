@@ -38,6 +38,19 @@ const STAGE_TO_DEFENSE_TYPE: Record<string, string> = {
 };
 
 /**
+ * UIUX-3B FIX-1: only research-paper documents may be granted to a Panelist
+ * through the stage-assignment path. Evidence/administrative rows (COR, RECEIPT,
+ * INSTRUMENTS, RESPONDENT_DATA, PLAGIARISM_REPORT) are frequently persisted with
+ * an explicit `defenseStage`; an explicit stage must never widen Panelist access
+ * beyond the authorized manuscripts. Active advisers keep their separate path.
+ */
+const PANELIST_STAGE_DOC_TYPES = new Set([
+  "TITLE_PROPOSAL",
+  "PROPOSAL_CHAPTERS",
+  "FINAL_MANUSCRIPT",
+]);
+
+/**
  * CP6-FIX1: stage-aware thesis document access for Panelists.
  * Stage-scoped or safely inferred stage docs require a matching defense-type
  * assignment. Ambiguous unscoped docs fail closed. Active advisers allowed.
@@ -84,11 +97,16 @@ export function canPanelistAccessThesisDocument(
 
   const requiredType = STAGE_TO_DEFENSE_TYPE[effectiveStage];
   const schedules = record.thesis?.defenseSchedules ?? [];
-  const hasMatchingStageAssignment = schedules.some(
-    (ds) =>
-      ds.defenseType === requiredType &&
-      ds.panelAssignments?.some((pa) => pa.userId === userId),
+  const isPanelistStageDocType = PANELIST_STAGE_DOC_TYPES.has(
+    String(record.docType ?? ""),
   );
+  const hasMatchingStageAssignment =
+    isPanelistStageDocType &&
+    schedules.some(
+      (ds) =>
+        ds.defenseType === requiredType &&
+        ds.panelAssignments?.some((pa) => pa.userId === userId),
+    );
   if (hasMatchingStageAssignment) return true;
 
   // CP8-FIX1: Final Defense participant → full certified prior Proposal manuscript only

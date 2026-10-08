@@ -52,6 +52,7 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
   it("Test M: Proposal scheduled Panelist can access Proposal document", () => {
     const record = makeRecord({
       defenseStage: "PROPOSAL",
+      docType: "PROPOSAL_CHAPTERS",
       schedules: [
         {
           defenseType: "PROPOSAL_DEFENSE",
@@ -148,5 +149,111 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
         defenseStage: null,
       }),
     ).toBe("FINAL");
+  });
+
+  it("UIUX-3B FIX-1: stage-tagged evidence is denied to the matching-stage Panelist", () => {
+    const proposalSchedule = [
+      {
+        defenseType: "PROPOSAL_DEFENSE",
+        panelAssignments: [{ userId: "proposal-panelist" }],
+      },
+    ];
+    const finalSchedule = [
+      {
+        defenseType: "FINAL_DEFENSE",
+        panelAssignments: [{ userId: "final-panelist" }],
+      },
+    ];
+
+    // Non-manuscript evidence must never be reachable through stage assignment.
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "PROPOSAL",
+          docType: "COR",
+          schedules: proposalSchedule,
+        }),
+        "proposal-panelist",
+      ),
+    ).toBe(false);
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "FINAL",
+          docType: "RECEIPT",
+          schedules: finalSchedule,
+        }),
+        "final-panelist",
+      ),
+    ).toBe(false);
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "FINAL",
+          docType: "INSTRUMENTS",
+          schedules: finalSchedule,
+        }),
+        "final-panelist",
+      ),
+    ).toBe(false);
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "FINAL",
+          docType: "RESPONDENT_DATA",
+          schedules: finalSchedule,
+        }),
+        "final-panelist",
+      ),
+    ).toBe(false);
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "FINAL",
+          docType: "PLAGIARISM_REPORT",
+          schedules: finalSchedule,
+        }),
+        "final-panelist",
+      ),
+    ).toBe(false);
+
+    // Authorized stage manuscripts remain accessible to the matching-stage Panelist.
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "PROPOSAL",
+          docType: "PROPOSAL_CHAPTERS",
+          schedules: proposalSchedule,
+        }),
+        "proposal-panelist",
+      ),
+    ).toBe(true);
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "TITLE",
+          docType: "TITLE_PROPOSAL",
+          schedules: [
+            {
+              defenseType: "TITLE_DEFENSE",
+              panelAssignments: [{ userId: "title-panelist" }],
+            },
+          ],
+        }),
+        "title-panelist",
+      ),
+    ).toBe(true);
+
+    // The active-adviser path is unchanged for non-manuscript evidence.
+    expect(
+      canPanelistAccessThesisDocument(
+        makeRecord({
+          defenseStage: "PROPOSAL",
+          docType: "COR",
+          adviserIds: ["adviser-1"],
+        }),
+        "adviser-1",
+      ),
+    ).toBe(true);
   });
 });

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import { FileText, Download, Calendar, FolderOpen } from "lucide-react";
 import { PanelistAssignmentData as AssignmentData, DocumentData } from "@/types";
+import { stageManuscriptDocType } from "@/lib/panelist-defenses";
 
 const SESSION_LABELS: Record<string, string> = {
   SCHEDULED: "Scheduled",
@@ -81,7 +82,15 @@ export default function PanelistMaterialsPage() {
           {assignments.map((assignment: AssignmentData) => {
             const schedule = assignment.schedule;
             const student = schedule?.thesis?.student?.user;
-            const documents = schedule?.thesis?.thesisDocuments || [];
+            // UIUX-3B FIX-1: only the stage-appropriate research paper belongs
+            // in the panelist defense-material context. Administrative/evidence
+            // documents (COR, receipts, instruments, etc.) are excluded here and
+            // are also denied server-side to Panelists.
+            const allowedDocType = stageManuscriptDocType(schedule?.defenseType);
+            const documents = (schedule?.thesis?.thesisDocuments || []).filter(
+              (doc: DocumentData) =>
+                allowedDocType !== null && doc.docType === allowedDocType,
+            );
 
             if (!schedule || !student) return null;
 

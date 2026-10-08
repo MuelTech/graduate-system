@@ -22,9 +22,14 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
+import {
+  ManuscriptDialog,
+  type ManuscriptTarget,
+} from "@/components/panelist/manuscript-dialog";
 import type { PanelistAssignmentData } from "@/types";
 import {
   ALL,
+  QUICK_FILTERS,
   assignmentAction,
   defenseStageLabel,
   filterAssignments,
@@ -34,12 +39,16 @@ import {
   isoToWallTime,
   nowWallMs,
   responsibilityText,
+  roleLabel,
   sessionStatusLabel,
+  type QuickFilter,
 } from "@/lib/panelist-defenses";
 import {
   AlertCircle,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Inbox,
   RefreshCw,
   Search,
@@ -77,87 +86,28 @@ const SESSION_BADGE_CLASS: Record<string, string> = {
 
 /* ------------------------------------------------------------- components */
 
-function TableShell({ children }: { children: React.ReactNode }) {
+function ListSkeleton() {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] table-fixed border-collapse">
-        <colgroup>
-          <col className="w-[24%]" />
-          <col className="w-[17%]" />
-          <col className="w-[17%]" />
-          <col className="w-[16%]" />
-          <col className="w-[18%]" />
-          <col className="w-[8%]" />
-        </colgroup>
-        {children}
-      </table>
+    <div className="space-y-3" aria-busy="true" aria-live="polite">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Card key={index}>
+          <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 space-y-3">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-56 max-w-full" />
+              </div>
+              <Skeleton className="h-3 w-72 max-w-full" />
+              <Skeleton className="h-3 w-64 max-w-full" />
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <Skeleton className="h-9 w-36" />
+              <Skeleton className="h-9 w-36" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
-  );
-}
-
-function TableHead() {
-  return (
-    <thead>
-      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Student
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Defense
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Schedule
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Session Status
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          My Responsibility
-        </th>
-        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
-          Action
-        </th>
-      </tr>
-    </thead>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <TableShell>
-      <TableHead />
-      <tbody aria-hidden="true">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <tr
-            key={index}
-            className="border-b border-(--earist-border-gray) last:border-0"
-          >
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="mt-2 h-3 w-24" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="mt-2 h-3 w-28" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="mt-2 h-3 w-16" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-5 w-24 rounded-full" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-3 w-28" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="ml-auto h-8 w-8 rounded-md" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableShell>
   );
 }
 
@@ -169,34 +119,36 @@ function EmptyState({
   onClear: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      {filtered ? (
-        <Search
-          className="h-8 w-8 text-(--earist-body-text)/40"
-          aria-hidden="true"
-        />
-      ) : (
-        <Inbox
-          className="h-8 w-8 text-(--earist-body-text)/40"
-          aria-hidden="true"
-        />
-      )}
-      <p className="text-sm font-medium text-(--earist-primary)">
-        {filtered
-          ? "No assigned defenses match the current filters."
-          : "You have no assigned defenses."}
-      </p>
-      <p className="max-w-sm text-sm text-(--earist-body-text)">
-        {filtered
-          ? "Try a different search term, defense stage, or session status."
-          : "Defense sessions assigned to you will appear here."}
-      </p>
-      {filtered && (
-        <Button variant="outline" size="sm" onClick={onClear}>
-          Clear filters
-        </Button>
-      )}
-    </div>
+    <Card>
+      <CardContent className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+        {filtered ? (
+          <Search
+            className="h-8 w-8 text-(--earist-body-text)/40"
+            aria-hidden="true"
+          />
+        ) : (
+          <Inbox
+            className="h-8 w-8 text-(--earist-body-text)/40"
+            aria-hidden="true"
+          />
+        )}
+        <p className="text-sm font-medium text-(--earist-primary)">
+          {filtered
+            ? "No assigned defenses match the current filters."
+            : "You have no assigned defenses."}
+        </p>
+        <p className="max-w-sm text-sm text-(--earist-body-text)">
+          {filtered
+            ? "Try a different quick filter, search term, defense stage, or session status."
+            : "Defense sessions assigned to you will appear here."}
+        </p>
+        {filtered && (
+          <Button variant="outline" size="sm" onClick={onClear}>
+            Clear filters
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -208,37 +160,41 @@ function ErrorState({
   retrying: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-      <AlertCircle
-        className="h-8 w-8 text-(--earist-secondary)"
-        aria-hidden="true"
-      />
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-(--earist-primary)">
-          Unable to load your assigned defenses
-        </p>
-        <p className="text-sm text-(--earist-body-text)">
-          Your defense assignments could not be loaded. Please try again.
-        </p>
-      </div>
-      <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
-        <RefreshCw
-          className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+    <Card>
+      <CardContent className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+        <AlertCircle
+          className="h-8 w-8 text-(--earist-secondary)"
           aria-hidden="true"
         />
-        Retry
-      </Button>
-    </div>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-(--earist-primary)">
+            Unable to load your assigned defenses
+          </p>
+          <p className="text-sm text-(--earist-body-text)">
+            Your defense assignments could not be loaded. Please try again.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
+          <RefreshCw
+            className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+            aria-hidden="true"
+          />
+          Retry
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
 /* ------------------------------------------------------------------- page */
 
 export default function PanelistDefensesPage() {
+  const [quick, setQuick] = useState<QuickFilter>("ALL");
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState<string>(ALL);
   const [session, setSession] = useState<string>(ALL);
   const [page, setPage] = useState(1);
+  const [manuscript, setManuscript] = useState<ManuscriptTarget | null>(null);
 
   // Snapshot "now" once per mount so ordering/filtering stay stable across renders.
   const nowMs = useMemo(() => nowWallMs(), []);
@@ -258,11 +214,17 @@ export default function PanelistDefensesPage() {
   const hasData = assignmentsQuery.data != null;
 
   const filtered = useMemo(
-    () => filterAssignments(assignments, { search, stage, session }, nowMs),
-    [assignments, search, stage, session, nowMs],
+    () =>
+      filterAssignments(
+        assignments,
+        { quick, search, stage, session },
+        nowMs,
+      ),
+    [assignments, quick, search, stage, session, nowMs],
   );
 
-  const isFiltered = search.trim() !== "" || stage !== ALL || session !== ALL;
+  const isFiltered =
+    quick !== "ALL" || search.trim() !== "" || stage !== ALL || session !== ALL;
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -273,6 +235,7 @@ export default function PanelistDefensesPage() {
   );
 
   const clearFilters = () => {
+    setQuick("ALL");
     setSearch("");
     setStage(ALL);
     setSession(ALL);
@@ -297,12 +260,44 @@ export default function PanelistDefensesPage() {
     <div className="space-y-6">
       <PageHeader
         title="My Defenses"
-        description="View your assigned defense sessions and complete your academic responsibilities."
+        description="View your assigned defense sessions and complete your responsibilities."
       />
 
       {/* Search and filters */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="space-y-4 p-4">
+          {/* Quick filters — presentation shortcuts, not academic authority. */}
+          <div className="flex flex-col gap-3">
+            <div
+              role="group"
+              aria-label="Quick filters"
+              className="flex w-fit flex-wrap gap-1 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-1"
+            >
+              {QUICK_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  aria-pressed={quick === filter.value}
+                  onClick={() => {
+                    setQuick(filter.value);
+                    // Quick filters own the session-level narrowing; clear the
+                    // advanced Session Status so the two never contradict.
+                    setSession(ALL);
+                    setPage(1);
+                  }}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none",
+                    quick === filter.value
+                      ? "bg-white text-(--earist-primary) shadow-sm"
+                      : "text-(--earist-body-text) hover:bg-white/60",
+                  )}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <div className="w-full sm:min-w-[220px] sm:flex-1">
               <label
@@ -369,6 +364,8 @@ export default function PanelistDefensesPage() {
                 value={session}
                 onValueChange={(value) => {
                   setSession(value ?? ALL);
+                  // A specific session status supersedes the quick filter.
+                  setQuick("ALL");
                   setPage(1);
                 }}
               >
@@ -423,73 +420,73 @@ export default function PanelistDefensesPage() {
       )}
 
       {/* Assignment registry */}
-      <Card className="overflow-hidden py-0">
-        <CardContent className="min-w-0 p-0">
-          {isLoading ? (
-            <TableSkeleton />
-          ) : isError && !hasData ? (
-            <ErrorState
-              onRetry={() => assignmentsQuery.refetch()}
-              retrying={isFetching}
-            />
-          ) : assignments.length === 0 ? (
-            <EmptyState filtered={false} onClear={clearFilters} />
-          ) : filtered.length === 0 ? (
-            <EmptyState filtered onClear={clearFilters} />
-          ) : (
-            <TableShell>
-              <TableHead />
-              <tbody>
-                {pageItems.map((assignment) => {
-                  const schedule = assignment.schedule;
-                  const student = schedule?.thesis?.student;
-                  const scheduleId = schedule?.id;
-                  const action = assignmentAction(assignment);
-                  const wallDate = isoToWallDate(schedule?.defenseDate);
-                  const wallTime = isoToWallTime(schedule?.defenseTime);
-                  const status = String(schedule?.sessionStatus ?? "");
-                  const hasSchedule = wallDate !== null && wallTime !== null;
+      {isLoading ? (
+        <ListSkeleton />
+      ) : isError && !hasData ? (
+        <ErrorState
+          onRetry={() => assignmentsQuery.refetch()}
+          retrying={isFetching}
+        />
+      ) : assignments.length === 0 ? (
+        <EmptyState filtered={false} onClear={clearFilters} />
+      ) : filtered.length === 0 ? (
+        <EmptyState filtered onClear={clearFilters} />
+      ) : (
+        <div className="space-y-3">
+          {pageItems.map((assignment) => {
+            const schedule = assignment.schedule;
+            const student = schedule?.thesis?.student;
+            const scheduleId = schedule?.id;
+            const action = assignmentAction(assignment);
+            const wallDate = isoToWallDate(schedule?.defenseDate);
+            const wallTime = isoToWallTime(schedule?.defenseTime);
+            const status = String(schedule?.sessionStatus ?? "");
+            const hasSchedule = wallDate !== null && wallTime !== null;
+            const isCancelled = status === "CANCELLED";
+            const studentName =
+              `${student?.user?.firstName ?? ""} ${student?.user?.lastName ?? ""}`.trim() ||
+              "Student";
+            const identityMeta = [
+              student?.studentNumber,
+              student?.program?.programName,
+            ]
+              .filter(Boolean)
+              .join(" · ");
 
-                  return (
-                    <tr
-                      key={assignment.id}
-                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
-                    >
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm font-semibold break-words text-foreground">
-                          {student?.user?.firstName} {student?.user?.lastName}
-                        </p>
-                        {student?.studentNumber ? (
-                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                            {student.studentNumber}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm break-words text-foreground">
-                          {defenseStageLabel(schedule?.defenseType)} Defense
-                        </p>
-                        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                          {student?.program?.programName ?? "—"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        {hasSchedule ? (
-                          <>
-                            <p className="text-sm break-words text-foreground">
-                              {formatWallDate(wallDate)}
-                            </p>
-                            <p className="mt-0.5 text-xs text-(--earist-body-text)">
-                              {formatWallTime(wallTime)}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-(--earist-body-text)">
-                            Not scheduled yet
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-top">
+            return (
+              <Card key={assignment.id}>
+                <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 space-y-2">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold break-words text-foreground">
+                        {studentName}
+                      </p>
+                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                        {identityMeta || "—"}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-(--earist-body-text)">
+                      <span className="font-medium text-foreground">
+                        {defenseStageLabel(schedule?.defenseType)} Defense
+                      </span>
+                      <span>Role: {roleLabel(assignment.role)}</span>
+                      <span className="flex items-center gap-1.5">
+                        <CalendarClock
+                          className="h-3.5 w-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                        {hasSchedule
+                          ? `${formatWallDate(wallDate)} · ${formatWallTime(wallTime)}`
+                          : "Not scheduled yet"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                      <span className="flex items-center gap-2">
+                        <span className="text-(--earist-body-text)">
+                          Session Status:
+                        </span>
                         <Badge
                           variant="outline"
                           className={cn(
@@ -500,42 +497,59 @@ export default function PanelistDefensesPage() {
                         >
                           {sessionStatusLabel(status)}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 align-top">
-                        <p className="text-sm break-words text-(--earist-body-text)">
+                      </span>
+                      <span className="text-(--earist-body-text)">
+                        My Responsibility:{" "}
+                        <span className="font-medium text-foreground">
                           {responsibilityText(assignment)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-right align-top">
-                        {action.kind === "workspace" && scheduleId ? (
-                          <Link
-                            href={`/panelist/defense-workspace/${scheduleId}`}
-                            aria-label={`${action.label} for ${student?.user?.firstName ?? ""} ${student?.user?.lastName ?? ""}`.trim()}
-                            className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                              "whitespace-nowrap",
-                            )}
-                          >
-                            {action.label}
-                            <ChevronRight
-                              className="ml-1 h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-(--earist-body-text)/70">
-                            {action.label}
-                          </span>
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+                    {action.kind === "workspace" && scheduleId ? (
+                      <Link
+                        href={`/panelist/defense-workspace/${scheduleId}`}
+                        aria-label={`${action.label} for ${studentName}`}
+                        className={cn(
+                          buttonVariants({ size: "sm" }),
+                          "justify-center whitespace-nowrap",
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </TableShell>
-          )}
-        </CardContent>
-      </Card>
+                      >
+                        {action.label}
+                        <ChevronRight
+                          className="ml-1 h-4 w-4"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    ) : (
+                      <span className="self-start text-xs text-(--earist-body-text)/70">
+                        {action.label}
+                      </span>
+                    )}
+
+                    {!isCancelled && scheduleId ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="whitespace-nowrap"
+                        onClick={() =>
+                          setManuscript({ scheduleId, studentName })
+                        }
+                      >
+                        <FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                        View Manuscript
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
@@ -590,6 +604,11 @@ export default function PanelistDefensesPage() {
           )}
         </div>
       )}
+
+      <ManuscriptDialog
+        target={manuscript}
+        onClose={() => setManuscript(null)}
+      />
     </div>
   );
 }

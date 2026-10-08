@@ -286,7 +286,71 @@ export function compareAssignments(
 
 export type SessionFilter = string; // ALL | UPCOMING | <raw sessionStatus>
 
+export type QuickFilter = "ALL" | "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
+
+export const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
+  { value: "ALL", label: "All" },
+  { value: "UPCOMING", label: "Upcoming" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETED", label: "Completed" },
+];
+
+/**
+ * Quick filters narrow an already-authoritative ordering. They are presentation
+ * shortcuts, never academic authority: `COMPLETED` means the session status is
+ * `CONCLUDED`, not that the academic stage is complete.
+ */
+export function matchesQuickFilter(
+  a: PanelistAssignmentData,
+  quick: QuickFilter,
+  nowMs: number,
+): boolean {
+  const status = String(a.schedule?.sessionStatus ?? "");
+  switch (quick) {
+    case "ALL":
+      return true;
+    case "UPCOMING":
+      return isUpcomingAssignment(a, nowMs);
+    case "IN_PROGRESS":
+      return status === "IN_PROGRESS";
+    case "COMPLETED":
+      return status === "CONCLUDED";
+    default:
+      return true;
+  }
+}
+
+/** Stage-appropriate authorized research paper, or null when unknown. */
+export function stageManuscriptDocType(
+  defenseType: string | undefined,
+): string | null {
+  switch (String(defenseType ?? "")) {
+    case "TITLE_DEFENSE":
+      return "TITLE_PROPOSAL";
+    case "PROPOSAL_DEFENSE":
+      return "PROPOSAL_CHAPTERS";
+    case "FINAL_DEFENSE":
+      return "FINAL_MANUSCRIPT";
+    default:
+      return null;
+  }
+}
+
+export function stageManuscriptLabel(defenseType: string | undefined): string {
+  switch (String(defenseType ?? "")) {
+    case "TITLE_DEFENSE":
+      return "Title Proposal Package";
+    case "PROPOSAL_DEFENSE":
+      return "Certified Proposal Manuscript";
+    case "FINAL_DEFENSE":
+      return "Certified Final Manuscript";
+    default:
+      return "Manuscript";
+  }
+}
+
 export interface AssignmentFilters {
+  quick: QuickFilter;
   search: string;
   stage: string; // ALL | TITLE_DEFENSE | PROPOSAL_DEFENSE | FINAL_DEFENSE
   session: SessionFilter;
@@ -303,6 +367,8 @@ export function filterAssignments(
     .filter((a) => {
       const schedule = a.schedule;
       if (!schedule) return false;
+
+      if (!matchesQuickFilter(a, filters.quick, nowMs)) return false;
 
       if (filters.stage !== ALL) {
         if (String(schedule.defenseType) !== filters.stage) return false;
