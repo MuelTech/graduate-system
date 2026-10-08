@@ -99,6 +99,7 @@ export interface PanelistAssignmentData {
     thesis: {
       student: {
         programId?: string;
+        studentNumber?: string | null;
         program?: { programName?: string } | null;
         user: {
           firstName: string;
