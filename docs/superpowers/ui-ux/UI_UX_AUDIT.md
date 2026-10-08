@@ -1407,7 +1407,7 @@ Each must still be broken into bounded implementation packages.
 - **Navigation and privacy:** primary action goes to existing `/panelist/defense-workspace/[scheduleId]`, subject to existing role/academic gates. Secondary **View Manuscript** resolves only the selected defense's authorized stage paper using the Defense Workspace selection and authenticated viewer; COR, receipts, and non-manuscript evidence must not be exposed as panelist defense manuscripts. UIUX-3B FIX-1 closed a concrete panelist stage-assignment document authorization leak (`backend/src/services/document.service.ts`) and narrowly filtered the legacy Materials page.
 - **Design correction history:** `96970f0` initial dense table → `7d3e6db` compact cards/manuscript/privacy → `8e44aa9` venue → `d152459` two-column trial (rejected for readability) → `8f24867` accepted full-width readable layout → `bf706c1` accepted neutral venue wording.
 - **Validation distinction:** Agent-reported frontend TypeScript/scoped lint passed for earlier packages and backend unit tests passed after the document authorization fix (1,075 pass, 5 skipped). Later direct GitHub edits were source/diff verified, **not freshly build/typecheck/browser-tested**. Known frontend `/login` prerender issue remained outside scope; responsive/keyboard/live failure-path QA has not been recorded as fully exercised. Manual visual acceptance must not be misreported as end-to-end testing.
-- **Deferred:** dedicated Materials still may list stage-matching but non-certified manuscript revisions, while the selected-defense viewer uses the authoritative certified source. Separate **Materials** and **Defense Workspaces** sidebar entries remain intact pending Defense Workspace refinement and explicitly authorized navigation consolidation. UIUX-3A Dashboard FIX-1 is not part of this acceptance.
+- **Subsequent change / still deferred:** UIUX-3D at `7f78f4df9d1a5dc613f38a80307b0fc275ac73cb` removed the redundant **Materials** and **Defense Workspaces** sidebar entries and redirected both retired indices to My Defenses. Its implementation was source-reviewed but runtime/browser QA has **not** been recorded as complete. The selected-defense manuscript viewer remains authoritative; the retired Materials index no longer enumerates potentially non-certified revisions. Defense Workspace UIUX-3C and Dashboard UIUX-3A FIX-1 remain separate pending work. UIUX-3B visual acceptance does not itself certify these later changes.
 - **Reuse with care:** legible faculty-oriented task lists and meaningful schedule/venue grouping are reusable; defense role/certification/score policies, exact card geometry, and sidebar retirement are not generic UI rules.
 
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
@@ -1449,6 +1449,26 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 **Next gate:** implement only the authorized FIX-1, independently review the resulting source and user-tested UI, then record an accepted reference only on explicit project-owner approval.
 
 ---
+
+# 10B. UIUX-3D navigation consolidation — implemented; manual acceptance pending
+
+**Baseline:** `6bd4065eb24bcafb1a7db1b20d20e7595871eebd`. **Implementation:** `7f78f4df9d1a5dc613f38a80307b0fc275ac73cb` on `refactor/system-ui-ux`. **Status:** source/diff independently verified; **NOT YET MANUALLY ACCEPTED** because browser QA has not been confirmed.
+
+### Implemented changes
+
+- The Panelist sidebar retains **My Defenses** as the single assigned-defense entry point and removes **Materials** and **Defense Workspaces**. All unrelated navigation entries remain.
+- `/panelist/materials` and `/panelist/scoring` are lightweight server-side redirects to `/panelist/defenses`; the old duplicate assignment lists no longer fetch data or enumerate generic manuscript revisions.
+- Sidebar active-state mapping covers the canonical `/panelist/defense-workspace/[scheduleId]` as well as the existing `/panelist/scoring/[id]` and `/panelist/defense-lobby/[scheduleId]` compatibility families, using exact or slash-delimited route prefix matching.
+- The canonical Defense Workspace route, role-specific academic controls, existing nested redirects, the accepted My Defenses UI, and its authorized **View Manuscript** selection/viewer remain unchanged. E-Signatures, Repository, Adviser workflows, and other unrelated portal functions were not modified.
+- Diff scope: `frontend/src/app/(portal)/panelist/layout.tsx`, `materials/page.tsx`, `scoring/page.tsx` only; no backend or academic authority changes.
+
+### Verification and follow-up
+
+- **Independent reviewer:** remote branch SHA, correct parent and exactly three changed files verified; redirects and navigation routing inspected in source. This is **source review**, not proof of browser/runtime behavior.
+- **Coding-agent report:** frontend TypeScript and targeted ESLint **PASS**; build compilation/typecheck **PASS**, but overall production build **FAIL** at unrelated pre-existing `/login` `useSearchParams()`/Suspense prerendering. No fresh local tests were rerun during this documentation update.
+- **Not executed:** browser QA of legacy index redirects, active state while in workspace, collapsed/mobile sidebar, keyboard/focus, direct workspace deep links, manuscript access, and redirect-loop avoidance.
+- **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
+- **Acceptance:** requires a project-owner manual browser check. Do **not** register a ninth Approved Reference; UIUX-3B My Defenses remains the eighth accepted design, and UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 # 11. Audit limitations
 
