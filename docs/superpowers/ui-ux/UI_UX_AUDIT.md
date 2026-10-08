@@ -702,7 +702,7 @@ Add them only when an accepted screen requirement benefits from them.
 ---
 
 ## UX-COMP-03 — Tables need a shared application-level pattern
-**Status:** PARTIALLY ADDRESSED — UIUX-2A Admin Applicants and UIUX-2C Admin Entrance Exam Records now provide two accepted table/filter/list-page references at `ac5b54e424c4fb8849262b2a2f64a45c95743a82` and `9e03e0192e6131149c172a90e0ea6531017247b0`; a system-wide shared DataTable abstraction remains demand-driven.
+**Status:** PARTIALLY ADDRESSED — UIUX-2A Admin Applicants (`ac5b54e424c4fb8849262b2a2f64a45c95743a82`), UIUX-2C Admin Entrance Exam Records (`9e03e0192e6131149c172a90e0ea6531017247b0`), and UIUX-2F Admin Students (`cbcb13800886be727e103b0df502340fe161d41c`) now provide three accepted list/table precedents; a system-wide DataTable abstraction remains demand-driven.
 
 **Priority:** P1  
 **Area:** Admin efficiency
@@ -760,6 +760,14 @@ The accepted Exam Records list adds a second operational-table precedent:
 - structural Skeleton/error/empty/no-match states and one restrained View action preserve list stability and scope.
 
 The exact entrance-exam state mapping is domain-specific and must not become a generic table convention.
+
+### Accepted UIUX-2F checkpoint — Admin Students List
+
+- Manually accepted final commit: `cbcb13800886be727e103b0df502340fe161d41c`; implementation `790e3de`, table alignment `a1cc62c`, separate identity-line fix `cbcb138`.
+- **Six-column graduate-student registry**: Student, Program, Comprehensive Exam, Thesis Progress, Student Status, Action. Student name / student number / email occupy **three separate lines** matching the accepted Applicants identity pattern.
+- Search + exact Program ID + Student Status filters; authoritative `ENROLLED`/`GRADUATED`/`DISMISSED` scope with APPLICANT excluded; consistent server-side count/pagination and no misleading KPI cards.
+- Distinguishes missing Comprehensive Exam record (`NOT_RECORDED`) from actual Pending; missing thesis record is not manufactured as Completed. Query-safe refetch, skeleton, error, empty/no-match, local overflow, and one View action complete the accepted presentation.
+- Latest `ThesisRecord.stage/status` in the list is administrative context, **not** the academic completion authority used by Student Thesis Journey.
 
 ---
 
@@ -852,7 +860,7 @@ Continue to reuse the established shared DataTableFilter where applicable rather
 ---
 
 ## UX-DTL-01 — Record-detail pages need a consistent information hierarchy
-**Status:** PARTIALLY ADDRESSED — UIUX-2B Admin Applicant Profile is the accepted person-centric record-detail exemplar at `74a836886727ec5f808819566235400da5e0c95b`, and UIUX-2D Admin Entrance Exam Record detail is the accepted operational/state-aware detail exemplar at `ee7bfca95faa9de1abec624d15fffc49614ce222`; other detail domains remain iterative.
+**Status:** PARTIALLY ADDRESSED — UIUX-2B Applicant Profile (`74a836886727ec5f808819566235400da5e0c95b`) and UIUX-2G Student Profile (`d80b95cef0f9124b3b4141c4fe5af58887e32316`) are accepted person-centric detail precedents; UIUX-2D Exam Record detail (`ee7bfca95faa9de1abec624d15fffc49614ce222`) is an accepted operational/state-aware detail precedent. Other detail domains remain iterative.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -896,10 +904,20 @@ The accepted entrance-exam detail establishes a second concrete detail-page patt
 - **Needs Essay Grading** replaces the old Essay Grading Queue entry point, while Passed/Failed Exam Record detail replaces the old Score Review workspace;
 - missed-exam appeal mutation behavior remains unresolved/read-only and outside this accepted package.
 
+### Accepted UIUX-2G checkpoint — Admin Student Profile
+
+- Manually accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316`; initial detail/read model `ecb35b3`, accepted dead-space balance fix `d80b95c`.
+- Students breadcrumb + student-name PageHeader + full-width Current Academic State; dominant authoritative Academic Journey, short right-hand Comprehensive Examination/Account Support cards, and full-width grouped Personal / Academic / Adviser & Residency details beneath. Responsive grouping eliminates the tall one-column details/dead-space problem.
+- ADMIN-only detail `GET /admin/students/:id` returns an explicit nullable DTO; ADMIN-only `GET /admin/students/:id/journey` reuses the central Thesis Journey evaluator through server-side student resolution. STUDENT-only route remains protected. Journey error/Retry is isolated from successfully loaded profile details.
+- Missing examination/adviser/residency records are shown honestly; the record overview does not override thesis progression, defense conclusions, or RAP authority.
+- The **Defense Records** button still opens the general `/admin/thesis/defense-records` page. Student-prefiltered navigation is a **deferred future enhancement**.
+
+**Not yet implemented / not certified by visual acceptance:** Comprehensive Exam writes overwrite the latest record (attempt/strike history is not reliable); already-PASSED enrolled students may still see recording actions; UI-only ENROLLED gating does not substitute for missing backend admission-status checks on the recording PUT. Reset Student Password is disabled; `AUTH-RECOVERY-1` (secure random temporary secret, forced change, audit/session safeguards, optional future email integration) is separate future work.
+
 ---
 
 ## UX-DTL-02 — Important status/action information should not be buried in long card stacks
-**Status:** PARTIALLY ADDRESSED — UIUX-2B replaced the legacy equal-weight Applicant Profile card stack with a Current Admission State summary, one grouped Admission Journey, and one compact Applicant Details surface; UIUX-2D similarly leads Entrance Exam Record detail with Current Exam State before compact Exam Information and state-dependent Assessment.
+**Status:** PARTIALLY ADDRESSED — UIUX-2B replaced equal-weight Applicant Profile cards with a state/journey/details hierarchy; UIUX-2D leads Exam Record detail with current state and assessment; UIUX-2G-FIX1 removed Student Profile's right-column dead space by moving grouped details into a full-width section below Academic Journey. Other detail pages remain iterative.
 
 **Priority:** P1  
 **Area:** Detail screens
@@ -1151,7 +1169,7 @@ Existing pages were created at different times and may contain legacy inconsiste
 
 Only pages/components explicitly listed as Approved Reference Implementations in the playbook may be used as visual precedent.
 
-The approved registry now includes the Admin Dashboard + restrained Admin shell at `89a233f3e7a6cea0ac49208a0a0726fe1ab634be`, Admin Applicants list at `ac5b54e424c4fb8849262b2a2f64a45c95743a82`, Admin Applicant Profile/detail at `74a836886727ec5f808819566235400da5e0c95b`, Admin Entrance Exam Records list at `9e03e0192e6131149c172a90e0ea6531017247b0`, and Admin Entrance Exam Record detail at `ee7bfca95faa9de1abec624d15fffc49614ce222`. Other legacy pages remain non-authoritative unless explicitly registered.
+The approved registry now includes the Admin Dashboard + restrained Admin shell (`89a233f3e7a6cea0ac49208a0a0726fe1ab634be`), Admin Applicants list (`ac5b54e424c4fb8849262b2a2f64a45c95743a82`), Admin Applicant Profile (`74a836886727ec5f808819566235400da5e0c95b`), Admin Entrance Exam Records list (`9e03e0192e6131149c172a90e0ea6531017247b0`), Admin Entrance Exam Record detail (`ee7bfca95faa9de1abec624d15fffc49614ce222`), Admin Students List (`cbcb13800886be727e103b0df502340fe161d41c`), and Admin Student Profile (`d80b95cef0f9124b3b4141c4fe5af58887e32316`). Other legacy pages remain non-authoritative unless explicitly registered.
 
 ---
 
@@ -1269,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: five formally designated references.**
+**Current state: seven formally designated references.**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1362,6 +1380,23 @@ Each must still be broken into bounded implementation packages.
   - missed-exam appeal actions remain outside this accepted pattern;
   - COR/Waiver/Exam Slots/Exam Questions were not changed.
 - Page-specific; do not generalize entrance-exam scoring/result semantics into unrelated detail pages.
+
+
+## Admin Students List
+
+- Accepted final commit: `cbcb13800886be727e103b0df502340fe161d41c` (`790e3de` initial; `a1cc62c` and `cbcb138` visual fixes).
+- Pattern type: wide graduate-student registry separate from admission Applicants.
+- Reusable precedent: six deliberate columns with name/student number/email on separate lines; Search / Program / Student Status filters, no KPI cards; `ENROLLED`/`GRADUATED`/`DISMISSED` only; authoritative filtered pagination and honest absent-record presentation; stable Applicants-derived table loading/error/empty behavior.
+- Page-specific: latest administrative ThesisRecord metadata does not certify formal Defense completion.
+
+## Admin Student Profile / detail
+
+- Accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316` (`ecb35b3` initial; `d80b95c` layout fix).
+- Pattern type: person-centric academic monitoring and support overview.
+- Reusable precedent: breadcrumb + name PageHeader → compact Current Academic State → primary authoritative Academic Journey and shorter Comprehensive Exam/Account Support → full-width responsive three-group Student & Academic Details, with natural content-driven height and scoped loading/error/not-found.
+- ADMIN-only Student detail DTO and Admin Journey read reuse the existing Thesis Journey evaluator; no new progression or override authority.
+- Deferred concerns: unreliable full Comprehensive Exam attempt/strike history, already-PASSED recording action, absent server-side enrollment gate for recording; Reset Password remains disabled pending `AUTH-RECOVERY-1`; Defense Records remains general-purpose and student-prefiltered navigation is future work.
+- Page-specific: do not treat visually accepted support controls as implemented credential recovery or approved academic rule changes.
 
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 

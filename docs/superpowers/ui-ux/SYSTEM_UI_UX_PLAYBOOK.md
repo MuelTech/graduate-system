@@ -1316,6 +1316,35 @@ This reference establishes the accepted entrance-exam **main-list** baseline. Th
 
 This reference establishes the accepted entrance-exam **detail + grading/result** pattern while preserving backend/domain authority and keeping legacy implementation details out of the user-facing information architecture.
 
+
+### Reference: Admin Students List — UIUX-2F
+
+- Page: `frontend/src/app/(portal)/admin/users/students/page.tsx`; backend list read model: `backend/src/repositories/admin-student.repository.ts` and `backend/src/controllers/admin-student.controller.ts`.
+- Accepted final commit: `cbcb13800886be727e103b0df502340fe161d41c` (initial registry/backend `790e3def573c1bf0d2cb2f3e8981d06761a71880`; visual table/filter alignment `a1cc62c8ea1dac736d8cef217bcc2adbcf74013e`; accepted identity correction `cbcb13800886be727e103b0df502340fe161d41c`).
+- Pattern: wide, person-centric **graduate student registry**, separate from Applicants' admissions lifecycle.
+- Accepted UI: PageHeader; compact Search / exact Program ID / Student Status filter card; **Student | Program | Comprehensive Exam | Thesis Progress | Student Status | Action** table; server pagination; no KPI cards; one accessible View action to the profile.
+- Student identity uses **three separate lines**: emphasized name, student number, then email (not combined with a separator). Reuse Applicant-table readable 14px primary / 12px secondary type, `px-4 py-3` row rhythm, intentional column widths, responsive local overflow.
+- The registry includes only `ENROLLED`, `GRADUATED`, `DISMISSED`; excludes `APPLICANT` even for malformed/unsupported status values. Search is debounced and backend-backed; filters run before count/pagination.
+- Missing Comprehensive Exam is `NOT_RECORDED`, distinct from a persisted `PENDING`; no thesis record is distinct from an actual latest ThesisRecord stage/status. Latest administrative ThesisRecord data is **not** proof of formal academic stage completion.
+- Query-scoped loading/refetch treatment, structural table Skeleton, initial request error/Retry, distinct no-students/no-match states are part of this accepted list pattern.
+- Do not copy the exact table geometry or Student/Comp Exam academic semantics into unrelated lists.
+
+### Reference: Admin Student Profile / detail — UIUX-2G
+
+- Page: `frontend/src/app/(portal)/admin/users/students/[id]/page.tsx`; bounded data contract: `backend/src/interfaces/admin-student.interfaces.ts`, `backend/src/repositories/admin-student.repository.ts`, `backend/src/services/admin-student.service.ts`, `backend/src/routes/admin-student.routes.ts`.
+- Accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316` (initial UI and read models `ecb35b3f15fae4e4ac9d2fe27a01cbcabac47a56`; dead-space layout correction `d80b95cef0f9124b3b4141c4fe5af58887e32316`).
+- Pattern: longitudinal **academic monitoring and support overview**, not another Thesis Management operational workspace.
+- Accepted hierarchy: clickable Students breadcrumb → student name PageHeader with number/program/status → compact full-width **Current Academic State** → main two-column area (dominant **Academic Journey** left; shorter **Comprehensive Examination** and **Account Support** cards right) → **full-width Student & Academic Details** below.
+- The full-width details surface is grouped into **Personal Information**, **Academic Information**, and **Adviser & Residency** and uses responsive 1-/2-/3-column presentation. Content-driven card heights eliminate the initial layout's dead space; do not artificially stretch content.
+- `GET /admin/students/:id` is an ADMIN-only explicit nullable student-detail projection; ADMIN-only `GET /admin/students/:id/journey` resolves the student server-side and delegates to the existing `StudentThesisJourneyService.getJourney` / central evaluator. The original STUDENT-only `/thesis/journey` remains role-protected. Never implement a second frontend progression calculator or treat `ThesisRecord.stage/status` as formal Defense completion.
+- Journey/lock reason/next action are backend-authoritative; independent journey failure renders an isolated Retry state without losing loaded identity/details; initial skeleton, not-found, server error, and missing-data states remain distinct.
+- **Defense Records** contextual action opens the existing general `/admin/thesis/defense-records` workspace. **Student-specific prefiltering/return navigation is a deferred future improvement**, not currently implemented.
+- **Known functional issues NOT resolved by visual acceptance:** Comprehensive Exam recording overwrites the latest record, making full attempt history and strike counts unreliable; recording controls may remain visible for an enrolled student whose latest result is already `PASSED`; `PUT /admin/students/:id/comprehensive-exam` lacks server-side admission-status eligibility enforcement despite the page's enrolled-only UI visibility check. Review attempt/two-strike authority and server-side permission in a separately approved functional package.
+- The **Reset Student Password** button in Account Support is intentionally disabled. `AUTH-RECOVERY-1` (Admin-assisted secure random temporary password, forced change, audit/session safeguards, later optional email integration) is **not implemented**. No authentication or email-delivery functionality was added.
+- Do not generalize Student journey gates into unrelated profiles; no Admin stage override/force-complete authority is created by this reference.
+
+The user manually accepted both Students page designs. Acceptance registers the UI/UX references **only**; it does not certify deferred business, account-recovery, or navigation functionality.
+
 Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 
 ---
