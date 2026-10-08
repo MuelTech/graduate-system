@@ -9,8 +9,6 @@ import {
   LayoutDashboard,
   User,
   FileCheck2,
-  FolderOpen,
-  PenLine,
   PenTool,
   UserCheck,
   Library,
@@ -23,14 +21,23 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-/** Nested/compat routes stay active on their nav entry. */
+/**
+ * UIUX-3D: My Defenses is the single assignment entry point. Its navigation
+ * item stays active for the canonical Defense Workspace and for the retired
+ * compatibility route families that resolve into that same context.
+ */
+const MY_DEFENSES_CONTEXT_ROUTES = [
+  "/panelist/defenses",
+  "/panelist/defense-workspace",
+  "/panelist/scoring",
+  "/panelist/defense-lobby",
+  "/panelist/materials",
+];
+
 function isNavItemActive(pathname: string, href: string): boolean {
-  // Compatibility index is /panelist/scoring; canonical workspace is nested.
-  if (href === "/panelist/scoring") {
-    return (
-      pathname === "/panelist/scoring" ||
-      pathname.startsWith("/panelist/scoring/") ||
-      pathname.startsWith("/panelist/defense-workspace/")
+  if (href === "/panelist/defenses") {
+    return MY_DEFENSES_CONTEXT_ROUTES.some(
+      (base) => pathname === base || pathname.startsWith(`${base}/`),
     );
   }
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -42,8 +49,6 @@ const navItems = [
   { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
   { href: "/panelist/adviser-requests", label: "Adviser Requests", icon: UserCheck },
   { href: "/panelist/adviser-reviews", label: "Adviser Reviews", icon: FileCheck2 },
-  { href: "/panelist/materials", label: "Materials", icon: FolderOpen },
-  { href: "/panelist/scoring", label: "Defense Workspaces", icon: PenLine },
   { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
   { href: "/panelist/repository", label: "Repository", icon: Library },
   { href: "/panelist/announcements", label: "Announcements", icon: Megaphone },
