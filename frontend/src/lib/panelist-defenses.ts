@@ -240,6 +240,54 @@ export function responsibilityText(a: PanelistAssignmentData): string {
   return `${role} · Evaluation: ${evaluationStatusLabel(a.evaluationStatus)}`;
 }
 
+/* ------------------------------------------------------------------- venue */
+
+export type VenueResolution =
+  | { kind: "online"; url: string }
+  | { kind: "physical"; text: string }
+  | { kind: "none" };
+
+/**
+ * Accept only a whole, single-token HTTP(S) URL. Rejects unsafe schemes
+ * (`javascript:` etc.), ambiguous mixed text ("Room 101 https://…"), and
+ * malformed values — those are treated as plain physical text, never a link.
+ */
+function safeHttpUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  if (/\s/.test(trimmed)) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (!url.hostname) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Presentation-only interpretation of the existing `venueOrLink` field. A valid
+ * online URL means online access is provided; anything else is recorded location
+ * text. No delivery-mode state is created or inferred.
+ */
+export function resolveVenue(
+  venueOrLink: string | null | undefined,
+): VenueResolution {
+  const raw = String(venueOrLink ?? "").trim();
+  if (!raw) return { kind: "none" };
+  const url = safeHttpUrl(raw);
+  if (url) return { kind: "online", url };
+  return { kind: "physical", text: raw };
+}
+
+/** An active Join Meeting action is offered only for live sessions. */
+export function isMeetingJoinActive(sessionStatus: string | undefined): boolean {
+  const status = String(sessionStatus ?? "");
+  return status === "SCHEDULED" || status === "IN_PROGRESS";
+}
+
+
 /* ------------------------------------------------------- ordering/filtering */
 
 const SESSION_GROUP: Record<string, number> = {

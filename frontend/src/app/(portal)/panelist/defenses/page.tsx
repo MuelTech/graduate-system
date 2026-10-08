@@ -35,21 +35,27 @@ import {
   filterAssignments,
   formatWallDate,
   formatWallTime,
+  isEvaluationRelevant,
+  isMeetingJoinActive,
   isoToWallDate,
   isoToWallTime,
   nowWallMs,
+  resolveVenue,
   responsibilityText,
   roleLabel,
   sessionStatusLabel,
   type QuickFilter,
+  type VenueResolution,
 } from "@/lib/panelist-defenses";
 import {
   AlertCircle,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileText,
   Inbox,
+  MapPin,
   RefreshCw,
   Search,
   X,
@@ -91,14 +97,18 @@ function ListSkeleton() {
     <div className="space-y-3" aria-busy="true" aria-live="polite">
       {Array.from({ length: 5 }).map((_, index) => (
         <Card key={index}>
-          <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 space-y-3">
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-3 w-56 max-w-full" />
+          <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-3 w-56 max-w-full" />
+                </div>
+                <Skeleton className="h-5 w-28 rounded-full" />
               </div>
               <Skeleton className="h-3 w-72 max-w-full" />
               <Skeleton className="h-3 w-64 max-w-full" />
+              <Skeleton className="h-3 w-80 max-w-full" />
             </div>
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
               <Skeleton className="h-9 w-36" />
@@ -183,6 +193,84 @@ function ErrorState({
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+/* --------------------------------------------------------- card fragments */
+
+function MetaItem({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <dt className="text-(--earist-body-text)">{label}</dt>
+      <dd className="mt-0.5 font-medium break-words text-foreground">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+function VenueContent({
+  venue,
+  active,
+  studentName,
+}: {
+  venue: VenueResolution;
+  active: boolean;
+  studentName: string;
+}) {
+  if (venue.kind === "none") {
+    return (
+      <span className="font-normal text-(--earist-body-text)">
+        Venue / meeting details not provided
+      </span>
+    );
+  }
+
+  if (venue.kind === "physical") {
+    return (
+      <span className="flex items-start gap-1.5 font-normal">
+        <MapPin
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--earist-body-text)"
+          aria-hidden="true"
+        />
+        <span className="break-words">{venue.text}</span>
+      </span>
+    );
+  }
+
+  // A valid online meeting URL. Only live sessions expose an active Join action;
+  // inactive sessions preserve the recorded link as muted, non-clickable context.
+  if (active) {
+    return (
+      <a
+        href={venue.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Join online meeting for ${studentName}`}
+        className="inline-flex items-center gap-1.5 font-medium break-all text-(--earist-secondary) hover:underline focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+      >
+        <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        Join Meeting
+      </a>
+    );
+  }
+
+  return (
+    <span className="flex items-start gap-1.5 font-normal text-(--earist-body-text)">
+      <ExternalLink
+        className="mt-0.5 h-3.5 w-3.5 shrink-0"
+        aria-hidden="true"
+      />
+      <span className="break-all">{venue.url}</span>
+    </span>
   );
 }
 
@@ -443,6 +531,9 @@ export default function PanelistDefensesPage() {
             const status = String(schedule?.sessionStatus ?? "");
             const hasSchedule = wallDate !== null && wallTime !== null;
             const isCancelled = status === "CANCELLED";
+            const venue = resolveVenue(schedule?.venueOrLink);
+            const meetingActive = isMeetingJoinActive(status);
+            const evalRelevant = isEvaluationRelevant(assignment);
             const studentName =
               `${student?.user?.firstName ?? ""} ${student?.user?.lastName ?? ""}`.trim() ||
               "Student";
@@ -455,35 +546,19 @@ export default function PanelistDefensesPage() {
 
             return (
               <Card key={assignment.id}>
-                <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0 space-y-2">
-                    <div className="min-w-0">
-                      <p className="text-base font-semibold break-words text-foreground">
-                        {studentName}
-                      </p>
-                      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
-                        {identityMeta || "—"}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-(--earist-body-text)">
-                      <span className="font-medium text-foreground">
-                        {defenseStageLabel(schedule?.defenseType)} Defense
-                      </span>
-                      <span>Role: {roleLabel(assignment.role)}</span>
-                      <span className="flex items-center gap-1.5">
-                        <CalendarClock
-                          className="h-3.5 w-3.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                        {hasSchedule
-                          ? `${formatWallDate(wallDate)} · ${formatWallTime(wallTime)}`
-                          : "Not scheduled yet"}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-                      <span className="flex items-center gap-2">
+                <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    {/* Primary identity + session status */}
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-base font-semibold break-words text-foreground">
+                          {studentName}
+                        </p>
+                        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                          {identityMeta || "—"}
+                        </p>
+                      </div>
+                      <span className="flex items-center gap-2 text-xs">
                         <span className="text-(--earist-body-text)">
                           Session Status:
                         </span>
@@ -498,13 +573,50 @@ export default function PanelistDefensesPage() {
                           {sessionStatusLabel(status)}
                         </Badge>
                       </span>
-                      <span className="text-(--earist-body-text)">
-                        My Responsibility:{" "}
-                        <span className="font-medium text-foreground">
-                          {responsibilityText(assignment)}
-                        </span>
-                      </span>
                     </div>
+
+                    {/* Grouped metadata: context, schedule, location, responsibility */}
+                    <dl className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-3">
+                      <MetaItem label="Defense">
+                        {defenseStageLabel(schedule?.defenseType)} Defense
+                      </MetaItem>
+                      <MetaItem label="Role">
+                        {roleLabel(assignment.role)}
+                      </MetaItem>
+                      <MetaItem label="Schedule">
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarClock
+                            className="h-3.5 w-3.5 shrink-0"
+                            aria-hidden="true"
+                          />
+                          {hasSchedule
+                            ? `${formatWallDate(wallDate)} · ${formatWallTime(wallTime)}`
+                            : "Not scheduled yet"}
+                        </span>
+                      </MetaItem>
+                      <MetaItem
+                        label={
+                          venue.kind === "online"
+                            ? "Online Meeting"
+                            : "Defense Venue"
+                        }
+                        className="sm:col-span-3"
+                      >
+                        <VenueContent
+                          venue={venue}
+                          active={meetingActive}
+                          studentName={studentName}
+                        />
+                      </MetaItem>
+                      {evalRelevant ? (
+                        <MetaItem
+                          label="My Responsibility"
+                          className="sm:col-span-3"
+                        >
+                          {responsibilityText(assignment)}
+                        </MetaItem>
+                      ) : null}
+                    </dl>
                   </div>
 
                   <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
