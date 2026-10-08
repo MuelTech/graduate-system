@@ -253,19 +253,19 @@ function VenueContent({
     );
   }
 
-  // A valid online meeting URL. Only live sessions expose an active Join action;
-  // inactive sessions preserve the recorded link as muted, non-clickable context.
+  // A valid meeting URL does not imply an online defense; a physical session may also have a link.
+  // Active sessions offer the link; inactive sessions keep it as read-only context.
   if (active) {
     return (
       <a
         href={venue.url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`Join online meeting for ${studentName}`}
+        aria-label={`Open meeting link for ${studentName}`}
         className="inline-flex items-center gap-1.5 font-medium break-all text-(--earist-secondary) hover:underline focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
       >
         <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        Join Meeting
+        Open Meeting Link
       </a>
     );
   }
@@ -610,7 +610,7 @@ export default function PanelistDefensesPage() {
                     </MetaItem>
 
                     <MetaItem
-                      label={venue.kind === "online" ? "Online Meeting" : "Defense Venue"}
+                      label="Venue / Meeting Details"
                       className="sm:col-span-2 lg:col-span-1"
                     >
                       <VenueContent
