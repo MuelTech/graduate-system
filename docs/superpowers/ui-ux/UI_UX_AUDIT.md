@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: eight formally designated references.**
+**Current state: nine formally designated references (UIUX-4A Student Dashboard is ninth).**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1410,6 +1410,18 @@ Each must still be broken into bounded implementation packages.
 - **Subsequent change / still deferred:** UIUX-3D at `7f78f4df9d1a5dc613f38a80307b0fc275ac73cb` removed the redundant **Materials** and **Defense Workspaces** sidebar entries and redirected both retired indices to My Defenses. Its implementation was source-reviewed but runtime/browser QA has **not** been recorded as complete. The selected-defense manuscript viewer remains authoritative; the retired Materials index no longer enumerates potentially non-certified revisions. Defense Workspace UIUX-3C and Dashboard UIUX-3A FIX-1 remain separate pending work. UIUX-3B visual acceptance does not itself certify these later changes.
 - **Reuse with care:** legible faculty-oriented task lists and meaningful schedule/venue grouping are reusable; defense role/certification/score policies, exact card geometry, and sidebar retirement are not generic UI rules.
 
+
+## Student Dashboard — UIUX-4A
+
+- **Accepted visual implementation:** `2e5acbcdd6696556683b6026dbf59c9643e0589a` on `refactor/system-ui-ux` (parent `5d9c2b6f25b8225434f34942d53826a22086b4af`); project owner accepted its Student Dashboard design on 2026-10-08 and requested registration. Two changed files only: `frontend/src/app/(portal)/student/dashboard/page.tsx` and new pure helper `frontend/src/lib/student-dashboard.ts`. **This is the ninth Approved Reference; UI/UX acceptance does not imply full runtime or automated test coverage.**
+- **Pattern:** personalized Student academic overview replacing six equal-weight navigation cards. The accepted flow is **Welcome/identity → Comprehensive Exam + current Thesis Stage → dominant Your Next Step → concise five-step Thesis Journey → conditional Defense Schedule → Recent Notifications (≤3) and Announcements (≤2)**. Remove the misleading raw requirement-upload count; skip redundant Quick Links since existing sidebar serves that role.
+- **Source and progression:** authenticated STUDENT `GET /student/journey` provides name/program/student number and latest recorded Comprehensive Exam (`createdAt desc`, `take: 1`). Canonical `GET /thesis/journey` via existing hook/query key alone determines `currentStep`, step states, waiting/lock details, academic completion, adviser workflow, RAP dependency, and STRIKE required/not-required presentation. Never duplicate academic eligibility rules or infer stage completion from an administrative record.
+- **Next step:** `CURRENT`/`AVAILABLE` → relevant student route/CTA; `WAITING` and `LOCKED` → explanations without writable actions; rejected application → relevant resubmit route; `FAILED`/`REVISION_REQUIRED`/`CANCELLED_SESSION` → separate guidance without invented self-service powers; null `currentStep` → **Thesis journey completed**, never automatic graduation/clearance. Admin review, scheduling, adviser response, Dean decision, formal conclusion, and RAP-signature waits are distinct where recorded.
+- **Schedule and updates:** only `SCHEDULED`/`IN_PROGRESS`/`AWAITING_CONCLUSION` sessions preview; preserve wall-clock date/time and neutral **Venue / Meeting Details** wording; validate complete HTTP(S) URLs for link actions without inferring delivery mode. Student-only notifications and audience-filtered memos use independent async sections, concise previews, unread signals, section-level loading/Retry, and no implicit mark-read mutation.
+- **Verification provenance:** reviewer inspected remote branch HEAD, exact two-file diff and key data/UX presentation; agent-reported frontend TypeScript + targeted ESLint PASS; production build compiled and typechecked but overall build FAIL at pre-existing unrelated `/login` `useSearchParams()`/Suspense prerender issue. Focused pure helper unit tests unavailable and manual browser regression **NOT EXECUTED** per agent report. The owner's visual acceptance is not a substitute for mobile, keyboard, error-state, and multi-scenario live testing.
+- **Known limitations:** latest Comprehensive Exam status may differ from the any-PASSED history gate in `/thesis/journey`; verify multi-attempt cases. Schedule preview is based on session state rather than an independent future-date check. The Dashboard now uses a client query pattern; runtime authentication/error handling remains to be tested. No backend authority, new mutations, or Student sidebar changes. Curriculum remains a placeholder. UIUX-3A FIX-1 and UIUX-3C remain out of scope.
+- **Reuse with care:** prioritize a single truthful next responsibility and conditionally relevant context; do not copy the academic stage, exam policies, or role-specific commands to Admin/Panelist dashboards.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1418,7 +1430,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The existing accepted references (now eight, including UIUX-3B My Defenses) remain independent; the Dashboard is not yet accepted.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The nine accepted references (including UIUX-3B My Defenses and UIUX-4A Student Dashboard) remain independent; the **Panelist Dashboard** is not yet accepted.
 
 ### What is implemented
 
@@ -1468,7 +1480,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Coding-agent report:** frontend TypeScript and targeted ESLint **PASS**; build compilation/typecheck **PASS**, but overall production build **FAIL** at unrelated pre-existing `/login` `useSearchParams()`/Suspense prerendering. No fresh local tests were rerun during this documentation update.
 - **Not executed:** browser QA of legacy index redirects, active state while in workspace, collapsed/mobile sidebar, keyboard/focus, direct workspace deep links, manuscript access, and redirect-loop avoidance.
 - **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
-- **Acceptance:** requires a project-owner manual browser check. Do **not** register a ninth Approved Reference; UIUX-3B My Defenses remains the eighth accepted design, and UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
+- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth and independently accepted UIUX-4A Student Dashboard is the ninth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 # 11. Audit limitations
 
