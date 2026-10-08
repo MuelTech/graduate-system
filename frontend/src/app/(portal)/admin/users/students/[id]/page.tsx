@@ -293,14 +293,15 @@ function DetailSkeleton() {
       </div>
       <Skeleton className="h-28 w-full rounded-xl" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Skeleton className="h-96 w-full rounded-xl" />
+        <div className="lg:col-span-2">
+          <Skeleton className="h-80 w-full rounded-xl" />
         </div>
         <div className="space-y-6">
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-44 w-full rounded-xl" />
+          <Skeleton className="h-36 w-full rounded-xl" />
         </div>
       </div>
+      <Skeleton className="h-56 w-full rounded-xl" />
     </div>
   );
 }
@@ -646,45 +647,6 @@ export default function StudentDetailPage() {
             )}
           </SectionCard>
 
-          <SectionCard title="Student & Academic Details">
-            <dl className="grid grid-cols-1 gap-3">
-              <DataRow label="Full Name">{fullName || MISSING}</DataRow>
-              <DataRow label="Student Number">
-                {student.studentNumber ?? MISSING}
-              </DataRow>
-              <DataRow label="Email">{student.email || MISSING}</DataRow>
-              <DataRow label="Contact Number">
-                {student.cellphone ?? MISSING}
-              </DataRow>
-              <DataRow label="Program">{programName}</DataRow>
-              <DataRow label="Enrollment Date">
-                {formatDate(student.enrollmentDate)}
-              </DataRow>
-              <DataRow label="Curriculum Type">
-                {student.curriculumType ?? MISSING}
-              </DataRow>
-              {student.alignmentStatus ? (
-                <DataRow label="Alignment Status">
-                  {ALIGNMENT_LABEL[student.alignmentStatus] ??
-                    student.alignmentStatus}
-                </DataRow>
-              ) : null}
-              <DataRow label="Residency Start">
-                {student.residency?.startDate
-                  ? formatDate(student.residency.startDate)
-                  : MISSING}
-              </DataRow>
-              <DataRow label="Max Residency (Years)">
-                {student.residency?.maxYears ?? MISSING}
-              </DataRow>
-              <DataRow label="Active Adviser">
-                {student.adviserAssignment
-                  ? student.adviserAssignment.adviserName
-                  : "Not assigned"}
-              </DataRow>
-            </dl>
-          </SectionCard>
-
           <SectionCard
             title="Account Support"
             description="Assistance for this student's portal account."
@@ -709,6 +671,71 @@ export default function StudentDetailPage() {
           </SectionCard>
         </div>
       </div>
+
+      {/* Student & Academic Details — full width, grouped for scanning */}
+      <SectionCard title="Student & Academic Details">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 lg:grid-cols-3">
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-(--earist-body-text)">
+              Personal Information
+            </h3>
+            <dl className="space-y-3">
+              <DataRow label="Full Name">{fullName || MISSING}</DataRow>
+              <DataRow label="Student Number">
+                {student.studentNumber ?? MISSING}
+              </DataRow>
+              <DataRow label="Email Address">{student.email || MISSING}</DataRow>
+              <DataRow label="Contact Number">
+                {student.cellphone ?? MISSING}
+              </DataRow>
+            </dl>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-(--earist-body-text)">
+              Academic Information
+            </h3>
+            <dl className="space-y-3">
+              <DataRow label="Official Program">{programName}</DataRow>
+              <DataRow label="Enrollment Date">
+                {formatDate(student.enrollmentDate)}
+              </DataRow>
+              <DataRow label="Curriculum Type">
+                {student.curriculumType ?? MISSING}
+              </DataRow>
+              {student.alignmentStatus ? (
+                <DataRow label="Alignment Status">
+                  {ALIGNMENT_LABEL[student.alignmentStatus] ??
+                    student.alignmentStatus}
+                </DataRow>
+              ) : null}
+            </dl>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-(--earist-body-text)">
+              Adviser & Residency
+            </h3>
+            <dl className="space-y-3">
+              <DataRow label="Active Adviser">
+                {student.adviserAssignment
+                  ? student.adviserAssignment.adviserName
+                  : "Not assigned"}
+              </DataRow>
+              <DataRow label="Residency Start Date">
+                {student.residency?.startDate
+                  ? formatDate(student.residency.startDate)
+                  : MISSING}
+              </DataRow>
+              <DataRow label="Maximum Residency Duration">
+                {student.residency?.maxYears != null
+                  ? `${student.residency.maxYears} years`
+                  : MISSING}
+              </DataRow>
+            </dl>
+          </section>
+        </div>
+      </SectionCard>
 
       {/* Comprehensive Exam confirmation */}
       <Dialog
