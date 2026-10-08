@@ -1345,6 +1345,28 @@ This reference establishes the accepted entrance-exam **detail + grading/result*
 
 The user manually accepted both Students page designs. Acceptance registers the UI/UX references **only**; it does not certify deferred business, account-recovery, or navigation functionality.
 
+### Reference: Panelist My Defenses — UIUX-3B
+
+- Page: `frontend/src/app/(portal)/panelist/defenses/page.tsx`; presentation helpers: `frontend/src/lib/panelist-defenses.ts`; manuscript viewer: `frontend/src/components/panelist/manuscript-dialog.tsx`.
+- **Accepted final implementation commit:** `bf706c1ab12aa8291e648ae74c6ee4a41cebadec` on `refactor/system-ui-ux`. **Status: ACCEPTED** by project owner after screenshot-based manual desktop UI/UX review (2026-10-08).
+- Implementation chain:
+  - `96970f04de47655c5f481dabd6f4882a7b08d95e` — searchable assignment registry, stage/session filtering, contextual action, pagination, and structural Skeleton.
+  - `7d3e6dbc053b2ed550103936f7734cdae3e4ee00` — compact cards, quick filters, assignment-scoped View Manuscript, Materials display restriction, and backend panelist document-access correction.
+  - `8e44aa9c2326a3c06793caadcec51ce3f1388df4` — defense venue and safe meeting-link display.
+  - `d152459c45aaff248304437489dedcf1d1a3d577` — intermediate two-column layout, **not** the accepted layout.
+  - `8f248671d896ade3f0a2a75b9501d0c6aa931af6` — accepted full-width, faculty-readable cards, enlarged student identity and key information, larger actions, and matching Skeletons.
+  - `bf706c1ab12aa8291e648ae74c6ee4a41cebadec` — final neutral `Venue / Meeting Details` label and `Open Meeting Link` action; no assumption that a URL proves an online-only defense.
+- **Pattern type:** wide, faculty-oriented **assigned defense registry** with one full-width card per defense, comfortable type (20px student identity, ~16px operational details, 44px action targets), and meaningful grouped information rather than tiny text or stretched empty space.
+- **Accepted hierarchy:** shared PageHeader → All / Upcoming / In Progress / Completed quick filters plus Search / Defense Stage / Session Status controls → full-width assignment cards (student identity and student number/program; independent authoritative session status; defense stage and assigned role; date/time; physical venue or meeting link; own evaluation progress only where relevant; authorized actions) → pagination.
+- **Reusable UX precedent:** prioritise legibility for faculty users; group schedule and venue near one another; show meeting/location information without inferring delivery mode; place secondary `View Manuscript` before one clear primary `Continue Evaluation`, `Open Defense`, or `View Defense` action as eligibility allows; responsive full-width cards, structural card-shaped Skeletons, distinct no-record/no-match/error/refresh feedback.
+- **Role/authority boundaries:** `Continue Evaluation` requires an assigned Proposal/Final numerical evaluator with own `NOT_STARTED` or `DRAFT` score in an editable session; Title/Facilitator/Rapporteur do **not** get invented numerical scoring. `CONCLUDED` uses a read-only label; `CANCELLED` exposes no workspace action. `Upcoming` requires future valid scheduled wall-clock date/time and never means merely `SCHEDULED`.
+- **Manuscript boundary:** `View Manuscript` retrieves a document selected by the existing assignment-scoped Defense Workspace service, reuses the authenticated viewer, and shows only the authorized Title Proposal Package or exact certified Proposal/Final manuscript; it must not enumerate generic admission/COR/receipt/evidence uploads. FIX-1 narrowed PANELIST document-route access to known academic manuscript types; the existing active-Adviser authorization path remains separate. Stage-specific certified selection must not be replaced by a generic `thesisDocuments` list.
+- **Known limitations/deferred work:** `Materials` still exists and its stage/type display filter may include multiple manuscript revisions rather than the exact certified selection; `Defense Workspaces` and `Materials` sidebar items remain, with potential future consolidation after separately accepted workspace QA. The current My Defenses screen does **not** certify a redesigned Defense Workspace or completed navigation consolidation. The list's upcoming cutoff uses a mount-time snapshot. Responsive/mobile, keyboard, and live error/loading interaction checks remain to be independently exercised where not evidenced.
+- **Validation provenance:** coding-agent reports for the initial and FIX packages recorded frontend TypeScript/scoped ESLint PASS; FIX-1 backend build and unit tests PASS (1,075 passed / 5 skipped) after the document-access security correction. The frontend production build remained blocked by the unrelated pre-existing `/login` Suspense/prerender issue. The later direct layout/wording commits were verified through GitHub source/diff checks, **not** through a fresh full typecheck/build or automated browser test. Project-owner acceptance concerns the final **visual/UI/UX direction** after manual screenshots, not certification of every runtime, security, mobile, or end-to-end behavior.
+- **Do not copy:** panelist role gates, defense-status interpretation, manuscript access, or this exact full-width card shape into unrelated registry/workflow pages without considering their audience and data density.
+
+This is the **eighth** explicitly accepted UI/UX reference. The Panelist Dashboard remains a separate, unaccepted implementation checkpoint.
+
 Existing legacy pages remain non-authoritative unless explicitly added to this registry.
 
 ---
@@ -1355,7 +1377,7 @@ Existing legacy pages remain non-authoritative unless explicitly added to this r
 
 - **Branch:** `refactor/system-ui-ux`
 - **Implementation commit:** `990210051756cf2713fcedc61ad9cdfd0555ea08` (parent `51e4c2448278d96a40b8a7b8fc041e326fe9bfec`).
-- **Review status:** implementation pushed and source reviewed; manual runtime/visual acceptance is **pending**. This is **not** an eighth Approved Reference Implementation.
+- **Review status:** implementation pushed and source reviewed; manual runtime/visual acceptance is **pending**. The Dashboard is **not** an Approved Reference Implementation; UIUX-3B My Defenses is independently accepted as the eighth reference.
 - **Primary screens:** `frontend/src/app/(portal)/panelist/dashboard/page.tsx` and `frontend/src/app/(portal)/panelist/profile/page.tsx`.
 
 Implementation checkpoint (as of `9902100`):
@@ -1374,7 +1396,7 @@ Implementation checkpoint (as of `9902100`):
 
 **Verification and remaining limits:** The coding-agent report for `9902100` states backend build and unit tests passed (1,074 pass / 5 skipped), frontend TypeScript/scoped lint passed, and frontend build reached the known unrelated `/login` `useSearchParams()` prerender/Suspense failure. Frontend unit tests have no harness; manual browser QA was **not executed** in that report. Backend task-capability projection currently duplicates some workspace capability logic, presenting drift risk; pre-existing Proposal/Final Rapporteur finalization capability mismatch in the Defense Workspace also remains. These are tracked limitations, not accepted behavior or permission to expand UIUX-3A.
 
-**Acceptance gate:** The project owner must inspect the final UIUX-3A/FIX-1 runtime and explicitly accept it before this screen can be promoted into the approved-reference registry. Keep the seven accepted references unchanged until then.
+**Acceptance gate:** The project owner must inspect the final UIUX-3A/FIX-1 runtime and explicitly accept it before this screen can be promoted into the approved-reference registry. Do not promote the Dashboard into the accepted registry until its own FIX-1 and manual acceptance are complete; the eight currently accepted references remain independent.
 
 ---
 

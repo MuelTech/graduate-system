@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: seven formally designated references.**
+**Current state: eight formally designated references.**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1398,6 +1398,18 @@ Each must still be broken into bounded implementation packages.
 - Deferred concerns: unreliable full Comprehensive Exam attempt/strike history, already-PASSED recording action, absent server-side enrollment gate for recording; Reset Password remains disabled pending `AUTH-RECOVERY-1`; Defense Records remains general-purpose and student-prefiltered navigation is future work.
 - Page-specific: do not treat visually accepted support controls as implemented credential recovery or approved academic rule changes.
 
+## Panelist My Defenses — UIUX-3B
+
+- **Accepted commit:** `bf706c1ab12aa8291e648ae74c6ee4a41cebadec` (full-width readability at `8f248671d896ade3f0a2a75b9501d0c6aa931af6`; final neutral venue wording at `bf706c1`). Project-owner manual screenshot-based desktop acceptance: **ACCEPTED**, 2026-10-08.
+- **Pattern type:** faculty-readable, full-width assigned-defense card registry, not a dense six-column table, oversized whitespace-heavy card, or tiny two-column card grid.
+- **Accepted screen behavior:** PageHeader; All / Upcoming / In Progress / Completed quick filters; Search, Defense Stage, Session Status; deterministic ordering and 10-per-page pagination; structural card Skeletons and differentiated empty, no-match, and error/Retry states.
+- **Accepted presentation:** prominent student and program identity; distinct defense type, role, session status, and own eligible evaluation status; grouped date/time and **Venue / Meeting Details**; large primary and secondary actions. A recorded URL means an available meeting link, **not** an authoritative online-versus-face-to-face defense classification. Safe HTTP(S) meeting links use **Open Meeting Link** where permitted; physical text remains plain text.
+- **Navigation and privacy:** primary action goes to existing `/panelist/defense-workspace/[scheduleId]`, subject to existing role/academic gates. Secondary **View Manuscript** resolves only the selected defense's authorized stage paper using the Defense Workspace selection and authenticated viewer; COR, receipts, and non-manuscript evidence must not be exposed as panelist defense manuscripts. UIUX-3B FIX-1 closed a concrete panelist stage-assignment document authorization leak (`backend/src/services/document.service.ts`) and narrowly filtered the legacy Materials page.
+- **Design correction history:** `96970f0` initial dense table → `7d3e6db` compact cards/manuscript/privacy → `8e44aa9` venue → `d152459` two-column trial (rejected for readability) → `8f24867` accepted full-width readable layout → `bf706c1` accepted neutral venue wording.
+- **Validation distinction:** Agent-reported frontend TypeScript/scoped lint passed for earlier packages and backend unit tests passed after the document authorization fix (1,075 pass, 5 skipped). Later direct GitHub edits were source/diff verified, **not freshly build/typecheck/browser-tested**. Known frontend `/login` prerender issue remained outside scope; responsive/keyboard/live failure-path QA has not been recorded as fully exercised. Manual visual acceptance must not be misreported as end-to-end testing.
+- **Deferred:** dedicated Materials still may list stage-matching but non-certified manuscript revisions, while the selected-defense viewer uses the authoritative certified source. Separate **Materials** and **Defense Workspaces** sidebar entries remain intact pending Defense Workspace refinement and explicitly authorized navigation consolidation. UIUX-3A Dashboard FIX-1 is not part of this acceptance.
+- **Reuse with care:** legible faculty-oriented task lists and meaningful schedule/venue grouping are reusable; defense role/certification/score policies, exact card geometry, and sidebar retirement are not generic UI rules.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1406,7 +1418,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The seven approved references above remain unchanged.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The existing accepted references (now eight, including UIUX-3B My Defenses) remain independent; the Dashboard is not yet accepted.
 
 ### What is implemented
 
