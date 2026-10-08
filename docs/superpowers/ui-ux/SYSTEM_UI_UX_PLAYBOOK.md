@@ -1349,6 +1349,35 @@ Existing legacy pages remain non-authoritative unless explicitly added to this r
 
 ---
 
+# 30A. Implementation checkpoints awaiting UI/UX acceptance
+
+## UIUX-3A — Panelist Dashboard and Adviser Availability (IMPLEMENTED; NOT ACCEPTED)
+
+- **Branch:** `refactor/system-ui-ux`
+- **Implementation commit:** `990210051756cf2713fcedc61ad9cdfd0555ea08` (parent `51e4c2448278d96a40b8a7b8fc041e326fe9bfec`).
+- **Review status:** implementation pushed and source reviewed; manual runtime/visual acceptance is **pending**. This is **not** an eighth Approved Reference Implementation.
+- **Primary screens:** `frontend/src/app/(portal)/panelist/dashboard/page.tsx` and `frontend/src/app/(portal)/panelist/profile/page.tsx`.
+
+Implementation checkpoint (as of `9902100`):
+
+- Dashboard uses the shared PageHeader, two operational KPIs (**Upcoming Defenses**, **Pending Tasks**), an action-only **Needs Your Attention** list (five initially, expandable), conditional **Active Defense**, **Upcoming Defense Sessions** (earliest valid future **Next Defense** plus up to three compact future sessions), a separate **Waiting on Others** read-only list, and **Recent Notifications** sourced from notification records, not an audit log.
+- The new PANELIST-only `GET /thesis/defense/panelist/dashboard` aggregates authenticated-user assignments, own RAP signature slots, Adviser Requests, and Proposal/Final Adviser Review queues. `panelist-dashboard.rules.ts` projects and orders tasks and waiting states; no new academic mutation, state transition, or signer authority is introduced. Dashboard presentation must continue to defer to canonical defense/evaluator/RAP/adviser policy.
+- Actionable responsibilities include authorized Proposal/Final evaluator work, eligible Chairman conclusion, Rapporteur minutes, Title Chairman start at the scheduled time, own required RAP signing, unanswered Adviser Requests, and eligible active-Adviser manuscript reviews. Waiting for Dean approval, student revisions, other signatories, or legitimate Chairman prerequisites remains informational and excluded from the Pending Tasks count.
+- Adviser Availability moved from Dashboard to a narrowly scoped Profile card, using existing profile/availability endpoints and retaining external-panelist restrictions.
+- Initial loading uses structural Dashboard Skeletons; notifications have section loading/error states; errors offer Retry and routine refetch retains loaded data.
+
+**Pending UIUX-3A FIX-1 (agreed visual correction; NOT YET IMPLEMENTED):**
+
+- The current standalone `Waiting on Others` full-sized Dashboard card creates avoidable visual repetition. Move the read-only waiting preview into **Needs Your Attention** as a **compact, collapsible subsection**, with an independent waiting count and clear separation from actionable tasks.
+- Hide the subsection when there are no waiting items. Preserve legitimate waiting information, authorization, task priority, Pending Tasks calculation, and the existing loading behavior. No backend workflow modification is authorized by this visual correction.
+- Re-review layout, responsive behavior, focus/keyboard accessibility, loading/empty/error states, and waiting/task semantics in a real browser after FIX-1.
+
+**Verification and remaining limits:** The coding-agent report for `9902100` states backend build and unit tests passed (1,074 pass / 5 skipped), frontend TypeScript/scoped lint passed, and frontend build reached the known unrelated `/login` `useSearchParams()` prerender/Suspense failure. Frontend unit tests have no harness; manual browser QA was **not executed** in that report. Backend task-capability projection currently duplicates some workspace capability logic, presenting drift risk; pre-existing Proposal/Final Rapporteur finalization capability mismatch in the Defense Workspace also remains. These are tracked limitations, not accepted behavior or permission to expand UIUX-3A.
+
+**Acceptance gate:** The project owner must inspect the final UIUX-3A/FIX-1 runtime and explicitly accept it before this screen can be promoted into the approved-reference registry. Keep the seven accepted references unchanged until then.
+
+---
+
 # 31. Iteration protocol
 
 For every UI/UX package:

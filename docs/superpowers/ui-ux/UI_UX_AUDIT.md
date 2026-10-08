@@ -1404,6 +1404,40 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 ---
 
+# 10A. UIUX-3A implementation checkpoint — pending manual acceptance
+
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The seven approved references above remain unchanged.
+
+### What is implemented
+
+- Dashboard route `/panelist/dashboard`: shared PageHeader; Upcoming Defenses and Pending Tasks KPIs; unified, actionable **Needs Your Attention** (five tasks initially with expansion); conditional Active Defense indicator; highlighted nearest future Next Defense with up to three other upcoming sessions; **Waiting on Others** read-only preview; five Recent Notifications.
+- New authenticated, PANELIST-only `GET /thesis/defense/panelist/dashboard` read model and focused pure projection/tests. Own assignment/evaluation, role-specific conclusion/minutes, own RAP signatures, Adviser Requests, and Proposal/Final Adviser Review inputs are presented without adding workflow mutations. Pending Tasks excludes waiting-only dependencies, and Title numerical scoring is not invented.
+- Adviser Availability is edited on `/panelist/profile`, using the existing profile and availability API with disabled control for external panelists; Dashboard toggle removed.
+- Dashboard Skeleton, independent notification loading/error feedback, section/page error+Retry, and preserved loaded data during background refresh are present in source.
+
+### UX review finding — UIUX-3A FIX-1 pending
+
+The standalone **Waiting on Others** card repeats the visual weight and card rhythm of **Needs Your Attention** despite being informational rather than actionable. The reviewer and project owner discussed and agreed to a small, bounded correction:
+
+1. Place **Waiting on Others** inside **Needs Your Attention** as a **compact, collapsible subsection**, retaining its independent count.
+2. Keep actionable and waiting record semantics separate. Waiting never contributes to Pending Tasks.
+3. Hide the waiting subsection completely when no reliable waiting records exist.
+4. Keep the existing Dashboard skeleton/loading architecture; do not redesign unrelated sections or alter backend task/authority rules.
+
+**This is a documented FIX-1 direction, not evidence that FIX-1 has been coded or accepted.** Current source at `9902100` still renders the separate full-sized card.
+
+### Implementation validation and deferrals
+
+- Agent-reported: backend TypeScript build PASS; backend Vitest 1,074 passed / 5 skipped, including new focused dashboard tests; frontend TypeScript and scoped lint PASS.
+- Agent-reported: frontend production build blocked after compile/typecheck by pre-existing `/login` `useSearchParams()` without Suspense. This must not be silently repaired under Dashboard UI scope.
+- Frontend component test harness not available; browser-based desktop/mobile/keyboard/loading/error manual QA **not executed** in agent report. Project-owner acceptance still pending.
+- Known limitations: dashboard and Defense Workspace each derive some role-capability rules; future drift must be prevented by bounded authority review. Pre-existing Defense Workspace non-Title Rapporteur finalization permission may appear looser than the authoritative finalization service; not changed by UIUX-3A.
+- Unrelated Comprehensive Exam, `AUTH-RECOVERY-1`, Admin refinements, and other deferred business concerns remain outside this package.
+
+**Next gate:** implement only the authorized FIX-1, independently review the resulting source and user-tested UI, then record an accepted reference only on explicit project-owner approval.
+
+---
+
 # 11. Audit limitations
 
 This document is an initial repository-based audit, not a claim that every screen has been visually inspected in a running browser.
