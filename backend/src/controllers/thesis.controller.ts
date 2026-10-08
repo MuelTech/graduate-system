@@ -6,6 +6,7 @@ import { FinalAdviserReviewService } from '../services/final-adviser-review.serv
 import { OralEvaluationService } from '../services/oral-evaluation.service';
 import { DefenseWorkspaceService } from '../services/defense-workspace.service';
 import { DefenseApplicationDocumentHistoryService } from '../services/defense-document-history.service';
+import { PanelistDashboardService } from '../services/panelist-dashboard.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
@@ -51,6 +52,7 @@ export class ThesisController {
   private oralEvaluation = new OralEvaluationService();
   private defenseWorkspace = new DefenseWorkspaceService();
   private defenseDocumentHistory = new DefenseApplicationDocumentHistoryService();
+  private panelistDashboard = new PanelistDashboardService();
 
   getPendingDefenses = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -553,6 +555,17 @@ export class ThesisController {
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  };
+
+  // UIUX-3A: authenticated panelist dashboard aggregate read model (read-only).
+  getPanelistDashboard = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) throw new Error('Unauthorized');
+      const result = await this.panelistDashboard.getDashboard(req.user.userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
     }
   };
 

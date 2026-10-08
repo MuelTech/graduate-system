@@ -370,6 +370,14 @@ router.get(
   thesisController.getPanelistAssignments,
 );
 
+// PANELIST: task-oriented dashboard aggregate read model (UIUX-3A, read-only)
+router.get(
+  "/defense/panelist/dashboard",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getPanelistDashboard,
+);
+
 // PANELIST: legacy score → own DRAFT only (never FINALIZED)
 router.post(
   "/defense/:scheduleId/score",

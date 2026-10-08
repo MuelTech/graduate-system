@@ -1,127 +1,316 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { apiClientRequest } from "@/lib/api.client";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarClock,
-  MapPin,
+  ChevronRight,
+  CircleAlert,
+  CirclePlay,
+  ClipboardList,
   Clock,
-  ArrowRight,
-  ClipboardSignature,
   FileSignature,
-  UserCheck,
-  Activity,
+  FileText,
+  Gavel,
+  Inbox,
+  MapPin,
+  NotebookPen,
+  PenLine,
   RefreshCw,
+  UserCheck,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
 import {
-  PanelistAssignmentData as AssignmentData,
-  PanelistEvaluationStatus,
-} from "@/types";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  panelistAdviserRequestsQueryKey,
-  resolvePanelistRequestUiState,
-  type PanelistAdviserRequestDto,
-} from "@/lib/panelist-adviser-requests";
+  MAX_VISIBLE_NOTIFICATIONS,
+  MAX_VISIBLE_OTHER_UPCOMING,
+  MAX_VISIBLE_TASKS,
+  MAX_VISIBLE_WAITING,
+  formatWallDate,
+  formatWallTime,
+  panelistDashboardQueryKey,
+  type ActiveDefenseItem,
+  type PanelistAttentionCategory,
+  type PanelistAttentionTask,
+  type PanelistDashboard,
+  type PanelistNotification,
+  type UpcomingDefenseItem,
+  type WaitingItem,
+} from "@/lib/panelist-dashboard";
 
-const NUMERICAL_DEFENSES = new Set(["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]);
+const CATEGORY_ICON: Record<PanelistAttentionCategory, typeof ClipboardList> = {
+  EVALUATION: PenLine,
+  CHAIRMAN_CONCLUSION: Gavel,
+  RAPPORTEUR_FINALIZE: NotebookPen,
+  TITLE_START: CirclePlay,
+  RAP_SIGNATURE: FileSignature,
+  ADVISER_REQUEST: UserCheck,
+  ADVISER_MANUSCRIPT_REVIEW: FileText,
+};
 
-function evaluationStatusLabel(status: PanelistEvaluationStatus | undefined) {
-  switch (status) {
-    case "NOT_STARTED":
-      return "Not started";
-    case "DRAFT":
-      return "Draft saved";
-    case "FINALIZED":
-      return "Finalized";
-    default:
-      return "—";
-  }
+/* ---------------------------------------------------------------- surfaces */
+
+function SectionCard({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-base font-semibold text-(--earist-secondary)">
+              {title}
+            </h2>
+            {description ? (
+              <p className="text-xs text-(--earist-body-text)">{description}</p>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
 }
 
-function defenseTypeLabel(defenseType: string) {
-  switch (defenseType) {
-    case "TITLE_DEFENSE":
-      return "Title Defense";
-    case "PROPOSAL_DEFENSE":
-      return "Proposal Defense";
-    case "FINAL_DEFENSE":
-      return "Final Defense";
-    default:
-      return defenseType.replace(/_/g, " ");
-  }
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-6 text-center">
+      <Inbox
+        className="h-6 w-6 text-(--earist-body-text)/40"
+        aria-hidden="true"
+      />
+      <p className="text-sm text-(--earist-body-text)">{message}</p>
+    </div>
+  );
 }
 
-function sessionStatusLabel(sessionStatus: string | undefined) {
-  switch (sessionStatus) {
-    case "SCHEDULED":
-      return "Scheduled";
-    case "IN_PROGRESS":
-      return "In progress";
-    case "AWAITING_CONCLUSION":
-      return "Awaiting conclusion";
-    case "CONCLUDED":
-      return "Concluded";
-    case "CANCELLED":
-      return "Cancelled";
-    default:
-      return sessionStatus ?? "—";
-  }
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+      <Skeleton className="h-48 w-full rounded-xl" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+      <Skeleton className="h-56 w-full rounded-xl" />
+    </div>
+  );
 }
+
+function LoadError({
+  label,
+  onRetry,
+  retrying,
+  compact = false,
+}: {
+  label: string;
+  onRetry: () => void;
+  retrying?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-3 text-center",
+        compact ? "py-6" : "py-12",
+      )}
+    >
+      <CircleAlert
+        className="h-8 w-8 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">{label}</p>
+        <p className="text-sm text-(--earist-body-text)">
+          Something went wrong while loading this section. Please try again.
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        disabled={retrying}
+      >
+        <RefreshCw
+          className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+          aria-hidden="true"
+        />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- rows */
+
+function TaskRow({ task }: { task: PanelistAttentionTask }) {
+  const Icon = CATEGORY_ICON[task.category] ?? ClipboardList;
+  return (
+    <li className="flex flex-col gap-3 rounded-lg bg-(--earist-surface-gray) p-3 sm:flex-row sm:items-center">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-(--earist-secondary)">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-sm font-medium text-(--earist-primary)">
+          {task.title}
+        </p>
+        <p className="text-xs text-(--earist-body-text)">
+          {task.studentName ?? "Academic record"}
+          {task.stage ? ` · ${task.stage}` : ""}
+          {task.responsibility ? ` · ${task.responsibility}` : ""}
+        </p>
+        <p className="text-xs text-(--earist-body-text)">
+          {task.statusText}
+          {task.date ? ` · ${formatWallDate(task.date)}` : ""}
+        </p>
+      </div>
+      <Link
+        href={task.href}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "shrink-0 justify-between",
+        )}
+      >
+        {task.actionLabel}
+        <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
+      </Link>
+    </li>
+  );
+}
+
+function ActiveDefenseRow({ item }: { item: ActiveDefenseItem }) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-(--earist-primary)">
+            {item.studentName}
+          </span>
+          <span className="block text-xs text-(--earist-body-text)">
+            {item.stageLabel} · Your role: {item.roleLabel}
+            {item.programName ? ` · ${item.programName}` : ""}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <Badge className="bg-amber-100 text-amber-800">
+            {item.sessionStatusLabel}
+          </Badge>
+          <ChevronRight
+            className="h-4 w-4 text-(--earist-body-text)"
+            aria-hidden="true"
+          />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function UpcomingDefenseSummary({ item }: { item: UpcomingDefenseItem }) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-(--earist-primary)">
+            {item.studentName}
+          </span>
+          <span className="block text-xs text-(--earist-body-text)">
+            {item.stageLabel} · {item.roleLabel}
+          </span>
+        </span>
+        <span className="shrink-0 text-right text-xs text-(--earist-body-text)">
+          {formatWallDate(item.defenseDate)} · {formatWallTime(item.defenseTime)}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function WaitingRow({ item }: { item: WaitingItem }) {
+  const body = (
+    <>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">
+          {item.studentName ?? item.recordLabel}
+        </span>
+        <span className="block text-xs text-(--earist-body-text)">
+          {item.recordLabel} · {item.requirement}
+        </span>
+        <span className="block text-xs text-(--earist-body-text)">
+          {item.statusText} · Responsible: {item.responsibleRole}
+          {item.date ? ` · ${formatWallDate(item.date)}` : ""}
+        </span>
+      </span>
+    </>
+  );
+  if (!item.href) {
+    return (
+      <li className="rounded-lg bg-(--earist-surface-gray) p-3">{body}</li>
+    );
+  }
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className="flex items-center justify-between gap-2 rounded-lg bg-(--earist-surface-gray) p-3 transition-colors hover:bg-(--earist-surface-light-red) focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+      >
+        {body}
+        <ChevronRight
+          className="h-4 w-4 shrink-0 text-(--earist-body-text)"
+          aria-hidden="true"
+        />
+      </Link>
+    </li>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
 
 export default function PanelistDashboard() {
-  const { data: session } = useSession();
-  const user = session?.user;
-  const queryClient = useQueryClient();
+  const [showAllTasks, setShowAllTasks] = useState(false);
 
   const {
-    data: assignments = [],
-    isLoading: assignmentsLoading,
-    isError: assignmentsError,
-    refetch: refetchAssignments,
-  } = useQuery({
-    queryKey: ["panelistAssignments"],
-    queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/panelist/assignments");
-      return Array.isArray(res) ? (res as AssignmentData[]) : [];
-    },
-    refetchInterval: 30_000,
-  });
-
-  const { data: profile } = useQuery({
-    queryKey: ["panelistProfile"],
-    queryFn: async () => await apiClientRequest("/panelists/me"),
-  });
-
-  const {
-    data: pendingRap = [],
-    isLoading: rapLoading,
-    isError: rapError,
-  } = useQuery({
-    queryKey: ["pendingRapReports"],
-    queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/rap-reports/pending");
-      return Array.isArray(res) ? res : [];
-    },
-    refetchInterval: 30_000,
-  });
-
-  const {
-    data: adviserRequests = [],
-    isLoading: adviserLoading,
-    isError: adviserError,
-  } = useQuery({
-    queryKey: panelistAdviserRequestsQueryKey,
-    queryFn: async () => {
-      const res = await apiClientRequest("/thesis/adviser/requests/mine");
-      return Array.isArray(res)
-        ? (res as PanelistAdviserRequestDto[])
-        : [];
-    },
+    data,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = useQuery<PanelistDashboard>({
+    queryKey: panelistDashboardQueryKey,
+    queryFn: () =>
+      apiClientRequest(
+        "/thesis/defense/panelist/dashboard",
+      ) as Promise<PanelistDashboard>,
     refetchInterval: 30_000,
   });
 
@@ -129,526 +318,331 @@ export default function PanelistDashboard() {
     data: notifications = [],
     isLoading: notificationsLoading,
     isError: notificationsError,
-  } = useQuery({
+    isFetching: notificationsFetching,
+    refetch: refetchNotifications,
+  } = useQuery<PanelistNotification[]>({
     queryKey: ["notifications"],
     queryFn: async () => {
       const res = await apiClientRequest("/notifications");
-      return Array.isArray(res) ? res : [];
+      return Array.isArray(res) ? (res as PanelistNotification[]) : [];
     },
     refetchInterval: 30_000,
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: async (isAvailable: boolean) => {
-      return await apiClientRequest("/panelists/me/availability", {
-        method: "PATCH",
-        body: JSON.stringify({ isAvailable }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["panelistProfile"] });
-    },
-  });
+  const refreshing = isFetching || notificationsFetching;
 
-  // ── Derived summary (no parallel task state machine) ──────────────
-  const upcoming = assignments.filter(
-    (a) => a.schedule?.sessionStatus === "SCHEDULED",
-  );
-  const active = assignments.filter(
-    (a) => a.schedule?.sessionStatus === "IN_PROGRESS",
-  );
+  const refresh = () => {
+    void refetch();
+    void refetchNotifications();
+  };
 
-  const evaluationsToComplete = assignments.filter((a) => {
-    const st = a.schedule?.sessionStatus;
-    const isNumerical = NUMERICAL_DEFENSES.has(String(a.schedule?.defenseType));
-    const evalStatus = a.evaluationStatus;
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (isError || !data) {
     return (
-      isNumerical &&
-      (st === "SCHEDULED" || st === "IN_PROGRESS") &&
-      (evalStatus === "NOT_STARTED" || evalStatus === "DRAFT")
+      <div className="space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Overview of your assigned defenses and academic responsibilities."
+        />
+        <Card>
+          <CardContent>
+            <LoadError
+              label="Unable to load the dashboard"
+              onRetry={refresh}
+              retrying={refreshing}
+            />
+          </CardContent>
+        </Card>
+      </div>
     );
-  });
+  }
 
-  const pendingRapCount = Array.isArray(pendingRap) ? pendingRap.length : 0;
+  const { kpis, needsAttention, activeDefenses, upcomingDefenses, waitingOnOthers } =
+    data;
+  const nextDefense = upcomingDefenses[0] ?? null;
+  const otherUpcoming = upcomingDefenses.slice(1, 1 + MAX_VISIBLE_OTHER_UPCOMING);
+  const visibleTasks = showAllTasks
+    ? needsAttention
+    : needsAttention.slice(0, MAX_VISIBLE_TASKS);
+  const hiddenTaskCount = needsAttention.length - visibleTasks.length;
+  const recentNotifications = notifications.slice(0, MAX_VISIBLE_NOTIFICATIONS);
+  const visibleWaiting = waitingOnOthers.slice(0, MAX_VISIBLE_WAITING);
 
-  const pendingAdviserCount = adviserRequests.filter(
-    (r) => resolvePanelistRequestUiState(r) === "ACTIONABLE",
-  ).length;
-
-  const recentNotifications = Array.isArray(notifications)
-    ? notifications.slice(0, 5)
-    : [];
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return "—";
-    return new Date(timeString).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+  const kpiCards = [
+    {
+      label: "Upcoming Defenses",
+      value: kpis.upcomingDefenses,
+      supporting: "Future scheduled sessions assigned to you",
+      icon: CalendarClock,
+    },
+    {
+      label: "Pending Tasks",
+      value: kpis.pendingTasks,
+      supporting: "Actions currently requiring you",
+      icon: ClipboardList,
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Welcome + availability */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h2
-            suppressHydrationWarning
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
-            {getGreeting()},{" "}
-            {(user as { firstName?: string })?.firstName || "Panelist"}
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Actionable summary of your defense assignments, evaluations, and
-            requests.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {profile && (
-            <div className="flex items-center gap-3 rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3 shadow-sm">
-              <span className="text-sm font-semibold text-(--earist-secondary)">
-                Available as Thesis/Dissertation Adviser
-              </span>
-              <button
-                type="button"
-                aria-label="Toggle adviser availability"
-                onClick={() =>
-                  toggleMutation.mutate(!profile.isAvailableAsAdviser)
-                }
-                disabled={toggleMutation.isPending}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-(--earist-primary) focus:ring-offset-2 ${
-                  profile.isAvailableAsAdviser ? "bg-green-500" : "bg-gray-300"
-                } ${toggleMutation.isPending ? "cursor-not-allowed opacity-50" : ""}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    profile.isAvailableAsAdviser
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-              <span
-                className={`text-xs font-bold ${profile.isAvailableAsAdviser ? "text-green-600" : "text-gray-500"}`}
-              >
-                {profile.isAvailableAsAdviser ? "Available" : "Not available"}
-              </span>
-            </div>
-          )}
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your assigned defenses and academic responsibilities."
+        actions={
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              void refetchAssignments();
-              queryClient.invalidateQueries({ queryKey: ["pendingRapReports"] });
-              queryClient.invalidateQueries({
-                queryKey: panelistAdviserRequestsQueryKey,
-              });
-              queryClient.invalidateQueries({ queryKey: ["notifications"] });
-            }}
+            onClick={refresh}
+            disabled={refreshing}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
+            <RefreshCw
+              className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")}
+              aria-hidden="true"
+            />
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Summary metrics */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-(--earist-body-text)">Upcoming Defenses</p>
-            {assignmentsLoading ? (
-              <p className="text-lg font-bold text-(--earist-body-text)">…</p>
-            ) : assignmentsError ? (
-              <p className="text-sm text-red-600">Failed to load</p>
-            ) : (
-              <p className="text-2xl font-bold text-(--earist-primary)">
-                {upcoming.length}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-(--earist-body-text)">
-              Evaluations to Complete
-            </p>
-            {assignmentsLoading ? (
-              <p className="text-lg font-bold text-(--earist-body-text)">…</p>
-            ) : assignmentsError ? (
-              <p className="text-sm text-red-600">Failed to load</p>
-            ) : (
-              <p className="text-2xl font-bold text-amber-600">
-                {evaluationsToComplete.length}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-(--earist-body-text)">
-              RAP Signatures Pending
-            </p>
-            {rapLoading ? (
-              <p className="text-lg font-bold text-(--earist-body-text)">…</p>
-            ) : rapError ? (
-              <p className="text-sm text-red-600">Failed to load</p>
-            ) : (
-              <p className="text-2xl font-bold text-purple-700">
-                {pendingRapCount}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-(--earist-body-text)">
-              Adviser Requests Pending
-            </p>
-            {adviserLoading ? (
-              <p className="text-lg font-bold text-(--earist-body-text)">…</p>
-            ) : adviserError ? (
-              <p className="text-sm text-red-600">Failed to load</p>
-            ) : (
-              <p className="text-2xl font-bold text-emerald-700">
-                {pendingAdviserCount}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Evaluations to Complete */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-(--earist-secondary)">
-            Evaluations to Complete
-          </h3>
-          {evaluationsToComplete.length > 0 && (
-            <Link
-              href={`/panelist/defense-workspace/${evaluationsToComplete[0].schedule.id}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Open next
-            </Link>
-          )}
-        </div>
-        {assignmentsLoading ? (
-          <p className="animate-pulse text-sm text-gray-500">Loading…</p>
-        ) : assignmentsError ? (
-          <p className="text-sm text-red-600">
-            Unable to load evaluation tasks.
-          </p>
-        ) : evaluationsToComplete.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-(--earist-body-text)">
-              No evaluations awaiting completion.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {evaluationsToComplete.map((a) => (
-              <Card key={`eval-${a.id}`}>
-                <CardContent className="space-y-2 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge className="bg-amber-100 text-amber-800">
-                      {evaluationStatusLabel(a.evaluationStatus)}
-                    </Badge>
-                    <Badge variant="outline">{a.role}</Badge>
-                  </div>
-                  <p className="text-sm font-semibold">
-                    {a.schedule?.thesis?.student?.user?.firstName}{" "}
-                    {a.schedule?.thesis?.student?.user?.lastName}
+      {/* 1. Summary KPIs */}
+      <section aria-label="Summary metrics">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {kpiCards.map((kpi) => (
+            <Card key={kpi.label}>
+              <CardContent className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-semibold text-(--earist-body-text)">
+                    {kpi.label}
+                  </p>
+                  <p className="text-3xl font-bold text-(--earist-primary)">
+                    {kpi.value}
                   </p>
                   <p className="text-xs text-(--earist-body-text)">
-                    {defenseTypeLabel(String(a.schedule?.defenseType))} ·{" "}
-                    {formatDate(String(a.schedule?.defenseDate))}
+                    {kpi.supporting}
                   </p>
-                  <Link
-                    href={`/panelist/defense-workspace/${a.schedule.id}`}
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                      className: "w-full",
-                    })}
-                  >
-                    Open Defense Workspace
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </div>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-(--earist-surface-gray) text-(--earist-secondary)">
+                  <kpi.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
-      {/* Defense assignments */}
-      <section className="space-y-3">
-        <h3 className="text-lg font-bold text-(--earist-secondary)">
-          Defense Assignments
-          {active.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-(--earist-body-text)">
-              {active.length} active
-            </span>
-          )}
-        </h3>
-        {assignmentsLoading ? (
-          <p className="animate-pulse text-sm text-gray-500">
-            Loading assignments...
-          </p>
-        ) : assignmentsError ? (
-          <p className="text-sm text-red-600">
-            Unable to load defense assignments.
-          </p>
-        ) : upcoming.length === 0 && active.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <ClipboardSignature className="mb-4 h-12 w-12 text-gray-300" />
-              <p className="text-gray-500">
-                No upcoming defenses scheduled.
-              </p>
-            </CardContent>
-          </Card>
+      {/* 2. Needs Your Attention */}
+      <SectionCard
+        title="Needs Your Attention"
+        description="Your actionable academic responsibilities."
+        action={
+          needsAttention.length > 0 ? (
+            <Badge className="bg-(--earist-primary) text-white">
+              {needsAttention.length}{" "}
+              {needsAttention.length === 1 ? "task" : "tasks"}
+            </Badge>
+          ) : null
+        }
+      >
+        {needsAttention.length === 0 ? (
+          <EmptyState message="Nothing currently requires your action." />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...upcoming, ...active].map((assignment) => {
-              const schedule = assignment.schedule;
-              const thesis = schedule?.thesis;
-              const student = thesis?.student?.user;
-              if (!schedule || !thesis) return null;
-
-              return (
-                <Card
-                  key={assignment.id}
-                  className="overflow-hidden transition-all hover:shadow-md"
-                >
-                  <div className="h-1.5 w-full bg-(--earist-primary)"></div>
-                  <CardContent className="space-y-3 p-5">
-                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                      <Badge className="bg-purple-100 text-purple-700">
-                        {defenseTypeLabel(schedule.defenseType)}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        Your role: {assignment.role}
-                      </Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">
-                        {student?.firstName} {student?.lastName}
-                      </h4>
-                      <p className="text-xs text-gray-500">
-                        {thesis.student?.program?.programName ||
-                          thesis.student?.programId ||
-                          "Program N/A"}
-                      </p>
-                    </div>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <CalendarClock className="h-4 w-4 text-gray-400" />
-                        <span>{formatDate(schedule.defenseDate)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        <span>{formatTime(schedule.defenseTime)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="truncate">
-                          {schedule.venueOrLink || "—"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={
-                            schedule.sessionStatus === "IN_PROGRESS"
-                              ? "border-amber-500 text-amber-700"
-                              : ""
-                          }
-                        >
-                          {sessionStatusLabel(schedule.sessionStatus)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Link
-                      href={`/panelist/defense-workspace/${schedule.id}`}
-                      className={buttonVariants({
-                        className:
-                          "w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90",
-                      })}
-                    >
-                      Open Defense Workspace
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="space-y-3">
+            <ul className="space-y-2">
+              {visibleTasks.map((task) => (
+                <TaskRow key={task.id} task={task} />
+              ))}
+            </ul>
+            {needsAttention.length > MAX_VISIBLE_TASKS ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllTasks((v) => !v)}
+                aria-expanded={showAllTasks}
+              >
+                {showAllTasks
+                  ? "Show fewer tasks"
+                  : `Show ${hiddenTaskCount} more ${
+                      hiddenTaskCount === 1 ? "task" : "tasks"
+                    }`}
+              </Button>
+            ) : null}
           </div>
         )}
-      </section>
+      </SectionCard>
 
-      {/* RAP + Adviser + Activity */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <FileSignature className="h-4 w-4 text-(--earist-primary)" />
-              RAP Signatures Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {rapLoading ? (
-              <p className="text-(--earist-body-text)">Loading…</p>
-            ) : rapError ? (
-              <p className="text-red-600">Unable to load pending signatures.</p>
-            ) : pendingRapCount === 0 ? (
-              <p className="text-(--earist-body-text)">
-                No pending RAP signatures.
+      {/* 3. Active Defense (conditional) */}
+      {activeDefenses.length > 0 ? (
+        <SectionCard
+          title="Active Defense"
+          description="Sessions currently in progress."
+        >
+          <ul className="space-y-2">
+            {activeDefenses.map((item) => (
+              <ActiveDefenseRow key={item.scheduleId} item={item} />
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
+
+      {/* 4. Upcoming Defense Sessions */}
+      <SectionCard
+        title="Upcoming Defense Sessions"
+        description="Your next scheduled assigned defenses."
+        action={
+          <Link
+            href="/panelist/defenses"
+            className="text-xs font-medium text-(--earist-secondary) hover:underline"
+          >
+            View All Defenses
+          </Link>
+        }
+      >
+        {!nextDefense ? (
+          <EmptyState message="No upcoming defenses are scheduled." />
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-(--earist-border-gray) bg-white p-4">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <Badge className="bg-(--earist-primary) text-white">
+                  Next Defense
+                </Badge>
+                <Badge className="bg-amber-100 text-amber-800">
+                  {nextDefense.sessionStatusLabel}
+                </Badge>
+              </div>
+              <p className="text-base font-semibold text-foreground">
+                {nextDefense.studentName}
+                {nextDefense.studentNumber
+                  ? ` · ${nextDefense.studentNumber}`
+                  : ""}
               </p>
-            ) : (
-              <>
-                <p>
-                  <strong>{pendingRapCount}</strong> signature slot
-                  {pendingRapCount === 1 ? "" : "s"} awaiting you.
+              <p className="text-sm text-(--earist-body-text)">
+                {nextDefense.stageLabel} · Your role: {nextDefense.roleLabel}
+                {nextDefense.programName ? ` · ${nextDefense.programName}` : ""}
+              </p>
+              <div className="mt-3 grid gap-1 text-xs text-(--earist-body-text) sm:grid-cols-3">
+                <p className="flex items-center gap-1.5">
+                  <CalendarClock
+                    className="h-3.5 w-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {formatWallDate(nextDefense.defenseDate)}
                 </p>
-                <ul className="space-y-1 text-xs text-(--earist-body-text)">
-                  {pendingRap.slice(0, 3).map((slot: Record<string, unknown>) => (
-                    <li key={String(slot.id ?? "")}>
-                      {String(
-                        (slot.rapReport as { defenseType?: string } | undefined)
-                          ?.defenseType ?? "RAP",
-                      ).replace(/_/g, " ")}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <Link
-              href="/panelist/signatures"
-              className={buttonVariants({
-                variant: "outline",
-                size: "sm",
-                className: "w-full",
-              })}
-            >
-              Open Signatures
-            </Link>
-          </CardContent>
-        </Card>
+                <p className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {formatWallTime(nextDefense.defenseTime)}
+                </p>
+                <p className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {nextDefense.venueOrLink || "To be announced"}
+                  </span>
+                </p>
+              </div>
+              <Link
+                href={nextDefense.href}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "mt-3 w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto",
+                )}
+              >
+                Open Defense Workspace
+                <ChevronRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <UserCheck className="h-4 w-4 text-(--earist-primary)" />
-              Adviser Requests Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {adviserLoading ? (
-              <p className="text-(--earist-body-text)">Loading…</p>
-            ) : adviserError ? (
-              <p className="text-red-600">Unable to load Adviser Requests.</p>
-            ) : pendingAdviserCount === 0 ? (
-              <p className="text-(--earist-body-text)">
-                No Adviser Requests awaiting your response.
-              </p>
-            ) : (
-              <p>
-                <strong>{pendingAdviserCount}</strong> request
-                {pendingAdviserCount === 1 ? "" : "s"} awaiting your response.
-              </p>
-            )}
-            <p className="text-[11px] text-(--earist-body-text)">
-              CONFORME is not an active Adviser assignment; Dean approval is
-              still required.
-            </p>
-            <Link
-              href="/panelist/adviser-requests"
-              className={buttonVariants({
-                variant: "outline",
-                size: "sm",
-                className: "w-full",
-              })}
-            >
-              Open Adviser Requests
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Activity className="h-4 w-4 text-(--earist-primary)" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {notificationsLoading ? (
-              <p className="text-(--earist-body-text)">Loading…</p>
-            ) : notificationsError ? (
-              <p className="text-red-600">Unable to load recent activity.</p>
-            ) : recentNotifications.length === 0 ? (
-              <p className="text-(--earist-body-text)">No recent activity.</p>
-            ) : (
+            {otherUpcoming.length > 0 ? (
               <ul className="space-y-2">
-                {recentNotifications.map((n: Record<string, unknown>, i: number) => (
-                  <li
-                    key={String(n.id ?? i)}
-                    className="rounded border border-(--earist-border-gray) p-2"
-                  >
-                    <p className="text-xs font-semibold">
-                      {String(n.title ?? n.message ?? "Notification")}
-                    </p>
-                    {n.message && n.title ? (
-                      <p className="text-[11px] text-(--earist-body-text)">
-                        {String(n.message)}
-                      </p>
-                    ) : null}
-                    <p className="text-[10px] text-(--earist-body-text)">
-                      {n.createdAt
-                        ? new Date(String(n.createdAt)).toLocaleString()
-                        : ""}
-                    </p>
-                  </li>
+                {otherUpcoming.map((item) => (
+                  <UpcomingDefenseSummary key={item.scheduleId} item={item} />
                 ))}
               </ul>
-            )}
-            <Link
-              href="/panelist/notifications"
-              className={buttonVariants({
-                variant: "outline",
-                size: "sm",
-                className: "w-full",
-              })}
-            >
-              View all notifications
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+            ) : null}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* 5. Waiting on Others */}
+      <SectionCard
+        title="Waiting on Others"
+        description="Records that cannot progress until another authorized actor acts."
+      >
+        {visibleWaiting.length === 0 ? (
+          <EmptyState message="Nothing is currently waiting on another actor." />
+        ) : (
+          <ul className="space-y-2">
+            {visibleWaiting.map((item) => (
+              <WaitingRow key={item.id} item={item} />
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      {/* 6. Recent Notifications */}
+      <SectionCard
+        title="Recent Notifications"
+        description="Your latest notification records."
+        action={
+          <Link
+            href="/panelist/notifications"
+            className="text-xs font-medium text-(--earist-secondary) hover:underline"
+          >
+            View all notifications
+          </Link>
+        }
+      >
+        {notificationsLoading ? (
+          <div className="space-y-2" aria-busy="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : notificationsError ? (
+          <LoadError
+            label="Unable to load notifications"
+            onRetry={() => void refetchNotifications()}
+            retrying={notificationsFetching}
+            compact
+          />
+        ) : recentNotifications.length === 0 ? (
+          <EmptyState message="No notifications to show." />
+        ) : (
+          <ul className="space-y-2">
+            {recentNotifications.map((n) => (
+              <li
+                key={n.id}
+                className="rounded-lg border border-(--earist-border-gray) p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">
+                    {n.isRead === false ? (
+                      <span
+                        className="mr-2 inline-block h-2 w-2 rounded-full bg-(--earist-primary) align-middle"
+                        aria-label="Unread"
+                      />
+                    ) : null}
+                    {n.title}
+                  </p>
+                  <span className="shrink-0 text-[11px] text-(--earist-body-text)">
+                    {n.createdAt ? formatWallDate(n.createdAt.slice(0, 10)) : ""}
+                  </span>
+                </div>
+                {n.message ? (
+                  <p className="mt-1 text-xs text-(--earist-body-text)">
+                    {n.message}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
     </div>
   );
 }
