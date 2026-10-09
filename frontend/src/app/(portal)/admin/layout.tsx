@@ -49,7 +49,7 @@ const navItems = [
       { href: "/admin/exam/slots", label: "Exam Schedules" },
       { href: "/admin/exam/applications", label: "Exam Records" },
       { href: "/admin/exam/questions", label: "Exam Questions" },
-      { href: "/admin/exam/cor", label: "COR Validation" },
+      { href: "/admin/exam/cor", label: "COR Verification" },
       { href: "/admin/exam/waiver", label: "Waiver Validation" },
     ],
   },
