@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: ten formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth).**
+**Current state: eleven formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth; UIUX-2I Admin COR Verification is eleventh).**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1435,6 +1435,18 @@ Each must still be broken into bounded implementation packages.
 - **Verification provenance:** independent source review verified the final remote SHA, exact FIX-1 scope, Closed wording, Edit-only table action, future-only Close/Reopen controls, confirmation copy, and availability precedence. Agent-reported frontend TypeScript + scoped ESLint **PASS**; build compilation/typecheck completed but overall production build **FAIL** remains the known unrelated `/login` `useSearchParams()`/Suspense prerender issue. No frontend unit harness; browser/manual regression was **NOT EXECUTED** in the agent environment.
 - **Reuse with care:** task-language terminology and secondary mutation placement are reusable list-management precedents; Entrance Exam wall-clock persistence, capacity rules, applicant-booking behavior, and `isActive` meanings are domain-specific.
 
+
+## Admin COR Verification — UIUX-2I
+
+- **Accepted final implementation:** main refinement `8c4401b8d36e763d2f62eef4e84b6844bd726a9e` plus terminology-only FIX-1 `5e88b63ce65551f7a5996b63b7f0aa31671d8498` on `refactor/system-ui-ux`. Project-owner final visual/UI/UX acceptance: **ACCEPTED**, 2026-10-10. The main package changed only the COR page and Admin nav label; FIX-1 changed one Applicant Profile label from **Open COR Validation** to **Open COR Verification** while retaining `/admin/exam/cor`. **This is the eleventh Approved Reference; acceptance does not certify browser/runtime QA.**
+- **Pattern:** document-verification master-detail workspace rather than a generic table. **COR Verification** PageHeader leads into **Pending COR Reviews** on the left and the selected applicant's evidence/confirmation workspace on the right. The person is already enrolled through EARIST/Pinnacle; the page confirms the COR-backed Student information used by this system rather than claiming to academically enroll the person again.
+- **Review hierarchy:** Applicant summary → authenticated **Uploaded COR** / View COR → **Confirm COR Information** with Current Applicant Record versus Confirmed COR Information → **Student Record Details** → collapsed **Extraction Details** → **Reject COR** and **Verify COR & Create Student Record**. Queue loading uses structural Skeletons; errors have Retry; no-pending state is distinct; routine refresh preserves usable data where practical.
+- **Authority presentation:** Match / Different / No existing data / Not extracted are assistive comparison labels only. OCR/parser suggestions never become authority automatically; mismatches do not auto-reject; exact unique Program matching may assist preselection but Admin confirms an existing graduate Program and no Program is created. Student Number is required and Registration Number remains optional under the existing backend contract.
+- **Meaning of “Create Student Record”:** presentation wording deliberately replaces the misleading **Promote to Student** and avoids **Enroll Student**. Current backend source updates the existing User and Student entities in one guarded transaction and creates the authoritative `CorRecord`; it creates no duplicate User/Student, generates no password, and retains the account. Confirmed COR Name, Email, Program, Student Number, and optional Registration Number become authoritative according to the existing transaction.
+- **Rejection/feedback:** Reject uses the shared Dialog with mandatory reason and explains resubmission; canonical backend rejection remains exact-current-PENDING and historical rows are retained. Native `alert()` feedback was removed in favor of inline success/error states because no global Toaster is mounted. Failed verification retains Admin-entered corrections.
+- **Verification provenance:** independent review verified remote final HEAD `5e88b63ce65551f7a5996b63b7f0aa31671d8498`, the exact one-file/one-line FIX-1 diff, COR Verification wording on page/sidebar/Applicant Profile, and unchanged contextual-link route. Coding-agent report for the main package recorded frontend TypeScript + scoped ESLint **PASS** and compilation/typecheck **PASS** before overall build **FAIL** at the known unrelated `/login` `useSearchParams()`/Suspense prerender issue. FIX-1 TypeScript and targeted ESLint also **PASS**; full build was not rerun. Browser/manual runtime QA remained **NOT EXECUTED** in the agent environment.
+- **Reuse with care:** evidence-first master-detail review, explicit provisional-versus-confirmed values, secondary machine-extraction diagnostics, and consequence-aware confirmation copy are reusable. COR-specific identity authority, Applicant→Student system lifecycle, Entrance Exam gate, authenticated COR document access, and parser semantics are domain-specific.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1443,7 +1455,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The ten accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, and UIUX-2H Admin Entrance Exam Schedules) remain independent; the **Panelist Dashboard** is not yet accepted.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The eleven accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, UIUX-2H Admin Entrance Exam Schedules, and UIUX-2I Admin COR Verification) remain independent; the **Panelist Dashboard** is not yet accepted.
 
 ### What is implemented
 
@@ -1493,7 +1505,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Coding-agent report:** frontend TypeScript and targeted ESLint **PASS**; build compilation/typecheck **PASS**, but overall production build **FAIL** at unrelated pre-existing `/login` `useSearchParams()`/Suspense prerendering. No fresh local tests were rerun during this documentation update.
 - **Not executed:** browser QA of legacy index redirects, active state while in workspace, collapsed/mobile sidebar, keyboard/focus, direct workspace deep links, manuscript access, and redirect-loop avoidance.
 - **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
-- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, and independently accepted UIUX-2H Admin Entrance Exam Schedules is the tenth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
+- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, UIUX-2H Admin Entrance Exam Schedules is the tenth, and independently accepted UIUX-2I Admin COR Verification is the eleventh. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 # 11. Audit limitations
 
