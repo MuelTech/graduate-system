@@ -35,6 +35,7 @@ import {
   formatScheduleDate,
   formatScheduleTime,
   hasFormErrors,
+  isPastExamSchedule,
   matchesAvailabilityFilter,
   matchesTemporalFilter,
   paginationWindow,
@@ -56,8 +57,6 @@ import {
   ChevronRight,
   Pencil,
   Plus,
-  Power,
-  PowerOff,
   RefreshCw,
   X,
 } from "lucide-react";
@@ -80,13 +79,13 @@ const AVAILABILITY_OPTIONS: {
   { value: "all", label: "All" },
   { value: "open", label: "Open" },
   { value: "full", label: "Full" },
-  { value: "inactive", label: "Inactive" },
+  { value: "closed", label: "Closed" },
 ];
 
 const AVAILABILITY_BADGE_CLASS: Record<ExamScheduleAvailability, string> = {
   OPEN: "text-(--earist-success)",
   FULL: "text-(--earist-warning)",
-  INACTIVE: "text-(--earist-body-text)/70",
+  CLOSED: "text-(--earist-body-text)/70",
   PAST: "text-(--earist-body-text)/70",
 };
 
@@ -337,7 +336,7 @@ export default function AdminExamSchedulesPage() {
   const [formErrors, setFormErrors] = useState<ExamScheduleFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Activate / deactivate confirmation state.
+  // Booking-state confirmation state (close / reopen for booking).
   const [confirmTarget, setConfirmTarget] = useState<ExamSlot | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
 
@@ -394,6 +393,7 @@ export default function AdminExamSchedulesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["examSlots"] });
       setConfirmTarget(null);
+      closeDialog();
     },
     onError: (error: unknown) => {
       setStatusError(
@@ -434,6 +434,9 @@ export default function AdminExamSchedulesPage() {
 
   const editingBookedCount = editing?.slotsTaken ?? 0;
   const isEditingBooked = editingBookedCount > 0;
+  const isEditingPast =
+    editing !== null &&
+    isPastExamSchedule(editing.examDate, editing.examTime, now);
 
   const programFilterLabel =
     programId === ALL
@@ -739,7 +742,7 @@ export default function AdminExamSchedulesPage() {
                         <AvailabilityBadge availability={slotAvailability} />
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="flex justify-end">
                           <Button
                             variant="outline"
                             size="sm"
@@ -751,39 +754,6 @@ export default function AdminExamSchedulesPage() {
                             />
                             Edit
                           </Button>
-                          {slot.isActive ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-(--earist-body-text)"
-                              onClick={() => {
-                                setStatusError(null);
-                                setConfirmTarget(slot);
-                              }}
-                            >
-                              <PowerOff
-                                className="mr-1.5 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Deactivate
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-(--earist-success)"
-                              onClick={() => {
-                                setStatusError(null);
-                                setConfirmTarget(slot);
-                              }}
-                            >
-                              <Power
-                                className="mr-1.5 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Activate
-                            </Button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -968,7 +938,8 @@ export default function AdminExamSchedulesPage() {
             )}
           </div>
 
-          <DialogFooter>
+          {/* Primary actions */}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={closeDialog}
@@ -989,11 +960,41 @@ export default function AdminExamSchedulesPage() {
                   ? "Save Changes"
                   : "Create Schedule"}
             </Button>
-          </DialogFooter>
+          </div>
+
+          {/*
+            Secondary booking-state management: kept visually separate from the
+            ordinary form submission. Only for an existing future schedule; a
+            past schedule is no longer a meaningful booking target.
+          */}
+          {editing && !isEditingPast && (
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray)/50 p-4">
+              <h3 className="text-sm font-semibold text-(--earist-secondary)">
+                Booking availability
+              </h3>
+              <p className="mt-1 text-xs text-(--earist-body-text)">
+                {editing.isActive
+                  ? "This schedule is open for new applicant bookings. Closing it stops new applicants from selecting it; it does not delete the schedule or affect already-booked applicants."
+                  : "This schedule is closed to new applicant bookings. Reopening it lets new applicants select it again, subject to its remaining capacity."}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                disabled={toggleMutation.isPending}
+                onClick={() => {
+                  setStatusError(null);
+                  setConfirmTarget(editing);
+                }}
+              >
+                {editing.isActive ? "Close for Booking" : "Reopen for Booking"}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Activate / deactivate confirmation */}
+      {/* Booking-state confirmation (close / reopen for booking) */}
       <Dialog
         open={confirmTarget !== null}
         onOpenChange={(open) => {
@@ -1004,13 +1005,13 @@ export default function AdminExamSchedulesPage() {
           <DialogHeader>
             <DialogTitle>
               {confirmTarget && !confirmTarget.isActive
-                ? "Activate schedule?"
-                : "Deactivate schedule?"}
+                ? "Reopen this schedule for booking?"
+                : "Close this schedule for booking?"}
             </DialogTitle>
             <DialogDescription>
               {confirmTarget && !confirmTarget.isActive
-                ? "This schedule will become available for new applicant bookings again."
-                : "This schedule will no longer be available for new applicant bookings. Existing booked applicants will remain assigned."}
+                ? "New applicants will be able to select this schedule again, subject to its remaining capacity."
+                : "New applicants will no longer be able to select this schedule. Existing booked applicants will remain assigned."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1034,10 +1035,12 @@ export default function AdminExamSchedulesPage() {
               className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
             >
               {toggleMutation.isPending
-                ? "Updating…"
+                ? confirmTarget && !confirmTarget.isActive
+                  ? "Reopening…"
+                  : "Closing…"
                 : confirmTarget && !confirmTarget.isActive
-                  ? "Activate"
-                  : "Deactivate"}
+                  ? "Reopen for Booking"
+                  : "Close for Booking"}
             </Button>
           </DialogFooter>
         </DialogContent>

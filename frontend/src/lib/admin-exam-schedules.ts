@@ -155,7 +155,7 @@ export function resolveExamCapacity(
 
 /* ------------------------------------------------------------ availability */
 
-export type ExamScheduleAvailability = "OPEN" | "FULL" | "INACTIVE" | "PAST";
+export type ExamScheduleAvailability = "OPEN" | "FULL" | "CLOSED" | "PAST";
 
 export const EXAM_AVAILABILITY_LABEL: Record<
   ExamScheduleAvailability,
@@ -163,7 +163,7 @@ export const EXAM_AVAILABILITY_LABEL: Record<
 > = {
   OPEN: "Open",
   FULL: "Full",
-  INACTIVE: "Inactive",
+  CLOSED: "Closed",
   PAST: "Past",
 };
 
@@ -181,7 +181,7 @@ export function resolveExamScheduleAvailability(
   now: Date = new Date(),
 ): ExamScheduleAvailability {
   if (isPastExamSchedule(slot.examDate, slot.examTime, now)) return "PAST";
-  if (!slot.isActive) return "INACTIVE";
+  if (!slot.isActive) return "CLOSED";
   return resolveExamCapacity(slot.slotsTaken, slot.maxSlots).isFull
     ? "FULL"
     : "OPEN";
@@ -190,7 +190,7 @@ export function resolveExamScheduleAvailability(
 /* ----------------------------------------------------------------- filters */
 
 export type ExamTemporalFilter = "upcoming" | "past" | "all";
-export type ExamAvailabilityFilter = "all" | "open" | "full" | "inactive";
+export type ExamAvailabilityFilter = "all" | "open" | "full" | "closed";
 
 export function matchesTemporalFilter(
   slot: ScheduleSlotView,
@@ -214,8 +214,8 @@ export function matchesAvailabilityFilter(
       return availability === "OPEN";
     case "full":
       return availability === "FULL";
-    case "inactive":
-      return availability === "INACTIVE";
+    case "closed":
+      return availability === "CLOSED";
     default:
       return true;
   }
