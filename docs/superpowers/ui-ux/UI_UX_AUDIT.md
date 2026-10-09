@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: nine formally designated references (UIUX-4A Student Dashboard is ninth).**
+**Current state: ten formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth).**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1422,6 +1422,19 @@ Each must still be broken into bounded implementation packages.
 - **Known limitations:** latest Comprehensive Exam status may differ from the any-PASSED history gate in `/thesis/journey`; verify multi-attempt cases. Schedule preview is based on session state rather than an independent future-date check. The Dashboard now uses a client query pattern; runtime authentication/error handling remains to be tested. No backend authority, new mutations, or Student sidebar changes. Curriculum remains a placeholder. UIUX-3A FIX-1 and UIUX-3C remain out of scope.
 - **Reuse with care:** prioritize a single truthful next responsibility and conditionally relevant context; do not copy the academic stage, exam policies, or role-specific commands to Admin/Panelist dashboards.
 
+
+## Admin Entrance Exam Schedules — UIUX-2H
+
+- **Accepted final implementation:** `ebde771a976efdcdd4147af576db74a0f4e6df3c` on `refactor/system-ui-ux`, following initial refinement `6cab773dd61f2615c81ce3b13e766d6393d73002`. Project-owner final visual/UI/UX acceptance: **ACCEPTED**, 2026-10-10. The accepted FIX-1 changes only `frontend/src/app/(portal)/admin/exam/slots/page.tsx` and `frontend/src/lib/admin-exam-schedules.ts`; the initial package also changed the Admin sidebar label. **This is the tenth Approved Reference; acceptance does not certify deferred backend scheduling issues or unexecuted browser QA.**
+- **Pattern:** wide Admin schedule-management list with task-oriented terminology: **Exam Schedules** navigation, **Entrance Exam Schedules** PageHeader, **Create Schedule**, compact **Upcoming / Past / All** + Program + Availability filters, and **Program | Schedule | Capacity | Availability | Action**. No KPI cards.
+- **Availability and actions:** one shared wall-clock projection drives Upcoming/Past filtering and presentation. Availability precedence is **Past → Closed → Full → Open**. The table has one dominant **Edit** action; FIX-1 moved the technical `isActive` mutation into Edit as **Close for Booking / Reopen for Booking**, future schedules only, with explicit confirmation and no deletion semantics. Closing only prevents new selection; current source shows the PATCH updates `isActive` without deleting/reassigning booked applications.
+- **Create/Edit behavior:** shared Dialog; Program/Exam Date/Start Time/Capacity fields; validation and pending labels; inline errors instead of native alerts. When bookings exist, Program/Date/Time remain locked and capacity cannot be reduced below booked count on the frontend. Create mode does not expose booking-state controls.
+- **Wall-clock correction:** DATE/TIME values are presented as wall-clock schedule fields rather than ordinary browser-local instants. The UIUX-2H helper replaces the prior local Date/toISOString round trip with UTC-component extraction/serialization so an Admin-entered date/time round-trips without browser-offset shifting. Existing legacy rows were not migrated.
+- **Loading/list behavior:** structural table Skeleton, Retry on initial slot-load failure, programs failure does not erase otherwise usable slot data, background refresh retains current rows, and true-empty versus filtered-no-match states are distinct. Client-side filtering/pagination over the existing full `GET /exam/slots` payload remains unchanged architecturally.
+- **Deferred functional defects:** applicant `getFutureActiveSlots` still compares the date-only `examDate` with `new Date()`, which can exclude valid **same-day future** schedules after midnight. Slot update also lacks an authoritative backend `maxSlots >= slotsTaken` guard. These are tracked functional corrections, **not accepted UX semantics**, and no backend code changed under UIUX-2H.
+- **Verification provenance:** independent source review verified the final remote SHA, exact FIX-1 scope, Closed wording, Edit-only table action, future-only Close/Reopen controls, confirmation copy, and availability precedence. Agent-reported frontend TypeScript + scoped ESLint **PASS**; build compilation/typecheck completed but overall production build **FAIL** remains the known unrelated `/login` `useSearchParams()`/Suspense prerender issue. No frontend unit harness; browser/manual regression was **NOT EXECUTED** in the agent environment.
+- **Reuse with care:** task-language terminology and secondary mutation placement are reusable list-management precedents; Entrance Exam wall-clock persistence, capacity rules, applicant-booking behavior, and `isActive` meanings are domain-specific.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1430,7 +1443,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The nine accepted references (including UIUX-3B My Defenses and UIUX-4A Student Dashboard) remain independent; the **Panelist Dashboard** is not yet accepted.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The ten accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, and UIUX-2H Admin Entrance Exam Schedules) remain independent; the **Panelist Dashboard** is not yet accepted.
 
 ### What is implemented
 
@@ -1480,7 +1493,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Coding-agent report:** frontend TypeScript and targeted ESLint **PASS**; build compilation/typecheck **PASS**, but overall production build **FAIL** at unrelated pre-existing `/login` `useSearchParams()`/Suspense prerendering. No fresh local tests were rerun during this documentation update.
 - **Not executed:** browser QA of legacy index redirects, active state while in workspace, collapsed/mobile sidebar, keyboard/focus, direct workspace deep links, manuscript access, and redirect-loop avoidance.
 - **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
-- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth and independently accepted UIUX-4A Student Dashboard is the ninth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
+- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, and independently accepted UIUX-2H Admin Entrance Exam Schedules is the tenth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 # 11. Audit limitations
 
