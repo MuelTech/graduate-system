@@ -540,7 +540,7 @@ function CorSection({ applicant }: { applicant: AdminApplicantDetail }) {
           COR / Enrollment
         </h3>
         {showLink && (
-          <ModuleLink href="/admin/exam/cor" label="Open COR Validation" />
+          <ModuleLink href="/admin/exam/cor" label="Open COR Verification" />
         )}
       </div>
 
