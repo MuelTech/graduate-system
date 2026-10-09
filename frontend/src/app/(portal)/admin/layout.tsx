@@ -46,7 +46,7 @@ const navItems = [
     label: "Exam Management",
     icon: FileCheck2,
     children: [
-      { href: "/admin/exam/slots", label: "Exam Slots" },
+      { href: "/admin/exam/slots", label: "Exam Schedules" },
       { href: "/admin/exam/applications", label: "Exam Records" },
       { href: "/admin/exam/questions", label: "Exam Questions" },
       { href: "/admin/exam/cor", label: "COR Validation" },

@@ -1,385 +1,788 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Plus, CalendarClock, Edit, Trash2, X, Users } from "lucide-react";
-import { apiClientRequest } from "@/lib/api.client";
-import { ExamSlot as Slot, Program } from "@/types";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ExamSlot, Program } from "@/types";
+import {
+  EXAM_AVAILABILITY_LABEL,
+  formatScheduleDate,
+  formatScheduleTime,
+  hasFormErrors,
+  matchesAvailabilityFilter,
+  matchesTemporalFilter,
+  paginationWindow,
+  resolveExamCapacity,
+  resolveExamScheduleAvailability,
+  toDateInputValue,
+  toSchedulePayload,
+  toTimeInputValue,
+  validateExamScheduleForm,
+  type ExamAvailabilityFilter,
+  type ExamScheduleAvailability,
+  type ExamScheduleFormErrors,
+  type ExamTemporalFilter,
+} from "@/lib/admin-exam-schedules";
+import {
+  AlertCircle,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Plus,
+  Power,
+  PowerOff,
+  RefreshCw,
+  X,
+} from "lucide-react";
 
-export default function AdminExamSlotsPage() {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
-  const pageSize = 10;
+const PAGE_SIZE = 10;
+const ALL = "ALL";
+
+/* ----------------------------------------------------------- presentation */
+
+const TEMPORAL_OPTIONS: { value: ExamTemporalFilter; label: string }[] = [
+  { value: "upcoming", label: "Upcoming" },
+  { value: "past", label: "Past" },
+  { value: "all", label: "All" },
+];
+
+const AVAILABILITY_OPTIONS: {
+  value: ExamAvailabilityFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "full", label: "Full" },
+  { value: "inactive", label: "Inactive" },
+];
+
+const AVAILABILITY_BADGE_CLASS: Record<ExamScheduleAvailability, string> = {
+  OPEN: "text-(--earist-success)",
+  FULL: "text-(--earist-warning)",
+  INACTIVE: "text-(--earist-body-text)/70",
+  PAST: "text-(--earist-body-text)/70",
+};
+
+function AvailabilityBadge({
+  availability,
+}: {
+  availability: ExamScheduleAvailability;
+}) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("font-medium", AVAILABILITY_BADGE_CLASS[availability])}
+    >
+      {EXAM_AVAILABILITY_LABEL[availability]}
+    </Badge>
+  );
+}
+
+function CapacityCell({
+  slotsTaken,
+  maxSlots,
+}: {
+  slotsTaken: number;
+  maxSlots: number;
+}) {
+  const capacity = resolveExamCapacity(slotsTaken, maxSlots);
+  if (!capacity.hasCapacity) {
+    return (
+      <div className="min-w-0">
+        <p className="text-sm break-words text-foreground">
+          No capacity configured
+        </p>
+        <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+          Capacity unavailable
+        </p>
+      </div>
+    );
+  }
+  const barClass = capacity.isFull
+    ? "bg-(--earist-warning)"
+    : capacity.percent >= 80
+      ? "bg-(--earist-warning)"
+      : "bg-(--earist-success)";
+  return (
+    <div className="min-w-0">
+      <p className="text-sm break-words text-foreground">
+        {capacity.booked} / {capacity.maximum} booked
+      </p>
+      <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+        {capacity.isFull
+          ? "No seats available"
+          : `${capacity.available} seat${capacity.available === 1 ? "" : "s"} available`}
+      </p>
+      <div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-(--earist-border-gray)">
+        <div
+          className={cn("h-full rounded-full", barClass)}
+          style={{ width: `${capacity.percent}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ states */
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[860px] table-fixed border-collapse">
+        <colgroup>
+          <col className="w-[26%]" />
+          <col className="w-[21%]" />
+          <col className="w-[21%]" />
+          <col className="w-[13%]" />
+          <col className="w-[19%]" />
+        </colgroup>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+function TableHead() {
+  return (
+    <thead>
+      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Program
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Schedule
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Capacity
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Availability
+        </th>
+        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
+          Action
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <TableShell>
+      <TableHead />
+      <tbody aria-hidden="true">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <tr
+            key={index}
+            className="border-b border-(--earist-border-gray) last:border-0"
+          >
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-40" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-2 h-4 w-20" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-2 h-3 w-24" />
+              <Skeleton className="mt-2 h-1.5 w-24 rounded-full" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="ml-auto h-8 w-28 rounded-md" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableShell>
+  );
+}
+
+function EmptyState({
+  hasAnySchedules,
+  onClear,
+  onCreate,
+}: {
+  hasAnySchedules: boolean;
+  onClear: () => void;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+      <CalendarClock
+        className="h-8 w-8 text-(--earist-body-text)/40"
+        aria-hidden="true"
+      />
+      {hasAnySchedules ? (
+        <>
+          <p className="text-sm font-medium text-(--earist-primary)">
+            No schedules match the current filters.
+          </p>
+          <p className="max-w-sm text-sm text-(--earist-body-text)">
+            Try a different time range, program, or availability.
+          </p>
+          <Button variant="outline" size="sm" onClick={onClear}>
+            Clear Filters
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-(--earist-primary)">
+            No entrance exam schedules yet.
+          </p>
+          <p className="max-w-sm text-sm text-(--earist-body-text)">
+            Create a schedule to make an entrance exam date available to
+            applicants.
+          </p>
+          <Button size="sm" onClick={onCreate}>
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Create Schedule
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ErrorState({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+      <AlertCircle
+        className="h-8 w-8 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-(--earist-primary)">
+          Unable to load entrance exam schedules
+        </p>
+        <p className="text-sm text-(--earist-body-text)">
+          The schedule list for the current view could not be loaded. Please try
+          again.
+        </p>
+      </div>
+      <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
+        <RefreshCw
+          className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+          aria-hidden="true"
+        />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="mt-1 text-xs text-destructive">
+      {message}
+    </p>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
+
+export default function AdminExamSchedulesPage() {
   const queryClient = useQueryClient();
 
-  const { data: slots = [], isLoading: isSlotsLoading } = useQuery<Slot[]>({
+  const [temporal, setTemporal] = useState<ExamTemporalFilter>("upcoming");
+  const [programId, setProgramId] = useState<string>(ALL);
+  const [availability, setAvailability] =
+    useState<ExamAvailabilityFilter>("all");
+  const [page, setPage] = useState(1);
+
+  // Create / edit dialog state.
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<ExamSlot | null>(null);
+  const [formProgramId, setFormProgramId] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [formTime, setFormTime] = useState("");
+  const [formCapacity, setFormCapacity] = useState("");
+  const [formErrors, setFormErrors] = useState<ExamScheduleFormErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Activate / deactivate confirmation state.
+  const [confirmTarget, setConfirmTarget] = useState<ExamSlot | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const slotsQuery = useQuery<ExamSlot[]>({
     queryKey: ["examSlots"],
-    queryFn: async () => {
-      return apiClientRequest("/exam/slots", { method: "GET" });
-    },
+    queryFn: async () => apiClientRequest("/exam/slots", { method: "GET" }),
+    placeholderData: keepPreviousData,
   });
 
-  const { data: programsData, isLoading: isProgramsLoading } = useQuery<{
-    graduatePrograms: Program[];
-  }>({
+  const programsQuery = useQuery<{ graduatePrograms: Program[] }>({
     queryKey: ["programs"],
-    queryFn: async () => {
-      return apiClientRequest("/programs", { method: "GET" });
+    queryFn: async () => apiClientRequest("/programs", { method: "GET" }),
+  });
+
+  const graduatePrograms = programsQuery.data?.graduatePrograms ?? [];
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: {
+      programId: string;
+      examDate: string;
+      examTime: string;
+      maxSlots: number;
+    }) => {
+      if (editing) {
+        return apiClientRequest(`/exam/slots/${editing.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      }
+      return apiClientRequest("/exam/slots", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
+      closeDialog();
+    },
+    onError: (error: unknown) => {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to save the schedule. Please try again.",
+      );
     },
   });
 
-  const programs = programsData?.graduatePrograms || [];
-  const isLoading = isSlotsLoading || isProgramsLoading;
-
-  const isPast = (dateStr: string, timeStr: string) => {
-    const d = new Date(dateStr);
-    const t = new Date(timeStr);
-    d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
-    return d < new Date();
-  };
-
-  const filteredSlots = slots.filter((slot) => {
-    if (filter === "all") return true;
-    const past = isPast(slot.examDate, slot.examTime);
-    if (filter === "upcoming") return !past;
-    if (filter === "past") return past;
-    return true;
+  const toggleMutation = useMutation({
+    mutationFn: async (target: { id: string; isActive: boolean }) =>
+      apiClientRequest(`/exam/slots/${target.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: target.isActive }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
+      setConfirmTarget(null);
+    },
+    onError: (error: unknown) => {
+      setStatusError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update the schedule availability. Please try again.",
+      );
+    },
   });
 
-  const totalPages = Math.ceil(filteredSlots.length / pageSize);
-  const paginatedSlots = filteredSlots.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
+  const now = new Date();
+  const slots = slotsQuery.data ?? [];
+
+  const filteredSlots = slots.filter(
+    (slot) =>
+      matchesTemporalFilter(slot, temporal, now) &&
+      (programId === ALL || slot.programId === programId) &&
+      matchesAvailabilityFilter(slot, availability, now),
   );
 
-  // Form State
-  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
-  const [programId, setProgramId] = useState("");
-  const [examDate, setExamDate] = useState("");
-  const [examTime, setExamTime] = useState("");
-  const [maxSlots, setMaxSlots] = useState("");
+  const total = filteredSlots.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const effectivePage = Math.min(page, totalPages);
+  const rangeStart = (effectivePage - 1) * PAGE_SIZE;
+  const pageItems = filteredSlots.slice(rangeStart, rangeStart + PAGE_SIZE);
+  const pageNumbers = paginationWindow(effectivePage, totalPages);
 
-  const handleCreateSlot = async () => {
-    try {
-      const localDateTime = new Date(`${examDate}T${examTime}`);
-      const dateTimeString = localDateTime.toISOString();
+  const hasAnySchedules = slots.length > 0;
+  const isFiltered =
+    temporal !== "upcoming" || programId !== ALL || availability !== "all";
 
-      if (editingSlotId) {
-        await apiClientRequest(`/exam/slots/${editingSlotId}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            programId,
-            examDate,
-            examTime: dateTimeString,
-            maxSlots: parseInt(maxSlots),
-          }),
-        });
-      } else {
-        await apiClientRequest("/exam/slots", {
-          method: "POST",
-          body: JSON.stringify({
-            programId,
-            examDate,
-            examTime: dateTimeString,
-            maxSlots: parseInt(maxSlots),
-          }),
-        });
-      }
+  const isLoading = slotsQuery.isLoading;
+  const hasData = slotsQuery.data != null;
+  const isFetching = slotsQuery.isFetching;
+  const loadFailedWithoutData = slotsQuery.isError && !hasData;
+  const refetchFailed = slotsQuery.isError && hasData;
+  const programsFailed = programsQuery.isError;
 
-      setShowCreateModal(false);
-      setEditingSlotId(null);
-      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        alert(err.message || "Failed to save slot.");
-      } else {
-        alert("Failed to save slot.");
-      }
-    }
-  };
+  const editingBookedCount = editing?.slotsTaken ?? 0;
+  const isEditingBooked = editingBookedCount > 0;
 
-  const handleEditClick = (slot: Slot) => {
-    setEditingSlotId(slot.id);
-    setProgramId(slot.programId || "");
+  const programFilterLabel =
+    programId === ALL
+      ? "All Programs"
+      : (graduatePrograms.find((program) => program.id === programId)
+          ?.programName ?? "All Programs");
 
-    // Format date for <input type="date">
-    const dateObj = new Date(slot.examDate);
-    const dateString = dateObj.toISOString().split("T")[0];
-    setExamDate(dateString);
+  const formProgramLabel =
+    graduatePrograms.find((program) => program.id === formProgramId)
+      ?.programName ?? "Select program";
 
-    // Format time for <input type="time"> (HH:mm)
-    const timeObj = new Date(slot.examTime);
-    const timeString = timeObj.toLocaleTimeString("en-US", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
+  function resetForm() {
+    setEditing(null);
+    setFormProgramId("");
+    setFormDate("");
+    setFormTime("");
+    setFormCapacity("");
+    setFormErrors({});
+    setSubmitError(null);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+    resetForm();
+  }
+
+  function openCreate() {
+    resetForm();
+    setDialogOpen(true);
+  }
+
+  function openEdit(slot: ExamSlot) {
+    setEditing(slot);
+    setFormProgramId(slot.programId);
+    setFormDate(toDateInputValue(slot.examDate));
+    setFormTime(toTimeInputValue(slot.examTime));
+    setFormCapacity(String(slot.maxSlots));
+    setFormErrors({});
+    setSubmitError(null);
+    setDialogOpen(true);
+  }
+
+  function clearFilters() {
+    setTemporal("upcoming");
+    setProgramId(ALL);
+    setAvailability("all");
+    setPage(1);
+  }
+
+  function handleSubmit() {
+    const errors = validateExamScheduleForm(
+      {
+        programId: formProgramId,
+        examDate: formDate,
+        examTime: formTime,
+        capacity: formCapacity,
+      },
+      { bookedCount: editingBookedCount },
+    );
+    setFormErrors(errors);
+    if (hasFormErrors(errors)) return;
+
+    setSubmitError(null);
+    saveMutation.mutate({
+      programId: formProgramId,
+      maxSlots: Number(formCapacity),
+      ...toSchedulePayload(formDate, formTime),
     });
-    setExamTime(timeString);
+  }
 
-    setMaxSlots(slot.maxSlots.toString());
-    setShowCreateModal(true);
-  };
-
-  const handleToggleStatus = async (slotId: string, currentStatus: boolean) => {
-    try {
-      await apiClientRequest(`/exam/slots/${slotId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ isActive: !currentStatus }),
-      });
-      queryClient.invalidateQueries({ queryKey: ["examSlots"] });
-    } catch (err: unknown) {
-      alert("Failed to update slot status.");
-      console.log("Error:", err);
-    }
-  };
-
-  const activeSlots = slots.filter(
-    (s) => s.isActive && s.slotsTaken < s.maxSlots,
-  ).length;
-  const fullSlots = slots.filter(
-    (s) => s.isActive && s.slotsTaken >= s.maxSlots,
-  ).length;
-  const totalApplicants = slots.reduce((sum, s) => sum + s.slotsTaken, 0);
-
-  const getStatusBadge = (
-    isActive: boolean,
-    slotsTaken: number,
-    maxSlots: number,
-  ) => {
-    if (!isActive)
-      return <Badge className="bg-gray-100 text-gray-500">Inactive</Badge>;
-    if (slotsTaken >= maxSlots)
-      return <Badge className="bg-red-100 text-red-700">Full</Badge>;
-    return <Badge className="bg-green-100 text-green-700">Active</Badge>;
-  };
-
-  const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
+  function handleConfirmToggle() {
+    if (!confirmTarget) return;
+    toggleMutation.mutate({
+      id: confirmTarget.id,
+      isActive: !confirmTarget.isActive,
     });
-  };
+  }
 
-  const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString([], {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
+  const availabilityFilterLabel =
+    AVAILABILITY_OPTIONS.find((option) => option.value === availability)
+      ?.label ?? "All";
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2
-            className="text-2xl font-bold text-(--earist-primary)"
-            style={{ fontFamily: '"Calibri", sans-serif' }}
-          >
-            Exam Slot Management
-          </h2>
-          <p className="text-sm text-(--earist-body-text)">
-            Create and manage examination slots
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={filter}
-            onChange={(e) => {
-              setFilter(e.target.value as "upcoming" | "past" | "all");
-              setPage(1);
-            }}
-            className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
-          >
-            <option value="upcoming">Upcoming Slots</option>
-            <option value="past">Past Slots</option>
-            <option value="all">All Slots</option>
-          </select>
+    <div className="space-y-6">
+      <PageHeader
+        title="Entrance Exam Schedules"
+        description="Create and manage entrance exam schedules and capacity."
+        actions={
           <Button
-            onClick={() => {
-              setEditingSlotId(null);
-              setProgramId("");
-              setExamDate("");
-              setExamTime("");
-              setMaxSlots("");
-              setShowCreateModal(true);
-            }}
+            onClick={openCreate}
             className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
           >
-            <Plus className="mr-1 h-4 w-4" />
-            Create Exam Slot
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Create Schedule
+          </Button>
+        }
+      />
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+            <div>
+              <span className="mb-1 block text-sm font-medium text-(--earist-body-text)">
+                Time range
+              </span>
+              <div
+                role="group"
+                aria-label="Time range"
+                className="inline-flex rounded-lg border border-(--earist-border-gray) p-0.5"
+              >
+                {TEMPORAL_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={temporal === option.value}
+                    onClick={() => {
+                      setTemporal(option.value);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none",
+                      temporal === option.value
+                        ? "bg-(--earist-primary) text-white"
+                        : "text-(--earist-body-text) hover:bg-(--earist-surface-gray)",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-full sm:w-72">
+              <label
+                htmlFor="filter-program"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Program
+              </label>
+              <Select
+                value={programId}
+                onValueChange={(value) => {
+                  setProgramId(value ?? ALL);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="filter-program" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={programFilterLabel}
+                  >
+                    {programFilterLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="min-w-[min(92vw,24rem)]">
+                  <SelectItem
+                    value={ALL}
+                    className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                  >
+                    All Programs
+                  </SelectItem>
+                  {graduatePrograms.map((program) => (
+                    <SelectItem
+                      key={program.id}
+                      value={program.id}
+                      className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                    >
+                      {program.programName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-44">
+              <label
+                htmlFor="filter-availability"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Availability
+              </label>
+              <Select
+                value={availability}
+                onValueChange={(value) => {
+                  setAvailability(
+                    (value ?? "all") as ExamAvailabilityFilter,
+                  );
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger id="filter-availability" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={availabilityFilterLabel}
+                  >
+                    {availabilityFilterLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABILITY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2 lg:ml-auto lg:pb-0.5">
+              {isFetching && !isLoading && (
+                <span
+                  className="text-xs text-(--earist-body-text)"
+                  role="status"
+                >
+                  Updating…
+                </span>
+              )}
+              {isFiltered && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {programsFailed && (
+            <p className="mt-3 text-xs text-(--earist-body-text)" role="status">
+              Program list could not be loaded. Program filtering and schedule
+              creation are temporarily unavailable.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {refetchFailed && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-light-red) px-4 py-2.5">
+          <p className="text-sm text-(--earist-body-text)">
+            Couldn&apos;t refresh the schedules. Showing the most recent results.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => slotsQuery.refetch()}
+            disabled={isFetching}
+          >
+            Retry
           </Button>
         </div>
-      </div>
+      )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Total Slots</p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {isLoading ? "..." : slots.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Active</p>
-            <p className="text-lg font-bold text-green-600">
-              {isLoading ? "..." : activeSlots}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Full</p>
-            <p className="text-lg font-bold text-red-600">
-              {isLoading ? "..." : fullSlots}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">
-              Total Applicants
-            </p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {isLoading ? "..." : totalApplicants}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Slots Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Program
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Exam Date
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-(--earist-secondary)">
-                    Exam Time
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Slots
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-(--earist-secondary)">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-(--earist-secondary)">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
+      {/* Table */}
+      <Card className="overflow-hidden py-0">
+        <CardContent className="min-w-0 p-0">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : loadFailedWithoutData ? (
+            <ErrorState
+              onRetry={() => slotsQuery.refetch()}
+              retrying={isFetching}
+            />
+          ) : filteredSlots.length === 0 ? (
+            <EmptyState
+              hasAnySchedules={hasAnySchedules}
+              onClear={clearFilters}
+              onCreate={openCreate}
+            />
+          ) : (
+            <TableShell>
+              <TableHead />
               <tbody>
-                {slots.length === 0 && !isLoading && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-gray-500">
-                      No exam slots found.
-                    </td>
-                  </tr>
-                )}
-                {paginatedSlots.map((slot) => {
-                  const percentage = Math.round(
-                    (slot.slotsTaken / slot.maxSlots) * 100,
+                {pageItems.map((slot) => {
+                  const slotAvailability = resolveExamScheduleAvailability(
+                    slot,
+                    now,
                   );
                   return (
                     <tr
                       key={slot.id}
-                      className="border-b border-(--earist-border-gray) last:border-0"
+                      className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60"
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <CalendarClock className="h-4 w-4 text-(--earist-accent)" />
-                          <span className="font-medium text-(--earist-primary)">
-                            {slot.program?.programName || "All Programs"}
-                          </span>
-                        </div>
+                      <td className="px-4 py-3 align-top">
+                        <p className="text-sm font-medium break-words text-foreground">
+                          {slot.program?.programName ?? "Program unavailable"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 text-(--earist-body-text)">
-                        {formatDate(slot.examDate)}
+                      <td className="px-4 py-3 align-top">
+                        <p className="text-sm font-medium break-words text-foreground">
+                          {formatScheduleDate(slot.examDate)}
+                        </p>
+                        <p className="mt-0.5 text-sm break-words text-(--earist-body-text)">
+                          {formatScheduleTime(slot.examTime)}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 text-(--earist-body-text)">
-                        {formatTime(slot.examTime)}
+                      <td className="px-4 py-3 align-top">
+                        <CapacityCell
+                          slotsTaken={slot.slotsTaken}
+                          maxSlots={slot.maxSlots}
+                        />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3 text-(--earist-body-text)" />
-                            <span className="text-xs font-medium text-(--earist-primary)">
-                              {slot.slotsTaken} / {slot.maxSlots}
-                            </span>
-                          </div>
-                          <div className="h-2 w-20 overflow-hidden rounded-full bg-(--earist-border-gray)">
-                            <div
-                              className={`h-full rounded-full ${
-                                percentage >= 100
-                                  ? "bg-red-500"
-                                  : percentage >= 80
-                                    ? "bg-amber-500"
-                                    : "bg-green-500"
-                              }`}
-                              style={{ width: `${Math.min(percentage, 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                      <td className="px-4 py-3 align-top">
+                        <AvailabilityBadge availability={slotAvailability} />
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        {getStatusBadge(
-                          slot.isActive,
-                          slot.slotsTaken,
-                          slot.maxSlots,
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => handleEditClick(slot)}
-                            className="rounded p-1.5 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                            title="Edit Slot"
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(slot)}
                           >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          {slot.isActive && (
-                            <button
-                              onClick={() =>
-                                handleToggleStatus(slot.id, slot.isActive)
-                              }
-                              className="rounded p-1.5 text-red-600 hover:bg-red-50"
-                              title="Deactivate Slot"
+                            <Pencil
+                              className="mr-1.5 h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            Edit
+                          </Button>
+                          {slot.isActive ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-(--earist-body-text)"
+                              onClick={() => {
+                                setStatusError(null);
+                                setConfirmTarget(slot);
+                              }}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                          {!slot.isActive && (
-                            <button
-                              onClick={() =>
-                                handleToggleStatus(slot.id, slot.isActive)
-                              }
-                              className="rounded p-1.5 text-green-600 hover:bg-green-50"
-                              title="Activate Slot"
+                              <PowerOff
+                                className="mr-1.5 h-4 w-4"
+                                aria-hidden="true"
+                              />
+                              Deactivate
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-(--earist-success)"
+                              onClick={() => {
+                                setStatusError(null);
+                                setConfirmTarget(slot);
+                              }}
                             >
-                              <CalendarClock className="h-4 w-4" />
-                            </button>
+                              <Power
+                                className="mr-1.5 h-4 w-4"
+                                aria-hidden="true"
+                              />
+                              Activate
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -387,167 +790,258 @@ export default function AdminExamSlotsPage() {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
+            </TableShell>
+          )}
         </CardContent>
       </Card>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+      {!isLoading && total > 0 && (
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-sm text-(--earist-body-text)">
-            Showing {(page - 1) * pageSize + 1}–
-            {Math.min(page * pageSize, filteredSlots.length)} of{" "}
-            {filteredSlots.length} slots
+            Showing {rangeStart + 1}–{Math.min(rangeStart + PAGE_SIZE, total)} of{" "}
+            {total} {total === 1 ? "schedule" : "schedules"}
           </p>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page > 1) setPage(page - 1);
-                  }}
-                  className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    href="#"
-                    isActive={p === page}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setPage(p);
-                    }}
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (page < totalPages) setPage(page + 1);
-                  }}
-                  className={
-                    page >= totalPages ? "pointer-events-none opacity-50" : ""
+          {totalPages > 1 && (
+            <nav
+              aria-label="pagination"
+              className="flex items-center gap-1"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Go to previous page"
+                onClick={() => setPage(Math.max(1, effectivePage - 1))}
+                disabled={effectivePage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              {pageNumbers.map((pageNumber) => (
+                <Button
+                  key={pageNumber}
+                  variant={effectivePage === pageNumber ? "outline" : "ghost"}
+                  size="icon"
+                  aria-label={`Go to page ${pageNumber}`}
+                  aria-current={
+                    effectivePage === pageNumber ? "page" : undefined
                   }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+                  onClick={() => setPage(pageNumber)}
+                >
+                  {pageNumber}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Go to next page"
+                onClick={() =>
+                  setPage(Math.min(totalPages, effectivePage + 1))
+                }
+                disabled={effectivePage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </nav>
+          )}
         </div>
       )}
 
-      {/* Create Slot Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                {editingSlotId ? "Edit Exam Slot" : "Create Exam Slot"}
-              </h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
+      {/* Create / edit dialog */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => (open ? setDialogOpen(true) : closeDialog())}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? "Edit Schedule" : "Create Schedule"}
+            </DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update this entrance exam schedule."
+                : "Add an entrance exam schedule for a graduate program."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {isEditingBooked && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                This schedule already has booked applicants. Program, date, and
+                start time can no longer be changed.
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="schedule-program"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
-                <X className="h-5 w-5" />
-              </button>
+                Program
+              </label>
+              <Select
+                value={formProgramId}
+                onValueChange={(value) => setFormProgramId(value ?? "")}
+                disabled={isEditingBooked}
+              >
+                <SelectTrigger id="schedule-program" className="w-full">
+                  <span
+                    className="flex-1 truncate text-left"
+                    title={formProgramLabel}
+                  >
+                    {formProgramLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="min-w-[min(92vw,24rem)]">
+                  {graduatePrograms.map((program) => (
+                    <SelectItem
+                      key={program.id}
+                      value={program.id}
+                      className="items-start [&>div]:shrink [&>div]:whitespace-normal"
+                    >
+                      {program.programName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError message={formErrors.programId} />
             </div>
-            {(() => {
-              const editingSlot = slots.find(s => s.id === editingSlotId);
-              const hasApplicants = editingSlot ? editingSlot.slotsTaken > 0 : false;
-              
-              return (
-                <>
-                  {hasApplicants && (
-                    <div className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-700 border border-amber-200">
-                      <strong>Note:</strong> Date, time, and program cannot be changed because applicants have already booked this slot.
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                        Program
-                      </label>
-                      <select
-                        value={programId}
-                        onChange={(e) => setProgramId(e.target.value)}
-                        disabled={hasApplicants}
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-                      >
-                        <option value="">Select program...</option>
-                        {programs.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.programName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                        Exam Date
-                      </label>
-                      <input
-                        type="date"
-                        value={examDate}
-                        onChange={(e) => setExamDate(e.target.value)}
-                        disabled={hasApplicants}
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                        Exam Time (Start)
-                      </label>
-                      <input
-                        type="time"
-                        value={examTime}
-                        onChange={(e) => setExamTime(e.target.value)}
-                        disabled={hasApplicants}
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                        Max Slots
-                      </label>
-                      <input
-                        type="number"
-                        min={hasApplicants ? editingSlot!.slotsTaken : 1}
-                        value={maxSlots}
-                        onChange={(e) => setMaxSlots(e.target.value)}
-                        placeholder="e.g., 30"
-                        className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-            <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1"
+
+            <div>
+              <label
+                htmlFor="schedule-date"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
               >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateSlot}
-                disabled={!programId || !examDate || !examTime || !maxSlots}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90 disabled:bg-gray-400"
-              >
-                {editingSlotId ? "Update Slot" : "Create Slot"}
-              </Button>
+                Exam Date
+              </label>
+              <Input
+                id="schedule-date"
+                type="date"
+                value={formDate}
+                onChange={(event) => setFormDate(event.target.value)}
+                disabled={isEditingBooked}
+                aria-invalid={Boolean(formErrors.examDate)}
+              />
+              <FieldError message={formErrors.examDate} />
             </div>
+
+            <div>
+              <label
+                htmlFor="schedule-time"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Start Time
+              </label>
+              <Input
+                id="schedule-time"
+                type="time"
+                value={formTime}
+                onChange={(event) => setFormTime(event.target.value)}
+                disabled={isEditingBooked}
+                aria-invalid={Boolean(formErrors.examTime)}
+              />
+              <FieldError message={formErrors.examTime} />
+            </div>
+
+            <div>
+              <label
+                htmlFor="schedule-capacity"
+                className="mb-1 block text-sm font-medium text-(--earist-body-text)"
+              >
+                Capacity
+              </label>
+              <Input
+                id="schedule-capacity"
+                type="number"
+                min={isEditingBooked ? editingBookedCount : 1}
+                value={formCapacity}
+                onChange={(event) => setFormCapacity(event.target.value)}
+                placeholder="e.g., 30"
+                aria-invalid={Boolean(formErrors.capacity)}
+              />
+              <FieldError message={formErrors.capacity} />
+            </div>
+
+            {submitError && (
+              <p role="alert" className="text-sm text-destructive">
+                {submitError}
+              </p>
+            )}
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeDialog}
+              disabled={saveMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={saveMutation.isPending}
+              className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+            >
+              {saveMutation.isPending
+                ? editing
+                  ? "Saving…"
+                  : "Creating…"
+                : editing
+                  ? "Save Changes"
+                  : "Create Schedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activate / deactivate confirmation */}
+      <Dialog
+        open={confirmTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmTarget && !confirmTarget.isActive
+                ? "Activate schedule?"
+                : "Deactivate schedule?"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmTarget && !confirmTarget.isActive
+                ? "This schedule will become available for new applicant bookings again."
+                : "This schedule will no longer be available for new applicant bookings. Existing booked applicants will remain assigned."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {statusError && (
+            <p role="alert" className="text-sm text-destructive">
+              {statusError}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmTarget(null)}
+              disabled={toggleMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmToggle}
+              disabled={toggleMutation.isPending}
+              className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+            >
+              {toggleMutation.isPending
+                ? "Updating…"
+                : confirmTarget && !confirmTarget.isActive
+                  ? "Activate"
+                  : "Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
