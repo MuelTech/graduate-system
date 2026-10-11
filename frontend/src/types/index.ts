@@ -239,6 +239,12 @@ export interface CommitteePolicyDto {
   /** Confirmed session totals: Master's 7 / Doctoral 8 */
   sessionTotal: number;
   academicSeatCount: number;
+  /** 2026-10-12: exact Panelist quota for the stage + program type. */
+  panelistCount: number;
+  /** Title has no Adviser seat; Proposal/Final derive the active Adviser automatically. */
+  adviserMode: "NONE" | "AUTOMATIC";
+  /** Participants the Admin selects manually (excludes an automatic Adviser seat). */
+  manualSelectionCount: number;
   maximumRoleCount: Partial<Record<DefensePanelRole, number | null>>;
   evaluatorRoles: DefensePanelRole[];
   rapporteurRequired: boolean;

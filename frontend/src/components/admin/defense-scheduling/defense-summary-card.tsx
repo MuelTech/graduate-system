@@ -9,6 +9,15 @@ type Props = {
   application: ApprovedApplicationDto;
 };
 
+function ContextItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-medium text-(--earist-body-text)">{label}</p>
+      <p className="text-sm break-words text-foreground">{value}</p>
+    </div>
+  );
+}
+
 export function DefenseSummaryCard({ application }: Props) {
   const student = application.student;
   const isTitle = application.stage === "TITLE";
@@ -17,48 +26,49 @@ export function DefenseSummaryCard({ application }: Props) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base text-(--earist-primary)">
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
             Selected Defense
           </CardTitle>
-          <Badge className="bg-purple-100 text-purple-700">
+          <Badge variant="outline" className="text-(--earist-secondary)">
             {defenseTypeLabel(application.stage)}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Student</p>
-            <p className="font-semibold">
-              {student.user.firstName} {student.user.lastName}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Student No.</p>
-            <p>{student.studentNumber || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Program</p>
-            <p>{student.program?.programName || "N/A"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Application Approved</p>
-            <p>{new Date(application.createdAt).toLocaleDateString()}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <ContextItem
+            label="Student"
+            value={`${student.user.firstName} ${student.user.lastName}`}
+          />
+          <ContextItem
+            label="Student No."
+            value={student.studentNumber || "Not recorded"}
+          />
+          <ContextItem
+            label="Program"
+            value={student.program?.programName || "Not recorded"}
+          />
+          <ContextItem
+            label="Defense Stage"
+            value={defenseTypeLabel(application.stage)}
+          />
         </div>
 
         {isTitle && application.thesisTitles.length > 0 && (
           <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
             <p className="text-xs font-semibold text-(--earist-secondary)">
-              Proposed Titles
+              Proposed Research Titles
             </p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-(--earist-body-text)">
               {application.thesisTitles.map((t) => (
-                <li key={t.id}>{t.titleText}</li>
+                <li key={t.id} className="break-words">
+                  {t.titleText}
+                </li>
               ))}
             </ol>
-            <p className="mt-2 text-[11px] text-(--earist-body-text)">
-              Winning title is selected at Title Defense conclusion — not here.
+            <p className="mt-2 text-xs text-(--earist-body-text)">
+              The official title is selected at Title Defense conclusion — not
+              during scheduling.
             </p>
           </div>
         )}

@@ -2,19 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, Mail } from "lucide-react";
-import type { ApprovedApplicationDto } from "@/types";
-import {
-  ROLE_LABELS,
-  defenseTypeLabel,
-  type CommitteeMember,
-  type ScheduleFormState,
-} from "./types";
+import { Check, Send, Mail, AlertTriangle } from "lucide-react";
+import type { CommitteeReadiness, ScheduleFormState } from "./types";
 
 type Props = {
-  application: ApprovedApplicationDto;
-  committee: CommitteeMember[];
-  adviser?: CommitteeMember | null;
+  readiness: CommitteeReadiness;
   schedule: ScheduleFormState;
   isValid: boolean;
   isSubmitting: boolean;
@@ -22,71 +14,107 @@ type Props = {
   onSubmit: () => void;
 };
 
+function ChecklistRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      {ok ? (
+        <Check className="h-4 w-4 shrink-0 text-(--earist-success)" aria-hidden="true" />
+      ) : (
+        <AlertTriangle
+          className="h-4 w-4 shrink-0 text-(--earist-warning)"
+          aria-hidden="true"
+        />
+      )}
+      <span className={ok ? "text-(--earist-body-text)" : "text-(--earist-warning)"}>
+        {label}
+      </span>
+    </li>
+  );
+}
+
 export function DefenseReviewSummary({
-  application,
-  committee,
-  adviser,
+  readiness,
   schedule,
   isValid,
   isSubmitting,
   onPreviewEmail,
   onSubmit,
 }: Props) {
-  const student = application.student;
-  const allMembers = [...(adviser ? [adviser] : []), ...committee];
-  const byRole = (role: string) =>
-    allMembers.filter((m) => m.role === role).map((m) => m.name);
+  const panelistsMissing = Math.max(
+    0,
+    readiness.panelistQuota - readiness.panelists,
+  );
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          4. Review &amp; Notify
+          Final Readiness
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Student</p>
-            <p className="font-semibold">
-              {student.user.firstName} {student.user.lastName}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Defense</p>
-            <p className="font-semibold">
-              {defenseTypeLabel(application.stage)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Committee</p>
-            <p>{allMembers.length} members</p>
-          </div>
-          <div>
-            <p className="text-xs text-(--earist-body-text)">Schedule</p>
-            <p>
-              {schedule.defenseDate || "—"} {schedule.defenseTime || ""}
-            </p>
-          </div>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
+            Committee
+          </p>
+          <ul className="space-y-1">
+            <ChecklistRow
+              ok={readiness.chairman === 1}
+              label={
+                readiness.chairman === 1
+                  ? "Chairman assigned"
+                  : "Chairman still required"
+              }
+            />
+            <ChecklistRow
+              ok={panelistsMissing === 0}
+              label={
+                panelistsMissing === 0
+                  ? `Panelists assigned (${readiness.panelists} / ${readiness.panelistQuota})`
+                  : `${panelistsMissing} Panelist${panelistsMissing === 1 ? "" : "s"} still required`
+              }
+            />
+            <ChecklistRow
+              ok={readiness.facilitator === 1}
+              label={
+                readiness.facilitator === 1
+                  ? "Facilitator assigned"
+                  : "Facilitator still required"
+              }
+            />
+            <ChecklistRow
+              ok={readiness.rapporteur === 1}
+              label={
+                readiness.rapporteur === 1
+                  ? "Rapporteur assigned"
+                  : "Rapporteur still required"
+              }
+            />
+            {readiness.adviserMode === "AUTOMATIC" && (
+              <ChecklistRow
+                ok={readiness.adviserPresent}
+                label={
+                  readiness.adviserPresent
+                    ? "Adviser assigned automatically"
+                    : "Active thesis adviser required"
+                }
+              />
+            )}
+          </ul>
         </div>
 
-        <div className="space-y-1 rounded-lg bg-(--earist-surface-gray) p-3 text-xs">
-          {(["CHAIRMAN", "PANELIST", "ADVISER", "RAPPORTEUR", "FACILITATOR"] as const).map(
-            (role) => {
-              const names = byRole(role);
-              if (names.length === 0) return null;
-              return (
-                <p key={role}>
-                  <span className="font-semibold">{ROLE_LABELS[role]}:</span>{" "}
-                  {names.join(", ")}
-                </p>
-              );
-            },
-          )}
-          <p>
-            <span className="font-semibold">MS Teams:</span>{" "}
-            {schedule.meetingLink || "—"}
+        <div>
+          <p className="mb-1 text-xs font-semibold text-(--earist-secondary)">
+            Schedule
           </p>
+          <ul className="space-y-1">
+            <ChecklistRow ok={!!schedule.defenseDate} label="Date" />
+            <ChecklistRow ok={!!schedule.defenseTime} label="Time" />
+            <ChecklistRow
+              ok={!!schedule.venueOrLink.trim()}
+              label="Venue / meeting details"
+            />
+          </ul>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -94,21 +122,19 @@ export function DefenseReviewSummary({
             type="button"
             variant="outline"
             onClick={onPreviewEmail}
-            className="flex-1"
+            className="sm:flex-1"
           >
-            <Mail className="mr-2 h-4 w-4" />
-            Preview Email Notification
+            <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
+            Preview Notification
           </Button>
           <Button
             type="button"
             onClick={onSubmit}
             disabled={!isValid || isSubmitting}
-            className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+            className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90 sm:flex-1"
           >
-            <Send className="mr-2 h-4 w-4" />
-            {isSubmitting
-              ? "Scheduling defense..."
-              : "Schedule Defense & Notify"}
+            <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+            {isSubmitting ? "Scheduling…" : "Schedule Defense"}
           </Button>
         </div>
       </CardContent>

@@ -23,15 +23,23 @@ export interface CommitteeAssignmentInput {
  * Exact scorer/adviser/chairman counting inside the academic seats is OPEN_QUESTION —
  * do NOT hard-code "5 Master's scoring evaluators".
  */
+export type AdviserSeatMode = "NONE" | "AUTOMATIC";
+
 export interface DefenseCommitteePolicyConfig {
   allowedRoles: DefensePanelRole[];
   requiredRoles: DefensePanelRole[];
-  /** Confirmed total participants per defense session. */
+  /** Confirmed total participants per defense session (7 Master's / 8 Doctoral). */
   sessionTotal: number;
   /** Academic seats = sessionTotal − officials (Fac + Rap). Filled by CHAIRMAN/PANELIST/optional ADVISER. */
   academicSeatCount: number;
   facilitatorRequired: true;
   rapporteurRequired: true;
+  /** 2026-10-12: exact Panelist quota for the stage/program type. */
+  panelistCount: number;
+  /** Title has no Adviser seat; Proposal/Final derive the active Adviser automatically. */
+  adviserMode: AdviserSeatMode;
+  /** Participants the Admin selects manually (excludes an automatic Adviser seat). */
+  manualSelectionCount: number;
   maximumRoleCount: Partial<Record<DefensePanelRole, number | null>>;
   /** Facilitator/Rapporteur are not scorers; Adviser scoring remains OPEN_QUESTION. */
   evaluatorRoles: DefensePanelRole[];

@@ -8,7 +8,7 @@ import type { ScheduleFormState } from "./types";
 type Props = {
   value: ScheduleFormState;
   onChange: (next: ScheduleFormState) => void;
-  errors?: { date?: string; time?: string; link?: string };
+  errors?: { date?: string; time?: string; venue?: string };
 };
 
 export function DefenseScheduleForm({ value, onChange, errors }: Props) {
@@ -19,7 +19,7 @@ export function DefenseScheduleForm({ value, onChange, errors }: Props) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          3. Defense Schedule
+          Defense Schedule
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -38,7 +38,7 @@ export function DefenseScheduleForm({ value, onChange, errors }: Props) {
               className="mt-1"
             />
             {errors?.date && (
-              <p id="defense-date-error" className="mt-1 text-xs text-red-600">
+              <p id="defense-date-error" className="mt-1 text-xs text-destructive">
                 {errors.date}
               </p>
             )}
@@ -57,29 +57,33 @@ export function DefenseScheduleForm({ value, onChange, errors }: Props) {
               className="mt-1"
             />
             {errors?.time && (
-              <p id="defense-time-error" className="mt-1 text-xs text-red-600">
+              <p id="defense-time-error" className="mt-1 text-xs text-destructive">
                 {errors.time}
               </p>
             )}
           </div>
         </div>
         <div>
-          <Label className="text-xs" htmlFor="meeting-link">
-            MS Teams Link
+          <Label className="text-xs" htmlFor="venue-or-link">
+            Venue / Meeting Details
           </Label>
           <Input
-            id="meeting-link"
-            type="url"
-            value={value.meetingLink}
-            onChange={(e) => set({ meetingLink: e.target.value })}
-            placeholder="https://teams.microsoft.com/..."
-            aria-invalid={!!errors?.link}
-            aria-describedby={errors?.link ? "meeting-link-error" : undefined}
+            id="venue-or-link"
+            type="text"
+            value={value.venueOrLink}
+            onChange={(e) => set({ venueOrLink: e.target.value })}
+            placeholder="Room / venue, or https:// meeting link"
+            aria-invalid={!!errors?.venue}
+            aria-describedby={errors?.venue ? "venue-or-link-error" : undefined}
             className="mt-1"
           />
-          {errors?.link && (
-            <p id="meeting-link-error" className="mt-1 text-xs text-red-600">
-              {errors.link}
+          {errors?.venue ? (
+            <p id="venue-or-link-error" className="mt-1 text-xs text-destructive">
+              {errors.venue}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-(--earist-body-text)">
+              Enter a physical venue, or a complete http/https meeting link.
             </p>
           )}
         </div>

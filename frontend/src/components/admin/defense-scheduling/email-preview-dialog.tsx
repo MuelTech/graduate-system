@@ -42,21 +42,21 @@ export function EmailPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Email Preview</DialogTitle>
+          <DialogTitle>Notification Preview</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div>
             <p className="text-xs font-semibold text-(--earist-secondary)">
-              Recipients
+              Recipients ({recipients.length + 1})
             </p>
             <div className="mt-1 flex flex-wrap gap-1">
               <Badge variant="outline" className="text-xs">
-                <Mail className="mr-1 h-3 w-3" />
-                {student.user.firstName} {student.user.lastName}
+                <Mail className="mr-1 h-3 w-3" aria-hidden="true" />
+                {student.user.firstName} {student.user.lastName} (Student)
               </Badge>
               {recipients.map((m) => (
                 <Badge key={m.userId} variant="outline" className="text-xs">
-                  <Mail className="mr-1 h-3 w-3" />
+                  <Mail className="mr-1 h-3 w-3" aria-hidden="true" />
                   {m.name} ({ROLE_LABELS[m.role]})
                 </Badge>
               ))}
@@ -79,15 +79,17 @@ export function EmailPreviewDialog({
                 <p className="font-semibold text-(--earist-primary)">
                   Defense Details
                 </p>
-                <p>Researcher: {student.user.firstName} {student.user.lastName}</p>
+                <p>
+                  Researcher: {student.user.firstName} {student.user.lastName}
+                </p>
                 <p>Program: {student.program?.programName || "N/A"}</p>
-                <p>Date: {schedule.defenseDate}</p>
-                <p>Time: {schedule.defenseTime}</p>
-                <p>MS Teams: {schedule.meetingLink}</p>
+                <p>Date: {schedule.defenseDate || "—"}</p>
+                <p>Time: {schedule.defenseTime || "—"}</p>
+                <p>Venue / Meeting Details: {schedule.venueOrLink || "—"}</p>
               </div>
               <p className="text-xs">
                 This preview does not send email. Notification is sent when you
-                confirm Schedule Defense &amp; Notify.
+                confirm Schedule Defense.
               </p>
             </div>
           </div>

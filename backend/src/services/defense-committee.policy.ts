@@ -1,5 +1,6 @@
 import type {
   ActiveAdviserContext,
+  AdviserSeatMode,
   CommitteeAssignmentInput,
   CommitteeValidationResult,
   DefenseCommitteePolicyConfig,
@@ -9,13 +10,17 @@ import type {
 import type { DefenseTypeName } from "../interfaces/defense-eligibility.interfaces";
 
 /**
- * Centralized defense-committee policy (source of truth §12).
+ * Centralized defense-committee policy (source of truth §3.3 / §12, confirmed
+ * 2026-10-12 client clarification).
  *
- * Confirmed: session totals 7 (Master's) / 8 (Doctoral); Facilitator + Rapporteur
- * required; no auto Adviser seat; no duplicate person.
+ * Stage-specific, program-specific role quotas:
+ *   TITLE  Master's  = 1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur (7, no Adviser)
+ *   TITLE  Doctoral  = 1 Chairman + 5 Panelists + 1 Facilitator + 1 Rapporteur (8, no Adviser)
+ *   PROP/FIN Master's= 1 active Adviser (auto) + 1 Chairman + 3 Panelists + 1 Facilitator + 1 Rapporteur (7)
+ *   PROP/FIN Doctoral= 1 active Adviser (auto) + 1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur (8)
  *
- * NOT hard-coded: exact Master's/Doctoral scorer counts, Chairman/Adviser seat
- * counting semantics, Adviser scoring (OPEN_QUESTION).
+ * Committee composition is authoritative here. It does NOT decide evaluator
+ * numeric-scoring or signatory authority (that remains separate / OPEN_QUESTION).
  */
 
 const COMMON_ROLES: DefensePanelRole[] = [
@@ -38,25 +43,43 @@ const SESSION_TOTALS = {
   DOCTORAL: 8,
 } as const;
 
+/** Exact Panelist quota by stage + program type (2026-10-12 confirmed). */
+function panelistCountFor(
+  defenseType: DefenseTypeName,
+  programType: ProgramTypeKey,
+): number {
+  const isDoctoral = programType === "DOCTORAL";
+  const isTitle = defenseType === "TITLE_DEFENSE";
+  if (isTitle) return isDoctoral ? 5 : 4;
+  return isDoctoral ? 4 : 3;
+}
+
 function buildPolicy(
   defenseType: DefenseTypeName,
+  programType: ProgramTypeKey,
   sessionTotal: number,
 ): DefenseCommitteePolicyConfig {
   const academicSeatCount = sessionTotal - 2; // minus Facilitator + Rapporteur
   const isTitle = defenseType === "TITLE_DEFENSE";
+  const adviserMode: AdviserSeatMode = isTitle ? "NONE" : "AUTOMATIC";
+  const panelistCount = panelistCountFor(defenseType, programType);
   return {
     allowedRoles: isTitle ? COMMON_ROLES : PROPOSAL_FINAL_ROLES,
-    requiredRoles: ["CHAIRMAN"],
+    requiredRoles: isTitle ? ["CHAIRMAN"] : ["CHAIRMAN", "ADVISER"],
     sessionTotal,
     academicSeatCount,
+    panelistCount,
+    adviserMode,
+    manualSelectionCount:
+      sessionTotal - (adviserMode === "AUTOMATIC" ? 1 : 0),
     facilitatorRequired: true,
     rapporteurRequired: true,
     maximumRoleCount: {
-      ADVISER: isTitle ? 0 : 1,
+      ADVISER: adviserMode === "AUTOMATIC" ? 1 : 0,
       FACILITATOR: 1,
       RAPPORTEUR: 1,
       CHAIRMAN: 1,
-      PANELIST: academicSeatCount, // remaining after chair/adviser; total academic seats still enforced
+      PANELIST: panelistCount,
     },
     evaluatorRoles: EVALUATOR_ROLES,
     scorerCountPolicy: "UNRESOLVED_DO_NOT_HARDCODE",
@@ -76,9 +99,8 @@ export class DefenseCommitteePolicy {
   ): DefenseCommitteePolicyConfig {
     // Default to Master's layout for UI introspection when program is unknown;
     // validateAssignments still rejects UNKNOWN programType at schedule time.
-    const total =
-      getSessionTotal(programType) ?? SESSION_TOTALS.MASTERS;
-    return buildPolicy(defenseType, total);
+    const total = getSessionTotal(programType) ?? SESSION_TOTALS.MASTERS;
+    return buildPolicy(defenseType, programType, total);
   }
 
   isRoleAllowed(defenseType: DefenseTypeName, role: DefensePanelRole): boolean {
@@ -151,7 +173,10 @@ export class DefenseCommitteePolicy {
       roleCounts[role] = (roleCounts[role] ?? 0) + 1;
     }
 
-    // Session officials (form-supported): exactly one Facilitator and one Rapporteur.
+    // Exactly one Chairman / Facilitator / Rapporteur on every stage.
+    if ((roleCounts.CHAIRMAN ?? 0) !== 1) {
+      errors.push("Defense committee requires exactly one CHAIRMAN.");
+    }
     if ((roleCounts.FACILITATOR ?? 0) !== 1) {
       errors.push("Defense committee requires exactly one FACILITATOR.");
     }
@@ -159,38 +184,23 @@ export class DefenseCommitteePolicy {
       errors.push("Defense committee requires exactly one RAPPORTEUR.");
     }
 
-    // Chairman designation (kept as explicit role until seat-counting is confirmed).
-    if ((roleCounts.CHAIRMAN ?? 0) !== 1) {
-      errors.push("Defense committee requires exactly one CHAIRMAN.");
-    }
-
-    if ((roleCounts.ADVISER ?? 0) > 1) {
-      errors.push("At most one ADVISER assignment is allowed.");
-    }
-
-    // Confirmed session total (7 Master's / 8 Doctoral).
-    if (assignments.length !== policy.sessionTotal) {
+    // Stage/program-specific Panelist quota.
+    if ((roleCounts.PANELIST ?? 0) !== policy.panelistCount) {
       errors.push(
-        `Defense session for ${programType} requires exactly ${policy.sessionTotal} participants (got ${assignments.length}).`,
+        `Defense committee requires exactly ${policy.panelistCount} PANELIST assignment(s) for this stage (got ${roleCounts.PANELIST ?? 0}).`,
       );
     }
 
-    // Academic seats (CHAIRMAN + PANELIST + optional ADVISER) fill the non-official slots.
-    const academicUsed =
-      (roleCounts.CHAIRMAN ?? 0) +
-      (roleCounts.PANELIST ?? 0) +
-      (roleCounts.ADVISER ?? 0);
-    if (academicUsed !== policy.academicSeatCount) {
+    // Adviser seat: absent at Title; exactly one (the active adviser) at Proposal/Final.
+    if (policy.adviserMode === "NONE") {
+      if ((roleCounts.ADVISER ?? 0) > 0) {
+        errors.push("This defense stage does not include an ADVISER seat.");
+      }
+    } else if ((roleCounts.ADVISER ?? 0) !== 1) {
       errors.push(
-        `Committee academic seats must total ${policy.academicSeatCount} (CHAIRMAN/PANELIST/optional ADVISER); got ${academicUsed}.`,
+        "Proposal/Final Defense requires exactly one ADVISER assignment (the student's active adviser).",
       );
-    }
-
-    // Proposal/Final: an explicit ADVISER seat must be the active adviser (never auto-injected).
-    if (
-      (defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE") &&
-      (roleCounts.ADVISER ?? 0) > 0
-    ) {
+    } else {
       const adviserUserIds = assignments
         .filter((a) => a.role === "ADVISER")
         .map((a) => a.userId);
@@ -204,6 +214,24 @@ export class DefenseCommitteePolicy {
           "ADVISER assignment must be the student's active thesis adviser.",
         );
       }
+    }
+
+    // Confirmed session total (7 Master's / 8 Doctoral).
+    if (assignments.length !== policy.sessionTotal) {
+      errors.push(
+        `Defense session for ${programType} requires exactly ${policy.sessionTotal} participants (got ${assignments.length}).`,
+      );
+    }
+
+    // Academic seats (CHAIRMAN + PANELIST + Adviser) fill the non-official slots.
+    const academicUsed =
+      (roleCounts.CHAIRMAN ?? 0) +
+      (roleCounts.PANELIST ?? 0) +
+      (roleCounts.ADVISER ?? 0);
+    if (academicUsed !== policy.academicSeatCount) {
+      errors.push(
+        `Committee academic seats must total ${policy.academicSeatCount} (CHAIRMAN/PANELIST/Adviser); got ${academicUsed}.`,
+      );
     }
 
     return { valid: errors.length === 0, errors };
