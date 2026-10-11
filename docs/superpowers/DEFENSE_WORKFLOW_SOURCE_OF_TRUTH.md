@@ -141,28 +141,30 @@ An active adviser is required before Proposal/Final eligibility. Adviser selecti
 
 **Status:** Adviser not required for Title, adviser must come from the student's own Title Defense panel, and external panelists cannot become advisers are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
 
-### 3.3 Committee size
-
+### 3.3 Committee size and stage-specific composition
 
 The old EARIST manual describes a smaller historical Oral Defense Panel. That composition must **not** be used for the current system.
 
-The client verbally clarified:
+The client clarified the current role split on **2026-10-12**:
 
-- Master's: **5 panelists + 1 facilitator + 1 rapporteur = 7 participants**
-- Doctoral: **6 panelists + 1 facilitator + 1 rapporteur = 8 participants**
+| Program Type | Title Defense | Proposal / Final Defense | Session total |
+|---|---|---|---:|
+| Master's | **1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur** | **1 active Adviser (automatic) + 1 Chairman + 3 Panelists + 1 Facilitator + 1 Rapporteur** | **7** |
+| Doctoral | **1 Chairman + 5 Panelists + 1 Facilitator + 1 Rapporteur** | **1 active Adviser (automatic) + 1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur** | **8** |
 
-The current 2025 official application forms provide a more specific role layout:
+Consequences for scheduling:
 
-| Program Type | Current form evidence | Session total shown |
-|---|---|---:|
-| Master's — EARIST-QSF-GS-006 Rev. 01 (06.20.25) | **Adviser + 4 rows labeled Panelist + Facilitator + Rapporteur** | **7** |
-| Doctoral — EARIST-QSF-GS-007 Rev. 01 (06.20.25) | **6 rows labeled Panelist + Facilitator + Rapporteur** | **8** |
+- **Title Defense has no Adviser seat.** The Admin manually assigns all 7 Master's or all 8 Doctoral participants.
+- **Proposal/Final require the student's authoritative active Adviser as one session participant.** The Admin therefore manually assigns the remaining **6 Master's** or **7 Doctoral** participants.
+- The active Adviser is derived from `AdviserAssignment`; Scheduling must not let the Admin substitute a different person as the student's Adviser.
+- Merely opening the Scheduling page must not create a participant assignment. The derived Adviser plus the manually completed roster are persisted when the Admin confirms a valid schedule.
+- Automatic Adviser participation is a committee-composition rule only. It does **not** by itself decide whether the Adviser is a numerical evaluator or which artifacts the Adviser signs.
 
-These sources agree on the **7/8 total**, but the Master's verbal phrase “5 panelists” is not identical to the printed role labels “Adviser + 4 Panelist.” Therefore the system must **not yet hard-code 5 Master's scorers/evaluators**. The current forms should be used to clarify whether the client meant a five-person academic committee that includes the Adviser, or five scoring panelists in addition to the Adviser.
+The current 2025 GS-006 / GS-007 forms remain supporting evidence for the 7/8 totals and role labels. Where older shorthand such as "5 Master's panelists" or "6 Doctoral panelists" conflicts with the explicit Chairman + Panelist split above, this **2026-10-12 client clarification controls for the current system**.
 
-The Oral Examination Summary Sheet (EARIST-QSF-GS-011 Rev. 01) separately places the **Thesis/Dissertation Adviser under “Concurred In”**, outside the “Panel of Examiners” / Chairman + Member signature block. This supports modeling Adviser participation separately from evaluator participation; it does not by itself prove whether the Adviser scores in every defense stage.
+The Oral Examination Summary Sheet (EARIST-QSF-GS-011 Rev. 01) separately places the **Thesis/Dissertation Adviser under "Concurred In"**, outside the "Panel of Examiners" / Chairman + Member signature block. This remains relevant to scoring/signatory policy: committee participation is confirmed, but Adviser numerical-scoring authority remains a separate question.
 
-**Status:** 7/8 session totals are CONFIRMED_CLIENT + SUPPORTED_CURRENT_FORM. Exact evaluator/adviser counting remains OPEN_QUESTION.
+**Status:** session totals, Chairman/Panelist counts, no Adviser at Title, and automatic active-Adviser participation for Proposal/Final are **CONFIRMED_CLIENT**. Adviser scoring/signatory behavior remains independently configurable until explicitly confirmed.
 
 ### 3.4 Application approval is not defense completion
 
@@ -766,7 +768,7 @@ Recommended behavior:
 
 > `AdviserRequest` / nomination is not the same record as an active `AdviserAssignment`.
 
-> `AdviserAssignment` does not automatically mean `DefenseParticipantAssignment`.
+> `AdviserAssignment` and `DefenseParticipantAssignment` remain separate records/concepts even when stage policy derives one from the other.
 
 The system should therefore keep:
 
@@ -790,7 +792,15 @@ AdviserAssignment
 
 The exact Prisma shape may differ, but the domain distinction is required.
 
-A later Proposal/Final defense may include the adviser in a different participant/signatory capacity according to that stage's confirmed committee/form rules. The prior Title ODP membership only determines adviser candidacy; it does not automatically assign the adviser to future defense sessions.
+Current stage policy is explicit:
+
+- **Title Defense:** no Adviser participant is derived.
+- **Proposal/Final:** Scheduling derives the student's current active `AdviserAssignment` and includes that Adviser as the automatic Adviser participant when the valid defense schedule/roster is confirmed.
+- Loading or viewing the Scheduling form is not itself a participant-assignment mutation.
+- If the displayed Adviser is wrong, the underlying Adviser workflow/assignment must be corrected at its owning source; Scheduling must not silently replace the student's authoritative Adviser.
+- The prior Title ODP membership determines adviser candidacy. Once the Adviser Request workflow creates an active AdviserAssignment, that active relationship is the source for Proposal/Final automatic Adviser participation.
+
+Automatic participation does not automatically grant evaluator/scoring or document-signatory authority; those remain governed by the separate scoring/signature policy.
 
 ## 10. Stage B — Proposal Defense
 
@@ -1003,20 +1013,46 @@ Databank submission enabled
 
 ## 12. Defense Committee Policy
 
-### 12.1 Confirmed current totals + form-specific role layout
-
+### 12.1 Confirmed current totals + stage-specific role layout
 
 ```text
-MASTER'S — confirmed session total: 7
-Client wording: 5 panelists + 1 facilitator + 1 rapporteur
-Current GS-006 form: 1 Adviser + 4 Panelist rows + 1 Facilitator + 1 Rapporteur
+TITLE DEFENSE
 
-DOCTORAL — confirmed session total: 8
-Client wording: 6 panelists + 1 facilitator + 1 rapporteur
-Current GS-007 form: 6 Panelist rows + 1 Facilitator + 1 Rapporteur
+MASTER'S — total 7
+- 1 Chairman
+- 4 Panelists
+- 1 Facilitator
+- 1 Rapporteur
+- no Adviser
+
+DOCTORAL — total 8
+- 1 Chairman
+- 5 Panelists
+- 1 Facilitator
+- 1 Rapporteur
+- no Adviser
+
+
+PROPOSAL / FINAL DEFENSE
+
+MASTER'S — total 7
+- 1 active Adviser (derived automatically)
+- 1 Chairman
+- 3 Panelists
+- 1 Facilitator
+- 1 Rapporteur
+- Admin manually selects 6 participants
+
+DOCTORAL — total 8
+- 1 active Adviser (derived automatically)
+- 1 Chairman
+- 4 Panelists
+- 1 Facilitator
+- 1 Rapporteur
+- Admin manually selects 7 participants
 ```
 
-The system should treat the **7/8 totals as confirmed** while keeping Master's evaluator/adviser semantics configurable until clarified. The form itself is more specific than the client's shorthand and should guide the next client question rather than be silently overridden.
+The **7/8 totals and the role counts above are CONFIRMED_CLIENT as of 2026-10-12**. The active Adviser consumes one Proposal/Final session seat, but Adviser numerical-scoring/signatory authority remains separate from committee composition and must not be inferred from seat assignment.
 
 ### 12.2 Do not model all participants as generic "Panelist"
 
@@ -1046,50 +1082,69 @@ The evaluator and signatory flags should be independent from the display role.
 
 ### 12.3 Confirmed / form-supported behavior
 
-
-- Facilitator is a separately labeled session role on both current Master's and Doctoral application forms.
-- Rapporteur is a separately labeled session role on both current Master's and Doctoral application forms.
-- Current session totals are 7 for Master's and 8 for Doctoral.
-- The current Master's GS-006 form explicitly contains an Adviser seat plus four rows labeled Panelist.
-- The current Doctoral GS-007 form contains six rows labeled Panelist and no separately labeled Adviser seat.
-- GS-011 distinguishes the Panel of Examiners from the Thesis/Dissertation Adviser concurrence area.
+- Facilitator is a separately labeled session role and is exactly **1** participant in the current Master's and Doctoral committee policy.
+- Rapporteur is a separately labeled session role and is exactly **1** participant in the current Master's and Doctoral committee policy.
+- Current session totals are exactly **7 for Master's** and **8 for Doctoral**.
+- Title Defense uses **1 Chairman + 4 Master's / 5 Doctoral Panelists**, with no Adviser seat.
+- Proposal/Final automatically include the student's active Adviser as one participant and use **1 Chairman + 3 Master's / 4 Doctoral manually selected Panelists**, plus Facilitator and Rapporteur.
+- The Admin manually selects **6 Master's / 7 Doctoral** participants for Proposal/Final because the Adviser seat is derived.
+- GS-006 / GS-007 remain supporting form evidence; the 2026-10-12 client clarification is authoritative when older form row labels or shorthand are ambiguous.
+- GS-011 distinguishes the Panel of Examiners from the Thesis/Dissertation Adviser concurrence area, so committee membership must not be treated as proof of numerical-scoring authority.
 
 ### 12.4 Not yet confirmed
 
 Do **not** hard-code the following assumptions yet:
 
-1. Whether the Chairman is included within the 5/6 evaluation-panelist count.
-2. Whether the Adviser is included within the 5/6 count.
-3. Whether the Adviser attends Proposal/Final as an additional non-evaluator seat.
-4. Whether the Adviser submits an oral score.
-5. Whether Facilitator signs the Oral Examination Summary or RAP.
-6. Whether Rapporteur signs the Oral Examination Summary or RAP.
-7. Whether every evaluator must sign every generated document.
-8. Whether Title, Proposal, and Final use exactly the same committee composition.
-9. Whether the same committee should be re-used between stages.
+1. Whether the active Adviser submits a Proposal/Final oral score.
+2. Whether Chairman scoring/signatory behavior is identical to ordinary Panelists for every Proposal/Final artifact.
+3. Whether Facilitator signs the Oral Examination Summary or RAP.
+4. Whether Rapporteur signs the Oral Examination Summary or RAP.
+5. Whether every evaluator must sign every generated document.
+6. Whether the same committee should be re-used between stages.
 
 ### 12.5 Current implementation correction
 
-
-The current `refactor/defense-workflow` implementation treats committee size as unrestricted and passes program type as `UNKNOWN` to validation.
+The current implementation must validate committee policy from the student's actual program type and defense stage rather than treating committee size as unrestricted or passing program type as `UNKNOWN`.
 
 Refactor requirement:
 
 - derive `programType` from the student's actual program,
 - load committee policy by **program type + defense stage + policy/template version**,
-- require one Facilitator and one Rapporteur when the current policy applies,
-- support the current GS-006 / GS-007 role layouts,
-- do **not** enforce “5 Master's evaluators” until the Adviser-vs-panelist interpretation is confirmed,
-- enforce six Doctoral scoring examiners only if the client confirms all six printed Panelist rows are evaluators,
-- keep Chairman and Adviser scoring/signatory behavior independent/configurable.
+- enforce exactly one Chairman, one Facilitator, and one Rapporteur under the current policy,
+- enforce Title Panelist quotas of **4 Master's / 5 Doctoral** and no Adviser seat,
+- for Proposal/Final, derive exactly one active Adviser participant and enforce manually selected Panelist quotas of **3 Master's / 4 Doctoral**,
+- require exactly **7 total Master's / 8 total Doctoral** participants at scheduling confirmation,
+- reject duplicate participant assignment unless a future client policy explicitly permits multi-role assignment,
+- keep committee composition separate from evaluator/scoring/signatory authority,
+- validate the final roster server-side; frontend role counters/readiness are advisory UX, not the authority.
 
-### 12.6 Important adviser correction
+### 12.6 Adviser participation correction — confirmed 2026-10-12
 
-The current code automatically adds an `ADVISER` seat for Proposal/Final.
+The student's active Adviser **does consume one Proposal/Final committee seat** under the current client-confirmed policy.
 
-That must not remain an implicit rule until the client confirms whether the adviser consumes a committee seat.
+Rules:
 
-Adviser relationship/certification and defense participation are separate concepts.
+1. Title Defense has no Adviser participant.
+2. Proposal/Final Scheduling derives the current active Adviser automatically.
+3. The Adviser is shown as an automatic/locked role in Scheduling; the Admin manually assigns only the remaining 6 Master's / 7 Doctoral participants.
+4. Opening the Scheduling workspace must not persist the Adviser participant by itself.
+5. On final schedule confirmation, the derived Adviser and manually selected roster are validated and persisted as one valid session roster.
+6. Scheduling must not provide a shortcut for replacing the student's authoritative Adviser. A wrong Adviser must be corrected through the Adviser owning workflow.
+7. Adviser committee participation does not by itself make the Adviser a numerical evaluator or imply any particular signature requirement.
+
+Adviser relationship/certification and defense participation remain separate domain concepts even though current Proposal/Final policy derives the latter from the former.
+
+### 12.7 Committee correction lifecycle — bounded project design
+
+Scheduling must support correction of genuine Admin assignment mistakes without rewriting academic history:
+
+- **Before schedule confirmation:** the roster is draft. Admin may remove, replace, or change manually assigned roles freely; no notification/audit event is needed beyond normal draft state.
+- **After scheduling, before the defense starts:** authorized Admin may replace a manually assigned member, correct a role, or update schedule details through a deliberate **Manage Schedule & Committee** flow. Persist an audit record/reason and notify affected participants as appropriate.
+- **The automatic Adviser is not corrected from Scheduling.** Adviser identity comes from the authoritative AdviserAssignment.
+- **Once the defense is `IN_PROGRESS`, `AWAITING_CONCLUSION`, or concluded:** normal roster editing is locked because participant identity may already own scores, signatures, RAP/minutes attribution, and audit history.
+- Any exceptional post-start substitution must use a separate explicit administrative amendment workflow; it must not silently mutate historical participant ownership.
+
+**Status:** pre-start correction/audit behavior is **PROPOSED_SYSTEM_DESIGN** supporting the confirmed committee policy; it does not expand scoring or conclusion authority.
 
 ---
 
@@ -1558,19 +1613,41 @@ Application approval must not select the Title winner and must not mark the defe
 
 ### 18.2 Committee Assignment & Scheduling
 
-Recommended UI grouping:
+Recommended stage-aware grouping:
 
 ```text
-Evaluation Panel        0 / 5 Master's   or   0 / 6 Doctoral
-Session Officials
+TITLE — MASTER'S (7 total)
+- Chairman              0 / 1
+- Panelists             0 / 4
 - Facilitator           0 / 1
 - Rapporteur            0 / 1
-Additional/Conditional Roles
-- Chairman designation  TBD counting rule
-- Adviser participation TBD
+- Adviser               not applicable
+
+TITLE — DOCTORAL (8 total)
+- Chairman              0 / 1
+- Panelists             0 / 5
+- Facilitator           0 / 1
+- Rapporteur            0 / 1
+- Adviser               not applicable
+
+PROPOSAL / FINAL — MASTER'S (7 total)
+- Adviser               1 / 1 automatic, locked from active AdviserAssignment
+- Chairman              0 / 1
+- Panelists             0 / 3
+- Facilitator           0 / 1
+- Rapporteur            0 / 1
+- Admin manual choices  0 / 6
+
+PROPOSAL / FINAL — DOCTORAL (8 total)
+- Adviser               1 / 1 automatic, locked from active AdviserAssignment
+- Chairman              0 / 1
+- Panelists             0 / 4
+- Facilitator           0 / 1
+- Rapporteur            0 / 1
+- Admin manual choices  0 / 7
 ```
 
-The scheduling button remains disabled until server-valid committee requirements and schedule fields are satisfied.
+The scheduling action remains disabled until the **server-valid** committee requirements and schedule fields are satisfied. UI counters/readiness must explain missing roles, but they do not replace backend validation.
 
 ### 18.3 Schedule fields
 
@@ -1881,14 +1958,15 @@ Current behavior:
 
 Required correction:
 
-- Master's defense session must follow the confirmed 7-participant composition. Current GS-006 shows Adviser + 4 Panelists + 1 Facilitator + 1 Rapporteur.
-- Do not hard-code 5 Master's scoring evaluators until the Adviser / Chairman / evaluator mapping is confirmed by the client.
-- Doctoral defense session uses 6 Panelist positions + 1 Facilitator + 1 Rapporteur = 8 participants.
-- Facilitator = exactly 1.
-- Rapporteur = exactly 1.
-- Use the student's actual `programType`.
-- Evaluator eligibility must be derived from confirmed role policy, not from total participant count.
-
+- Use the student's actual `programType` and defense stage.
+- **Title Master's:** 1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur = 7; no Adviser.
+- **Title Doctoral:** 1 Chairman + 5 Panelists + 1 Facilitator + 1 Rapporteur = 8; no Adviser.
+- **Proposal/Final Master's:** derive 1 active Adviser + Admin assigns 1 Chairman + 3 Panelists + 1 Facilitator + 1 Rapporteur = 7 total; 6 manual choices.
+- **Proposal/Final Doctoral:** derive 1 active Adviser + Admin assigns 1 Chairman + 4 Panelists + 1 Facilitator + 1 Rapporteur = 8 total; 7 manual choices.
+- Facilitator = exactly 1; Rapporteur = exactly 1; Chairman = exactly 1.
+- The same user must not fill multiple seats unless future policy explicitly permits it.
+- The derived Adviser must come from the authoritative active AdviserAssignment and must not be replaced from Scheduling.
+- Evaluator/scoring eligibility must be derived from separate confirmed role policy, not from participant count. In particular, automatic Adviser participation does not prove Adviser scoring authority.
 ### P0 — Score submission can prematurely conclude/pass the defense
 
 Required correction:
@@ -2238,14 +2316,15 @@ Every workflow-policy update should add an entry below.
 | 2026-09-24 | Adviser candidates are restricted to members of the student's own Title Defense panel rather than the unrestricted faculty directory. | Current client clarification, corroborated by legacy EARIST adviser-selection material — CONFIRMED_CLIENT |
 | 2026-09-24 | GS-IS uses **Defense Committee** for the full roster and **Oral Defense Panel (ODP)** for the evaluator/adviser-candidate subset. Working mapping is Chairman + evaluator Panelists; Facilitator/Rapporteur excluded pending exact client role confirmation. | PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION |
 | 2026-09-24 | GS-020 is a system-native adviser-request workflow with a generated/downloadable official document output; active AdviserAssignment is created only after Adviser CONFORME and Dean approval. | Current GS-020 form + project design — SUPPORTED_CURRENT_FORM / PROPOSED_SYSTEM_DESIGN |
-| 2026-09-22 | Master's has 5 panelists + 1 facilitator + 1 rapporteur. | Client — CONFIRMED_CLIENT |
-| 2026-09-22 | Doctoral has 6 panelists + 1 facilitator + 1 rapporteur. | Client — CONFIRMED_CLIENT |
+| 2026-10-12 | Current Title composition is Master's: 1 Chairman + 4 Panelists + Facilitator + Rapporteur = 7; Doctoral: 1 Chairman + 5 Panelists + Facilitator + Rapporteur = 8. Title has no Adviser seat. | Client clarification — CONFIRMED_CLIENT |
+| 2026-10-12 | Proposal/Final automatically include the student's active Adviser as one of the 7/8 session participants. Admin manually assigns the remaining 6 Master's / 7 Doctoral participants: Chairman + 3/4 Panelists + Facilitator + Rapporteur. | Client clarification — CONFIRMED_CLIENT |
+| 2026-10-12 | Automatic Adviser participation is a committee-seat rule only; Adviser numerical scoring/signatory authority remains separate until explicitly confirmed. | Client clarification + project safety boundary — CONFIRMED_CLIENT / OPEN_QUESTION for scoring |
+| 2026-09-22 | Earlier shorthand said Master's "5 panelists" and Doctoral "6 panelists"; this is superseded for role counting by the 2026-10-12 explicit Chairman + Panelist split. | Historical client wording — SUPERSEDED |
 | 2026-09-22 | Application `APPROVED` does not equal defense `PASSED`. | Canonical system rule |
 | 2026-09-22 | Score completion must not itself conclude/pass the defense. | Canonical system rule |
 | 2026-09-22 | Requirements and certifications must be stage-specific. | Canonical system rule |
-| 2026-09-22 | Adviser relationship and defense participant seat are separate concepts. | Canonical system rule pending client seat/scoring clarification |
-| 2026-09-22 | Current Master's GS-006 shows Adviser + 4 Panelist + Facilitator + Rapporteur (7 total); do not assume 5 Master's scoring evaluators until clarified. | Current form evidence — SUPPORTED_CURRENT_FORM |
-| 2026-09-22 | Current Doctoral GS-007 shows 6 Panelist + Facilitator + Rapporteur (8 total). | Current form evidence — SUPPORTED_CURRENT_FORM |
+| 2026-09-22 | Adviser relationship and defense participant assignment are separate domain records/concepts. Current Proposal/Final policy now derives an Adviser participant from the active AdviserAssignment at schedule confirmation; this does not merge the records or imply scoring authority. | Canonical modeling rule, refined by 2026-10-12 client clarification |
+| 2026-09-22 | Current GS-006 / GS-007 forms remain supporting evidence for 7/8 totals and role labels; where row-label ambiguity conflicts with current role counts, the 2026-10-12 client clarification controls. | SUPPORTED_CURRENT_FORM + CONFIRMED_CLIENT clarification |
 | 2026-09-22 | Adviser Request should represent Adviser CONFORME/acceptance and Dean approval if GS-020 is digitized. | Current form evidence — SUPPORTED_CURRENT_FORM |
 | 2026-09-22 | Signatory rules are form-specific; participant assignment does not imply signature requirement. | Current forms — canonical system rule |
 | 2026-09-22 | Expert Evaluation / research-instrument validation is outside the core GS-IS defense workflow unless the client later expands scope; the system may only store or surface the completed document when needed. | Client/project scope clarification — CONFIRMED_PROJECT_SCOPE |
