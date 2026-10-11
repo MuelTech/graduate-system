@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: eleven formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth; UIUX-2I Admin COR Verification is eleventh).**
+**Current state: twelve formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth; UIUX-2I Admin COR Verification is eleventh; UIUX-2K Admin Defense Applications is twelfth).**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1447,6 +1447,18 @@ Each must still be broken into bounded implementation packages.
 - **Verification provenance:** independent review verified remote final HEAD `5e88b63ce65551f7a5996b63b7f0aa31671d8498`, the exact one-file/one-line FIX-1 diff, COR Verification wording on page/sidebar/Applicant Profile, and unchanged contextual-link route. Coding-agent report for the main package recorded frontend TypeScript + scoped ESLint **PASS** and compilation/typecheck **PASS** before overall build **FAIL** at the known unrelated `/login` `useSearchParams()`/Suspense prerender issue. FIX-1 TypeScript and targeted ESLint also **PASS**; full build was not rerun. Browser/manual runtime QA remained **NOT EXECUTED** in the agent environment.
 - **Reuse with care:** evidence-first master-detail review, explicit provisional-versus-confirmed values, secondary machine-extraction diagnostics, and consequence-aware confirmation copy are reusable. COR-specific identity authority, Applicant→Student system lifecycle, Entrance Exam gate, authenticated COR document access, and parser semantics are domain-specific.
 
+## Admin Defense Applications — UIUX-2K
+
+- **Accepted implementation chain:** main refinement `f848f11f2264196502a8c6775397786691754556`, FIX-1 `d951eee8b03cdf908770f488b853a9a474e1f742`, and accepted final FIX-2 `583d049d0e49048a9926315fd4b5ade855ff8921` on `refactor/system-ui-ux`. Project-owner final visual/UI/UX acceptance: **ACCEPTED**, 2026-10-12. **This is the twelfth Approved Reference; acceptance does not certify the coding agent's unexecuted browser/runtime QA.**
+- **Pattern:** Admin application-review queue plus dedicated nested evidence-review workspace. The accepted list is **PageHeader → workflow tabs with counts → stable Search / Defense Stage / Program filters → Student | Defense Stage | Submitted | Documents | Status | Action table → pagination**. Duplicate KPI cards and the global Status filter were removed; document count remains neutral and does not claim completeness.
+- **Programs/cache correction:** the prior shared React Query key `["programs"]` was used with incompatible cached shapes across Admin pages, allowing an object payload to reach a consumer calling `.map()`. Defense Applications now uses a dedicated graduate-program query key/projection with defensive array boundaries. This fixes the page without authorizing a repository-wide Programs-query cleanup; related collisions elsewhere remain separate work.
+- **Review workspace:** `/admin/thesis/applications/[id]` remains a dedicated page rather than a large modal. Desktop uses a bounded two-column evidence-review composition: Research Information + Application Requirements + collapsed Document History on the main side; compact/sticky Application Summary + Admin Decision/Next Step on the side. FIX-1 removed stretched equal-weight Cards and the oversized `flex-1` Approve button. Confirmation Dialogs remain appropriate for Approve/Reject only.
+- **Layout stability:** background-fetch `Updating…` was removed from the filter row to prevent flex reflow. Stable filter/action geometry is preserved, while FIX-2 removes the separate visible reserved refresh row that created excess vertical dead space; a zero-layout `sr-only` live announcement retains assistive refresh feedback.
+- **Workflow/ownership:** approval means **Ready for Scheduling**, not scheduled/passed/concluded/complete. Approval never selects the official Title Defense title. Successful approval offers **Assign Panel & Schedule** to the existing `/admin/thesis/scheduling?thesisId=...` flow without forced redirect, supporting both immediate handoff and batch review. Scheduling & Panels retains committee/schedule ownership; Defense Records retains conducted-defense/outcome/RAP ownership.
+- **Read model and evidence:** the package added one ADMIN-only exact application-detail read endpoint that reuses the existing application projection; no mutation or academic authority changed. Requirements use the existing document-history projection so current, MISSING, and AMBIGUOUS states are presented honestly; evidence presence is not converted into a false completeness claim.
+- **Feedback/validation:** native alerts were removed in favor of contextual feedback and focused Dialogs. Agent reports: frontend TypeScript + scoped ESLint **PASS** across main/FIX-1/FIX-2; production compile/typecheck **PASS** before the known unrelated `/login` Suspense prerender failure. Main package backend build **PASS**, focused new repository tests **4/4 PASS**, full backend suite **1075 passed / 4 failed / 5 skipped** with all four failures reproduced at baseline in unrelated COR static-contract tests. Coding-agent browser QA remained **NOT EXECUTED**; owner visual review supplied the acceptance gate, not end-to-end certification.
+- **Reuse with care:** dedicated review pages are preferred when evidence inspection/history requires sustained attention and deep linking; small Dialogs remain appropriate for final consequential decisions. Stable async geometry, compact scan lists, and explicit downstream ownership are reusable; Defense application status, title selection, panel/schedule, outcome, and RAP rules are domain-specific.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1455,7 +1467,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The eleven accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, UIUX-2H Admin Entrance Exam Schedules, and UIUX-2I Admin COR Verification) remain independent; the **Panelist Dashboard** is not yet accepted.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The twelve accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, UIUX-2H Admin Entrance Exam Schedules, UIUX-2I Admin COR Verification, and UIUX-2K Admin Defense Applications) remain independent; the **Panelist Dashboard** is not yet accepted.
 
 ### What is implemented
 
@@ -1505,7 +1517,7 @@ The standalone **Waiting on Others** card repeats the visual weight and card rhy
 - **Coding-agent report:** frontend TypeScript and targeted ESLint **PASS**; build compilation/typecheck **PASS**, but overall production build **FAIL** at unrelated pre-existing `/login` `useSearchParams()`/Suspense prerendering. No fresh local tests were rerun during this documentation update.
 - **Not executed:** browser QA of legacy index redirects, active state while in workspace, collapsed/mobile sidebar, keyboard/focus, direct workspace deep links, manuscript access, and redirect-loop avoidance.
 - **Known cleanup:** `stageManuscriptDocType` helper in `frontend/src/lib/panelist-defenses.ts` is now unused and remains intact pending an authorized cleanup.
-- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, UIUX-2H Admin Entrance Exam Schedules is the tenth, and independently accepted UIUX-2I Admin COR Verification is the eleventh. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
+- **Acceptance:** requires a project-owner manual browser check. Do **not** register UIUX-3D as an additional Approved Reference; UIUX-3B My Defenses remains the eighth, UIUX-4A Student Dashboard is the ninth, UIUX-2H Admin Entrance Exam Schedules is the tenth, UIUX-2I Admin COR Verification is the eleventh, and independently accepted UIUX-2K Admin Defense Applications is the twelfth. UIUX-3A Dashboard FIX-1 / UIUX-3C Defense Workspace are not covered by UIUX-3D.
 
 # 11. Audit limitations
 
