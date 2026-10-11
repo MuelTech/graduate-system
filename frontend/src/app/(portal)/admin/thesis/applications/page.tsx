@@ -337,13 +337,9 @@ export default function AdminDefenseApplicationsPage() {
         </div>
       )}
 
-      {/* Background-refresh status: reserved space so it never shifts layout. */}
-      <p
-        className="min-h-[1rem] text-right text-xs text-(--earist-body-text)"
-        role="status"
-        aria-live="polite"
-      >
-        {isFetching && !isLoading ? "Updating…" : ""}
+      {/* Background-refresh notice: screen-reader only, zero visual/layout space. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {isFetching && !isLoading ? "Updating defense applications." : ""}
       </p>
 
       <Card className="overflow-hidden py-0">
