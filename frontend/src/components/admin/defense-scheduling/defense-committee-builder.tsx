@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Lock, Users, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Check, Lock, Users } from "lucide-react";
 import type { CommitteePolicyDto, DefensePanelRole } from "@/types";
 import { RoleAssignmentDialog } from "./role-assignment-dialog";
 import {
@@ -26,8 +27,11 @@ type Props = {
   members: CommitteeMember[];
   adviser: CommitteeMember | null;
   onAssignRole: (role: DefensePanelRole, people: PickerPerson[]) => void;
-  onRemoveMember: (userId: string) => void;
 };
+
+/** One consistent four-column grid for the header and every roster row. */
+const ROSTER_GRID =
+  "sm:grid sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_5.5rem_6rem] sm:items-center sm:gap-3";
 
 function roleQuota(
   policy: CommitteePolicyDto | undefined,
@@ -44,20 +48,74 @@ function joinList(parts: string[]): string {
   return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
 }
 
+/** Roster-order missing summary: Adviser (if shown) → Chairman → Panelists → Facilitator → Rapporteur. */
 function missingSentence(
   readiness: ReturnType<typeof computeCommitteeReadiness>,
+  showAdviser: boolean,
 ): string | null {
   const parts: string[] = [];
-  const panelists = readiness.panelistQuota - readiness.panelists;
-  if (panelists > 0) parts.push(`${panelists} Panelist${panelists === 1 ? "" : "s"}`);
-  if (readiness.rapporteur < 1) parts.push("1 Rapporteur");
-  if (readiness.chairman < 1) parts.push("1 Chairman");
-  if (readiness.facilitator < 1) parts.push("1 Facilitator");
-  if (readiness.adviserMode === "AUTOMATIC" && !readiness.adviserPresent) {
+  if (showAdviser && readiness.adviserMode === "AUTOMATIC" && !readiness.adviserPresent) {
     parts.push("the active adviser");
   }
+  if (readiness.chairman < 1) parts.push("1 Chairman");
+  const panelists = readiness.panelistQuota - readiness.panelists;
+  if (panelists > 0) parts.push(`${panelists} Panelist${panelists === 1 ? "" : "s"}`);
+  if (readiness.facilitator < 1) parts.push("1 Facilitator");
+  if (readiness.rapporteur < 1) parts.push("1 Rapporteur");
   if (parts.length === 0) return null;
   return `${joinList(parts)} still required`;
+}
+
+function compactNames(names: string[], max = 3): string {
+  if (names.length <= max) return names.join(" · ");
+  return `${names.slice(0, max).join(" · ")} +${names.length - max}`;
+}
+
+function RosterRow({
+  role,
+  participants,
+  secondary,
+  assigned,
+  empty = false,
+  action,
+}: {
+  role: string;
+  participants: string;
+  secondary?: string;
+  assigned: string;
+  empty?: boolean;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className={cn("grid grid-cols-1 gap-1 py-3", ROSTER_GRID)}>
+      <div className="flex items-center justify-between gap-2 sm:block">
+        <span className="text-sm font-semibold text-(--earist-secondary)">
+          {role}
+        </span>
+        <span className="text-xs tabular-nums text-(--earist-body-text) sm:hidden">
+          {assigned}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "truncate text-sm",
+            empty ? "text-(--earist-body-text)" : "text-foreground",
+          )}
+          title={participants}
+        >
+          {participants}
+        </p>
+        {secondary && (
+          <p className="truncate text-xs text-(--earist-body-text)">{secondary}</p>
+        )}
+      </div>
+      <div className="hidden text-center text-xs tabular-nums text-(--earist-body-text) sm:block">
+        {assigned}
+      </div>
+      <div className="sm:justify-self-end">{action}</div>
+    </div>
+  );
 }
 
 export function DefenseCommitteeBuilder({
@@ -70,7 +128,6 @@ export function DefenseCommitteeBuilder({
   members,
   adviser,
   onAssignRole,
-  onRemoveMember,
 }: Props) {
   const [activeRole, setActiveRole] = useState<DefensePanelRole | null>(null);
   const readiness = policy
@@ -90,15 +147,6 @@ export function DefenseCommitteeBuilder({
   const totalAssigned = members.length + (adviser ? 1 : 0);
   const sessionTotal = policy?.sessionTotal;
   const actionsDisabled = !policy || policyLoading;
-
-  const requiredCell = (assigned: number, quota?: number) =>
-    quota === undefined ? (
-      <span className="text-(--earist-body-text)">Loading…</span>
-    ) : (
-      <span>
-        {assigned} / {quota}
-      </span>
-    );
 
   return (
     <Card>
@@ -126,93 +174,65 @@ export function DefenseCommitteeBuilder({
 
       <CardContent className="pt-0">
         <div className="divide-y divide-(--earist-border-gray)">
+          {/* Column headers — restrained, desktop only */}
+          <div
+            className={cn(
+              "hidden pb-1 text-xs font-medium tracking-wide text-(--earist-body-text) uppercase",
+              ROSTER_GRID,
+            )}
+          >
+            <span>Role</span>
+            <span>Assigned participant(s)</span>
+            <span className="text-center">Assigned</span>
+            <span className="text-right">Action</span>
+          </div>
+
           {showAdviser && (
-            <div className="grid grid-cols-1 gap-1.5 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)_5rem_auto] sm:items-center sm:gap-3">
-              <div className="text-sm font-semibold text-(--earist-secondary)">
-                Adviser
-              </div>
-              <div className="min-w-0 text-sm">
-                <span
-                  className={adviser ? "text-foreground" : "text-(--earist-warning)"}
-                >
-                  {adviser ? adviser.name : "Active thesis adviser not found"}
-                </span>
-                <span className="mt-0.5 block text-xs text-(--earist-body-text)">
-                  Automatic — managed in the Adviser workflow
-                </span>
-              </div>
-              <div className="text-xs text-(--earist-body-text)">
-                {adviser ? "1 / 1" : "0 / 1"}
-              </div>
-              <div className="sm:justify-self-end">
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Lock className="h-3 w-3" aria-hidden="true" />
+            <RosterRow
+              role="Adviser"
+              participants={adviser ? adviser.name : "Active thesis adviser not found"}
+              secondary="Active thesis adviser"
+              empty={!adviser}
+              assigned={adviser ? "1 / 1" : "0 / 1"}
+              action={
+                <span className="inline-flex items-center gap-1 text-xs text-(--earist-body-text)">
+                  <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                   Automatic
-                </Badge>
-              </div>
-            </div>
+                </span>
+              }
+            />
           )}
 
           {MANUAL_ROLE_ORDER.map((role) => {
             const roleMembers = membersOf(role);
             const quota = roleQuota(policy, role);
             const isPanelist = role === "PANELIST";
+            const participants = isPanelist
+              ? compactNames(roleMembers.map((m) => m.name))
+              : (roleMembers[0]?.name ?? "Not assigned");
+            const empty = roleMembers.length === 0;
             return (
-              <div
+              <RosterRow
                 key={role}
-                className="grid grid-cols-1 gap-1.5 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)_5rem_auto] sm:items-center sm:gap-3"
-              >
-                <div className="text-sm font-semibold text-(--earist-secondary)">
-                  {ROLE_LABELS[role]}
-                </div>
-                <div className="min-w-0 text-sm">
-                  {roleMembers.length === 0 ? (
-                    <span className="text-(--earist-body-text)">
-                      Not assigned
-                    </span>
-                  ) : isPanelist ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {roleMembers.map((m) => (
-                        <span
-                          key={m.userId}
-                          className="inline-flex items-center gap-1 rounded-full bg-(--earist-surface-gray) px-2 py-0.5 text-xs text-foreground"
-                        >
-                          {m.name}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${m.name} from Panelists`}
-                            onClick={() => onRemoveMember(m.userId)}
-                          >
-                            <X className="h-3 w-3" aria-hidden="true" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="font-medium text-foreground">
-                      {roleMembers[0]?.name}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-(--earist-body-text)">
-                  {requiredCell(roleMembers.length, quota)}
-                </div>
-                <div className="sm:justify-self-end">
+                role={isPanelist ? "Panelists" : ROLE_LABELS[role]}
+                participants={participants}
+                empty={empty}
+                assigned={
+                  quota === undefined ? "Loading…" : `${roleMembers.length} / ${quota}`
+                }
+                action={
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     disabled={actionsDisabled}
+                    className="w-20 justify-center"
                     onClick={() => setActiveRole(role)}
                   >
-                    {isPanelist
-                      ? "Edit Panelists"
-                      : roleMembers.length > 0
-                        ? "Change"
-                        : "Assign"}
+                    {empty ? "Assign" : "Edit"}
                   </Button>
-                </div>
-              </div>
+                }
+              />
             );
           })}
         </div>
@@ -235,7 +255,7 @@ export function DefenseCommitteeBuilder({
             </span>
           ) : (
             <span className="text-(--earist-warning)">
-              {missingSentence(readiness)}
+              {missingSentence(readiness, showAdviser)}
             </span>
           )}
         </div>

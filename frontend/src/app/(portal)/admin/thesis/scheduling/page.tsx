@@ -256,10 +256,6 @@ function AdminSchedulingPageInner() {
     setMissingItems([]);
   };
 
-  const handleRemoveMember = (userId: string) => {
-    setCommittee((prev) => prev.filter((m) => m.userId !== userId));
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -374,7 +370,6 @@ function AdminSchedulingPageInner() {
                 members={committee}
                 adviser={adviser}
                 onAssignRole={handleAssignRole}
-                onRemoveMember={handleRemoveMember}
               />
               <DefenseScheduleForm
                 value={schedule}
