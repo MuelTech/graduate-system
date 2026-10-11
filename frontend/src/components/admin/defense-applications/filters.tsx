@@ -29,13 +29,18 @@ type Props = {
   programs: ProgramOption[];
   programsLoading?: boolean;
   programsError?: boolean;
-  isFetching?: boolean;
   onSearchChange: (v: string) => void;
   onStageChange: (v: string) => void;
   onProgramChange: (v: string) => void;
   onClear: () => void;
 };
 
+/**
+ * UIUX-2K FIX-1: filter geometry must stay stable while switching workflow tabs
+ * and during background refetch. No transient messaging is rendered inside the
+ * control row, and the Clear-filters action slot is always reserved so a
+ * conditional button cannot resize the Search / Stage / Program controls.
+ */
 export function DefenseApplicationFilters({
   search,
   stage,
@@ -43,7 +48,6 @@ export function DefenseApplicationFilters({
   programs,
   programsLoading = false,
   programsError = false,
-  isFetching = false,
   onSearchChange,
   onStageChange,
   onProgramChange,
@@ -155,14 +159,15 @@ export function DefenseApplicationFilters({
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 sm:ml-auto sm:pb-0.5">
-            {isFetching && (
-              <span className="text-xs text-(--earist-body-text)" role="status">
-                Updating…
-              </span>
-            )}
+          {/* Reserved action slot: width is stable whether or not Clear is shown. */}
+          <div className="w-full sm:w-36 sm:self-end">
             {isFiltered && (
-              <Button variant="ghost" size="sm" onClick={onClear}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClear}
+                className="w-full justify-center sm:justify-start"
+              >
                 <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 Clear filters
               </Button>

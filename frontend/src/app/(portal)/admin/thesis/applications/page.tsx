@@ -306,7 +306,6 @@ export default function AdminDefenseApplicationsPage() {
         programs={programs}
         programsLoading={programsQuery.isLoading}
         programsError={programsQuery.isError}
-        isFetching={isFetching && !isLoading}
         onSearchChange={(v) => {
           setSearch(v);
           setPage(1);
@@ -337,6 +336,15 @@ export default function AdminDefenseApplicationsPage() {
           </Button>
         </div>
       )}
+
+      {/* Background-refresh status: reserved space so it never shifts layout. */}
+      <p
+        className="min-h-[1rem] text-right text-xs text-(--earist-body-text)"
+        role="status"
+        aria-live="polite"
+      >
+        {isFetching && !isLoading ? "Updating…" : ""}
+      </p>
 
       <Card className="overflow-hidden py-0">
         <CardContent className="min-w-0 p-0">

@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,6 +40,7 @@ import {
   History,
   RefreshCw,
   ShieldCheck,
+  X,
   XCircle,
 } from "lucide-react";
 
@@ -80,25 +80,32 @@ function formatDate(value: string): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
+    <div className="flex items-start justify-between gap-3">
       <dt className="text-xs font-medium text-(--earist-body-text)">{label}</dt>
-      <dd className="mt-0.5 text-sm break-words text-foreground">{value}</dd>
+      <dd className="text-right text-sm break-words text-foreground">
+        {value}
+      </dd>
     </div>
   );
 }
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-live="polite">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-56" />
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="space-y-6" aria-busy="true" aria-live="polite">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-16 w-full rounded-lg" />
       </div>
-      <Skeleton className="h-28 w-full rounded-xl" />
-      <Skeleton className="h-48 w-full rounded-xl" />
-      <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="space-y-4">
+        <Skeleton className="h-52 w-full rounded-lg" />
+        <Skeleton className="h-40 w-full rounded-lg" />
+      </div>
     </div>
   );
 }
@@ -167,10 +174,7 @@ export default function DefenseApplicationDetailPage() {
       setShowApprove(false);
       setApproveError(null);
       setMissingRequirements([]);
-      setFeedback({
-        type: "success",
-        message: "Application approved.",
-      });
+      setFeedback({ type: "success", message: "Application approved." });
     },
     onError: (error: Error) => {
       const err = error as Error & ApiErrorish;
@@ -179,7 +183,9 @@ export default function DefenseApplicationDetailPage() {
         setApproveError("Application cannot be approved yet.");
       } else {
         setMissingRequirements([]);
-        setApproveError(error.message || "The application could not be approved.");
+        setApproveError(
+          error.message || "The application could not be approved.",
+        );
       }
     },
   });
@@ -217,7 +223,7 @@ export default function DefenseApplicationDetailPage() {
 
   if (appQuery.isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
         {breadcrumb}
         <DetailSkeleton />
       </div>
@@ -228,55 +234,53 @@ export default function DefenseApplicationDetailPage() {
     const statusCode = (appQuery.error as ApiErrorish | null)?.statusCode;
     const notFound = statusCode === 404;
     return (
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
         {breadcrumb}
-        <Card>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-              <AlertCircle
-                className="h-8 w-8 text-(--earist-secondary)"
-                aria-hidden="true"
-              />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {notFound
-                    ? "Defense application not found"
-                    : "Unable to load this defense application"}
-                </p>
-                <p className="text-sm text-(--earist-body-text)">
-                  {notFound
-                    ? "This application may have been removed or the link is incorrect."
-                    : "The application could not be loaded. Please try again."}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {!notFound && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => appQuery.refetch()}
-                    disabled={appQuery.isFetching}
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        appQuery.isFetching && "animate-spin",
-                      )}
-                      aria-hidden="true"
-                    />
-                    Retry
-                  </Button>
-                )}
-                <Link
-                  href="/admin/thesis/applications"
-                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-                >
-                  Back to Defense Applications
-                </Link>
-              </div>
+        <div className="rounded-lg border border-(--earist-border-gray) bg-white">
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+            <AlertCircle
+              className="h-8 w-8 text-(--earist-secondary)"
+              aria-hidden="true"
+            />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-(--earist-primary)">
+                {notFound
+                  ? "Defense application not found"
+                  : "Unable to load this defense application"}
+              </p>
+              <p className="text-sm text-(--earist-body-text)">
+                {notFound
+                  ? "This application may have been removed or the link is incorrect."
+                  : "The application could not be loaded. Please try again."}
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {!notFound && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appQuery.refetch()}
+                  disabled={appQuery.isFetching}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      appQuery.isFetching && "animate-spin",
+                    )}
+                    aria-hidden="true"
+                  />
+                  Retry
+                </Button>
+              )}
+              <Link
+                href="/admin/thesis/applications"
+                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+              >
+                Back to Defense Applications
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -297,6 +301,7 @@ export default function DefenseApplicationDetailPage() {
   const isReady = app.workflowBucket === "READY";
   const isActive = app.workflowBucket === "ACTIVE";
   const isHistory = app.workflowBucket === "HISTORY";
+  const schedulingHref = `/admin/thesis/scheduling?thesisId=${app.thesisId ?? app.id}`;
 
   const viewDocument = (id: string, title: string) =>
     setViewerDoc({
@@ -307,7 +312,7 @@ export default function DefenseApplicationDetailPage() {
   const requirements = historyQuery.data?.supportingEvidence ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       {breadcrumb}
 
       <PageHeader
@@ -318,7 +323,7 @@ export default function DefenseApplicationDetailPage() {
       {feedback && (
         <div
           role="status"
-          className="flex items-start justify-between gap-3 rounded-lg border border-(--earist-success)/30 bg-(--earist-surface-gray) px-4 py-3"
+          className="flex items-center justify-between gap-3 rounded-lg border border-(--earist-success)/30 bg-(--earist-surface-gray) px-4 py-2"
         >
           <p className="flex items-start gap-2 text-sm text-(--earist-success)">
             <CheckCircle2
@@ -333,446 +338,456 @@ export default function DefenseApplicationDetailPage() {
             aria-label="Dismiss message"
             onClick={() => setFeedback(null)}
           >
-            <XCircle className="h-4 w-4" aria-hidden="true" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       )}
 
-      {/* 1. Application Summary */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            Application Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <SummaryItem label="Student" value={studentName} />
-            <SummaryItem
-              label="Student Number"
-              value={student.studentNumber || "Not recorded"}
-            />
-            <SummaryItem
-              label="Program"
-              value={student.program?.programName || "Not recorded"}
-            />
-            <SummaryItem label="Defense Stage" value={stageLabel} />
-            <SummaryItem
-              label="Submitted"
-              value={formatDate(app.createdAt)}
-            />
-            <div className="min-w-0">
-              <dt className="text-xs font-medium text-(--earist-body-text)">
-                Application Status
-              </dt>
-              <dd className="mt-1">
-                <Badge
-                  variant="outline"
-                  className={cn("font-medium", STATUS_BADGE_CLASS[statusKey])}
-                >
-                  {statusLabel}
-                </Badge>
-              </dd>
-            </div>
-          </dl>
-          {app.rejectionReason && app.rawApplicationStatus === "REJECTED" && (
-            <p className="mt-3 rounded-md bg-destructive/5 px-3 py-2 text-sm break-words text-destructive">
-              Rejection reason: {app.rejectionReason}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 2. Research Information */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            Research Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isTitle && (
-            <div>
-              <p className="text-xs font-medium text-(--earist-secondary)">
-                Proposed Research Titles
-              </p>
-              {app.thesisTitles.length === 0 ? (
-                <p className="mt-1 text-sm text-(--earist-body-text)">
-                  No proposed titles recorded.
-                </p>
-              ) : (
-                <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">
-                  {app.thesisTitles.map((title) => (
-                    <li key={title.id} className="break-words text-foreground">
-                      {title.titleText}
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <p className="mt-2 text-xs text-(--earist-body-text)">
-                The official research title is selected during Title Defense
-                conclusion. Application approval does not select a title.
-              </p>
-            </div>
-          )}
-
-          {(isProposal || isFinal) && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-medium text-(--earist-secondary)">
-                  Official Research Title
-                </p>
-                <p className="mt-0.5 text-sm break-words text-foreground">
-                  {selectedTitle?.titleText || "Not selected yet"}
-                </p>
-              </div>
-              {adviser && (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Main review column */}
+        <div className="min-w-0 space-y-6">
+          {/* Research Information */}
+          <section>
+            <h2 className="text-sm font-semibold text-(--earist-secondary)">
+              Research Information
+            </h2>
+            <div className="mt-3">
+              {isTitle && (
                 <div>
                   <p className="text-xs font-medium text-(--earist-secondary)">
-                    Thesis / Dissertation Adviser
+                    Proposed Research Titles
                   </p>
-                  <p className="mt-0.5 text-sm break-words text-foreground">
-                    {adviser.firstName} {adviser.lastName}
-                  </p>
-                  <p className="mt-1 text-xs text-(--earist-body-text)">
-                    The Adviser relationship is not automatically a defense
-                    committee seat.
+                  {app.thesisTitles.length === 0 ? (
+                    <p className="mt-1 text-sm text-(--earist-body-text)">
+                      No proposed titles recorded.
+                    </p>
+                  ) : (
+                    <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm">
+                      {app.thesisTitles.map((title) => (
+                        <li
+                          key={title.id}
+                          className="break-words text-foreground"
+                        >
+                          {title.titleText}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <p className="mt-2 text-xs text-(--earist-body-text)">
+                    The official research title is selected during Title Defense
+                    conclusion. Application approval does not select a title.
                   </p>
                 </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* 3. Application Requirements */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            Application Requirements
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {historyQuery.isLoading ? (
-            <div className="space-y-2" aria-hidden="true">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : historyQuery.isError || !historyQuery.data ? (
-            <div className="flex flex-col items-start gap-2">
-              <p className="text-sm text-(--earist-body-text)">
-                Unable to load the application requirements.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => historyQuery.refetch()}
-                disabled={historyQuery.isFetching}
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    historyQuery.isFetching && "animate-spin",
-                  )}
-                  aria-hidden="true"
-                />
-                Retry
-              </Button>
-            </div>
-          ) : requirements.length === 0 ? (
-            <p className="text-sm text-(--earist-body-text)">
-              No requirements are recorded for this stage.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {requirements.map((slot) => (
-                <li
-                  key={slot.docType}
-                  className="rounded-lg border border-(--earist-border-gray) p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                      {requirementLabel(slot.docType)}
+              {(isProposal || isFinal) && (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-(--earist-secondary)">
+                      Official Research Title
                     </p>
-                    {slot.current && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          viewDocument(
-                            slot.current!.id,
-                            requirementLabel(slot.docType),
-                          )
-                        }
-                      >
-                        <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                        View
-                      </Button>
-                    )}
+                    <p className="mt-0.5 text-sm break-words text-foreground">
+                      {selectedTitle?.titleText || "Not selected yet"}
+                    </p>
                   </div>
-                  {slot.integrityState === "MISSING" && (
-                    <p className="mt-1 text-sm text-(--earist-warning)">
-                      No current document recorded.
-                    </p>
+                  {adviser && (
+                    <div>
+                      <p className="text-xs font-medium text-(--earist-secondary)">
+                        Thesis / Dissertation Adviser
+                      </p>
+                      <p className="mt-0.5 text-sm break-words text-foreground">
+                        {adviser.firstName} {adviser.lastName}
+                      </p>
+                      <p className="mt-1 text-xs text-(--earist-body-text)">
+                        The Adviser relationship is not automatically a defense
+                        committee seat.
+                      </p>
+                    </div>
                   )}
-                  {slot.integrityState === "AMBIGUOUS" && (
-                    <p className="mt-1 text-sm text-(--earist-warning)">
-                      Multiple current versions recorded — review required.
-                    </p>
-                  )}
-                  {slot.current && (
-                    <p className="mt-1 text-xs break-words text-(--earist-body-text)">
-                      {slot.current.originalFilename || "Filename unavailable"} ·{" "}
-                      {formatDateTime(slot.current.uploadedAt)}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )}
+            </div>
+          </section>
 
-      {/* 4. Document / Review History (secondary disclosure) */}
-      <details className="rounded-lg border border-(--earist-border-gray) bg-white px-4 py-3">
-        <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
-          <History className="h-4 w-4" aria-hidden="true" />
-          View document history
-        </summary>
-        <div className="mt-3 space-y-4">
-          {historyQuery.isLoading ? (
-            <p className="text-sm text-(--earist-body-text)">
-              Loading document history…
-            </p>
-          ) : historyQuery.isError || !historyQuery.data ? (
-            <p className="text-sm text-(--earist-body-text)">
-              Unable to load document history.
-            </p>
-          ) : (
-            <>
-              {historyQuery.data.reviewTimeline.length > 0 && (
-                <div>
-                  <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
-                    Review Timeline
+          {/* Application Requirements — dominant review surface */}
+          <section className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+            <h2 className="text-sm font-semibold text-(--earist-secondary)">
+              Application Requirements
+            </h2>
+            <div className="mt-3">
+              {historyQuery.isLoading ? (
+                <div className="space-y-2" aria-hidden="true">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton key={index} className="h-14 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : historyQuery.isError || !historyQuery.data ? (
+                <div className="flex flex-col items-start gap-2">
+                  <p className="text-sm text-(--earist-body-text)">
+                    Unable to load the application requirements.
                   </p>
-                  <ul className="space-y-1">
-                    {historyQuery.data.reviewTimeline.map((event, index) => (
-                      <li
-                        key={`${event.type}-${index}`}
-                        className="rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
-                      >
-                        <span className="font-medium text-(--earist-primary)">
-                          {TIMELINE_LABEL[event.type] ?? event.type}
-                        </span>
-                        <span className="text-(--earist-body-text)">
-                          {" "}
-                          · {formatDateTime(event.timestamp)}
-                        </span>
-                        {event.actor && (
-                          <span className="text-(--earist-body-text)">
-                            {" "}
-                            · {event.actor.name}
-                          </span>
-                        )}
-                        {event.reason && (
-                          <p className="mt-0.5 text-(--earist-body-text)">
-                            Reason: {event.reason}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => historyQuery.refetch()}
+                    disabled={historyQuery.isFetching}
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        historyQuery.isFetching && "animate-spin",
+                      )}
+                      aria-hidden="true"
+                    />
+                    Retry
+                  </Button>
+                </div>
+              ) : requirements.length === 0 ? (
+                <p className="text-sm text-(--earist-body-text)">
+                  No requirements are recorded for this stage.
+                </p>
+              ) : (
+                <ul className="divide-y divide-(--earist-border-gray)">
+                  {requirements.map((slot) => (
+                    <li
+                      key={slot.docType}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {requirementLabel(slot.docType)}
+                        </p>
+                        {slot.integrityState === "MISSING" && (
+                          <p className="mt-0.5 text-sm text-(--earist-warning)">
+                            No current document recorded.
                           </p>
                         )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {historyQuery.data.manuscriptReview && (
-                <div className="rounded-md border border-(--earist-border-gray) p-3">
-                  <p className="flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
-                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                    Manuscript — Read-only (Adviser reviewed)
-                  </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                    <Badge variant="outline">
-                      {MANUSCRIPT_STATUS_LABEL[
-                        historyQuery.data.manuscriptReview.certificationStatus
-                      ] ??
-                        historyQuery.data.manuscriptReview.certificationStatus}
-                    </Badge>
-                    {historyQuery.data.manuscriptReview.adviser && (
-                      <span className="text-(--earist-body-text)">
-                        Adviser:{" "}
-                        {historyQuery.data.manuscriptReview.adviser.name}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
-                  Previous Versions
-                </p>
-                {requirements.every((slot) => slot.history.length === 0) ? (
-                  <p className="text-sm text-(--earist-body-text)">
-                    No previous document versions recorded.
-                  </p>
-                ) : (
-                  <ul className="space-y-1">
-                    {requirements.flatMap((slot) =>
-                      slot.history.map((version) => (
-                        <li
-                          key={version.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
+                        {slot.integrityState === "AMBIGUOUS" && (
+                          <p className="mt-0.5 text-sm text-(--earist-warning)">
+                            Multiple current versions recorded — review
+                            required.
+                          </p>
+                        )}
+                        {slot.current && (
+                          <p className="mt-0.5 text-xs break-words text-(--earist-body-text)">
+                            {slot.current.originalFilename ||
+                              "Filename unavailable"}{" "}
+                            · {formatDateTime(slot.current.uploadedAt)}
+                          </p>
+                        )}
+                      </div>
+                      {slot.current && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            viewDocument(
+                              slot.current!.id,
+                              requirementLabel(slot.docType),
+                            )
+                          }
                         >
-                          <span className="min-w-0 break-words">
-                            {requirementLabel(slot.docType)} ·{" "}
-                            {version.originalFilename || "Filename unavailable"}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              viewDocument(
-                                version.id,
-                                `${requirementLabel(slot.docType)} (previous version)`,
-                              )
-                            }
-                          >
-                            <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                            View
-                          </Button>
-                        </li>
-                      )),
-                    )}
-                  </ul>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </details>
-
-      {/* 5. Admin Decision / Next Step */}
-      {canDecide && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Admin Decision
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-3 text-xs text-(--earist-body-text)">
-              Approving confirms the application requirements are accepted and
-              makes this ready for panel assignment and scheduling. Approval
-              does not select a title or mark the defense as passed.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                variant="outline"
-                className="text-destructive hover:bg-destructive/10 sm:w-44"
-                onClick={() => {
-                  setRejectError(null);
-                  setShowReject(true);
-                }}
-              >
-                <XCircle className="mr-2 h-4 w-4" aria-hidden="true" />
-                Reject Application
-              </Button>
-              <Button
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                onClick={() => {
-                  setApproveError(null);
-                  setMissingRequirements([]);
-                  setShowApprove(true);
-                }}
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                Approve Application
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {isReady && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Ready for Scheduling
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-(--earist-body-text)">
-              Application requirements have been approved. Panel assignment and
-              defense scheduling are managed in Scheduling &amp; Panels.
-            </p>
-            <Link
-              href={`/admin/thesis/scheduling?thesisId=${app.thesisId ?? app.id}`}
-              className={cn(
-                buttonVariants(),
-                "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                          <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                          View
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
-            >
-              <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
-              Assign Panel &amp; Schedule
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          </section>
 
-      {isActive && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Scheduled / Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-(--earist-body-text)">
-              This application has proceeded to a scheduled defense. Committee
-              and schedule details are managed in Scheduling &amp; Panels.
-            </p>
-            <Link
-              href={`/admin/thesis/scheduling?thesisId=${app.thesisId ?? app.id}`}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              Open Scheduling &amp; Panels
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+          {/* Document / Review History — secondary, collapsed */}
+          <details className="rounded-lg border border-(--earist-border-gray) bg-white px-4 py-3">
+            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-(--earist-secondary)">
+              <History className="h-4 w-4" aria-hidden="true" />
+              View document history
+            </summary>
+            <div className="mt-3 space-y-4">
+              {historyQuery.isLoading ? (
+                <p className="text-sm text-(--earist-body-text)">
+                  Loading document history…
+                </p>
+              ) : historyQuery.isError || !historyQuery.data ? (
+                <p className="text-sm text-(--earist-body-text)">
+                  Unable to load document history.
+                </p>
+              ) : (
+                <>
+                  {historyQuery.data.reviewTimeline.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
+                        Review Timeline
+                      </p>
+                      <ul className="space-y-1">
+                        {historyQuery.data.reviewTimeline.map((event, index) => (
+                          <li
+                            key={`${event.type}-${index}`}
+                            className="rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
+                          >
+                            <span className="font-medium text-(--earist-primary)">
+                              {TIMELINE_LABEL[event.type] ?? event.type}
+                            </span>
+                            <span className="text-(--earist-body-text)">
+                              {" "}
+                              · {formatDateTime(event.timestamp)}
+                            </span>
+                            {event.actor && (
+                              <span className="text-(--earist-body-text)">
+                                {" "}
+                                · {event.actor.name}
+                              </span>
+                            )}
+                            {event.reason && (
+                              <p className="mt-0.5 text-(--earist-body-text)">
+                                Reason: {event.reason}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-      {isHistory && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              History
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-(--earist-body-text)">
-              This application is part of the student&apos;s defense history.
-            </p>
-            {historyQuery.data?.officialRecord?.available && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  router.push(
-                    `/admin/thesis/defense-records/${historyQuery.data!.officialRecord!.scheduleId}`,
-                  )
-                }
-              >
-                <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
-                View Defense Record
-              </Button>
+                  {historyQuery.data.manuscriptReview && (
+                    <div className="rounded-md border border-(--earist-border-gray) p-3">
+                      <p className="flex items-center gap-1 text-xs font-semibold text-(--earist-secondary)">
+                        <ShieldCheck
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
+                        Manuscript — Read-only (Adviser reviewed)
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="outline">
+                          {MANUSCRIPT_STATUS_LABEL[
+                            historyQuery.data.manuscriptReview
+                              .certificationStatus
+                          ] ??
+                            historyQuery.data.manuscriptReview
+                              .certificationStatus}
+                        </Badge>
+                        {historyQuery.data.manuscriptReview.adviser && (
+                          <span className="text-(--earist-body-text)">
+                            Adviser:{" "}
+                            {historyQuery.data.manuscriptReview.adviser.name}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-(--earist-secondary)">
+                      Previous Versions
+                    </p>
+                    {requirements.every((slot) => slot.history.length === 0) ? (
+                      <p className="text-sm text-(--earist-body-text)">
+                        No previous document versions recorded.
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {requirements.flatMap((slot) =>
+                          slot.history.map((version) => (
+                            <li
+                              key={version.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-(--earist-surface-gray) px-3 py-2 text-sm"
+                            >
+                              <span className="min-w-0 break-words">
+                                {requirementLabel(slot.docType)} ·{" "}
+                                {version.originalFilename ||
+                                  "Filename unavailable"}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  viewDocument(
+                                    version.id,
+                                    `${requirementLabel(slot.docType)} (previous version)`,
+                                  )
+                                }
+                              >
+                                <Eye
+                                  className="mr-1.5 h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                                View
+                              </Button>
+                            </li>
+                          )),
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </details>
+        </div>
+
+        {/* Context / action sidebar */}
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          {/* Application Summary */}
+          <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+            <h2 className="text-sm font-semibold text-(--earist-secondary)">
+              Application Summary
+            </h2>
+            <dl className="mt-3 space-y-2">
+              <SummaryRow
+                label="Student Number"
+                value={student.studentNumber || "Not recorded"}
+              />
+              <SummaryRow
+                label="Program"
+                value={student.program?.programName || "Not recorded"}
+              />
+              <SummaryRow label="Defense Stage" value={stageLabel} />
+              <SummaryRow
+                label="Submitted"
+                value={formatDate(app.createdAt)}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-xs font-medium text-(--earist-body-text)">
+                  Status
+                </dt>
+                <dd>
+                  <Badge
+                    variant="outline"
+                    className={cn("font-medium", STATUS_BADGE_CLASS[statusKey])}
+                  >
+                    {statusLabel}
+                  </Badge>
+                </dd>
+              </div>
+            </dl>
+            {app.rejectionReason && app.rawApplicationStatus === "REJECTED" && (
+              <p className="mt-3 rounded-md bg-destructive/5 px-3 py-2 text-xs break-words text-destructive">
+                Rejection reason: {app.rejectionReason}
+              </p>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+
+          {/* Admin Decision (pending) */}
+          {canDecide && (
+            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+                Admin Decision
+              </h2>
+              <p className="mt-2 text-xs text-(--earist-body-text)">
+                Approving accepts this application for panel assignment and
+                scheduling. It does not select an official research title or
+                mark the defense as passed.
+              </p>
+              {isTitle && (
+                <p className="mt-1 text-xs text-(--earist-body-text)">
+                  The official title is selected only during the Title Defense
+                  conclusion.
+                </p>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setRejectError(null);
+                    setShowReject(true);
+                  }}
+                >
+                  <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Reject
+                </Button>
+                <Button
+                  className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                  onClick={() => {
+                    setApproveError(null);
+                    setMissingRequirements([]);
+                    setShowApprove(true);
+                  }}
+                >
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                  Approve
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Next Step (ready) */}
+          {isReady && (
+            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+                Next Step
+              </h2>
+              <p className="mt-2 text-sm text-(--earist-body-text)">
+                Application requirements have been approved. Panel assignment
+                and defense scheduling are managed in Scheduling &amp; Panels.
+              </p>
+              <Link
+                href={schedulingHref}
+                className={cn(
+                  buttonVariants(),
+                  "mt-3 w-full justify-center bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+                )}
+              >
+                <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
+                Assign Panel &amp; Schedule
+              </Link>
+            </div>
+          )}
+
+          {/* Scheduled / Active */}
+          {isActive && (
+            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+                Scheduled / Active
+              </h2>
+              <p className="mt-2 text-sm text-(--earist-body-text)">
+                This application has proceeded to a scheduled defense. Committee
+                and schedule details are managed in Scheduling &amp; Panels.
+              </p>
+              <Link
+                href={schedulingHref}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "mt-3 w-full justify-center",
+                )}
+              >
+                Open Scheduling &amp; Panels
+              </Link>
+            </div>
+          )}
+
+          {/* History */}
+          {isHistory && (
+            <div className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
+              <h2 className="text-sm font-semibold text-(--earist-secondary)">
+                History
+              </h2>
+              <p className="mt-2 text-sm text-(--earist-body-text)">
+                This application is part of the student&apos;s defense history.
+              </p>
+              {historyQuery.data?.officialRecord?.available && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full justify-center"
+                  onClick={() =>
+                    router.push(
+                      `/admin/thesis/defense-records/${historyQuery.data!.officialRecord!.scheduleId}`,
+                    )
+                  }
+                >
+                  <FileText className="mr-2 h-4 w-4" aria-hidden="true" />
+                  View Defense Record
+                </Button>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
 
       {/* Approve confirmation */}
       <Dialog
@@ -856,7 +871,10 @@ export default function DefenseApplicationDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label htmlFor="defense-reject-reason" className="mb-1 block text-xs">
+            <Label
+              htmlFor="defense-reject-reason"
+              className="mb-1 block text-xs"
+            >
               Reason for rejection{" "}
               <span className="text-destructive">*</span>
             </Label>
