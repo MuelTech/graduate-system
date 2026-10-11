@@ -394,6 +394,22 @@ export class DefenseApplicationsRepository {
     };
   }
 
+  /**
+   * UIUX-2K: bounded ADMIN read model for the deep-linkable application detail
+   * page. Reuses the exact same authoritative projection as the paginated list
+   * (`applicationInclude` + `mapApplicationRow`) — read-only, no duplicated
+   * workflow derivation and no new academic authority.
+   */
+  async getDefenseApplicationById(thesisId: string) {
+    if (!thesisId) return null;
+    const row = await prisma.thesisRecord.findUnique({
+      where: { id: thesisId },
+      include: applicationInclude(),
+    });
+    if (!row) return null;
+    return mapApplicationRow(row as never);
+  }
+
   /** Rejected apps + DefenseConclusion history (prior stages survive stage advance). */
   private async getDefenseHistoryPaginated(params: {
     page: number;

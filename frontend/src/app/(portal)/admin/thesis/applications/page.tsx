@@ -1,19 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import type { MissingRequirement, PaginatedResponse } from "@/types";
-import { DefenseApplicationCard, type DefenseApplicationDto } from "@/components/admin/defense-applications/application-card";
-import { DefenseApplicationReviewDialog } from "@/components/admin/defense-applications/review-dialog";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DefenseApplicationFilters } from "@/components/admin/defense-applications/filters";
+import {
+  DefenseApplicationRow,
+  type DefenseApplicationDto,
+} from "@/components/admin/defense-applications/application-row";
 import {
   workflowBucketParam,
   type WorkflowView,
 } from "@/components/admin/defense-applications/labels";
+import type { PaginatedResponse, Program } from "@/types";
+import { AlertCircle, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+
+const PAGE_SIZE = 10;
+const ALL = "ALL";
 
 const WORKFLOW_TABS: Array<{ id: WorkflowView; label: string }> = [
   { id: "NEEDS_REVIEW", label: "Needs Review" },
@@ -22,229 +30,283 @@ const WORKFLOW_TABS: Array<{ id: WorkflowView; label: string }> = [
   { id: "HISTORY", label: "History" },
 ];
 
-export default function AdminDefenseApplicationsPage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+type WorkflowSummary = {
+  NEEDS_REVIEW: number;
+  READY: number;
+  ACTIVE: number;
+  HISTORY: number;
+};
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[900px] table-fixed border-collapse">
+        <colgroup>
+          <col className="w-[26%]" />
+          <col className="w-[15%]" />
+          <col className="w-[13%]" />
+          <col className="w-[16%]" />
+          <col className="w-[13%]" />
+          <col className="w-[17%]" />
+        </colgroup>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+function TableHead() {
+  return (
+    <thead>
+      <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Student
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Defense Stage
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Submitted
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Documents
+        </th>
+        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
+          Status
+        </th>
+        <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
+          Action
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <TableShell>
+      <TableHead />
+      <tbody aria-hidden="true">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <tr
+            key={index}
+            className="border-b border-(--earist-border-gray) last:border-0"
+          >
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="mt-2 h-3 w-32" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-24" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-24" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-4 w-28" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </td>
+            <td className="px-4 py-3 align-top">
+              <Skeleton className="ml-auto h-8 w-36 rounded-md" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableShell>
+  );
+}
+
+export default function AdminDefenseApplicationsPage() {
   const [view, setView] = useState<WorkflowView>("NEEDS_REVIEW");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [stage, setStage] = useState("ALL");
-  const [programId, setProgramId] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [reviewApp, setReviewApp] = useState<DefenseApplicationDto | null>(null);
+  const [stage, setStage] = useState(ALL);
+  const [programId, setProgramId] = useState(ALL);
 
-  const { data: programs = [] } = useQuery({
-    queryKey: ["programs"],
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const trimmedSearch = debouncedSearch.trim();
+
+  // UIUX-2K: dedicated cache key for the graduate-program ARRAY shape. Other
+  // Admin pages cache the full `/programs` DTO under `["programs"]`; sharing
+  // that key caused `programs.map is not a function`.
+  const programsQuery = useQuery<Program[]>({
+    queryKey: ["programs", "graduate"],
     queryFn: async () => {
-      const res = await apiClientRequest("/programs");
-      return Array.isArray(res) ? res : [];
+      const response = await apiClientRequest("/programs");
+      return Array.isArray(response?.graduatePrograms)
+        ? response.graduatePrograms
+        : [];
     },
   });
+  const programs = Array.isArray(programsQuery.data) ? programsQuery.data : [];
 
-  // Always scope by the active tab's workflow bucket.
-  // statusFilter only refines inside that bucket (never re-buckets the query).
-  const listBucket = useMemo(() => workflowBucketParam(view), [view]);
+  const listBucket = workflowBucketParam(view);
 
-  const { data, isLoading, isError } = useQuery({
+  const applicationsQuery = useQuery<PaginatedResponse<DefenseApplicationDto>>({
     queryKey: [
       "defenseApplications",
       page,
-      search,
+      trimmedSearch,
       stage,
       listBucket,
-      statusFilter,
       programId,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
-        pageSize: "10",
-        search,
+        pageSize: String(PAGE_SIZE),
         stage,
         programId,
         bucket: listBucket,
       });
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
-      const res = await apiClientRequest(
+      if (trimmedSearch) params.set("search", trimmedSearch);
+      return (await apiClientRequest(
         `/thesis/defense/applications?${params.toString()}`,
-      );
-      return res as PaginatedResponse<DefenseApplicationDto>;
+      )) as PaginatedResponse<DefenseApplicationDto>;
     },
+    placeholderData: keepPreviousData,
   });
 
-  const { data: summary } = useQuery({
-    queryKey: ["defenseWorkflowSummary", search, stage, programId, statusFilter],
+  const summaryQuery = useQuery<WorkflowSummary>({
+    queryKey: ["defenseWorkflowSummary", trimmedSearch, stage, programId],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (stage && stage !== "ALL") params.set("stage", stage);
-      if (programId && programId !== "ALL") params.set("programId", programId);
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (trimmedSearch) params.set("search", trimmedSearch);
+      if (stage !== ALL) params.set("stage", stage);
+      if (programId !== ALL) params.set("programId", programId);
       const qs = params.toString();
-      const res = await apiClientRequest(
+      return (await apiClientRequest(
         `/thesis/defense/applications/summary${qs ? `?${qs}` : ""}`,
-      );
-      return res as {
-        NEEDS_REVIEW: number;
-        READY: number;
-        ACTIVE: number;
-        HISTORY: number;
-      };
+      )) as WorkflowSummary;
     },
   });
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["defenseApplications"] });
-    queryClient.invalidateQueries({ queryKey: ["defenseWorkflowSummary"] });
+  const isLoading = applicationsQuery.isLoading;
+  const isFetching = applicationsQuery.isFetching;
+  const isError = applicationsQuery.isError;
+  const isPlaceholderData = applicationsQuery.isPlaceholderData;
+  const hasData = applicationsQuery.data != null;
+
+  const filterRequestFailed = isError && isPlaceholderData;
+  const loadFailedWithoutData = isError && !hasData;
+  const sameQueryRefetchFailed = isError && hasData && !isPlaceholderData;
+
+  const items = applicationsQuery.data?.data ?? [];
+  const total = applicationsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const effectivePage = Math.min(page, totalPages);
+  const from = total === 0 ? 0 : (effectivePage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(effectivePage * PAGE_SIZE, total);
+
+  const isFiltered = trimmedSearch !== "" || stage !== ALL || programId !== ALL;
+
+  const counts: Record<string, number> = {
+    NEEDS_REVIEW: summaryQuery.data?.NEEDS_REVIEW ?? 0,
+    READY: summaryQuery.data?.READY ?? 0,
+    ACTIVE: summaryQuery.data?.ACTIVE ?? 0,
+    HISTORY: summaryQuery.data?.HISTORY ?? 0,
   };
 
-  const approveMutation = useMutation({
-    mutationFn: async (thesisId: string) => {
-      return apiClientRequest(`/thesis/defense/${thesisId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "APPROVED" }),
-      });
-    },
-    onSuccess: () => {
-      invalidate();
-      setReviewApp(null);
-      alert(
-        "Application approved. The student is ready for panel assignment and scheduling.",
-      );
-    },
-    onError: (error: Error & { missing?: MissingRequirement[] }) => {
-      alert(
-        error.missing?.length
-          ? error.missing.map((m) => m.message).join("\n")
-          : error.message || "The application could not be approved.",
-      );
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async ({
-      thesisId,
-      reason,
-    }: {
-      thesisId: string;
-      reason: string;
-    }) => {
-      return apiClientRequest(`/thesis/defense/${thesisId}/reject`, {
-        method: "PUT",
-        body: JSON.stringify({ reason }),
-      });
-    },
-    onSuccess: () => {
-      invalidate();
-      setReviewApp(null);
-      alert("Application rejected. The student can correct and resubmit.");
-    },
-    onError: (error: Error) => {
-      alert(error.message || "The application could not be rejected.");
-    },
-  });
-
-  const items = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const pageSize = data?.pageSize ?? 10;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-
   const emptyMessage = (() => {
-    if (search || stage !== "ALL" || programId !== "ALL" || statusFilter !== "ALL") {
-      return "No defense applications match the selected filters.";
-    }
-    if (view === "NEEDS_REVIEW") {
+    if (isFiltered) return "No defense applications match the selected filters.";
+    if (view === "NEEDS_REVIEW")
       return "No defense applications are waiting for review.";
-    }
-    if (view === "READY") {
+    if (view === "READY")
       return "No approved applications are waiting for scheduling.";
-    }
-    if (view === "SCHEDULED") {
-      return "No active scheduled defenses found.";
-    }
-    return "No historical defense applications found.";
+    if (view === "SCHEDULED")
+      return "No active defense applications are currently scheduled.";
+    return "No application history found.";
   })();
 
-  const primaryStats = [
-    { key: "NEEDS_REVIEW", label: "Needs Review", count: summary?.NEEDS_REVIEW ?? 0 },
-    { key: "READY", label: "Ready for Scheduling", count: summary?.READY ?? 0 },
-    { key: "ACTIVE", label: "Scheduled / Active", count: summary?.ACTIVE ?? 0 },
-    { key: "HISTORY", label: "History", count: summary?.HISTORY ?? 0 },
-  ];
+  const clearFilters = () => {
+    setSearch("");
+    setStage(ALL);
+    setProgramId(ALL);
+    setPage(1);
+  };
+
+  const pageNumbers = (() => {
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    if (effectivePage <= 3) return [1, 2, 3, 4, 5];
+    if (effectivePage >= totalPages - 2)
+      return Array.from({ length: 5 }, (_, index) => totalPages - 4 + index);
+    return [
+      effectivePage - 2,
+      effectivePage - 1,
+      effectivePage,
+      effectivePage + 1,
+      effectivePage + 2,
+    ];
+  })();
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Defense Application Review
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Review Title, Proposal, and Final Defense applications. Approve only
-          when requirements are complete — approval is not a passed defense.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Defense Applications"
+        description="Review Title, Proposal, and Final Defense applications. Approved applications proceed to panel assignment and scheduling; approval is not a defense result."
+      />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {primaryStats.map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            onClick={() => {
-              setView(
-                s.key === "NEEDS_REVIEW"
-                  ? "NEEDS_REVIEW"
-                  : s.key === "READY"
-                    ? "READY"
-                    : s.key === "ACTIVE"
-                      ? "SCHEDULED"
-                      : "HISTORY",
-              );
-              setStatusFilter("ALL");
-              setPage(1);
-            }}
-            className="rounded-lg border border-(--earist-border-gray) bg-white px-3 py-2 text-left"
-          >
-            <p className="text-xs text-(--earist-body-text)">{s.label}</p>
-            <p className="text-xl font-bold text-(--earist-primary)">{s.count}</p>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-b border-(--earist-border-gray) pb-2">
-        {WORKFLOW_TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            type="button"
-            variant={view === tab.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setView(tab.id);
-              setStatusFilter("ALL");
-              setPage(1);
-            }}
-            className={
-              view === tab.id
-                ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                : ""
-            }
-          >
-            {tab.label}
-          </Button>
-        ))}
+      {/* Workflow navigation (counts, not KPIs) */}
+      <div
+        role="group"
+        aria-label="Application workflow"
+        className="flex flex-wrap gap-2 border-b border-(--earist-border-gray) pb-2"
+      >
+        {WORKFLOW_TABS.map((tab) => {
+          const isActive = view === tab.id;
+          const count = counts[workflowBucketParam(tab.id)] ?? 0;
+          return (
+            <Button
+              key={tab.id}
+              type="button"
+              size="sm"
+              variant={isActive ? "default" : "outline"}
+              aria-pressed={isActive}
+              onClick={() => {
+                setView(tab.id);
+                setPage(1);
+              }}
+              className={cn(
+                isActive &&
+                  "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90",
+              )}
+            >
+              {tab.label}
+              <span
+                className={cn(
+                  "ml-1.5 rounded-full px-1.5 text-xs font-semibold",
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-(--earist-surface-gray) text-(--earist-body-text)",
+                )}
+              >
+                {count}
+              </span>
+            </Button>
+          );
+        })}
       </div>
 
       <DefenseApplicationFilters
         search={search}
         stage={stage}
-        status={statusFilter}
         programId={programId}
         programs={programs}
+        programsLoading={programsQuery.isLoading}
+        programsError={programsQuery.isError}
+        isFetching={isFetching && !isLoading}
         onSearchChange={(v) => {
           setSearch(v);
           setPage(1);
@@ -253,89 +315,128 @@ export default function AdminDefenseApplicationsPage() {
           setStage(v);
           setPage(1);
         }}
-        onStatusChange={(v) => {
-          setStatusFilter(v);
-          setPage(1);
-        }}
         onProgramChange={(v) => {
           setProgramId(v);
           setPage(1);
         }}
+        onClear={clearFilters}
       />
 
-      <div className="space-y-3">
-        {isLoading && (
-          <p className="py-10 text-center text-sm text-(--earist-body-text)">
-            Loading defense applications...
+      {sameQueryRefetchFailed && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-light-red) px-4 py-2.5">
+          <p className="text-sm text-(--earist-body-text)">
+            Couldn&apos;t refresh the list. Showing the most recent results.
           </p>
-        )}
-        {isError && (
-          <p className="py-10 text-center text-sm text-red-600">
-            Unable to load defense applications.
-          </p>
-        )}
-        {!isLoading && !isError && items.length === 0 && (
-          <p className="py-10 text-center text-sm text-(--earist-body-text)">
-            {emptyMessage}
-          </p>
-        )}
-        {!isLoading &&
-          items.map((app) => (
-            <DefenseApplicationCard
-              key={app.id}
-              app={app}
-              onView={() => setReviewApp(app)}
-              onAssignSchedule={() =>
-                router.push(`/admin/thesis/scheduling?thesisId=${app.id}`)
-              }
-            />
-          ))}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--earist-border-gray) pt-3 text-xs text-(--earist-body-text)">
-        <span>
-          Showing {from}–{to} of {total}
-        </span>
-        <div className="flex items-center gap-2">
           <Button
-            type="button"
             variant="outline"
             size="sm"
-            disabled={page <= 1 || isLoading}
-            onClick={() => setPage(page - 1)}
-            aria-label="Previous page"
+            onClick={() => applicationsQuery.refetch()}
+            disabled={isFetching}
           >
-            <ChevronLeft className="h-3 w-3" />
-            Previous
-          </Button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages || isLoading}
-            onClick={() => setPage(page + 1)}
-            aria-label="Next page"
-          >
-            Next
-            <ChevronRight className="h-3 w-3" />
+            Retry
           </Button>
         </div>
-      </div>
+      )}
 
-      <DefenseApplicationReviewDialog
-        open={!!reviewApp}
-        onOpenChange={(open) => {
-          if (!open) setReviewApp(null);
-        }}
-        app={reviewApp}
-        onApprove={(id) => approveMutation.mutate(id)}
-        onReject={(id, reason) => rejectMutation.mutate({ thesisId: id, reason })}
-        isApproving={approveMutation.isPending}
-        isRejecting={rejectMutation.isPending}
-      />
+      <Card className="overflow-hidden py-0">
+        <CardContent className="min-w-0 p-0">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : filterRequestFailed || loadFailedWithoutData ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+              <AlertCircle
+                className="h-8 w-8 text-(--earist-secondary)"
+                aria-hidden="true"
+              />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-(--earist-primary)">
+                  Unable to load defense applications
+                </p>
+                <p className="text-sm text-(--earist-body-text)">
+                  The applications for the current view could not be loaded.
+                  Please try again.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => applicationsQuery.refetch()}
+                disabled={isFetching}
+              >
+                <RefreshCw
+                  className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
+                  aria-hidden="true"
+                />
+                Retry
+              </Button>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
+              <p className="text-sm font-medium text-(--earist-primary)">
+                {emptyMessage}
+              </p>
+              {isFiltered && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <TableShell>
+              <TableHead />
+              <tbody>
+                {items.map((app) => (
+                  <DefenseApplicationRow key={app.id} app={app} />
+                ))}
+              </tbody>
+            </TableShell>
+          )}
+        </CardContent>
+      </Card>
+
+      {!isLoading && total > 0 && (
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-sm text-(--earist-body-text)">
+            Showing {from}–{to} of {total} application{total === 1 ? "" : "s"}
+          </p>
+          {totalPages > 1 && (
+            <nav aria-label="pagination" className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Go to previous page"
+                onClick={() => setPage(Math.max(1, effectivePage - 1))}
+                disabled={effectivePage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              {pageNumbers.map((pageNumber) => (
+                <Button
+                  key={pageNumber}
+                  variant={effectivePage === pageNumber ? "outline" : "ghost"}
+                  size="icon"
+                  aria-label={`Go to page ${pageNumber}`}
+                  aria-current={
+                    effectivePage === pageNumber ? "page" : undefined
+                  }
+                  onClick={() => setPage(pageNumber)}
+                >
+                  {pageNumber}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Go to next page"
+                onClick={() => setPage(Math.min(totalPages, effectivePage + 1))}
+                disabled={effectivePage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </nav>
+          )}
+        </div>
+      )}
     </div>
   );
 }

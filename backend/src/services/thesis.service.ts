@@ -191,6 +191,10 @@ export class ThesisService {
     });
   }
 
+  async getDefenseApplicationDetail(thesisId: string) {
+    return this.defenseAppsRepo.getDefenseApplicationById(thesisId);
+  }
+
   async getDefenseWorkflowSummary(params: {
     search?: string;
     stage?: string;

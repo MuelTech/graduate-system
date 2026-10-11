@@ -118,6 +118,25 @@ export class ThesisController {
     }
   };
 
+  getDefenseApplicationDetail = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const { thesisId } = req.params;
+      const result = await this.thesisService.getDefenseApplicationDetail(
+        thesisId as string,
+      );
+      if (!result) {
+        res.status(404).json({ error: "Defense application not found." });
+        return;
+      }
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const result = await this.thesisService.getAllAdviserRequests();

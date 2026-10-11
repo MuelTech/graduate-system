@@ -354,6 +354,16 @@ router.get(
   thesisController.getDefenseWorkflowSummary,
 );
 
+// ADMIN: Single defense application detail (deep-linkable review page).
+// Registered AFTER /applications/summary so the literal path is not shadowed,
+// and after /applications/:thesisId/document-history (which has an extra segment).
+router.get(
+  "/defense/applications/:thesisId",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseApplicationDetail,
+);
+
 // ADMIN: Get ALL applications (for full status view)
 router.get(
   "/defense/all",
