@@ -53,6 +53,14 @@ export function defenseTypeLabel(stage: "TITLE" | "PROPOSAL" | "FINAL"): string 
   return "Final Defense";
 }
 
+/** User-facing program type for the committee header. */
+export function programTypeLabel(raw: string | null | undefined): string {
+  const v = String(raw ?? "").toUpperCase();
+  if (v === "MASTERS" || v === "MASTER" || v === "MS") return "Master's";
+  if (v === "DOCTORAL" || v === "PHD" || v === "PH.D.") return "Doctoral";
+  return "Program type not set";
+}
+
 export function panelistToMember(
   p: ActivePanelistCandidate,
   role: DefensePanelRole,
@@ -131,19 +139,20 @@ export interface CommitteeReadiness {
 
 /**
  * UIUX advisory readiness projection. Backend `validateAssignments` remains the
- * authority; this only explains missing roles to the Admin.
+ * authority; this only explains missing roles to the Admin. Requires the
+ * resolved policy — callers must not compute readiness from a stale/absent one.
  */
 export function computeCommitteeReadiness(
-  policy: CommitteePolicyDto | undefined,
+  policy: CommitteePolicyDto,
   members: CommitteeMember[],
   adviser: CommitteeMember | null,
 ): CommitteeReadiness {
   const countOf = (role: DefensePanelRole) =>
     members.filter((m) => m.role === role).length;
-  const panelistQuota = policy?.panelistCount ?? 0;
-  const sessionTotal = policy?.sessionTotal ?? 7;
-  const adviserMode = policy?.adviserMode ?? "NONE";
-  const manualSelectionCount = policy?.manualSelectionCount ?? sessionTotal;
+  const panelistQuota = policy.panelistCount;
+  const sessionTotal = policy.sessionTotal;
+  const adviserMode = policy.adviserMode;
+  const manualSelectionCount = policy.manualSelectionCount;
 
   const chairman = countOf("CHAIRMAN");
   const panelists = countOf("PANELIST");

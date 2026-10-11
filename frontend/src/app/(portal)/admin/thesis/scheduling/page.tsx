@@ -32,7 +32,9 @@ import { EmailPreviewDialog } from "@/components/admin/defense-scheduling/email-
 import {
   computeCommitteeReadiness,
   defenseTypeFromStage,
+  defenseTypeLabel,
   personToMember,
+  programTypeLabel,
   type CommitteeMember,
   type PickerPerson,
   type ScheduleFormState,
@@ -159,7 +161,8 @@ function AdminSchedulingPageInner() {
   }, [selected]);
 
   const readiness = useMemo(
-    () => computeCommitteeReadiness(policy, committee, adviser),
+    () =>
+      policy ? computeCommitteeReadiness(policy, committee, adviser) : null,
     [policy, committee, adviser],
   );
 
@@ -185,7 +188,7 @@ function AdminSchedulingPageInner() {
 
   const scheduleOk =
     !scheduleErrors.date && !scheduleErrors.time && !scheduleErrors.venue;
-  const isValid = !!selected && !!policy && readiness.complete && scheduleOk;
+  const isValid = !!selected && !!readiness && readiness.complete && scheduleOk;
 
   const assignments = useMemo(() => {
     const manual = committee.map((c) => ({ userId: c.userId, role: c.role }));
@@ -360,30 +363,19 @@ function AdminSchedulingPageInner() {
           {selected && (
             <>
               <DefenseSummaryCard application={selected} />
-              {policy ? (
-                <DefenseCommitteeBuilder
-                  policy={policy}
-                  members={committee}
-                  adviser={adviser}
-                  onAssignRole={handleAssignRole}
-                  onRemoveMember={handleRemoveMember}
-                />
-              ) : (
-                <div className="rounded-lg border border-(--earist-border-gray) bg-white p-6 text-center text-sm">
-                  {policyError ? (
-                    <span className="text-destructive">
-                      Unable to load the committee policy. Committee assignment
-                      and scheduling are unavailable for this application.
-                    </span>
-                  ) : (
-                    <span className="text-(--earist-body-text)">
-                      {policyLoading
-                        ? "Loading committee policy…"
-                        : "Committee policy unavailable."}
-                    </span>
-                  )}
-                </div>
-              )}
+              <DefenseCommitteeBuilder
+                key={selected.id}
+                policy={policy}
+                policyLoading={policyLoading}
+                policyError={policyError}
+                showAdviser={selected.stage !== "TITLE"}
+                defenseStageLabel={defenseTypeLabel(selected.stage)}
+                programTypeLabel={programTypeLabel(programType)}
+                members={committee}
+                adviser={adviser}
+                onAssignRole={handleAssignRole}
+                onRemoveMember={handleRemoveMember}
+              />
               <DefenseScheduleForm
                 value={schedule}
                 onChange={setSchedule}
@@ -391,6 +383,7 @@ function AdminSchedulingPageInner() {
               />
               <DefenseReviewSummary
                 readiness={readiness}
+                showAdviser={selected.stage !== "TITLE"}
                 schedule={schedule}
                 isValid={isValid}
                 isSubmitting={scheduleMutation.isPending}
@@ -460,7 +453,9 @@ function AdminSchedulingPageInner() {
                   Committee
                 </dt>
                 <dd className="text-right text-sm text-(--earist-secondary)">
-                  {readiness.totalCount} / {readiness.sessionTotal} participants
+                  {readiness
+                    ? `${readiness.totalCount} / ${readiness.sessionTotal} participants`
+                    : "—"}
                 </dd>
               </div>
             </dl>

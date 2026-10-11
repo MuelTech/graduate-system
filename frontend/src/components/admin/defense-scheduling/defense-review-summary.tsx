@@ -6,7 +6,8 @@ import { Check, Send, Mail, AlertTriangle } from "lucide-react";
 import type { CommitteeReadiness, ScheduleFormState } from "./types";
 
 type Props = {
-  readiness: CommitteeReadiness;
+  readiness: CommitteeReadiness | null;
+  showAdviser: boolean;
   schedule: ScheduleFormState;
   isValid: boolean;
   isSubmitting: boolean;
@@ -32,18 +33,30 @@ function ChecklistRow({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+function LoadingRow() {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <span
+        className="h-4 w-4 shrink-0 animate-pulse rounded-full bg-muted"
+        aria-hidden="true"
+      />
+      <span className="text-(--earist-body-text)">Loading requirement…</span>
+    </li>
+  );
+}
+
 export function DefenseReviewSummary({
   readiness,
+  showAdviser,
   schedule,
   isValid,
   isSubmitting,
   onPreviewEmail,
   onSubmit,
 }: Props) {
-  const panelistsMissing = Math.max(
-    0,
-    readiness.panelistQuota - readiness.panelists,
-  );
+  const panelistsMissing = readiness
+    ? Math.max(0, readiness.panelistQuota - readiness.panelists)
+    : 0;
 
   return (
     <Card>
@@ -58,47 +71,59 @@ export function DefenseReviewSummary({
             Committee
           </p>
           <ul className="space-y-1">
-            <ChecklistRow
-              ok={readiness.chairman === 1}
-              label={
-                readiness.chairman === 1
-                  ? "Chairman assigned"
-                  : "Chairman still required"
-              }
-            />
-            <ChecklistRow
-              ok={panelistsMissing === 0}
-              label={
-                panelistsMissing === 0
-                  ? `Panelists assigned (${readiness.panelists} / ${readiness.panelistQuota})`
-                  : `${panelistsMissing} Panelist${panelistsMissing === 1 ? "" : "s"} still required`
-              }
-            />
-            <ChecklistRow
-              ok={readiness.facilitator === 1}
-              label={
-                readiness.facilitator === 1
-                  ? "Facilitator assigned"
-                  : "Facilitator still required"
-              }
-            />
-            <ChecklistRow
-              ok={readiness.rapporteur === 1}
-              label={
-                readiness.rapporteur === 1
-                  ? "Rapporteur assigned"
-                  : "Rapporteur still required"
-              }
-            />
-            {readiness.adviserMode === "AUTOMATIC" && (
-              <ChecklistRow
-                ok={readiness.adviserPresent}
-                label={
-                  readiness.adviserPresent
-                    ? "Adviser assigned automatically"
-                    : "Active thesis adviser required"
-                }
-              />
+            {readiness ? (
+              <>
+                <ChecklistRow
+                  ok={readiness.chairman === 1}
+                  label={
+                    readiness.chairman === 1
+                      ? "Chairman assigned"
+                      : "Chairman still required"
+                  }
+                />
+                <ChecklistRow
+                  ok={panelistsMissing === 0}
+                  label={
+                    panelistsMissing === 0
+                      ? `Panelists assigned (${readiness.panelists} / ${readiness.panelistQuota})`
+                      : `${panelistsMissing} Panelist${panelistsMissing === 1 ? "" : "s"} still required`
+                  }
+                />
+                <ChecklistRow
+                  ok={readiness.facilitator === 1}
+                  label={
+                    readiness.facilitator === 1
+                      ? "Facilitator assigned"
+                      : "Facilitator still required"
+                  }
+                />
+                <ChecklistRow
+                  ok={readiness.rapporteur === 1}
+                  label={
+                    readiness.rapporteur === 1
+                      ? "Rapporteur assigned"
+                      : "Rapporteur still required"
+                  }
+                />
+                {readiness.adviserMode === "AUTOMATIC" && (
+                  <ChecklistRow
+                    ok={readiness.adviserPresent}
+                    label={
+                      readiness.adviserPresent
+                        ? "Adviser assigned automatically"
+                        : "Active thesis adviser required"
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <LoadingRow />
+                <LoadingRow />
+                <LoadingRow />
+                <LoadingRow />
+                {showAdviser && <LoadingRow />}
+              </>
             )}
           </ul>
         </div>
