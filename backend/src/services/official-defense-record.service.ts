@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { deriveDefenseRecordStatus } from "./defense-record-status.rules";
+import { RapReportService } from "./rap-report.service";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -823,6 +824,12 @@ export class OfficialDefenseRecordService {
    * Does not expose score-edit or Chairman-result mutation actions.
    */
   async getAdminDefenseRecordDetail(scheduleId: string) {
+    // RAP-1 FIX-2: reconcile OPEN RAP signature slots against the canonical
+    // stage-aware policy before reading them, so pre-RAP-1 records show the
+    // authoritative committee signers. Idempotent and a strict no-op for
+    // FINALIZED RAPs; mirrors the established guarded snapshot-backfill read.
+    await new RapReportService().reconcileOpenRapSignatures(scheduleId);
+
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {

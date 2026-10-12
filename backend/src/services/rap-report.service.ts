@@ -6,6 +6,7 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
+  getRapSignatoryRoles,
   resolveRapSignatureRequirements,
 } from "./rap-signature.policy";
 
@@ -26,6 +27,16 @@ export interface RapContentInput {
   outcome: string;
   rapporteurNotes: string | null;
   panelRecommendations?: string | null;
+}
+
+/** RAP-1 FIX-2: outcome of reconciling an existing OPEN RAP's signature slots. */
+export interface RapReconciliationResult {
+  reconciled: boolean;
+  rapId: string | null;
+  skippedFinalized: boolean;
+  added: number;
+  removed: number;
+  roleFilled: number;
 }
 
 /**
@@ -319,6 +330,159 @@ export class RapReportService {
       data: { status: next },
     });
     return next;
+  }
+
+  /**
+   * RAP-1 FIX-2: reconcile required signature slots on an OPEN (non-FINALIZED)
+   * RAP against the authoritative committee roster and the canonical stage-aware
+   * RAP signatory policy.
+   *
+   * - Adds missing required slots (idempotent: a user that already has any slot
+   *   is never duplicated).
+   * - Retires only UNSIGNED rows that clearly conflict with the roster/policy:
+   *   a slot held by a non-required user, or a recorded non-canonical role
+   *   (e.g. ADVISER / DEAN on TITLE_DEFENSE).
+   * - Repairs UNSIGNED rows whose recorded role is missing or differs from the
+   *   authoritative roster role. Signed rows keep their recorded role label.
+   * - Never removes signed evidence, never fabricates signatures, never changes
+   *   RAP status, and is a strict no-op for FINALIZED RAPs (history immutable).
+   * - If the roster currently yields no canonical signers it does nothing, so a
+   *   read can never destructively wipe slots from an incomplete roster.
+   * - On the @@unique([rapId,userId]) concurrent-insert race it converges
+   *   without failing the caller.
+   *
+   * Precondition: ADMIN-only. It is invoked from the ADMIN-gated Defense Record
+   * detail read (getAdminDefenseRecordDetail) and is idempotent and guarded,
+   * matching the established official-record snapshot-backfill read pattern.
+   */
+  async reconcileOpenRapSignatures(
+    scheduleId: string,
+  ): Promise<RapReconciliationResult> {
+    const empty = (rapId: string | null, skipped: boolean) => ({
+      reconciled: false,
+      rapId,
+      skippedFinalized: skipped,
+      added: 0,
+      removed: 0,
+      roleFilled: 0,
+    });
+
+    const rap = await prisma.rapReport.findUnique({
+      where: { scheduleId },
+      select: { id: true, status: true },
+    });
+    if (!rap) return empty(null, false);
+    if (String(rap.status) === "FINALIZED") return empty(rap.id, true);
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: { defenseType: true },
+    });
+    if (!schedule) return empty(rap.id, false);
+
+    const defenseType = String(schedule.defenseType);
+    const participants = await prisma.panelAssignment.findMany({
+      where: { scheduleId },
+      select: { userId: true, role: true },
+    });
+    const requirements = resolveRapSignatureRequirements(
+      participants.map((p) => ({ userId: p.userId, role: String(p.role) })),
+      defenseType,
+    );
+    // Safety: if the roster currently yields no canonical signers, never perform
+    // a destructive reconciliation on a read. Missing slots recover once the
+    // roster is valid again; unsigned slots are preserved meanwhile.
+    if (requirements.length === 0) return empty(rap.id, false);
+
+    const requiredRoleByUser = new Map(
+      requirements.map((r) => [r.userId, r.roleAtDefense]),
+    );
+
+    const existing =
+      (await prisma.rapReportSignature.findMany({
+        where: { rapId: rap.id },
+        select: { id: true, userId: true, roleAtDefense: true, isSigned: true },
+      })) ?? [];
+    const canonicalRoles = new Set(getRapSignatoryRoles(defenseType).map(String));
+    const requiredUserIds = new Set(requirements.map((r) => r.userId));
+
+    // Retire only UNSIGNED rows that clearly conflict with the current roster /
+    // stage policy: any slot held by a user who is not a required signer, or any
+    // slot with a recorded non-canonical role. Null/legacy roles on expected
+    // users are repaired below, not deleted. Signed evidence is never removed.
+    const toRemove = existing.filter(
+      (s) =>
+        s.isSigned !== true &&
+        (!requiredUserIds.has(s.userId) ||
+          (s.roleAtDefense != null &&
+            !canonicalRoles.has(String(s.roleAtDefense)))),
+    );
+    const removedIds = new Set(toRemove.map((s) => s.id));
+    const effectiveExisting = existing.filter((s) => !removedIds.has(s.id));
+    const effectiveUserIds = new Set(effectiveExisting.map((s) => s.userId));
+
+    const toCreate = requirements.filter((r) => !effectiveUserIds.has(r.userId));
+    // Repair UNSIGNED rows whose recorded role is missing or differs from the
+    // authoritative roster role. Signed rows keep their recorded role label.
+    const toRoleFill = effectiveExisting.filter(
+      (s) =>
+        s.isSigned !== true &&
+        requiredRoleByUser.has(s.userId) &&
+        String(s.roleAtDefense ?? "") !==
+          String(requiredRoleByUser.get(s.userId) ?? ""),
+    );
+
+    const added = toCreate.length;
+    const removed = toRemove.length;
+    const roleFilled = toRoleFill.length;
+
+    if (added === 0 && removed === 0 && roleFilled === 0) {
+      return empty(rap.id, false);
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (removedIds.size > 0) {
+          await tx.rapReportSignature.deleteMany({
+            where: { id: { in: [...removedIds] } },
+          });
+        }
+        if (added > 0) {
+          await tx.rapReportSignature.createMany({
+            data: toCreate.map((r) => ({
+              rapId: rap.id,
+              userId: r.userId,
+              roleAtDefense: r.roleAtDefense,
+              required: r.required,
+              isSigned: false,
+            })),
+          });
+        }
+        for (const slot of toRoleFill) {
+          await tx.rapReportSignature.updateMany({
+            where: { id: slot.id },
+            data: { roleAtDefense: requiredRoleByUser.get(slot.userId) ?? null },
+          });
+        }
+      });
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "P2002") {
+        // A concurrent reconciliation inserted the same (rapId,userId) slot
+        // first; our transaction rolled back. The committed state already
+        // satisfies the policy, so converge without failing the read.
+        return empty(rap.id, false);
+      }
+      throw err;
+    }
+
+    return {
+      reconciled: true,
+      rapId: rap.id,
+      skippedFinalized: false,
+      added,
+      removed,
+      roleFilled,
+    };
   }
 
   async getStudentRapAccess(scheduleId: string, userId: string) {
