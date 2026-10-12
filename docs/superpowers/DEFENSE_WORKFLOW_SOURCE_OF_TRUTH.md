@@ -1290,8 +1290,24 @@ Do not infer that every defense participant must sign merely because they were a
 - Acknowledgement Receipt of Manuscript (GS-022) — Adviser, Panel 1–6, Facilitator, and Rapporteur each have a date/signature row.
 - Adviser Certification (GS-017) — Adviser signature.
 - Adviser Request (GS-020) — Student signature, Adviser conforme, Dean approval.
+- Client-supplied Master’s Final Defense RAP / **GS Form No. 22 — Suggestions of the Evaluation Committee** — the **Adviser is explicitly included in the Conforme/signature table**, and the final page contains separate **Prepared by** and **Approved by — Dean, Graduate School** signature blocks.
 
 Therefore signatory requirements must be **form-specific**, not copied from the defense participant roster.
+
+**Current RAP project direction — 2026-10-12**
+
+For the RAP / Committee Report finalization workflow, required signatories are stage-aware:
+
+- **Title Defense:** Chairman + assigned Panelists + Rapporteur. Title has no Adviser seat.
+- **Proposal / Final Defense:** active Adviser + Chairman + assigned Panelists + Rapporteur.
+- **Facilitator:** not a required RAP signatory under the current reference set unless a later client-confirmed form/rule explicitly adds that role.
+- **Dean:** separate approving authority on the final RAP output, not a normal committee-signature slot. The reference proves a Dean approval/signature block exists, but **automatic insertion of a stored Dean signature is NOT confirmed**. Do not auto-apply the Dean signature without a separate approved institutional-signature rule.
+
+The same Proposal/Final RAP signature model is the current project direction for **Master’s and Doctoral**; program type changes the number of Panelist seats, not the role categories that sign.
+
+This policy also reinforces that **committee membership ≠ numerical evaluation authority**. The Adviser may be a required RAP signatory while remaining excluded from numerical evaluation of their own advisee. Rapporteur RAP responsibility likewise does not grant numerical scoring authority.
+
+**Implementation gap:** the current centralized RAP signature policy in code is narrower (evaluator roles only: Chairman + Panelists). That behavior is now an implementation gap to be corrected; it is not the canonical RAP signatory authority.
 
 Recommended data model:
 
@@ -2029,14 +2045,22 @@ Required correction:
 - backend checks exact permission/assignment,
 - frontend visibility is not a security control.
 
-### P1 — RAP signatories are over-assumed
+### P1 — RAP signatory implementation is narrower than the current form-backed policy
 
-Current behavior can create signature slots for every participant.
+Current implementation centralizes RAP signature slots around evaluator roles only (Chairman + Panelists).
+
+Current form/project direction now requires:
+
+- Title: Chairman + Panelists + Rapporteur;
+- Proposal/Final: Adviser + Chairman + Panelists + Rapporteur;
+- Facilitator excluded unless later confirmed;
+- Dean approval modeled separately from committee signature slots.
 
 Required correction:
 
-- signatory policy separate from participant assignment,
-- confirm actual form signatories.
+- keep RAP signatory policy separate from participant assignment and numerical evaluator authority;
+- align generated required signature slots with the stage-aware canonical RAP policy;
+- do not silently auto-apply a Dean signature until institutional automatic-signature behavior is explicitly confirmed.
 
 ### P2 — Student requirement screens contain UI-only/mock statuses
 
@@ -2239,7 +2263,7 @@ These are the highest-priority questions.
 16. At what point is the defense schedule considered official: after GS Admin verification, after Dean preparation, after VPAA recommendation, or after Presidential approval?
 17. For GS-011, should Chairman + Members sign digitally or is this specifically a wet-signature official copy?
 18. Is Adviser “Concurred In” on GS-011 required for both Master's and Doctoral and for Proposal/Final only, or also Title?
-19. Which roles e-sign the RAP Report?
+19. **RESOLVED PROJECT DIRECTION — 2026-10-12:** RAP required signatories are stage-aware: Title = Chairman + assigned Panelists + Rapporteur; Proposal/Final = active Adviser + Chairman + assigned Panelists + Rapporteur. Facilitator is not currently required. The Dean remains a separate approving/signature authority on the final RAP output; whether GS-IS may automatically apply the Dean's stored signature remains OPEN_QUESTION.
 20. The GS-022 manuscript receipt lists Adviser + Panel 1–6 + Facilitator + Rapporteur. Are unused rows simply left blank per program/stage, and is GS-022 required before every Title/Proposal/Final defense?
 21. Why does GS-011 expose six examiner rows / Chairman + five Members, and how exactly should Master's populate that form?
 
@@ -2259,6 +2283,7 @@ These are the highest-priority questions.
 - The Title supporting sections (Rationale, SOP, Hypothesis, Population, Research Locale, Student Profile, etc.) remain inside the uploaded Title Defense proposal package; students do not encode them as separate GS-IS fields.
 - Application Form generation and Process Flow document support are deferred follow-up features.
 - Physical packaging requirements are not automatic digital upload requirements.
+- **Admin RAP consolidation direction — 2026-10-12:** the accepted Defense Record detail is the canonical Admin surface for RAP lifecycle/signature monitoring. The separate Admin **RAP Reports** page/sidebar entry is approved for retirement in a bounded implementation package; this documentation change does **not** claim that route/UI has already been removed. Existing RAP domain records, signature lifecycle, and backend history remain authoritative.
 
 ## 28. Do Not Hard-Code Without Reconfirmation
 
@@ -2839,4 +2864,9 @@ ADMIN / GRADUATE SCHOOL PORTAL
 93. STRIKE-before-Final behavior is controlled from one policy location and can be changed without rewriting each Student Portal page.
 94. Test fixtures used to validate journey UI must represent internally consistent domain states; one overloaded legacy student record must not be treated as proof of every workflow state.
 95. End-to-end validation includes deterministic fixtures for the major Title → Adviser → Proposal → STRIKE → Final transitions.
+96. RAP required signature slots follow the stage-aware canonical policy rather than numerical evaluator roles alone.
+97. Proposal/Final RAP requires the active Adviser, Chairman, assigned Panelists, and Rapporteur; Title RAP requires Chairman, assigned Panelists, and Rapporteur; Facilitator is not added without later client confirmation.
+98. Adviser RAP signature responsibility does not grant the Adviser numerical scoring authority over their own advisee.
+99. Dean RAP approval/signature is modeled separately from committee signature slots; the system does not auto-insert a Dean signature without an explicitly approved institutional-signature rule.
+100. Admin RAP lifecycle/signature monitoring is owned by Defense Record detail; retirement of the separate RAP Reports UI must not delete RAP data, signature evidence, lifecycle history, or authorized signing flows.
 
