@@ -1,6 +1,6 @@
 /**
  * CP7 — RAP lifecycle after formal conclusion.
- * Signature slots come from evaluator-role policy only.
+ * Signature slots come from the stage-aware RAP signatory policy (§15.3).
  * Own-signature CAS; last required signer finalizes the RAP server-side.
  */
 import prisma from "../config/database";
@@ -73,7 +73,7 @@ export class RapReportService {
 
     if (requirements.length === 0) {
       throw new AppError(
-        "No evaluator signatories exist for this defense session.",
+        "No required RAP signatories exist for this defense session.",
         409,
       );
     }

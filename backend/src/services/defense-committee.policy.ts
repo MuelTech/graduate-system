@@ -119,8 +119,10 @@ export class DefenseCommitteePolicy {
   }
 
   getRequiredSignatoryRoles(defenseType: DefenseTypeName): DefensePanelRole[] {
-    // UNRESOLVED (§15.3 OPEN_QUESTION): form-specific RAP / GS-011 signatories.
-    // Interim default lives in rap-signature.policy.ts (all assigned participants).
+    // RAP-1: RAP / Committee Report required signatories are stage-aware and
+    // centralized in rap-signature.policy.ts (getRapSignatoryRoles). They are
+    // deliberately distinct from the numerical evaluator roles above. This
+    // compatibility helper is not the RAP signatory authority.
     return ["CHAIRMAN"];
   }
 

@@ -60,7 +60,6 @@ const navItems = [
       { href: "/admin/thesis/applications", label: "Defense Applications" },
       { href: "/admin/thesis/scheduling", label: "Scheduling & Panels" },
       { href: "/admin/thesis/defense-records", label: "Defense Records" },
-      { href: "/admin/thesis/rap-reports", label: "RAP Reports" },
       { href: "/admin/thesis/advisers", label: "Adviser Request Review" },
     ],
   },

@@ -413,13 +413,14 @@ describe("CP7-FIX1 Issue 8: Criteria authorization before backfill", () => {
   });
 });
 
-describe("CP7-FIX1 Issue 9: centralized signatory policy", () => {
-  it("Test 19: no non-evaluator role included; policy drives resolution", () => {
+describe("CP7-FIX1 Issue 9 / RAP-1: centralized stage-aware signatory policy", () => {
+  it("Test 19: policy drives resolution; facilitator/dean excluded, adviser only Proposal/Final", () => {
     const roles = getRapSignatoryRoles("PROPOSAL_DEFENSE");
-    expect(roles).toEqual(["CHAIRMAN", "PANELIST"]);
+    expect(roles).toEqual(["ADVISER", "CHAIRMAN", "PANELIST", "RAPPORTEUR"]);
     expect(getRapSignatoryRoles("TITLE_DEFENSE")).toEqual([
       "CHAIRMAN",
       "PANELIST",
+      "RAPPORTEUR",
     ]);
 
     const slots = resolveRapSignatureRequirements(
@@ -432,7 +433,8 @@ describe("CP7-FIX1 Issue 9: centralized signatory policy", () => {
       ],
       "TITLE_DEFENSE",
     );
-    expect(slots.map((s) => s.userId).sort()).toEqual(["c", "p"]);
+    // Title has no Adviser seat: Chairman + Panelist + Rapporteur; no Facilitator.
+    expect(slots.map((s) => s.userId).sort()).toEqual(["c", "p", "r"]);
     expect(slots.every((s) => roles.includes(s.roleAtDefense as never))).toBe(
       true,
     );

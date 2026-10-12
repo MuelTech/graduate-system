@@ -868,7 +868,9 @@ model RapReportSignature {
    */
   roleAtDefense String?   @map("role_at_defense")
   /**
-   * Whether this signature blocks RAP finalization. Form-specific policy is UNRESOLVED.
+   * Whether this signature blocks RAP finalization. Per RAP-1, canonical
+   * committee RAP slots are required; Dean approval is a separate authority
+   * and is not part of this completion calculation.
    */
   required      Boolean?  @default(true) @map("required")
   isSigned      Boolean?  @map("is_signed")

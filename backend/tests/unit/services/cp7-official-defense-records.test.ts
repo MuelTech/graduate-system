@@ -576,7 +576,7 @@ describe("CP7 RAP signing lifecycle", () => {
     vi.clearAllMocks();
   });
 
-  it("Test 21/22: createRapAfterConclusion uses evaluator-only signature slots", async () => {
+  it("Test 21/22: createRapAfterConclusion uses canonical stage-aware RAP signatory slots", async () => {
     prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
       { userId: "u1", role: "CHAIRMAN" },
       { userId: "u2", role: "PANELIST" },
@@ -585,7 +585,7 @@ describe("CP7 RAP signing lifecycle", () => {
       { userId: "u5", role: "ADVISER" },
     ]);
     prismaMock.__tx.rapReport.create.mockResolvedValue({ id: "rap-1" });
-    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 2 });
+    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 4 });
 
     await svc.createRapAfterConclusion(prismaMock.__tx, {
       scheduleId: "sched-1",
@@ -596,11 +596,36 @@ describe("CP7 RAP signing lifecycle", () => {
     });
 
     const createManyArgs = prismaMock.__tx.rapReportSignature.createMany.mock.calls[0][0];
-    expect(createManyArgs.data).toHaveLength(2);
-    expect(createManyArgs.data.map((d: any) => d.userId).sort()).toEqual(["u1", "u2"]);
+    // Proposal/Final: Adviser + Chairman + Panelist + Rapporteur; no Facilitator.
+    expect(createManyArgs.data).toHaveLength(4);
+    expect(createManyArgs.data.map((d: any) => d.userId).sort()).toEqual([
+      "u1",
+      "u2",
+      "u3",
+      "u5",
+    ]);
+    expect(createManyArgs.data.find((d: any) => d.userId === "u4")).toBeUndefined();
+    expect(createManyArgs.data.every((d: any) => d.required === true)).toBe(true);
     const rapCreate = prismaMock.__tx.rapReport.create.mock.calls[0][0];
     expect(rapCreate.data.status).toBe("FOR_SIGNATURE");
     expect(rapCreate.data.generatedById).toBe("user-r");
+  });
+
+  it("rejects RAP creation when no canonical RAP signatories exist", async () => {
+    prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
+      { userId: "u4", role: "FACILITATOR" },
+    ]);
+
+    await expect(
+      svc.createRapAfterConclusion(prismaMock.__tx, {
+        scheduleId: "sched-1",
+        thesisId: "thesis-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        decisionsAndRecommendations: "notes",
+        generatedById: "user-r",
+      }),
+    ).rejects.toThrow(/No required RAP signatories exist/i);
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
   });
 
   it("Test 25: last required signature FINALIZES RAP with server finalizedAt", async () => {

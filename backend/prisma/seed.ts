@@ -1118,8 +1118,9 @@ async function main() {
   }
 
   // ── Defense Lobby fixtures (idempotent) ────────────────────────────
-  // Live lobby + concluded/RAP lobby so /panelist/defense-lobby and
-  // /admin/thesis/rap-reports can be exercised after `prisma db seed`.
+  // Live lobby + concluded/RAP lobby so /panelist/defense-lobby and the
+  // Panelist E-Signatures / Admin Defense Records surfaces can be exercised
+  // after `prisma db seed`.
   console.log("Seeding defense lobby fixtures...");
   const adminUser = await prisma.user.findUnique({
     where: { email: "admin@earist.edu.ph" },

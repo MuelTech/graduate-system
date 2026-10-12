@@ -593,10 +593,10 @@ export default function AdminDashboard() {
                 Awaiting the required signatories; not yet finalized.
               </p>
               <Link
-                href="/admin/thesis/rap-reports"
+                href="/admin/thesis/defense-records"
                 className="mt-1 inline-block text-xs font-medium text-(--earist-secondary) hover:underline"
               >
-                View RAP reports
+                View defense records
               </Link>
             </div>
           </div>
