@@ -163,6 +163,22 @@ function rapStatusLabel(status: string | null | undefined): string {
   return RAP_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
 }
 
+/**
+ * A signing timestamp is a real instant (not a wall-clock schedule field), so it
+ * is formatted as an ordinary local date rather than through the Defense
+ * wall-clock helpers (which read UTC components).
+ */
+function formatSignedAt(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 /* ------------------------------------------------------------ fragments */
 
 function MetaItem({
@@ -214,30 +230,6 @@ function CommitteeRoster({
           </span>
         </div>
       ))}
-    </div>
-  );
-}
-
-function DocumentRow({
-  label,
-  state,
-  stateClass,
-  action,
-}: {
-  label: string;
-  state: string;
-  stateClass?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <div className="min-w-0">
-        <p className="text-sm font-medium break-words text-foreground">{label}</p>
-        <p className={cn("text-xs break-words", stateClass ?? "text-(--earist-body-text)")}>
-          {state}
-        </p>
-      </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
@@ -383,9 +375,13 @@ export default function AdminDefenseRecordDetailPage() {
     o.proposedTitles.find((t) => t.isSelected)?.titleText ??
     null;
   const venue = parseVenueOrLink(o.venueOrLink);
-  const availableEvaluationForms = data.individualEvaluations.filter(
-    (e) => e.hasOfficialCriteria,
-  ).length;
+
+  // RAP required-signature progress is derived from the signatory rows so it
+  // can never over-count optional signers (exact §9 formula).
+  const requiredSigners = data.rapReport
+    ? data.rapReport.signatories.filter((s) => s.required !== false)
+    : [];
+  const signedRequiredSigners = requiredSigners.filter((s) => s.isSigned).length;
 
   return (
     <div className="space-y-6">
@@ -677,9 +673,8 @@ export default function AdminDefenseRecordDetailPage() {
                   {rapStatusLabel(data.rapReport.status)}
                 </Badge>
                 <span className="text-(--earist-body-text)">
-                  {data.rapReport.signedSignatures} of{" "}
-                  {data.rapReport.requiredSignatures} required signatures
-                  completed
+                  {signedRequiredSigners} of {requiredSigners.length} required
+                  signatures completed
                 </span>
               </div>
 
@@ -727,7 +722,7 @@ export default function AdminDefenseRecordDetailPage() {
                             </Badge>
                           </td>
                           <td className="px-3 py-2 tabular-nums">
-                            {s.signedAt ? formatDefenseDate(s.signedAt) : "—"}
+                            {formatSignedAt(s.signedAt)}
                           </td>
                         </tr>
                       ))}
@@ -741,64 +736,6 @@ export default function AdminDefenseRecordDetailPage() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Defense Documents */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            Defense Documents
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="divide-y divide-(--earist-border-gray)">
-          <DocumentRow
-            label="Defense Application & Examination Committee"
-            state="Not yet available"
-          />
-          <DocumentRow
-            label="Individual Evaluation Forms"
-            state={
-              isTitleDefense
-                ? "Not applicable to Title Defense"
-                : availableEvaluationForms > 0
-                  ? `${availableEvaluationForms} form${availableEvaluationForms === 1 ? "" : "s"} available`
-                  : "Not yet available"
-            }
-          />
-          <DocumentRow
-            label="Oral Examination Summary"
-            state={
-              isTitleDefense
-                ? "Not applicable to Title Defense"
-                : data.oralExamSummary.ready
-                  ? "Ready"
-                  : "Awaiting completion"
-            }
-            action={
-              !isTitleDefense && data.oralExamSummary.ready ? (
-                <Link
-                  href={`/admin/thesis/defense-records/${scheduleId}/summary`}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  View Summary
-                </Link>
-              ) : null
-            }
-          />
-          <DocumentRow
-            label="RAP / Committee Report"
-            state={
-              !data.rapReport
-                ? "Not generated yet"
-                : rapStatusLabel(data.rapReport.status)
-            }
-            stateClass={
-              data.rapReport
-                ? RAP_STATUS_CLASS[data.rapReport.status]
-                : undefined
-            }
-          />
         </CardContent>
       </Card>
     </div>
