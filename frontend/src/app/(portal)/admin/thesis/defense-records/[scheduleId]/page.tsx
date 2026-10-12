@@ -3,11 +3,26 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { apiClientRequest } from "@/lib/api.client";
+import { ApiError, apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Printer } from "lucide-react";
+import { AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  formatDefenseDate,
+  formatDefenseTime,
+  parseVenueOrLink,
+  ROLE_LABELS,
+  sessionStatusLabel,
+} from "@/components/admin/defense-applications/labels";
+import {
+  defenseTypeLabel,
+  stageFromDefenseType,
+} from "@/components/admin/defense-scheduling/types";
 
 interface EvaluationRow {
   panelAssignmentId: string;
@@ -18,6 +33,14 @@ interface EvaluationRow {
   hasOfficialCriteria: boolean;
   signedAt: string | null;
   finalizedAt: string | null;
+}
+
+interface SignatoryRow {
+  name: string | null;
+  roleAtDefense: string | null;
+  required: boolean;
+  isSigned: boolean;
+  signedAt: string | null;
 }
 
 interface RecordDetail {
@@ -60,283 +83,567 @@ interface RecordDetail {
     selectedTitle: string | null;
     requiredSignatures: number;
     signedSignatures: number;
-    signatories: Array<{
-      name: string | null;
-      roleAtDefense: string | null;
-      required: boolean;
-      isSigned: boolean;
-      signedAt: string | null;
-    }>;
+    signatories: SignatoryRow[];
   } | null;
 }
+
+/* --------------------------------------------------------------- labels */
+
+const RESULT_LABELS: Record<string, string> = {
+  PASSED: "Passed",
+  FAILED: "Failed",
+  REVISION_REQUIRED: "Revision Required",
+};
+const RESULT_BADGE_CLASS: Record<string, string> = {
+  PASSED: "text-(--earist-success)",
+  FAILED: "text-destructive",
+  REVISION_REQUIRED: "text-(--earist-warning)",
+};
+
+const SESSION_BADGE_CLASS: Record<string, string> = {
+  SCHEDULED: "text-(--earist-secondary)",
+  RESCHEDULED: "text-(--earist-secondary)",
+  IN_PROGRESS: "text-(--earist-warning)",
+  AWAITING_CONCLUSION: "text-(--earist-warning)",
+  CONCLUDED: "text-(--earist-success)",
+  CANCELLED: "text-destructive",
+};
+
+const EVALUATOR_STATUS_LABELS: Record<string, string> = {
+  FINALIZED: "Finalized",
+  DRAFT: "Draft",
+  NOT_STARTED: "Not Started",
+};
+const EVALUATOR_STATUS_CLASS: Record<string, string> = {
+  FINALIZED: "text-(--earist-success)",
+  DRAFT: "text-(--earist-warning)",
+  NOT_STARTED: "text-(--earist-body-text)",
+};
+
+const RAP_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  FOR_SIGNATURE: "Awaiting Signatures",
+  PARTIALLY_SIGNED: "Partially Signed",
+  DISTRIBUTED: "Distributed",
+  ALL_SIGNED: "All Signed",
+  FINALIZED: "Finalized",
+};
+const RAP_STATUS_CLASS: Record<string, string> = {
+  DRAFT: "text-(--earist-body-text)",
+  FOR_SIGNATURE: "text-(--earist-warning)",
+  PARTIALLY_SIGNED: "text-(--earist-warning)",
+  DISTRIBUTED: "text-(--earist-warning)",
+  ALL_SIGNED: "text-(--earist-warning)",
+  FINALIZED: "text-(--earist-success)",
+};
+
+const COMMITTEE_ROLE_ORDER = [
+  "ADVISER",
+  "CHAIRMAN",
+  "PANELIST",
+  "FACILITATOR",
+  "RAPPORTEUR",
+] as const;
+
+function committeeRoleLabel(role: string): string {
+  if (role === "PANELIST") return "Panelists";
+  return ROLE_LABELS[role] ?? role;
+}
+
+function resultLabel(result: string): string {
+  return RESULT_LABELS[result] ?? result.replace(/_/g, " ");
+}
+
+function evaluatorStatusLabel(status: string): string {
+  return EVALUATOR_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+}
+
+function rapStatusLabel(status: string | null | undefined): string {
+  if (!status) return "Not generated";
+  return RAP_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+}
+
+/* ------------------------------------------------------------ fragments */
+
+function MetaItem({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-medium text-(--earist-body-text)">{label}</p>
+      <div className="text-sm break-words text-foreground">{children}</div>
+    </div>
+  );
+}
+
+function CommitteeRoster({
+  committee,
+}: {
+  committee: RecordDetail["defenseOverview"]["committee"];
+}) {
+  const groups = COMMITTEE_ROLE_ORDER.map((role) => ({
+    role,
+    label: committeeRoleLabel(role),
+    names: committee.filter((c) => c.role === role).map((c) => c.name),
+  })).filter((g) => g.names.length > 0);
+
+  if (groups.length === 0) {
+    return (
+      <p className="text-sm text-(--earist-body-text)">
+        No committee participants recorded.
+      </p>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-(--earist-border-gray)">
+      {groups.map((group) => (
+        <div
+          key={group.role}
+          className="grid grid-cols-1 gap-1 py-2.5 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:items-start sm:gap-3"
+        >
+          <span className="text-sm font-semibold text-(--earist-secondary)">
+            {group.label}
+          </span>
+          <span className="min-w-0 text-sm break-words text-foreground">
+            {group.names.join(" · ")}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DocumentRow({
+  label,
+  state,
+  stateClass,
+  action,
+}: {
+  label: string;
+  state: string;
+  stateClass?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium break-words text-foreground">{label}</p>
+        <p className={cn("text-xs break-words", stateClass ?? "text-(--earist-body-text)")}>
+          {state}
+        </p>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- skeleton */
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <Skeleton className="h-4 w-56" />
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+      </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <Skeleton className="h-4 w-40" />
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-2 h-4 w-32" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-3">
+          <Skeleton className="h-4 w-44" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 flex-1" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-3">
+          <Skeleton className="h-4 w-52" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- page */
 
 export default function AdminDefenseRecordDetailPage() {
   const params = useParams<{ scheduleId: string }>();
   const scheduleId = params.scheduleId;
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["adminDefenseRecord", scheduleId],
-    queryFn: async () =>
-      (await apiClientRequest(
-        `/thesis/defense/${scheduleId}/records`,
-      )) as RecordDetail,
-  });
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useQuery<RecordDetail>({
+      queryKey: ["adminDefenseRecord", scheduleId],
+      queryFn: async () =>
+        (await apiClientRequest(
+          `/thesis/defense/${scheduleId}/records`,
+        )) as RecordDetail,
+      retry: false,
+    });
 
   if (isLoading) {
+    return <DetailSkeleton />;
+  }
+
+  const notFound =
+    error instanceof ApiError && error.statusCode === 404;
+
+  if (notFound) {
     return (
-      <div className="flex h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-(--earist-primary)" />
+      <div className="space-y-6">
+        <Breadcrumb
+          items={[{ label: "Defense Records", href: "/admin/thesis/defense-records" }]}
+        />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center">
+          <AlertCircle className="h-8 w-8 text-(--earist-secondary)" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-(--earist-primary)">
+              Defense record not found
+            </p>
+            <p className="text-sm text-(--earist-body-text)">
+              This defense session may no longer exist, or the link is incorrect.
+            </p>
+          </div>
+          <Link
+            href="/admin/thesis/defense-records"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Back to Defense Records
+          </Link>
+        </div>
       </div>
     );
   }
-  if (error || !data) {
+
+  if (isError || !data) {
     return (
-      <p className="text-sm text-red-600">
-        {(error as Error)?.message || "Defense record not found."}
-      </p>
+      <div className="space-y-6">
+        <Breadcrumb
+          items={[{ label: "Defense Records", href: "/admin/thesis/defense-records" }]}
+        />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center">
+          <AlertCircle className="h-8 w-8 text-(--earist-secondary)" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-(--earist-primary)">
+              Unable to load defense record
+            </p>
+            <p className="text-sm text-(--earist-body-text)">
+              The record could not be loaded. Please try again.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")}
+              aria-hidden="true"
+            />
+            Retry
+          </Button>
+        </div>
+      </div>
     );
   }
 
   const o = data.defenseOverview;
-  const isTitleDefense = o.defenseType === "TITLE_DEFENSE";
+  const stage = stageFromDefenseType(o.defenseType);
+  const isTitleDefense = stage === "TITLE";
   const selectedTitle =
     data.rapReport?.selectedTitle ??
     o.proposedTitles.find((t) => t.isSelected)?.titleText ??
     null;
+  const venue = parseVenueOrLink(o.venueOrLink);
+  const availableEvaluationForms = data.individualEvaluations.filter(
+    (e) => e.hasOfficialCriteria,
+  ).length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-(--earist-primary)">
-            Defense Record
-          </h1>
-          <p className="text-sm text-(--earist-body-text)">
-            Read-only official record. Scores and formal results cannot be
-            modified here.
-          </p>
-        </div>
-        <Button variant="outline" onClick={() => window.print()}>
-          <Printer className="mr-2 h-4 w-4" />
-          Print
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Defense Records", href: "/admin/thesis/defense-records" },
+          { label: o.studentName ?? "Defense Record" },
+        ]}
+      />
 
+      <PageHeader
+        title="Defense Record"
+        description="Review the defense session, academic results, committee record, and related defense documents."
+      />
+
+      {/* Defense Overview */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Defense Overview</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              Defense Overview
+            </CardTitle>
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-medium",
+                SESSION_BADGE_CLASS[o.sessionStatus.toUpperCase()],
+              )}
+            >
+              {sessionStatusLabel(o.sessionStatus)}
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Student</span>
-            <p>
-              {o.studentName} ({o.studentNumber})
-            </p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Program</span>
-            <p>{o.program}</p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Defense</span>
-            <p>{o.defenseType}</p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Date</span>
-            <p>
-              {o.defenseDate?.slice(0, 10) ?? "—"} {o.defenseTime ?? ""}
-            </p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Venue</span>
-            <p>{o.venueOrLink ?? "—"}</p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Session</span>
-            <p>{o.sessionStatus}</p>
-          </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Formal result</span>
-            <p>
-              {o.formalResult ? (
-                <Badge
-                  className={
-                    o.formalResult === "PASSED"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : o.formalResult === "FAILED"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-amber-100 text-amber-800"
-                  }
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <MetaItem label="Student">
+              {o.studentName ?? "—"}
+            </MetaItem>
+            <MetaItem label="Student No.">
+              {o.studentNumber ?? "—"}
+            </MetaItem>
+            <MetaItem label="Program">{o.program ?? "—"}</MetaItem>
+            <MetaItem label="Defense Stage">{defenseTypeLabel(stage)}</MetaItem>
+            <MetaItem label="Defense Date">
+              {formatDefenseDate(o.defenseDate)}
+              {o.defenseTime ? (
+                <span className="block text-xs tabular-nums text-(--earist-body-text)">
+                  {formatDefenseTime(o.defenseTime)}
+                </span>
+              ) : null}
+            </MetaItem>
+            <MetaItem label="Venue / Meeting Details">
+              {venue.kind === "url" ? (
+                <a
+                  href={venue.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
                 >
-                  {o.formalResult}
-                </Badge>
+                  Open Meeting Link
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              ) : venue.kind === "text" ? (
+                venue.text
               ) : (
                 "—"
               )}
-            </p>
+            </MetaItem>
+            <MetaItem label="Formal Result">
+              {o.formalResult ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "font-medium",
+                    RESULT_BADGE_CLASS[o.formalResult],
+                  )}
+                >
+                  {resultLabel(o.formalResult)}
+                </Badge>
+              ) : (
+                <span className="text-(--earist-body-text)">—</span>
+              )}
+            </MetaItem>
+            {selectedTitle ? (
+              <MetaItem label="Official Title">{selectedTitle}</MetaItem>
+            ) : null}
           </div>
-          <div>
-            <span className="text-xs text-(--earist-body-text)">Committee</span>
-            <ul className="text-xs">
-              {o.committee.map((c) => (
-                <li key={c.userId}>
-                  {c.name} — {c.role}
-                </li>
-              ))}
-            </ul>
+
+          <div className="border-t border-(--earist-border-gray) pt-3">
+            <h3 className="mb-1 text-sm font-semibold text-(--earist-secondary)">
+              Defense Committee
+            </h3>
+            <CommitteeRoster committee={o.committee} />
           </div>
-          {isTitleDefense && selectedTitle && (
-            <div>
-              <span className="text-xs text-(--earist-body-text)">
-                Official title
-              </span>
-              <p>{selectedTitle}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
+      {/* Numerical evaluation — Title N/A (compact) vs Proposal/Final sections */}
       {isTitleDefense ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              Oral Examination Criteria &amp; Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-(--earist-body-text)">
-            <p>
-              Not applicable to Title Defense. Title Defense does not use Group
-              I / Group II numerical Oral Examination Criteria or a numerical
-              Oral Examination Summary.
-            </p>
-            <p className="mt-2">
-              The formal Chairman-recorded result and RAP record remain the
-              official academic outputs for this session.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-4 py-3">
+          <p className="text-sm text-(--earist-body-text)">
+            Numerical Oral Examination Criteria and Summary are not applicable
+            to Title Defense. The formal Chairman-recorded result and the
+            RAP / Committee Report remain the official outputs for this session.
+          </p>
+        </div>
       ) : (
         <>
+          {/* Evaluation Results */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Individual Evaluations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-xs text-(--earist-body-text)">
-                    <th className="py-2 pr-3">Evaluator</th>
-                    <th className="py-2 pr-3">Role</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3">Overall</th>
-                    <th className="py-2 pr-3">Official Criteria</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.individualEvaluations.map((e) => (
-                    <tr
-                      key={e.panelAssignmentId}
-                      className="border-b border-(--earist-border-gray)"
-                    >
-                      <td className="py-2 pr-3">{e.evaluatorName}</td>
-                      <td className="py-2 pr-3">{e.role}</td>
-                      <td className="py-2 pr-3">
-                        <Badge
-                          variant="outline"
-                          className={
-                            e.status === "FINALIZED"
-                              ? "border-emerald-500 text-emerald-700"
-                              : e.status === "DRAFT"
-                                ? "border-amber-500 text-amber-700"
-                                : ""
-                          }
-                        >
-                          {e.status === "NOT_STARTED"
-                            ? "Draft / Not finalized"
-                            : e.status}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-3">{e.overallValue ?? "—"}</td>
-                      <td className="py-2 pr-3">
-                        {e.hasOfficialCriteria ? "Available" : "Not available"}
-                      </td>
-                      <td className="py-2">
-                        {e.hasOfficialCriteria && (
-                          <Link
-                            href={`/admin/thesis/defense-records/${scheduleId}/criteria/${e.panelAssignmentId}`}
-                            className={buttonVariants({
-                              variant: "outline",
-                              size: "sm",
-                            })}
-                          >
-                            View / Print
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">
-                Oral Examination Summary
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                Evaluation Results
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {!data.oralExamSummary.ready ? (
-                <p className="text-(--earist-body-text)">
-                  Summary not ready — waiting for all required evaluator
-                  finalizations.
+            <CardContent>
+              {data.individualEvaluations.length === 0 ? (
+                <p className="text-sm text-(--earist-body-text)">
+                  No authorized evaluator records found for this session.
                 </p>
               ) : (
-                <>
-                  <p>
-                    Overall average:{" "}
-                    <strong>
-                      {data.oralExamSummary.overallAverage ?? "—"}
-                    </strong>
-                    {data.oralExamSummary.finalRating
-                      ? ` · Rating: ${data.oralExamSummary.finalRating}`
-                      : " · Rating: not assigned"}
-                  </p>
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left text-sm">
                     <thead>
-                      <tr className="border-b text-(--earist-body-text)">
-                        <th className="py-1 pr-2">Examiner</th>
-                        <th className="py-1 pr-2">Role</th>
-                        <th className="py-1 pr-2">Group I</th>
-                        <th className="py-1 pr-2">Group II</th>
-                        <th className="py-1 pr-2">Overall</th>
+                      <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
+                        <th className="px-3 py-2">Evaluator</th>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Overall</th>
+                        <th className="px-3 py-2">Criteria</th>
+                        <th className="px-3 py-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.oralExamSummary.rows.map((r, i) => (
+                      {data.individualEvaluations.map((e) => (
                         <tr
-                          key={i}
-                          className="border-b border-(--earist-border-gray)"
+                          key={e.panelAssignmentId}
+                          className="border-b border-(--earist-border-gray) last:border-0"
                         >
-                          <td className="py-1 pr-2">{r.evaluatorName}</td>
-                          <td className="py-1 pr-2">{r.functionalRole}</td>
-                          <td className="py-1 pr-2">{r.groupIValue ?? "—"}</td>
-                          <td className="py-1 pr-2">{r.groupIIValue ?? "—"}</td>
-                          <td className="py-1 pr-2">{r.overallValue ?? "—"}</td>
+                          <td className="px-3 py-2 break-words">
+                            {e.evaluatorName}
+                          </td>
+                          <td className="px-3 py-2">
+                            {ROLE_LABELS[e.role] ?? e.role}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-medium",
+                                EVALUATOR_STATUS_CLASS[e.status],
+                              )}
+                            >
+                              {evaluatorStatusLabel(e.status)}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {e.overallValue ?? "—"}
+                          </td>
+                          <td className="px-3 py-2">
+                            {e.hasOfficialCriteria ? "Available" : "Not available"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {e.hasOfficialCriteria && (
+                              <Link
+                                href={`/admin/thesis/defense-records/${scheduleId}/criteria/${e.panelAssignmentId}`}
+                                aria-label={`View evaluation criteria — ${e.evaluatorName}`}
+                                className={buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                })}
+                              >
+                                View
+                              </Link>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Oral Examination Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                Oral Examination Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {!data.oralExamSummary.ready ? (
+                <p className="text-(--earist-body-text)">
+                  Awaiting evaluator finalization.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <MetaItem label="Overall Average">
+                      <span className="tabular-nums">
+                        {data.oralExamSummary.overallAverage ?? "—"}
+                      </span>
+                    </MetaItem>
+                    <MetaItem label="Final Rating">
+                      {data.oralExamSummary.finalRating ?? "Not assigned"}
+                    </MetaItem>
+                  </div>
+                  {data.oralExamSummary.rows.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[640px] text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
+                            <th className="px-3 py-2">Examiner</th>
+                            <th className="px-3 py-2">Role</th>
+                            <th className="px-3 py-2">Group I</th>
+                            <th className="px-3 py-2">Group II</th>
+                            <th className="px-3 py-2">Overall</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.oralExamSummary.rows.map((r, i) => (
+                            <tr
+                              key={i}
+                              className="border-b border-(--earist-border-gray) last:border-0"
+                            >
+                              <td className="px-3 py-2 break-words">
+                                {r.evaluatorName}
+                              </td>
+                              <td className="px-3 py-2">
+                                {ROLE_LABELS[r.functionalRole] ??
+                                  r.functionalRole}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {r.groupIValue ?? "—"}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {r.groupIIValue ?? "—"}
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">
+                                {r.overallValue ?? "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-(--earist-body-text)">
+                      No per-evaluator summary rows recorded.
+                    </p>
+                  )}
                   <Link
                     href={`/admin/thesis/defense-records/${scheduleId}/summary`}
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                    })}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
                   >
-                    View / Print Summary
+                    View Summary
                   </Link>
                 </>
               )}
@@ -345,58 +652,153 @@ export default function AdminDefenseRecordDetailPage() {
         </>
       )}
 
+      {/* RAP / Committee Report */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">RAP Report</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            RAP / Committee Report
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-3 text-sm">
           {!data.rapReport ? (
             <p className="text-(--earist-body-text)">
-              RAP not generated — awaiting formal conclusion.
+              Not generated yet — the RAP is created after the formal conclusion.
             </p>
           ) : (
             <>
-              <p>
-                Status: <strong>{data.rapReport.status}</strong>
-                {" · "}
-                Signatures: {data.rapReport.signedSignatures}/
-                {data.rapReport.requiredSignatures}
-              </p>
-              {data.rapReport.selectedTitle && (
-                <p>Official title: {data.rapReport.selectedTitle}</p>
-              )}
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b text-(--earist-body-text)">
-                    <th className="py-1 pr-2">Signer</th>
-                    <th className="py-1 pr-2">Role</th>
-                    <th className="py-1 pr-2">Required</th>
-                    <th className="py-1 pr-2">Signed</th>
-                    <th className="py-1 pr-2">Signed at</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rapReport.signatories.map((s, i) => (
-                    <tr key={i} className="border-b border-(--earist-border-gray)">
-                      <td className="py-1 pr-2">{s.name}</td>
-                      <td className="py-1 pr-2">{s.roleAtDefense}</td>
-                      <td className="py-1 pr-2">{s.required ? "Yes" : "No"}</td>
-                      <td className="py-1 pr-2">{s.isSigned ? "Yes" : "No"}</td>
-                      <td className="py-1 pr-2">
-                        {s.signedAt?.slice(0, 10) ?? "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {data.rapReport.status === "FINALIZED" && (
-                <Button size="sm" variant="outline" onClick={() => window.print()}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print / Download RAP
-                </Button>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "font-medium",
+                    RAP_STATUS_CLASS[data.rapReport.status],
+                  )}
+                >
+                  {rapStatusLabel(data.rapReport.status)}
+                </Badge>
+                <span className="text-(--earist-body-text)">
+                  {data.rapReport.signedSignatures} of{" "}
+                  {data.rapReport.requiredSignatures} required signatures
+                  completed
+                </span>
+              </div>
+
+              {data.rapReport.signatories.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
+                        <th className="px-3 py-2">Signer</th>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Signature Status</th>
+                        <th className="px-3 py-2">Signed At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.rapReport.signatories.map((s, i) => (
+                        <tr
+                          key={i}
+                          className="border-b border-(--earist-border-gray) last:border-0"
+                        >
+                          <td className="px-3 py-2 break-words">
+                            {s.name ?? "—"}
+                          </td>
+                          <td className="px-3 py-2">
+                            {s.roleAtDefense
+                              ? (ROLE_LABELS[s.roleAtDefense] ?? s.roleAtDefense)
+                              : "—"}
+                            {!s.required && (
+                              <span className="ml-1 text-(--earist-body-text)">
+                                · Optional
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-medium",
+                                s.isSigned
+                                  ? "text-(--earist-success)"
+                                  : "text-(--earist-warning)",
+                              )}
+                            >
+                              {s.isSigned ? "Signed" : "Awaiting Signature"}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {s.signedAt ? formatDefenseDate(s.signedAt) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-(--earist-body-text)">
+                  No signatory records found.
+                </p>
               )}
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Defense Documents */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            Defense Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y divide-(--earist-border-gray)">
+          <DocumentRow
+            label="Defense Application & Examination Committee"
+            state="Not yet available"
+          />
+          <DocumentRow
+            label="Individual Evaluation Forms"
+            state={
+              isTitleDefense
+                ? "Not applicable to Title Defense"
+                : availableEvaluationForms > 0
+                  ? `${availableEvaluationForms} form${availableEvaluationForms === 1 ? "" : "s"} available`
+                  : "Not yet available"
+            }
+          />
+          <DocumentRow
+            label="Oral Examination Summary"
+            state={
+              isTitleDefense
+                ? "Not applicable to Title Defense"
+                : data.oralExamSummary.ready
+                  ? "Ready"
+                  : "Awaiting completion"
+            }
+            action={
+              !isTitleDefense && data.oralExamSummary.ready ? (
+                <Link
+                  href={`/admin/thesis/defense-records/${scheduleId}/summary`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  View Summary
+                </Link>
+              ) : null
+            }
+          />
+          <DocumentRow
+            label="RAP / Committee Report"
+            state={
+              !data.rapReport
+                ? "Not generated yet"
+                : rapStatusLabel(data.rapReport.status)
+            }
+            stateClass={
+              data.rapReport
+                ? RAP_STATUS_CLASS[data.rapReport.status]
+                : undefined
+            }
+          />
         </CardContent>
       </Card>
     </div>
