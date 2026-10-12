@@ -1287,7 +1287,7 @@ Each must still be broken into bounded implementation packages.
 
 # 10. Approved Reference Implementations
 
-**Current state: thirteen formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth; UIUX-2I Admin COR Verification is eleventh; UIUX-2K Admin Defense Applications is twelfth; UIUX-2L Admin Scheduling & Panels is thirteenth).**
+**Current state: fourteen formally designated references (UIUX-4A Student Dashboard is ninth; UIUX-2H Admin Entrance Exam Schedules is tenth; UIUX-2I Admin COR Verification is eleventh; UIUX-2K Admin Defense Applications is twelfth; UIUX-2L Admin Scheduling & Panels is thirteenth; UIUX-2M Admin Defense Records Main Page is fourteenth).**
 
 ## Admin Dashboard + restrained Admin shell
 
@@ -1472,6 +1472,20 @@ Each must still be broken into bounded implementation packages.
 - **Deferred functional work:** post-scheduling pre-start **Manage Schedule & Committee** correction remains unimplemented because the current backend has no audited roster-correction mutation and prevents a second non-cancelled schedule. The Scheduled detail is read-only. Adviser scoring remains an OPEN_QUESTION. Post-start roster mutation must not be inferred from this UI acceptance.
 - **Reuse with care:** stable master-detail scheduling, role/quota matrix layout, multi-select for genuine multi-seat roles, consistent assignment actions, and local async loading without stale authority are reusable. Exact Defense committee composition, Adviser derivation, stage/result authority, and post-scheduling correction rules are domain-specific.
 
+## Admin Defense Records Main Page — UIUX-2M
+
+- **Accepted implementation chain:** main refinement `78ac98df5044e08d8026b078194daa98fa11b027` and accepted FIX-1 `7cde2a622d868f0807ec58b0fe8227f0db3e3827` on `refactor/system-ui-ux`. Project-owner visual/UI/UX acceptance: **ACCEPTED**, 2026-10-12. **This is the fourteenth Approved Reference; acceptance does not certify coding-agent browser/runtime QA that was not executed.**
+- **Pattern:** official Defense record index + completion-monitoring surface, not a dashboard. Accepted hierarchy: shared **PageHeader → Search / Defense Stage / Record Status → Student | Defense Stage | Defense Date | Session Status | Result | Record Status | Action → Showing X to Y of Z + numbered pagination**. No KPI cards, separate Program column, Summary column, or RAP column.
+- **Identity/action:** Student combines primary name with compact student-number/program metadata; **View Record** is the only row action and opens the existing schedule-scoped Defense Record detail. Print/download/document actions remain intentionally off the index.
+- **Session Status:** comes from persisted `DefenseSchedule.sessionStatus`. Human-readable display labels are presentation only; `AWAITING_CONCLUSION` is shown as **Pending Conclusion** while the backend enum remains unchanged. Session Status describes the defense event lifecycle and is intentionally distinct from Record Status.
+- **Formal Result:** comes from the authoritative conclusion outcome and is never inferred from numerical scores, Summary readiness, Session Status, RAP status, or signature progress.
+- **Record Status:** `IN_PROGRESS / AWAITING_COMPLETION / COMPLETE` is a stage-aware, non-persisted read-model/UI projection over existing authoritative fields. Title Defense does not require numerical Criteria/Summary; after conclusion it requires finalized RAP for Complete. Proposal/Final require Summary ready + RAP `FINALIZED` after conclusion. The list uses short explanatory detail rather than fabricated evaluator/signature counts.
+- **Read model/filtering:** the ADMIN Defense Records list endpoint was boundedly extended with Defense Stage / derived Record Status filtering plus fields required by the accepted display; no mutation, permission, scheduling, conclusion, RAP-lifecycle, or persistent status authority was added. Search remains server-backed/debounced. Structural loading, explicit request error + Retry, filtered-vs-true empty state, and stable prior-data behavior are retained.
+- **Pagination FIX-1:** replaced the temporary Previous / “Page N of M” / Next treatment with the established numbered Admin pagination language using the shared Pagination structure: active numbered page, bounded five-page window, chevron previous/next, and **Showing X to Y of Z records**. The same FIX changes only the user-facing `AWAITING_CONCLUSION` label to **Pending Conclusion**; Record Status naming/projection is unchanged.
+- **Validation provenance:** main package agent report: backend TypeScript build **PASS**; focused Defense Records/status tests **38 passed**; full backend suite **1090 passed / 4 failed / 5 skipped** with the four failures identified as known unrelated COR static-contract failures; frontend TypeScript/scoped ESLint **PASS**; production compile/typecheck completed before the known unrelated `/login` Suspense prerender failure. Browser/manual QA was **NOT EXECUTED** in that report. FIX-1's two-file frontend diff was independently verified in source; this does not equal runtime QA.
+- **Known/deferred boundary:** unusual `UNSCHEDULED`/`CANCELLED` Record Status semantics remain outside this accepted visual package if such rows are intentionally exposed. Defense Record detail UX, bundled evaluator forms, Summary/RAP official documents, Defense Packet, RAP Reports retirement, Scheduling/Committee downloadable form, and signer/scoring authority remain separate work.
+- **Reuse with care:** the separation **Session Status = defense event lifecycle** vs **Record Status = official-record completion** is reusable where two authoritative questions genuinely differ. Defense-specific Summary/RAP completion requirements are not generic status rules.
+
 See `SYSTEM_UI_UX_PLAYBOOK.md` for the canonical registry and detailed reuse/do-not-copy rules.
 
 Additional pages or shared patterns may be added only after implementation, manual UI/UX review, workflow verification, and explicit acceptance.
@@ -1480,7 +1494,7 @@ Additional pages or shared patterns may be added only after implementation, manu
 
 # 10A. UIUX-3A implementation checkpoint — pending manual acceptance
 
-**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The thirteen accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, UIUX-2H Admin Entrance Exam Schedules, UIUX-2I Admin COR Verification, UIUX-2K Admin Defense Applications, and UIUX-2L Admin Scheduling & Panels) remain independent; the **Panelist Dashboard** is not yet accepted.
+**Scope:** Panelist Dashboard + narrow Adviser Availability relocation to Panelist Profile; implementation commit `990210051756cf2713fcedc61ad9cdfd0555ea08` on `refactor/system-ui-ux`. **Status: implemented/pushed; NOT ACCEPTED as a visual reference.** The fourteen accepted references (including UIUX-3B My Defenses, UIUX-4A Student Dashboard, UIUX-2H Admin Entrance Exam Schedules, UIUX-2I Admin COR Verification, UIUX-2K Admin Defense Applications, UIUX-2L Admin Scheduling & Panels, and UIUX-2M Admin Defense Records Main Page) remain independent; the **Panelist Dashboard** is not yet accepted.
 
 ### What is implemented
 
