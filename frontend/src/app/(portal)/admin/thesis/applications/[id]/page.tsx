@@ -302,6 +302,11 @@ export default function DefenseApplicationDetailPage() {
   const isActive = app.workflowBucket === "ACTIVE";
   const isHistory = app.workflowBucket === "HISTORY";
   const schedulingHref = `/admin/thesis/scheduling?thesisId=${app.thesisId ?? app.id}`;
+  // FIX-3A: an ACTIVE application is not in the Ready queue, so its exact
+  // confirmed session opens the Scheduled view by scheduleId.
+  const scheduledSessionHref = app.currentSchedule?.id
+    ? `/admin/thesis/scheduling?scheduleId=${app.currentSchedule.id}`
+    : schedulingHref;
 
   const viewDocument = (id: string, title: string) =>
     setViewerDoc({
@@ -749,13 +754,14 @@ export default function DefenseApplicationDetailPage() {
                 and schedule details are managed in Scheduling &amp; Panels.
               </p>
               <Link
-                href={schedulingHref}
+                href={scheduledSessionHref}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "sm" }),
                   "mt-3 w-full justify-center",
                 )}
               >
-                Open Scheduling &amp; Panels
+                <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
+                View Schedule
               </Link>
             </div>
           )}

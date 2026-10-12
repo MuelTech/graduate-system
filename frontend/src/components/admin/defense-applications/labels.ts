@@ -12,6 +12,12 @@ export type ThesisStatusName =
 
 export type WorkflowView = "NEEDS_REVIEW" | "READY" | "SCHEDULED" | "HISTORY";
 
+/**
+ * Which column schema a Defense Applications table is rendering.
+ * Header and row rendering must be driven by the SAME resolved variant.
+ */
+export type ApplicationTableVariant = "application" | "schedule";
+
 /** Backend workflow bucket (authoritative). */
 export type ApplicationWorkflowBucket =
   | "NEEDS_REVIEW"

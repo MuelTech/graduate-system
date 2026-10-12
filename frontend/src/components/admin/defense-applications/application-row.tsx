@@ -18,25 +18,13 @@ import {
   scheduleDetailHref,
   schedulingHref,
   sessionStatusLabel,
-  type WorkflowView,
+  type ApplicationTableVariant,
 } from "./labels";
 
 export type DefenseApplicationDto = ApprovedApplicationDto & {
   rejectionReason?: string | null;
   thesisDocuments: Array<{ id: string; docType: string; isCurrent?: boolean }>;
 };
-
-/** Owner of the row-detail navigation for the application-oriented columns. */
-export function rowActionLabel(bucket?: string): string {
-  return bucket === "NEEDS_REVIEW" ? "Review Application" : "View Application";
-}
-
-export function applicationDetailHref(app: {
-  id: string;
-  thesisId?: string;
-}): string {
-  return `/admin/thesis/applications/${app.thesisId ?? app.id}`;
-}
 
 /** Workflow-bucket display projection, never raw ThesisRecord.status alone. */
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -60,8 +48,46 @@ const SESSION_BADGE_CLASS: Record<string, string> = {
 };
 
 /** Owner of the row-detail navigation for the application-oriented columns. */
-export function applicationRowActionLabel(bucket?: string): string {
-  return bucket === "READY" ? "Assign Panel & Schedule" : rowActionLabel(bucket);
+export function rowActionLabel(bucket?: string): string {
+  return bucket === "NEEDS_REVIEW" ? "Review Application" : "View Application";
+}
+
+export function applicationDetailHref(app: {
+  id: string;
+  thesisId?: string;
+}): string {
+  return `/admin/thesis/applications/${app.thesisId ?? app.id}`;
+}
+
+/**
+ * Application-oriented row action. Ready communicates the next operational step;
+ * a History row with an actual defense session routes to Defense Records, while
+ * rejected/no-session history stays on the application detail page.
+ */
+function applicationAction(app: DefenseApplicationDto): {
+  label: string;
+  href: string;
+  icon: "eye" | "record";
+} {
+  if (app.workflowBucket === "READY") {
+    return {
+      label: "Assign Panel & Schedule",
+      href: schedulingHref(app.thesisId ?? app.id),
+      icon: "eye",
+    };
+  }
+  if (app.workflowBucket === "HISTORY" && app.currentSchedule?.id) {
+    return {
+      label: "View Defense Record",
+      href: defenseRecordHref(app.currentSchedule.id),
+      icon: "record",
+    };
+  }
+  return {
+    label: rowActionLabel(app.workflowBucket),
+    href: applicationDetailHref(app),
+    icon: "eye",
+  };
 }
 
 function formatSubmitted(value: string): string {
@@ -94,22 +120,21 @@ function ActionButton({
 
 export function DefenseApplicationRow({
   app,
-  view,
+  variant,
 }: {
   app: DefenseApplicationDto;
-  view?: WorkflowView;
+  variant: ApplicationTableVariant;
 }) {
   const student = app.student;
   const studentName = `${student.user.firstName} ${student.user.lastName}`;
   const docCount = app.thesisDocuments?.length ?? 0;
   const statusKey = displayStatusKey(app);
-  const isScheduleView = view === "SCHEDULED";
   const identitySecondary =
     [student.studentNumber, student.program?.programName]
       .filter(Boolean)
       .join(" · ") || student.user.email;
 
-  if (isScheduleView) {
+  if (variant === "schedule") {
     const schedule = app.currentSchedule;
     const venue = parseVenueOrLink(schedule?.venueOrLink);
     const action = activeScheduleAction(schedule?.sessionStatus);
@@ -201,11 +226,7 @@ export function DefenseApplicationRow({
     );
   }
 
-  const actionLabel = applicationRowActionLabel(app.workflowBucket);
-  const actionHref =
-    app.workflowBucket === "READY"
-      ? schedulingHref(app.thesisId ?? app.id)
-      : applicationDetailHref(app);
+  const action = applicationAction(app);
 
   return (
     <tr className="border-b border-(--earist-border-gray) last:border-0 hover:bg-(--earist-surface-gray)/60">
@@ -242,10 +263,16 @@ export function DefenseApplicationRow({
       </td>
       <td className="px-4 py-3 text-right align-top">
         <ActionButton
-          href={actionHref}
-          label={actionLabel}
+          href={action.href}
+          label={action.label}
           studentName={studentName}
-          icon={<Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />}
+          icon={
+            action.icon === "record" ? (
+              <FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            )
+          }
         />
       </td>
     </tr>

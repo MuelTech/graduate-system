@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/defense-applications/application-row";
 import {
   workflowBucketParam,
+  type ApplicationTableVariant,
   type WorkflowView,
 } from "@/components/admin/defense-applications/labels";
 import type { PaginatedResponse, Program } from "@/types";
@@ -46,13 +47,11 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-type TableVariant = "application" | "schedule";
-
 function TableShell({
   variant,
   children,
 }: {
-  variant: TableVariant;
+  variant: ApplicationTableVariant;
   children: React.ReactNode;
 }) {
   return (
@@ -105,7 +104,7 @@ const SCHEDULE_HEADERS = [
   "Session Status",
 ] as const;
 
-function TableHead({ variant }: { variant: TableVariant }) {
+function TableHead({ variant }: { variant: ApplicationTableVariant }) {
   const headers = variant === "schedule" ? SCHEDULE_HEADERS : APPLICATION_HEADERS;
   return (
     <thead>
@@ -126,7 +125,7 @@ function TableHead({ variant }: { variant: TableVariant }) {
   );
 }
 
-function TableSkeleton({ variant }: { variant: TableVariant }) {
+function TableSkeleton({ variant }: { variant: ApplicationTableVariant }) {
   return (
     <TableShell variant={variant}>
       <TableHead variant={variant} />
@@ -303,10 +302,10 @@ export default function AdminDefenseApplicationsPage() {
     ];
   })();
 
-  // Layout follows the *loaded* bucket: while placeholder rows from the previous
-  // tab are still shown (keepPreviousData), keep their own column layout so a
-  // stale row is never rendered under mismatched schedule/application columns.
-  const tableVariant: TableVariant =
+  // Header, skeleton and row rendering all follow the SAME resolved variant, so
+  // stale placeholder rows from the previous tab never render under the new
+  // tab's column schema (playbook §21.3 / audit UX-FBK-06).
+  const renderedVariant: ApplicationTableVariant =
     view === "SCHEDULED" && !isPlaceholderData ? "schedule" : "application";
 
   return (
@@ -403,7 +402,7 @@ export default function AdminDefenseApplicationsPage() {
       <Card className="overflow-hidden py-0">
         <CardContent className="min-w-0 p-0">
           {isLoading ? (
-            <TableSkeleton variant={tableVariant} />
+            <TableSkeleton variant={renderedVariant} />
           ) : filterRequestFailed || loadFailedWithoutData ? (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
               <AlertCircle
@@ -444,11 +443,15 @@ export default function AdminDefenseApplicationsPage() {
               )}
             </div>
           ) : (
-            <TableShell variant={tableVariant}>
-              <TableHead variant={tableVariant} />
+            <TableShell variant={renderedVariant}>
+              <TableHead variant={renderedVariant} />
               <tbody>
                 {items.map((app) => (
-                  <DefenseApplicationRow key={app.id} app={app} view={view} />
+                  <DefenseApplicationRow
+                    key={app.id}
+                    app={app}
+                    variant={renderedVariant}
+                  />
                 ))}
               </tbody>
             </TableShell>

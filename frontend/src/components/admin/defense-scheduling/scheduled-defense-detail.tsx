@@ -101,7 +101,14 @@ function DetailSkeleton() {
  * UIUX-2L FIX-3: read-only exact scheduled-defense detail (scheduleId mode).
  * Answers WHEN / WHERE / WHO only; no editing and no academic authority.
  */
-export function ScheduledDefenseDetail({ scheduleId }: { scheduleId: string }) {
+export function ScheduledDefenseDetail({
+  scheduleId,
+  onBack,
+}: {
+  scheduleId: string;
+  /** Optional: clear the selected schedule without leaving the workspace. */
+  onBack?: () => void;
+}) {
   const detailQuery = useQuery<ScheduledDefenseDetailDto>({
     queryKey: ["scheduledDefenseDetail", scheduleId],
     queryFn: async () =>
@@ -146,12 +153,21 @@ export function ScheduledDefenseDetail({ scheduleId }: { scheduleId: string }) {
         <p className="text-sm text-(--earist-body-text)">
           This schedule may no longer exist, or the link is incorrect.
         </p>
-        <Link
-          href="/admin/thesis/scheduling"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-1")}
-        >
-          Back to Scheduling &amp; Panels
-        </Link>
+        {onBack ? (
+          <Button variant="outline" size="sm" onClick={onBack}>
+            Back to scheduled list
+          </Button>
+        ) : (
+          <Link
+            href="/admin/thesis/scheduling"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "mt-1",
+            )}
+          >
+            Back to Scheduling &amp; Panels
+          </Link>
+        )}
       </div>
     );
   }
