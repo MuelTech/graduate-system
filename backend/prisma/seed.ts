@@ -1299,10 +1299,10 @@ async function main() {
       panelUser3.id,
       "PANELIST",
     );
-    const concludedAdviser = await ensurePanel(
+    const concludedRapporteur = await ensurePanel(
       concludedSchedule.id,
       panelUser1.id,
-      "ADVISER",
+      "RAPPORTEUR",
     );
 
     await ensureScore(concludedChair.id, concludedSchedule.id, {
@@ -1314,11 +1314,6 @@ async function main() {
       overallAverage: 1.5,
       rating: "S",
       recommendations: "Title is feasible. Proceed to proposal defense.",
-    });
-    await ensureScore(concludedAdviser.id, concludedSchedule.id, {
-      overallAverage: 1.0,
-      rating: "E",
-      recommendations: "Strong title; supervise literature mapping closely.",
     });
 
     const existingSummary = await prisma.oralExamSummary.findFirst({
@@ -1352,7 +1347,7 @@ async function main() {
           reportDate: new Date("2026-07-10T00:00:00.000Z"),
           venue: "GS Conference Room B",
           decisionsAndRecommendations:
-            "=== RAPPORTEUR NOTES ===\nTitle defense concluded. Panel selected Title A with minor wording edits.\n\n=== PANEL ===\nApproved title; align Chapter 1 framing with selected title.\n\nTitle is feasible. Proceed to proposal defense.\n\nStrong title; supervise literature mapping closely.",
+            "=== RAPPORTEUR NOTES ===\nTitle defense concluded. Panel selected Title A with minor wording edits.\n\n=== PANEL ===\nApproved title; align Chapter 1 framing with selected title.\n\nTitle is feasible. Proceed to proposal defense.",
           selectedTitle: selectedTitle?.titleText || "No Title",
           status: "DRAFT",
           generatedById: adminUser.id,
@@ -1361,9 +1356,24 @@ async function main() {
       });
       await prisma.rapReportSignature.createMany({
         data: [
-          { rapId: rap.id, userId: panelUser2.id },
-          { rapId: rap.id, userId: panelUser3.id },
-          { rapId: rap.id, userId: panelUser1.id },
+          {
+            rapId: rap.id,
+            userId: concludedChair.userId,
+            roleAtDefense: "CHAIRMAN",
+            required: true,
+          },
+          {
+            rapId: rap.id,
+            userId: concludedPanelist.userId,
+            roleAtDefense: "PANELIST",
+            required: true,
+          },
+          {
+            rapId: rap.id,
+            userId: concludedRapporteur.userId,
+            roleAtDefense: "RAPPORTEUR",
+            required: true,
+          },
         ],
       });
       console.log("Created draft RapReport + signature slots for concluded defense");
@@ -1374,9 +1384,24 @@ async function main() {
       if (sigCount === 0) {
         await prisma.rapReportSignature.createMany({
           data: [
-            { rapId: existingRap.id, userId: panelUser2.id },
-            { rapId: existingRap.id, userId: panelUser3.id },
-            { rapId: existingRap.id, userId: panelUser1.id },
+            {
+              rapId: existingRap.id,
+              userId: concludedChair.userId,
+              roleAtDefense: "CHAIRMAN",
+              required: true,
+            },
+            {
+              rapId: existingRap.id,
+              userId: concludedPanelist.userId,
+              roleAtDefense: "PANELIST",
+              required: true,
+            },
+            {
+              rapId: existingRap.id,
+              userId: concludedRapporteur.userId,
+              roleAtDefense: "RAPPORTEUR",
+              required: true,
+            },
           ],
         });
         console.log("Created missing RapReportSignature slots");
