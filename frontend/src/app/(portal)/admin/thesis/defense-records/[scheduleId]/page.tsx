@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { AlertCircle, ExternalLink, Printer, RefreshCw } from "lucide-react";
 import {
   formatDefenseDate,
   formatDefenseTime,
@@ -236,6 +236,26 @@ function CommitteeRoster({
 
 /* ------------------------------------------------------------- skeleton */
 
+/**
+ * Section-owned document action placeholder. The future official document
+ * outputs are not implemented yet, so this is a real, semantically disabled
+ * button: no href, no no-op click handler, no window.print(), no fake PDF.
+ */
+function DownloadPrintButton() {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled
+      title="Document output is not available yet"
+    >
+      <Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />
+      Download / Print
+    </Button>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className="space-y-6" aria-hidden="true">
@@ -404,15 +424,18 @@ export default function AdminDefenseRecordDetailPage() {
             <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
               Defense Overview
             </CardTitle>
-            <Badge
-              variant="outline"
-              className={cn(
-                "font-medium",
-                SESSION_BADGE_CLASS[o.sessionStatus.toUpperCase()],
-              )}
-            >
-              {sessionStatusLabel(o.sessionStatus)}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "font-medium",
+                  SESSION_BADGE_CLASS[o.sessionStatus.toUpperCase()],
+                )}
+              >
+                {sessionStatusLabel(o.sessionStatus)}
+              </Badge>
+              <DownloadPrintButton />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -493,9 +516,12 @@ export default function AdminDefenseRecordDetailPage() {
           {/* Evaluation Results */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Evaluation Results
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  Evaluation Results
+                </CardTitle>
+                <DownloadPrintButton />
+              </div>
             </CardHeader>
             <CardContent>
               {data.individualEvaluations.length === 0 ? (
@@ -512,7 +538,6 @@ export default function AdminDefenseRecordDetailPage() {
                         <th className="px-3 py-2">Status</th>
                         <th className="px-3 py-2">Overall</th>
                         <th className="px-3 py-2">Criteria</th>
-                        <th className="px-3 py-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -544,20 +569,6 @@ export default function AdminDefenseRecordDetailPage() {
                           <td className="px-3 py-2">
                             {e.hasOfficialCriteria ? "Available" : "Not available"}
                           </td>
-                          <td className="px-3 py-2 text-right">
-                            {e.hasOfficialCriteria && (
-                              <Link
-                                href={`/admin/thesis/defense-records/${scheduleId}/criteria/${e.panelAssignmentId}`}
-                                aria-label={`View evaluation criteria — ${e.evaluatorName}`}
-                                className={buttonVariants({
-                                  variant: "outline",
-                                  size: "sm",
-                                })}
-                              >
-                                View
-                              </Link>
-                            )}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -570,9 +581,12 @@ export default function AdminDefenseRecordDetailPage() {
           {/* Oral Examination Summary */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Oral Examination Summary
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                  Oral Examination Summary
+                </CardTitle>
+                <DownloadPrintButton />
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {!data.oralExamSummary.ready ? (
@@ -635,12 +649,6 @@ export default function AdminDefenseRecordDetailPage() {
                       No per-evaluator summary rows recorded.
                     </p>
                   )}
-                  <Link
-                    href={`/admin/thesis/defense-records/${scheduleId}/summary`}
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    View Summary
-                  </Link>
                 </>
               )}
             </CardContent>
@@ -651,9 +659,12 @@ export default function AdminDefenseRecordDetailPage() {
       {/* RAP / Committee Report */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            RAP / Committee Report
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+              RAP / Committee Report
+            </CardTitle>
+            <DownloadPrintButton />
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {!data.rapReport ? (
