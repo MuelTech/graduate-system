@@ -11,7 +11,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Eye, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Eye, RefreshCw, Search } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import {
   formatDefenseDate,
   formatDefenseTime,
@@ -233,6 +238,24 @@ export default function AdminDefenseRecordsPage() {
   const effectivePage = Math.min(page, totalPages);
   const from = total === 0 ? 0 : (effectivePage - 1) * PAGE_SIZE + 1;
   const to = Math.min(effectivePage * PAGE_SIZE, total);
+
+  // Bounded page-number window matching the accepted Admin list pattern
+  // (Applicants / Students): all pages when <= 5, otherwise a rolling window of
+  // up to 5 centred on the current page.
+  const pageNumbers = (() => {
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    if (effectivePage <= 3) return [1, 2, 3, 4, 5];
+    if (effectivePage >= totalPages - 2)
+      return Array.from({ length: 5 }, (_, index) => totalPages - 4 + index);
+    return [
+      effectivePage - 2,
+      effectivePage - 1,
+      effectivePage,
+      effectivePage + 1,
+      effectivePage + 2,
+    ];
+  })();
 
   const isFiltered =
     trimmedSearch !== "" || defenseTypeFilter !== ALL || recordStatusFilter !== ALL;
@@ -490,30 +513,55 @@ export default function AdminDefenseRecordsPage() {
       {!isLoading && total > 0 && (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-sm text-(--earist-body-text)">
-            Showing {from}–{to} of {total} record{total === 1 ? "" : "s"}
+            Showing {from} to {to} of {total} record{total === 1 ? "" : "s"}
           </p>
           {totalPages > 1 && (
-            <nav aria-label="pagination" className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={effectivePage <= 1 || isFetching}
-                onClick={() => setPage(Math.max(1, effectivePage - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-xs text-(--earist-body-text)">
-                Page {effectivePage} of {totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={effectivePage >= totalPages || isFetching}
-                onClick={() => setPage(Math.min(totalPages, effectivePage + 1))}
-              >
-                Next
-              </Button>
-            </nav>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to previous page"
+                    onClick={() => setPage(Math.max(1, effectivePage - 1))}
+                    disabled={effectivePage === 1 || isFetching}
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </PaginationItem>
+                {pageNumbers.map((pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <Button
+                      variant={
+                        effectivePage === pageNumber ? "outline" : "ghost"
+                      }
+                      size="icon"
+                      aria-label={`Go to page ${pageNumber}`}
+                      aria-current={
+                        effectivePage === pageNumber ? "page" : undefined
+                      }
+                      onClick={() => setPage(pageNumber)}
+                      disabled={isFetching}
+                    >
+                      {pageNumber}
+                    </Button>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go to next page"
+                    onClick={() =>
+                      setPage(Math.min(totalPages, effectivePage + 1))
+                    }
+                    disabled={effectivePage === totalPages || isFetching}
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </div>
       )}

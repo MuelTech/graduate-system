@@ -97,7 +97,7 @@ export const SESSION_STATUS_LABELS: Record<string, string> = {
   SCHEDULED: "Scheduled",
   RESCHEDULED: "Rescheduled",
   IN_PROGRESS: "In Progress",
-  AWAITING_CONCLUSION: "Awaiting Conclusion",
+  AWAITING_CONCLUSION: "Pending Conclusion",
   CONCLUDED: "Concluded",
   CANCELLED: "Cancelled",
 };
