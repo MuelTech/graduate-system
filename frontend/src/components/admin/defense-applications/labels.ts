@@ -209,10 +209,15 @@ export function formatDefenseDate(value?: string | Date | null): string {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
+  // Wall-clock schedule field: read UTC components so the displayed date never
+  // shifts with the browser timezone (playbook §8, defenseDate stored at UTC midnight).
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  ).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
@@ -220,10 +225,52 @@ export function formatDefenseTime(value?: string | Date | null): string {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleTimeString(undefined, {
+  // Wall-clock schedule field: defenseTime stores the intended time-of-day in
+  // UTC components (1970-01-01THH:mm:00.000Z); format from UTC, never local.
+  return new Date(
+    Date.UTC(1970, 0, 1, d.getUTCHours(), d.getUTCMinutes()),
+  ).toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "UTC",
   });
+}
+
+/* ------------------------------------------------------- scheduled actions */
+
+/** Editable scheduling workspace for an approved application (MODE A). */
+export function schedulingHref(thesisId: string): string {
+  return `/admin/thesis/scheduling?thesisId=${encodeURIComponent(thesisId)}`;
+}
+
+/** Read-only exact scheduled-defense detail (MODE B). */
+export function scheduleDetailHref(scheduleId: string): string {
+  return `/admin/thesis/scheduling?scheduleId=${encodeURIComponent(scheduleId)}`;
+}
+
+/** Admin Defense Records academic-session surface. */
+export function defenseRecordHref(scheduleId: string): string {
+  return `/admin/thesis/defense-records/${scheduleId}`;
+}
+
+export type ActiveScheduleAction = {
+  kind: "schedule" | "record";
+  label: "View Schedule" | "View Defense Record";
+};
+
+/**
+ * State-aware Scheduled/Active row action (playbook §11). Pre-start sessions
+ * (SCHEDULED/RESCHEDULED) inspect the read-only schedule; an active academic
+ * session routes to Defense Records. Never routes active work into scheduling.
+ */
+export function activeScheduleAction(
+  sessionStatus?: string | null,
+): ActiveScheduleAction {
+  const s = String(sessionStatus ?? "").toUpperCase();
+  if (s === "IN_PROGRESS" || s === "AWAITING_CONCLUSION") {
+    return { kind: "record", label: "View Defense Record" };
+  }
+  return { kind: "schedule", label: "View Schedule" };
 }
 
 export const HISTORY_STATUSES: ThesisStatusName[] = [

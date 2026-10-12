@@ -53,6 +53,16 @@ export function defenseTypeLabel(stage: "TITLE" | "PROPOSAL" | "FINAL"): string 
   return "Final Defense";
 }
 
+/** Map an authoritative DefenseSchedule.defenseType to its journey stage. */
+export function stageFromDefenseType(
+  defenseType: string | null | undefined,
+): "TITLE" | "PROPOSAL" | "FINAL" {
+  const t = String(defenseType ?? "").toUpperCase();
+  if (t === "PROPOSAL_DEFENSE") return "PROPOSAL";
+  if (t === "FINAL_DEFENSE") return "FINAL";
+  return "TITLE";
+}
+
 /** User-facing program type for the committee header. */
 export function programTypeLabel(raw: string | null | undefined): string {
   const v = String(raw ?? "").toUpperCase();

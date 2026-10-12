@@ -1,12 +1,13 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import { DefenseCommitteeBuilder } from "@/components/admin/defense-scheduling/d
 import { DefenseScheduleForm } from "@/components/admin/defense-scheduling/defense-schedule-form";
 import { DefenseReviewSummary } from "@/components/admin/defense-scheduling/defense-review-summary";
 import { EmailPreviewDialog } from "@/components/admin/defense-scheduling/email-preview-dialog";
+import { ScheduledDefenseDetail } from "@/components/admin/defense-scheduling/scheduled-defense-detail";
 import {
   computeCommitteeReadiness,
   defenseTypeFromStage,
@@ -39,7 +41,12 @@ import {
   type PickerPerson,
   type ScheduleFormState,
 } from "@/components/admin/defense-scheduling/types";
-import { AlertCircle, CheckCircle2, X } from "lucide-react";
+import {
+  formatDefenseDate,
+  formatDefenseTime,
+  scheduleDetailHref,
+} from "@/components/admin/defense-applications/labels";
+import { AlertCircle, CalendarClock, CheckCircle2, X } from "lucide-react";
 
 const EMPTY_SCHEDULE: ScheduleFormState = {
   defenseDate: "",
@@ -58,6 +65,9 @@ export default function AdminSchedulingPage() {
 function AdminSchedulingPageInner() {
   const searchParams = useSearchParams();
   const thesisIdFromQuery = searchParams.get("thesisId");
+  // UIUX-2L FIX-3: exact-schedule read-only mode. scheduleId identifies the
+  // exact session and takes precedence over thesisId.
+  const scheduleIdFromQuery = searchParams.get("scheduleId");
   const queryClient = useQueryClient();
 
   const [selectedApp, setSelectedApp] =
@@ -74,12 +84,14 @@ function AdminSchedulingPageInner() {
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
+    schedule?: { id: string };
   } | null>(null);
 
   // Dedicated graduate-program cache shape (avoids the shared `["programs"]`
   // DTO collision that produced `programs.map is not a function`).
   const { data: programsData } = useQuery<Program[]>({
     queryKey: ["programs", "graduate"],
+    enabled: !scheduleIdFromQuery,
     queryFn: async () => {
       const response = await apiClientRequest("/programs");
       return Array.isArray(response?.graduatePrograms)
@@ -89,11 +101,9 @@ function AdminSchedulingPageInner() {
   });
   const programs = Array.isArray(programsData) ? programsData : [];
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useQuery<PaginatedResponse<ApprovedApplicationDto>>({
+  const { data, isLoading, isError } = useQuery<
+    PaginatedResponse<ApprovedApplicationDto>
+  >({
     queryKey: [
       "approvedDefenseApplications",
       page,
@@ -101,6 +111,7 @@ function AdminSchedulingPageInner() {
       defenseTypeFilter,
       programId,
     ],
+    enabled: !scheduleIdFromQuery,
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -200,7 +211,7 @@ function AdminSchedulingPageInner() {
   const scheduleMutation = useMutation({
     mutationFn: async () => {
       if (!selected) throw new Error("No application selected.");
-      return apiClientRequest(`/thesis/defense/${selected.id}/schedule`, {
+      return (await apiClientRequest(`/thesis/defense/${selected.id}/schedule`, {
         method: "POST",
         body: JSON.stringify({
           defenseDate: schedule.defenseDate,
@@ -209,9 +220,12 @@ function AdminSchedulingPageInner() {
           defenseType: defenseTypeFromStage(selected.stage),
           assignments,
         }),
-      });
+      })) as {
+        message?: string;
+        result?: { id?: string; defenseDate?: string; defenseTime?: string };
+      };
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({
         queryKey: ["approvedDefenseApplications"],
       });
@@ -220,10 +234,16 @@ function AdminSchedulingPageInner() {
       setCommittee([]);
       setSchedule(EMPTY_SCHEDULE);
       setMissingItems([]);
+      // §19 continuity: surface the confirmed schedule context + a View Schedule
+      // action for the exact newly created scheduleId. No forced redirect.
+      const created = response?.result;
+      const when = created?.defenseDate
+        ? `Defense scheduled for ${formatDefenseDate(created.defenseDate)} at ${formatDefenseTime(created.defenseTime)}.`
+        : "Defense scheduled.";
       setFeedback({
         type: "success",
-        message:
-          "Defense scheduled. The session is SCHEDULED — not passed or concluded — and participants have been notified.",
+        message: `${when} The session is SCHEDULED — not passed or concluded — and participants have been notified.`,
+        schedule: created?.id ? { id: created.id } : undefined,
       });
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
@@ -256,6 +276,21 @@ function AdminSchedulingPageInner() {
     setMissingItems([]);
   };
 
+  // UIUX-2L FIX-3 MODE B — read-only exact scheduled-defense detail. scheduleId
+  // identifies the exact session; it takes precedence over thesisId and never
+  // falls back to the editable flow.
+  if (scheduleIdFromQuery) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Scheduling &amp; Panels"
+          description="Read-only view of a scheduled defense session and its confirmed committee."
+        />
+        <ScheduledDefenseDetail scheduleId={scheduleIdFromQuery} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -267,37 +302,49 @@ function AdminSchedulingPageInner() {
         <div
           role="status"
           className={cn(
-            "flex items-start justify-between gap-3 rounded-lg border px-4 py-3",
+            "flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-start sm:justify-between",
             feedback.type === "success"
               ? "border-(--earist-success)/30 bg-(--earist-surface-gray)"
               : "border-destructive/30 bg-destructive/5",
           )}
         >
-          <p
-            className={cn(
-              "flex items-start gap-2 text-sm",
-              feedback.type === "success"
-                ? "text-(--earist-success)"
-                : "text-destructive",
+          <div className="min-w-0 space-y-2">
+            <p
+              className={cn(
+                "flex items-start gap-2 text-sm",
+                feedback.type === "success"
+                  ? "text-(--earist-success)"
+                  : "text-destructive",
+              )}
+            >
+              {feedback.type === "success" ? (
+                <CheckCircle2
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
+              ) : (
+                <AlertCircle
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
+              )}
+              {feedback.message}
+            </p>
+            {feedback.type === "success" && feedback.schedule && (
+              <Link
+                href={scheduleDetailHref(feedback.schedule.id)}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <CalendarClock className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                View Schedule
+              </Link>
             )}
-          >
-            {feedback.type === "success" ? (
-              <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0"
-                aria-hidden="true"
-              />
-            ) : (
-              <AlertCircle
-                className="mt-0.5 h-4 w-4 shrink-0"
-                aria-hidden="true"
-              />
-            )}
-            {feedback.message}
-          </p>
+          </div>
           <Button
             variant="ghost"
             size="icon-sm"
             aria-label="Dismiss message"
+            className="shrink-0 self-start"
             onClick={() => setFeedback(null)}
           >
             <X className="h-4 w-4" aria-hidden="true" />

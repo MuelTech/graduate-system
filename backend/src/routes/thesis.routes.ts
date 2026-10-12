@@ -523,6 +523,15 @@ router.get(
   thesisController.getAdminDefenseRecordDetail,
 );
 
+// UIUX-2L FIX-3: exact scheduled-defense read model (schedule + committee only)
+// for the Scheduling read-only view. Identified by the exact scheduleId.
+router.get(
+  "/defense/schedules/:scheduleId",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getScheduledDefenseDetail,
+);
+
 // CP7: Student-owned RAP access
 router.get(
   "/student/defense/:scheduleId/rap",

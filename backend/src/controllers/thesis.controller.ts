@@ -137,6 +137,27 @@ export class ThesisController {
     }
   };
 
+  // UIUX-2L FIX-3: exact scheduled-defense read model for the Scheduling
+  // read-only mode (schedule + committee identity only). No academic authority.
+  getScheduledDefenseDetail = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const { scheduleId } = req.params;
+      const result = await this.thesisService.getScheduledDefenseDetail(
+        scheduleId as string,
+      );
+      if (!result) {
+        res.status(404).json({ error: "Defense session not found." });
+        return;
+      }
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   getAdviserRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const result = await this.thesisService.getAllAdviserRequests();

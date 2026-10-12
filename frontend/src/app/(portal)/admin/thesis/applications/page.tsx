@@ -46,17 +46,43 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-function TableShell({ children }: { children: React.ReactNode }) {
+type TableVariant = "application" | "schedule";
+
+function TableShell({
+  variant,
+  children,
+}: {
+  variant: TableVariant;
+  children: React.ReactNode;
+}) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] table-fixed border-collapse">
+      <table
+        className={cn(
+          "w-full table-fixed border-collapse",
+          variant === "schedule" ? "min-w-[960px]" : "min-w-[900px]",
+        )}
+      >
         <colgroup>
-          <col className="w-[26%]" />
-          <col className="w-[15%]" />
-          <col className="w-[13%]" />
-          <col className="w-[16%]" />
-          <col className="w-[13%]" />
-          <col className="w-[17%]" />
+          {variant === "schedule" ? (
+            <>
+              <col className="w-[22%]" />
+              <col className="w-[13%]" />
+              <col className="w-[18%]" />
+              <col className="w-[19%]" />
+              <col className="w-[13%]" />
+              <col className="w-[15%]" />
+            </>
+          ) : (
+            <>
+              <col className="w-[26%]" />
+              <col className="w-[15%]" />
+              <col className="w-[13%]" />
+              <col className="w-[16%]" />
+              <col className="w-[13%]" />
+              <col className="w-[17%]" />
+            </>
+          )}
         </colgroup>
         {children}
       </table>
@@ -64,25 +90,34 @@ function TableShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TableHead() {
+const APPLICATION_HEADERS = [
+  "Student",
+  "Defense Stage",
+  "Submitted",
+  "Documents",
+  "Status",
+] as const;
+const SCHEDULE_HEADERS = [
+  "Student",
+  "Defense Stage",
+  "Schedule",
+  "Venue / Meeting",
+  "Session Status",
+] as const;
+
+function TableHead({ variant }: { variant: TableVariant }) {
+  const headers = variant === "schedule" ? SCHEDULE_HEADERS : APPLICATION_HEADERS;
   return (
     <thead>
       <tr className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray)">
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Student
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Defense Stage
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Submitted
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Documents
-        </th>
-        <th className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)">
-          Status
-        </th>
+        {headers.map((label) => (
+          <th
+            key={label}
+            className="px-4 py-3 text-left text-xs font-semibold text-(--earist-body-text)"
+          >
+            {label}
+          </th>
+        ))}
         <th className="px-4 py-3 text-right text-xs font-semibold text-(--earist-body-text)">
           Action
         </th>
@@ -91,10 +126,10 @@ function TableHead() {
   );
 }
 
-function TableSkeleton() {
+function TableSkeleton({ variant }: { variant: TableVariant }) {
   return (
-    <TableShell>
-      <TableHead />
+    <TableShell variant={variant}>
+      <TableHead variant={variant} />
       <tbody aria-hidden="true">
         {Array.from({ length: 6 }).map((_, index) => (
           <tr
@@ -108,15 +143,32 @@ function TableSkeleton() {
             <td className="px-4 py-3 align-top">
               <Skeleton className="h-4 w-24" />
             </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-24" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-4 w-28" />
-            </td>
-            <td className="px-4 py-3 align-top">
-              <Skeleton className="h-5 w-24 rounded-full" />
-            </td>
+            {variant === "schedule" ? (
+              <>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="mt-2 h-3 w-16" />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-4 w-32" />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </td>
+              </>
+            ) : (
+              <>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-4 w-24" />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-4 w-28" />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </td>
+              </>
+            )}
             <td className="px-4 py-3 align-top">
               <Skeleton className="ml-auto h-8 w-36 rounded-md" />
             </td>
@@ -251,6 +303,12 @@ export default function AdminDefenseApplicationsPage() {
     ];
   })();
 
+  // Layout follows the *loaded* bucket: while placeholder rows from the previous
+  // tab are still shown (keepPreviousData), keep their own column layout so a
+  // stale row is never rendered under mismatched schedule/application columns.
+  const tableVariant: TableVariant =
+    view === "SCHEDULED" && !isPlaceholderData ? "schedule" : "application";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -345,7 +403,7 @@ export default function AdminDefenseApplicationsPage() {
       <Card className="overflow-hidden py-0">
         <CardContent className="min-w-0 p-0">
           {isLoading ? (
-            <TableSkeleton />
+            <TableSkeleton variant={tableVariant} />
           ) : filterRequestFailed || loadFailedWithoutData ? (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
               <AlertCircle
@@ -386,11 +444,11 @@ export default function AdminDefenseApplicationsPage() {
               )}
             </div>
           ) : (
-            <TableShell>
-              <TableHead />
+            <TableShell variant={tableVariant}>
+              <TableHead variant={tableVariant} />
               <tbody>
                 {items.map((app) => (
-                  <DefenseApplicationRow key={app.id} app={app} />
+                  <DefenseApplicationRow key={app.id} app={app} view={view} />
                 ))}
               </tbody>
             </TableShell>

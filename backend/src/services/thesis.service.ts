@@ -195,6 +195,14 @@ export class ThesisService {
     return this.defenseAppsRepo.getDefenseApplicationById(thesisId);
   }
 
+  /**
+   * UIUX-2L FIX-3: exact scheduled-defense read model for the Scheduling
+   * read-only mode. Read-only; no mutation or academic authority.
+   */
+  async getScheduledDefenseDetail(scheduleId: string) {
+    return this.defenseAppsRepo.getScheduledDefenseById(scheduleId);
+  }
+
   async getDefenseWorkflowSummary(params: {
     search?: string;
     stage?: string;

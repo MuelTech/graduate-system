@@ -233,6 +233,25 @@ export interface DefenseSessionDto {
   committeeSummary: DefenseCommitteeSummary;
 }
 
+/**
+ * UIUX-2L FIX-3: exact scheduled-defense read model for the Scheduling
+ * read-only mode. WHEN / WHERE / WHO only — no academic authority.
+ */
+export interface ScheduledDefenseDetailDto {
+  scheduleId: string;
+  thesisId: string;
+  studentName: string | null;
+  studentNumber: string | null;
+  program: string | null;
+  programType: string | null;
+  defenseType: string;
+  defenseDate: string | null;
+  defenseTime: string | null;
+  venueOrLink: string | null;
+  sessionStatus: string;
+  committee: Array<{ userId: string; name: string; role: string }>;
+}
+
 export interface CommitteePolicyDto {
   allowedRoles: DefensePanelRole[];
   requiredRoles: DefensePanelRole[];

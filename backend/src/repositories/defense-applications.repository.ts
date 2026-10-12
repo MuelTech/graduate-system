@@ -37,6 +37,32 @@ export type ApplicationDocumentDto = {
   isCurrent: boolean;
 };
 
+/** UIUX-2L FIX-3: committee seat for the exact scheduled-defense read model. */
+export type ScheduledDefenseCommitteeMember = {
+  userId: string;
+  name: string;
+  role: string;
+};
+
+/**
+ * UIUX-2L FIX-3: exact scheduled-defense projection (schedule + committee only).
+ * Deliberately excludes academic authority (scores, summary, RAP, conclusion).
+ */
+export type ScheduledDefenseDetailDto = {
+  scheduleId: string;
+  thesisId: string;
+  studentName: string | null;
+  studentNumber: string | null;
+  program: string | null;
+  programType: string | null;
+  defenseType: string;
+  defenseDate: string | null;
+  defenseTime: string | null;
+  venueOrLink: string | null;
+  sessionStatus: string;
+  committee: ScheduledDefenseCommitteeMember[];
+};
+
 /**
  * CP3-FIX2: Proposal current application documents use the certified
  * manuscript (ISSUED reviewedDocumentId) only — never all historical revisions.
@@ -408,6 +434,64 @@ export class DefenseApplicationsRepository {
     });
     if (!row) return null;
     return mapApplicationRow(row as never);
+  }
+
+  /**
+   * UIUX-2L FIX-3: ADMIN-only exact scheduled-defense read model.
+   *
+   * Identified by the exact `scheduleId` (not thesisId) because one thesis has
+   * several defense-stage sessions over time. Returns only the schedule context
+   * and committee identity the Scheduling read-only view needs (WHEN/WHERE/WHO).
+   * No academic authority (scores/summary/RAP/conclusion) is exposed.
+   */
+  async getScheduledDefenseById(
+    scheduleId: string,
+  ): Promise<ScheduledDefenseDetailDto | null> {
+    if (!scheduleId) return null;
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+                program: { select: { programName: true, programType: true } },
+              },
+            },
+          },
+        },
+        panelAssignments: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+        },
+      },
+    });
+    if (!schedule) return null;
+
+    return {
+      scheduleId: schedule.id,
+      thesisId: schedule.thesisId,
+      studentName: schedule.thesis?.student
+        ? `${schedule.thesis.student.user.firstName} ${schedule.thesis.student.user.lastName}`
+        : null,
+      studentNumber: schedule.thesis?.student?.studentNumber ?? null,
+      program: schedule.thesis?.student?.program?.programName ?? null,
+      programType: schedule.thesis?.student?.program?.programType ?? null,
+      defenseType: String(schedule.defenseType),
+      defenseDate: schedule.defenseDate?.toISOString() ?? null,
+      defenseTime: schedule.defenseTime?.toISOString() ?? null,
+      venueOrLink: schedule.venueOrLink ?? null,
+      sessionStatus: String(schedule.sessionStatus),
+      committee: (schedule.panelAssignments ?? []).map((p) => ({
+        userId: p.userId,
+        name: `${p.user.firstName} ${p.user.lastName}`,
+        role: String(p.role),
+      })),
+    };
   }
 
   /** Rejected apps + DefenseConclusion history (prior stages survive stage advance). */
