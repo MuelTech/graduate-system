@@ -871,6 +871,8 @@ export class ThesisController {
         page: Number(req.query.page ?? 1),
         pageSize: Number(req.query.pageSize ?? 10),
         search: (req.query.search as string) ?? undefined,
+        defenseType: (req.query.defenseType as string) ?? undefined,
+        recordStatus: (req.query.recordStatus as string) ?? undefined,
       });
       res.status(200).json(result);
     } catch (error: any) {

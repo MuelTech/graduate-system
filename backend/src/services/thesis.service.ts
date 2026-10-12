@@ -906,6 +906,8 @@ export class ThesisService {
     page?: number;
     pageSize?: number;
     search?: string;
+    defenseType?: string;
+    recordStatus?: string;
   }) {
     return this.officialRecords.listAdminDefenseRecords(params);
   }

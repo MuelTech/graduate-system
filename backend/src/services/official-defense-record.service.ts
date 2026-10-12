@@ -9,6 +9,7 @@ import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
+import { deriveDefenseRecordStatus } from "./defense-record-status.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -17,6 +18,19 @@ export function isNumericalDefenseType(defenseType: string): boolean {
     defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE"
   );
 }
+
+/** UIUX-2M: bounded, validated list filters for the Admin Defense Records index. */
+const DEFENSE_TYPE_VALUES = [
+  "TITLE_DEFENSE",
+  "PROPOSAL_DEFENSE",
+  "FINAL_DEFENSE",
+] as const;
+const RECORD_STATUS_VALUES = [
+  "IN_PROGRESS",
+  "AWAITING_COMPLETION",
+  "COMPLETE",
+] as const;
+type DefenseTypeValue = (typeof DEFENSE_TYPE_VALUES)[number];
 
 function toNumber(v: unknown): number | null {
   if (v === null || v === undefined) return null;
@@ -638,19 +652,48 @@ export class OfficialDefenseRecordService {
   }
 
   /**
-   * CP7 Admin Defense Records — read-only list.
-   * No academic mutation surface.
+   * CP7 Admin Defense Records — read-only list. No academic mutation surface.
+   *
+   * UIUX-2M: supports bounded server-backed filters (`defenseType`,
+   * `recordStatus`) and exposes a stage-aware `recordStatus` +
+   * `recordStatusDetail` completion projection derived only from existing
+   * authoritative fields. `recordStatus` is a UI projection, not a persisted
+   * lifecycle enum, and is never an academic result.
+   *
+   * `defenseType` filters at the DB level. `recordStatus` is derived, so it can
+   * only be filtered in memory; in that case the matching rows are projected and
+   * filtered before paging. When no `recordStatus` filter is requested the
+   * existing DB pagination is preserved.
    */
   async listAdminDefenseRecords(params?: {
     page?: number;
     pageSize?: number;
     search?: string;
+    defenseType?: string;
+    recordStatus?: string;
   }) {
-    const page = Math.max(1, Number(params?.page ?? 1));
-    const pageSize = Math.min(100, Math.max(1, Number(params?.pageSize ?? 10)));
+    const page = Math.max(1, Number(params?.page ?? 1) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Number(params?.pageSize ?? 10) || 10),
+    );
     const search = (params?.search ?? "").trim();
+    const defenseTypeFilter = String(params?.defenseType ?? "")
+      .trim()
+      .toUpperCase();
+    const recordStatusFilter = String(params?.recordStatus ?? "")
+      .trim()
+      .toUpperCase();
+    // Validate/bound the params: unrecognized values are ignored, never passed
+    // through to Prisma (which would throw a raw validation error).
+    const hasDefenseTypeFilter = (
+      DEFENSE_TYPE_VALUES as readonly string[]
+    ).includes(defenseTypeFilter);
+    const hasRecordStatusFilter = (
+      RECORD_STATUS_VALUES as readonly string[]
+    ).includes(recordStatusFilter);
 
-    const where = search
+    let where: Prisma.DefenseScheduleWhereInput = search
       ? {
           OR: [
             {
@@ -674,38 +717,50 @@ export class OfficialDefenseRecordService {
           ],
         }
       : {};
+    if (hasDefenseTypeFilter) {
+      where = {
+        ...where,
+        defenseType: defenseTypeFilter as DefenseTypeValue,
+      };
+    }
 
-    const [rows, total] = await prisma.$transaction([
-      prisma.defenseSchedule.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { defenseDate: "desc" },
+    const include = {
+      thesis: {
         include: {
-          thesis: {
+          student: {
             include: {
-              student: {
-                include: {
-                  user: { select: { firstName: true, lastName: true } },
-                  program: { select: { programName: true } },
-                },
-              },
+              user: { select: { firstName: true, lastName: true } },
+              program: { select: { programName: true } },
             },
           },
-          conclusion: { select: { outcome: true, concludedAt: true } },
-          oralExamSummary: { select: { id: true, overallAverage: true } },
-          rapReports: {
-            select: { id: true, status: true, finalizedAt: true },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
         },
-      }),
-      prisma.defenseSchedule.count({ where }),
-    ]);
+      },
+      conclusion: { select: { outcome: true, concludedAt: true } },
+      oralExamSummary: { select: { id: true, overallAverage: true } },
+      rapReports: {
+        select: { id: true, status: true, finalizedAt: true },
+        orderBy: { createdAt: "desc" as const },
+        take: 1,
+      },
+    } as const;
 
-    return {
-      data: rows.map((s) => ({
+    type ScheduleRow = Prisma.DefenseScheduleGetPayload<{
+      include: typeof include;
+    }>;
+    const mapRow = (s: ScheduleRow) => {
+      const formalResult = s.conclusion?.outcome ?? null;
+      const summaryReady = Boolean(s.oralExamSummary);
+      const rapStatus = s.rapReports[0]?.status
+        ? String(s.rapReports[0].status)
+        : null;
+      const projection = deriveDefenseRecordStatus({
+        defenseType: String(s.defenseType),
+        sessionStatus: String(s.sessionStatus),
+        formalResult: formalResult ? String(formalResult) : null,
+        summaryReady,
+        rapStatus,
+      });
+      return {
         scheduleId: s.id,
         studentName: s.thesis?.student
           ? `${s.thesis.student.user.firstName} ${s.thesis.student.user.lastName}`
@@ -714,11 +769,49 @@ export class OfficialDefenseRecordService {
         program: s.thesis?.student?.program?.programName ?? null,
         defenseType: String(s.defenseType),
         defenseDate: s.defenseDate?.toISOString() ?? null,
+        defenseTime: s.defenseTime?.toISOString() ?? null,
         sessionStatus: String(s.sessionStatus),
-        formalResult: s.conclusion?.outcome ?? null,
-        summaryReady: Boolean(s.oralExamSummary),
-        rapStatus: s.rapReports[0]?.status ?? null,
-      })),
+        formalResult: formalResult ? String(formalResult) : null,
+        summaryReady,
+        rapStatus,
+        recordStatus: projection.status,
+        recordStatusDetail: projection.detail,
+      };
+    };
+
+    if (hasRecordStatusFilter) {
+      // Derived filter: project all matching rows, then filter + page in memory.
+      const rows = await prisma.defenseSchedule.findMany({
+        where,
+        orderBy: { defenseDate: "desc" },
+        include,
+      });
+      const filtered = rows
+        .map(mapRow)
+        .filter((r) => r.recordStatus === recordStatusFilter);
+      const total = filtered.length;
+      const start = (page - 1) * pageSize;
+      return {
+        data: filtered.slice(start, start + pageSize),
+        total,
+        page,
+        pageSize,
+      };
+    }
+
+    // No derived filter: preserve DB-level pagination.
+    const [rows, total] = await prisma.$transaction([
+      prisma.defenseSchedule.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { defenseDate: "desc" },
+        include,
+      }),
+      prisma.defenseSchedule.count({ where }),
+    ]);
+    return {
+      data: rows.map(mapRow),
       total,
       page,
       pageSize,
