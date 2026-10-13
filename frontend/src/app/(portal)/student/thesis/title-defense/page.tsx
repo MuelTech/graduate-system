@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -57,6 +57,12 @@ interface DocConfig {
   label: string;
   helper: string[];
   accept: string;
+  /** Optional in-container requirement guidance (package only). */
+  guidance?: ReactNode;
+  /** Optional short format note shown above the picker. */
+  formatNote?: string;
+  /** Optional concise reminder shown next to this item in the confirm dialog. */
+  dialogNote?: string;
 }
 
 const DOCUMENTS: DocConfig[] = [
@@ -65,10 +71,37 @@ const DOCUMENTS: DocConfig[] = [
     field: "conceptPaper",
     label: "Title Defense Proposal Package",
     helper: [
-      "One document containing the supporting proposal details for all three proposed research titles.",
+      "Upload one PDF containing three complete title proposals — one for each proposed research title entered above.",
       "The three titles in this package should match the titles entered above.",
     ],
     accept: ".pdf",
+    formatNote: "PDF only · One combined file for all 3 title proposals",
+    dialogNote:
+      "Confirm that the PDF contains three complete title proposals and the required supporting information for each.",
+    guidance: (
+      <div className="mt-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
+        <p className="font-medium text-(--earist-secondary)">
+          What should be included?
+        </p>
+        <p className="mt-1">
+          Each of the three title proposals in your PDF should include:
+        </p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>Rationale of the Study</li>
+          <li>Statement of the Problem (SOP)</li>
+          <li>Hypothesis</li>
+          <li>Population</li>
+          <li>Research Locale</li>
+          <li>
+            Student Profile with picture
+            <span className="mt-0.5 block text-[11px] text-(--earist-body-text)/80">
+              Name · Degree Program &amp; Major · Occupation / Position ·
+              School / Office Address · Subject Taught &amp; Grade Level
+            </span>
+          </li>
+        </ul>
+      </div>
+    ),
   },
   {
     key: "cor",
@@ -120,8 +153,14 @@ function DocumentSlot({
             {line}
           </p>
         ))}
+        {config.guidance}
       </CardHeader>
       <CardContent>
+        {config.formatNote && (
+          <p className="mb-3 text-xs text-(--earist-body-text)">
+            {config.formatNote}
+          </p>
+        )}
         {!file ? (
           <div className="space-y-3">
             <button
@@ -595,25 +634,31 @@ export default function TitleDefensePage() {
               <p className="mb-1 font-medium text-(--earist-secondary)">
                 Documents
               </p>
-              <ul className="space-y-1 text-(--earist-body-text)">
+              <ul className="space-y-1.5 text-(--earist-body-text)">
                 {DOCUMENTS.map((config) => {
                   const f = files[config.key];
                   return (
-                    <li key={config.key} className="flex flex-wrap gap-x-1">
-                      <span className="font-medium">{config.label}:</span>
-                      <span className="min-w-0 break-all">
-                        {f ? `${f.name} · ${formatSize(f.size)}` : "—"}
-                      </span>
+                    <li key={config.key} className="space-y-0.5">
+                      <div className="flex flex-wrap gap-x-1">
+                        <span className="font-medium">{config.label}:</span>
+                        <span className="min-w-0 break-all">
+                          {f ? `${f.name} · ${formatSize(f.size)}` : "—"}
+                        </span>
+                      </div>
+                      {config.dialogNote && (
+                        <p className="text-xs text-(--earist-body-text)">
+                          {config.dialogNote}
+                        </p>
+                      )}
                     </li>
                   );
                 })}
               </ul>
             </div>
             <p className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
-              Review all three selected documents before submitting. Confirm that
-              the proposal package contains the supporting details for all three
-              titles above. Once submitted, the application will be placed under
-              Graduate School review.
+              Review all three selected documents before submitting. Once
+              submitted, the application will be placed under Graduate School
+              review.
             </p>
           </div>
 
