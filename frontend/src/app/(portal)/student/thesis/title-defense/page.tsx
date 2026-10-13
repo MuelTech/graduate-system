@@ -49,25 +49,62 @@ const TITLE_FIELDS = [
   { key: "t3", label: "Proposed Title 3" },
 ] as const;
 
+type DocKey = "package" | "cor" | "receipt";
+
+interface DocConfig {
+  key: DocKey;
+  field: string;
+  label: string;
+  helper: string[];
+  accept: string;
+}
+
+const DOCUMENTS: DocConfig[] = [
+  {
+    key: "package",
+    field: "conceptPaper",
+    label: "Title Defense Proposal Package",
+    helper: [
+      "One document containing the supporting proposal details for all three proposed research titles.",
+      "The three titles in this package should match the titles entered above.",
+    ],
+    accept: ".pdf",
+  },
+  {
+    key: "cor",
+    field: "cor",
+    label: "Current Semester COR",
+    helper: ["Upload your current semester Certificate of Registration."],
+    accept: ".pdf,.jpg,.jpeg,.png",
+  },
+  {
+    key: "receipt",
+    field: "receipt",
+    label: "Defense-fee Proof of Payment",
+    helper: ["Upload your proof of payment for the Title Defense fee."],
+    accept: ".pdf,.jpg,.jpeg,.png",
+  },
+];
+
 function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-/**
- * Single Title Defense Proposal Package slot.
- * Before submission a locally selected file is never called "Uploaded".
- */
-function PackageSlot({
+function DocumentSlot({
+  config,
   file,
-  inputRef,
   disabled,
+  onTriggerPick,
+  registerInput,
   onPick,
   onRemove,
   onView,
 }: {
+  config: DocConfig;
   file: File | null;
-  inputRef: React.RefObject<HTMLInputElement | null>;
   disabled: boolean;
+  onTriggerPick: () => void;
+  registerInput: (el: HTMLInputElement | null) => void;
   onPick: (f: File) => void;
   onRemove: () => void;
   onView: () => void;
@@ -76,39 +113,38 @@ function PackageSlot({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          Title Defense Proposal Package
+          {config.label}
         </CardTitle>
-        <p className="text-sm text-(--earist-body-text)">
-          Upload one document containing the supporting proposal details for all
-          three proposed research titles.
-        </p>
-        <p className="text-xs text-(--earist-body-text)">
-          The three titles in this package should appear in the same order as the
-          titles entered above.
-        </p>
+        {config.helper.map((line) => (
+          <p key={line} className="text-sm text-(--earist-body-text)">
+            {line}
+          </p>
+        ))}
       </CardHeader>
       <CardContent>
         {!file ? (
           <div className="space-y-3">
             <button
               type="button"
-              onClick={() => inputRef.current?.click()}
+              onClick={onTriggerPick}
               disabled={disabled}
+              aria-label={`Select ${config.label}`}
               className="flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-6 transition-colors hover:border-(--earist-primary) hover:bg-(--earist-surface-gray) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="mb-2 h-8 w-8 text-(--earist-body-text)/40" />
               <span className="text-center text-sm font-medium text-(--earist-primary)">
-                Select proposal package
+                Select file
               </span>
               <span className="text-xs text-(--earist-body-text)">
-                PDF only · No file selected
+                {config.accept.replace(/\./g, "").toUpperCase()} · No file selected
               </span>
             </button>
             <input
-              ref={inputRef}
+              ref={registerInput}
               type="file"
-              accept=".pdf"
+              accept={config.accept}
               disabled={disabled}
+              aria-label={config.label}
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) onPick(f);
@@ -142,6 +178,7 @@ function PackageSlot({
                 size="sm"
                 onClick={onView}
                 disabled={disabled}
+                aria-label={`View ${config.label}`}
               >
                 <Eye className="mr-1 h-4 w-4" /> View
               </Button>
@@ -149,8 +186,9 @@ function PackageSlot({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => inputRef.current?.click()}
+                onClick={onTriggerPick}
                 disabled={disabled}
+                aria-label={`Replace ${config.label}`}
               >
                 <Upload className="mr-1 h-4 w-4" /> Replace
               </Button>
@@ -160,15 +198,17 @@ function PackageSlot({
                 size="sm"
                 onClick={onRemove}
                 disabled={disabled}
+                aria-label={`Remove ${config.label}`}
                 className="text-red-600 hover:bg-red-50"
               >
                 <X className="mr-1 h-4 w-4" /> Remove
               </Button>
               <input
-                ref={inputRef}
+                ref={registerInput}
                 type="file"
-                accept=".pdf"
+                accept={config.accept}
                 disabled={disabled}
+                aria-label={config.label}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) onPick(f);
@@ -184,10 +224,10 @@ function PackageSlot({
 }
 
 /**
- * WP11 / UIUX-4B — Title Defense application.
+ * WP11 / UIUX-4B (FIX-1) — Title Defense application.
  * Academic progression comes only from GET /thesis/journey.
- * Confirmed Title digital scope: three proposed titles + ONE Title Defense
- * Proposal Package (no COR / no defense-fee proof).
+ * Confirmed Title scope: three proposed titles + ONE combined Title Defense
+ * Proposal Package + Current Semester COR + Defense-fee Proof of Payment.
  */
 export default function TitleDefensePage() {
   const queryClient = useQueryClient();
@@ -205,13 +245,18 @@ export default function TitleDefensePage() {
   const selectedTitle = journey?.selectedTitle ?? null;
 
   const [titles, setTitles] = useState({ t1: "", t2: "", t3: "" });
-  const [pkg, setPkg] = useState<File | null>(null);
-  const packageInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<Record<DocKey, File | null>>({
+    package: null,
+    cor: null,
+    receipt: null,
+  });
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Revoke any live local preview object URL on change and unmount.
   useEffect(() => {
@@ -225,7 +270,9 @@ export default function TitleDefensePage() {
     titles.t2.trim() &&
     titles.t3.trim()
   );
-  const canSubmit = allTitlesFilled && pkg !== null && !submitSuccess;
+  const allDocsSelected =
+    files.package !== null && files.cor !== null && files.receipt !== null;
+  const canSubmit = allTitlesFilled && allDocsSelected && !submitSuccess;
 
   const submitTitle = useMutation({
     mutationFn: async () => {
@@ -233,7 +280,10 @@ export default function TitleDefensePage() {
       formData.append("title1", titles.t1.trim());
       formData.append("title2", titles.t2.trim());
       formData.append("title3", titles.t3.trim());
-      formData.append("conceptPaper", pkg!);
+      // Single source of truth for the three upload fields.
+      for (const config of DOCUMENTS) {
+        formData.append(config.field, files[config.key]!);
+      }
       return apiClientRequest("/thesis/defense/title", {
         method: "POST",
         body: formData,
@@ -245,7 +295,7 @@ export default function TitleDefensePage() {
       setConfirmOpen(false);
       toast.success("Title Defense application submitted", {
         description:
-          "Your proposal package was uploaded successfully and your application is now under Graduate School review.",
+          "Your required documents were uploaded successfully and your application is now under Graduate School review.",
       });
       await queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
@@ -269,23 +319,27 @@ export default function TitleDefensePage() {
     },
   });
 
-  const clearPackage = () => {
-    setPkg(null);
+  const setSlot = (key: DocKey, file: File | null) => {
+    setFiles((prev) => ({ ...prev, [key]: file }));
+    const ref = inputRefs.current[key];
+    if (ref) ref.value = "";
+    // Any change invalidates an open preview of the previous selection.
+    setPreviewFile(null);
     setPreviewUrl(null);
-    if (packageInputRef.current) packageInputRef.current.value = "";
   };
 
-  const openPreview = () => {
-    if (!pkg) return;
-    // Revoke any prior preview URL before creating a new one (no same-batch leak).
+  const openPreview = (file: File | null) => {
+    if (!file) return;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(pkg));
-    setPreviewOpen(true);
+    setPreviewFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handlePreviewOpenChange = (next: boolean) => {
-    setPreviewOpen(next);
-    if (!next) setPreviewUrl(null);
+    if (!next) {
+      setPreviewFile(null);
+      setPreviewUrl(null);
+    }
   };
 
   if (isLoading) {
@@ -405,10 +459,10 @@ export default function TitleDefensePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 pb-10">
+    <div className="mx-auto max-w-3xl space-y-6 pb-10">
       <PageHeader
         title="Title Defense Application"
-        description="Enter your three proposed research titles and upload one Title Defense Proposal Package. No adviser is required for Title Defense."
+        description="Enter your three proposed research titles and upload the required documents. No adviser is required for Title Defense."
       />
 
       {submitError && (
@@ -477,18 +531,26 @@ export default function TitleDefensePage() {
           </CardContent>
         </Card>
 
-        <PackageSlot
-          file={pkg}
-          inputRef={packageInputRef}
-          disabled={submitTitle.isPending || submitSuccess}
-          onPick={(f) => {
-            setPkg(f);
-            setPreviewUrl(null);
-            setSubmitError(null);
-          }}
-          onRemove={clearPackage}
-          onView={openPreview}
-        />
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-(--earist-secondary)">
+            Required Documents
+          </h2>
+          {DOCUMENTS.map((config) => (
+            <DocumentSlot
+              key={config.key}
+              config={config}
+              file={files[config.key]}
+              disabled={submitTitle.isPending || submitSuccess}
+              onTriggerPick={() => inputRefs.current[config.key]?.click()}
+              registerInput={(el) => {
+                inputRefs.current[config.key] = el;
+              }}
+              onPick={(f) => setSlot(config.key, f)}
+              onRemove={() => setSlot(config.key, null)}
+              onView={() => openPreview(files[config.key])}
+            />
+          ))}
+        </div>
 
         <Button
           type="submit"
@@ -501,11 +563,11 @@ export default function TitleDefensePage() {
       </form>
 
       <LocalFilePreviewDialog
-        open={previewOpen}
+        open={previewFile !== null}
         onOpenChange={handlePreviewOpenChange}
         objectUrl={previewUrl}
-        file={pkg}
-        title="Title Defense Proposal Package"
+        file={previewFile}
+        title="Document preview"
       />
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -531,17 +593,27 @@ export default function TitleDefensePage() {
             </div>
             <div>
               <p className="mb-1 font-medium text-(--earist-secondary)">
-                Proposal Package
+                Documents
               </p>
-              <p className="text-(--earist-body-text)">
-                {pkg?.name || "—"}
-                {pkg ? ` · ${formatSize(pkg.size)}` : ""}
-              </p>
+              <ul className="space-y-1 text-(--earist-body-text)">
+                {DOCUMENTS.map((config) => {
+                  const f = files[config.key];
+                  return (
+                    <li key={config.key} className="flex flex-wrap gap-x-1">
+                      <span className="font-medium">{config.label}:</span>
+                      <span className="min-w-0 break-all">
+                        {f ? `${f.name} · ${formatSize(f.size)}` : "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
             <p className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
-              Make sure the uploaded package contains the supporting details for
-              all three titles above. Once submitted, the application will be
-              placed under Graduate School review.
+              Review all three selected documents before submitting. Confirm that
+              the proposal package contains the supporting details for all three
+              titles above. Once submitted, the application will be placed under
+              Graduate School review.
             </p>
           </div>
 

@@ -382,6 +382,8 @@ export class ThesisRepository {
     titles: string[],
     evidence: {
       conceptPaper: ManagedUploadInput;
+      cor: ManagedUploadInput;
+      receipt: ManagedUploadInput;
     },
   ) {
     return prisma.$transaction(async (tx) => {
@@ -418,12 +420,13 @@ export class ThesisRepository {
         });
       }
 
-      // 3. Stage-scoped Title evidence — the single Title Defense Proposal
-      //    Package (UIUX-4B). COR/receipt are not Title requirements; legacy
-      //    Title COR/receipt rows elsewhere are never touched here.
+      // 3. Stage-scoped Title evidence — package + COR + fee proof,
+      //    persisting the full DL-1/DL-2 managed metadata + currentness.
       await tx.thesisDocument.createMany({
         data: [
           toDocumentData(thesis.id, "TITLE", "TITLE_PROPOSAL", evidence.conceptPaper),
+          toDocumentData(thesis.id, "TITLE", "COR", evidence.cor),
+          toDocumentData(thesis.id, "TITLE", "RECEIPT", evidence.receipt),
         ],
       });
 

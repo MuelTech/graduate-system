@@ -68,6 +68,8 @@ describe("ThesisRepository initial supporting-evidence persistence", () => {
     const repo = new ThesisRepository();
     await repo.createTitleDefense("student-1", "assign-1", ["A", "B", "C"], {
       conceptPaper: upload("pkg"),
+      cor: upload("cor"),
+      receipt: upload("rcpt"),
     });
 
     expect(tx().thesisRecord.create).toHaveBeenCalledWith({
@@ -76,9 +78,11 @@ describe("ThesisRepository initial supporting-evidence persistence", () => {
     expect(tx().thesisTitle.create).toHaveBeenCalledTimes(3);
 
     const data = tx().thesisDocument.createMany.mock.calls[0][0].data;
-    // UIUX-4B: a new Title application persists ONLY the proposal package.
+    // UIUX-4B FIX-1: a new Title application persists all three evidence rows.
     expect(data.map((d: { docType: string }) => d.docType)).toEqual([
       "TITLE_PROPOSAL",
+      "COR",
+      "RECEIPT",
     ]);
     for (const row of data) {
       expect(row).toEqual(
@@ -129,6 +133,8 @@ describe("ThesisRepository Title initial-application concurrency", () => {
     await expect(
       repo.createTitleDefense("student-1", null, ["A", "B", "C"], {
         conceptPaper: upload("pkg"),
+        cor: upload("cor"),
+        receipt: upload("rcpt"),
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
 
@@ -145,6 +151,8 @@ describe("ThesisRepository Title initial-application concurrency", () => {
     const repo = new ThesisRepository();
     await repo.createTitleDefense("student-1", null, ["A", "B", "C"], {
       conceptPaper: upload("pkg"),
+      cor: upload("cor"),
+      receipt: upload("rcpt"),
     });
     expect(tx().thesisRecord.create).toHaveBeenCalledTimes(1);
   });
@@ -204,7 +212,12 @@ describe("ThesisRepository.resubmitWithEvidence", () => {
   it("locks, supersedes the current slot, inserts the replacement, and audits atomically", async () => {
     tx().thesisDocument.findMany
       .mockResolvedValueOnce([{ id: "pkg-v1" }])
-      .mockResolvedValueOnce([{ docType: "TITLE_PROPOSAL" }]);
+      .mockResolvedValueOnce([
+        { docType: "TITLE_PROPOSAL" },
+        { docType: "COR" },
+        { docType: "RECEIPT" },
+      ]);
+
     tx().thesisDocument.create.mockResolvedValue({ id: "pkg-v2" });
 
     const repo = new ThesisRepository();
@@ -236,6 +249,66 @@ describe("ThesisRepository.resubmitWithEvidence", () => {
     });
     expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ createdIds: ["pkg-v2"], supersededIds: ["pkg-v1"] });
+  });
+
+  it("UIUX-4B FIX-1: can replace only the Title COR while retaining the package and receipt", async () => {
+    tx().thesisDocument.findMany
+      .mockResolvedValueOnce([{ id: "cor-v1" }])
+      .mockResolvedValueOnce([
+        { docType: "TITLE_PROPOSAL" },
+        { docType: "COR" },
+        { docType: "RECEIPT" },
+      ]);
+    tx().thesisDocument.create.mockResolvedValue({ id: "cor-v2" });
+    const repo = new ThesisRepository();
+    const result = await repo.resubmitWithEvidence({
+      thesisId: "thesis-1",
+      studentId: "student-1",
+      stage: "TITLE",
+      replacements: [{ docType: "COR", upload: upload("cor-v2") }],
+      audit: { actorId: "user-1", description: "resubmit" },
+    });
+    expect(tx().thesisDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          docType: "COR",
+          defenseStage: "TITLE",
+          isCurrent: true,
+          supersedesDocumentId: "cor-v1",
+        }),
+      }),
+    );
+    expect(result).toEqual({ createdIds: ["cor-v2"], supersededIds: ["cor-v1"] });
+  });
+
+  it("UIUX-4B FIX-1: can replace only the Title receipt while retaining the package and COR", async () => {
+    tx().thesisDocument.findMany
+      .mockResolvedValueOnce([{ id: "rcpt-v1" }])
+      .mockResolvedValueOnce([
+        { docType: "TITLE_PROPOSAL" },
+        { docType: "COR" },
+        { docType: "RECEIPT" },
+      ]);
+    tx().thesisDocument.create.mockResolvedValue({ id: "rcpt-v2" });
+    const repo = new ThesisRepository();
+    const result = await repo.resubmitWithEvidence({
+      thesisId: "thesis-1",
+      studentId: "student-1",
+      stage: "TITLE",
+      replacements: [{ docType: "RECEIPT", upload: upload("rcpt-v2") }],
+      audit: { actorId: "user-1", description: "resubmit" },
+    });
+    expect(tx().thesisDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          docType: "RECEIPT",
+          defenseStage: "TITLE",
+          isCurrent: true,
+          supersedesDocumentId: "rcpt-v1",
+        }),
+      }),
+    );
+    expect(result).toEqual({ createdIds: ["rcpt-v2"], supersededIds: ["rcpt-v1"] });
   });
 
   it("fails closed when the application is not the exact REJECTED stage record", async () => {
@@ -348,7 +421,11 @@ describe("ThesisRepository.resubmitWithEvidence", () => {
   it("DL-8: audit retains prior rejection reason + replacement chain, no storage internals", async () => {
     tx().thesisDocument.findMany
       .mockResolvedValueOnce([{ id: "pkg-v1" }])
-      .mockResolvedValueOnce([{ docType: "TITLE_PROPOSAL" }]);
+      .mockResolvedValueOnce([
+        { docType: "TITLE_PROPOSAL" },
+        { docType: "COR" },
+        { docType: "RECEIPT" },
+      ]);
     tx().thesisDocument.create.mockResolvedValue({ id: "pkg-v2" });
     const repo = new ThesisRepository();
     await repo.resubmitWithEvidence({

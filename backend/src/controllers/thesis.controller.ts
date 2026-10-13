@@ -190,10 +190,12 @@ export class ThesisController {
       if (!req.user) throw new Error('Unauthorized');
       
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      // UIUX-4B: Title requires three proposed titles + one Title Defense
-      // Proposal Package. COR / receipt are not Title-stage requirements.
-      if (!files || !files.conceptPaper) {
-        throw new Error('Title Defense Proposal Package is required.');
+      // UIUX-4B FIX-1: Title requires three proposed titles + one combined
+      // Title Defense Proposal Package + Current Semester COR + fee proof.
+      if (!files || !files.conceptPaper || !files.cor || !files.receipt) {
+        throw new Error(
+          'Title Defense Proposal Package, COR, and proof of payment are all required.',
+        );
       }
 
       const result = await this.thesisService.applyTitleDefense(
@@ -201,6 +203,8 @@ export class ThesisController {
         req.body, 
         {
           conceptPaper: managedUploadFromMulter(files.conceptPaper[0], req.user.userId),
+          cor: managedUploadFromMulter(files.cor[0], req.user.userId),
+          receipt: managedUploadFromMulter(files.receipt[0], req.user.userId),
         },
       );
       commitRequestUploads(req);

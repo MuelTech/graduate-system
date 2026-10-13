@@ -53,6 +53,8 @@ const titleInput = (
   hasActiveThesisBlocking: false,
   titleCountFromRequest: 3,
   hasConceptPaper: true,
+  hasCor: true,
+  hasReceipt: true,
   ...over,
 });
 
@@ -67,11 +69,31 @@ describe("evaluateApplyTitle", () => {
     expect(result.missing).toHaveLength(0);
   });
 
-  it("UIUX-4B: requires only 3 titles + proposal package; COR/receipt not required", () => {
+  it("UIUX-4B FIX-1: requires 3 titles + package + COR + receipt", () => {
     const result = svc.evaluateApplyTitle(titleInput());
+    expect(result.eligible).toBe(true);
     expect(codes(result.missing)).not.toContain("COR");
     expect(codes(result.missing)).not.toContain("RECEIPT");
-    expect(result.eligible).toBe(true);
+  });
+
+  it("rejects a Title application missing the proposal package", () => {
+    const result = svc.evaluateApplyTitle(titleInput({ hasConceptPaper: false }));
+    expect(codes(result.missing)).toContain("TITLE_PROPOSAL");
+  });
+
+  it("rejects a Title application missing COR", () => {
+    const result = svc.evaluateApplyTitle(titleInput({ hasCor: false }));
+    expect(codes(result.missing)).toContain("COR");
+  });
+
+  it("rejects a Title application missing the fee proof", () => {
+    const result = svc.evaluateApplyTitle(titleInput({ hasReceipt: false }));
+    expect(codes(result.missing)).toContain("RECEIPT");
+  });
+
+  it("requires three titles", () => {
+    const result = svc.evaluateApplyTitle(titleInput({ titleCountFromRequest: 2 }));
+    expect(codes(result.missing)).toContain("THREE_TITLES");
   });
 
   it("requires comprehensive exam PASSED", () => {
@@ -87,20 +109,6 @@ describe("evaluateApplyTitle", () => {
       titleInput({ compExamDismissed: true }),
     );
     expect(codes(result.missing)).toContain("COMP_EXAM_DISMISSED");
-  });
-
-  it("requires three titles and the proposal package", () => {
-    const result = svc.evaluateApplyTitle(
-      titleInput({
-        titleCountFromRequest: 2,
-        hasConceptPaper: false,
-      }),
-    );
-    expect(codes(result.missing)).toEqual(
-      expect.arrayContaining(["THREE_TITLES", "TITLE_PROPOSAL"]),
-    );
-    expect(codes(result.missing)).not.toContain("COR");
-    expect(codes(result.missing)).not.toContain("RECEIPT");
   });
 });
 
@@ -367,6 +375,22 @@ describe("evaluateSchedule", () => {
       "TITLE_DEFENSE",
     );
     expect(codes(wrongStage.missing)).toContain("THESIS_STAGE");
+  });
+
+  it("UIUX-4B FIX-1: Title scheduling requires stage-scoped COR and receipt", () => {
+    const result = svc.evaluateSchedule(
+      {
+        ...baseSnap(),
+        thesisStage: "TITLE",
+        thesisStatus: "APPROVED",
+        titleRapSigned: false,
+        evidence: { ...baseSnap().evidence, corTitle: false, receiptTitle: false },
+      },
+      "TITLE_DEFENSE",
+    );
+    expect(codes(result.missing)).toEqual(
+      expect.arrayContaining(["COR", "RECEIPT"]),
+    );
   });
 
   it("maps defense type to stage via DEFENSE_TYPE_STAGE", () => {

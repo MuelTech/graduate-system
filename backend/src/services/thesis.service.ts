@@ -126,6 +126,8 @@ export class ThesisService {
         hasActiveThesisBlocking: false,
         titleCountFromRequest: snap.titleCount >= 3 ? 3 : snap.titleCount,
         hasConceptPaper: snap.evidence.titlePackage,
+        hasCor: snap.evidence.corTitle,
+        hasReceipt: snap.evidence.receiptTitle,
       });
     } else if (type === "PROPOSAL_DEFENSE") {
       result = this.eligibility.evaluateApplyProposal(snap);
@@ -350,6 +352,8 @@ export class ThesisService {
           hasActiveThesisBlocking: false,
           titleCountFromRequest: titles.length,
           hasConceptPaper: has('TITLE_PROPOSAL'),
+          hasCor: has('COR'),
+          hasReceipt: has('RECEIPT'),
         }),
       );
       return;
@@ -414,6 +418,8 @@ export class ThesisService {
     data: ApplyTitleDefenseInput,
     evidence: {
       conceptPaper: ManagedUploadInput;
+      cor: ManagedUploadInput;
+      receipt: ManagedUploadInput;
     },
   ) {
     const student = await this.thesisRepo.getStudentByUserId(userId);
@@ -434,6 +440,8 @@ export class ThesisService {
         !!existingThesis && existingThesis.status !== 'FAILED',
       titleCountFromRequest: titles.filter((t) => t && t.trim()).length,
       hasConceptPaper: !!evidence.conceptPaper.filePath,
+      hasCor: !!evidence.cor.filePath,
+      hasReceipt: !!evidence.receipt.filePath,
     };
 
     this.eligibility.assertEligible(this.eligibility.evaluateApplyTitle(input));

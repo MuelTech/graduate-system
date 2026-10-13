@@ -6,14 +6,16 @@ import { secureUpload } from "../middlewares/upload.middleware";
 const router = Router();
 const thesisController = new ThesisController();
 
-// STUDENT ONLY: Title Defense — 3 proposed titles + one Title Defense
-// Proposal Package (UIUX-4B). COR/receipt are not Title-stage requirements.
+// STUDENT ONLY: Title Defense — 3 proposed titles + one combined Title Defense
+// Proposal Package + Current Semester COR + Defense-fee Proof of Payment.
 router.post(
   "/defense/title",
   authenticateJWT,
   requireRole(["STUDENT"]),
   secureUpload('defense-evidence').fields([
     { name: "conceptPaper", maxCount: 1 },
+    { name: "cor", maxCount: 1 },
+    { name: "receipt", maxCount: 1 },
   ]),
   thesisController.applyTitle,
 );

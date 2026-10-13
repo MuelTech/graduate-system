@@ -12,10 +12,10 @@ export const STAGE_EVIDENCE_SLOTS: Record<
   DefenseEvidenceStage,
   DefenseEvidenceDocType[]
 > = {
-  // UIUX-4B: a new Title Defense application requires three proposed titles +
-  // ONE Title Defense Proposal Package. COR / receipt are NOT Title-stage
-  // requirements (legacy Title COR/receipt rows remain in storage, untouched).
-  TITLE: ["TITLE_PROPOSAL"],
+  // UIUX-4B FIX-1: a Title Defense application requires three proposed titles +
+  // ONE combined Title Defense Proposal Package + Current Semester COR +
+  // Defense-fee Proof of Payment.
+  TITLE: ["TITLE_PROPOSAL", "COR", "RECEIPT"],
   PROPOSAL: ["COR", "RECEIPT"],
   FINAL: ["COR", "RECEIPT"],
 };

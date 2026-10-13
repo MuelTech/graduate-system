@@ -104,10 +104,14 @@ describe("DL-8 supporting-evidence history", () => {
     expect(pkg?.current?.id).toBe("pkg-v2");
     expect(pkg?.current?.supersedesDocumentId).toBe("pkg-v1");
     expect(pkg?.history.map((d) => d.id)).toEqual(["pkg-v1"]);
-    // UIUX-4B: COR/receipt are not Title slots; legacy Title rows are ignored here.
-    expect(dto.supportingEvidence.map((s) => s.docType)).toEqual(["TITLE_PROPOSAL"]);
-    expect(findSlot(dto, "COR")).toBeUndefined();
-    expect(findSlot(dto, "RECEIPT")).toBeUndefined();
+    // FIX-1: Title history recognizes all three stage slots.
+    expect(dto.supportingEvidence.map((s) => s.docType)).toEqual([
+      "TITLE_PROPOSAL",
+      "COR",
+      "RECEIPT",
+    ]);
+    expect(findSlot(dto, "COR")?.current?.id).toBe("cor-v1");
+    expect(findSlot(dto, "RECEIPT")?.current?.id).toBe("rcpt-v1");
     expect(dto.manuscriptReview).toBeNull();
   });
 
@@ -154,37 +158,37 @@ describe("DL-8 supporting-evidence history", () => {
   it("does not infer currentness from latest timestamp", async () => {
     const { svc } = makeService({
       docs: [
-        doc({ id: "pkg-older-current", docType: "TITLE_PROPOSAL", isCurrent: true, uploadedAt: new Date("2026-01-01") }),
-        doc({ id: "pkg-newer-notcurrent", docType: "TITLE_PROPOSAL", isCurrent: false, uploadedAt: new Date("2026-12-01") }),
+        doc({ id: "cor-older-current", docType: "COR", isCurrent: true, uploadedAt: new Date("2026-01-01") }),
+        doc({ id: "cor-newer-notcurrent", docType: "COR", isCurrent: false, uploadedAt: new Date("2026-12-01") }),
       ],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "TITLE");
-    expect(findSlot(dto, "TITLE_PROPOSAL")?.current?.id).toBe("pkg-older-current");
-    expect(findSlot(dto, "TITLE_PROPOSAL")?.history.map((d) => d.id)).toEqual(["pkg-newer-notcurrent"]);
+    expect(findSlot(dto, "COR")?.current?.id).toBe("cor-older-current");
+    expect(findSlot(dto, "COR")?.history.map((d) => d.id)).toEqual(["cor-newer-notcurrent"]);
   });
 });
 
 describe("DL-8 ambiguity fails closed", () => {
-  it("two current package rows -> AMBIGUOUS, current null, no arbitrary pick", async () => {
+  it("two current COR rows -> AMBIGUOUS, current null, no arbitrary pick", async () => {
     const { svc } = makeService({
       docs: [
-        doc({ id: "pkg-a", docType: "TITLE_PROPOSAL", isCurrent: true, uploadedAt: new Date("2026-01-01") }),
-        doc({ id: "pkg-b", docType: "TITLE_PROPOSAL", isCurrent: true, uploadedAt: new Date("2026-12-01") }),
+        doc({ id: "cor-a", docType: "COR", isCurrent: true, uploadedAt: new Date("2026-01-01") }),
+        doc({ id: "cor-b", docType: "COR", isCurrent: true, uploadedAt: new Date("2026-12-01") }),
       ],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "TITLE");
-    const pkg = findSlot(dto, "TITLE_PROPOSAL");
-    expect(pkg?.integrityState).toBe("AMBIGUOUS");
-    expect(pkg?.current).toBeNull();
+    const cor = findSlot(dto, "COR");
+    expect(cor?.integrityState).toBe("AMBIGUOUS");
+    expect(cor?.current).toBeNull();
   });
 
   it("zero current rows -> MISSING", async () => {
     const { svc } = makeService({
-      docs: [doc({ id: "pkg-v1", docType: "TITLE_PROPOSAL", isCurrent: false })],
+      docs: [doc({ id: "cor-v1", docType: "COR", isCurrent: false })],
     });
     const dto = await svc.getDocumentHistory("thesis-1", "TITLE");
-    expect(findSlot(dto, "TITLE_PROPOSAL")?.integrityState).toBe("MISSING");
-    expect(findSlot(dto, "TITLE_PROPOSAL")?.history.map((d) => d.id)).toEqual(["pkg-v1"]);
+    expect(findSlot(dto, "COR")?.integrityState).toBe("MISSING");
+    expect(findSlot(dto, "COR")?.history.map((d) => d.id)).toEqual(["cor-v1"]);
   });
 });
 

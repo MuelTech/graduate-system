@@ -22,6 +22,8 @@ export interface ApplyTitleEligibilityInput {
   hasActiveThesisBlocking: boolean;
   titleCountFromRequest: number;
   hasConceptPaper: boolean;
+  hasCor: boolean;
+  hasReceipt: boolean;
 }
 
 function miss(
@@ -103,7 +105,24 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    // UIUX-4B: COR and defense-fee proof are NOT Title-stage requirements.
+    if (!input.hasCor) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for this Title application is required.",
+          stage,
+        ),
+      );
+    }
+    if (!input.hasReceipt) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for this Title application is required.",
+          stage,
+        ),
+      );
+    }
 
     return { eligible: missing.length === 0, missing };
   }
@@ -379,8 +398,16 @@ export class DefenseEligibilityService {
       );
     }
 
-    // Stage-scoped COR + fee proof (a Title receipt must not satisfy Proposal/Final).
-    // UIUX-4B: Title requires neither COR nor receipt — only the proposal package.
+    // Stage-scoped COR + fee proof (Title receipt must not satisfy Proposal/Final).
+    if (stage === "TITLE" && !snap.evidence.corTitle) {
+      missing.push(
+        miss(
+          "COR",
+          "Certificate of Registration (COR) for Title Defense is required.",
+          stage,
+        ),
+      );
+    }
     if (stage === "PROPOSAL" && !snap.evidence.corProposal) {
       missing.push(
         miss(
@@ -400,7 +427,15 @@ export class DefenseEligibilityService {
       );
     }
 
-    // UIUX-4B: Title requires no defense-fee proof.
+    if (stage === "TITLE" && !snap.evidence.receiptTitle) {
+      missing.push(
+        miss(
+          "RECEIPT",
+          "Defense-fee proof of payment for Title Defense is required.",
+          stage,
+        ),
+      );
+    }
     if (stage === "PROPOSAL" && !snap.evidence.receiptProposal) {
       missing.push(
         miss(
