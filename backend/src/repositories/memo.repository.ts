@@ -7,7 +7,8 @@ export class MemoRepository {
         title: string;
         content: string;
         targetAudience: MemoAudience;
-        programId?: string
+        programId?: string;
+        attachmentUrl?: string | null;
     }) {
         return await prisma.memo.create({
             data: {
@@ -17,6 +18,16 @@ export class MemoRepository {
             include: {
                 createdBy: true,
                 program: true
+            },
+        });
+    }
+
+    async findById(id: string) {
+        return await prisma.memo.findUnique({
+            where: { id },
+            include: {
+                createdBy: true,
+                program: true,
             },
         });
     }
@@ -31,6 +42,7 @@ export class MemoRepository {
     async getMemosForStudent(programId: string) {
         return await prisma.memo.findMany({
             where: {
+                isArchived: false,
                 OR: [
                     { targetAudience: MemoAudience.ALL },
                     { targetAudience: MemoAudience.STUDENTS },
@@ -41,20 +53,29 @@ export class MemoRepository {
                 ],
             },
             orderBy: { createdAt: "desc" },
-            include: { createdBy: true }
+            include: { createdBy: true, program: true }
         });
     }
 
     async getMemosForPanelist() {
         return await prisma.memo.findMany({
             where: {
+                isArchived: false,
                 OR: [
                     { targetAudience: MemoAudience.ALL },
                     { targetAudience: MemoAudience.PANELISTS },
                 ],
             },
             orderBy: { createdAt: "desc" },
-            include: { createdBy: true },
+            include: { createdBy: true, program: true },
+        });
+    }
+
+    async archiveMemo(id: string) {
+        return await prisma.memo.update({
+            where: { id },
+            data: { isArchived: true },
+            include: { createdBy: true, program: true },
         });
     }
 }
