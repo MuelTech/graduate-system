@@ -53,8 +53,6 @@ const titleInput = (
   hasActiveThesisBlocking: false,
   titleCountFromRequest: 3,
   hasConceptPaper: true,
-  hasCor: true,
-  hasReceipt: true,
   ...over,
 });
 
@@ -67,6 +65,13 @@ describe("evaluateApplyTitle", () => {
     const result = svc.evaluateApplyTitle(titleInput());
     expect(result.eligible).toBe(true);
     expect(result.missing).toHaveLength(0);
+  });
+
+  it("UIUX-4B: requires only 3 titles + proposal package; COR/receipt not required", () => {
+    const result = svc.evaluateApplyTitle(titleInput());
+    expect(codes(result.missing)).not.toContain("COR");
+    expect(codes(result.missing)).not.toContain("RECEIPT");
+    expect(result.eligible).toBe(true);
   });
 
   it("requires comprehensive exam PASSED", () => {
@@ -84,18 +89,18 @@ describe("evaluateApplyTitle", () => {
     expect(codes(result.missing)).toContain("COMP_EXAM_DISMISSED");
   });
 
-  it("requires three titles and stage-scoped files", () => {
+  it("requires three titles and the proposal package", () => {
     const result = svc.evaluateApplyTitle(
       titleInput({
         titleCountFromRequest: 2,
         hasConceptPaper: false,
-        hasCor: false,
-        hasReceipt: false,
       }),
     );
     expect(codes(result.missing)).toEqual(
-      expect.arrayContaining(["THREE_TITLES", "TITLE_PROPOSAL", "COR", "RECEIPT"]),
+      expect.arrayContaining(["THREE_TITLES", "TITLE_PROPOSAL"]),
     );
+    expect(codes(result.missing)).not.toContain("COR");
+    expect(codes(result.missing)).not.toContain("RECEIPT");
   });
 });
 

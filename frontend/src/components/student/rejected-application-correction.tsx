@@ -32,7 +32,9 @@ interface CurrentApplication {
 }
 
 const STAGE_SLOTS: Record<DefenseEvidenceStage, string[]> = {
-  TITLE: ["TITLE_PROPOSAL", "COR", "RECEIPT"],
+  // UIUX-4B: Title correction deals only with the Title Defense Proposal Package.
+  // Legacy Title COR/receipt rows are retained but are no longer Title requirements.
+  TITLE: ["TITLE_PROPOSAL"],
   PROPOSAL: ["COR", "RECEIPT"],
   FINAL: ["COR", "RECEIPT"],
 };
