@@ -113,8 +113,11 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 
 ### Title
 
-- Student uploads confirmed Title-stage evidence (currently Title proposal/package, COR, and receipt/proof).
-- Evidence must be stage-bound to `TITLE`.
+- The accepted Title application has three stage-scoped evidence slots: `TITLE_PROPOSAL`, `COR`, and `RECEIPT`, all bound to `TITLE`.
+- `TITLE_PROPOSAL` is **one combined PDF containing three complete title proposals**, one corresponding to each of the three structured proposed title names. Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile content remains inside that package rather than becoming duplicate form fields.
+- Current Semester COR and Defense-fee Proof of Payment remain separate Title-stage evidence; neither is embedded into the proposal package and neither may be satisfied by a historical file from another stage.
+- Before submission, selected files may be previewed locally without being persisted. Persistence begins only when the Student confirms/submits through the managed upload path.
+- While the Title application is under Graduate School review, the Student has no direct replace-in-place mutation. If correction is required, the application is returned/rejected and the Student resubmits versioned replacements for only the necessary stage slots; unchanged current evidence and prior versions remain preserved.
 - Title has no Proposal/Final numerical-scoring semantics.
 
 ### Proposal
@@ -133,7 +136,7 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 
 ### Supporting evidence resubmission
 
-Rejected/corrected COR or receipt/proof evidence should support replacement by a new version without requiring unrelated accepted/certified documents to be reuploaded. Exact review granularity (application-level rejection versus per-document review states) is an implementation/design decision and must preserve current workflow semantics.
+Rejected/corrected Title proposal package, COR, or receipt/proof evidence must support replacement by a new version without requiring unrelated accepted/certified documents to be reuploaded. In the accepted Title flow, active Admin review does not permit silent Student replacement: the application is returned/rejected first, then only the necessary stage-scoped slots are versioned/replaced while unchanged current evidence and prior versions remain intact. Proposal/Final correction behavior remains governed by their existing authoritative workflow.
 
 ## 6. System-owned records
 

@@ -42,7 +42,7 @@ Canonical corrections include:
 - role-aware Defense Workspace replaces the current lobby concept;
 - Research Variables is not an active Proposal blocker in the correction pass;
 - Proposal revisions are carried by RAP/history into Final Defense, without a separate revision upload gate;
-- Student WAITING/status UX and schedule visibility require correction.
+- Student WAITING/status UX and schedule visibility require correction. **UIUX-4B now resolves the initial Title submission + `APPLICATION_UNDER_REVIEW` receipt presentation; Approved / Waiting for Schedule / Scheduled refinement remains the separate UIUX-4C package.**
 
 ## 2. Migration baseline — VERIFIED
 
@@ -144,6 +144,21 @@ Formal inputs include:
 - Final formal outcome.
 
 Application approval, scheduling, score completion, formal conclusion, PASSED outcome, RAP completion, and stage completion are separate concepts.
+
+### 5.1 Accepted Title Defense submission / initial WAITING presentation — UIUX-4B
+
+Project-owner visual/UI/UX acceptance: **ACCEPTED 2026-10-14**, final implementation `4878ccc1fbae7859c934a2ed5d0c9eca8647b50a`.
+
+For the Title Defense page:
+
+- `CURRENT` / `AVAILABLE` filing uses exactly three structured proposed title fields plus three Title-stage evidence slots: one combined Title Defense Proposal Package PDF, Current Semester COR, and Defense-fee Proof of Payment.
+- The combined proposal package contains three complete title proposals, one corresponding to each structured title. Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile content remains inside the PDF rather than becoming duplicate system fields.
+- File selection and preview are local browser state until the Student confirms the submission. The review Dialog summarizes the three titles and all three selected documents before the POST begins.
+- The submission pending state is indeterminate and truthful; no fake upload percentage is shown.
+- When the authoritative defense status is `APPLICATION_UNDER_REVIEW`, the Title step remains a waiting/dependency state and presents a persistent **Under Graduate School Review** receipt with all three current evidence files viewable through authenticated document routes.
+- The Student cannot silently replace files while Graduate School review is active. A returned/rejected application enables stage-scoped versioned replacement of only the needed evidence while preserving unchanged current evidence and prior versions.
+- This presentation does not alter progression authority: **application submitted / approved / scheduled / formally PASSED / stage complete are distinct states**. UIUX-4B does not promote Admin approval into academic completion.
+- The later Student presentation for **Application Approved → Waiting for Schedule → Defense Scheduled** remains UIUX-4C and is not implied by this acceptance.
 
 ## 6. GS-020 Adviser Request
 

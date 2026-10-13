@@ -7,8 +7,8 @@
 **Integration Branch:** `refactor/defense-workflow`  
 **Active Correction Branch:** `refactor/defense-workflow-corrections`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.6-draft  
-**Last Updated:** 2026-09-26  
+**Version:** 1.7-draft  
+**Last Updated:** 2026-10-14  
 
 ---
 
@@ -513,7 +513,7 @@ Current EARIST Graduate School Stage #1 public guidance supports the following w
 | Comprehensive Exam = PASSED | SYSTEM_DATA — Comp Exam record | SUPPORTED_LEGACY + current project rule + SUPPORTED_CURRENT_PUBLIC_GUIDANCE |
 | No blocking active/duplicate research project | SYSTEM_DATA — research project | PROPOSED_SYSTEM_DESIGN |
 | Three proposed research title names | SYSTEM_DATA — structured title records | SUPPORTED_CURRENT_PUBLIC_GUIDANCE |
-| Title Defense proposal package | SYSTEM_UPLOAD — PDF/file containing the required supporting content for all three titles | SUPPORTED_CURRENT_PUBLIC_GUIDANCE + CONFIRMED_PROJECT_SCOPE |
+| Title Defense proposal package | SYSTEM_UPLOAD — **one combined PDF containing three complete title proposals**, one corresponding to each structured proposed title and in the same order | SUPPORTED_CURRENT_PUBLIC_GUIDANCE + CONFIRMED_PROJECT_SCOPE |
 | Current COR | SYSTEM_UPLOAD or linked current verified COR evidence scoped to this application/stage | SUPPORTED_CURRENT_PUBLIC_GUIDANCE |
 | Defense fee receipt / proof of payment | SYSTEM_UPLOAD — proof issued by EARIST Cashier; payment itself occurs outside GS-IS | SUPPORTED_CURRENT_PUBLIC_GUIDANCE + CONFIRMED_PROJECT_SCOPE |
 | Application Form | SYSTEM_GENERATED_DOCUMENT | Supported by current form; implementation **deferred from the core refactor** |
@@ -523,29 +523,42 @@ Current EARIST Graduate School Stage #1 public guidance supports the following w
 
 ### 8.2.1 Title proposal content rule
 
-The student does **not** manually encode Rationale, SOP, Hypothesis, Population, Research Locale, Student Profile, and similar academic content into separate GS-IS fields.
+The accepted digital representation is **three structured proposed title names + one combined Title Defense Proposal Package PDF**. The PDF contains **three complete title proposals**, one corresponding to each proposed title entered in GS-IS and in the same order.
 
-The system keeps only the three proposed title names as structured data because those names are needed later for defense display and official-title selection. The detailed supporting content remains inside the student's uploaded Title Defense proposal package.
+The student does **not** manually encode Rationale, SOP, Hypothesis, Population, Research Locale, Student Profile, and similar academic content into separate GS-IS fields. Those details remain inside the uploaded package.
+
+Each of the three proposal sections in the combined PDF should include:
+
+- Rationale of the Study;
+- Statement of the Problem (SOP);
+- Hypothesis;
+- Population;
+- Research Locale; and
+- Student Profile with picture, including Name, Degree Program & Major, Occupation / Position, School / Office Address, and Subject Taught & Grade Level.
 
 ```text
-Structured system data
+Structured GS-IS data
 ├── Proposed Title 1
 ├── Proposed Title 2
 └── Proposed Title 3
 
-Uploaded Title Defense proposal package
-├── Title 1 supporting content
+ONE combined Title Defense Proposal Package PDF
+├── Complete Proposal 1 — corresponds to Proposed Title 1
 │   ├── Rationale of the Study
-│   ├── SOP
+│   ├── Statement of the Problem (SOP)
 │   ├── Hypothesis
 │   ├── Population
 │   ├── Research Locale
-│   └── Student Profile / required profile content
-├── Title 2 supporting content
-└── Title 3 supporting content
+│   └── Student Profile with picture + required profile details
+├── Complete Proposal 2 — corresponds to Proposed Title 2
+│   └── same required proposal contents
+└── Complete Proposal 3 — corresponds to Proposed Title 3
+    └── same required proposal contents
 ```
 
-The current implementation's `conceptPaper` upload can be retained during refactor, but the UI/domain label should be changed to something clearer such as **Title Defense Proposal Document** or **Three-Title Proposal Package**.
+Current Semester COR and Defense-fee Proof of Payment remain **separate Title-stage evidence**; they are not embedded into or replaced by the proposal package.
+
+The backend multipart field may retain the legacy/internal name `conceptPaper` for compatibility, but the user-facing/domain label is **Title Defense Proposal Package**. The internal field name does not change the one-package/three-proposal semantics.
 
 ### 8.3 Student Flow
 
@@ -2331,6 +2344,7 @@ Every workflow-policy update should add an entry below.
 | 1.2-draft | 2026-09-22 | Moved Expert Evaluation outside the core defense workflow; introduced official document classification plus separate print/e-signature architecture and immutable generated-document snapshots. | Project scope review + current EARIST forms |
 | 1.3-draft | 2026-09-22 | Reconciled current EARIST Graduate School Stage #1/#2/#3 public requirement guides: Title supporting content stays in uploaded proposal package; Cashier payment is external with stage-specific proof; Proposal variables are conditional `IF ANY`; physical packaging remains manual; Application Form/Process Flow generation is deferred; unlisted legacy Final gates are marked for client reconfirmation. | Current EARIST Graduate School public guidance supplied by project + project scope decisions |
 | 1.4-draft | 2026-09-24 | Defined the post-Title Adviser Request / GS-020 workflow: adviser selection unlocks after formal Title PASS + official title; candidates come from the student's own Title Defense panel; GS-IS distinguishes full Defense Committee from the evaluative ODP; Adviser CONFORME precedes Dean approval; GS-020 is generated from structured workflow data. | Current client confirmation + GS-020 + legacy EARIST adviser-selection material |
+| 1.7-draft | 2026-10-14 | Clarified the accepted Title digital filing contract: three structured proposed titles; one combined PDF containing three complete title proposals and the required supporting content for each; Current COR and defense-fee proof remain separate stage-scoped evidence. | Current Stage #1 public guidance + project-owner confirmation + accepted UIUX-4B |
 
 ### Decision Log
 
@@ -2356,6 +2370,7 @@ Every workflow-policy update should add an entry below.
 | 2026-09-22 | Official printing and e-signature are handled through a separate cross-cutting document-generation/signature architecture, not by duplicating academic workflow records per form. | PROPOSED_SYSTEM_DESIGN |
 | 2026-09-22 | Existing dedicated signature workflows (e.g., RAP and Research Variable signatures) remain dedicated; generic generated-document signatures are only for official forms without their own business-signature model. | PROPOSED_SYSTEM_DESIGN |
 | 2026-09-22 | Title Defense keeps only the three title names as structured data; Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile and related academic content remain inside the uploaded Title proposal package. | Current public guidance + CONFIRMED_PROJECT_SCOPE |
+| 2026-10-14 | The Title Defense Proposal Package is **one combined PDF containing three complete title proposals**, one corresponding to each structured proposed title and in the same order. Each proposal carries the required Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile-with-picture content. Current COR and defense-fee proof remain separate Title-stage evidence. | SUPPORTED_CURRENT_PUBLIC_GUIDANCE + project-owner confirmation — CONFIRMED_PROJECT_SCOPE |
 | 2026-09-22 | Defense-fee payment occurs externally at the EARIST Cashier; GS-IS does not process payment and only records stage-specific proof/receipt plus optional O.R./amount metadata. | Current public guidance + CONFIRMED_PROJECT_SCOPE |
 | 2026-09-22 | Current COR and defense-fee proof must be evaluated for the current defense application/stage; historical files cannot silently satisfy later stages. | Canonical system rule |
 | 2026-09-22 | Proposal Research Variables approval is conditional (`IF ANY`) and must support an explicit not-applicable path. | Current Stage #2 public guidance — SUPPORTED_CURRENT_PUBLIC_GUIDANCE |
