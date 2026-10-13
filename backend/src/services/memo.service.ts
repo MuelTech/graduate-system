@@ -13,14 +13,34 @@ export class MemoService {
         title: string,
         content: string,
         targetAudience: MemoAudience,
-        programId?: string
+        programId?: string,
+        attachmentUrl?: string | null
     ) {
         const memo = await this.memoRepo.createMemo({
             createdById: adminId,
             title,
             content,
             targetAudience,
-            programId
+            programId,
+            attachmentUrl: attachmentUrl || null
+        });
+
+        // Audit Log: Memo Published (NFR7 Compliance)
+        await prisma.auditLog.create({
+            data: {
+                actorId: adminId,
+                actionType: "MEMO_PUBLISHED",
+                targetTable: "memos",
+                targetId: memo.id,
+                description: `Published memo "${title}" targeting ${targetAudience}${programId ? ` (Program: ${programId})` : ""}${attachmentUrl ? " with circular attachment" : ""}.`,
+                newValue: JSON.stringify({
+                    id: memo.id,
+                    title,
+                    targetAudience,
+                    programId: programId || null,
+                    hasAttachment: !!attachmentUrl
+                }),
+            }
         });
 
         // Determine target users
@@ -31,6 +51,7 @@ export class MemoService {
 
         if (targetAudience === MemoAudience.ALL) {
             targetUsers = await prisma.user.findMany({
+                where: { isActive: true },
                 select: {
                     id: true,
                     email: true
@@ -43,17 +64,17 @@ export class MemoService {
                 }
             });
 
-            targetUsers = students.map(s => s.user);
+            targetUsers = students.filter(s => s.user?.isActive).map(s => s.user);
         } else if (targetAudience === MemoAudience.PROGRAM && programId) {
             const students = await prisma.student.findMany({
                 where: { programId },
                 include: { user: true }
             });
 
-            targetUsers = students.map(s => s.user);
+            targetUsers = students.filter(s => s.user?.isActive).map(s => s.user);
         } else if (targetAudience === MemoAudience.PANELISTS) {
             const panelists = await prisma.panelist.findMany({ include: { user: true }});
-            targetUsers = panelists.map(p => p.user);
+            targetUsers = panelists.filter(p => p.user?.isActive).map(p => p.user);
         }
 
         if (targetUsers.length > 0) {
@@ -68,10 +89,9 @@ export class MemoService {
             }));
             await this.notifRepo.createMany(notifs);
 
-            // Trigger actual Email Broadcast via BullMQ Job Queue
+            // Trigger Email Broadcast via BullMQ Job Queue
             const emails = targetUsers.map(user => user.email);
 
-            // Note: Since sendBatch compiles HTML once for speed, we use a generic greeting
             await EmailService.sendBatch(emails, "memo_broadcast", {
                 student_name: "Student",
                 memo_title: title,
@@ -81,6 +101,34 @@ export class MemoService {
         }
 
         return memo;
+    }
+
+    async archiveMemo(adminId: string, memoId: string) {
+        const existing = await this.memoRepo.findById(memoId);
+        if (!existing) {
+            throw new Error("Memo not found");
+        }
+
+        if (existing.isArchived) {
+            throw new Error("Memo is already archived");
+        }
+
+        const archived = await this.memoRepo.archiveMemo(memoId);
+
+        // Audit Log: Memo Archived (NFR7 Compliance)
+        await prisma.auditLog.create({
+            data: {
+                actorId: adminId,
+                actionType: "MEMO_ARCHIVED",
+                targetTable: "memos",
+                targetId: memoId,
+                description: `Archived memo "${existing.title}".`,
+                oldValue: JSON.stringify({ isArchived: false }),
+                newValue: JSON.stringify({ isArchived: true }),
+            }
+        });
+
+        return archived;
     }
 
     async getAllMemos() {
