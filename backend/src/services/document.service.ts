@@ -204,6 +204,13 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         include: { thesis: { include: { student: { include: { user: true } } } } },
         getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
     },
+    "memo": {
+        prismaModel: "memo",
+        fileField: "attachmentUrl",
+        include: {},
+        getOwnerId: (r) => r.createdById ?? null,
+        getExtraAuthCheck: (record) => !record.isArchived,
+    },
 };
 
 export class DocumentService {
