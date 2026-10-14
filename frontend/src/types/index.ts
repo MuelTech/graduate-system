@@ -461,9 +461,13 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
+  type?: string;
+  relatedRecordType?: string | null;
+  relatedRecordId?: string | null;
   isRead: boolean;
   createdAt: string;
 }
+
 
 
 export interface Waiver {

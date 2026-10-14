@@ -41,7 +41,7 @@ export default function PanelistAnnouncements() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2
@@ -55,7 +55,6 @@ export default function PanelistAnnouncements() {
           </p>
         </div>
 
-        {/* Search Bar */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-(--earist-secondary)" />
           <input
@@ -68,11 +67,11 @@ export default function PanelistAnnouncements() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Announcements List */}
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-(--earist-body-text)">
+        <p className="text-sm text-center py-12 text-(--earist-body-text)">
           Loading announcements...
-        </div>
+        </p>
       ) : filteredMemos.length === 0 ? (
         <Card className="bg-(--earist-surface-gray) border-none mt-6">
           <CardContent className="flex flex-col items-center py-12">
@@ -103,7 +102,7 @@ export default function PanelistAnnouncements() {
                   </span>
                 </div>
 
-                {/* Memo Details */}
+                {/* Details */}
                 <div className="p-4 sm:p-6 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                     <h4 className="font-bold text-(--earist-primary) text-lg">
