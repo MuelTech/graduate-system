@@ -1,0 +1,545 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const repo = vi.hoisted(() => ({
+  findStudentByUserId: vi.fn(),
+  checkPassedExam: vi.fn(),
+  getActiveUploadByStudentId: vi.fn(),
+  getVerifiedUploadByStudentId: vi.fn(),
+  getUploadByStudentIdLatest: vi.fn(),
+  getCurrentUploadByStudentId: vi.fn(),
+  getUploadById: vi.fn(),
+  createUploadWithAudit: vi.fn(),
+  verifyAndPromote: vi.fn(),
+  rejectUpload: vi.fn(),
+  checkVerifiedRecord: vi.fn(),
+  createAuditLog: vi.fn(),
+}));
+
+vi.mock("../../../src/repositories/cor.repository", () => ({
+  CorRepository: class {
+    findStudentByUserId = repo.findStudentByUserId;
+    checkPassedExam = repo.checkPassedExam;
+    getActiveUploadByStudentId = repo.getActiveUploadByStudentId;
+    getVerifiedUploadByStudentId = repo.getVerifiedUploadByStudentId;
+    getUploadByStudentIdLatest = repo.getUploadByStudentIdLatest;
+    getCurrentUploadByStudentId = repo.getCurrentUploadByStudentId;
+    getUploadById = repo.getUploadById;
+    createUploadWithAudit = repo.createUploadWithAudit;
+    verifyAndPromote = repo.verifyAndPromote;
+    rejectUpload = repo.rejectUpload;
+    checkVerifiedRecord = repo.checkVerifiedRecord;
+    createAuditLog = repo.createAuditLog;
+  },
+}));
+
+vi.mock("file-type", () => ({
+  fileTypeFromFile: vi.fn(async () => ({ mime: "application/pdf" })),
+}));
+vi.mock("fs/promises", () => ({
+  default: { unlink: vi.fn(async () => undefined) },
+  unlink: vi.fn(async () => undefined),
+}));
+const emailMock = vi.hoisted(() => ({
+  sendTemplateEmail: vi.fn(async () => undefined),
+}));
+
+vi.mock("../../../src/services/email.service", () => ({
+  EmailService: { sendTemplateEmail: emailMock.sendTemplateEmail },
+}));
+const extractionMock = vi.hoisted(() => ({
+  processUpload: vi.fn(async () => ({ status: "PENDING" })),
+}));
+
+vi.mock("../../../src/extraction/cor-extraction.service", () => ({
+  CorExtractionService: class {
+    processUpload = extractionMock.processUpload;
+  },
+}));
+
+import { CorService } from "../../../src/services/cor.service";
+
+const storageMeta = {
+  storageKey: "cor/abc",
+  storageProvider: "local",
+  originalFilename: "cor.pdf",
+  verifiedMimeType: "application/pdf",
+  sizeBytes: 1234,
+  checksum: "deadbeef",
+  checksumAlgorithm: "sha256",
+};
+
+function managedFile() {
+  return {
+    path: "/root/cor/abc",
+    originalname: "cor.pdf",
+    storageMeta,
+  } as unknown as Express.Multer.File;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  repo.findStudentByUserId.mockResolvedValue({ id: "student-1", userId: "user-1" });
+  repo.checkPassedExam.mockResolvedValue({ id: "exam-1", status: "PASSED" });
+  repo.getActiveUploadByStudentId.mockResolvedValue(null);
+  repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
+  repo.createUploadWithAudit.mockResolvedValue({ id: "cor-1", status: "PENDING" });
+  emailMock.sendTemplateEmail.mockResolvedValue(undefined);
+  extractionMock.processUpload.mockResolvedValue({ status: "PENDING" });
+});
+
+describe("CorService.uploadCor guarded upload", () => {
+  it("rejects when the applicant has no student profile", async () => {
+    repo.findStudentByUserId.mockResolvedValue(null);
+    const svc = new CorService();
+    await expect(svc.uploadCor("user-1", managedFile())).rejects.toMatchObject({
+      statusCode: 404,
+    });
+  });
+
+  it("rejects when the entrance exam is not PASSED", async () => {
+    repo.checkPassedExam.mockResolvedValue(null);
+    const svc = new CorService();
+    await expect(svc.uploadCor("user-1", managedFile())).rejects.toMatchObject({
+      statusCode: 403,
+    });
+    expect(repo.createUploadWithAudit).not.toHaveBeenCalled();
+    // COR-8: the exam gate blocks persistence AND extraction processing.
+    expect(extractionMock.processUpload).not.toHaveBeenCalled();
+  });
+
+  it("blocks a second upload while a PENDING COR exists", async () => {
+    repo.getActiveUploadByStudentId.mockResolvedValue({ id: "cor-pending" });
+    const svc = new CorService();
+    await expect(svc.uploadCor("user-1", managedFile())).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(repo.createUploadWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("blocks upload once a COR is already VERIFIED", async () => {
+    repo.getVerifiedUploadByStudentId.mockResolvedValue({ id: "cor-verified" });
+    const svc = new CorService();
+    await expect(svc.uploadCor("user-1", managedFile())).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(repo.createUploadWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("allows resubmission after a REJECTED COR and persists managed metadata without renaming", async () => {
+    // No PENDING and no VERIFIED → resubmission permitted.
+    const svc = new CorService();
+    await svc.uploadCor("user-1", managedFile());
+
+    expect(repo.createUploadWithAudit).toHaveBeenCalledTimes(1);
+    const [uploadData] = repo.createUploadWithAudit.mock.calls[0];
+    expect(uploadData).toEqual(
+      expect.objectContaining({
+        studentId: "student-1",
+        filePath: "/root/cor/abc",
+        storageKey: "cor/abc",
+        storageProvider: "local",
+        originalFilename: "cor.pdf",
+        detectedMimeType: "application/pdf",
+        sizeBytes: 1234,
+        checksum: "deadbeef",
+        checksumAlgorithm: "sha256",
+        uploadedById: "user-1",
+        status: "PENDING",
+      }),
+    );
+    // storageKey must keep pointing at the same physical object (no rename).
+    expect(uploadData.filePath).toBe("/root/cor/abc");
+  });
+});
+
+describe("CorService.verifyCor canonical verify + promote", () => {
+  // COR-AUTH-1: Admin-confirmed COR identity/enrollment values.
+  const confirmed = {
+    surname: "DELA CRUZ",
+    firstName: "JUAN",
+    middleNameOrInitial: "SANTOS",
+    email: "juan.delacruz@example.com",
+    programId: "prog-1",
+  };
+
+  const pendingUpload = {
+    id: "cor-1",
+    status: "PENDING",
+    studentId: "student-1",
+    student: {
+      id: "student-1",
+      userId: "user-1",
+      admissionStatus: "APPLICANT",
+      user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
+    },
+  };
+
+  beforeEach(() => {
+    repo.getUploadById.mockResolvedValue(pendingUpload);
+    repo.verifyAndPromote.mockResolvedValue({
+      corRecord: { id: "rec-1" },
+      updatedStudent: { studentNumber: "2026-GS-00123", ...confirmed },
+      updatedUser: { role: "STUDENT" },
+    });
+  });
+
+  it("requires an explicit Student Number", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "   ", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("requires Admin-confirmed COR surname, first name, email, and Program", async () => {
+    const svc = new CorService();
+    // Missing surname.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        firstName: "JUAN",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    // Missing first name.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        surname: "DELA CRUZ",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    // Missing Program selection.
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        ...confirmed,
+        programId: "",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid confirmed email", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", {
+        studentNumber: "2026-GS-00123",
+        ...confirmed,
+        email: "not-an-email",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to Applicant/extraction values when confirmation is missing", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("does not require or validate Academic Year / Semester (v1 authority)", async () => {
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).resolves.toBeTruthy();
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded).not.toHaveProperty("academicYear");
+    expect(forwarded).not.toHaveProperty("semester");
+  });
+
+  it("ignores client method/verificationMethod and legacy term fields", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: " 2026-GS-00123 ",
+      ...confirmed,
+      method: "OCR",
+      verificationMethod: "LEGACY",
+      academicYear: "1999-2000",
+      semester: "SUMMER",
+    } as never);
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as Record<
+      string,
+      unknown
+    >;
+    expect(forwarded).toEqual(
+      expect.objectContaining({
+        studentNumber: "2026-GS-00123",
+        verificationMethod: "ADMIN_MANUAL",
+      }),
+    );
+    expect(forwarded).not.toHaveProperty("academicYear");
+    expect(forwarded).not.toHaveProperty("semester");
+    // COR-AUTH-3: College has no authority and no password-like field is sent.
+    expect(forwarded).not.toHaveProperty("college");
+    expect(JSON.stringify(forwarded)).not.toMatch(
+      /password|passwordHash|birthdate|dateOfBirth|residency|college|academicYear|semester/i,
+    );
+  });
+
+  it("trims and forwards a confirmed Registration Number", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      ...confirmed,
+      registrationNumber: "  REG-123  ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as {
+      registrationNumber?: string;
+    };
+    expect(forwarded.registrationNumber).toBe("REG-123");
+  });
+
+  it("normalizes a blank Registration Number to absent, not an empty string", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "2026-GS-00123",
+      ...confirmed,
+      registrationNumber: "   ",
+    });
+
+    const forwarded = repo.verifyAndPromote.mock.calls[0][3] as {
+      registrationNumber?: string;
+    };
+    expect(forwarded.registrationNumber).toBeUndefined();
+    expect(forwarded.registrationNumber).not.toBe("");
+  });
+
+  it("rejects a non-PENDING upload", async () => {
+    repo.getUploadById.mockResolvedValue({ ...pendingUpload, status: "REJECTED" });
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the applicant has not passed the exam", async () => {
+    repo.checkPassedExam.mockResolvedValue(null);
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+
+  it("normalizes to ADMIN_MANUAL and delegates to the canonical transaction", async () => {
+    const svc = new CorService();
+    const result = await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: " 2026-GS-00123 ",
+      ...confirmed,
+    });
+
+    expect(repo.verifyAndPromote).toHaveBeenCalledWith(
+      "cor-1",
+      "student-1",
+      "user-1",
+      expect.objectContaining({
+        studentNumber: "2026-GS-00123",
+        firstName: "JUAN SANTOS",
+        lastName: "DELA CRUZ",
+        email: "juan.delacruz@example.com",
+        programId: "prog-1",
+        verificationMethod: "ADMIN_MANUAL",
+      }),
+      "admin-1",
+    );
+    expect(result).toBeTruthy();
+  });
+
+  it("maps a duplicate Student Number (P2002) to a controlled conflict", async () => {
+    const conflict = Object.assign(new Error("Unique constraint failed"), {
+      code: "P2002",
+      meta: { target: ["student_number"] },
+    });
+    repo.verifyAndPromote.mockRejectedValue(conflict);
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("maps a duplicate confirmed email (P2002) to a controlled conflict", async () => {
+    const conflict = Object.assign(new Error("Unique constraint failed"), {
+      code: "P2002",
+      meta: { target: ["email"] },
+    });
+    repo.verifyAndPromote.mockRejectedValue(conflict);
+    const svc = new CorService();
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("sends credential_dispatch with only the safe variables (no password)", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed });
+
+    expect(emailMock.sendTemplateEmail).toHaveBeenCalledTimes(1);
+    const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
+      string,
+      string,
+      Record<string, unknown>,
+    ];
+    const [to, templateKey, variables] = call;
+
+    expect(to).toBe("juan.delacruz@example.com");
+    expect(templateKey).toBe("credential_dispatch");
+    expect(variables.student_name).toBe("JUAN SANTOS");
+    // The Admin-confirmed canonical Student Number flows through unchanged.
+    expect(variables.student_number).toBe("2026-GS-00123");
+    expect(typeof variables.portal_link).toBe("string");
+    expect(Object.keys(variables).sort()).toEqual([
+      "portal_link",
+      "student_name",
+      "student_number",
+    ]);
+
+    const serialized = JSON.stringify(variables);
+    expect(serialized).not.toMatch(
+      /default_password|passwordHash|password|birthdate|dateOfBirth/i,
+    );
+  });
+
+  it("uses the normalized Student Number in the notification", async () => {
+    const svc = new CorService();
+    await svc.verifyCor("cor-1", "admin-1", {
+      studentNumber: "  2026-GS-00123  ",
+      ...confirmed,
+    });
+
+    const call = emailMock.sendTemplateEmail.mock.calls[0] as unknown as [
+      string,
+      string,
+      Record<string, unknown>,
+    ];
+    expect(call[2].student_number).toBe("2026-GS-00123");
+  });
+
+  it("keeps email failure non-authoritative (no rollback, no retry)", async () => {
+    emailMock.sendTemplateEmail.mockRejectedValue(new Error("smtp down"));
+    const svc = new CorService();
+
+    await expect(
+      svc.verifyCor("cor-1", "admin-1", { studentNumber: "2026-GS-00123", ...confirmed }),
+    ).resolves.toBeTruthy();
+
+    expect(repo.verifyAndPromote).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CorService.rejectCor canonical rejection", () => {
+  beforeEach(() => {
+    repo.getUploadById.mockResolvedValue({
+      id: "cor-1",
+      status: "PENDING",
+      studentId: "student-1",
+      student: {
+        id: "student-1",
+        userId: "user-1",
+        admissionStatus: "APPLICANT",
+        user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
+      },
+    });
+  });
+
+  it("requires a rejection reason", async () => {
+    const svc = new CorService();
+    await expect(svc.rejectCor("cor-1", "admin-1", "   ")).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    expect(repo.rejectUpload).not.toHaveBeenCalled();
+  });
+
+  it("delegates rejection to the canonical transaction with the owning student", async () => {
+    repo.rejectUpload.mockResolvedValue({ id: "cor-1", status: "REJECTED" });
+    const svc = new CorService();
+    await svc.rejectCor("cor-1", "admin-1", "  Illegible scan  ");
+    expect(repo.rejectUpload).toHaveBeenCalledWith("cor-1", {
+      studentId: "student-1",
+      reason: "Illegible scan",
+      adminId: "admin-1",
+    });
+  });
+});
+
+describe("CorService.findPendingUploadIdForStudent currentness", () => {
+  it("returns the id only when the current submission is PENDING", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-cur", status: "PENDING" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBe("cor-cur");
+  });
+
+  it("returns null when the current submission is REJECTED (no fallback to older PENDING)", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-new", status: "REJECTED" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBeNull();
+  });
+
+  it("returns null when the current submission is VERIFIED", async () => {
+    repo.getCurrentUploadByStudentId.mockResolvedValue({ id: "cor-ver", status: "VERIFIED" });
+    const svc = new CorService();
+    await expect(svc.findPendingUploadIdForStudent("student-1")).resolves.toBeNull();
+  });
+});
+
+describe("COR-8 reject -> resubmit continuity", () => {
+  it("rejects the current PENDING COR, keeps history, then allows a replacement upload without promotion", async () => {
+    const currentPending = {
+      id: "cor-1",
+      status: "PENDING",
+      studentId: "student-1",
+      student: {
+        id: "student-1",
+        userId: "user-1",
+        admissionStatus: "APPLICANT",
+        user: { email: "a@b.c", firstName: "Ana", lastName: "Dela", role: "APPLICANT" },
+      },
+    };
+
+    // 1. Admin rejects the current PENDING COR.
+    repo.getUploadById.mockResolvedValue(currentPending);
+    repo.rejectUpload.mockResolvedValue({ id: "cor-1", status: "REJECTED" });
+    const svc = new CorService();
+
+    await svc.rejectCor("cor-1", "admin-1", "Illegible scan");
+
+    expect(repo.rejectUpload).toHaveBeenCalledWith("cor-1", {
+      studentId: "student-1",
+      reason: "Illegible scan",
+      adminId: "admin-1",
+    });
+    // Rejection never promotes or mutates the account.
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+
+    // 2. Rejection leaves no active PENDING/VERIFIED submission, so the
+    //    Applicant may submit a replacement COR as a NEW row.
+    repo.getActiveUploadByStudentId.mockResolvedValue(null);
+    repo.getVerifiedUploadByStudentId.mockResolvedValue(null);
+    repo.createUploadWithAudit.mockResolvedValue({ id: "cor-2", status: "PENDING" });
+
+    const replacement = await svc.uploadCor("user-1", managedFile());
+
+    expect(replacement.id).toBe("cor-2");
+    expect(repo.createUploadWithAudit).toHaveBeenCalledTimes(1);
+    const [replacementData] = repo.createUploadWithAudit.mock.calls[0];
+    expect(replacementData).toMatchObject({
+      studentId: "student-1",
+      status: "PENDING",
+    });
+    // A new upload row is created; the historical rejected row is untouched
+    // (rejection is not overwritten or deleted as the authority mechanism).
+    expect(repo.rejectUpload).toHaveBeenCalledTimes(1);
+    expect(repo.verifyAndPromote).not.toHaveBeenCalled();
+  });
+});

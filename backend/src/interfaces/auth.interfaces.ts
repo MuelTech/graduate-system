@@ -18,8 +18,11 @@ export interface LoginInput {
   password: string;
   email?: string;
   applicantId?: string;
-  studentId?: string;
-  birthdate?: string;
+  /**
+   * COR-6: canonical Student login identifier — the confirmed
+   * `Student.studentNumber` value, not the Student primary-key id.
+   */
+  studentNumber?: string;
 }
 
 export interface UserResponse {

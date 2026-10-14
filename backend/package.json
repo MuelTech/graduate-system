@@ -7,14 +7,22 @@
     "dev": "nodemon --exec ts-node --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "storage:backfill": "node dist/cli/storage-backfill.js",
+    "storage:backfill:apply": "node dist/cli/storage-backfill.js --apply",
+    "storage:readiness": "node dist/cli/storage-readiness.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "dependencies": {
     "@langchain/community": "^1.1.29",
     "@prisma/adapter-mariadb": "^7.8.0",
@@ -35,6 +43,7 @@
     "node-cron": "^4.6.0",
     "nodemailer": "^9.0.5",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
@@ -51,7 +60,9 @@
     "nodemon": "^3.1.14",
     "prisma": "^7.9.1",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

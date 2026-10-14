@@ -155,6 +155,25 @@ export class ExamController {
     }
   };
 
+  getApplicationDetail = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const detail = await this.examService.getApplicationDetail(id);
+      res.status(200).json(detail);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
   appealMissedExam = async (
     req: AuthenticatedRequest,
     res: Response,
@@ -234,17 +253,6 @@ export class ExamController {
     }
   };
 
-    getGradingQueue = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const queue = await this.examService.getGradingQueue();
-
-      res.status(200).json(queue);
-    } catch (error: unknown) {
-      console.error("Unexpected error in getGradingQueue:", error);
-      res.status(500).json({ error: "An unexpected error occurred." });
-    }
-  }
-
     gradeEssay = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const applicationId = req.params.id as string;
@@ -262,17 +270,6 @@ export class ExamController {
     } catch (error: unknown) {
       console.error("Unexpected error in gradeEssay:", error);
       res.status(400).json({ error: "An unexpected error occurred." });
-    }
-  }
-
-    getScoreReview = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const review = await this.examService.getScoreReview();
-      
-      res.status(200).json(review);
-    } catch (error: unknown) {
-      console.error("Unexpected error in getScoreReview:", error);
-      res.status(500).json({ error: "An unexpected error occurred." });
     }
   }
 

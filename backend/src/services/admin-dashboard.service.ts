@@ -1,64 +1,91 @@
 import { DashboardRepository } from "../repositories/admin-dashboard.repository";
+import { DefenseApplicationsRepository } from "../repositories/defense-applications.repository";
+import { CorRepository } from "../repositories/cor.repository";
+import {
+  buildEnrollmentSnapshot,
+  buildThesisPipeline,
+} from "./admin-dashboard.rules";
 
+/**
+ * Admin dashboard read model.
+ *
+ * Composes authoritative, read-only sources:
+ * - DashboardRepository        (direct dashboard projections)
+ * - DefenseApplicationsRepository (shared Defense Applications buckets)
+ * - CorRepository              (canonical current-actionable COR queue)
+ *
+ * The response is semantic/numeric; all presentation is owned by the frontend.
+ */
 export class AdminDashboardService {
   private dashboardRepo = new DashboardRepository();
+  private defenseAppsRepo = new DefenseApplicationsRepository();
+  private corRepo = new CorRepository();
 
   async getDashboardData() {
-    // We use Promise.all to fetch all metrics concurrently for maximum speed
     const [
-      activeStudents,
-      pendingDefenses,
-      pendingCORs,
-      repositoryEntries,
-      pipelineStages,
-      pendingActions,
+      enrolledStudents,
+      thesisRecords,
+      bridgingWaivers,
+      adviserRequestsForDeanReview,
+      defensesAwaitingConclusion,
+      rapReportsAwaitingSignatures,
+      upcomingDefenses,
       recentActivity,
+      defenseNeedsReview,
+      defenseReady,
+      corPendingUploads,
     ] = await Promise.all([
-      this.dashboardRepo.getTotalActiveStudents(),
-      this.dashboardRepo.getPendingDefenses(),
-      this.dashboardRepo.getPendingCORs(),
-      this.dashboardRepo.getRepositoryCount(),
-      this.dashboardRepo.getPipelineStages(),
-      this.dashboardRepo.getPendingActions(),
-      this.dashboardRepo.getRecentActivity(),
+      this.dashboardRepo.getEnrolledStudents(),
+      this.dashboardRepo.getThesisRecordsForPipeline(),
+      this.dashboardRepo.getBridgingWaiversToReviewCount(),
+      this.dashboardRepo.getAdviserRequestsForDeanReviewCount(),
+      this.dashboardRepo.getDefensesAwaitingConclusionCount(),
+      this.dashboardRepo.getRapReportsAwaitingSignaturesCount(),
+      this.dashboardRepo.getUpcomingDefenses(5),
+      this.dashboardRepo.getRecentActivity(6),
+      // Reuse the exact authoritative Defense Applications buckets.
+      this.defenseAppsRepo.getDefenseApplicationsPaginated({
+        page: 1,
+        pageSize: 1,
+        bucket: "NEEDS_REVIEW",
+      }),
+      this.defenseAppsRepo.getDefenseApplicationsPaginated({
+        page: 1,
+        pageSize: 1,
+        bucket: "READY",
+      }),
+      // Reuse the canonical current-actionable COR review queue.
+      this.corRepo.getPendingUploads(),
     ]);
 
-    // Format the KPIs exactly how the frontend expects them
-    const kpis = [
-      {
-        label: "Total Active Students",
-        value: activeStudents.toString(),
-        trend: "Currently enrolled",
-        color: "text-blue-600",
-        bg: "bg-blue-50",
-      },
-      {
-        label: "Pending Defense Applications",
-        value: pendingDefenses.toString(),
-        trend: "Awaiting review",
-        color: "text-amber-600",
-        bg: "bg-amber-50",
-      },
-      {
-        label: "Pending COR Verifications",
-        value: pendingCORs.toString(),
-        trend: "Needs validation",
-        color: "text-(--earist-primary)",
-        bg: "bg-(--earist-surface-light-red)",
-      },
-      {
-        label: "Repository Entries",
-        value: repositoryEntries.toString(),
-        trend: "Public papers",
-        color: "text-green-600",
-        bg: "bg-green-50",
-      },
-    ];
+    const enrollment = buildEnrollmentSnapshot(enrolledStudents);
+    const thesisPipeline = buildThesisPipeline(thesisRecords);
+
+    const defenseApplicationsToReview = defenseNeedsReview.total;
+    const defensesReadyForScheduling = defenseReady.total;
+    const corSubmissionsToReview = corPendingUploads.length;
 
     return {
-      kpis,
-      pipelineStages,
-      pendingActions,
+      kpis: {
+        enrolledStudents: enrollment.total,
+        defenseApplicationsToReview,
+        defensesReadyForScheduling,
+        corSubmissionsToReview,
+      },
+      needsAttention: {
+        defenseApplications: defenseApplicationsToReview,
+        corSubmissions: corSubmissionsToReview,
+        defensesReadyForScheduling,
+        bridgingWaivers,
+        adviserRequestsForDeanReview,
+      },
+      enrollment,
+      thesisPipeline,
+      upcomingDefenses,
+      workflowMonitoring: {
+        defensesAwaitingConclusion,
+        rapReportsAwaitingSignatures,
+      },
       recentActivity,
     };
   }

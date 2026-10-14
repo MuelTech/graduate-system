@@ -5,13 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { signOut } from "next-auth/react";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import {
   LayoutDashboard,
   User,
   FileCheck2,
-  FolderOpen,
-  PenLine,
   PenTool,
+  UserCheck,
   Library,
   Megaphone,
   Bell,
@@ -22,12 +22,34 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
+/**
+ * UIUX-3D: My Defenses is the single assignment entry point. Its navigation
+ * item stays active for the canonical Defense Workspace and for the retired
+ * compatibility route families that resolve into that same context.
+ */
+const MY_DEFENSES_CONTEXT_ROUTES = [
+  "/panelist/defenses",
+  "/panelist/defense-workspace",
+  "/panelist/scoring",
+  "/panelist/defense-lobby",
+  "/panelist/materials",
+];
+
+function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/panelist/defenses") {
+    return MY_DEFENSES_CONTEXT_ROUTES.some(
+      (base) => pathname === base || pathname.startsWith(`${base}/`),
+    );
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 const navItems = [
   { href: "/panelist/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/panelist/profile", label: "Profile", icon: User },
   { href: "/panelist/defenses", label: "My Defenses", icon: FileCheck2 },
-  { href: "/panelist/materials", label: "Materials", icon: FolderOpen },
-  { href: "/panelist/scoring", label: "Scoring", icon: PenLine },
+  { href: "/panelist/adviser-requests", label: "Adviser Requests", icon: UserCheck },
+  { href: "/panelist/adviser-reviews", label: "Adviser Reviews", icon: FileCheck2 },
   { href: "/panelist/signatures", label: "E-Signatures", icon: PenTool },
   { href: "/panelist/repository", label: "Repository", icon: Library },
   { href: "/panelist/announcements", label: "Announcements", icon: Megaphone },
@@ -88,7 +110,7 @@ export default function PanelistLayout({
         <nav className="flex-1 overflow-y-auto px-2 py-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isNavItemActive(pathname, item.href);
               return (
                 <li key={item.href}>
                   <Link
@@ -159,15 +181,7 @@ export default function PanelistLayout({
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/panelist/notifications"
-              className="relative rounded-full p-2 text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-(--earist-accent) text-[10px] font-bold text-(--earist-primary)">
-                2
-              </span>
-            </Link>
+                        <NotificationBell role="PANELIST" />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-(--earist-primary) text-sm font-bold text-white">
               R
             </div>

@@ -1,459 +1,634 @@
+"use client";
+
 import Link from "next/link";
-import { auth } from "@/auth";
+import { useQuery } from "@tanstack/react-query";
+import { apiClientRequest } from "@/lib/api.client";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
 import {
-  CheckCircle2,
-  Clock,
-  FileText,
-  ArrowRight,
-  BookOpen,
-  Calendar,
-  Library,
-  Megaphone,
-  User,
+  JOURNEY_STEP_ORDER,
+  formatDefenseDate,
+  formatDefenseTime,
+  journeyLabelFor,
+  sessionStatusLabel,
+} from "@/lib/student-thesis-journey";
+import {
+  activeDefense,
+  compExamStatusLabel,
+  milestoneStateLabel,
+  resolveDefenseVenue,
+  resolveNextStep,
+  type NextStepKind,
+} from "@/lib/student-dashboard";
+import type {
+  JourneyStepView,
+  StudentThesisJourney,
+} from "@/types/student-thesis-journey";
+import type { NotificationItem } from "@/types";
+import {
   AlertCircle,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  CalendarClock,
+  ClipboardList,
   ExternalLink,
+  FileText,
+  Megaphone,
+  Milestone,
+  RefreshCw,
 } from "lucide-react";
 
-export default async function StudentDashboard() {
-  const session = await auth();
-  if (!session?.user?.accessToken) {
-    return <div>Please log in to view your dashboard.</div>;
-  }
+/* ------------------------------------------------------------------- types */
 
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
-  const res = await fetch(`${apiUrl}/api/student/journey`, {
-    headers: { Authorization: `Bearer ${session.user.accessToken}` },
-    cache: "no-store",
+interface StudentOverview {
+  user?: { firstName?: string; lastName?: string };
+  program?: { programName?: string } | null;
+  studentNumber?: string | null;
+  compExamRecords?: Array<{ status?: string }>;
+}
+
+interface MemoItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+const MAX_NOTIFICATIONS = 3;
+const MAX_ANNOUNCEMENTS = 2;
+
+/* -------------------------------------------------------------- primitives */
+
+function SectionError({
+  label,
+  onRetry,
+  retrying,
+  compact = false,
+}: {
+  label: string;
+  onRetry: () => void;
+  retrying?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-2 text-center",
+        compact ? "py-4" : "py-8",
+      )}
+    >
+      <AlertCircle
+        className="h-6 w-6 text-(--earist-secondary)"
+        aria-hidden="true"
+      />
+      <p className="text-sm text-(--earist-body-text)">{label}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        disabled={retrying}
+      >
+        <RefreshCw
+          className={cn("mr-2 h-4 w-4", retrying && "animate-spin")}
+          aria-hidden="true"
+        />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+const NEXT_STEP_BADGE: Record<NextStepKind, string> = {
+  ACTION: "bg-(--earist-primary) text-white",
+  WAITING: "bg-amber-100 text-amber-800",
+  LOCKED: "bg-gray-200 text-gray-700",
+  REJECTED: "bg-amber-100 text-amber-800",
+  FAILED: "bg-red-100 text-red-700",
+  REVISION: "bg-amber-100 text-amber-800",
+  CANCELLED: "bg-gray-200 text-gray-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+  UNAVAILABLE: "bg-gray-100 text-gray-700",
+};
+
+function milestoneTone(
+  step: JourneyStepView | undefined,
+  strikeRequired: boolean,
+): string {
+  if (!step) return "bg-gray-100 text-gray-500";
+  if (step.key === "STRIKE" && !strikeRequired) {
+    return "bg-gray-100 text-gray-600";
+  }
+  switch (step.state) {
+    case "COMPLETED":
+      return "bg-emerald-50 text-emerald-700";
+    case "CURRENT":
+      return "bg-(--earist-surface-light-red) text-(--earist-primary)";
+    case "AVAILABLE":
+      return "bg-sky-50 text-sky-700";
+    case "WAITING":
+      return "bg-amber-100 text-amber-800";
+    case "LOCKED":
+      return "bg-gray-100 text-gray-600";
+    default:
+      return "bg-gray-100 text-gray-600";
+  }
+}
+
+/* ------------------------------------------------------- next-step content */
+
+function NextStepContent({
+  journey,
+}: {
+  journey: StudentThesisJourney;
+}) {
+  const nextStep = resolveNextStep(journey);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-lg font-semibold text-foreground sm:text-xl">
+          {nextStep.heading}
+        </h3>
+        {nextStep.statusLabel ? (
+          <Badge
+            className={cn("shrink-0", NEXT_STEP_BADGE[nextStep.kind])}
+          >
+            {nextStep.statusLabel}
+          </Badge>
+        ) : null}
+      </div>
+      <p className="max-w-3xl text-sm text-(--earist-body-text)">
+        {nextStep.explanation}
+      </p>
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        {nextStep.action ? (
+          <Link
+            href={nextStep.action.href}
+            className={cn(
+              buttonVariants({ size: "default" }),
+              "justify-center",
+            )}
+          >
+            {nextStep.action.label}
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          </Link>
+        ) : null}
+        {nextStep.secondaryAction ? (
+          <Link
+            href={nextStep.secondaryAction.href}
+            className="text-sm font-medium text-(--earist-secondary) hover:underline"
+          >
+            {nextStep.secondaryAction.label}
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
+
+export default function StudentDashboard() {
+  const overviewQuery = useQuery<StudentOverview>({
+    queryKey: ["student", "journey-overview"],
+    queryFn: async () =>
+      (await apiClientRequest("/student/journey")) as StudentOverview,
   });
 
-  if (!res.ok) {
-    return <div>Error loading profile data.</div>;
-  }
-  const journey = await res.json();
+  const journeyQuery = useStudentThesisJourney();
 
-  const student = {
-    firstName: journey.user?.firstName || "Student",
-    lastName: journey.user?.lastName || "",
-    studentNumber: journey.studentNumber || "Not Assigned",
-    program: journey.program?.programName || "Graduate Program",
-    currentStage: "proposal_defense" as
-      | "title_defense"
-      | "proposal_defense"
-      | "final_defense"
-      | "repository",
-    compExamStatus: (journey.compExamRecords?.[0]?.status?.toLowerCase() ||
-      "not_taken") as "pending" | "passed" | "failed" | "not_taken" | "approved",
-    activeApplication: {
-      stage: "Proposal Defense",
-      dateSubmitted: "May 28, 2026",
-      status: "pending_review" as
-        | "pending_review"
-        | "approved"
-        | "scheduled"
-        | "completed",
+  const notificationsQuery = useQuery<NotificationItem[]>({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/notifications");
+      return Array.isArray(res) ? (res as NotificationItem[]) : [];
     },
-    upcomingDefense: null as null | {
-      stage: string;
-      date: string;
-      time: string;
-      teamsLink: string;
-    },
-    requirements: {
-      submitted: journey.studentRequirements?.length || 0,
-      total: 6,
-    },
-  };
+  });
 
-  const stages = [
-    { key: "title_defense", label: "Title Defense" },
-    { key: "proposal_defense", label: "Proposal Defense" },
-    { key: "final_defense", label: "Final Defense" },
-    { key: "repository", label: "Repository" },
-  ];
+  const memosQuery = useQuery<MemoItem[]>({
+    queryKey: ["student-memos"],
+    queryFn: async () => {
+      const res = await apiClientRequest("/memos");
+      return Array.isArray(res) ? (res as MemoItem[]) : [];
+    },
+  });
 
-  const currentStageIndex = stages.findIndex(
-    (s) => s.key === student.currentStage,
+  const overview = overviewQuery.data;
+  const firstName = overview?.user?.firstName?.trim() || "Student";
+  const programName = overview?.program?.programName?.trim() || "Graduate Program";
+  const studentNumber = overview?.studentNumber?.trim() || null;
+  const compExamStatus = overview?.compExamRecords?.[0]?.status ?? null;
+
+  const journey = journeyQuery.data;
+  const currentStep = journey?.currentStep
+    ? journey.steps.find((s) => s.key === journey.currentStep)
+    : null;
+  const currentStageLabel = journey
+    ? currentStep
+      ? journeyLabelFor(currentStep.key, currentStep.label)
+      : "Completed"
+    : null;
+
+  const active = journey ? activeDefense(journey) : null;
+  const recentNotifications = (notificationsQuery.data ?? []).slice(
+    0,
+    MAX_NOTIFICATIONS,
+  );
+  const recentAnnouncements = (memosQuery.data ?? []).slice(
+    0,
+    MAX_ANNOUNCEMENTS,
   );
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Welcome Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          {getGreeting()}, {student.firstName}
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">{student.program}</p>
-        <p className="text-xs text-(--earist-body-text)">
-          Student Number: {student.studentNumber}
-        </p>
-      </div>
-
-      {/* Thesis Pipeline Progress */}
-      <div className="rounded-xl border border-(--earist-border-gray) bg-white px-6 py-4">
-        <p className="mb-3 text-xs font-semibold text-(--earist-secondary)">
-          Thesis Pipeline
-        </p>
-        <div className="relative">
-          {/* Connector lines */}
-          <div className="absolute top-4 right-4 left-4 h-1 -translate-y-1/2 rounded bg-(--earist-border-gray)" />
-          <div
-            className="absolute top-4 left-4 h-1 -translate-y-1/2 rounded bg-green-500"
-            style={{
-              width: `calc(${currentStageIndex / (stages.length - 1)} * (100% - 2rem))`,
-            }}
-          />
-          {/* Steps */}
-          <div className="relative flex justify-between">
-            {stages.map((stage, i) => {
-              const isCompleted = i < currentStageIndex;
-              const isCurrent = i === currentStageIndex;
-
-              return (
-                <div key={stage.key} className="flex flex-col items-center">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                      isCompleted
-                        ? "bg-green-500 text-white"
-                        : isCurrent
-                          ? "bg-(--earist-accent) text-(--earist-primary) ring-2 ring-(--earist-accent)/20"
-                          : "bg-(--earist-surface-gray) text-(--earist-body-text)"
-                    }`}
-                  >
-                    {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
-                  </div>
-                  <span
-                    className={`mt-1.5 text-center text-[11px] font-medium ${
-                      isCurrent
-                        ? "text-(--earist-primary)"
-                        : isCompleted
-                          ? "text-green-600"
-                          : "text-(--earist-body-text)"
-                    }`}
-                  >
-                    {stage.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+    <div className="space-y-6">
+      {/* A. Welcome + identity */}
+      {overviewQuery.isLoading ? (
+        <div className="space-y-2" aria-busy="true" aria-live="polite">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-56 max-w-full" />
+          <Skeleton className="h-3 w-40" />
         </div>
-      </div>
+      ) : (
+        <PageHeader
+          title={`Welcome back, ${firstName}!`}
+          description={programName}
+        >
+          {studentNumber ? (
+            <p className="text-xs text-(--earist-body-text)">
+              Student Number: {studentNumber}
+            </p>
+          ) : null}
+        </PageHeader>
+      )}
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Active Defense Application — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Active Defense Application
-              </CardTitle>
-              <Badge className="bg-amber-100 text-amber-700">
-                <Clock className="mr-1 h-3 w-3" />
-                Pending Review
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
-              <p className="text-sm font-semibold text-(--earist-primary)">
-                {student.activeApplication.stage}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Submitted: {student.activeApplication.dateSubmitted}
-              </p>
-            </div>
-            <Link
-              href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-            >
-              View Application <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardContent>
-        </Card>
+      {overviewQuery.isError ? (
+        <p className="text-xs text-(--earist-body-text)">
+          Some account details could not be loaded.
+        </p>
+      ) : null}
 
-        {/* Comp Exam Status — compact */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Comprehensive Exam
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  student.compExamStatus === "passed" || student.compExamStatus === "approved"
-                    ? "bg-green-50"
-                    : student.compExamStatus === "failed"
-                      ? "bg-red-50"
-                      : "bg-gray-50"
-                }`}
-              >
-                {student.compExamStatus === "passed" || student.compExamStatus === "approved" ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                ) : student.compExamStatus === "failed" ? (
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                ) : (
-                  <Clock className="h-5 w-5 text-gray-500" />
-                )}
-              </div>
-              <div>
-                {(student.compExamStatus === "passed" || student.compExamStatus === "approved") && (
-                  <Badge className="bg-green-100 text-green-700">Passed</Badge>
-                )}
-                {student.compExamStatus === "failed" && (
-                  <Badge className="bg-red-100 text-red-700">Failed</Badge>
-                )}
-                {student.compExamStatus === "pending" && (
-                  <Badge className="bg-amber-100 text-amber-700">Pending</Badge>
-                )}
-                {student.compExamStatus === "not_taken" && (
-                  <Badge className="bg-gray-100 text-gray-500">Not Taken</Badge>
-                )}
-                <p className="mt-1 text-xs text-(--earist-body-text)">
-                  For academic tracking only. Not administered through the
-                  system.
+      {/* B. Academic status summary */}
+      <section aria-label="Academic status summary">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardContent className="space-y-1 p-4">
+              <p className="flex items-center gap-2 text-xs font-semibold text-(--earist-body-text)">
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                Comprehensive Examination
+              </p>
+              {overviewQuery.isLoading ? (
+                <Skeleton className="h-7 w-24" />
+              ) : overviewQuery.isError ? (
+                <p className="text-sm text-(--earist-body-text)">Unavailable</p>
+              ) : (
+                <p className="text-2xl font-bold text-(--earist-primary)">
+                  {compExamStatusLabel(compExamStatus)}
                 </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              )}
+              <p className="text-xs text-(--earist-body-text)">
+                Required before Title Defense.
+              </p>
+            </CardContent>
+          </Card>
 
-        {/* Requirements Status — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                Requirements Status
-              </CardTitle>
-              <FileText className="h-5 w-5 text-(--earist-accent)" />
+          <Card>
+            <CardContent className="space-y-1 p-4">
+              <p className="flex items-center gap-2 text-xs font-semibold text-(--earist-body-text)">
+                <Milestone className="h-4 w-4" aria-hidden="true" />
+                Current Thesis Stage
+              </p>
+              {journeyQuery.isLoading ? (
+                <Skeleton className="h-7 w-32" />
+              ) : journeyQuery.isError ? (
+                <p className="text-sm text-(--earist-body-text)">Unavailable</p>
+              ) : (
+                <p className="text-2xl font-bold text-(--earist-primary)">
+                  {currentStageLabel}
+                </p>
+              )}
+              <p className="text-xs text-(--earist-body-text)">
+                Based on your Student Thesis Journey.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* C. Your Next Step — primary focus */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardList
+              className="h-4 w-4 text-(--earist-secondary)"
+              aria-hidden="true"
+            />
+            Your Next Step
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {journeyQuery.isLoading ? (
+            <div className="space-y-3" aria-busy="true">
+              <Skeleton className="h-6 w-64" />
+              <Skeleton className="h-4 w-full max-w-2xl" />
+              <Skeleton className="h-9 w-44" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-(--earist-primary)">
-                  {student.requirements.submitted}
-                  <span className="text-base font-normal text-(--earist-body-text)">
-                    {" "}
-                    / {student.requirements.total}
-                  </span>
-                </span>
-                <span className="text-xs text-(--earist-body-text)">
-                  submitted
-                </span>
-              </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
-                <div
-                  className="h-full rounded-full bg-(--earist-primary)"
-                  style={{
-                    width: `${(student.requirements.submitted / student.requirements.total) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
+          ) : journeyQuery.isError || !journey ? (
+            <SectionError
+              label="Unable to load your current thesis status."
+              onRetry={() => journeyQuery.refetch()}
+              retrying={journeyQuery.isRefetching}
+            />
+          ) : (
+            <NextStepContent journey={journey} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* D. Thesis Journey overview */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText
+                className="h-4 w-4 text-(--earist-secondary)"
+                aria-hidden="true"
+              />
+              Thesis Journey
+            </CardTitle>
             <Link
-              href="/student/thesis/proposal-defense"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+              href="/student/thesis"
+              className="shrink-0 text-xs font-medium text-(--earist-secondary) hover:underline"
             >
-              View Requirements <ArrowRight className="h-3 w-3" />
+              Open Thesis Journey
             </Link>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Defense / No Scheduled Defense — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Upcoming Defense
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {student.upcomingDefense ? (
-              <div>
-                <div className="mb-3 rounded-lg bg-(--earist-surface-gray) p-3">
-                  <p className="text-sm font-semibold text-(--earist-primary)">
-                    {student.upcomingDefense.stage}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {student.upcomingDefense.date} &middot;{" "}
-                    {student.upcomingDefense.time}
-                  </p>
-                </div>
-                <a
-                  href={student.upcomingDefense.teamsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
-                >
-                  Join MS Teams <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center rounded-lg bg-(--earist-surface-gray) py-6">
-                <div className="text-center">
-                  <Calendar className="mx-auto mb-2 h-8 w-8 text-(--earist-body-text)/40" />
-                  <p className="text-sm text-(--earist-body-text)">
-                    No defense scheduled yet
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Links — spans 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Quick Links
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {[
-                {
-                  href: "/student/thesis",
-                  label: "Thesis Pipeline",
-                  icon: FileText,
-                },
-                {
-                  href: "/student/curriculum",
-                  label: "Curriculum",
-                  icon: BookOpen,
-                },
-                {
-                  href: "/student/journey",
-                  label: "Academic Journey",
-                  icon: ArrowRight,
-                },
-                {
-                  href: "/student/repository",
-                  label: "Repository",
-                  icon: Library,
-                },
-                {
-                  href: "/student/announcements",
-                  label: "Announcements",
-                  icon: Megaphone,
-                },
-                {
-                  href: "/student/profile",
-                  label: "Profile",
-                  icon: User,
-                },
-                {
-                  href: "/student/plagiarism",
-                  label: "STRIKE Check",
-                  icon: AlertCircle,
-                },
-              ].map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center gap-2 rounded-lg bg-(--earist-surface-gray) p-2.5 text-xs font-medium text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-light-red) hover:text-(--earist-primary)"
-                >
-                  <link.icon className="h-4 w-4 shrink-0" />
-                  {link.label}
-                </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {journeyQuery.isLoading ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
+          ) : journeyQuery.isError || !journey ? (
+            <SectionError
+              label="Unable to load your thesis milestones."
+              onRetry={() => journeyQuery.refetch()}
+              retrying={journeyQuery.isRefetching}
+              compact
+            />
+          ) : (
+            <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {JOURNEY_STEP_ORDER.map((key, index) => {
+                const step = journey.steps.find((s) => s.key === key);
+                const label = journeyLabelFor(key, step?.label);
+                const stateLabel = step
+                  ? milestoneStateLabel(step, journey.policy.strikeRequired)
+                  : "—";
+                return (
+                  <li
+                    key={key}
+                    className="rounded-lg border border-(--earist-border-gray) p-3"
+                  >
+                    <p className="text-[11px] font-semibold text-(--earist-body-text)">
+                      Step {index + 1}
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium break-words text-foreground">
+                      {label}
+                    </p>
+                    <span
+                      className={cn(
+                        "mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                        milestoneTone(step, journey.policy.strikeRequired),
+                      )}
+                    >
+                      {stateLabel}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* E. Defense Schedule — conditional */}
+      {active ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarClock
+                className="h-4 w-4 text-(--earist-secondary)"
+                aria-hidden="true"
+              />
+              Defense Schedule
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">
+              {active.label}
+            </p>
+            <dl className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-3">
+              <div className="min-w-0">
+                <dt className="text-(--earist-body-text)">Date</dt>
+                <dd className="mt-0.5 font-medium break-words text-foreground">
+                  {formatDefenseDate(active.session.defenseDate)}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-(--earist-body-text)">Time</dt>
+                <dd className="mt-0.5 font-medium break-words text-foreground">
+                  {formatDefenseTime(active.session.defenseTime)}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-(--earist-body-text)">Session Status</dt>
+                <dd className="mt-0.5 font-medium text-foreground">
+                  {sessionStatusLabel(active.session.sessionStatus)}
+                </dd>
+              </div>
+              <div className="min-w-0 sm:col-span-3">
+                <dt className="text-(--earist-body-text)">
+                  Venue / Meeting Details
+                </dt>
+                <dd className="mt-0.5 font-medium break-words text-foreground">
+                  <ScheduleVenue venueOrLink={active.session.venueOrLink} />
+                </dd>
+              </div>
+            </dl>
           </CardContent>
         </Card>
+      ) : null}
 
-        {/* Notifications — spans 2 cols */}
-        <Card className="lg:col-span-2">
+      {/* F. Recent updates */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            <div className="flex items-start justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Bell
+                  className="h-4 w-4 text-(--earist-secondary)"
+                  aria-hidden="true"
+                />
                 Recent Notifications
               </CardTitle>
               <Link
                 href="/student/notifications"
-                className="text-xs font-semibold text-(--earist-secondary) transition-colors hover:text-(--earist-primary)"
+                className="shrink-0 text-xs font-medium text-(--earist-secondary) hover:underline"
               >
                 View All
               </Link>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {[
-                {
-                  title: "Proposal Defense application under review",
-                  desc: "Your application is being reviewed by the GS Office.",
-                  time: "1 hour ago",
-                  unread: true,
-                },
-                {
-                  title: "Adviser assigned",
-                  desc: "Dr. Reyes has been assigned as your thesis adviser.",
-                  time: "3 hours ago",
-                  unread: true,
-                },
-                {
-                  title: "Title Defense RAP Report signed",
-                  desc: "All panelists have signed your Title Defense RAP Report.",
-                  time: "2 days ago",
-                  unread: true,
-                },
-                {
-                  title: "Curriculum checklist updated",
-                  desc: "New subjects added for the current semester.",
-                  time: "3 days ago",
-                  unread: false,
-                },
-                {
-                  title: "Welcome to Student Portal",
-                  desc: "Your account has been activated. Explore your dashboard.",
-                  time: "1 week ago",
-                  unread: false,
-                },
-              ].map((notif, i) => (
-                <div
-                  key={i}
-                  className={`flex items-start gap-3 rounded-lg p-2.5 ${
-                    notif.unread
-                      ? "bg-(--earist-surface-light-red)"
-                      : "bg-(--earist-surface-gray)"
-                  }`}
-                >
-                  <div
-                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-                      notif.unread ? "bg-(--earist-accent)" : "bg-transparent"
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-(--earist-primary)">
-                      {notif.title}
+            {notificationsQuery.isLoading ? (
+              <div className="space-y-2" aria-busy="true">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : notificationsQuery.isError ? (
+              <SectionError
+                label="Unable to load notifications."
+                onRetry={() => notificationsQuery.refetch()}
+                retrying={notificationsQuery.isFetching}
+                compact
+              />
+            ) : recentNotifications.length === 0 ? (
+              <p className="py-4 text-sm text-(--earist-body-text)">
+                No notifications to show.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {recentNotifications.map((n) => (
+                  <li
+                    key={n.id}
+                    className="rounded-lg border border-(--earist-border-gray) p-3"
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      {!n.isRead ? (
+                        <span
+                          className="mr-2 inline-block h-2 w-2 rounded-full bg-(--earist-primary) align-middle"
+                          aria-label="Unread"
+                        />
+                      ) : null}
+                      {n.title}
                     </p>
-                    <p className="truncate text-xs text-(--earist-body-text)">
-                      {notif.desc}
+                    {n.message ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-(--earist-body-text)">
+                        {n.message}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] text-(--earist-body-text)">
+                      {n.createdAt
+                        ? new Date(n.createdAt).toLocaleDateString()
+                        : ""}
                     </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-(--earist-body-text)">
-                    {notif.time}
-                  </span>
-                </div>
-              ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Megaphone
+                  className="h-4 w-4 text-(--earist-secondary)"
+                  aria-hidden="true"
+                />
+                Announcements
+              </CardTitle>
+              <Link
+                href="/student/announcements"
+                className="shrink-0 text-xs font-medium text-(--earist-secondary) hover:underline"
+              >
+                View All
+              </Link>
             </div>
+          </CardHeader>
+          <CardContent>
+            {memosQuery.isLoading ? (
+              <div className="space-y-2" aria-busy="true">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : memosQuery.isError ? (
+              <SectionError
+                label="Unable to load announcements."
+                onRetry={() => memosQuery.refetch()}
+                retrying={memosQuery.isFetching}
+                compact
+              />
+            ) : recentAnnouncements.length === 0 ? (
+              <p className="py-4 text-sm text-(--earist-body-text)">
+                No announcements to show.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {recentAnnouncements.map((memo) => (
+                  <li
+                    key={memo.id}
+                    className="rounded-lg border border-(--earist-border-gray) p-3"
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      {memo.title}
+                    </p>
+                    {memo.content ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-(--earist-body-text)">
+                        {memo.content}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] text-(--earist-body-text)">
+                      {memo.createdAt
+                        ? new Date(memo.createdAt).toLocaleDateString()
+                        : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+/* Venue / meeting details: only a verified whole HTTP(S) URL is clickable. */
+function ScheduleVenue({
+  venueOrLink,
+}: {
+  venueOrLink: string | null | undefined;
+}) {
+  const venue = resolveDefenseVenue(venueOrLink);
+  if (venue.kind === "none") {
+    return (
+      <span className="font-normal text-(--earist-body-text)">
+        Not provided
+      </span>
+    );
+  }
+  if (venue.kind === "physical") {
+    return <span className="font-normal">{venue.text}</span>;
+  }
+  return (
+    <a
+      href={venue.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 font-medium break-all text-(--earist-secondary) hover:underline focus-visible:ring-2 focus-visible:ring-(--earist-primary) focus-visible:outline-none"
+    >
+      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      Open Meeting Link
+    </a>
   );
 }

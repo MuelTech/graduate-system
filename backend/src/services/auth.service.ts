@@ -168,14 +168,16 @@ export class AuthService {
             user = student?.user || null;
             
             if (user && user.role !== 'APPLICANT') {
-                throw new AppError("This applicant has already been promoted. Please log in using the Student portal with your Student ID.", 403);
+                throw new AppError("This applicant has already been promoted. Please log in using the Student portal with your Student Number.", 403);
             }
         }
         else if (data.role === 'student') {
-            if (!data.studentId) throw new AppError("Student ID is required!", 400);
-            const dob = data.birthdate ? new Date(`${data.birthdate}T00:00:00.000Z`) : undefined;
+            const studentNumber = String(data.studentNumber ?? "").trim();
+            if (!studentNumber) throw new AppError("Student Number is required!", 400);
 
-            const student = await this.authRepository.findStudentByStudentNumber(data.studentId, dob);
+            // COR-6: Student login is Student Number + existing password only.
+            // Date of Birth is not an authentication credential.
+            const student = await this.authRepository.findStudentByStudentNumber(studentNumber);
             user = student?.user || null;
 
             if (user && user.role !== 'STUDENT') {

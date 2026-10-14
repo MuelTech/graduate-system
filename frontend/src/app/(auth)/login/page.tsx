@@ -31,8 +31,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<UserRole>("applicant");
   const [showPassword, setShowPassword] = useState(false);
   const [applicantId, setApplicantId] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [birthdate, setBirthdate] = useState("");
+  const [studentNumber, setStudentNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -47,8 +46,7 @@ export default function LoginPage() {
 
   const clearFields = () => {
     setApplicantId("");
-    setStudentId("");
-    setBirthdate("");
+    setStudentNumber("");
     setEmail("");
     setPassword("");
     setError("");
@@ -73,8 +71,7 @@ export default function LoginPage() {
       if (!applicantId) return setError("Applicant ID is required.");
       if (!password) return setError("Password is required.");
     } else if (role === "student") {
-      if (!studentId) return setError("Student ID is required.");
-      if (!birthdate) return setError("Date of Birth is required.");
+      if (!studentNumber) return setError("Student Number is required.");
       if (!password) return setError("Password is required.");
     } else {
       if (!email) return setError("Email address is required.");
@@ -87,15 +84,30 @@ export default function LoginPage() {
 
     try {
       // --- NextAuth Sign-In Logic ---
-      const res = await signIn("credentials", {
-        redirect: false,
-        role: role,
-        email: email,
-        password: password,
-        applicantId: applicantId,
-        studentId: studentId,
-        birthdate: birthdate,
-      });
+      // COR-6 FIX1: send only the credentials for the selected role.
+      let res: Awaited<ReturnType<typeof signIn>> | undefined;
+      if (role === "applicant") {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          applicantId,
+          password,
+        });
+      } else if (role === "student") {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          studentNumber,
+          password,
+        });
+      } else {
+        res = await signIn("credentials", {
+          redirect: false,
+          role,
+          email,
+          password,
+        });
+      }
 
       if (res?.error) {
         if (res.error === "CredentialsSignin") {
@@ -214,30 +226,16 @@ export default function LoginPage() {
                 <>
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
-                      Student ID
+                      Student Number
                     </label>
                     <Input
                       type="text"
-                      value={studentId}
+                      value={studentNumber}
                       onChange={(e) => {
-                        setStudentId(e.target.value);
+                        setStudentNumber(e.target.value);
                         if (error) setError("");
                       }}
-                      placeholder="Enter your Student ID"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-(--earist-secondary)">
-                      Date of Birth
-                    </label>
-                    <Input
-                      type="date"
-                      value={birthdate}
-                      onChange={(e) => {
-                        setBirthdate(e.target.value);
-                        if (error) setError("");
-                      }}
+                      placeholder="Enter your Student Number"
                       required
                     />
                   </div>

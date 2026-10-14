@@ -1,20 +1,71 @@
 import fs from "fs/promises";
-import path from "path";
 import { fileTypeFromFile } from "file-type";
 import { CorRepository } from "../repositories/cor.repository";
 import { AppError } from "../utils/AppError";
 import { EmailService } from "./email.service";
+import { CorExtractionService } from "../extraction/cor-extraction.service";
 
 const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
-const EXTENSION_MAP: Record<string, string> = {
-    "application/pdf": ".pdf",
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-};
+/** DL-3: human Admin verification is the only promotion authority. */
+const CANONICAL_VERIFICATION_METHOD = "ADMIN_MANUAL";
+/** Basic email shape check (mirrors the frontend login/registration convention). */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Collapses repeated whitespace and trims; never returns null. */
+function normalizeWhitespace(value: unknown): string {
+    return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+interface ManagedFile extends Express.Multer.File {
+  storageMeta?: {
+    storageKey: string;
+    storageProvider: string;
+    originalFilename: string;
+    verifiedMimeType: string | null;
+    sizeBytes: number;
+    checksum: string;
+    checksumAlgorithm: string;
+  };
+}
+
+/**
+ * COR-5 canonical v1 Admin verification inputs. Only the Admin-confirmed
+ * Student Number and an optional Registration Number are v1 authority.
+ * Academic Year, Semester, Curriculum Year, Year Level, residency and the COR
+ * extraction fields are NOT part of the v1 verification contract. The
+ * verification method is server-controlled (see CANONICAL_VERIFICATION_METHOD).
+ *
+ * COR-AUTH-1 (2026-10-05 authority correction): the Admin-confirmed COR
+ * identity/enrollment values are authoritative for `User.firstName`,
+ * `User.lastName`, `User.email`, and `Student.programId`.
+ */
+interface VerifyCorData {
+  studentNumber?: string;
+  registrationNumber?: string;
+  surname?: string;
+  firstName?: string;
+  middleNameOrInitial?: string;
+  email?: string;
+  programId?: string;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === "P2002";
+}
 
 export class CorService {
-    private corRepository = new CorRepository();
+    constructor(
+        private readonly corRepository = new CorRepository(),
+        private readonly corExtractionService = new CorExtractionService(),
+    ) {}
 
+    /**
+     * DL-2/DL-3: the file is already validated, checksummed and promoted to a
+     * managed storage key by the secure upload middleware. This method owns the
+     * Applicant upload gates and persists the managed metadata. It must NOT
+     * rename the promoted object: `storageKey` must keep resolving to the exact
+     * physical object.
+     */
     async uploadCor(userId: string, file: Express.Multer.File) {
         const student = await this.corRepository.findStudentByUserId(userId);
         if (!student) {
@@ -31,7 +82,17 @@ export class CorService {
             );
         }
 
-        // Prevent duplicate active uploads
+        // VERIFIED is terminal — an applicant cannot replace a verified COR.
+        const verifiedUpload = await this.corRepository.getVerifiedUploadByStudentId(student.id);
+        if (verifiedUpload) {
+            await this.safeDeleteFile(file.path);
+            throw new AppError(
+                "Your COR is already verified. A verified COR cannot be replaced.",
+                409,
+            );
+        }
+
+        // Prevent duplicate active uploads. A REJECTED upload does not block.
         const activeUpload = await this.corRepository.getActiveUploadByStudentId(student.id);
         if (activeUpload) {
             await this.safeDeleteFile(file.path);
@@ -41,80 +102,92 @@ export class CorService {
             );
         }
 
-        // Validate file contents via magic bytes — do not trust client MIME
-        let detectedMime: string | undefined;
-        try {
-            const detected = await fileTypeFromFile(file.path);
-            detectedMime = detected?.mime;
+        const managed = file as ManagedFile;
+        const meta = managed.storageMeta;
 
-            if (!detectedMime || !ALLOWED_MIME_TYPES.includes(detectedMime)) {
-                await this.safeDeleteFile(file.path);
-                throw new AppError(
-                    "Invalid file content. Only PDF, JPEG, and PNG files are allowed.",
-                    400,
-                );
+        // Prefer DL-2 verified MIME; fall back to byte detection for legacy
+        // direct-service calls. Never trust client MIME.
+        let detectedMime: string | undefined = meta?.verifiedMimeType ?? undefined;
+        if (!detectedMime) {
+            try {
+                detectedMime = (await fileTypeFromFile(file.path))?.mime;
+            } catch {
+                detectedMime = undefined;
             }
-
-            // Rename file to have the correct extension based on detected type
-            const correctExt = EXTENSION_MAP[detectedMime];
-            if (correctExt && !file.path.endsWith(correctExt)) {
-                const newPath = file.path + correctExt;
-                await fs.rename(file.path, newPath);
-                file.path = newPath;
-            }
-        } catch (error) {
-            if (error instanceof AppError) throw error;
+        }
+        if (!detectedMime || !ALLOWED_MIME_TYPES.includes(detectedMime)) {
             await this.safeDeleteFile(file.path);
             throw new AppError(
-                "Unable to validate file contents. Please try again.",
+                "Invalid file content. Only PDF, JPEG, and PNG files are allowed.",
                 400,
             );
         }
 
+        let upload: Awaited<ReturnType<CorRepository["createUploadWithAudit"]>>;
         try {
-            const uploadData = {
-                studentId: student.id,
-                filePath: file.path,
-                originalFilename: file.originalname,
-                detectedMimeType: detectedMime,
-                status: "PENDING" as const,
-                uploadedAt: new Date(),
-            };
-
-            const upload = await this.corRepository.createUpload(uploadData);
-
-            await this.corRepository.createAuditLog(
-                userId,
-                "COR_UPLOAD",
-                upload.id,
-                `COR uploaded by applicant: ${file.originalname}`,
-                undefined,
-                JSON.stringify({ originalFilename: file.originalname, detectedMimeType: detectedMime }),
+            upload = await this.corRepository.createUploadWithAudit(
+                {
+                    studentId: student.id,
+                    filePath: file.path,
+                    storageKey: meta?.storageKey ?? null,
+                    storageProvider: meta?.storageProvider ?? null,
+                    originalFilename: meta?.originalFilename ?? file.originalname,
+                    detectedMimeType: detectedMime,
+                    sizeBytes: meta?.sizeBytes ?? null,
+                    checksum: meta?.checksum ?? null,
+                    checksumAlgorithm: meta?.checksumAlgorithm ?? null,
+                    uploadedById: userId,
+                    status: "PENDING" as const,
+                    uploadedAt: new Date(),
+                },
+                {
+                    actorId: userId,
+                    actionType: "COR_UPLOAD",
+                    description: `COR uploaded by applicant: ${meta?.originalFilename ?? file.originalname}`,
+                    newValue: JSON.stringify({
+                        originalFilename: meta?.originalFilename ?? file.originalname,
+                        detectedMimeType: detectedMime,
+                    }),
+                },
             );
-
-            return upload;
         } catch (error) {
-            // Cleanup file if database insert fails
+            // Cleanup file if the atomic upload persistence rolls back
             await this.safeDeleteFile(file.path);
             throw error;
         }
+
+        // DL-4: best-effort native extraction AFTER the upload is committed.
+        // It is assistive only and must never roll back or delete a valid COR.
+        await this.corExtractionService.processUpload(upload.id).catch((error) => {
+            console.error(
+                "[COR extraction] processing failed:",
+                error instanceof Error ? error.message : error,
+            );
+        });
+
+        return upload;
     }
 
     async getMyUpload(userId: string) {
         const student = await this.corRepository.findStudentByUserId(userId);
         if (!student) throw new AppError("Student profile not found.", 404);
 
-        const upload = await this.corRepository.getUploadByStudentId(student.id);
+        const upload = await this.corRepository.getUploadByStudentIdLatest(student.id);
         if (!upload) return null;
 
-        const verifiedRecord = await this.corRepository.checkVerifiedRecord(upload.id);
-
+        const status = String(upload.status).toUpperCase();
         return {
             id: upload.id,
             originalFilename: upload.originalFilename,
             createdAt: upload.createdAt,
-            status: upload.status,
-            isVerified: !!verifiedRecord,
+            uploadedAt: upload.uploadedAt,
+            status,
+            isVerified: status === "VERIFIED",
+            rejectionReason: upload.rejectionReason ?? null,
+            reviewedAt: upload.reviewedAt ?? null,
+            reviewedBy: upload.reviewedBy
+                ? `${upload.reviewedBy.firstName} ${upload.reviewedBy.lastName}`
+                : null,
         };
     }
 
@@ -122,23 +195,79 @@ export class CorService {
         return this.corRepository.getPendingUploads();
     }
 
-    async verifyCor(corUploadId: string, adminId: string, data: {
-        registrationNumber?: string;
-        academicYear?: string;
-        semester?: string;
-        studentNumber?: string;
-    }) {
+    /**
+     * The Student's current PENDING submission id, or null when the latest
+     * submission is not PENDING. Used by legacy delegation so it can never
+     * resolve a stale historical PENDING row.
+     */
+    async findPendingUploadIdForStudent(studentId: string): Promise<string | null> {
+        const current = await this.corRepository.getCurrentUploadByStudentId(studentId);
+        if (!current || current.status !== "PENDING") return null;
+        return current.id;
+    }
+
+    /**
+     * DL-3 canonical verify + promote. Validates Admin-confirmed data, then
+     * delegates the entire authority transition to one repository transaction.
+     * Notification is non-authoritative and never rolls back a promotion.
+     */
+    async verifyCor(corUploadId: string, adminId: string, data: VerifyCorData) {
+        const studentNumber = String(data.studentNumber ?? "").trim();
+        if (!studentNumber) {
+            throw new AppError("Student Number is required.", 400);
+        }
+
+        // COR-5: Registration Number is optional. A blank/whitespace value is
+        // treated as absent (null) rather than an authoritative empty string.
+        const trimmedRegistrationNumber = String(
+            data.registrationNumber ?? "",
+        ).trim();
+        const registrationNumber = trimmedRegistrationNumber || undefined;
+
+        // COR-AUTH-1: the Admin-confirmed COR identity/enrollment values are the
+        // authority boundary. Reject when any required confirmed value is absent.
+        const surname = normalizeWhitespace(data.surname);
+        if (!surname) {
+            throw new AppError("Confirmed COR surname is required.", 400);
+        }
+        const givenName = normalizeWhitespace(data.firstName);
+        if (!givenName) {
+            throw new AppError("Confirmed COR first name is required.", 400);
+        }
+        const middleNameOrInitial = normalizeWhitespace(data.middleNameOrInitial);
+        const userFirstName = middleNameOrInitial
+            ? `${givenName} ${middleNameOrInitial}`
+            : givenName;
+        const userLastName = surname;
+
+        const email = String(data.email ?? "").trim();
+        if (!email) {
+            throw new AppError("Confirmed COR email is required.", 400);
+        }
+        if (!EMAIL_PATTERN.test(email)) {
+            throw new AppError("Confirmed COR email is invalid.", 400);
+        }
+
+        const programId = String(data.programId ?? "").trim();
+        if (!programId) {
+            throw new AppError("Confirmed Program is required.", 400);
+        }
+
         const upload = await this.corRepository.getUploadById(corUploadId);
         if (!upload) throw new AppError("COR Upload not found.", 404);
-
         if (upload.status !== "PENDING") {
             throw new AppError("Only pending COR uploads can be verified.", 400);
         }
 
         const student = upload.student;
-
-        if (student.admissionStatus === "ENROLLED") {
-            throw new AppError("Student is already enrolled.", 400);
+        if (student.admissionStatus !== "APPLICANT") {
+            throw new AppError("Only an APPLICANT can be promoted to Student.", 409);
+        }
+        if (student.user.role !== "APPLICANT") {
+            throw new AppError(
+                "Only an APPLICANT account can be promoted to Student.",
+                409,
+            );
         }
 
         const hasPassedExam = await this.corRepository.checkPassedExam(student.id);
@@ -146,54 +275,88 @@ export class CorService {
             throw new AppError("Applicant has not passed the entrance exam.", 403);
         }
 
-        const result = await this.corRepository.verifyAndPromote(
-            corUploadId,
-            student.id,
-            student.userId,
-            data,
-            adminId,
-        );
-
-        await this.corRepository.createAuditLog(
-            adminId,
-            "COR_VERIFY",
-            corUploadId,
-            `COR verified and student enrolled: ${data.studentNumber}`,
-            JSON.stringify({ status: "PENDING" }),
-            JSON.stringify({ status: "VERIFIED", studentNumber: data.studentNumber }),
-        );
-
-        // Dispatch credential email
-        await EmailService.sendTemplateEmail(student.user.email, "credential_dispatch", {
-            student_name: student.user.firstName,
-            student_number: data.studentNumber || "",
-            default_password: student.user.lastName.toUpperCase(),
-            portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
-        });
-
-        return result;
-    }
-
-    async rejectCor(corUploadId: string, adminId: string, reason: string) {
-        const upload = await this.corRepository.getUploadById(corUploadId);
-        if (!upload) throw new AppError("COR Upload not found.", 404);
-
-        if (upload.status === "VERIFIED") {
-            throw new AppError("Cannot reject an already verified COR.", 400);
+        let result: Awaited<ReturnType<CorRepository["verifyAndPromote"]>>;
+        try {
+            result = await this.corRepository.verifyAndPromote(
+                corUploadId,
+                student.id,
+                student.userId,
+                {
+                    studentNumber,
+                    registrationNumber,
+                    firstName: userFirstName,
+                    lastName: userLastName,
+                    email,
+                    programId,
+                    verificationMethod: CANONICAL_VERIFICATION_METHOD,
+                },
+                adminId,
+            );
+        } catch (error) {
+            if (isUniqueConstraintError(error)) {
+                const target = String(
+                    (error as { meta?: { target?: unknown } }).meta?.target ?? "",
+                ).toLowerCase();
+                if (target.includes("email")) {
+                    throw new AppError(
+                        "The confirmed email is already in use by another account.",
+                        409,
+                    );
+                }
+                throw new AppError(
+                    "Student Number is already in use. Choose a unique value.",
+                    409,
+                );
+            }
+            throw error;
         }
 
-        const result = await this.corRepository.updateUploadStatus(corUploadId, "REJECTED");
+        // Non-authoritative side effect. A mail failure must not undo promotion.
+        // COR-7: provide only safe variables — never a password or password-like
+        // value. The notification tells the Student to keep using their existing
+        // account password with the confirmed Student Number.
+        try {
+            // COR-AUTH-1: the Admin-confirmed COR email is now the authoritative
+            // User.email, so the handoff notification targets it — not the stale
+            // provisional Applicant email.
+            await EmailService.sendTemplateEmail(email, "credential_dispatch", {
+                student_name: userFirstName,
+                student_number: studentNumber,
+                portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+            });
+        } catch (emailError) {
+            console.error("[COR verify] credential email failed:", emailError);
+        }
 
-        await this.corRepository.createAuditLog(
+        return {
+            corRecord: result.corRecord,
+            studentNumber,
+            admissionStatus: "ENROLLED",
+        };
+    }
+
+    /**
+     * DL-3 canonical rejection. Only the exact PENDING upload may be rejected;
+     * the reason is persisted explicitly, history is retained, and the
+     * Applicant becomes eligible to resubmit.
+     */
+    async rejectCor(corUploadId: string, adminId: string, reason: string) {
+        const trimmed = String(reason ?? "").trim();
+        if (!trimmed) {
+            throw new AppError("Rejection reason is required.", 400);
+        }
+
+        const upload = await this.corRepository.getUploadById(corUploadId);
+        if (!upload) throw new AppError("COR Upload not found.", 404);
+        if (upload.status !== "PENDING") {
+            throw new AppError("Only pending COR uploads can be rejected.", 409);
+        }
+
+        return this.corRepository.rejectUpload(corUploadId, {
+            studentId: upload.studentId,
+            reason: trimmed,
             adminId,
-            "COR_REJECT",
-            corUploadId,
-            `COR rejected: ${reason}`,
-            JSON.stringify({ status: "PENDING" }),
-            JSON.stringify({ status: "REJECTED", reason }),
-        );
-
-        return result;
+        });
     }
 
     private async safeDeleteFile(filePath: string): Promise<void> {

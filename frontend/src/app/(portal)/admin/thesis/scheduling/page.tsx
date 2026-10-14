@@ -1,581 +1,646 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarClock, X, Send, Mail, Eye } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Suspense, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
-import { AdminThesisApplication as ThesisApplication, Panelist } from "@/types";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type {
+  ApprovedApplicationDto,
+  CommitteePolicyDto,
+  DefensePanelRole,
+  MissingRequirement,
+  PaginatedResponse,
+  Program,
+} from "@/types";
+import {
+  SchedulingQueuePanel,
+  type SchedulingQueueTab,
+} from "@/components/admin/defense-scheduling/scheduling-queue-panel";
+import { DefenseSummaryCard } from "@/components/admin/defense-scheduling/defense-summary-card";
+import { DefenseCommitteeBuilder } from "@/components/admin/defense-scheduling/defense-committee-builder";
+import { DefenseScheduleForm } from "@/components/admin/defense-scheduling/defense-schedule-form";
+import { DefenseReviewSummary } from "@/components/admin/defense-scheduling/defense-review-summary";
+import { EmailPreviewDialog } from "@/components/admin/defense-scheduling/email-preview-dialog";
+import { ScheduledDefenseDetail } from "@/components/admin/defense-scheduling/scheduled-defense-detail";
+import {
+  computeCommitteeReadiness,
+  defenseTypeFromStage,
+  defenseTypeLabel,
+  personToMember,
+  programTypeLabel,
+  stageFromDefenseType,
+  type CommitteeMember,
+  type PickerPerson,
+  type ScheduleFormState,
+} from "@/components/admin/defense-scheduling/types";
+import {
+  formatDefenseDate,
+  formatDefenseTime,
+} from "@/components/admin/defense-applications/labels";
+import { AlertCircle, CheckCircle2, X } from "lucide-react";
+
+const EMPTY_SCHEDULE: ScheduleFormState = {
+  defenseDate: "",
+  defenseTime: "",
+  venueOrLink: "",
+};
+
+type WorkflowSummary = {
+  NEEDS_REVIEW: number;
+  READY: number;
+  ACTIVE: number;
+  HISTORY: number;
+};
 
 export default function AdminSchedulingPage() {
-  const [selectedApp, setSelectedApp] = useState<string | null>(null);
-  const [defenseDate, setDefenseDate] = useState("");
-  const [defenseTime, setDefenseTime] = useState("");
-  const [teamsLink, setTeamsLink] = useState("");
-  const [chairmanId, setChairmanId] = useState("");
-  const [chairmanRole, setChairmanRole] = useState("CHAIRMAN");
-  const [leadPanelistId, setLeadPanelistId] = useState("");
-  const [leadPanelistRole, setLeadPanelistRole] = useState("PANELIST");
-  const [externalPanelistId, setExternalPanelistId] = useState("");
-  const [externalPanelistRole, setExternalPanelistRole] = useState("PANELIST");
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  return (
+    <Suspense fallback={<div className="p-4 text-sm">Loading scheduling…</div>}>
+      <AdminSchedulingPageInner />
+    </Suspense>
+  );
+}
 
+function AdminSchedulingPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: approvedDefenses = [] } = useQuery<ThesisApplication[]>({
-    queryKey: ["approvedDefenses"],
+  const thesisIdFromQuery = searchParams.get("thesisId");
+  const scheduleIdFromQuery = searchParams.get("scheduleId");
+  // §18: scheduleId takes precedence over thesisId for the exact session view.
+  const effectiveThesisId = scheduleIdFromQuery ? null : thesisIdFromQuery;
+  // The URL is the single source of truth for the selected scheduled session.
+  const selectedScheduleId = scheduleIdFromQuery;
+
+  const [activeTab, setActiveTab] = useState<SchedulingQueueTab>(
+    scheduleIdFromQuery ? "SCHEDULED" : "READY",
+  );
+  const [selectedApp, setSelectedApp] =
+    useState<ApprovedApplicationDto | null>(null);
+  const [readyPage, setReadyPage] = useState(1);
+  const [scheduledPage, setScheduledPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [defenseTypeFilter, setDefenseTypeFilter] = useState("ALL");
+  const [programId, setProgramId] = useState("ALL");
+  const [committee, setCommittee] = useState<CommitteeMember[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleFormState>(EMPTY_SCHEDULE);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [missingItems, setMissingItems] = useState<MissingRequirement[]>([]);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // §18: scheduleId in the URL activates the Scheduled view on mount, and all
+  // selection changes go through the URL (single source of truth) — no
+  // setState-in-effect synchronization.
+
+  const stageFilter =
+    defenseTypeFilter === "ALL"
+      ? undefined
+      : stageFromDefenseType(defenseTypeFilter);
+
+  // Dedicated graduate-program cache shape (avoids the shared `["programs"]`
+  // DTO collision that produced `programs.map is not a function`).
+  const { data: programsData } = useQuery<Program[]>({
+    queryKey: ["programs", "graduate"],
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/defense/approved");
-      return res || [];
+      const response = await apiClientRequest("/programs");
+      return Array.isArray(response?.graduatePrograms)
+        ? response.graduatePrograms
+        : [];
+    },
+  });
+  const programs = Array.isArray(programsData) ? programsData : [];
+
+  // Tab counts — authoritative workflow summary for the same filters.
+  const { data: summary } = useQuery<WorkflowSummary>({
+    queryKey: ["schedulingWorkflowSummary", search, stageFilter, programId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (stageFilter) params.set("stage", stageFilter);
+      if (programId !== "ALL") params.set("programId", programId);
+      const qs = params.toString();
+      return (await apiClientRequest(
+        `/thesis/defense/applications/summary${qs ? `?${qs}` : ""}`,
+      )) as WorkflowSummary;
     },
   });
 
-  const { data: dbPanelists = [] } = useQuery<Panelist[]>({
-    queryKey: ["availablePanelists"],
+  // READY tab — approved applications awaiting committee + schedule.
+  const readyQuery = useQuery<PaginatedResponse<ApprovedApplicationDto>>({
+    queryKey: [
+      "approvedDefenseApplications",
+      readyPage,
+      search,
+      defenseTypeFilter,
+      programId,
+    ],
+    enabled: activeTab === "READY",
     queryFn: async () => {
-      const res = await apiClientRequest("/thesis/adviser/available");
-      return res || [];
-    },
-  });
-
-  const scheduleMutation = useMutation({
-    mutationFn: async ({
-      thesisId,
-      payload,
-    }: {
-      thesisId: string;
-      payload: {
-        defenseDate: string;
-        defenseTime: string;
-        venueOrLink: string;
-        defenseType: string;
-        chairmanId: string;
-        chairmanRole: string;
-        leadPanelistId: string;
-        leadPanelistRole: string;
-        externalPanelistId: string;
-        externalPanelistRole: string;
-      };
-    }) => {
-      return await apiClientRequest(`/thesis/defense/${thesisId}/schedule`, {
-        method: "POST",
-        body: JSON.stringify(payload),
+      const params = new URLSearchParams({
+        page: String(readyPage),
+        pageSize: "10",
+        search,
+        defenseType: defenseTypeFilter,
+        programId,
       });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["approvedDefenses"] });
-      setShowConfirm(false);
-      setSelectedApp(null);
-      setChairmanId("");
-      setChairmanRole("CHAIRMAN");
-      setLeadPanelistId("");
-      setLeadPanelistRole("PANELIST");
-      setExternalPanelistId("");
-      setExternalPanelistRole("PANELIST");
-      setDefenseDate("");
-      setDefenseTime("");
-      setTeamsLink("");
-      alert("Defense scheduled successfully!");
-    },
-    onError: (error: Error) => {
-      console.error("Scheduling failed: " + error.message);
+      return (await apiClientRequest(
+        `/thesis/defense/approved-applications?${params.toString()}`,
+      )) as PaginatedResponse<ApprovedApplicationDto>;
     },
   });
 
-  const approvedApplications = approvedDefenses.map((app) => ({
-    id: app.id,
-    studentName: `${app.student.user.firstName} ${app.student.user.lastName}`,
-    studentNumber: app.student.user.email,
-    program: app.student.programId || "N/A",
-    stage:
-      app.stage === "TITLE"
-        ? "title_defense"
-        : app.stage === "PROPOSAL"
-          ? "proposal_defense"
-          : "final_defense",
-    dateApproved: new Date(app.createdAt).toLocaleDateString(),
-    proposedTitles:
-      app.thesisTitles?.filter((t) => t.isSelected).map((t) => t.titleText) ||
-      null,
-  }));
+  // SCHEDULED tab — reuse the Defense Applications ACTIVE bucket
+  // (current-stage, non-cancelled session: SCHEDULED / RESCHEDULED /
+  // IN_PROGRESS / AWAITING_CONCLUSION). No second scheduled-list endpoint.
+  const scheduledQuery = useQuery<PaginatedResponse<ApprovedApplicationDto>>({
+    queryKey: [
+      "scheduledDefenseApplications",
+      scheduledPage,
+      search,
+      defenseTypeFilter,
+      programId,
+    ],
+    enabled: activeTab === "SCHEDULED",
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(scheduledPage),
+        pageSize: "10",
+        bucket: "ACTIVE",
+        search,
+      });
+      if (stageFilter) params.set("stage", stageFilter);
+      if (programId !== "ALL") params.set("programId", programId);
+      return (await apiClientRequest(
+        `/thesis/defense/applications?${params.toString()}`,
+      )) as PaginatedResponse<ApprovedApplicationDto>;
+    },
+  });
 
-  const availablePanelists = dbPanelists.map((p) => ({
-    id: p.id,
-    name: `${p.firstName} ${p.lastName}`,
-    type: "internal", // Mocked type since we only have one type in db right now
-    specialization: p.department || "Faculty",
-  }));
+  // Deep-link: /admin/thesis/scheduling?thesisId=... selects the approved
+  // application once the list loads (derived during render — no effect).
+  const deepLinkMatch = useMemo<ApprovedApplicationDto | null>(() => {
+    if (!effectiveThesisId || !readyQuery.data?.data?.length) return null;
+    return readyQuery.data.data.find((a) => a.id === effectiveThesisId) ?? null;
+  }, [effectiveThesisId, readyQuery.data]);
 
-  const selectedAppData = approvedApplications.find(
-    (a) => a.id === selectedApp,
+  // §18: if the deep-linked approved application is not on the current Ready
+  // page (10/page), resolve it authoritatively by id via the existing ADMIN
+  // read model so the exact application is still selected. Only READY records
+  // are accepted here (never opens the editable flow for an active session).
+  const deepLinkFallback = useQuery<ApprovedApplicationDto | null>({
+    queryKey: ["schedulingDeepLinkApplication", effectiveThesisId],
+    enabled:
+      !!effectiveThesisId && readyQuery.isSuccess && !deepLinkMatch,
+    queryFn: async () =>
+      (await apiClientRequest(
+        `/thesis/defense/applications/${effectiveThesisId}`,
+      )) as ApprovedApplicationDto,
+    retry: false,
+  });
+
+  const deepLinkApp =
+    deepLinkFallback.data && deepLinkFallback.data.workflowBucket === "READY"
+      ? deepLinkFallback.data
+      : null;
+
+  const selected = selectedApp ?? deepLinkMatch ?? deepLinkApp;
+
+  const defenseType = selected
+    ? defenseTypeFromStage(selected.stage)
+    : "TITLE_DEFENSE";
+  const programType = selected?.student.program?.programType ?? "";
+
+  const {
+    data: policy,
+    isLoading: policyLoading,
+    isError: policyError,
+  } = useQuery<CommitteePolicyDto>({
+    queryKey: ["committeePolicy", defenseType, programType],
+    enabled: activeTab === "READY" && !!selected,
+    queryFn: async () => {
+      const params = new URLSearchParams({ defenseType });
+      if (programType) params.set("programType", programType);
+      return (await apiClientRequest(
+        `/thesis/committee-policy?${params.toString()}`,
+      )) as CommitteePolicyDto;
+    },
+  });
+
+  // Proposal/Final: the active adviser is derived (never hand-picked here).
+  const adviser = useMemo<CommitteeMember | null>(() => {
+    if (!selected || selected.stage === "TITLE") return null;
+    const assignment = selected.assignment?.adviser;
+    if (!assignment) return null;
+    return {
+      userId: assignment.id,
+      role: "ADVISER",
+      name: `${assignment.firstName} ${assignment.lastName}`,
+      email: "",
+      affiliation: "Active thesis adviser",
+      isDerivedAdviser: true,
+    };
+  }, [selected]);
+
+  const readiness = useMemo(
+    () =>
+      policy ? computeCommitteeReadiness(policy, committee, adviser) : null,
+    [policy, committee, adviser],
   );
 
-  const canSchedule =
-    chairmanId && leadPanelistId && externalPanelistId && defenseDate && defenseTime && teamsLink;
+  const scheduleErrors = useMemo(() => {
+    const errors: { date?: string; time?: string; venue?: string } = {};
+    if (!schedule.defenseDate) errors.date = "Defense date is required.";
+    if (!schedule.defenseTime) errors.time = "Defense time is required.";
+    const value = schedule.venueOrLink.trim();
+    if (!value) {
+      errors.venue = "Enter a venue or meeting link.";
+    } else if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        if (!/^https?:$/.test(url.protocol)) {
+          errors.venue = "Enter a valid http/https meeting link.";
+        }
+      } catch {
+        errors.venue = "Enter a valid http/https meeting link.";
+      }
+    }
+    return errors;
+  }, [schedule]);
 
-  const getStageLabel = (stage: string) => {
-    switch (stage) {
-      case "title_defense":
-        return "Title Defense";
-      case "proposal_defense":
-        return "Proposal Defense";
-      case "final_defense":
-        return "Final Defense";
-      default:
-        return stage;
+  const scheduleOk =
+    !scheduleErrors.date && !scheduleErrors.time && !scheduleErrors.venue;
+  const isValid = !!selected && !!readiness && readiness.complete && scheduleOk;
+
+  const assignments = useMemo(() => {
+    const manual = committee.map((c) => ({ userId: c.userId, role: c.role }));
+    return adviser
+      ? [...manual, { userId: adviser.userId, role: "ADVISER" as const }]
+      : manual;
+  }, [committee, adviser]);
+
+  const scheduleMutation = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error("No application selected.");
+      return (await apiClientRequest(`/thesis/defense/${selected.id}/schedule`, {
+        method: "POST",
+        body: JSON.stringify({
+          defenseDate: schedule.defenseDate,
+          defenseTime: schedule.defenseTime,
+          venueOrLink: schedule.venueOrLink.trim(),
+          defenseType: defenseTypeFromStage(selected.stage),
+          assignments,
+        }),
+      })) as {
+        message?: string;
+        result?: { id?: string; defenseDate?: string; defenseTime?: string };
+      };
+    },
+    onSuccess: (response) => {
+      // §13: keep the Admin in the Scheduling workspace — refresh both lists,
+      // switch to Scheduled, and select the exact newly created session.
+      queryClient.invalidateQueries({
+        queryKey: ["approvedDefenseApplications"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["scheduledDefenseApplications"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["schedulingWorkflowSummary"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["defenseApplications"] });
+      queryClient.invalidateQueries({ queryKey: ["defenseWorkflowSummary"] });
+
+      setShowConfirm(false);
+      setSelectedApp(null);
+      setCommittee([]);
+      setSchedule(EMPTY_SCHEDULE);
+      setMissingItems([]);
+      setActiveTab("SCHEDULED");
+
+      const created = response?.result;
+      if (created?.id) {
+        router.replace(`/admin/thesis/scheduling?scheduleId=${created.id}`);
+      }
+
+      const when =
+        created?.defenseDate && created?.defenseTime
+          ? `Defense scheduled for ${formatDefenseDate(created.defenseDate)} at ${formatDefenseTime(created.defenseTime)}.`
+          : "Defense scheduled.";
+      setFeedback({
+        type: "success",
+        message: `${when} The session is SCHEDULED — not passed or concluded — and participants have been notified.`,
+      });
+    },
+    onError: (error: Error & { missing?: MissingRequirement[] }) => {
+      const missing = error.missing ?? [];
+      setMissingItems(missing);
+      setShowConfirm(false);
+      setFeedback({
+        type: "error",
+        message: missing.length
+          ? "The defense could not be scheduled. No changes were saved."
+          : error.message ||
+            "The defense could not be scheduled. No changes were saved.",
+      });
+    },
+  });
+
+  const handleSelectReady = (app: ApprovedApplicationDto) => {
+    setSelectedApp(app);
+    setCommittee([]);
+    setSchedule(EMPTY_SCHEDULE);
+    setMissingItems([]);
+    setFeedback(null);
+  };
+
+  const handleSelectScheduled = (app: ApprovedApplicationDto) => {
+    const scheduleId = app.currentSchedule?.id ?? null;
+    if (!scheduleId) return;
+    setFeedback(null);
+    router.replace(`/admin/thesis/scheduling?scheduleId=${scheduleId}`);
+  };
+
+  const clearScheduledSelection = () => {
+    router.replace("/admin/thesis/scheduling");
+  };
+
+  const handleTabChange = (tab: SchedulingQueueTab) => {
+    setActiveTab(tab);
+    setFeedback(null);
+    if (tab === "READY" && scheduleIdFromQuery) {
+      router.replace("/admin/thesis/scheduling");
     }
   };
 
+  const handleAssignRole = (role: DefensePanelRole, people: PickerPerson[]) => {
+    setCommittee((prev) => [
+      ...prev.filter((m) => m.role !== role),
+      ...people.map((person) => personToMember(person, role)),
+    ]);
+    setMissingItems([]);
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
+    <div className="space-y-6">
+      <PageHeader
+        title="Scheduling &amp; Panels"
+        description="Assign a defense committee and schedule the session for approved applications, then inspect confirmed schedules. Approval is not a defense result."
+      />
+
+      {feedback && (
+        <div
+          role="status"
+          className={cn(
+            "flex items-start justify-between gap-3 rounded-lg border px-4 py-3",
+            feedback.type === "success"
+              ? "border-(--earist-success)/30 bg-(--earist-surface-gray)"
+              : "border-destructive/30 bg-destructive/5",
+          )}
         >
-          Panel Assignment & Defense Scheduling
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Assign panelists and schedule defense sessions
-        </p>
-      </div>
+          <p
+            className={cn(
+              "flex items-start gap-2 text-sm",
+              feedback.type === "success"
+                ? "text-(--earist-success)"
+                : "text-destructive",
+            )}
+          >
+            {feedback.type === "success" ? (
+              <CheckCircle2
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-hidden="true"
+              />
+            ) : (
+              <AlertCircle
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-hidden="true"
+              />
+            )}
+            {feedback.message}
+          </p>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Dismiss message"
+            className="shrink-0"
+            onClick={() => setFeedback(null)}
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+
+      {missingItems.length > 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <p className="text-sm font-semibold text-destructive">
+            Requirements not met
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-destructive">
+            {missingItems.map((m) => (
+              <li key={m.code} className="break-words">
+                {m.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Approved Applications List */}
-        <div className="space-y-2 lg:col-span-1">
-          <p className="text-xs font-semibold text-(--earist-secondary)">
-            Approved Applications ({approvedApplications.length})
-          </p>
-          {approvedApplications.map((app) => (
-            <button
-              key={app.id}
-              onClick={() => {
-                setSelectedApp(app.id);
-                setChairmanId("");
-                setLeadPanelistId("");
-                setExternalPanelistId("");
-                setDefenseDate("");
-                setDefenseTime("");
-                setTeamsLink("");
-              }}
-              className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                selectedApp === app.id
-                  ? "border-(--earist-primary) bg-(--earist-surface-light-red)"
-                  : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {app.studentName}
-                </p>
-                <Badge
-                  className={
-                    app.stage === "title_defense"
-                      ? "bg-blue-100 text-blue-700"
-                      : app.stage === "proposal_defense"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-green-100 text-green-700"
-                  }
-                >
-                  {getStageLabel(app.stage)}
-                </Badge>
-              </div>
-              <p className="text-xs text-(--earist-body-text)">
-                {app.studentNumber} &middot; {app.program}
-              </p>
-              <p className="text-xs text-(--earist-body-text)">
-                Approved: {app.dateApproved}
-              </p>
-            </button>
-          ))}
+        <div className="lg:col-span-1">
+          <SchedulingQueuePanel
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            readyCount={summary?.READY ?? 0}
+            scheduledCount={summary?.ACTIVE ?? 0}
+            search={search}
+            defenseType={defenseTypeFilter}
+            programId={programId}
+            programs={programs}
+            onSearchChange={(v) => {
+              setSearch(v);
+              setReadyPage(1);
+              setScheduledPage(1);
+            }}
+            onDefenseTypeChange={(v) => {
+              setDefenseTypeFilter(v);
+              setReadyPage(1);
+              setScheduledPage(1);
+            }}
+            onProgramChange={(v) => {
+              setProgramId(v);
+              setReadyPage(1);
+              setScheduledPage(1);
+            }}
+            ready={{
+              data: readyQuery.data,
+              isLoading: readyQuery.isLoading,
+              isError: readyQuery.isError,
+              page: readyPage,
+              onPageChange: setReadyPage,
+              selectedId: selected?.id ?? effectiveThesisId,
+              onSelect: handleSelectReady,
+            }}
+            scheduled={{
+              data: scheduledQuery.data,
+              isLoading: scheduledQuery.isLoading,
+              isError: scheduledQuery.isError,
+              page: scheduledPage,
+              onPageChange: setScheduledPage,
+              selectedScheduleId,
+              onSelect: handleSelectScheduled,
+            }}
+          />
         </div>
 
-        {/* Scheduling Form */}
-        {selectedAppData ? (
-          <div className="space-y-4 lg:col-span-2">
-            {/* Student Info */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  {getStageLabel(selectedAppData.stage)} —{" "}
-                  {selectedAppData.studentName}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                  <p className="text-sm font-medium text-(--earist-primary)">
-                    {selectedAppData.studentName}
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    {selectedAppData.studentNumber} &middot;{" "}
-                    {selectedAppData.program}
-                  </p>
-                  {selectedAppData.proposedTitles && (
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold text-(--earist-secondary)">
-                        Proposed Titles:
-                      </p>
-                      {selectedAppData.proposedTitles.map((title, i) => (
-                        <p
-                          key={i}
-                          className="text-xs text-(--earist-body-text)"
-                        >
-                          {i + 1}. {title}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+        <div className="space-y-4 lg:col-span-2">
+          {activeTab === "READY" ? (
+            <>
+              {!selected && (
+                <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center text-sm text-(--earist-body-text)">
+                  Select an approved application to assign the committee and
+                  schedule the defense.
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Panel Assignment */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  Assign Panelists
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Chairman</label>
-                    <div className="flex gap-2">
-                      <select value={chairmanId} onChange={(e) => setChairmanId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select Chairman...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={chairmanRole} onChange={(e) => setChairmanRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">Lead Panelist</label>
-                    <div className="flex gap-2">
-                      <select value={leadPanelistId} onChange={(e) => setLeadPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select Lead Panelist...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={leadPanelistRole} onChange={(e) => setLeadPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">External Panelist</label>
-                    <div className="flex gap-2">
-                      <select value={externalPanelistId} onChange={(e) => setExternalPanelistId(e.target.value)} className="w-2/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none">
-                        <option value="">Select External Panelist...</option>
-                        {availablePanelists.map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialization}</option>)}
-                      </select>
-                      <select value={externalPanelistRole} onChange={(e) => setExternalPanelistRole(e.target.value)} className="w-1/3 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none bg-muted/50">
-                        <option value="CHAIRMAN">Chairman</option>
-                        <option value="PANELIST">Panelist</option>
-                        <option value="ADVISER">Adviser</option>
-                        <option value="RAPPORTEUR">Rapporteur</option>
-                        <option value="FACILITATOR">Facilitator</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Defense Schedule */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-                  Defense Schedule
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={defenseDate}
-                      onChange={(e) => setDefenseDate(e.target.value)}
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={defenseTime}
-                      onChange={(e) => setDefenseTime(e.target.value)}
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                      MS Teams Link
-                    </label>
-                    <input
-                      type="url"
-                      value={teamsLink}
-                      onChange={(e) => setTeamsLink(e.target.value)}
-                      placeholder="https://teams.microsoft.com/l/meetup-join/..."
-                      className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm focus:border-(--earist-primary) focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Email Preview Button */}
-            <Button
-              variant="outline"
-              onClick={() => setShowEmailPreview(true)}
-              className="w-full"
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Preview Email Notification
-            </Button>
-
-            {/* Schedule Button */}
-            <Button
-              disabled={!canSchedule}
-              onClick={() => setShowConfirm(true)}
-              className={`w-full py-6 text-base font-semibold ${
-                canSchedule
-                  ? "bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400"
-              }`}
-            >
-              <CalendarClock className="mr-2 h-5 w-5" />
-              Schedule Defense & Notify
-            </Button>
-            {!canSchedule && (
-              <p className="text-center text-xs text-(--earist-body-text)">
-                Select all 3 panelist roles and fill in date, time, and Teams
-                link.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="py-12">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-                    <CalendarClock className="h-8 w-8 text-(--earist-body-text)/40" />
-                  </div>
-                  <h3 className="mb-2 text-lg font-bold text-(--earist-primary)">
-                    Select an Application
-                  </h3>
-                  <p className="text-sm text-(--earist-body-text)">
-                    Click an approved application to assign panelists and
-                    schedule the defense.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              )}
+              {selected && (
+                <>
+                  <DefenseSummaryCard application={selected} />
+                  <DefenseCommitteeBuilder
+                    key={selected.id}
+                    policy={policy}
+                    policyLoading={policyLoading}
+                    policyError={policyError}
+                    showAdviser={selected.stage !== "TITLE"}
+                    defenseStageLabel={defenseTypeLabel(selected.stage)}
+                    programTypeLabel={programTypeLabel(programType)}
+                    members={committee}
+                    adviser={adviser}
+                    onAssignRole={handleAssignRole}
+                  />
+                  <DefenseScheduleForm
+                    value={schedule}
+                    onChange={setSchedule}
+                    errors={scheduleErrors}
+                  />
+                  <DefenseReviewSummary
+                    readiness={readiness}
+                    showAdviser={selected.stage !== "TITLE"}
+                    schedule={schedule}
+                    isValid={isValid}
+                    isSubmitting={scheduleMutation.isPending}
+                    onPreviewEmail={() => setShowEmailPreview(true)}
+                    onSubmit={() => setShowConfirm(true)}
+                  />
+                </>
+              )}
+            </>
+          ) : !selectedScheduleId ? (
+            <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-12 text-center text-sm text-(--earist-body-text)">
+              Select a scheduled defense to view its schedule and confirmed
+              committee.
+            </div>
+          ) : (
+            <ScheduledDefenseDetail
+              scheduleId={selectedScheduleId}
+              onBack={clearScheduledSelection}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Email Preview Modal */}
-      {showEmailPreview && selectedAppData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Email Preview
-              </h3>
-              <button
-                onClick={() => setShowEmailPreview(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {/* Recipients */}
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-xs font-semibold text-(--earist-secondary)">
-                  Recipients
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  <Badge variant="outline" className="text-xs">
-                    <Mail className="mr-1 h-3 w-3" />
-                    {selectedAppData.studentName}
-                  </Badge>
-                  {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id) => {
-                    const p = availablePanelists.find((ap) => ap.id === id);
-                    return p ? (
-                      <Badge key={id} variant="outline" className="text-xs">
-                        <Mail className="mr-1 h-3 w-3" />
-                        {p.name}
-                      </Badge>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-
-              {/* Email Content */}
-              <div className="rounded-lg border border-(--earist-border-gray) p-4">
-                <p className="mb-2 text-sm font-semibold text-(--earist-primary)">
-                  Subject: Defense Schedule —{" "}
-                  {getStageLabel(selectedAppData.stage)}
-                </p>
-                <div className="space-y-2 text-sm text-(--earist-body-text)">
-                  <p>Dear [Recipient],</p>
-                  <p>
-                    This is to inform you that a{" "}
-                    <span className="font-semibold">
-                      {getStageLabel(selectedAppData.stage)}
-                    </span>{" "}
-                    has been scheduled.
-                  </p>
-                  <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                    <p className="font-semibold text-(--earist-primary)">
-                      Defense Details
-                    </p>
-                    <p>Researcher: {selectedAppData.studentName}</p>
-                    <p>Program: {selectedAppData.program}</p>
-                    <p>
-                      Date: {defenseDate || "[Date]"} at{" "}
-                      {defenseTime || "[Time]"}
-                    </p>
-                    <p>MS Teams: {teamsLink || "[Link]"}</p>
-                  </div>
-                  {selectedAppData.proposedTitles && (
-                    <div>
-                      <p className="font-semibold text-(--earist-primary)">
-                        Proposed Titles:
-                      </p>
-                      {selectedAppData.proposedTitles.map((title, i) => (
-                        <p key={i}>
-                          {i + 1}. {title}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-(--earist-primary)">
-                      Panel Members:
-                    </p>
-                    {[chairmanId, leadPanelistId, externalPanelistId].filter(Boolean).map((id, i) => {
-                      const roles = ["Chairman", "Lead Panelist", "External Panelist"];
-                      const p = availablePanelists.find((ap) => ap.id === id);
-                      return p ? (
-                        <p key={id}>
-                          {i + 1}. {p.name} - {roles[i]} ({p.specialization})
-                        </p>
-                      ) : null;
-                    })}
-                  </div>
-                  <p>Please review the materials before the defense date.</p>
-                  <p>Thank you.</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowEmailPreview(false)}
-                className="w-full"
-              >
-                Close Preview
-              </Button>
-            </div>
-          </div>
-        </div>
+      {selected && activeTab === "READY" && (
+        <EmailPreviewDialog
+          open={showEmailPreview}
+          onOpenChange={setShowEmailPreview}
+          application={selected}
+          committee={committee}
+          adviser={adviser}
+          schedule={schedule}
+        />
       )}
 
-      {/* Confirm Modal */}
-      {showConfirm && selectedAppData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Confirm Scheduling
-              </h3>
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="rounded-full p-1 text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="mb-4 space-y-3">
-              <div className="rounded-lg bg-(--earist-surface-gray) p-3">
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  {getStageLabel(selectedAppData.stage)} —{" "}
-                  {selectedAppData.studentName}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  {defenseDate} at {defenseTime}
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  3 panelist(s) assigned
-                </p>
+      {/* Confirmation — scheduling is a consequential mutation. */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule this defense?</DialogTitle>
+            <DialogDescription>
+              This creates the scheduled defense session and notifies the
+              student and committee. It does not mark the defense as passed or
+              concluded.
+            </DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <dl className="space-y-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-sm">
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-xs font-medium text-(--earist-body-text)">
+                  Student
+                </dt>
+                <dd className="text-right text-sm text-(--earist-secondary)">
+                  {selected.student.user.firstName}{" "}
+                  {selected.student.user.lastName}
+                </dd>
               </div>
-              <p className="text-sm text-(--earist-body-text)">
-                Email notifications will be sent to the researcher and all
-                assigned panelists with the defense schedule and MS Teams link.
-              </p>
-              <p className="text-xs font-medium text-red-600">
-                This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowConfirm(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!selectedApp) return;
-                  scheduleMutation.mutate({
-                    thesisId: selectedApp,
-                    payload: {
-                      defenseDate,
-                      defenseTime,
-                      venueOrLink: teamsLink,
-                      defenseType: selectedAppData.stage,
-                      chairmanId,
-                      chairmanRole,
-                      leadPanelistId,
-                      leadPanelistRole,
-                      externalPanelistId,
-                      externalPanelistRole,
-                    },
-                  });
-                }}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {scheduleMutation.isPending
-                  ? "Scheduling..."
-                  : "Schedule & Notify"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-xs font-medium text-(--earist-body-text)">
+                  Defense Stage
+                </dt>
+                <dd className="text-right text-sm text-(--earist-secondary)">
+                  {defenseTypeLabel(selected.stage)}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-xs font-medium text-(--earist-body-text)">
+                  Schedule
+                </dt>
+                <dd className="text-right text-sm text-(--earist-secondary)">
+                  {schedule.defenseDate || "—"} {schedule.defenseTime || ""}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-xs font-medium text-(--earist-body-text)">
+                  Committee
+                </dt>
+                <dd className="text-right text-sm text-(--earist-secondary)">
+                  {readiness
+                    ? `${readiness.totalCount} / ${readiness.sessionTotal} participants`
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirm(false)}
+              disabled={scheduleMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => scheduleMutation.mutate()}
+              disabled={scheduleMutation.isPending}
+              className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+            >
+              {scheduleMutation.isPending ? "Scheduling…" : "Schedule Defense"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,12 +9,26 @@ export interface RequestAdviserInput {
   reason?: string;
 }
 
+export type AdviserResponseDecision = "CONFORMED" | "DECLINED";
+
+export interface AdviserResponseInput {
+  decision: AdviserResponseDecision;
+  remarks?: string;
+}
+
+export type DeanDecision = "APPROVED" | "REJECTED";
+
+export interface DeanResponseInput {
+  decision: DeanDecision;
+  remarks?: string;
+}
+
 export interface AssignAdviserInput {
   requestId: string;
 }
 
 export interface UpdateDefenseStatusInput {
-  status: 'SCHEDULED' | 'PASSED' | 'FAILED' | 'REVISION';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
 export interface ScheduleDefenseInput {

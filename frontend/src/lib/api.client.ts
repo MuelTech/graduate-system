@@ -1,4 +1,17 @@
 import { getSession, signOut } from "next-auth/react";
+import type { MissingRequirement } from "@/types";
+
+export class ApiError extends Error {
+  missing?: MissingRequirement[];
+  statusCode?: number;
+
+  constructor(message: string, statusCode?: number, missing?: MissingRequirement[]) {
+    super(message);
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+    this.missing = missing;
+  }
+}
 
 export const apiClientRequest = async (
   url: string,
@@ -8,7 +21,12 @@ export const apiClientRequest = async (
   const token = session?.user?.accessToken;
 
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  // FormData must let the browser set multipart boundary — do not force JSON.
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (!isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -31,7 +49,11 @@ export const apiClientRequest = async (
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Something went wrong");
+    throw new ApiError(
+      errorData.error || "Something went wrong",
+      response.status,
+      errorData.missing,
+    );
   }
 
   return response.json();

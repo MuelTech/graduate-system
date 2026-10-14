@@ -9,161 +9,114 @@ import {
   Library,
   Search,
   Filter,
-  Edit,
   CheckCircle2,
   Globe,
   GlobeLock,
-  X,
-  Save,
   FileText,
   Calendar,
   User,
   BookOpen,
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
-import { BackendEntry, Entry } from "@/types";
+import type { RepositoryAdminEntry } from "@/types";
 
+/**
+ * DL-10: Research Repository publication management.
+ *
+ * Admin publishes/unpublishes *metadata* derived from private Databank
+ * archives. Admin does not edit the official title, upload a publication file,
+ * or delete the private archive; the archival manuscript / download policy is
+ * an unresolved institutional decision.
+ */
 export default function AdminRepositoryPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [programFilter, setProgramFilter] = useState("all");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editAbstract, setEditAbstract] = useState("");
-  const [editKeywords, setEditKeywords] = useState("");
-
-  // 1. Fetch live databank entries from backend
-  const { data: databankData, isLoading } = useQuery({
-    queryKey: ["admin-databank"],
-    queryFn: async () => {
-      const res = await apiClientRequest("/databank");
-      return res || [];
-    },
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["admin-repository-entries"],
+    queryFn: async () =>
+      (await apiClientRequest(
+        "/repository/admin/entries",
+      )) as RepositoryAdminEntry[],
   });
 
-  // Map backend structure to our UI state
-  const entries: Entry[] = (databankData || []).map((d: BackendEntry) => ({
-    id: d.id,
-    title: d.title,
-    author: d.thesis?.student?.user
-      ? `${d.thesis.student.user.firstName} ${d.thesis.student.user.lastName}`
-      : "Unknown",
-    studentNumber: d.thesis?.student?.studentId || "Unknown",
-    program: d.thesis?.student?.program?.programName || "Unknown",
-    abstract: d.abstract || "No abstract provided.",
-    keywords: d.keywords
-      ? d.keywords.split(",").map((k: string) => k.trim())
-      : [],
-    datePublished: d.publishedAt
-      ? new Date(d.publishedAt).toLocaleDateString()
-      : null,
-    status: d.isPublic ? "published" : "pending",
-    downloads: 0, // Future analytics integration
-    views: 0, // Future analytics integration
-  }));
+  const entries: RepositoryAdminEntry[] = data ?? [];
 
-  // 2. Mutations for actions
   const publishMutation = useMutation({
-    mutationFn: async (id: string) =>
-      apiClientRequest(`/databank/${id}/publish`, { method: "PUT" }),
+    mutationFn: (id: string) =>
+      apiClientRequest(`/repository/admin/entries/${id}/publish`, {
+        method: "PUT",
+      }),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin-databank"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-repository-entries"] }),
+    onError: (error: Error) =>
+      alert(error.message || "Publication could not be completed."),
   });
 
   const unpublishMutation = useMutation({
-    mutationFn: async (id: string) =>
-      apiClientRequest(`/databank/${id}/unpublish`, { method: "PUT" }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin-databank"] }),
-  });
-
-  const editMutation = useMutation({
-    mutationFn: async (payload: {
-      id: string;
-      title: string;
-      abstract: string;
-      keywords: string;
-    }) =>
-      apiClientRequest(`/databank/${payload.id}`, {
+    mutationFn: (id: string) =>
+      apiClientRequest(`/repository/admin/entries/${id}/unpublish`, {
         method: "PUT",
-        body: JSON.stringify({
-          title: payload.title,
-          abstract: payload.abstract,
-          keywords: payload.keywords,
-        }),
       }),
-    onSuccess: () => {
-      setShowEditModal(false);
-      queryClient.invalidateQueries({ queryKey: ["admin-databank"] });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-repository-entries"] }),
+    onError: (error: Error) =>
+      alert(error.message || "Unpublish could not be completed."),
   });
 
-  const filteredEntries = entries.filter((entry: Entry) => {
+  const filteredEntries = entries.filter((entry) => {
+    const query = searchQuery.toLowerCase();
     const matchesSearch =
-      entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.keywords.some((k: string) =>
-        k.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
+      entry.title.toLowerCase().includes(query) ||
+      (entry.author ?? "").toLowerCase().includes(query) ||
+      entry.keywords.some((keyword) => keyword.toLowerCase().includes(query));
 
     if (!matchesSearch) return false;
-    if (statusFilter !== "all" && entry.status !== statusFilter) return false;
-    if (programFilter !== "all" && entry.program !== programFilter)
+    if (statusFilter === "published" && !entry.publication.isPublished)
+      return false;
+    if (statusFilter === "private" && entry.publication.isPublished)
       return false;
 
     return true;
   });
 
-  const selectedEntryData = entries.find((e: Entry) => e.id === selectedEntryId);
+  const selectedEntryData = entries.find((e) => e.id === selectedEntryId);
 
   const publishedCount = entries.filter(
-    (e: Entry) => e.status === "published",
+    (e) => e.publication.isPublished,
   ).length;
-  const pendingCount = entries.filter(
-    (e: Entry) => e.status === "pending",
-  ).length;
-  const totalDownloads = entries.reduce(
-    (sum: number, e: Entry) => sum + e.downloads,
-    0,
-  );
-  const programs = Array.from(new Set(entries.map((e: Entry) => e.program)));
+  const privateCount = entries.length - publishedCount;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "published":
-        return (
-          <Badge className="bg-green-100 text-green-700">
-            <Globe className="mr-1 h-3 w-3" />
-            Published
-          </Badge>
-        );
-      case "pending":
-        return (
-          <Badge className="bg-amber-100 text-amber-700">
-            <FileText className="mr-1 h-3 w-3" />
-            Pending
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
+  const getStatusBadge = (isPublished: boolean) =>
+    isPublished ? (
+      <Badge className="bg-green-100 text-green-700">
+        <Globe className="mr-1 h-3 w-3" />
+        Published Metadata
+      </Badge>
+    ) : (
+      <Badge className="bg-gray-100 text-gray-600">
+        <FileText className="mr-1 h-3 w-3" />
+        Private Archive
+      </Badge>
+    );
 
-  const handleEditMetadata = () => {
-    if (selectedEntryData) {
-      setEditTitle(selectedEntryData.title);
-      setEditAbstract(selectedEntryData.abstract);
-      setEditKeywords(selectedEntryData.keywords.join(", "));
-      setShowEditModal(true);
-    }
-  };
+  const formatDate = (value: string | null) =>
+    value ? new Date(value).toLocaleDateString() : null;
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-gray-500">Loading Databank...</div>
+      <div className="p-8 text-center text-gray-500">
+        Loading repository entries…
+      </div>
+    );
+
+  if (isError)
+    return (
+      <div className="p-8 text-center text-sm text-red-600">
+        Unable to load repository entries. Please try again.
+      </div>
     );
 
   return (
@@ -173,31 +126,37 @@ export default function AdminRepositoryPage() {
           className="text-2xl font-bold text-(--earist-primary)"
           style={{ fontFamily: '"Calibri", sans-serif' }}
         >
-          Research Repository & Databank
+          Research Repository Publication
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Manage published research entries and databank
+          Publish or unpublish Repository metadata derived from private Databank
+          archives. Publishing metadata does not publish manuscripts or
+          respondent data.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Published</p>
+            <p className="text-xs text-(--earist-body-text)">Published Metadata</p>
             <p className="text-lg font-bold text-green-600">{publishedCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Pending</p>
-            <p className="text-lg font-bold text-amber-600">{pendingCount}</p>
+            <p className="text-xs text-(--earist-body-text)">Private Archives</p>
+            <p className="text-lg font-bold text-(--earist-primary)">
+              {privateCount}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-(--earist-body-text)">Total Downloads</p>
-            <p className="text-lg font-bold text-(--earist-primary)">
-              {totalDownloads}
+            <p className="text-xs text-(--earist-body-text)">
+              Full-text Downloads
+            </p>
+            <p className="text-sm font-semibold text-(--earist-body-text)">
+              Not enabled
             </p>
           </CardContent>
         </Card>
@@ -224,20 +183,8 @@ export default function AdminRepositoryPage() {
                 className="rounded-lg border px-3 py-2 text-sm focus:outline-none"
               >
                 <option value="all">All Status</option>
-                <option value="published">Published</option>
-                <option value="pending">Pending</option>
-              </select>
-              <select
-                value={programFilter}
-                onChange={(e) => setProgramFilter(e.target.value)}
-                className="rounded-lg border px-3 py-2 text-sm focus:outline-none"
-              >
-                <option value="all">All Programs</option>
-                {programs.map((p: string) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
+                <option value="published">Published Metadata</option>
+                <option value="private">Private Archive</option>
               </select>
             </div>
           </div>
@@ -247,7 +194,7 @@ export default function AdminRepositoryPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Entries List */}
         <div className="space-y-2 lg:col-span-1">
-          {filteredEntries.map((entry: Entry) => (
+          {filteredEntries.map((entry) => (
             <button
               key={entry.id}
               onClick={() => setSelectedEntryId(entry.id)}
@@ -259,13 +206,19 @@ export default function AdminRepositoryPage() {
                     {entry.title}
                   </p>
                   <p className="text-xs text-(--earist-body-text)">
-                    {entry.author} &middot; {entry.program}
+                    {entry.author ?? "Unknown"} &middot;{" "}
+                    {entry.program ?? "Unknown program"}
                   </p>
                 </div>
-                {getStatusBadge(entry.status)}
+                {getStatusBadge(entry.publication.isPublished)}
               </div>
             </button>
           ))}
+          {filteredEntries.length === 0 && (
+            <p className="rounded-lg border border-(--earist-border-gray) p-4 text-sm text-(--earist-body-text)">
+              No archives match your filters.
+            </p>
+          )}
         </div>
 
         {/* Entry Detail */}
@@ -277,7 +230,7 @@ export default function AdminRepositoryPage() {
                   <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                     Research Details
                   </CardTitle>
-                  {getStatusBadge(selectedEntryData.status)}
+                  {getStatusBadge(selectedEntryData.publication.isPublished)}
                 </div>
               </CardHeader>
               <CardContent>
@@ -286,24 +239,27 @@ export default function AdminRepositoryPage() {
                     <p className="text-base font-semibold text-(--earist-primary)">
                       {selectedEntryData.title}
                     </p>
+                    <p className="mt-1 text-xs text-(--earist-secondary)">
+                      Official research title (read-only, derived from the
+                      Defense records)
+                    </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-(--earist-body-text)">
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {selectedEntryData.author}
+                        {selectedEntryData.author ?? "Unknown"}
                       </span>
-                      <span>&middot;</span>
-                      <span>{selectedEntryData.studentNumber}</span>
-                      <span>&middot;</span>
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        {selectedEntryData.program}
-                      </span>
-                      {selectedEntryData.datePublished && (
+                      {selectedEntryData.studentNumber && (
+                        <>
+                          <span>&middot;</span>
+                          <span>{selectedEntryData.studentNumber}</span>
+                        </>
+                      )}
+                      {selectedEntryData.program && (
                         <>
                           <span>&middot;</span>
                           <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {selectedEntryData.datePublished}
+                            <BookOpen className="h-3 w-3" />
+                            {selectedEntryData.program}
                           </span>
                         </>
                       )}
@@ -314,7 +270,7 @@ export default function AdminRepositoryPage() {
                       Abstract
                     </p>
                     <p className="text-sm text-(--earist-body-text)">
-                      {selectedEntryData.abstract}
+                      {selectedEntryData.abstract ?? "No abstract provided."}
                     </p>
                   </div>
                   <div>
@@ -322,23 +278,40 @@ export default function AdminRepositoryPage() {
                       Keywords
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {selectedEntryData.keywords.map(
-                        (keyword: string, i: number) => (
+                      {selectedEntryData.keywords.length === 0 ? (
+                        <span className="text-sm text-(--earist-body-text)">
+                          None
+                        </span>
+                      ) : (
+                        selectedEntryData.keywords.map((keyword, i) => (
                           <Badge key={i} variant="outline" className="text-xs">
                             {keyword}
                           </Badge>
-                        ),
+                        ))
                       )}
                     </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-(--earist-body-text)">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Archive registered{" "}
+                      {formatDate(selectedEntryData.archiveRegisteredAt) ?? "—"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Globe className="h-3 w-3" />
+                      Published{" "}
+                      {formatDate(selectedEntryData.publication.publishedAt) ??
+                        "—"}
+                    </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="py-4">
+              <CardContent className="space-y-3 py-4">
                 <div className="flex flex-wrap gap-2">
-                  {selectedEntryData.status === "pending" && (
+                  {!selectedEntryData.publication.isPublished && (
                     <Button
                       className="bg-green-600 text-white hover:bg-green-700"
                       onClick={() =>
@@ -349,10 +322,10 @@ export default function AdminRepositoryPage() {
                       <CheckCircle2 className="mr-2 h-4 w-4" />
                       {publishMutation.isPending
                         ? "Publishing..."
-                        : "Approve & Publish"}
+                        : "Publish Metadata"}
                     </Button>
                   )}
-                  {selectedEntryData.status === "published" && (
+                  {selectedEntryData.publication.isPublished && (
                     <Button
                       variant="outline"
                       className="text-amber-600 hover:bg-amber-50"
@@ -367,10 +340,11 @@ export default function AdminRepositoryPage() {
                         : "Unpublish"}
                     </Button>
                   )}
-                  <Button variant="outline" onClick={handleEditMetadata}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Metadata
-                  </Button>
+                </div>
+                <div className="rounded-lg bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
+                  Publishing exposes metadata only. Manuscripts, respondent
+                  data, and files are never published from this screen, and the
+                  private Databank archive is never deleted or edited here.
                 </div>
               </CardContent>
             </Card>
@@ -387,7 +361,8 @@ export default function AdminRepositoryPage() {
                     Select a Research Entry
                   </h3>
                   <p className="text-sm text-(--earist-body-text)">
-                    Click an entry from the list to view details and manage.
+                    Click a private archive from the list to publish or
+                    unpublish its metadata.
                   </p>
                 </div>
               </CardContent>
@@ -395,83 +370,6 @@ export default function AdminRepositoryPage() {
           </div>
         )}
       </div>
-
-      {showEditModal && selectedEntryData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-(--earist-primary)">
-                Edit Metadata
-              </h3>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="rounded-full p-1 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Abstract
-                </label>
-                <textarea
-                  value={editAbstract}
-                  onChange={(e) => setEditAbstract(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                  rows={5}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-(--earist-secondary)">
-                  Keywords (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={editKeywords}
-                  onChange={(e) => setEditKeywords(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowEditModal(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() =>
-                  editMutation.mutate({
-                    id: selectedEntryData.id,
-                    title: editTitle,
-                    abstract: editAbstract,
-                    keywords: editKeywords,
-                  })
-                }
-                disabled={editMutation.isPending}
-                className="flex-1 bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {editMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

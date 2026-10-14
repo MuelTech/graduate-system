@@ -10,9 +10,16 @@ import {
   RejectCorInput,
 } from "../interfaces/admin-applicant.interfaces";
 import { AppError } from "../utils/AppError";
+import { CorService } from "./cor.service";
+import {
+  deriveAdmissionStage,
+  hasAuthoritativePassedExam,
+} from "./admin-applicant-list.rules";
 
 export class AdminApplicantService {
   private repository = new AdminApplicantRepository();
+  /** DL-3: the canonical COR business authority (never duplicated here). */
+  private corService = new CorService();
 
   async listApplicants(
     query: AdminApplicantListQuery
@@ -34,20 +41,16 @@ export class AdminApplicantService {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const activityLog = await this.repository.findActivityLog(id);
-
     const examApp = student.examApplications[0];
     const corUpload = student.corUploads[0];
 
-    let examStatus = "NOT_SCHEDULED";
-    if (examApp) {
-      examStatus = examApp.status;
-    }
-
-    let corStatus = "NONE";
-    if (corUpload) {
-      corStatus = corUpload.corRecord?.isAdminVerified ? "VERIFIED" : "PENDING";
-    }
+    const examStatus = examApp ? examApp.status : "NOT_SCHEDULED";
+    const corStatus = corUpload ? String(corUpload.status || "NONE") : "NONE";
+    const hasPassedExam = hasAuthoritativePassedExam(student.examApplications);
+    const admissionStage = deriveAdmissionStage({
+      alignmentStatus: student.alignmentStatus,
+      hasPassedExam,
+    });
 
     return {
       id: student.id,
@@ -55,20 +58,31 @@ export class AdminApplicantService {
       lastName: student.user.lastName,
       email: student.user.email,
       pinnacleApplicantId: student.pinnacleApplicantId || "",
-      cellphone: student.cellphone || "",
-      dateOfBirth: student.dateOfBirth?.toISOString() || "",
-      program: student.program,
-      undergraduateCourse: student.undergraduateProgram?.programName || "",
-      alignmentStatus: student.alignmentStatus || "ALIGNED",
-      isProgramAligned: student.isProgramAligned || false,
-      examStatus,
-      examScores: examApp?.score
+      cellphone: student.cellphone ?? null,
+      dateOfBirth: student.dateOfBirth?.toISOString() ?? null,
+      program: student.program
         ? {
-            mcq: Number(examApp.score.multipleChoiceScore),
-            essay: Number(examApp.score.essayScore),
-            total: Number(examApp.score.totalScore),
+            id: student.program.id,
+            programName: student.program.programName,
+            programType: student.program.programType,
           }
         : null,
+      undergraduateProgram: student.undergraduateProgram
+        ? {
+            id: student.undergraduateProgram.id,
+            programName: student.undergraduateProgram.programName,
+          }
+        : null,
+      previousMastersProgram: student.previousMastersProgram
+        ? {
+            id: student.previousMastersProgram.id,
+            programName: student.previousMastersProgram.programName,
+          }
+        : null,
+      alignmentStatus: student.alignmentStatus ?? null,
+      admissionStage,
+      examStatus,
+      hasPassedExam,
       corStatus,
       admissionStatus: student.admissionStatus,
       enrollmentDate: student.enrollmentDate?.toISOString() || null,
@@ -87,27 +101,43 @@ export class AdminApplicantService {
       examApplications: student.examApplications.map((app) => ({
         id: app.id,
         status: app.status,
-        slot: app.slot
+        examSlot: app.slot
           ? {
               examDate: app.slot.examDate.toISOString(),
-              examTime: app.slot.examTime,
-              venueOrLink: "",
+              examTime: app.slot.examTime.toISOString(),
             }
           : null,
-        examScores: app.score
-          ? {
-              multipleChoiceScore: Number(app.score.multipleChoiceScore),
-              essayScore: Number(app.score.essayScore),
-              totalScore: Number(app.score.totalScore),
-            }
-          : null,
-      })) as any,
-      corUploads: student.corUploads.map((upload) => ({
+      })),
+      corUploads: student.corUploads.map((upload, index) => ({
         id: upload.id,
+        status: String(upload.status || "NONE"),
         ocrStatus: upload.ocrStatus,
-        filePath: upload.filePath,
         originalFilename: upload.originalFilename,
+        detectedMimeType: upload.detectedMimeType,
+        sizeBytes: upload.sizeBytes,
         uploadedAt: upload.uploadedAt.toISOString(),
+        reviewedAt: upload.reviewedAt ? upload.reviewedAt.toISOString() : null,
+        rejectionReason: upload.rejectionReason ?? null,
+        reviewedBy: upload.reviewedBy
+          ? {
+              firstName: upload.reviewedBy.firstName,
+              lastName: upload.reviewedBy.lastName,
+            }
+          : null,
+        isCurrent: index === 0,
+        extraction: upload.extraction
+          ? {
+              status: String(upload.extraction.status),
+              method: upload.extraction.method ?? null,
+              processedAt: upload.extraction.processedAt
+                ? upload.extraction.processedAt.toISOString()
+                : null,
+              manualReviewRequired:
+                upload.extraction.status === "MANUAL_REQUIRED" ||
+                upload.extraction.status === "FAILED",
+              diagnostic: upload.extraction.diagnostic ?? null,
+            }
+          : null,
         corRecord: upload.corRecord
           ? {
               registrationNumber: upload.corRecord.registrationNumber || "",
@@ -122,9 +152,8 @@ export class AdminApplicantService {
             }
           : null,
       })),
-      activityLog,
       createdAt: student.createdAt.toISOString(),
-    } as any;
+    };
   }
 
   async validateWaiver(
@@ -199,49 +228,39 @@ export class AdminApplicantService {
     };
   }
 
+  /**
+   * DL-3 compatibility: resolve the student's exact current PENDING COR and
+   * delegate to the canonical COR verify-and-promote authority. No independent
+   * verification logic lives here.
+   */
   async verifyCor(
     studentId: string,
     adminId: string,
     input: VerifyCorInput
-  ): Promise<{ message: string; corStatus: string }> {
+  ): Promise<{ message: string; corStatus: string; studentNumber?: string }> {
     const student = await this.repository.findStudentById(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const corUpload = student.corUploads[0];
-    if (!corUpload) {
-      throw new AppError("No COR upload found!", 400);
+    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId);
+    if (!uploadId) {
+      throw new AppError("No pending COR upload found!", 400);
     }
 
-    if (!corUpload.corRecord) {
-      throw new AppError("No COR record found!", 400);
-    }
-
-    if (corUpload.corRecord.isAdminVerified) {
-      throw new AppError("COR is already verified!", 400);
-    }
-
-    await this.repository.updateCorVerification(
-      corUpload.corRecord.id,
-      true,
-      input.verificationMethod,
-      adminId
-    );
-
-    await this.repository.createAuditLog(
-      adminId,
-      "cor_verified",
-      studentId,
-      `COR verified via ${input.verificationMethod}`
-    );
+    const result = await this.corService.verifyCor(uploadId, adminId, input);
 
     return {
-      message: "COR verified.",
+      message: "COR verified and applicant promoted to Student.",
       corStatus: "VERIFIED",
+      studentNumber: result.studentNumber,
     };
   }
 
+  /**
+   * DL-3 compatibility: resolve the exact current PENDING COR and delegate to
+   * the canonical rejection authority.
+   */
   async rejectCor(
     studentId: string,
     adminId: string,
@@ -252,72 +271,43 @@ export class AdminApplicantService {
       throw new AppError("Applicant not found!", 404);
     }
 
-    const corUpload = student.corUploads[0];
-    if (!corUpload) {
-      throw new AppError("No COR upload found!", 400);
+    const uploadId = await this.corService.findPendingUploadIdForStudent(studentId);
+    if (!uploadId) {
+      throw new AppError("No pending COR upload found!", 400);
     }
 
-    await this.repository.createAuditLog(
-      adminId,
-      "cor_rejected",
-      studentId,
-      `COR rejected: ${input.reason}`
-    );
+    await this.corService.rejectCor(uploadId, adminId, input.reason);
 
     return {
-      message: "COR rejected. Applicant notified.",
-      corStatus: "PENDING",
+      message: "COR rejected. Applicant may resubmit a new COR.",
+      corStatus: "REJECTED",
     };
   }
 
+  /**
+   * DL-3: standalone promotion is retired. Promotion happens exclusively
+   * inside the canonical COR verify-and-promote transaction. This remains as a
+   * read-only/idempotent compatibility endpoint.
+   */
   async promoteToStudent(
     studentId: string,
-    adminId: string
-  ): Promise<{ message: string; studentNumber: string; credentials: { username: string; password: string } }> {
+    _adminId: string
+  ): Promise<{ message: string; studentNumber: string | null }> {
     const student = await this.repository.findStudentById(studentId);
     if (!student) {
       throw new AppError("Applicant not found!", 404);
     }
 
-    if (student.admissionStatus !== "APPLICANT") {
-      throw new AppError("Applicant is not in applicant status!", 400);
+    if (student.admissionStatus === "ENROLLED") {
+      return {
+        message: "Applicant was already promoted to Student through COR verification.",
+        studentNumber: student.studentNumber ?? null,
+      };
     }
 
-    const examApp = student.examApplications.find(
-      (app) => app.status === "PASSED"
+    throw new AppError(
+      "Promotion is performed by the canonical COR verify-and-promote operation. Verify the applicant's COR instead.",
+      409,
     );
-    if (!examApp) {
-      throw new AppError("Applicant has not passed the entrance exam!", 400);
-    }
-
-    const corUpload = student.corUploads[0];
-    if (!corUpload?.corRecord?.isAdminVerified) {
-      throw new AppError("COR is not verified!", 400);
-    }
-
-    const studentNumber = corUpload.corRecord.registrationNumber || `STU-${Date.now()}`;
-
-    const dob = student.dateOfBirth;
-    const password = dob
-      ? `${dob.getFullYear()}${String(dob.getMonth() + 1).padStart(2, "0")}${String(dob.getDate()).padStart(2, "0")}`
-      : "password123";
-
-    await this.repository.promoteToStudent(studentId, studentNumber);
-
-    await this.repository.createAuditLog(
-      adminId,
-      "role_promoted",
-      studentId,
-      `Applicant promoted to Student. Student Number: ${studentNumber}`
-    );
-
-    return {
-      message: "Applicant promoted to Student. Credentials dispatched.",
-      studentNumber,
-      credentials: {
-        username: studentNumber,
-        password,
-      },
-    };
   }
 }

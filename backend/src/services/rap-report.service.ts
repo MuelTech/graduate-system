@@ -1,0 +1,556 @@
+/**
+ * CP7 — RAP lifecycle after formal conclusion.
+ * Signature slots come from the stage-aware RAP signatory policy (§15.3).
+ * Own-signature CAS; last required signer finalizes the RAP server-side.
+ */
+import prisma from "../config/database";
+import { AppError } from "../utils/AppError";
+import {
+  getRapSignatoryRoles,
+  resolveRapSignatureRequirements,
+} from "./rap-signature.policy";
+
+export interface RapCreationInput {
+  scheduleId: string;
+  thesisId: string;
+  defenseType: string;
+  venue?: string | null;
+  selectedTitle?: string | null;
+  decisionsAndRecommendations: string;
+  /** Authenticated Rapporteur who finalized notes/content. */
+  generatedById: string;
+}
+
+export interface RapContentInput {
+  defenseType: string;
+  officialTitle: string | null;
+  outcome: string;
+  rapporteurNotes: string | null;
+  panelRecommendations?: string | null;
+}
+
+/** RAP-1 FIX-2: outcome of reconciling an existing OPEN RAP's signature slots. */
+export interface RapReconciliationResult {
+  reconciled: boolean;
+  rapId: string | null;
+  skippedFinalized: boolean;
+  added: number;
+  removed: number;
+  roleFilled: number;
+}
+
+/**
+ * Shared RAP content builder. Used by both the formal-conclusion transaction
+ * and the deferred Title RAP generation after Rapporteur finalization.
+ */
+export function buildRapContent(input: RapContentInput): string {
+  return [
+    `Defense Type: ${input.defenseType}`,
+    input.officialTitle ? `Official Title: ${input.officialTitle}` : null,
+    `Formal Outcome: ${input.outcome}`,
+    "",
+    "=== RAPPORTEUR FINALIZED NOTES ===",
+    input.rapporteurNotes ?? "",
+    input.panelRecommendations
+      ? `\n=== EVALUATOR RECOMMENDATIONS ===\n${input.panelRecommendations}`
+      : null,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+}
+
+export class RapReportService {
+  /**
+   * Create the official RAP exactly once after formal conclusion.
+   * generatedBy = Rapporteur who finalized notes (not the Chairman).
+   * Initial status FOR_SIGNATURE — no Admin "Generate & Distribute" required.
+   */
+  async createRapAfterConclusion(
+    tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+    input: RapCreationInput,
+  ) {
+    const participants = await tx.panelAssignment.findMany({
+      where: { scheduleId: input.scheduleId },
+      select: { userId: true, role: true },
+    });
+
+    const requirements = resolveRapSignatureRequirements(
+      participants.map((p) => ({
+        userId: p.userId,
+        role: String(p.role),
+      })),
+      input.defenseType,
+    );
+
+    if (requirements.length === 0) {
+      throw new AppError(
+        "No required RAP signatories exist for this defense session.",
+        409,
+      );
+    }
+
+    const generatedAt = new Date();
+    const rap = await tx.rapReport.create({
+      data: {
+        scheduleId: input.scheduleId,
+        thesisId: input.thesisId,
+        defenseType: input.defenseType as never,
+        reportDate: generatedAt,
+        venue: input.venue ?? null,
+        decisionsAndRecommendations: input.decisionsAndRecommendations,
+        selectedTitle: input.selectedTitle ?? null,
+        status: "FOR_SIGNATURE",
+        generatedById: input.generatedById,
+        generatedAt,
+      },
+    });
+
+    await tx.rapReportSignature.createMany({
+      data: requirements.map((req) => ({
+        rapId: rap.id,
+        userId: req.userId,
+        roleAtDefense: req.roleAtDefense,
+        required: req.required,
+        isSigned: false,
+      })),
+    });
+
+    return rap;
+  }
+
+  /**
+   * 2026-10-04 Title correction: converge on exactly one official Title RAP once
+   * BOTH the formal conclusion and the finalized Rapporteur minutes exist.
+   *
+   * Safe under near-simultaneous Chairman/Rapporteur transactions:
+   * - reads committed state in its own transaction after the caller commits;
+   * - idempotent (no-op when a RAP already exists);
+   * - a unique race (P2002) converges on the RAP created by the other path.
+   */
+  async ensureRapAfterTitlePrerequisites(scheduleId: string) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const existing = await tx.rapReport.findUnique({
+          where: { scheduleId },
+        });
+        if (existing) return existing;
+
+        const schedule = await tx.defenseSchedule.findUnique({
+          where: { id: scheduleId },
+          select: {
+            defenseType: true,
+            venueOrLink: true,
+            rapporteurNotes: true,
+            rapporteurNotesFinalizedAt: true,
+            rapporteurNotesFinalizedById: true,
+          },
+        });
+        if (!schedule || String(schedule.defenseType) !== "TITLE_DEFENSE") {
+          return null;
+        }
+        if (
+          !schedule.rapporteurNotesFinalizedAt ||
+          !schedule.rapporteurNotes ||
+          !schedule.rapporteurNotesFinalizedById
+        ) {
+          return null;
+        }
+
+        // generatedById must be the assigned Rapporteur who finalized the notes.
+        const finalizerAssignment = await tx.panelAssignment.findFirst({
+          where: {
+            scheduleId,
+            userId: schedule.rapporteurNotesFinalizedById,
+            role: "RAPPORTEUR",
+          },
+          select: { id: true },
+        });
+        if (!finalizerAssignment) return null;
+
+        const conclusion = await tx.defenseConclusion.findUnique({
+          where: { scheduleId },
+          select: {
+            thesisId: true,
+            outcome: true,
+            selectedTitle: { select: { titleText: true } },
+          },
+        });
+        if (!conclusion) return null;
+
+        const officialTitle = conclusion.selectedTitle?.titleText ?? null;
+        const content = buildRapContent({
+          defenseType: "TITLE_DEFENSE",
+          officialTitle,
+          outcome: String(conclusion.outcome),
+          rapporteurNotes: schedule.rapporteurNotes,
+        });
+
+        return this.createRapAfterConclusion(tx, {
+          scheduleId,
+          thesisId: conclusion.thesisId,
+          defenseType: "TITLE_DEFENSE",
+          venue: schedule.venueOrLink ?? null,
+          selectedTitle: officialTitle,
+          decisionsAndRecommendations: content,
+          generatedById: schedule.rapporteurNotesFinalizedById,
+        });
+      });
+    } catch (err: unknown) {
+      // Unique-race convergence: the other path created the RAP first.
+      if ((err as { code?: string })?.code === "P2002") {
+        return prisma.rapReport.findUnique({ where: { scheduleId } });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * CP7-FIX1: own-slot CAS only. Aggregate recompute runs AFTER commit so
+   * concurrent final signers both commit first, then recompute converges.
+   */
+  async signRapSlot(
+    sigId: string,
+    userId: string,
+    signatureData: string,
+  ) {
+    const trimmed = (signatureData ?? "").trim();
+    if (!trimmed) {
+      throw new AppError("Signature evidence is required.", 400);
+    }
+    if (!trimmed.startsWith("data:image/")) {
+      throw new AppError(
+        "Signature must be image evidence (data:image/...).",
+        400,
+      );
+    }
+
+    const rapId = await prisma.$transaction(async (tx) => {
+      const updated = await tx.rapReportSignature.updateMany({
+        where: {
+          id: sigId,
+          userId,
+          OR: [{ isSigned: false }, { isSigned: null }],
+        },
+        data: {
+          isSigned: true,
+          signatureData: trimmed,
+          signedAt: new Date(),
+        },
+      });
+      if (updated.count === 0) {
+        const existing = await tx.rapReportSignature.findUnique({
+          where: { id: sigId },
+          select: { userId: true, isSigned: true },
+        });
+        if (!existing) {
+          throw new AppError("Signature request not found.", 404);
+        }
+        if (existing.userId !== userId) {
+          throw new AppError(
+            "You may only sign your own RAP signature slot.",
+            403,
+          );
+        }
+        throw new AppError("Signature already recorded.", 409);
+      }
+
+      const slot = await tx.rapReportSignature.findUnique({
+        where: { id: sigId },
+        select: { rapId: true },
+      });
+      if (!slot) throw new AppError("Signature request not found.", 404);
+      return slot.rapId;
+    });
+
+    // CP7-FIX1: committed-state recompute (never downgrades FINALIZED).
+    const status = await this.recomputeRapStatus(rapId);
+    return { signatureId: sigId, rapId, status };
+  }
+
+  /**
+   * CP7-FIX1: monotonic aggregate recompute from committed required slots.
+   * FINALIZED is never downgraded; finalizedAt is set once server-side.
+   */
+  async recomputeRapStatus(
+    rapId: string,
+  ): Promise<"FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED"> {
+    const slots = await prisma.rapReportSignature.findMany({
+      where: { rapId },
+      select: { required: true, isSigned: true },
+    });
+    const required = slots.filter((s) => s.required !== false);
+    const signedRequired = required.filter((s) => s.isSigned === true);
+    let next: "FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED";
+    if (required.length === 0 || signedRequired.length === 0) {
+      next = "FOR_SIGNATURE";
+    } else if (signedRequired.length < required.length) {
+      next = "PARTIALLY_SIGNED";
+    } else {
+      next = "FINALIZED";
+    }
+
+    const current = await prisma.rapReport.findUnique({
+      where: { id: rapId },
+      select: { status: true, finalizedAt: true },
+    });
+    if (!current) return next;
+
+    // Never downgrade FINALIZED.
+    if (current.status === "FINALIZED") {
+      if (!current.finalizedAt) {
+        await prisma.rapReport.update({
+          where: { id: rapId },
+          data: { finalizedAt: new Date() },
+        });
+      }
+      return "FINALIZED";
+    }
+
+    if (next === "FINALIZED") {
+      // Conditional finalize — race-safe, set finalizedAt once.
+      const result = await prisma.rapReport.updateMany({
+        where: { id: rapId, status: { not: "FINALIZED" } },
+        data: { status: "FINALIZED", finalizedAt: current.finalizedAt ?? new Date() },
+      });
+      if (result.count === 0) {
+        const winner = await prisma.rapReport.findUnique({
+          where: { id: rapId },
+          select: { status: true },
+        });
+        if (winner?.status === "FINALIZED") return "FINALIZED";
+      }
+      return "FINALIZED";
+    }
+
+    await prisma.rapReport.updateMany({
+      where: {
+        id: rapId,
+        status: { notIn: ["FINALIZED"] },
+      },
+      data: { status: next },
+    });
+    return next;
+  }
+
+  /**
+   * RAP-1 FIX-2: reconcile required signature slots on an OPEN (non-FINALIZED)
+   * RAP against the authoritative committee roster and the canonical stage-aware
+   * RAP signatory policy.
+   *
+   * - Adds missing required slots (idempotent: a user that already has any slot
+   *   is never duplicated).
+   * - Retires only UNSIGNED rows that clearly conflict with the roster/policy:
+   *   a slot held by a non-required user, or a recorded non-canonical role
+   *   (e.g. ADVISER / DEAN on TITLE_DEFENSE).
+   * - Repairs UNSIGNED rows whose recorded role is missing or differs from the
+   *   authoritative roster role. Signed rows keep their recorded role label.
+   * - Never removes signed evidence, never fabricates signatures, never changes
+   *   RAP status, and is a strict no-op for FINALIZED RAPs (history immutable).
+   * - If the roster currently yields no canonical signers it does nothing, so a
+   *   read can never destructively wipe slots from an incomplete roster.
+   * - On the @@unique([rapId,userId]) concurrent-insert race it converges
+   *   without failing the caller.
+   *
+   * Precondition: ADMIN-only. It is invoked from the ADMIN-gated Defense Record
+   * detail read (getAdminDefenseRecordDetail) and is idempotent and guarded,
+   * matching the established official-record snapshot-backfill read pattern.
+   */
+  async reconcileOpenRapSignatures(
+    scheduleId: string,
+  ): Promise<RapReconciliationResult> {
+    const empty = (rapId: string | null, skipped: boolean) => ({
+      reconciled: false,
+      rapId,
+      skippedFinalized: skipped,
+      added: 0,
+      removed: 0,
+      roleFilled: 0,
+    });
+
+    const rap = await prisma.rapReport.findUnique({
+      where: { scheduleId },
+      select: { id: true, status: true },
+    });
+    if (!rap) return empty(null, false);
+    if (String(rap.status) === "FINALIZED") return empty(rap.id, true);
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: { defenseType: true },
+    });
+    if (!schedule) return empty(rap.id, false);
+
+    const defenseType = String(schedule.defenseType);
+    const participants = await prisma.panelAssignment.findMany({
+      where: { scheduleId },
+      select: { userId: true, role: true },
+    });
+    const requirements = resolveRapSignatureRequirements(
+      participants.map((p) => ({ userId: p.userId, role: String(p.role) })),
+      defenseType,
+    );
+    // Safety: if the roster currently yields no canonical signers, never perform
+    // a destructive reconciliation on a read. Missing slots recover once the
+    // roster is valid again; unsigned slots are preserved meanwhile.
+    if (requirements.length === 0) return empty(rap.id, false);
+
+    const requiredRoleByUser = new Map(
+      requirements.map((r) => [r.userId, r.roleAtDefense]),
+    );
+
+    const existing =
+      (await prisma.rapReportSignature.findMany({
+        where: { rapId: rap.id },
+        select: { id: true, userId: true, roleAtDefense: true, isSigned: true },
+      })) ?? [];
+    const canonicalRoles = new Set(getRapSignatoryRoles(defenseType).map(String));
+    const requiredUserIds = new Set(requirements.map((r) => r.userId));
+
+    // Retire only UNSIGNED rows that clearly conflict with the current roster /
+    // stage policy: any slot held by a user who is not a required signer, or any
+    // slot with a recorded non-canonical role. Null/legacy roles on expected
+    // users are repaired below, not deleted. Signed evidence is never removed.
+    const toRemove = existing.filter(
+      (s) =>
+        s.isSigned !== true &&
+        (!requiredUserIds.has(s.userId) ||
+          (s.roleAtDefense != null &&
+            !canonicalRoles.has(String(s.roleAtDefense)))),
+    );
+    const removedIds = new Set(toRemove.map((s) => s.id));
+    const effectiveExisting = existing.filter((s) => !removedIds.has(s.id));
+    const effectiveUserIds = new Set(effectiveExisting.map((s) => s.userId));
+
+    const toCreate = requirements.filter((r) => !effectiveUserIds.has(r.userId));
+    // Repair UNSIGNED rows whose recorded role is missing or differs from the
+    // authoritative roster role. Signed rows keep their recorded role label.
+    const toRoleFill = effectiveExisting.filter(
+      (s) =>
+        s.isSigned !== true &&
+        requiredRoleByUser.has(s.userId) &&
+        String(s.roleAtDefense ?? "") !==
+          String(requiredRoleByUser.get(s.userId) ?? ""),
+    );
+
+    const added = toCreate.length;
+    const removed = toRemove.length;
+    const roleFilled = toRoleFill.length;
+
+    if (added === 0 && removed === 0 && roleFilled === 0) {
+      return empty(rap.id, false);
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (removedIds.size > 0) {
+          await tx.rapReportSignature.deleteMany({
+            where: { id: { in: [...removedIds] } },
+          });
+        }
+        if (added > 0) {
+          await tx.rapReportSignature.createMany({
+            data: toCreate.map((r) => ({
+              rapId: rap.id,
+              userId: r.userId,
+              roleAtDefense: r.roleAtDefense,
+              required: r.required,
+              isSigned: false,
+            })),
+          });
+        }
+        for (const slot of toRoleFill) {
+          await tx.rapReportSignature.updateMany({
+            where: { id: slot.id },
+            data: { roleAtDefense: requiredRoleByUser.get(slot.userId) ?? null },
+          });
+        }
+      });
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "P2002") {
+        // A concurrent reconciliation inserted the same (rapId,userId) slot
+        // first; our transaction rolled back. The committed state already
+        // satisfies the policy, so converge without failing the read.
+        return empty(rap.id, false);
+      }
+      throw err;
+    }
+
+    return {
+      reconciled: true,
+      rapId: rap.id,
+      skippedFinalized: false,
+      added,
+      removed,
+      roleFilled,
+    };
+  }
+
+  async getStudentRapAccess(scheduleId: string, userId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        thesis: {
+          include: {
+            student: {
+              select: { userId: true },
+            },
+          },
+        },
+        conclusion: {
+          select: { outcome: true, concludedAt: true, finalRemarks: true },
+        },
+        rapReports: {
+          include: {
+            signatures: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+            generatedBy: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const ownerUserId = schedule.thesis?.student?.userId ?? null;
+    if (!ownerUserId || ownerUserId !== userId) {
+      throw new AppError("You may only view your own defense RAP.", 403);
+    }
+
+    const rap = schedule.rapReports[0] ?? null;
+    // CP7-FIX1: FINALIZED only — ALL_SIGNED is not official completion.
+    const finalized = rap?.status === "FINALIZED";
+
+    return {
+      scheduleId,
+      defenseType: String(schedule.defenseType),
+      formalOutcome: schedule.conclusion?.outcome ?? null,
+      rapStatus: rap?.status ?? null,
+      finalizedAt: rap?.finalizedAt?.toISOString() ?? null,
+      generatedAt: rap?.generatedAt?.toISOString() ?? null,
+      // Student-safe: finalized official content only — never live draft notes.
+      officialContent: finalized
+        ? {
+            selectedTitle: rap?.selectedTitle ?? null,
+            decisionsAndRecommendations: rap?.decisionsAndRecommendations ?? null,
+            venue: rap?.venue ?? null,
+            reportDate: rap?.reportDate?.toISOString() ?? null,
+            signatories: (rap?.signatures ?? []).map((s) => ({
+              name: s.user ? `${s.user.firstName} ${s.user.lastName}` : null,
+              roleAtDefense: s.roleAtDefense ?? null,
+              isSigned: s.isSigned === true,
+              signedAt: s.signedAt?.toISOString() ?? null,
+            })),
+          }
+        : null,
+      message: !schedule.conclusion
+        ? "Defense records are being finalized."
+        : finalized
+          ? "Official RAP is available."
+          : "RAP is awaiting required signatures.",
+    };
+  }
+}

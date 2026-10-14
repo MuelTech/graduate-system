@@ -23,6 +23,14 @@ router.get(
   controller.getStudentDetail
 );
 
+// Get the student's authoritative Thesis Journey (ADMIN read-only)
+router.get(
+  "/:id/journey",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  controller.getStudentJourney
+);
+
 // Update comprehensive exam status
 router.put(
   "/:id/comprehensive-exam",

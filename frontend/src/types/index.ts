@@ -26,12 +26,46 @@ export interface Program {
   programName: string;
 }
 
+/**
+ * COR-3: assistive EARIST COR parser suggestions. Suggestion-only evidence for
+ * Admin comparison; never authoritative profile data.
+ */
+export interface CorStudentNameSuggestion {
+  raw: string | null;
+  surname: string | null;
+  firstName: string | null;
+  middleNameOrInitial: string | null;
+}
+
+export interface CorExtractionSuggestions {
+  studentNumber: string | null;
+  registrationNumber: string | null;
+  studentName: CorStudentNameSuggestion | null;
+  program: string | null;
+  college: string | null;
+  emailAddress: string | null;
+}
+
+/** COR-2/COR-3: persisted extraction metadata + suggestions for Admin review. */
+export interface CorExtractionReview {
+  status: string;
+  method: string | null;
+  extractorVersion: string | null;
+  parserVersion: string | null;
+  processedAt: string | null;
+  diagnostic: string | null;
+  suggestions: CorExtractionSuggestions | null;
+}
+
 export interface PendingCorUpload {
   id: string;
   originalFilename: string;
   createdAt: string;
+  extraction?: CorExtractionReview | null;
+  /** Applicant/system baseline (authoritative) for suggestion comparison. */
   student: {
     programId: string;
+    program: Program | null;
     user: {
       firstName: string;
       lastName: string;
@@ -41,19 +75,32 @@ export interface PendingCorUpload {
 }
 
 // PANELIST INTERFACES
+export type PanelistEvaluationStatus =
+  | "NOT_STARTED"
+  | "DRAFT"
+  | "FINALIZED"
+  | "NONE";
+
 export interface PanelistAssignmentData {
   id: string;
   role: string;
+  /** CP9: own evaluation status from own OralExamScore only. */
+  evaluationStatus?: PanelistEvaluationStatus;
   schedule: {
     id: string;
     defenseDate: string;
     defenseTime?: string;
     venueOrLink?: string;
     defenseType: string;
-    status?: string; // "SCHEDULED" or "COMPLETED"
+    /** Authoritative DefenseSchedule.sessionStatus (not application status). */
+    sessionStatus?: string;
+    /** @deprecated legacy alias — use sessionStatus */
+    status?: string;
     thesis: {
       student: {
-        programId: string;
+        programId?: string;
+        studentNumber?: string | null;
+        program?: { programName?: string } | null;
         user: {
           firstName: string;
           lastName: string;
@@ -75,7 +122,7 @@ export interface DefenseData {
         lastName: string;
       };
     };
-    thesisDocuments?: Array<{ id: string; docType: string; filePath: string }>;
+    thesisDocuments?: Array<{ id: string; docType: string; isCurrent?: boolean }>;
   };
 }
 
@@ -84,6 +131,145 @@ export interface DocumentData {
   docType: string;
   filePath: string;
   uploadedAt: string;
+}
+
+export interface MissingRequirement {
+  code: string;
+  message: string;
+  stage: string;
+}
+
+export type DefensePanelRole =
+  | "CHAIRMAN"
+  | "PANELIST"
+  | "ADVISER"
+  | "FACILITATOR"
+  | "RAPPORTEUR";
+
+export interface CommitteeAssignment {
+  userId: string;
+  role: DefensePanelRole;
+}
+
+export interface ScheduleDefensePayload {
+  defenseDate: string;
+  defenseTime: string;
+  venueOrLink: string;
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE";
+  assignments: CommitteeAssignment[];
+}
+
+export interface ActivePanelistCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  panelist?: {
+    isAvailableAsAdviser?: boolean;
+    isExternal?: boolean;
+    specialization?: string | null;
+    officeAffiliation?: string | null;
+  } | null;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ApprovedApplicationDto {
+  workflowBucket?: "NEEDS_REVIEW" | "READY" | "ACTIVE" | "HISTORY" | string;
+  recordKind?: "APPLICATION" | "DEFENSE_HISTORY" | string;
+  displayStatus?: string;
+  rawApplicationStatus?: string | null;
+  id: string;
+  /** DL-8: canonical ThesisRecord id (differs from `id` for History rows). */
+  thesisId?: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  status: string;
+  createdAt: string;
+  student: {
+    studentNumber?: string | null;
+    user: { id: string; firstName: string; lastName: string; email: string };
+    program?: { id: string; programName: string; programType?: string } | null;
+    programId?: string;
+  };
+  thesisTitles: Array<{ id: string; titleText: string; isSelected: boolean }>;
+  assignment?: {
+    adviser?: { id: string; firstName: string; lastName: string } | null;
+  } | null;
+  /** Current-stage defense session (stage-matched), when scheduled. */
+  currentSchedule?: DefenseSessionDto | null;
+}
+
+export interface DefenseCommitteeSummary {
+  chairman: string[];
+  panelists: string[];
+  facilitator: string[];
+  rapporteur: string[];
+  adviser: string[];
+}
+
+export interface DefensePanelSeatDto {
+  role: DefensePanelRole | string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+  } | null;
+}
+
+export interface DefenseSessionDto {
+  id: string;
+  defenseType: "TITLE_DEFENSE" | "PROPOSAL_DEFENSE" | "FINAL_DEFENSE" | string;
+  sessionStatus: string;
+  defenseDate: string | Date | null;
+  defenseTime: string | Date | null;
+  venueOrLink: string | null;
+  panelAssignments: DefensePanelSeatDto[];
+  committeeSummary: DefenseCommitteeSummary;
+}
+
+/**
+ * UIUX-2L FIX-3: exact scheduled-defense read model for the Scheduling
+ * read-only mode. WHEN / WHERE / WHO only — no academic authority.
+ */
+export interface ScheduledDefenseDetailDto {
+  scheduleId: string;
+  thesisId: string;
+  studentName: string | null;
+  studentNumber: string | null;
+  program: string | null;
+  programType: string | null;
+  defenseType: string;
+  defenseDate: string | null;
+  defenseTime: string | null;
+  venueOrLink: string | null;
+  sessionStatus: string;
+  committee: Array<{ userId: string; name: string; role: string }>;
+}
+
+export interface CommitteePolicyDto {
+  allowedRoles: DefensePanelRole[];
+  requiredRoles: DefensePanelRole[];
+  /** Confirmed session totals: Master's 7 / Doctoral 8 */
+  sessionTotal: number;
+  academicSeatCount: number;
+  /** 2026-10-12: exact Panelist quota for the stage + program type. */
+  panelistCount: number;
+  /** Title has no Adviser seat; Proposal/Final derive the active Adviser automatically. */
+  adviserMode: "NONE" | "AUTOMATIC";
+  /** Participants the Admin selects manually (excludes an automatic Adviser seat). */
+  manualSelectionCount: number;
+  maximumRoleCount: Partial<Record<DefensePanelRole, number | null>>;
+  evaluatorRoles: DefensePanelRole[];
+  rapporteurRequired: boolean;
+  facilitatorRequired: boolean;
+  /** Exact scorer counts remain client-pending */
+  scorerCountPolicy: "UNRESOLVED_DO_NOT_HARDCODE";
 }
 
 export interface RapReportSignatureDoc {
@@ -231,48 +417,57 @@ export interface AuditLogItem {
   };
 }
 
-export interface BackendEntry {
-  id: string;
-  title: string;
-  abstract: string;
-  keywords: string;
-  publishedAt: string | null;
-  isPublic: boolean;
-  thesis?: {
-    student?: {
-      studentId: string;
-      user?: {
-        firstName: string;
-        lastName: string;
-      };
-      program?: {
-        programName: string
-      };
-    };
-  };
+/**
+ * DL-10: Research Repository publication projection.
+ *
+ * Public projection is metadata-only and identical for every viewer. The
+ * publication artifact (full text/download) is an OPEN institutional policy, so
+ * it is always unavailable and unresolved.
+ */
+export interface RepositoryArtifactPolicy {
+  available: false;
+  policyResolved: false;
 }
 
-export interface Entry {
+export interface RepositoryPublication {
   id: string;
   title: string;
-  author: string;
-  studentNumber: string;
-  program: string;
-  abstract: string;
+  author: string | null;
+  program: string | null;
+  abstract: string | null;
   keywords: string[];
-  datePublished: string | null;
-  status: string;
-  downloads: number;
-  views: number;
+  publishedAt: string | null;
+  artifact: RepositoryArtifactPolicy;
+}
+
+/** ADMIN-only publication queue read model (no raw paths/files). */
+export interface RepositoryAdminEntry {
+  id: string;
+  title: string;
+  author: string | null;
+  studentNumber: string | null;
+  program: string | null;
+  abstract: string | null;
+  keywords: string[];
+  archiveRegisteredAt: string;
+  publication: {
+    isPublished: boolean;
+    publishedAt: string | null;
+  };
+  artifact: RepositoryArtifactPolicy;
 }
 
 export interface NotificationItem {
   id: string;
   title: string;
   message: string;
+  type?: string;
+  relatedRecordType?: string | null;
+  relatedRecordId?: string | null;
   isRead: boolean;
   createdAt: string;
 }
+
 
 
 export interface Waiver {
@@ -317,16 +512,60 @@ export interface AdminApplicantListItem {
   createdAt: string;
 }
 
-export interface AdminApplicantDetail extends AdminApplicantListItem {
-  cellphone: string;
-  dateOfBirth: string;
-  undergraduateCourse: string;
-  isProgramAligned: boolean;
+export type AdminApplicantStage = "ALIGNMENT" | "EXAM" | "COR";
+
+/**
+ * Admin Applicants LIST row projection. `admissionStage` is a presentation/
+ * read-model stage only — never persisted and never domain authority.
+ */
+export interface AdminApplicantListRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  pinnacleApplicantId: string;
+  program: { id: string; programName: string };
+  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
+  alignmentStatus: string | null;
+  admissionStage: AdminApplicantStage;
+  /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
+  examStatus: string;
+  /** Canonical passed-exam gate (authoritative existence of PASSED). */
+  hasPassedExam: boolean;
+  /** Latest current COR upload status, or "NONE". */
+  corStatus: string;
+  createdAt: string;
+}
+
+export interface AdminApplicantDetail {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  pinnacleApplicantId: string;
+  cellphone: string | null;
+  dateOfBirth: string | null;
+  program: { id: string; programName: string; programType: string } | null;
+  /** Undergraduate prerequisite relation (Master's applicants). */
+  undergraduateProgram: { id: string; programName: string } | null;
+  /** Previous Master's relation (Doctoral applicants). */
+  previousMastersProgram: { id: string; programName: string } | null;
+  /** Raw authoritative alignment authority; null = unavailable (fail closed). */
+  alignmentStatus: string | null;
+  /** Presentation/read-model stage only — never persisted, never authority. */
+  admissionStage: AdminApplicantStage;
+  /** Latest Entrance Exam application status, or "NOT_SCHEDULED". */
+  examStatus: string;
+  /** Canonical passed-exam gate (authoritative existence of PASSED). */
+  hasPassedExam: boolean;
+  /** Latest current COR upload status, or "NONE". */
+  corStatus: string;
   bridgingWaiver: BridgingWaiverDetail | null;
   examApplications: ExamApplicationDetail[];
   corUploads: CorUploadDetail[];
+  admissionStatus: string;
   enrollmentDate: string | null;
-  activityLog: ActivityLogEntry[];
+  createdAt: string;
 }
 
 export interface BridgingWaiverDetail {
@@ -341,16 +580,31 @@ export interface BridgingWaiverDetail {
 export interface ExamApplicationDetail {
   id: string;
   status: string;
-  examSlot: { examDate: string; examTime: string; venueOrLink: string } | null;
-  examScores: { multipleChoiceScore: number; essayScore: number; totalScore: number } | null;
+  /** Single canonical schedule contract; null when no authoritative slot. */
+  examSlot: { examDate: string; examTime: string } | null;
+}
+
+export interface CorExtractionSummary {
+  status: string;
+  method: string | null;
+  processedAt: string | null;
+  manualReviewRequired: boolean;
+  diagnostic: string | null;
 }
 
 export interface CorUploadDetail {
   id: string;
+  status: string;
   ocrStatus: string;
-  filePath: string;
-  originalFilename: string;
+  originalFilename: string | null;
+  detectedMimeType: string | null;
+  sizeBytes: number | null;
   uploadedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  reviewedBy: { firstName: string; lastName: string } | null;
+  isCurrent: boolean;
+  extraction: CorExtractionSummary | null;
   corRecord: CorRecordDetail | null;
 }
 
@@ -364,13 +618,6 @@ export interface CorRecordDetail {
   verificationMethod: string | null;
   verifiedBy: { firstName: string; lastName: string } | null;
   verifiedAt: string | null;
-}
-
-export interface ActivityLogEntry {
-  timestamp: string;
-  action: string;
-  description: string;
-  actor: string;
 }
 
 export interface ExamApplication {
@@ -443,25 +690,27 @@ export interface AdminStudentListItem {
   enrollmentDate: string | null;
 }
 
-export interface AdminStudentDetail extends AdminStudentListItem {
-  cellphone: string;
-  dateOfBirth: string;
-  curriculumType: string;
-  alignmentStatus: string;
-  residencyStartDate: string | null;
-  residencyMaxYears: number | null;
-  compExamRecords: { status: string; createdAt: string }[];
-  adviserAssignment: { adviser: { firstName: string; lastName: string }; assignedDate: string } | null;
-}
-
-export interface Application {
+export interface AdminStudentDetail {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  pinnacleId: string;
-  program: string;
-  scheduledSlot: string;
-  status: string;
+  studentNumber: string | null;
+  cellphone: string | null;
+  dateOfBirth: string | null;
+  program: { id: string; programName: string } | null;
+  admissionStatus: string;
+  enrollmentDate: string | null;
+  curriculumType: string | null;
+  alignmentStatus: string | null;
+  residency: { startDate: string | null; maxYears: number | null } | null;
+  /** Latest recorded Comprehensive Exam status; null when no record exists. */
+  compExam: { status: string; recordedAt: string | null } | null;
+  adviserAssignment: {
+    adviserId: string;
+    adviserName: string;
+    assignedDate: string | null;
+  } | null;
 }
 
 export interface ApiApplication {
@@ -479,39 +728,43 @@ export interface ApiApplication {
     pinnacleApplicantId?: string;
   };
   program: {
+    id: string;
     programName: string;
   };
   status: string;
 }
 
-export interface ExamAppResponse {
+/**
+ * Bounded ADMIN read model for a single Entrance Exam Record detail.
+ * Never includes correct-answer/option data.
+ */
+export interface ExamRecordDetail {
   id: string;
-  createdAt: string;
-  examDate?: string;
+  status: string;
   student: {
-    user: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      username?: string;
-    };
+    id: string;
+    pinnacleApplicantId: string | null;
+    user: { firstName: string; lastName: string; email: string };
   };
-    program: {
-      programName: string;
-      examMcqTotal?: number;
-      examEssayTotal?: number;
-      examPassingScore?: number;
-    };
-    score?: {
-      multipleChoiceScore?: number;
-      essayScore?: number;
-      totalScore?: number;
-      status?: string;
-      updatedAt?: string;
-      gradedBy?: {
-        firstName: string;
-        lastName: string;
-      };
-    };
-    answers?: Array<{ essayAnswer?: string }>;
-  }
+  program: {
+    id: string;
+    programName: string;
+    /** Configured maximum when present; null = not authoritatively available. */
+    examMcqTotal: number | null;
+    examEssayTotal: number | null;
+  };
+  slot: { id: string; examDate: string; examTime: string };
+  score: {
+    multipleChoiceScore: number | null;
+    essayScore: number | null;
+    totalScore: number | null;
+    status: string;
+    gradedBy: { id: string; firstName: string; lastName: string } | null;
+  } | null;
+  essayAnswers: {
+    questionId: string;
+    questionText: string;
+    order: number;
+    essayAnswer: string | null;
+  }[];
+}

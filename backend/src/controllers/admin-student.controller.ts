@@ -15,7 +15,6 @@ export class AdminStudentController {
         pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : 10,
         search: (req.query.search as string) || "",
         program: (req.query.program as string) || "",
-        thesisStage: (req.query.thesisStage as string) || "",
         status: (req.query.status as string) || "",
       };
       const result = await this.service.listStudents(query);
@@ -35,6 +34,22 @@ export class AdminStudentController {
     try {
       const id = req.params.id as string;
       const result = await this.service.getStudentDetail(id);
+      res.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ error: error.message });
+      } else if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unexpected error occurred." });
+      }
+    }
+  };
+
+  getStudentJourney = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const result = await this.service.getStudentJourney(id);
       res.status(200).json(result);
     } catch (error: unknown) {
       if (error instanceof AppError) {

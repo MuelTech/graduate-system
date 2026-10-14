@@ -1,8 +1,11 @@
 import { Response } from "express";
-import fs from "fs/promises";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { CorService } from "../services/cor.service";
 import { AppError } from "../utils/AppError";
+import {
+  cleanupRequestUploads,
+  commitRequestUploads,
+} from "../storage/request-uploads";
 
 export class CorController {
     private corService = new CorService();
@@ -18,12 +21,11 @@ export class CorController {
             if (!req.file) throw new AppError("No file uploaded", 400);
 
             const upload = await this.corService.uploadCor(userId, req.file);
+            commitRequestUploads(req);
             res.status(201).json({ message: "COR uploaded successfully", upload });
         } catch (error: unknown) {
-            // Cleanup file on any controller-level error
-            if (req.file?.path) {
-                try { await fs.unlink(req.file.path); } catch { /* ignore */ }
-            }
+            // DL-2: cleanup any promoted object + temp dir for this request.
+            await cleanupRequestUploads(req);
             if (error instanceof AppError)
                 res.status(error.statusCode).json({ error: error.message });
             else if (error instanceof Error)

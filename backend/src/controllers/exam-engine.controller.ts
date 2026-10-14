@@ -56,7 +56,7 @@ export class ExamEngineController {
         try {
             const appId = await this.getAppId(req.user!.userId);
             const { answers } = req.body;
-            const result = this.service.submitAnswers(appId, answers);
+            const result = await this.service.submitAnswers(appId, answers);
 
             res.status(200).json(result);
         } catch (error: any) {

@@ -1,0 +1,311 @@
+import prisma from "../config/database";
+import type {
+  EligibilitySnapshot,
+  ResearchVariablesState,
+  StageEvidenceFlags,
+} from "../interfaces/defense-eligibility.interfaces";
+import { isValidCertifiedFinalManuscript, isValidCertifiedProposalManuscript } from "../services/proposal-adviser-review.rules";
+
+export type { EligibilitySnapshot };
+
+type DocRow = { docType: string; defenseStage: string | null; isCurrent?: boolean | null };
+
+/**
+ * Stage-scoped evidence (source of truth §16).
+ * A file only satisfies the stage it belongs to. Legacy rows with null stage
+ * count only for the thesis record's current stage (never silently for later stages).
+ * DL-6: a superseded (isCurrent === false) supporting-evidence row no longer
+ * satisfies the requirement. null/undefined is treated as current for legacy rows.
+ */
+export function hasStageDoc(
+  docs: DocRow[],
+  docType: string,
+  stage: "TITLE" | "PROPOSAL" | "FINAL",
+  currentStage: "TITLE" | "PROPOSAL" | "FINAL" | null,
+): boolean {
+  return docs.some(
+    (d) =>
+      d.docType === docType &&
+      d.isCurrent !== false &&
+      (d.defenseStage === stage ||
+        (d.defenseStage == null && stage === currentStage)),
+  );
+}
+
+function buildEvidence(
+  docs: DocRow[],
+  currentStage: "TITLE" | "PROPOSAL" | "FINAL" | null,
+): StageEvidenceFlags {
+  return {
+    titlePackage:
+      hasStageDoc(docs, "TITLE_PROPOSAL", "TITLE", currentStage) ||
+      hasStageDoc(docs, "PROPOSAL_CHAPTERS", "TITLE", currentStage),
+    proposalChapters: hasStageDoc(
+      docs,
+      "PROPOSAL_CHAPTERS",
+      "PROPOSAL",
+      currentStage,
+    ),
+    finalManuscript: hasStageDoc(
+      docs,
+      "FINAL_MANUSCRIPT",
+      "FINAL",
+      currentStage,
+    ),
+    corTitle: hasStageDoc(docs, "COR", "TITLE", currentStage),
+    corProposal: hasStageDoc(docs, "COR", "PROPOSAL", currentStage),
+    corFinal: hasStageDoc(docs, "COR", "FINAL", currentStage),
+    receiptTitle: hasStageDoc(docs, "RECEIPT", "TITLE", currentStage),
+    receiptProposal: hasStageDoc(docs, "RECEIPT", "PROPOSAL", currentStage),
+    receiptFinal: hasStageDoc(docs, "RECEIPT", "FINAL", currentStage),
+    instruments: hasStageDoc(docs, "INSTRUMENTS", "FINAL", currentStage),
+  };
+}
+
+function mapResearchVariables(rows: {
+  status: string;
+  hasAllSignatures: boolean | null;
+}[]): ResearchVariablesState {
+  if (
+    rows.some(
+      (r) => r.status === "APPROVED_BY_PANEL" && r.hasAllSignatures === true,
+    )
+  ) {
+    return "APPROVED";
+  }
+  if (rows.some((r) => r.status === "NOT_APPLICABLE")) {
+    return "NOT_APPLICABLE";
+  }
+  if (rows.some((r) => r.status === "APPROVED_BY_PANEL")) {
+    return "PENDING"; // approved flag without signatures still pending
+  }
+  if (rows.length > 0) return "PENDING";
+  return "NONE";
+}
+
+export class DefenseEligibilityRepository {
+  private async buildSnapshot(
+    studentId: string,
+    thesisId: string | null,
+  ): Promise<EligibilitySnapshot> {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        compExamRecords: { orderBy: { createdAt: "desc" } },
+        adviserAssignments: { where: { isActive: true }, take: 1 },
+      },
+    });
+
+    const failedStrikes = (student?.compExamRecords ?? []).filter(
+      (r) => r.status === "FAILED",
+    ).length;
+    const compExamPassed = (student?.compExamRecords ?? []).some(
+      (r) => r.status === "PASSED",
+    );
+
+    let thesis: {
+      id: string;
+      stage: "TITLE" | "PROPOSAL" | "FINAL";
+      status: string;
+      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+      thesisDocuments: DocRow[];
+      thesisTitles: { id: string; isSelected: boolean }[];
+    } | null = null;
+
+    if (thesisId) {
+      thesis = await prisma.thesisRecord.findUnique({
+        where: { id: thesisId },
+        include: {
+          thesisDocuments: {
+            select: { docType: true, defenseStage: true, isCurrent: true },
+          },
+          thesisTitles: { select: { id: true, isSelected: true } },
+        },
+      });
+    }
+
+    const thesisIdForDocs = thesis?.id ?? null;
+    const docs = thesis?.thesisDocuments ?? [];
+    const currentStage = thesis?.stage ?? null;
+
+    // Adviser certifications are stage-scoped (§16.3): Proposal cert ≠ Final cert.
+    // CP3-FIX1: ISSUED must be bound to a valid Proposal manuscript on this thesis.
+    let adviserCertProposal = false;
+    if (thesisIdForDocs) {
+      const proposalCerts = await prisma.adviserCertification.findMany({
+        where: {
+          thesisId: thesisIdForDocs,
+          status: "ISSUED",
+          defenseStage: "PROPOSAL_DEFENSE",
+        },
+        include: { reviewedDocument: true },
+      });
+      adviserCertProposal = proposalCerts.some((c) =>
+        isValidCertifiedProposalManuscript(
+          {
+            status: c.status,
+            defenseStage: c.defenseStage,
+            reviewedDocumentId: c.reviewedDocumentId,
+          },
+          c.reviewedDocument
+            ? {
+                id: c.reviewedDocument.id,
+                thesisId: c.reviewedDocument.thesisId,
+                docType: c.reviewedDocument.docType,
+                defenseStage: c.reviewedDocument.defenseStage,
+              }
+            : null,
+          thesisIdForDocs,
+        ),
+      );
+    }
+
+    // CP4: Final cert must be bound to a valid Final manuscript.
+    let adviserCertFinal = false;
+    if (thesisIdForDocs) {
+      const finalCerts = await prisma.adviserCertification.findMany({
+        where: {
+          thesisId: thesisIdForDocs,
+          status: "ISSUED",
+          defenseStage: "FINAL_DEFENSE",
+        },
+        include: { reviewedDocument: true },
+      });
+      adviserCertFinal = finalCerts.some((c) =>
+        isValidCertifiedFinalManuscript(
+          {
+            status: c.status,
+            defenseStage: c.defenseStage,
+            reviewedDocumentId: c.reviewedDocumentId,
+          },
+          c.reviewedDocument
+            ? {
+                id: c.reviewedDocument.id,
+                thesisId: c.reviewedDocument.thesisId,
+                docType: c.reviewedDocument.docType,
+                defenseStage: c.reviewedDocument.defenseStage,
+              }
+            : null,
+          thesisIdForDocs,
+        ),
+      );
+    }
+
+    // Formal academic authority: DefenseConclusion (not ThesisRecord mirrors).
+    // RAP completion is bound to that conclusion's defense session (scheduleId).
+    const titleConclusion = thesisIdForDocs
+      ? await prisma.defenseConclusion.findFirst({
+          where: {
+            thesisId: thesisIdForDocs,
+            schedule: { defenseType: "TITLE_DEFENSE" },
+          },
+          orderBy: { concludedAt: "desc" },
+          select: { outcome: true, selectedTitleId: true, scheduleId: true },
+        })
+      : null;
+    const proposalConclusion = thesisIdForDocs
+      ? await prisma.defenseConclusion.findFirst({
+          where: {
+            thesisId: thesisIdForDocs,
+            schedule: { defenseType: "PROPOSAL_DEFENSE" },
+          },
+          orderBy: { concludedAt: "desc" },
+          select: { outcome: true, scheduleId: true },
+        })
+      : null;
+
+    const titleRapSigned = titleConclusion?.scheduleId
+      ? (await prisma.rapReport.count({
+          where: {
+            scheduleId: titleConclusion.scheduleId,
+            defenseType: "TITLE_DEFENSE",
+            status: "FINALIZED",
+          },
+        })) > 0
+      : false;
+
+    const proposalRapSigned = proposalConclusion?.scheduleId
+      ? (await prisma.rapReport.count({
+          where: {
+            scheduleId: proposalConclusion.scheduleId,
+            defenseType: "PROPOSAL_DEFENSE",
+            status: "FINALIZED",
+          },
+        })) > 0
+      : false;
+
+    const titleOutcome =
+      titleConclusion?.outcome === "PASSED" ||
+      titleConclusion?.outcome === "REVISION_REQUIRED" ||
+      titleConclusion?.outcome === "FAILED"
+        ? titleConclusion.outcome
+        : null;
+    const proposalOutcome =
+      proposalConclusion?.outcome === "PASSED" ||
+      proposalConclusion?.outcome === "REVISION_REQUIRED" ||
+      proposalConclusion?.outcome === "FAILED"
+        ? proposalConclusion.outcome
+        : null;
+
+    const researchVariableRows = thesisIdForDocs
+      ? await prisma.researchVariableForm.findMany({
+          where: { thesisId: thesisIdForDocs },
+          select: { status: true, hasAllSignatures: true },
+        })
+      : [];
+
+    const statisticianCert = thesisIdForDocs
+      ? (await prisma.statisticianCertification.findUnique({
+          where: { thesisId: thesisIdForDocs },
+        })) !== null
+      : false;
+
+    const plagiarismEligible = thesisIdForDocs
+      ? (await prisma.plagiarismResult.count({
+          where: { thesisId: thesisIdForDocs, isEligible: true },
+        })) > 0
+      : false;
+
+    return {
+      studentId: student?.id ?? studentId,
+      thesisId: thesis?.id ?? thesisId,
+      thesisStage: thesis?.stage ?? null,
+      thesisStatus: thesis?.status ?? null,
+      thesisOutcome: thesis?.outcome ?? null,
+      titleOutcome,
+      hasSelectedTitle: Boolean(titleConclusion?.selectedTitleId),
+      proposalOutcome,
+      compExamPassed,
+      compExamDismissed: failedStrikes >= 2,
+      activeAdviser: (student?.adviserAssignments ?? []).length > 0,
+      titleCount: thesis?.thesisTitles.length ?? 0,
+      evidence: buildEvidence(docs, currentStage),
+      adviserCerts: { proposal: adviserCertProposal, final: adviserCertFinal },
+      titleRapSigned,
+      proposalRapSigned,
+      researchVariables: mapResearchVariables(researchVariableRows),
+      statisticianCert,
+      plagiarismEligible,
+    };
+  }
+
+  async loadForStudent(studentId: string): Promise<EligibilitySnapshot> {
+    const thesis = await prisma.thesisRecord.findFirst({
+      where: { studentId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    return this.buildSnapshot(studentId, thesis?.id ?? null);
+  }
+
+  async loadForThesis(thesisId: string): Promise<EligibilitySnapshot> {
+    const thesis = await prisma.thesisRecord.findUnique({
+      where: { id: thesisId },
+      select: { studentId: true },
+    });
+    if (!thesis) {
+      return this.buildSnapshot("unknown", thesisId);
+    }
+    return this.buildSnapshot(thesis.studentId, thesisId);
+  }
+}

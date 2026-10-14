@@ -30,14 +30,18 @@ model User {
   adviserCertifications              AdviserCertification[]    @relation("AdviserCertIssuer")
   adviserRequestsApproved            AdviserRequest[]          @relation("AdviserRequestApprovedBy")
   adviserRequestsAsRequestedPanelist AdviserRequest[]          @relation("AdviserRequestedPanelist")
+  adviserRequestsDeansReviewed       AdviserRequest[]          @relation("AdviserRequestDean")
   bridgingWaiversValidated           ApplicantBridgingWaiver[] @relation("BridgingWaiverValidatedBy")
   auditLogsAsActor                   AuditLog[]                @relation("AuditLogActor")
   chatbotFaqsCreated                 ChatbotFaq[]              @relation("FaqCreatedBy")
   corRecordsVerified                 CorRecord[]               @relation("CorRecordVerifiedBy")
+  corUploadsReviewed                 CorUpload[]               @relation("CorUploadReviewedBy")
   curriculumWaiversApproved          CurriculumWaiver[]        @relation("WaiverApprovedBy")
   curriculumWaiversRecommended       CurriculumWaiver[]        @relation("WaiverRecommendedBy")
   customRolesCreated                 CustomRole[]              @relation("CustomRoleCreatedBy")
   defenseSchedulesSet                DefenseSchedule[]         @relation("ScheduleSetBy")
+  defenseNotesFinalized              DefenseSchedule[]         @relation("RapporteurNotesFinalizedBy")
+  defenseConclusionsRecorded         DefenseConclusion[]       @relation("DefenseConclusionConcludedBy")
   elibraryEntriesApproved            ELibrary[]                @relation("ELibraryApprovedBy")
   emailTemplatesCreated              EmailTemplate[]           @relation("EmailTemplateCreatedBy")
   emailTemplatesUpdated              EmailTemplate[]           @relation("EmailTemplateUpdatedBy")
@@ -257,17 +261,17 @@ model ApplicantBridgingWaiver {
 }
 
 model EntranceExamApplication {
-  id        String         @id @default(uuid()) @map("application_id")
-  studentId String         @map("student_id")
-  programId String         @map("program_id")
-  slotId    String         @map("slot_id")
-  examDate  DateTime?      @map("exam_date") @db.Date
-  examTime  DateTime?      @map("exam_time") @db.Time(0)
-  status    ExamAppStatus  @default(PENDING)
-  createdAt DateTime       @default(now()) @map("created_at")
-  program   Program        @relation(fields: [programId], references: [id])
-  slot      ExamSlot       @relation(fields: [slotId], references: [id])
-  student   Student        @relation(fields: [studentId], references: [id])
+  id        String             @id @default(uuid()) @map("application_id")
+  studentId String             @map("student_id")
+  programId String             @map("program_id")
+  slotId    String             @map("slot_id")
+  examDate  DateTime?          @map("exam_date") @db.Date
+  examTime  DateTime?          @map("exam_time") @db.Time(0)
+  status    ExamAppStatus      @default(PENDING)
+  createdAt DateTime           @default(now()) @map("created_at")
+  program   Program            @relation(fields: [programId], references: [id])
+  slot      ExamSlot           @relation(fields: [slotId], references: [id])
+  student   Student            @relation(fields: [studentId], references: [id])
   score     EntranceExamScore?
   answers   ApplicantAnswer[]
 
@@ -326,6 +330,24 @@ model CorUpload {
   filePath         String          @map("file_path")
   originalFilename String?         @map("original_filename")
   detectedMimeType String?         @map("detected_mime_type")
+  /**
+   * DL-1: stable managed-storage identifier/provider + integrity metadata.
+   * Nullable for backward compatibility; legacy rows keep using filePath.
+   */
+  storageKey        String?        @map("storage_key")
+  storageProvider   String?        @map("storage_provider")
+  sizeBytes         Int?           @map("size_bytes")
+  checksum          String?        @map("checksum")
+  checksumAlgorithm String?        @map("checksum_algorithm")
+  uploadedById      String?        @map("uploaded_by")
+  /**
+   * DL-3: COR review/rejection metadata. Nullable and backward-compatible;
+   * legacy rows simply have no review history. Rejection reason is stored
+   * explicitly rather than parsed from audit free-text.
+   */
+  rejectionReason   String?        @map("rejection_reason") @db.Text
+  reviewedById      String?        @map("reviewed_by")
+  reviewedAt        DateTime?      @map("reviewed_at")
   status           CorUploadStatus @default(PENDING) @map("status")
   ocrStatus        OcrStatus       @default(PENDING) @map("ocr_status")
   ocrErrorMessage  String?         @map("ocr_error_message")
@@ -333,35 +355,71 @@ model CorUpload {
   processedAt      DateTime?       @map("processed_at")
   createdAt        DateTime        @default(now()) @map("created_at")
   corRecord        CorRecord?
+  extraction       CorExtraction?
+  reviewedBy       User?           @relation("CorUploadReviewedBy", fields: [reviewedById], references: [id])
   student          Student         @relation(fields: [studentId], references: [id])
 
   @@index([studentId], map: "cor_uploads_student_id_fkey")
+  @@index([storageKey], map: "cor_uploads_storage_key_idx")
+  @@index([reviewedById])
   @@map("cor_uploads")
 }
 
 model CorRecord {
-  id                           String              @id @default(uuid()) @map("cor_record_id")
-  corUploadId                  String              @unique @map("cor_upload_id")
-  studentId                    String              @map("student_id")
-  registrationNumber           String?             @map("registration_number")
-  academicYear                 String?             @map("academic_year")
-  semester                     CorSemester?
-  college                      String?
-  extractedProgramName         String?             @map("extracted_program_name")
-  extractedCurriculumYear      String?             @map("extracted_curriculum_year")
-  extractedYearLevel           String?             @map("extracted_year_level")
-  isAdminVerified              Boolean             @default(false) @map("is_admin_verified")
-  verificationMethod           VerificationMethod? @map("verification_method")
-  verifiedById                 String?             @map("verified_by")
-  verifiedAt                   DateTime?           @map("verified_at")
-  createdAt                    DateTime            @default(now()) @map("created_at")
-  corUpload                    CorUpload           @relation(fields: [corUploadId], references: [id])
-  student                      Student             @relation(fields: [studentId], references: [id])
-  verifiedBy                   User?               @relation("CorRecordVerifiedBy", fields: [verifiedById], references: [id])
+  id                      String              @id @default(uuid()) @map("cor_record_id")
+  corUploadId             String              @unique @map("cor_upload_id")
+  studentId               String              @map("student_id")
+  registrationNumber      String?             @map("registration_number")
+  academicYear            String?             @map("academic_year")
+  semester                CorSemester?
+  college                 String?
+  extractedProgramName    String?             @map("extracted_program_name")
+  extractedCurriculumYear String?             @map("extracted_curriculum_year")
+  extractedYearLevel      String?             @map("extracted_year_level")
+  isAdminVerified         Boolean             @default(false) @map("is_admin_verified")
+  verificationMethod      VerificationMethod? @map("verification_method")
+  verifiedById            String?             @map("verified_by")
+  verifiedAt              DateTime?           @map("verified_at")
+  createdAt               DateTime            @default(now()) @map("created_at")
+  corUpload               CorUpload           @relation(fields: [corUploadId], references: [id])
+  student                 Student             @relation(fields: [studentId], references: [id])
+  verifiedBy              User?               @relation("CorRecordVerifiedBy", fields: [verifiedById], references: [id])
 
   @@index([studentId], map: "cor_records_student_id_fkey")
   @@index([verifiedById], map: "cor_records_verified_by_fkey")
   @@map("cor_records")
+}
+
+/**
+ * DL-4: generic native PDF text-extraction result for one COR upload.
+ *
+ * This is deliberately separate from CorRecord (the Admin-confirmed/verified
+ * authority) and from legacy `ocrStatus`. Native PDF extraction is assistive
+ * only and never populates confirmed COR fields, Student Number, enrollment, or
+ * User role. Suggestions remain nullable/empty until the EARIST parser (DL-5).
+ */
+model CorExtraction {
+  id               String                @id @default(uuid()) @map("extraction_id")
+  corUploadId      String                @unique @map("cor_upload_id")
+  status           CorExtractionStatus   @default(PENDING) @map("status")
+  method           CorExtractionMethod?  @map("method")
+  extractorVersion String?               @map("extractor_version")
+  /** COR-2: EARIST COR parser version, distinct from the extractor version. */
+  parserVersion    String?               @map("parser_version")
+  pageCount        Int?                  @map("page_count")
+  /** Bounded normalized extracted text (never the full unbounded document). */
+  text             String?               @map("text") @db.LongText
+  /** Bounded per-page text + positional items for future parser work. */
+  pages            Json?                 @map("pages")
+  /** Future extracted suggestions; empty/null until DL-5 parser exists. */
+  suggestions      Json?                 @map("suggestions")
+  diagnostic       String?               @map("diagnostic") @db.Text
+  processedAt      DateTime?             @map("processed_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  corUpload        CorUpload             @relation(fields: [corUploadId], references: [id])
+
+  @@map("cor_extractions")
 }
 
 model RequirementsChecklist {
@@ -400,20 +458,47 @@ model StudentRequirement {
 }
 
 model AdviserRequest {
-  id                 String        @id @default(uuid()) @map("adviser_req_id")
-  studentId          String        @map("student_id")
-  requestedAdviserId String        @map("requested_adviser_id")
-  reason             String?
-  status             RequestStatus @default(PENDING)
-  approvedById       String        @map("approved_by")
-  requestDate        DateTime      @map("request_date") @db.Date
-  createdAt          DateTime      @default(now()) @map("created_at")
-  approvedBy         User          @relation("AdviserRequestApprovedBy", fields: [approvedById], references: [id])
-  requestedAdviser   User          @relation("AdviserRequestedPanelist", fields: [requestedAdviserId], references: [id])
-  student            Student       @relation(fields: [studentId], references: [id])
+  id                      String                @id @default(uuid()) @map("adviser_req_id")
+  studentId               String                @map("student_id")
+  requestedAdviserId      String                @map("requested_adviser_id")
+  reason                  String?
+  status                  RequestStatus         @default(PENDING)
+  /**
+   * GS-020: passed Title Defense session that produced the ODP candidate pool.
+   */
+  sourceDefenseScheduleId String?               @map("source_defense_schedule_id")
+  /**
+   * GS-020: Adviser CONFORME / Decline (distinct from Dean decision).
+   */
+  adviserStatus           AdviserResponseStatus @default(PENDING) @map("adviser_status")
+  adviserRespondedAt      DateTime?             @map("adviser_responded_at")
+  adviserRemarks          String?               @map("adviser_remarks") @db.Text
+  /**
+   * GS-020 Dean review — must not bypass Adviser CONFORME.
+   * deanReviewedById is the canonical GS-020 Dean reviewer field.
+   */
+  deanStatus              DeanResponseStatus    @default(PENDING) @map("dean_status")
+  deanReviewedById        String?               @map("dean_reviewed_by_id")
+  deanReviewedAt          DateTime?             @map("dean_reviewed_at")
+  deanRemarks             String?               @map("dean_remarks") @db.Text
+  /**
+   * Legacy compatibility field only — NOT authoritative for GS-020.
+   * Keep nullable; new AdviserRequest rows leave this null until old code is retired.
+   * Prefer deanReviewedById for Dean reviewer identity in GS-020 logic.
+   */
+  approvedById            String?               @map("approved_by")
+  requestDate             DateTime              @map("request_date") @db.Date
+  createdAt               DateTime              @default(now()) @map("created_at")
+  approvedBy              User?                 @relation("AdviserRequestApprovedBy", fields: [approvedById], references: [id])
+  requestedAdviser        User                  @relation("AdviserRequestedPanelist", fields: [requestedAdviserId], references: [id])
+  deanReviewedBy          User?                 @relation("AdviserRequestDean", fields: [deanReviewedById], references: [id])
+  student                 Student               @relation(fields: [studentId], references: [id])
+  sourceDefenseSchedule   DefenseSchedule?      @relation(fields: [sourceDefenseScheduleId], references: [id])
 
   @@index([approvedById], map: "adviser_requests_approved_by_fkey")
+  @@index([deanReviewedById], map: "adviser_requests_dean_reviewed_by_id_fkey")
   @@index([requestedAdviserId], map: "adviser_requests_requested_adviser_id_fkey")
+  @@index([sourceDefenseScheduleId], map: "adviser_requests_source_defense_schedule_id_fkey")
   @@index([studentId], map: "adviser_requests_student_id_fkey")
   @@map("adviser_requests")
 }
@@ -437,9 +522,11 @@ model AdviserAssignment {
 model ThesisRecord {
   id                        String                     @id @default(uuid()) @map("thesis_id")
   studentId                 String                     @map("student_id")
-  assignmentId              String                     @map("assignment_id")
+  assignmentId              String?                    @map("assignment_id")
   stage                     ThesisStage                @default(TITLE)
   status                    ThesisStatus               @default(PENDING)
+  outcome                   DefenseOutcome?
+  rejectionReason           String?                    @map("rejection_reason") @db.Text
   orNumber                  String?                    @map("or_number")
   amountPaid                Decimal?                   @map("amount_paid")
   createdAt                 DateTime                   @default(now()) @map("created_at")
@@ -452,10 +539,11 @@ model ThesisRecord {
   manuscriptSubmission      ManuscriptSubmission?
   plagiarismResults         PlagiarismResult[]
   rapReports                RapReport[]
+  defenseConclusions        DefenseConclusion[]
   researchVariableForms     ResearchVariableForm[]
   statisticianCertification StatisticianCertification?
   thesisDocuments           ThesisDocument[]
-  assignment                AdviserAssignment          @relation(fields: [assignmentId], references: [id])
+  assignment                AdviserAssignment?         @relation(fields: [assignmentId], references: [id])
   student                   Student                    @relation(fields: [studentId], references: [id])
   thesisTitles              ThesisTitle[]
 
@@ -465,101 +553,170 @@ model ThesisRecord {
 }
 
 model ThesisTitle {
-  id         String       @id @default(uuid()) @map("title_id")
-  thesisId   String       @map("thesis_id")
-  titleText  String       @map("title_text") @db.Text
-  isSelected Boolean      @default(false) @map("is_selected")
-  createdAt  DateTime     @default(now()) @map("created_at")
-  thesis     ThesisRecord @relation(fields: [thesisId], references: [id])
+  id                 String              @id @default(uuid()) @map("title_id")
+  thesisId           String              @map("thesis_id")
+  titleText          String              @map("title_text") @db.Text
+  isSelected         Boolean             @default(false) @map("is_selected")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  thesis             ThesisRecord        @relation(fields: [thesisId], references: [id])
+  defenseConclusions DefenseConclusion[]
 
   @@index([thesisId], map: "thesis_titles_thesis_id_fkey")
   @@map("thesis_titles")
 }
 
 model ThesisDocument {
-  id         String        @id @default(uuid()) @map("document_id")
-  thesisId   String        @map("thesis_id")
-  docType    ThesisDocType @map("doc_type")
-  filePath   String        @map("file_path")
-  copyNumber Int?          @map("copy_number")
-  uploadedAt DateTime      @map("uploaded_at")
-  thesis     ThesisRecord  @relation(fields: [thesisId], references: [id])
+  id                 String                 @id @default(uuid()) @map("document_id")
+  thesisId           String                 @map("thesis_id")
+  docType            ThesisDocType          @map("doc_type")
+  /**
+   * Stage this evidence belongs to. Null = legacy unscoped row.
+   */
+  defenseStage       ThesisStage?           @map("defense_stage")
+  filePath           String                 @map("file_path")
+  /**
+   * DL-1: stable managed-storage identifier/provider + integrity metadata.
+   * Nullable for backward compatibility; legacy rows keep using filePath.
+   */
+  storageKey         String?                @map("storage_key")
+  storageProvider    String?                @map("storage_provider")
+  originalFilename   String?                @map("original_filename")
+  verifiedMimeType   String?                @map("verified_mime_type")
+  sizeBytes          Int?                   @map("size_bytes")
+  checksum           String?                @map("checksum")
+  checksumAlgorithm  String?                @map("checksum_algorithm")
+  uploadedById       String?                @map("uploaded_by")
+  copyNumber         Int?                   @map("copy_number")
+  /**
+   * DL-6: explicit supporting-evidence currentness/version chain.
+   * Scope is (thesisId, defenseStage, docType). Legacy rows default current.
+   * Adviser-manuscript authority remains AdviserCertification.reviewedDocumentId
+   * and is not governed by this flag.
+   */
+  isCurrent          Boolean                @default(true) @map("is_current")
+  supersedesDocumentId String?              @map("supersedes_document_id")
+  uploadedAt         DateTime               @map("uploaded_at")
+  thesis             ThesisRecord           @relation(fields: [thesisId], references: [id])
+  adviserCertReviews AdviserCertification[] @relation("AdviserCertReviewedDoc")
+  supersedes         ThesisDocument?        @relation("ThesisDocumentSupersession", fields: [supersedesDocumentId], references: [id])
+  supersededBy       ThesisDocument[]       @relation("ThesisDocumentSupersession")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
+  @@index([storageKey], map: "thesis_documents_storage_key_idx")
+  @@index([supersedesDocumentId])
+  @@index([thesisId, defenseStage, docType, isCurrent], map: "thesis_documents_slot_current_idx")
   @@map("thesis_documents")
 }
 
 model DefenseSchedule {
-  id                      String                   @id @default(uuid()) @map("schedule_id")
-  thesisId                String                   @map("thesis_id")
-  defenseDate             DateTime                 @map("defense_date") @db.Date
-  defenseTime             DateTime                 @map("defense_time") @db.Time(0)
-  venueOrLink             String?                  @map("venue_or_link")
-  defenseType             DefenseType              @map("defense_type")
-  setById                 String                   @map("set_by")
-  rapporteurNotes         String?                  @map("rapporteur_notes") @db.Text
-  createdAt               DateTime                 @default(now()) @map("created_at")
-  acknowledgementReceipts AcknowledgementReceipt[]
-  setBy                   User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
-  thesis                  ThesisRecord             @relation(fields: [thesisId], references: [id])
-  oralExamScores          OralExamScore[]
-  oralExamSummary         OralExamSummary?
-  panelAssignments        PanelAssignment[]
-  rapReports              RapReport[]
+  id                           String                   @id @default(uuid()) @map("schedule_id")
+  thesisId                     String                   @map("thesis_id")
+  defenseDate                  DateTime                 @map("defense_date") @db.Date
+  defenseTime                  DateTime                 @map("defense_time") @db.Time(0)
+  venueOrLink                  String?                  @map("venue_or_link")
+  defenseType                  DefenseType              @map("defense_type")
+  sessionStatus                DefenseSessionStatus     @default(UNSCHEDULED) @map("session_status")
+  setById                      String                   @map("set_by")
+  rapporteurNotes              String?                  @map("rapporteur_notes") @db.Text
+  /**
+   * CP7: irreversible Rapporteur notes finalization (server time + identity).
+   */
+  rapporteurNotesFinalizedAt   DateTime?                @map("rapporteur_notes_finalized_at")
+  rapporteurNotesFinalizedById String?                  @map("rapporteur_notes_finalized_by")
+  createdAt                    DateTime                 @default(now()) @map("created_at")
+  acknowledgementReceipts      AcknowledgementReceipt[]
+  setBy                        User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
+  rapporteurNotesFinalizedBy   User?                    @relation("RapporteurNotesFinalizedBy", fields: [rapporteurNotesFinalizedById], references: [id])
+  thesis                       ThesisRecord             @relation(fields: [thesisId], references: [id])
+  oralExamScores               OralExamScore[]
+  oralExamSummary              OralExamSummary?
+  conclusion                   DefenseConclusion?
+  panelAssignments             PanelAssignment[]
+  rapReports                   RapReport[]
+  adviserRequests              AdviserRequest[]
 
   @@index([setById], map: "defense_schedules_set_by_fkey")
   @@index([thesisId], map: "defense_schedules_thesis_id_fkey")
+  @@index([rapporteurNotesFinalizedById])
   @@map("defense_schedules")
 }
 
 model PanelAssignment {
-  id                 String          @id @default(uuid()) @map("panel_id")
-  scheduleId         String          @map("schedule_id")
-  userId             String          @map("user_id")
-  role               PanelRole
-  createdAt          DateTime        @default(now()) @map("created_at")
-  oralExamScores     OralExamScore[]
-  schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])
-  user               User            @relation(fields: [userId], references: [id])
+  id             String          @id @default(uuid()) @map("panel_id")
+  scheduleId     String          @map("schedule_id")
+  userId         String          @map("user_id")
+  role           PanelRole
+  createdAt      DateTime        @default(now()) @map("created_at")
+  oralExamScores OralExamScore[]
+  schedule       DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
 
+  @@unique([scheduleId, userId])
   @@index([scheduleId], map: "panel_assignments_schedule_id_fkey")
   @@index([userId], map: "panel_assignments_user_id_fkey")
   @@map("panel_assignments")
 }
 
 model OralExamScore {
-  id                       String          @id @default(uuid()) @map("score_id")
-  scheduleId               String          @map("schedule_id")
-  panelId                  String          @map("panel_id")
-  timelinessRelevance      Decimal?        @map("timeliness_relevance")
+  id                       String               @id @default(uuid()) @map("score_id")
+  scheduleId               String               @map("schedule_id")
+  panelId                  String               @map("panel_id")
+  timelinessRelevance      Decimal?             @map("timeliness_relevance")
   organization             Decimal?
-  depthComprehensiveness   Decimal?        @map("depth_comprehensiveness")
-  relevanceConclusions     Decimal?        @map("relevance_conclusions")
-  evidenceOriginalThinking Decimal?        @map("evidence_original_thinking")
-  groupAAverage            Decimal?        @map("group_a_average")
+  depthComprehensiveness   Decimal?             @map("depth_comprehensiveness")
+  relevanceConclusions     Decimal?             @map("relevance_conclusions")
+  evidenceOriginalThinking Decimal?             @map("evidence_original_thinking")
+  groupAAverage            Decimal?             @map("group_a_average")
   presentation             Decimal?
-  masterySubject           Decimal?        @map("mastery_subject")
-  communicationSkill       Decimal?        @map("communication_skill")
+  masterySubject           Decimal?             @map("mastery_subject")
+  communicationSkill       Decimal?             @map("communication_skill")
   attitude                 Decimal?
-  groupBAverage            Decimal?        @map("group_b_average")
-  overallAverage           Decimal?        @map("overall_average")
+  groupBAverage            Decimal?             @map("group_b_average")
+  overallAverage           Decimal?             @map("overall_average")
   rating                   OralRating?
-  recommendations          String?         @db.Text
-  scoredAt                 DateTime        @map("scored_at")
-  panel                    PanelAssignment @relation(fields: [panelId], references: [id])
-  schedule                 DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  recommendations          String?              @db.Text
+  scoredAt                 DateTime             @map("scored_at")
+  /**
+   * CP5: DRAFT → FINALIZED (e-sign + locked).
+   */
+  status                   OralEvaluationStatus @default(DRAFT)
+  signatureData            String?              @map("signature_data") @db.Text
+  signedAt                 DateTime?            @map("signed_at")
+  finalizedAt              DateTime?            @map("finalized_at")
+  /**
+   * CP7: identity/stage snapshot for reproducible official Criteria output.
+   */
+  officialSnapshot         Json?                @map("official_snapshot")
+  updatedAt                DateTime             @default(now()) @updatedAt @map("updated_at")
+  panel                    PanelAssignment      @relation(fields: [panelId], references: [id])
+  schedule                 DefenseSchedule      @relation(fields: [scheduleId], references: [id])
 
+  @@unique([scheduleId, panelId])
   @@index([panelId], map: "oral_exam_scores_panel_id_fkey")
   @@index([scheduleId], map: "oral_exam_scores_schedule_id_fkey")
   @@map("oral_exam_scores")
+}
+
+enum OralEvaluationStatus {
+  DRAFT
+  FINALIZED
+
+  @@map("oral_evaluation_status")
 }
 
 model OralExamSummary {
   id                    String          @id @default(uuid()) @map("summary_id")
   scheduleId            String          @unique @map("schedule_id")
   overallAverage        Decimal         @map("overall_average")
-  finalRating           OralRating      @map("final_rating")
+  /**
+   * CP7: nullable — no confirmed average→rating formula; never fabricate from outcome.
+   */
+  finalRating           OralRating?     @map("final_rating")
   finalRemarks          String?         @map("final_remarks") @db.Text
+  /**
+   * CP7: persistent official snapshot of finalized evaluator rows at generation time.
+   */
+  snapshotData          Json?           @map("snapshot_data")
   studentCopyGenerated  Boolean?        @map("student_copy_generated")
   officialCopyGenerated Boolean?        @map("official_copy_generated")
   attestedById          String?         @map("attested_by")
@@ -642,7 +799,7 @@ model ELibrary {
   fullPaperPath      String?      @map("full_paper_path")
   respondentDataPath String?      @map("respondent_data_path")
   keywords           String?
-  isPublic           Boolean      @default(true) @map("is_public")
+  isPublic           Boolean      @default(false) @map("is_public")
   publishedAt        DateTime?    @map("published_at") @db.Date
   approvedById       String?      @map("approved_by")
   createdAt          DateTime     @default(now()) @map("created_at")
@@ -655,7 +812,7 @@ model ELibrary {
 
 model RapReport {
   id                          String               @id @default(uuid()) @map("rap_id")
-  scheduleId                  String               @map("schedule_id")
+  scheduleId                  String               @unique @map("schedule_id")
   thesisId                    String               @map("thesis_id")
   defenseType                 DefenseType          @map("defense_type")
   reportDate                  DateTime?            @map("report_date") @db.Date
@@ -666,6 +823,10 @@ model RapReport {
   filePath                    String?              @map("file_path")
   generatedById               String?              @map("generated_by")
   generatedAt                 DateTime?            @map("generated_at")
+  /**
+   * CP7: set server-side when all required RAP signatures complete.
+   */
+  finalizedAt                 DateTime?            @map("finalized_at")
   createdAt                   DateTime             @default(now()) @map("created_at")
   signatures                  RapReportSignature[]
   generatedBy                 User?                @relation("RapReportGeneratedBy", fields: [generatedById], references: [id])
@@ -673,15 +834,45 @@ model RapReport {
   thesis                      ThesisRecord         @relation(fields: [thesisId], references: [id])
 
   @@index([generatedById], map: "rap_reports_generated_by_fkey")
-  @@index([scheduleId], map: "rap_reports_schedule_id_fkey")
   @@index([thesisId], map: "rap_reports_thesis_id_fkey")
   @@map("rap_reports")
+}
+
+model DefenseConclusion {
+  id              String          @id @default(uuid()) @map("conclusion_id")
+  scheduleId      String          @unique @map("schedule_id")
+  thesisId        String          @map("thesis_id")
+  outcome         DefenseOutcome
+  selectedTitleId String?         @map("selected_title_id")
+  finalRemarks    String?         @map("final_remarks") @db.Text
+  concludedById   String          @map("concluded_by")
+  concludedAt     DateTime        @default(now()) @map("concluded_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  concludedBy     User            @relation("DefenseConclusionConcludedBy", fields: [concludedById], references: [id])
+  schedule        DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  selectedTitle   ThesisTitle?    @relation(fields: [selectedTitleId], references: [id])
+  thesis          ThesisRecord    @relation(fields: [thesisId], references: [id])
+
+  @@index([concludedById], map: "defense_conclusions_concluded_by_fkey")
+  @@index([selectedTitleId], map: "defense_conclusions_selected_title_id_fkey")
+  @@index([thesisId], map: "defense_conclusions_thesis_id_fkey")
+  @@map("defense_conclusions")
 }
 
 model RapReportSignature {
   id            String    @id @default(uuid()) @map("sig_id")
   rapId         String    @map("rap_id")
   userId        String    @map("user_id")
+  /**
+   * Functional role at the defense session when the slot was created.
+   */
+  roleAtDefense String?   @map("role_at_defense")
+  /**
+   * Whether this signature blocks RAP finalization. Per RAP-1, canonical
+   * committee RAP slots are required; Dean approval is a separate authority
+   * and is not part of this completion calculation.
+   */
+  required      Boolean?  @default(true) @map("required")
   isSigned      Boolean?  @map("is_signed")
   signatureData String?   @map("signature_data")
   signedAt      DateTime? @map("signed_at")
@@ -690,25 +881,44 @@ model RapReportSignature {
   rapReport     RapReport @relation(fields: [rapId], references: [id])
   user          User      @relation(fields: [userId], references: [id])
 
-  @@index([rapId], map: "rap_report_signatures_rap_id_fkey")
+  @@unique([rapId, userId])
   @@index([userId], map: "rap_report_signatures_user_id_fkey")
   @@map("rap_report_signatures")
 }
 
 model AdviserCertification {
-  id           String       @id @default(uuid()) @map("cert_id")
-  thesisId     String       @map("thesis_id")
-  adviserId    String       @map("adviser_id")
-  defenseStage DefenseType  @map("defense_stage")
-  certifiedAt  DateTime?    @map("certified_at") @db.Date
-  filePath     String?      @map("file_path")
-  status       CertStatus   @default(PENDING)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  adviser      User         @relation("AdviserCertIssuer", fields: [adviserId], references: [id])
-  thesis       ThesisRecord @relation(fields: [thesisId], references: [id])
+  id                 String          @id @default(uuid()) @map("cert_id")
+  thesisId           String          @map("thesis_id")
+  adviserId          String          @map("adviser_id")
+  defenseStage       DefenseType     @map("defense_stage")
+  certifiedAt        DateTime?       @map("certified_at") @db.Date
+  filePath           String?         @map("file_path")
+  status             CertStatus      @default(AWAITING_REVIEW)
+  /**
+   * Adviser remarks when requesting changes or certifying.
+   */
+  reviewRemarks      String?         @map("review_remarks") @db.Text
+  /**
+   * ThesisDocument id of the Proposal manuscript the Adviser reviewed.
+   */
+  reviewedDocumentId String?         @map("reviewed_document_id")
+  /**
+   * Persisted e-signature evidence (not exposed in Student DTOs).
+   */
+  signatureData      String?         @map("signature_data") @db.Text
+  /**
+   * Server-side e-sign / issue timestamp — never client-supplied.
+   */
+  signedAt           DateTime?       @map("signed_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
+  adviser            User            @relation("AdviserCertIssuer", fields: [adviserId], references: [id])
+  thesis             ThesisRecord    @relation(fields: [thesisId], references: [id])
+  reviewedDocument   ThesisDocument? @relation("AdviserCertReviewedDoc", fields: [reviewedDocumentId], references: [id])
 
   @@index([adviserId], map: "adviser_certifications_adviser_id_fkey")
   @@index([thesisId], map: "adviser_certifications_thesis_id_fkey")
+  @@index([reviewedDocumentId])
   @@map("adviser_certifications")
 }
 
@@ -821,6 +1031,8 @@ model Memo {
   content        String       @db.Text
   targetAudience MemoAudience @map("target_audience")
   programId      String?      @map("program_id")
+  attachmentUrl  String?      @map("attachment_url")
+  isArchived     Boolean      @default(false) @map("is_archived")
   sentAt         DateTime?    @map("sent_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   createdBy      User         @relation("MemoCreatedBy", fields: [createdById], references: [id])
@@ -1084,6 +1296,28 @@ enum CorUploadStatus {
   @@map("cor_upload_status")
 }
 
+/**
+ * DL-4: extraction lifecycle. Distinguishes native PDF extraction, OCR
+ * (reserved future strategy) and manual fallback from legacy OCR fields.
+ */
+enum CorExtractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  MANUAL_REQUIRED
+  FAILED
+
+  @@map("cor_extraction_status")
+}
+
+enum CorExtractionMethod {
+  NATIVE_PDF
+  OCR
+  MANUAL
+
+  @@map("cor_extraction_method")
+}
+
 enum CorSemester {
   FIRST_SEM  @map("1st")
   SECOND_SEM @map("2nd")
@@ -1126,6 +1360,22 @@ enum RequestStatus {
   @@map("request_status")
 }
 
+enum AdviserResponseStatus {
+  PENDING
+  CONFORMED
+  DECLINED
+
+  @@map("adviser_response_status")
+}
+
+enum DeanResponseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("dean_response_status")
+}
+
 enum ThesisStage {
   TITLE
   PROPOSAL
@@ -1137,6 +1387,7 @@ enum ThesisStage {
 enum ThesisStatus {
   PENDING
   APPROVED
+  REJECTED
   SCHEDULED
   PASSED
   FAILED
@@ -1145,7 +1396,27 @@ enum ThesisStatus {
   @@map("thesis_status")
 }
 
+enum DefenseOutcome {
+  PASSED
+  REVISION_REQUIRED
+  FAILED
+
+  @@map("defense_outcome")
+}
+
+enum DefenseSessionStatus {
+  UNSCHEDULED
+  SCHEDULED
+  IN_PROGRESS
+  AWAITING_CONCLUSION
+  CONCLUDED
+  CANCELLED
+
+  @@map("defense_session_status")
+}
+
 enum ThesisDocType {
+  TITLE_PROPOSAL
   PROPOSAL_CHAPTERS
   FINAL_MANUSCRIPT
   PLAGIARISM_REPORT
@@ -1207,6 +1478,8 @@ enum Recipient {
 
 enum RapStatus {
   DRAFT
+  FOR_SIGNATURE
+  PARTIALLY_SIGNED
   DISTRIBUTED
   ALL_SIGNED
   FINALIZED
@@ -1216,6 +1489,8 @@ enum RapStatus {
 
 enum CertStatus {
   PENDING
+  AWAITING_REVIEW
+  CHANGES_REQUESTED
   ISSUED
 
   @@map("cert_status")
@@ -1231,6 +1506,7 @@ enum StatCertStatus {
 enum ResearchVarStatus {
   PENDING
   APPROVED_BY_PANEL
+  NOT_APPLICABLE
 
   @@map("research_var_status")
 }
@@ -1285,36 +1561,36 @@ model ExamQuestion {
   type         QuestionType @default(MULTIPLE_CHOICE)
   order        Int          @default(0)
 
-  options      ExamOption[]
-  answers      ApplicantAnswer[]
-  
+  options ExamOption[]
+  answers ApplicantAnswer[]
+
   @@map("exam_questions")
 }
 
 model ExamOption {
-  id           String       @id @default(uuid()) @map("option_id")
-  questionId   String       @map("question_id")
-  optionText   String       @map("option_text") @db.Text
-  isCorrect    Boolean      @default(false) @map("is_correct")
-  order        Int          @default(0) @map("order")
+  id         String  @id @default(uuid()) @map("option_id")
+  questionId String  @map("question_id")
+  optionText String  @map("option_text") @db.Text
+  isCorrect  Boolean @default(false) @map("is_correct")
+  order      Int     @default(0) @map("order")
 
-  question     ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  answers      ApplicantAnswer[]
+  question ExamQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  ApplicantAnswer[]
 
   @@index([questionId], map: "exam_options_question_id_fkey")
   @@map("exam_options")
 }
 
 model ApplicantAnswer {
-  id               String                  @id @default(uuid()) @map("answer_id")
-  applicationId    String                  @map("application_id")
-  questionId       String                  @map("question_id")
-  selectedOptionId String?                 @map("selected_option_id")
-  essayAnswer      String?                 @map("essay_answer") @db.Text
+  id               String  @id @default(uuid()) @map("answer_id")
+  applicationId    String  @map("application_id")
+  questionId       String  @map("question_id")
+  selectedOptionId String? @map("selected_option_id")
+  essayAnswer      String? @map("essay_answer") @db.Text
 
-  application      EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  question         ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  selectedOption   ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  application    EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
 
   @@unique([applicationId, questionId], map: "unique_applicant_question_answer")
   @@index([questionId], map: "applicant_answers_question_id_fkey")

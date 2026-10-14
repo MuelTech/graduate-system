@@ -107,6 +107,87 @@ export class ExamRepository {
         });
     }
 
+    /**
+     * Bounded ADMIN detail read model for one exam record.
+     * Only authoritative fields; essay answers are ESSAY-only and deterministically
+     * ordered; no correct-answer/option data is selected.
+     */
+    async getApplicationDetail(applicationId: string) {
+        return prisma.entranceExamApplication.findUnique({
+            where: { id: applicationId },
+            select: {
+                id: true,
+                status: true,
+                student: {
+                    select: {
+                        id: true,
+                        pinnacleApplicantId: true,
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                program: {
+                    select: {
+                        id: true,
+                        programName: true,
+                        examMcqTotal: true,
+                        examEssayTotal: true,
+                    },
+                },
+                slot: {
+                    select: {
+                        id: true,
+                        examDate: true,
+                        examTime: true,
+                    },
+                },
+                score: {
+                    select: {
+                        multipleChoiceScore: true,
+                        essayScore: true,
+                        totalScore: true,
+                        status: true,
+                        gradedBy: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                    },
+                },
+                answers: {
+                    where: {
+                        question: {
+                            type: "ESSAY",
+                        },
+                    },
+                    select: {
+                        questionId: true,
+                        essayAnswer: true,
+                        question: {
+                            select: {
+                                id: true,
+                                questionText: true,
+                                order: true,
+                                type: true,
+                            },
+                        },
+                    },
+                    orderBy: [
+                        { question: { order: "asc" } },
+                        { questionId: "asc" },
+                    ],
+                },
+            },
+        });
+    }
+
         async getAppealedExams() {
         return prisma.entranceExamApplication.findMany({
             where: { status: 'APPEALED' },
@@ -178,45 +259,6 @@ export class ExamRepository {
         };
     }
 
-    async getGradingQueue() {
-        const applications = await prisma.entranceExamApplication.findMany({
-            where: {
-                status: 'TAKEN' // Only fetch exams that are submitted and needed grading
-            },
-            include: {
-                student: {
-                    include: {
-                        user: true
-                    }
-                },
-                program: true,
-                score: true,
-                answers: {
-                    where: {
-                        question: {
-                            type: 'ESSAY'
-                        }
-                    },
-                    include: {
-                        question: true
-                    }
-                }
-            },
-            orderBy: { examDate: 'asc' }
-        });
-
-        // Make MCQ total dynamic based on current questions
-        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-        
-        return applications.map(app => ({
-            ...app,
-            program: {
-                ...app.program,
-                examMcqTotal: mcqTotal
-            }
-        }));
-    }
-
     async gradeEssay(
         applicationId: string,
         essayScore: number,
@@ -265,41 +307,6 @@ export class ExamRepository {
                 data: { status: finalStatus }
             });
         });
-    }
-
-    async getScoreReview() {
-        const applications = await prisma.entranceExamApplication.findMany({
-            where: {
-                status: {
-                    in: ['PASSED', 'FAILED']
-                }
-            },
-            include: {
-                student: {
-                    include: {
-                        user: true
-                    }
-                },
-                program: true,
-                score: {
-                    include: {
-                        gradedBy: true
-                    }
-                },
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        // Make MCQ total dynamic based on current questions
-        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-
-        return applications.map(app => ({
-            ...app,
-            program: {
-                ...app.program,
-                examMcqTotal: mcqTotal
-            }
-        }));
     }
 
     async getApplicationDetailsForEmail(applicationId: string) {
