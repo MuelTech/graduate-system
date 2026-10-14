@@ -118,7 +118,7 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 - Current Semester COR and Defense-fee Proof of Payment remain separate Title-stage evidence; neither is embedded into the proposal package and neither may be satisfied by a historical file from another stage.
 - Before submission, selected files may be previewed locally without being persisted. Persistence begins only when the Student confirms/submits through the managed upload path.
 - While the Title application is under Graduate School review, the Student has no direct replace-in-place mutation. If correction is required, the application is returned/rejected and the Student resubmits versioned replacements for only the necessary stage slots; unchanged current evidence and prior versions remain preserved.
-- Title has no Proposal/Final numerical-scoring semantics.
+- Title now participates in the same defense evaluation/scoring + evaluator e-sign/finalize lifecycle as Proposal/Final; the submitted Title package remains separate Student evidence and is not replaced by the system-owned evaluation/RAP records.
 
 ### Proposal
 
@@ -141,6 +141,8 @@ Rejected/corrected Title proposal package, COR, or receipt/proof evidence must s
 ## 6. System-owned records
 
 Adviser Certification, evaluator Criteria, Oral Examination Summary, RAP, signatures, and formal Defense conclusions are not Student uploads. They must remain generated/persisted by their authoritative workflows. Admin does not gain a generic replace/delete override through document management.
+
+Each conducted defense attempt owns its own official evaluation records, signatures, RAP / Suggestions of the Evaluation Committee, and formal conclusion. A later re-defense creates a new attempt and new official records; it must never overwrite, silently replace, or reopen the finalized artifacts of a prior concluded attempt.
 
 ## 7. Databank versus Research Repository
 

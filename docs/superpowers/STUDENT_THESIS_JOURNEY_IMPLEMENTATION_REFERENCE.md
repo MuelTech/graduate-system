@@ -30,19 +30,20 @@ Do **not** continue with a hypothetical WP14 from the old plan. Use the 2026-09-
 
 Canonical corrections include:
 
-- Title completion = formal PASSED + selected title + finalized required Title RAP before Adviser Request;
+- Title, Proposal, and Final conducted attempts use applicable evaluator scoring plus evaluator e-sign/finalize; Title remains the three-title deliberation stage;
 - Proposal/Final manuscript goes through active Adviser review and e-signed Adviser Certification before Admin review;
-- Proposal/Final evaluators use Group I/II, own-record e-sign/finalize lifecycle;
+- Title/Proposal/Final evaluators use the shared own-record e-sign/finalize lifecycle for each conducted attempt;
 - Oral Summary shows computed grades but does not auto-PASS/FAIL;
-- Chairman records formal result;
-- Rapporteur owns defense summary/RAP workflow;
-- finalized Proposal/Final individual evaluations become immutable printable Oral Examination Criteria records;
+- Chairman records the formal verdict for each attempt: `PASSED` or `REDEFENSE_REQUIRED`; score completion does not decide the verdict;
+- Rapporteur prepares the RAP / Suggestions of the Evaluation Committee during the defense; required stage-aware RAP signatories complete their signatures before Chairman conclusion;
+- finalized Title/Proposal/Final individual evaluations become immutable official records for that defense attempt;
 - the Oral Examination Summary is generated from finalized evaluator records rather than manually re-encoded;
 - Admin gets a read-only Defense Records surface for finalized individual evaluations, the Summary, and finalized RAP outputs;
 - role-aware Defense Workspace replaces the current lobby concept;
 - Research Variables is not an active Proposal blocker in the correction pass;
-- Proposal revisions are carried by RAP/history into Final Defense, without a separate revision upload gate;
-- Student WAITING/status UX and schedule visibility require correction. **UIUX-4B resolves Title filing + the initial `APPLICATION_UNDER_REVIEW` receipt; UIUX-4C now resolves the accepted pre-defense progression through `APPROVED_WAITING_SCHEDULE` and `SCHEDULED`. Defense-session/result/completion presentation remains separate UIUX-4D work.**
+- Committee revisions on a `PASSED` defense are carried by RAP/history into the next authoritative manuscript/document; they are not a separate defense-result state;
+- `REDEFENSE_REQUIRED` closes only the current attempt and keeps the Student at the same defense stage; the next attempt receives a new schedule, evaluations/signatures, RAP/signatures, and conclusion while prior attempt records remain history.
+- Student WAITING/status UX and schedule visibility require correction. **UIUX-4B resolves Title filing + the initial `APPLICATION_UNDER_REVIEW` receipt; UIUX-4C now resolves the accepted pre-defense progression through `APPROVED_WAITING_SCHEDULE` and `SCHEDULED`. Defense-session/result/re-defense/completion presentation remains separate UIUX-4D work.**
 
 ## 2. Migration baseline — VERIFIED
 
@@ -70,10 +71,10 @@ Any new schema required by Student Thesis Journey must be introduced through a n
 ```text
 Comprehensive Examination PASSED
 ↓
-Title Defense
-↓
-formal PASSED + official selected title
-↓
+Title Defense attempt
+├─ REDEFENSE_REQUIRED → remain at Title Defense → new Title attempt
+└─ PASSED + Title decision/title snapshot
+      ↓
 Adviser Request
 ↓
 Adviser CONFORME
@@ -82,22 +83,26 @@ Dean approval
 ↓
 active AdviserAssignment
 ↓
-Proposal Defense
-↓
-formal PASSED
-↓
+Proposal Defense attempt
+├─ REDEFENSE_REQUIRED → remain at Proposal Defense → new Proposal attempt
+└─ PASSED
+      ↓
 research / manuscript completion
 ↓
 STRIKE / Plagiarism, if required by centralized policy
 ↓
-Final Defense
-↓
-post-defense corrections / final approved manuscript
+Final Defense attempt
+├─ REDEFENSE_REQUIRED → remain at Final Defense → new Final attempt
+└─ PASSED
+      ↓
+post-defense manuscript corrections / final approved manuscript
 ↓
 repository completion
 ```
 
-There is no separate formal Proposal Corrections workflow state.
+For every conducted defense attempt, applicable evaluator records are signed/finalized and the required RAP / Suggestions of the Evaluation Committee signatures are completed before the Chairman records the formal verdict.
+
+There is no separate formal Proposal Corrections or generic `REVISION_REQUIRED` workflow state for ordinary committee suggestions on a passed defense. Those changes remain in RAP/history and appear in the next authoritative manuscript/document.
 
 Research/Data Gathering/Data Analysis are academic activities, not sidebar modules.
 
@@ -143,7 +148,7 @@ Formal inputs include:
 - centralized STRIKE policy/evidence;
 - Final formal outcome.
 
-Application approval, scheduling, score completion, formal conclusion, PASSED outcome, RAP completion, and stage completion are separate concepts.
+Application approval and scheduling remain distinct from the live defense. During a conducted attempt, applicable evaluator completion/signing and required RAP signing are conclusion preconditions; score calculation still does not decide the verdict. `PASSED` completes the defense stage (with the Title decision/title snapshot additionally required for Title), while `REDEFENSE_REQUIRED` closes only that attempt and keeps the Student at the same stage for a new attempt.
 
 ### 5.1 Accepted Title Defense submission / initial WAITING presentation — UIUX-4B
 
@@ -173,7 +178,7 @@ For the Title Defense page:
 - No manual **Refresh Status** control is shown. Existing Journey polling/refetch-on-window-focus remains the passive update mechanism; explicit Retry is reserved for real request failures.
 - Pre-defense schedule presentation does not surface RAP merely because a schedule exists, and it does not fabricate committee data absent from the Student Journey read model.
 - These states are administrative/session preparation only: **Application Approved ≠ Defense Scheduled ≠ Defense PASSED ≠ Title stage COMPLETE**.
-- UIUX-4C stops before `DEFENSE_IN_PROGRESS`, `AWAITING_CONCLUSION`, `FINALIZING_RECORDS`, terminal result states, and completed-stage presentation. Those later defense/result/completion states remain UIUX-4D.
+- UIUX-4C stops before `DEFENSE_IN_PROGRESS`, `AWAITING_CONCLUSION`, formal verdict/re-defense, and completed-stage presentation. Those later states remain UIUX-4D. Existing implementation labels such as `FINALIZING_RECORDS` / `REVISION_REQUIRED` are legacy behavior to be aligned with the 2026-10-14 canonical closing flow; UIUX-4C itself remains accepted and unchanged.
 
 ## 6. GS-020 Adviser Request
 
@@ -188,9 +193,9 @@ Candidate source:
 
 Backend unlock requires:
 
-- formal Title Defense = PASSED;
-- official selected title exists;
-- required Title RAP is finalized/signed.
+- a fully concluded Title Defense attempt with Chairman verdict = `PASSED`;
+- the passed Title attempt retains its Title decision/title snapshot;
+- applicable evaluator records and required Title RAP signatures for that attempt are complete.
 
 Flow:
 

@@ -7,7 +7,7 @@
 **Integration Branch:** `refactor/defense-workflow`  
 **Active Correction Branch:** `refactor/defense-workflow-corrections`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.7-draft  
+**Version:** 1.8-draft  
 **Last Updated:** 2026-10-14  
 
 ---
@@ -30,25 +30,25 @@ The latest Title Defense sequencing correction is:
 
 - `docs/superpowers/specs/2026-10-04-title-defense-workflow-correction.md`
 
-For Title-specific ordering, Chairman conclusion authority, and Rapporteur independence, the 2026-10-04 correction supersedes conflicting 2026-09-26 design/plan wording.
+For historical Title-specific ordering, the 2026-10-04 correction superseded conflicting 2026-09-26 design/plan wording. **The 2026-10-14 defense-closing correction in this SOT now supersedes any older wording that exempted Title Defense from evaluator signing, allowed Title conclusion before required RAP signatures, or treated ordinary committee revisions as a separate formal result.**
 
 Where older sections of this SOT or the 2026-09-25 Student Thesis Journey documents conflict with the following rules, the current correction rules win:
 
-1. **Title Defense is a three-title deliberation/selection workflow, not the Proposal/Final Group I/II numerical scoring workflow.**
-2. Title Defense completes only when the formal Title result is `PASSED`, one official title is selected, and the required Title RAP is finalized/signed.
-3. Adviser Request unlocks only after that completed Title stage.
-4. Proposal and Final use individual Group I/Group II evaluator forms. Each evaluator e-signs/finalizes their own evaluation.
-5. Finalized evaluator grades feed the Oral Examination Summary. The system displays/calculates grades but does **not** automatically decide PASS/FAIL.
-6. **Chairman is the formal academic result authority.**
-7. Rapporteur records/finalizes the defense minutes/RAP; Student sees the official/finalized output, not live draft notes.
-8. RAP is system-owned evidence. A Student never downloads a system-generated RAP merely to upload it back as the next stage's requirement.
-9. Proposal/Final Adviser Certification is an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
-10. Research Variables is temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
-11. Proposal revisions remain in the Proposal RAP and are checked against the Final manuscript during Final Defense; there is no separate Proposal-revision upload/clearance gate.
-12. Student defense pages must distinguish submitted, approved/waiting schedule, scheduled, active/finalizing, and completed states rather than collapsing them into a generic WAITING message.
-13. The current Defense Lobby is a prototype. The target is a role-aware Defense Workspace with evaluator action + Student document viewing, and a separate Rapporteur workspace behavior.
-14. **Title Defense Chairman conclusion must not wait for Rapporteur notes/RAP finalization.** After panel deliberation, the Chairman may record the panel-agreed formal result and, when `PASSED`, exactly one official selected title.
-15. Rapporteur draft/finalize work is independent of Chairman conclusion eligibility. A finalized/signed Title RAP remains mandatory for Title-stage completion and Adviser Request unlock.
+1. **Title, Proposal, and Final Defense all use the defense evaluation/scoring lifecycle.** Title remains unique because the panel deliberates over the student's three proposed titles, but Title is no longer exempt from evaluator completion/signing.
+2. Every conducted defense attempt owns its own evaluator records. Required evaluators complete, e-sign/finalize, and lock their own evaluation for that attempt regardless of whether the eventual verdict is `PASSED` or `REDEFENSE_REQUIRED`.
+3. Finalized evaluator grades may feed the Oral Examination Summary, but score completion/calculation must **not** automatically decide the academic verdict.
+4. During the defense, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee** and records the panel's deliberation. For Title Defense this may include the selected proposal/title basis and panel-agreed or suggested revised wording. The Rapporteur documents the panel decision; the Rapporteur is not the formal verdict authority.
+5. Required stage-aware RAP signatories must sign/finalize the RAP for that defense attempt before the attempt is formally concluded. The exact Panelist UI/UX for viewing/signing the RAP is a separate bounded design problem and is not defined by this correction.
+6. **The assigned session Chairman remains the sole formal academic verdict authority.**
+7. The current canonical verdicts for new defense attempts are `PASSED` and `REDEFENSE_REQUIRED` (**Re-defense Required**). Ordinary revisions/suggestions attached to an otherwise accepted defense do not create a separate `REVISION_REQUIRED` result; they remain in the RAP and are reflected in the next authoritative manuscript/document.
+8. For a `PASSED` Title Defense, the Title attempt must retain the title wording recorded from the panel deliberation. Later Proposal/Final manuscripts may use a subsequently revised title without rewriting the historical Title Defense records.
+9. `REDEFENSE_REQUIRED` keeps the Student at the same defense stage and creates a **new defense attempt**. The new attempt gets a new schedule/session, evaluator records/signatures, RAP/signatures, and formal conclusion. Prior concluded attempt records remain immutable history.
+10. Adviser Request unlocks only after a `PASSED` Title attempt with the required Title decision/title snapshot and completed required defense records.
+11. RAP is system-owned evidence. A Student never downloads a system-generated RAP merely to upload it back as the next stage's requirement.
+12. Proposal/Final Adviser Certification remains an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
+13. Research Variables remains temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
+14. Student defense pages must distinguish application review, scheduling, live defense, formal result, re-defense, and completion rather than collapsing them into a generic WAITING message.
+15. The current Defense Lobby remains a prototype. A future role-aware Defense Workspace may improve how evaluators and RAP signatories access the same defense records, but document collaboration/editor mechanics are explicitly deferred from this workflow correction.
 
 ## 1. Purpose
 
@@ -306,17 +306,20 @@ CANCELLED
 
 ### 6.3 Academic Defense Outcome
 
-Represents the official result after formal conclusion.
+Represents the Chairman-recorded official verdict for one conducted defense attempt.
 
-Current project outcomes:
+Current canonical outcomes for new Title / Proposal / Final attempts:
 
 ```text
 PASSED
-REVISION_REQUIRED
-FAILED
+REDEFENSE_REQUIRED
 ```
 
-**OPEN_QUESTION:** Determine whether EARIST distinguishes `REVISION_REQUIRED` from `REDEFENSE_REQUIRED`, and exactly how a revision is cleared.
+User-facing label: **Re-defense Required**.
+
+A `PASSED` defense may still carry committee revisions/suggestions in the RAP. Those changes are implemented in the next authoritative manuscript/document and do **not** create a separate defense-result status.
+
+`REVISION_REQUIRED`, `REVISION`, and `FAILED` may still exist in the current implementation/legacy data while code is migrated. They must not be treated as the canonical outcomes for newly concluded defenses under this 2026-10-14 rule unless later client policy explicitly reintroduces them.
 
 ### 6.4 RAP Status
 
@@ -333,7 +336,7 @@ DISTRIBUTED
 
 ### 6.5 Stage Completion
 
-A defense stage is **not complete** merely because it is passed.
+Evaluation finalization/signing and required RAP signing are part of completing the **defense attempt itself**, not a normal post-PASS waiting phase.
 
 Recommended derived state:
 
@@ -342,12 +345,14 @@ NOT_STARTED
 ELIGIBLE
 APPLICATION_IN_PROGRESS
 DEFENSE_IN_PROGRESS
-POST_DEFENSE_IN_PROGRESS
+AWAITING_CONCLUSION
 COMPLETE
 BLOCKED
 ```
 
-A stage becomes `COMPLETE` only when its formal outcome and required post-defense artifacts are satisfied.
+A defense attempt may be formally concluded only after its required evaluator records and RAP signatures are complete. A stage becomes `COMPLETE` on a `PASSED` conclusion once any stage-specific conclusion data is present (for Title, the Title decision/title snapshot). A `REDEFENSE_REQUIRED` conclusion closes that attempt but keeps the Student at the same stage for a new attempt.
+
+Committee corrections on a passed defense remain in the RAP and flow forward into the next authoritative manuscript/document; they do not keep the completed defense attempt open.
 
 ---
 
@@ -358,21 +363,23 @@ These are engineering rules, not UI suggestions.
 1. `APPLICATION.APPROVED` must never imply `DEFENSE.PASSED`.
 2. `DEFENSE.SCHEDULED` must never imply `DEFENSE.PASSED`.
 3. Completion of evaluator scores must never directly mutate the official academic outcome.
-4. A defense outcome may be recorded only by the authorized conclusion action.
-5. Title Defense cannot be concluded as passed without a valid selected title from the student's submitted title proposals.
-6. Proposal cannot unlock merely because Title application was approved.
-7. Final cannot unlock merely because Proposal application was approved.
-8. Non-evaluator roles must not submit evaluator scores unless client policy explicitly says otherwise.
-9. Stage-specific requirements must be validated against the correct defense stage, not merely against any historical file on the research project.
-10. RAP generation should occur from the formal conclusion flow, not independently from score submission.
-11. The same person must not be assigned twice to the same defense unless the client explicitly permits multiple functional roles for one person.
-12. Scheduling must validate committee composition server-side.
-13. Frontend requirement badges are informational; backend/domain rules are authoritative.
-14. Adviser Request after Title Defense must derive candidates from the student's own passed Title Defense ODP, not from the unrestricted faculty directory.
-15. A requested adviser must not become an active `AdviserAssignment` until the required Adviser CONFORME/acceptance and Dean approval sequence is complete.
-16. Title Defense formal conclusion eligibility must not depend on Rapporteur notes/RAP finalization.
-17. Title Defense must not require Proposal/Final-style numerical evaluator-score completion before the Chairman can record the formal result.
-18. Chairman conclusion alone must not mark the Title stage complete; Title completion still requires `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
+4. A defense verdict may be recorded only by the authorized Chairman conclusion action.
+5. Title, Proposal, and Final conducted attempts require their applicable evaluator records to be completed and e-signed/finalized before formal conclusion.
+6. Required stage-aware RAP signatures must be complete before formal conclusion; the RAP-signing UI/UX mechanism is not defined here.
+7. Rapporteur records the committee deliberation/RAP and, for Title, the selected title basis and any panel-agreed/suggested revised wording; this documentation role does not transfer verdict authority from the Chairman.
+8. A `PASSED` Title attempt requires a retained Title decision/title snapshot for that attempt; later title changes must not rewrite the historical conclusion/RAP.
+9. `PASSED` may include committee revisions. Those revisions remain in RAP/history and are reflected in the next authoritative manuscript/document rather than becoming a separate defense outcome.
+10. `REDEFENSE_REQUIRED` closes the current attempt without completing the stage and permits a new same-stage defense attempt under the canonical re-defense rules.
+11. A re-defense must never overwrite or reopen the concluded attempt's evaluations, scores, signatures, RAP, committee snapshot, or conclusion.
+12. Proposal cannot unlock merely because Title application was approved.
+13. Final cannot unlock merely because Proposal application was approved.
+14. Non-evaluator roles must not submit evaluator scores unless client policy explicitly says otherwise.
+15. Stage-specific requirements must be validated against the correct defense stage/attempt, not merely against any historical file on the research project.
+16. The same person must not be assigned twice to the same defense unless the client explicitly permits multiple functional roles for one person.
+17. Scheduling must validate committee composition server-side.
+18. Frontend requirement badges are informational; backend/domain rules are authoritative.
+19. Adviser Request after Title Defense must derive candidates from the student's own passed Title Defense ODP, not from the unrestricted faculty directory.
+20. A requested adviser must not become an active `AdviserAssignment` until the required Adviser CONFORME/acceptance and Dean approval sequence is complete.
 
 ---
 
@@ -594,19 +601,20 @@ flowchart TD
 
 During the defense:
 
-- Title Defense is a three-title deliberation/selection workflow; it does **not** use the Proposal/Final numerical Group I/II evaluator-completion gate.
-- A newly scheduled Title session is still pre-defense. Scheduling alone must not make formal conclusion or Rapporteur finalization available.
+- Title Defense remains a three-title deliberation/selection workflow **and now follows the shared defense evaluation/scoring lifecycle**.
+- A newly scheduled Title session is still pre-defense. Scheduling alone does not make the defense concluded or passed.
 - The assigned session Chairman explicitly starts the Title Defense, transitioning the session from `SCHEDULED` to `IN_PROGRESS`. This start action means the defense/deliberation phase has begun; it is **not** an academic result.
+- Required Title evaluators complete their evaluation/scoring records and e-sign/finalize their own records for this attempt.
 - The panel deliberates over the student's three submitted title proposals.
-- Rapporteur captures required notes/minutes and may save drafts while the defense is active.
+- During deliberation, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee**, records the selected proposal/title basis when applicable, captures any panel-agreed or suggested revised title wording, and documents committee suggestions.
+- Required stage-aware RAP signatories sign/finalize the report for this attempt before formal conclusion.
 - Facilitator performs session facilitation and is non-evaluator by default.
-- After panel deliberation, the Chairman records the panel-agreed formal result and, when `PASSED`, exactly one submitted title as the official research title.
-- Chairman conclusion eligibility must **not** depend on the Rapporteur having finalized the notes/RAP.
-- Rapporteur finalization may occur independently once the Title session is active/post-defense and the official minutes/RAP content is ready; it remains required for stage completion.
+- Evaluation scores and RAP contents inform/document the committee process but do **not** automatically determine the verdict.
+- Once required evaluator records and required RAP signatures are complete, the assigned Chairman records the formal verdict: `PASSED` or `REDEFENSE_REQUIRED`.
 
 ### 8.6 Formal Conclusion
 
-The Chairman is the formal Title result authority. The Title conclusion action must not be gated by Proposal/Final-style evaluator-score completion or by Rapporteur notes/RAP finalization.
+The Chairman remains the formal Title result authority.
 
 ```text
 SCHEDULED
@@ -615,39 +623,40 @@ Assigned Chairman starts Title Defense
    ↓
 IN_PROGRESS
    ↓
-Panel deliberates on the 3 submitted titles
+Panel defense + deliberation
+   ├─ Required evaluators complete/sign/finalize evaluations
+   └─ Rapporteur prepares Suggestions of the Evaluation Committee
+          ↓
+      Required RAP signatories sign
    ↓
-Chairman may record the panel-agreed formal result
+AWAITING_CONCLUSION / conclusion-ready
    ↓
-If PASSED: select exactly one official submitted title
+Chairman records:
+   ├─ PASSED
+   └─ REDEFENSE_REQUIRED
    ↓
-Create official conclusion record
-
-In parallel after the session is active:
-Rapporteur captures/saves draft notes
-   ↓
-Rapporteur finalizes official minutes/RAP when ready
-   ↓
-Required RAP signatures/finalization
+CONCLUDED
 ```
 
-A merely `SCHEDULED` Title session is not conclusion-ready and its notes cannot be finalized as completed defense minutes. Chairman conclusion is allowed only from the active conclusion phase (`IN_PROGRESS` or `AWAITING_CONCLUSION`) and remains independent of Rapporteur finalization.
-
-If the implementation uses `AWAITING_CONCLUSION`, Rapporteur finalization may move an active Title session there when no formal conclusion exists; it must never be required before the Chairman can conclude.
+The Rapporteur records the panel's Title deliberation; the Chairman does not need to re-enter the same title data merely to own the verdict. For a `PASSED` Title attempt, the Title decision/title wording recorded for that attempt becomes its historical Title Defense title snapshot. For `REDEFENSE_REQUIRED`, any suggested/revised wording remains part of that attempt's committee report and does not make the stage complete.
 
 ### 8.7 Title Stage Completion
 
-At minimum:
+A Title attempt is conclusion-ready only after:
 
-- official conclusion exists,
-- official outcome is `PASSED`,
-- exactly one approved title is recorded,
-- required Title RAP/signatures are finalized,
-- required Title post-defense records are complete.
+- applicable required evaluator records are completed and e-signed/finalized,
+- the RAP / Suggestions of the Evaluation Committee is prepared,
+- all required Title RAP signatories have signed/finalized their slots,
+- the Chairman is authorized and the attempt has not already been concluded.
 
-Only then should Proposal readiness be evaluated.
+The Title stage becomes complete only when:
 
-**Adviser-selection timing — REVISED 2026-09-26:** Adviser Request does **not** unlock before full Title-stage completion. It unlocks only after formal Title `PASSED` + official selected title + required finalized/signed Title RAP.
+- the Chairman's formal verdict is `PASSED`, and
+- the passed attempt retains the required Title decision/title snapshot.
+
+If the Chairman records `REDEFENSE_REQUIRED`, the attempt closes as history and the Student remains at Title Defense for a new attempt. The previous attempt's evaluation/RAP/signature/conclusion records must remain immutable.
+
+**Adviser-selection timing — REVISED 2026-10-14:** Adviser Request unlocks only after a fully concluded `PASSED` Title attempt with its Title decision/title snapshot and required defense records completed.
 
 ---
 
@@ -985,16 +994,17 @@ APPROVED
 Committee Assignment + Schedule
       ↓
 Final Defense
-      ↓
-Evaluator Scores + Session Notes
+      ├─ Required evaluator records signed/finalized
+      └─ RAP / Suggestions of the Evaluation Committee signed/finalized
       ↓
 AWAITING_CONCLUSION
       ↓
-Formal Conclusion
+Chairman Formal Conclusion
       ├─ PASSED
-      ├─ REVISION_REQUIRED
-      └─ FAILED
+      └─ REDEFENSE_REQUIRED
 ```
+
+A `PASSED` Final Defense may still contain committee revisions in the RAP. Those corrections belong to the manuscript/finalization work that follows and do not create a third defense verdict.
 
 ### 11.5 Final Post-Defense Flow
 
@@ -1176,7 +1186,7 @@ Form-supported working rule:
 
 ### 13.2 Score lifecycle
 
-For each Proposal/Final evaluator:
+For each applicable Title / Proposal / Final evaluator:
 
 ```text
 NOT_STARTED
@@ -1199,10 +1209,12 @@ ALL REQUIRED EVALUATIONS FINALIZED
       ↓
 SUMMARY_READY
       ↓
+RAP / COMMITTEE REPORT SIGNATURES COMPLETE
+      ↓
 AWAITING_FORMAL_CONCLUSION
 ```
 
-Title Defense does not use this Group I/Group II numerical lifecycle under the current confirmed design.
+Title remains unique because its deliberation also determines/records the Title decision, but it is no longer exempt from the shared evaluator completion/signing lifecycle.
 
 ### 13.3 Critical rule
 
@@ -1227,44 +1239,50 @@ This conflicts with the separate formal `concludeDefense()` workflow and must be
 
 ## 14. Formal Defense Conclusion
 
-The formal conclusion is the single authoritative operation that records the academic outcome.
+The formal conclusion is the single authoritative operation that records the academic verdict for one defense attempt.
 
 ### 14.1 Preconditions
 
-Recommended:
+Required before the Chairman may conclude a Title / Proposal / Final attempt:
 
-- defense session exists and is active/ready;
-- for Proposal/Final, all required evaluator records are finalized/signed;
-- for Title, the required deliberation/title-selection data is available instead of Proposal/Final numerical scoring;
-- required session/RAP notes are available at the stage needed for conclusion;
-- current user is authorized to conclude;
-- defense has not already been concluded.
+- defense session exists and is in the valid active/conclusion-ready phase;
+- all applicable required evaluator records are completed and e-signed/finalized;
+- the Oral Examination Summary/read model required by the current evaluation workflow is available;
+- the Rapporteur's RAP / **Suggestions of the Evaluation Committee** for the attempt is ready;
+- all required stage-aware RAP signature slots are signed/finalized;
+- for a `PASSED` Title Defense, the attempt has the required Title decision/title wording recorded from the panel deliberation;
+- current user is the assigned session Chairman;
+- defense attempt has not already been concluded.
 
-### 14.2 Title-specific precondition
+### 14.2 Title-specific recording
 
-If outcome is `PASSED` for Title Defense:
+For Title Defense:
 
-- exactly one proposed title must be selected,
-- selected title must belong to the student's current Title application/research project.
+- the panel collectively deliberates over the proposed titles;
+- the Rapporteur records the selected proposal/title basis and any panel-agreed or suggested revised wording in the committee report/workflow;
+- the Rapporteur's data-entry role does **not** make the Rapporteur the academic verdict authority;
+- the Chairman records only the formal verdict and confirms the conclusion once the required defense records are complete.
+
+A later Proposal/Final manuscript may carry revised title wording. That later wording must not rewrite the historical Title Defense attempt.
 
 ### 14.3 Conclusion transaction
 
 The conclusion operation should atomically:
 
-1. validate authorization,
-2. validate score completion,
-3. validate title selection when applicable,
-4. create/update the official Oral Examination Summary,
-5. record the official DefenseOutcome,
-6. record conclusion timestamp and actor,
-7. create the RAP draft/workflow once,
-8. enqueue required signature tasks,
-9. send result/post-defense notifications,
-10. recompute stage completion/next-stage eligibility.
+1. validate Chairman authorization,
+2. validate applicable evaluator completion/signatures,
+3. validate required RAP signature completion,
+4. validate the Title decision/title snapshot when concluding Title as `PASSED`,
+5. preserve/generate the official Oral Examination Summary as required,
+6. record the official defense verdict (`PASSED` or `REDEFENSE_REQUIRED`),
+7. record conclusion timestamp and actor,
+8. close the current defense attempt,
+9. send result/next-action notifications,
+10. recompute stage completion or same-stage re-defense eligibility.
 
 ### 14.4 Authorized concluder
 
-**CONFIRMED_CLIENT — 2026-09-26:** The **Chairman** records the formal academic defense result.
+**CONFIRMED_CLIENT — 2026-09-26, retained by 2026-10-14 correction:** The **Chairman** records the formal academic defense verdict.
 
 Authorization must be based on the authenticated user's `CHAIRMAN` assignment for that specific defense session, not merely on a broad account role or on visibility of a frontend button.
 
@@ -1775,43 +1793,60 @@ stateDiagram-v2
     UnderReview --> Approved
     Approved --> Scheduled: valid committee + schedule
     Scheduled --> InProgress: defense begins
-    InProgress --> AwaitingConclusion: required scores/session inputs complete
-    AwaitingConclusion --> Concluded: authorized conclusion
-    Concluded --> PostDefense: PASSED/REVISION path
-    PostDefense --> Complete: required post-defense artifacts satisfied
+    InProgress --> AwaitingConclusion: required evaluations + RAP signatures complete
+    AwaitingConclusion --> Passed: Chairman verdict = PASSED
+    AwaitingConclusion --> ReDefense: Chairman verdict = REDEFENSE_REQUIRED
+    Passed --> Complete
+    ReDefense --> Scheduled: new same-stage defense attempt
 ```
 
-A `FAILED` result may return the project to a client-defined remediation/re-defense path. This must be confirmed rather than guessed.
+The state-machine edge from `ReDefense` to `Scheduled` represents a **new defense attempt**, not reopening the concluded attempt.
 
 ---
 
-## 21. Revision / Re-defense Flow — Pending Confirmation
+## 21. Revision / Re-defense Flow — Canonical 2026-10-14
 
-Current code has `REVISION`, but the operational meaning is incomplete.
+### 21.1 Passed with revisions
 
-Questions to resolve:
+Ordinary panel corrections/suggestions do not create a non-passing defense result.
 
-1. Can a student pass the defense but still have required manuscript corrections?
-2. Is `REVISION` a non-passing result?
-3. Does `REVISION` always require another oral defense?
-4. Who validates corrections?
-5. When does status change from revision to passed/complete?
-6. Is another payment/application/schedule required for re-defense?
+```text
+Chairman verdict = PASSED
+      ↓
+RAP retains committee suggestions/revisions
+      ↓
+Defense attempt closes
+      ↓
+Next authoritative manuscript/document reflects the implemented changes
+```
 
-### 21.1 Safe interim design
+There is no separate `REVISION_REQUIRED` defense outcome for this normal path.
 
-Until confirmed, do not automatically unlock the next stage for `REVISION_REQUIRED`.
+### 21.2 Re-defense required
 
-Store:
+When the panel requires another oral defense:
 
-- conclusion outcome,
-- correction requirements,
-- due date if any,
-- correction evidence,
-- review/clearance actor,
-- whether re-defense is required.
+```text
+Attempt N
+├─ finalized evaluator records + signatures
+├─ finalized/signed RAP for that attempt
+└─ Chairman verdict = REDEFENSE_REQUIRED
+      ↓
+same academic defense stage remains active
+      ↓
+new schedule/session = Attempt N+1
+├─ new committee/session snapshot as assigned
+├─ new evaluator records + signatures
+├─ new RAP + signatures
+└─ new Chairman verdict
+```
+
+A re-defense must never overwrite, mutate, or repurpose the previous concluded attempt's official records. Each attempt remains independently auditable.
+
+Operational questions such as whether a new payment, new application filing, or special scheduling approval is required for re-defense remain separate policy questions; they must not be guessed by the implementation.
 
 ---
+
 
 # PART VII — DATA MODEL / BACKEND IMPLICATIONS
 
