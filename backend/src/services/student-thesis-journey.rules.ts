@@ -2,7 +2,7 @@
  * Student Thesis Journey pure evaluation (WP5).
  *
  * Academic progression is derived from formal domain evidence only:
- * CompExam → Title DefenseConclusion (+ selectedTitleId) → AdviserRequest /
+ * CompExam → Title DefenseConclusion → AdviserRequest /
  * AdviserAssignment → Proposal DefenseConclusion → STRIKE (policy) →
  * Final DefenseConclusion.
  *
@@ -420,7 +420,9 @@ function adminActionableStep(
 
 /**
  * Authoritative Journey evaluation — cumulative sequence.
- * selectedTitle must come from DefenseConclusion.selectedTitleId, not isSelected alone.
+ * A PASSED Title DefenseConclusion with its finalized Title RAP completes Title;
+ * a binding selected title is NOT required. Historical selected-title data (when
+ * present) is display context only.
  *
  * Downstream steps require ALL preceding academic prerequisites, so orphaned
  * legacy evidence cannot unlock a later milestone early.
@@ -428,14 +430,12 @@ function adminActionableStep(
 export function evaluateStudentThesisJourney(
   snap: JourneySnapshot,
 ): StudentThesisJourneyDto {
-  // Canonical Title completion: PASSED + official selected title + finalized Title RAP.
+  // Canonical Title completion: PASSED + finalized required Title RAP.
   const titleCompleted = isTitleStageComplete({
     outcome: snap.titlePassed ? "PASSED" : null,
-    hasSelectedTitle: Boolean(snap.selectedTitleId),
     titleRapFinalized: snap.titleRapFinalized,
   });
-  const titleResultAndTitleReady =
-    snap.titlePassed && Boolean(snap.selectedTitleId);
+  const titleResultAndTitleReady = snap.titlePassed;
   const titleRapPending = titleResultAndTitleReady && !snap.titleRapFinalized;
   const adviserCompleted = Boolean(snap.activeAdviser);
   const proposalCompleted = isProposalStageComplete({
@@ -479,9 +479,9 @@ export function evaluateStudentThesisJourney(
         ? step(
             "TITLE_DEFENSE",
             "WAITING",
-            "Title Defense academic result and official title are recorded. Required Title RAP is still awaiting finalization/signatures.",
+            "Title Defense academic result is recorded. Required Title RAP is still awaiting finalization/signatures.",
             "Finalizing Title Defense records.",
-            "Finalizing Title Defense records — academic result and official title are recorded; required Title RAP is still pending.",
+            "Finalizing Title Defense records — academic result is recorded; required Title RAP is still pending.",
             "FINALIZING_RECORDS",
             snap.titleSession ?? null,
           )
@@ -499,8 +499,8 @@ export function evaluateStudentThesisJourney(
         "ADVISER_REQUEST",
         "LOCKED",
         titleRapPending
-          ? "Title Defense academic result and official title are complete, but the required Title RAP must be finalized before Adviser Request."
-          : "Complete and pass Title Defense with an official selected title first.",
+          ? "Title Defense academic result is complete, but the required Title RAP must be finalized before Adviser Request."
+          : "Complete and pass Title Defense first.",
       )
     : adviserCompleted
       ? step("ADVISER_REQUEST", "COMPLETED", null, "Continue to Proposal Defense.")

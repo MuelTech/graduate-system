@@ -43,12 +43,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-const TITLE_FIELDS = [
-  { key: "t1", label: "Proposed Title 1" },
-  { key: "t2", label: "Proposed Title 2" },
-  { key: "t3", label: "Proposed Title 3" },
-] as const;
-
 type DocKey = "package" | "cor" | "receipt";
 
 interface DocConfig {
@@ -71,8 +65,8 @@ const DOCUMENTS: DocConfig[] = [
     field: "conceptPaper",
     label: "Title Defense Proposal Package",
     helper: [
-      "Upload one PDF containing three complete title proposals — one for each proposed research title entered above.",
-      "The three titles in this package should match the titles entered above.",
+      "Upload one PDF containing your complete Title Defense proposal package.",
+      "If your proposal contains three title options, include all of them inside this document.",
     ],
     accept: ".pdf",
     formatNote: "PDF only · One combined file for all 3 title proposals",
@@ -283,7 +277,6 @@ export default function TitleDefensePage() {
   const state = titleStep?.state;
   const selectedTitle = journey?.selectedTitle ?? null;
 
-  const [titles, setTitles] = useState({ t1: "", t2: "", t3: "" });
   const [files, setFiles] = useState<Record<DocKey, File | null>>({
     package: null,
     cor: null,
@@ -304,22 +297,15 @@ export default function TitleDefensePage() {
     };
   }, [previewUrl]);
 
-  const allTitlesFilled = !!(
-    titles.t1.trim() &&
-    titles.t2.trim() &&
-    titles.t3.trim()
-  );
   const allDocsSelected =
     files.package !== null && files.cor !== null && files.receipt !== null;
-  const canSubmit = allTitlesFilled && allDocsSelected && !submitSuccess;
+  const canSubmit = allDocsSelected && !submitSuccess;
 
   const submitTitle = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
-      formData.append("title1", titles.t1.trim());
-      formData.append("title2", titles.t2.trim());
-      formData.append("title3", titles.t3.trim());
-      // Single source of truth for the three upload fields.
+      // 2026-10-15: the Title Proposal package is the academic Title submission.
+      // No structured title1/title2/title3 fields are required or sent.
       for (const config of DOCUMENTS) {
         formData.append(config.field, files[config.key]!);
       }
@@ -434,14 +420,16 @@ export default function TitleDefensePage() {
               <CheckCircle2 className="h-5 w-5" />
               <p className="font-semibold">Title Defense completed</p>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-(--earist-body-text)">
-                Official Title
-              </p>
-              <p className="mt-1 font-medium text-(--earist-primary)">
-                {selectedTitle?.titleText || "—"}
-              </p>
-            </div>
+            {selectedTitle?.titleText && (
+              <div>
+                <p className="text-xs uppercase tracking-wide text-(--earist-body-text)">
+                  Recorded Title (historical)
+                </p>
+                <p className="mt-1 font-medium text-(--earist-primary)">
+                  {selectedTitle.titleText}
+                </p>
+              </div>
+            )}
             {titleStep?.nextAction && (
               <p className="text-sm text-(--earist-body-text)">
                 {titleStep.nextAction}
@@ -511,7 +499,7 @@ export default function TitleDefensePage() {
     <div className="mx-auto max-w-3xl space-y-6 pb-10">
       <PageHeader
         title="Title Defense Application"
-        description="Enter your three proposed research titles and upload the required documents. No adviser is required for Title Defense."
+        description="Upload your Title Defense Proposal Package and the required documents. No adviser is required for Title Defense."
       />
 
       {submitError && (
@@ -540,46 +528,6 @@ export default function TitleDefensePage() {
           setConfirmOpen(true);
         }}
       >
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              Proposed Research Titles
-            </CardTitle>
-            <p className="text-sm text-(--earist-body-text)">
-              Enter your three proposed research titles exactly as they appear in
-              your Title Defense Proposal Package.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {TITLE_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <label
-                    htmlFor={`title-${field.key}`}
-                    className="mb-1 block text-sm font-medium text-(--earist-secondary)"
-                  >
-                    {field.label} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id={`title-${field.key}`}
-                    type="text"
-                    disabled={submitTitle.isPending || submitSuccess}
-                    value={titles[field.key]}
-                    onChange={(e) =>
-                      setTitles((prev) => ({
-                        ...prev,
-                        [field.key]: e.target.value.slice(0, 250),
-                      }))
-                    }
-                    placeholder="Enter your proposed research title..."
-                    className="w-full rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:ring-2 focus:ring-(--earist-primary)/20 focus:outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-(--earist-secondary)">
             Required Documents
@@ -624,22 +572,12 @@ export default function TitleDefensePage() {
           <DialogHeader>
             <DialogTitle>Confirm Title Defense Application</DialogTitle>
             <DialogDescription>
-              Please verify that the three titles entered below match the titles
-              in your uploaded proposal package.
+              Please verify that the documents below are the correct files before
+              submitting your Title Defense application.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 text-sm">
-            <div>
-              <p className="mb-1 font-medium text-(--earist-secondary)">
-                Proposed Titles
-              </p>
-              <ol className="list-decimal space-y-1 pl-5 text-(--earist-body-text)">
-                <li>{titles.t1.trim() || "—"}</li>
-                <li>{titles.t2.trim() || "—"}</li>
-                <li>{titles.t3.trim() || "—"}</li>
-              </ol>
-            </div>
             <div>
               <p className="mb-1 font-medium text-(--earist-secondary)">
                 Documents
@@ -666,9 +604,8 @@ export default function TitleDefensePage() {
               </ul>
             </div>
             <p className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
-              Review all three selected documents before submitting. Once
-              submitted, the application will be placed under Graduate School
-              review.
+              Review all selected documents before submitting. Once submitted,
+              the application will be placed under Graduate School review.
             </p>
           </div>
 

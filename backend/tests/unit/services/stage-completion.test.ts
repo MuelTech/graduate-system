@@ -29,36 +29,34 @@ describe("stage completion (derived)", () => {
     expect(isRapStatusComplete("DRAFT")).toBe(false);
   });
 
-  it("Title is complete only with PASSED + selected title + finalized Title RAP", () => {
+  it("Title completes on PASSED + finalized Title RAP (no selected-title requirement)", () => {
     expect(
       isTitleStageComplete({
         outcome: "PASSED",
-        hasSelectedTitle: true,
         titleRapFinalized: true,
       }),
     ).toBe(true);
 
+    // PASSED without a finalized Title RAP is not complete yet.
     expect(
       isTitleStageComplete({
         outcome: "PASSED",
-        hasSelectedTitle: false,
-        titleRapFinalized: true,
-      }),
-    ).toBe(false);
-
-    expect(
-      isTitleStageComplete({
-        outcome: "PASSED",
-        hasSelectedTitle: true,
         titleRapFinalized: false,
       }),
     ).toBe(false);
 
-    // APPROVED-style / no conclusion must not complete Title
+    // APPROVED-style / no conclusion must not complete Title.
     expect(
       isTitleStageComplete({
         outcome: null,
-        hasSelectedTitle: true,
+        titleRapFinalized: true,
+      }),
+    ).toBe(false);
+
+    // REDEFENSE_REQUIRED never completes the stage.
+    expect(
+      isTitleStageComplete({
+        outcome: "REDEFENSE_REQUIRED",
         titleRapFinalized: true,
       }),
     ).toBe(false);
@@ -68,7 +66,6 @@ describe("stage completion (derived)", () => {
     expect(
       canUnlockProposal({
         outcome: "REVISION_REQUIRED",
-        hasSelectedTitle: true,
         titleRapFinalized: true,
       }),
     ).toBe(false);
@@ -85,7 +82,6 @@ describe("stage completion (derived)", () => {
     expect(
       canUnlockProposal({
         outcome: "FAILED",
-        hasSelectedTitle: true,
         titleRapFinalized: true,
       }),
     ).toBe(false);
@@ -111,14 +107,12 @@ describe("stage completion (derived)", () => {
     expect(
       canUnlockProposal({
         outcome: null,
-        hasSelectedTitle: false,
         titleRapFinalized: false,
       }),
     ).toBe(false);
     expect(
       canUnlockProposal({
         outcome: "PASSED",
-        hasSelectedTitle: true,
         titleRapFinalized: true,
       }),
     ).toBe(true);
@@ -142,7 +136,6 @@ describe("stage completion (derived)", () => {
         stage: "TITLE",
         applicationStatus: "APPROVED",
         outcome: "PASSED",
-        hasSelectedTitle: true,
         titleRapFinalized: false,
         proposalRapFinalized: false,
       }),
@@ -153,7 +146,6 @@ describe("stage completion (derived)", () => {
         stage: "TITLE",
         applicationStatus: "APPROVED",
         outcome: "PASSED",
-        hasSelectedTitle: true,
         titleRapFinalized: true,
         proposalRapFinalized: false,
       }),
@@ -164,7 +156,6 @@ describe("stage completion (derived)", () => {
         stage: "PROPOSAL",
         applicationStatus: "PENDING",
         outcome: null,
-        hasSelectedTitle: true,
         titleRapFinalized: true,
         proposalRapFinalized: false,
       }),
@@ -175,7 +166,6 @@ describe("stage completion (derived)", () => {
         stage: "TITLE",
         applicationStatus: "PENDING",
         outcome: null,
-        hasSelectedTitle: false,
         titleRapFinalized: false,
         proposalRapFinalized: false,
       }),

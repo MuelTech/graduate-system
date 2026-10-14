@@ -296,7 +296,6 @@ export class ProposalAdviserReviewService {
 
     const titleStageComplete = isTitleStageComplete({
       outcome: titleConclusion ? "PASSED" : null,
-      hasSelectedTitle: Boolean(titleConclusion?.selectedTitleId),
       titleRapFinalized,
     });
 

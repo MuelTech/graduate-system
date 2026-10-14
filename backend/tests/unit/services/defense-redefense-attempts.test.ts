@@ -169,7 +169,6 @@ describe("Re-defense stage completion stays open on REDEFENSE_REQUIRED", () => {
           stage,
           applicationStatus: "APPROVED",
           outcome: "REDEFENSE_REQUIRED",
-          hasSelectedTitle: true,
           titleRapFinalized: true,
           proposalRapFinalized: true,
         }),

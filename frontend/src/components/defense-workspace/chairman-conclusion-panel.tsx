@@ -40,7 +40,6 @@ export function ChairmanConclusionPanel({
 }) {
   const queryClient = useQueryClient();
   const [outcome, setOutcome] = useState<string>("");
-  const [selectedTitleId, setSelectedTitleId] = useState<string>("");
   const [finalRemarks, setFinalRemarks] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -59,29 +58,14 @@ export function ChairmanConclusionPanel({
     (sessionStatus === "IN_PROGRESS" || sessionStatus === "AWAITING_CONCLUSION");
   const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
 
-  /**
-   * Human-readable label for a proposed-title id. Base UI's SelectValue renders
-   * the raw value (a UUID) unless given a mapping, so the trigger must resolve it
-   * here while the controlled/submitted value stays the title id.
-   */
-  const selectedTitleLabel = (titleId: string) => {
-    const index = workspace.proposedTitles.findIndex((t) => t.id === titleId);
-    const title = index >= 0 ? workspace.proposedTitles[index] : null;
-    return title
-      ? `Title ${index + 1}: ${title.titleText.slice(0, 80)}`
-      : null;
-  };
-
   // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
-  // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-  // independently of Rapporteur notes/RAP finalization, but only once the defense
-  // has actually started (not while merely SCHEDULED).
+  // 2026-10-15 correction: a Title conclusion records the verdict only — no
+  // official selected title is required or produced.
   const canSubmit =
     !concluded &&
     Boolean(outcome) &&
     (isTitle
-      ? titleReadyForConclusion &&
-        (outcome !== "PASSED" || Boolean(selectedTitleId))
+      ? titleReadyForConclusion
       : notesReady &&
         summaryReady &&
         evalsComplete &&
@@ -95,7 +79,6 @@ export function ChairmanConclusionPanel({
         method: "POST",
         body: JSON.stringify({
           outcome,
-          selectedTitleId: isTitle && outcome === "PASSED" ? selectedTitleId : null,
           finalRemarks: finalRemarks.trim() || null,
         }),
       }),
@@ -190,8 +173,7 @@ export function ChairmanConclusionPanel({
                 <p>
                   Evaluations finalized: {evals.finalizedEvaluations} /{" "}
                   {evals.evaluatorAssignments}
-                </p>
-                <p>
+                </p>                <p>
                   Summary:{" "}
                   {summaryReady
                     ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
@@ -241,31 +223,6 @@ export function ChairmanConclusionPanel({
               </p>
             </div>
 
-            {isTitle && outcome === "PASSED" && (
-              <div className="space-y-2">
-                <Label htmlFor="title">Official Selected Title</Label>
-                <Select
-                  value={selectedTitleId}
-                  onValueChange={(v) => setSelectedTitleId(v ?? "")}
-                >
-                  <SelectTrigger id="title">
-                    <SelectValue placeholder="Select one proposed title…">
-                      {selectedTitleId
-                        ? selectedTitleLabel(selectedTitleId)
-                        : undefined}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspace.proposedTitles.map((t, i) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        Title {i + 1}: {t.titleText.slice(0, 80)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="remarks">Chairman Remarks (optional)</Label>
               <Textarea
@@ -306,9 +263,6 @@ export function ChairmanConclusionPanel({
                     </>
                   )}
                   <li>Selected result: {outcome}</li>
-                  {isTitle && outcome === "PASSED" && (
-                    <li>Selected title required</li>
-                  )}
                   <li className="font-semibold">
                     This action is irreversible. No result is recommended from
                     scores.

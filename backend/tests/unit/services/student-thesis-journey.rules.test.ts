@@ -333,7 +333,7 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
     expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
   });
 
-  it("formal PASSED without selectedTitleId keeps Adviser locked", () => {
+  it("formal PASSED without a selected title completes Title and unlocks Adviser (2026-10-15)", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({
         compExamPassed: true,
@@ -343,9 +343,9 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
         titleRapFinalized: true,
       }),
     );
-    // Title is waiting on official title selection (formal conclusion incomplete).
-    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
-    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "TITLE_DEFENSE")).toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("CURRENT");
+    expect(dto.selectedTitle).toBeNull();
   });
 
   it("CP1: PASSED + selected title + RAP NOT finalized keeps Title incomplete and Adviser locked", () => {
@@ -396,14 +396,14 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
     expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
   });
 
-  it("CP1: PASSED + no selected title + RAP finalized keeps Title incomplete and Adviser locked", () => {
+  it("CP1: PASSED + no selected title + RAP NOT finalized keeps Title incomplete and Adviser locked", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({
         compExamPassed: true,
         titlePassed: true,
         selectedTitleId: null,
         selectedTitleText: null,
-        titleRapFinalized: true,
+        titleRapFinalized: false,
       }),
     );
     expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");

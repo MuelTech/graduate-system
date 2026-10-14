@@ -16,8 +16,6 @@ const baseInput = {
   sessionStatus: "AWAITING_CONCLUSION",
   rapporteurNotesFinalized: true,
   oralSummaryExists: true,
-  selectedTitleId: null,
-  thesisTitleIds: ["a", "b", "c"],
   outcomeProvided: true,
 };
 
@@ -117,83 +115,37 @@ describe("CP7 readiness gates", () => {
   });
 });
 
-describe("CP7 Title conclusion selected-title rules", () => {
-  it("Test 18: Title PASSED without selectedTitleId → 400", () => {
+describe("CP7 Title conclusion (verdict-only; no selected-title requirement)", () => {
+  it("Title PASSED without a selected title is allowed", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        sessionStatus: "AWAITING_CONCLUSION",
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: null,
-      },
-      "PASSED",
-    );
-    expect(result.ok).toBe(false);
-    expect(result.statusCode).toBe(400);
-  });
-
-  it("Test 19: cross-thesis selected title rejected", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-        selectedTitleId: "zzz",
-      },
-      "PASSED",
-    );
-    expect(result.ok).toBe(false);
-    expect(result.statusCode).toBe(400);
-  });
-
-  it("Title PASSED with a student title is allowed", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
     expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("PASSED");
   });
 
-  it("Title REDEFENSE_REQUIRED does not require selected title", () => {
+  it("Title REDEFENSE_REQUIRED without a selected title is allowed", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
         defenseType: "TITLE_DEFENSE",
+        sessionStatus: "AWAITING_CONCLUSION",
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: null,
       },
       "REDEFENSE_REQUIRED",
     );
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("REDEFENSE_REQUIRED");
-  });
-
-  it("Title skips numerical Summary/evaluator prerequisites", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
-      },
-      "PASSED",
-    );
-    expect(result.ok).toBe(true);
   });
 
   it("pre-defense SCHEDULED Title cannot be formally concluded", () => {
@@ -206,7 +158,6 @@ describe("CP7 Title conclusion selected-title rules", () => {
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
@@ -224,7 +175,6 @@ describe("CP7 Title conclusion selected-title rules", () => {
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
@@ -242,7 +192,6 @@ describe("CP7 Title conclusion selected-title rules", () => {
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
@@ -259,7 +208,6 @@ describe("CP7 Title conclusion selected-title rules", () => {
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
@@ -279,30 +227,11 @@ describe("CP7 Title conclusion selected-title rules", () => {
         oralSummaryExists: false,
         evaluatorAssignments: 0,
         finalizedEvaluatorScores: 0,
-        selectedTitleId: "b",
       },
       "PASSED",
     );
     expect(result.ok).toBe(false);
     expect(result.statusCode).toBe(403);
-  });
-
-  it("Title PASSED with draft notes still requires a selected title", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "IN_PROGRESS",
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-        selectedTitleId: null,
-      },
-      "PASSED",
-    );
-    expect(result.ok).toBe(false);
-    expect(result.statusCode).toBe(400);
   });
 });
 

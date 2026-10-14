@@ -25,7 +25,6 @@ export type StageCompletionState =
 
 export interface TitleCompletionInput {
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
 }
 
@@ -62,7 +61,6 @@ export function isRapCompleteForSchedule(
 export interface UnlockProposalInput {
   /** Formal Title DefenseConclusion outcome — not ThesisRecord.outcome. */
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
 }
 
@@ -79,12 +77,13 @@ export function isPassingOutcome(
   return outcome === "PASSED";
 }
 
+/**
+ * 2026-10-15 correction: Title completion requires the formal PASSED verdict and
+ * the required Title RAP finalization. A binding official selected title is NOT
+ * part of completion.
+ */
 export function isTitleStageComplete(input: TitleCompletionInput): boolean {
-  return (
-    isPassingOutcome(input.outcome) &&
-    input.hasSelectedTitle &&
-    input.titleRapFinalized
-  );
+  return isPassingOutcome(input.outcome) && input.titleRapFinalized;
 }
 
 export function isProposalStageComplete(
@@ -107,7 +106,6 @@ export function isFinalDefensePassed(
 export function canUnlockProposal(input: UnlockProposalInput): boolean {
   return isTitleStageComplete({
     outcome: input.outcome,
-    hasSelectedTitle: input.hasSelectedTitle,
     titleRapFinalized: input.titleRapFinalized,
   });
 }
@@ -128,7 +126,6 @@ export interface StageProgressSnapshot {
   stage: "TITLE" | "PROPOSAL" | "FINAL" | null;
   applicationStatus: string | null;
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
   proposalRapFinalized: boolean;
 }
@@ -162,7 +159,6 @@ export function computeStageCompletion(
     if (stage === "TITLE") {
       return isTitleStageComplete({
         outcome: snap.outcome,
-        hasSelectedTitle: snap.hasSelectedTitle,
         titleRapFinalized: snap.titleRapFinalized,
       })
         ? "COMPLETE"

@@ -51,7 +51,6 @@ const titleInput = (
   compExamPassed: true,
   compExamDismissed: false,
   hasActiveThesisBlocking: false,
-  titleCountFromRequest: 3,
   hasConceptPaper: true,
   hasCor: true,
   hasReceipt: true,
@@ -69,7 +68,7 @@ describe("evaluateApplyTitle", () => {
     expect(result.missing).toHaveLength(0);
   });
 
-  it("UIUX-4B FIX-1: requires 3 titles + package + COR + receipt", () => {
+  it("UIUX-4B FIX-1: requires the package + COR + receipt", () => {
     const result = svc.evaluateApplyTitle(titleInput());
     expect(result.eligible).toBe(true);
     expect(codes(result.missing)).not.toContain("COR");
@@ -91,9 +90,16 @@ describe("evaluateApplyTitle", () => {
     expect(codes(result.missing)).toContain("RECEIPT");
   });
 
-  it("requires three titles", () => {
-    const result = svc.evaluateApplyTitle(titleInput({ titleCountFromRequest: 2 }));
-    expect(codes(result.missing)).toContain("THREE_TITLES");
+  it("does not require structured title1/title2/title3 (Title Proposal package is authoritative)", () => {
+    // 2026-10-15 correction: structured titles are no longer an eligibility gate.
+    const result = svc.evaluateApplyTitle(titleInput());
+    expect(result.eligible).toBe(true);
+    expect(codes(result.missing)).not.toContain("THREE_TITLES");
+    // The proposal package remains required.
+    const missingPackage = svc.evaluateApplyTitle(
+      titleInput({ hasConceptPaper: false }),
+    );
+    expect(codes(missingPackage.missing)).toContain("TITLE_PROPOSAL");
   });
 
   it("requires comprehensive exam PASSED", () => {
@@ -173,7 +179,7 @@ describe("evaluateApplyProposal", () => {
     });
     expect(codes(caseA.missing)).toContain("THESIS_STAGE");
     const caseAMsg = caseA.missing.find((m) => m.code === "THESIS_STAGE");
-    expect(caseAMsg?.message).toMatch(/formally PASSED with an official selected title/i);
+    expect(caseAMsg?.message).toMatch(/formally PASSED/i);
     expect(caseA.missing.find((m) => m.code === "PRIOR_RAP")).toBeUndefined();
 
     // Case B — PASSED + selected title, RAP not finalized.

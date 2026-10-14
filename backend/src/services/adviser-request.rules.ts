@@ -232,7 +232,6 @@ export function mapDeanDecisionToOverallStatus(
 
 export type TitleDefenseGateInput = {
   hasPassedTitleConclusion: boolean;
-  hasOfficialSelectedTitle: boolean;
   /** Required Title RAP finalized/signed (ALL_SIGNED or FINALIZED). */
   hasFinalizedTitleRap: boolean;
 };
@@ -242,8 +241,9 @@ export type TitleDefenseGateResult =
   | { allowed: false; reason: string; statusCode: number };
 
 /**
- * Backend unlock: formal Title Defense PASSED + official selected title
- * + finalized required Title RAP. Matches isTitleStageComplete.
+ * Backend unlock: formal Title Defense PASSED + finalized required Title RAP.
+ * 2026-10-15 correction: an official selected title is NOT required (the Title
+ * Proposal document is the academic submission; no binding selected title).
  */
 export function evaluateTitleDefenseGate(
   input: TitleDefenseGateInput,
@@ -253,14 +253,6 @@ export function evaluateTitleDefenseGate(
       allowed: false,
       reason:
         "Adviser Request requires a formally PASSED Title Defense conclusion.",
-      statusCode: 400,
-    };
-  }
-  if (!input.hasOfficialSelectedTitle) {
-    return {
-      allowed: false,
-      reason:
-        "Adviser Request requires an official selected title from Title Defense conclusion.",
       statusCode: 400,
     };
   }

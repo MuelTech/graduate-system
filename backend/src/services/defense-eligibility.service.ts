@@ -20,7 +20,6 @@ export interface ApplyTitleEligibilityInput {
   compExamPassed: boolean;
   compExamDismissed: boolean;
   hasActiveThesisBlocking: boolean;
-  titleCountFromRequest: number;
   hasConceptPaper: boolean;
   hasCor: boolean;
   hasReceipt: boolean;
@@ -45,9 +44,12 @@ export function researchVariablesSatisfied(
   return state === "APPROVED" || state === "NOT_APPLICABLE";
 }
 
-/** True when Title academic result + official title exist (RAP checked separately). */
-function titleResultAndOfficialTitle(snap: EligibilitySnapshot): boolean {
-  return snap.titleOutcome === "PASSED" && snap.hasSelectedTitle;
+/**
+ * True when the Title academic result is formally PASSED (RAP checked separately).
+ * 2026-10-15 correction: a binding official selected title is NOT required.
+ */
+function isTitleResultReady(snap: EligibilitySnapshot): boolean {
+  return snap.titleOutcome === "PASSED";
 }
 
 export class DefenseEligibilityService {
@@ -83,15 +85,6 @@ export class DefenseEligibilityService {
         miss(
           "NO_ACTIVE_THESIS",
           "You already have an active Thesis Record in progress.",
-          stage,
-        ),
-      );
-    }
-    if (input.titleCountFromRequest < 3) {
-      missing.push(
-        miss(
-          "THREE_TITLES",
-          "Three (3) proposed research titles are required.",
           stage,
         ),
       );
@@ -137,7 +130,7 @@ export class DefenseEligibilityService {
   ): EligibilityResult {
     const missing: MissingRequirement[] = [];
     const stage: DefenseStage = "PROPOSAL";
-    const titleResultReady = titleResultAndOfficialTitle(snap);
+    const titleResultReady = isTitleResultReady(snap);
 
     if (!snap.compExamPassed) {
       missing.push(
@@ -157,23 +150,23 @@ export class DefenseEligibilityService {
         ),
       );
     }
-    // Case A: formal result/title incomplete (distinct from RAP pending).
+    // Case A: formal result incomplete (distinct from RAP pending).
     if (!titleResultReady) {
       missing.push(
         miss(
           "THESIS_STAGE",
-          "Title Defense must be formally PASSED with an official selected title before Proposal application.",
+          "Title Defense must be formally PASSED before Proposal application.",
           stage,
         ),
       );
     }
-    // Case B: academic result/title exist but Title RAP is not finalized.
+    // Case B: academic result exists but Title RAP is not finalized.
     if (!snap.titleRapSigned) {
       missing.push(
         miss(
           "PRIOR_RAP",
           titleResultReady
-            ? "Title Defense academic result and official title are complete, but the required Title RAP is still awaiting finalization/signatures."
+            ? "Title Defense academic result is complete, but the required Title RAP is still awaiting finalization/signatures."
             : "Approved (signed) Title Defense RAP Report is required.",
           stage,
         ),
@@ -462,15 +455,6 @@ export class DefenseEligibilityService {
     }
 
     if (stage === "TITLE") {
-      if (snap.titleCount < 3) {
-        missing.push(
-          miss(
-            "THREE_TITLES",
-            "Three (3) proposed research titles are required.",
-            stage,
-          ),
-        );
-      }
       if (!snap.evidence.titlePackage) {
         missing.push(
           miss(
@@ -501,8 +485,8 @@ export class DefenseEligibilityService {
         missing.push(
           miss(
             "PRIOR_RAP",
-            titleResultAndOfficialTitle(snap)
-              ? "Title Defense academic result and official title are complete, but the required Title RAP is still awaiting finalization/signatures."
+            isTitleResultReady(snap)
+              ? "Title Defense academic result is complete, but the required Title RAP is still awaiting finalization/signatures."
               : "Signed Title Defense RAP is required.",
             stage,
           ),

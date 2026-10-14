@@ -10,7 +10,6 @@ import type {
 } from "./defense-workflow.rules";
 import {
   normalizeNewDefenseOutcome,
-  validateTitleConclusionSelection,
 } from "./defense-workflow.rules";
 import { AppError } from "../utils/AppError";
 
@@ -28,8 +27,6 @@ export interface ConclusionPreconditions {
   sessionStatus: string;
   rapporteurNotesFinalized: boolean;
   oralSummaryExists: boolean;
-  selectedTitleId?: string | null;
-  thesisTitleIds: string[];
   outcomeProvided: boolean;
 }
 
@@ -138,15 +135,9 @@ export function validateConclusionPreconditions(
   }
 
   if (outcome === "PASSED" && isTitle) {
-    const titleCheck = validateTitleConclusionSelection(
-      input.defenseType,
-      input.selectedTitleId ?? null,
-      input.thesisTitleIds,
-    );
-    if (!titleCheck.valid && titleCheck.error) {
-      errors.push(titleCheck.error);
-      statusCode = 400;
-    }
+    // 2026-10-15 correction: a PASSED Title Defense does NOT require or create a
+    // binding official selected title. The verdict is recorded independently of
+    // any structured title. A finalized title snapshot is not part of the verdict.
   }
 
   return { ok: errors.length === 0, errors, outcome, statusCode };

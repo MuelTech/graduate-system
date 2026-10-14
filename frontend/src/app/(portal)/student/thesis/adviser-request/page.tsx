@@ -55,7 +55,8 @@ type OdpCandidate = {
 
 type CandidatesResponse = {
   sourceDefenseScheduleId: string;
-  selectedTitle: { id: string; titleText: string };
+  /** Historical context only — nullable; not required to list candidates. */
+  selectedTitle: { id: string; titleText: string } | null;
   candidates: OdpCandidate[];
 };
 

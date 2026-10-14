@@ -42,7 +42,6 @@ describe("evaluateTitleDefenseGate", () => {
   it("rejects when there is no formal passed Title Defense conclusion", () => {
     const r = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: false,
-      hasOfficialSelectedTitle: false,
       hasFinalizedTitleRap: false,
     });
     expect(r.allowed).toBe(false);
@@ -52,22 +51,17 @@ describe("evaluateTitleDefenseGate", () => {
     }
   });
 
-  it("rejects when conclusion exists but no official selected title", () => {
+  it("allows PASSED + finalized Title RAP without any selected title (2026-10-15)", () => {
     const r = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: true,
-      hasOfficialSelectedTitle: false,
       hasFinalizedTitleRap: true,
     });
-    expect(r.allowed).toBe(false);
-    if (!r.allowed) {
-      expect(r.reason).toMatch(/official selected title/i);
-    }
+    expect(r.allowed).toBe(true);
   });
 
-  it("CP1: rejects PASSED + selected title when Title RAP is not finalized", () => {
+  it("CP1: rejects PASSED when Title RAP is not finalized", () => {
     const r = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: true,
-      hasOfficialSelectedTitle: true,
       hasFinalizedTitleRap: false,
     });
     expect(r.allowed).toBe(false);
@@ -75,16 +69,6 @@ describe("evaluateTitleDefenseGate", () => {
       expect(r.reason).toMatch(/Title RAP/i);
       expect(r.reason).not.toMatch(/formally PASSED Title Defense conclusion/i);
     }
-  });
-
-  it("allows when formal PASSED + selected title + finalized Title RAP exist", () => {
-    expect(
-      evaluateTitleDefenseGate({
-        hasPassedTitleConclusion: true,
-        hasOfficialSelectedTitle: true,
-        hasFinalizedTitleRap: true,
-      }).allowed,
-    ).toBe(true);
   });
 });
 
@@ -118,7 +102,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
 
   function gs020Allows(input: {
     hasPassedTitleConclusion: boolean;
-    hasOfficialSelectedTitle: boolean;
     hasFinalizedTitleRap: boolean;
   }): boolean {
     return evaluateTitleDefenseGate(input).allowed;
@@ -135,7 +118,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
       }),
       gate: {
         hasPassedTitleConclusion: true,
-        hasOfficialSelectedTitle: true,
         hasFinalizedTitleRap: false,
       },
     },
@@ -149,7 +131,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
       }),
       gate: {
         hasPassedTitleConclusion: true,
-        hasOfficialSelectedTitle: true,
         hasFinalizedTitleRap: true,
       },
     },
@@ -163,7 +144,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
       }),
       gate: {
         hasPassedTitleConclusion: false,
-        hasOfficialSelectedTitle: true,
         hasFinalizedTitleRap: true,
       },
     },
@@ -177,7 +157,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
       }),
       gate: {
         hasPassedTitleConclusion: true,
-        hasOfficialSelectedTitle: false,
         hasFinalizedTitleRap: true,
       },
     },
@@ -190,7 +169,6 @@ describe("CP1 Journey / GS-020 consistency", () => {
       expect(journey, "journey vs GS-020 must agree").toBe(gs020);
       expect(isTitleStageComplete({
         outcome: c.snap.titlePassed ? "PASSED" : null,
-        hasSelectedTitle: Boolean(c.snap.selectedTitleId),
         titleRapFinalized: c.snap.titleRapFinalized,
       })).toBe(gs020);
     });

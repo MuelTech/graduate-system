@@ -124,7 +124,6 @@ export class ThesisService {
         compExamPassed: snap.compExamPassed,
         compExamDismissed: snap.compExamDismissed,
         hasActiveThesisBlocking: false,
-        titleCountFromRequest: snap.titleCount >= 3 ? 3 : snap.titleCount,
         hasConceptPaper: snap.evidence.titlePackage,
         hasCor: snap.evidence.corTitle,
         hasReceipt: snap.evidence.receiptTitle,
@@ -350,7 +349,6 @@ export class ThesisService {
           compExamDismissed: snap.compExamDismissed,
           // Same thesis record — must not block itself.
           hasActiveThesisBlocking: false,
-          titleCountFromRequest: titles.length,
           hasConceptPaper: has('TITLE_PROPOSAL'),
           hasCor: has('COR'),
           hasReceipt: has('RECEIPT'),
@@ -427,7 +425,11 @@ export class ThesisService {
       ? await this.eligibilityRepo.loadForStudent(student.id)
       : null;
 
-    const titles = [data.title1, data.title2, data.title3];
+    // Legacy compatibility only: structured titles are optional now; only
+    // non-empty supplied values become ThesisTitle metadata (never fabricated).
+    const titles = [data.title1, data.title2, data.title3]
+      .map((t) => (t ?? "").trim())
+      .filter((t) => t.length > 0);
     const existingThesis = student
       ? await this.thesisRepo.getActiveThesis(student.id)
       : null;
@@ -438,7 +440,6 @@ export class ThesisService {
       compExamDismissed: snap?.compExamDismissed ?? false,
       hasActiveThesisBlocking:
         !!existingThesis && existingThesis.status !== 'FAILED',
-      titleCountFromRequest: titles.filter((t) => t && t.trim()).length,
       hasConceptPaper: !!evidence.conceptPaper.filePath,
       hasCor: !!evidence.cor.filePath,
       hasReceipt: !!evidence.receipt.filePath,
@@ -834,8 +835,6 @@ export class ThesisService {
         sessionStatus: schedule.sessionStatus,
         rapporteurNotesFinalized: schedule.rapporteurNotesFinalized,
         oralSummaryExists: schedule.oralSummaryExists,
-        selectedTitleId: options?.selectedTitleId ?? null,
-        thesisTitleIds: schedule.thesisTitleIds,
         outcomeProvided:
           options?.outcome != null && String(options.outcome).trim() !== "",
       },

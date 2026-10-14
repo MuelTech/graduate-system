@@ -1304,38 +1304,17 @@ export class ThesisRepository {
           ? String(options.finalRemarks)
           : null;
 
-      // Title: validate selected title only for PASSED.
-      if (isTitle && outcome === "PASSED") {
-        if (!selectedTitleId) {
-          throw new AppError(
-            "Title Defense PASSED requires selecting one of the student's proposed titles.",
-            400,
-          );
-        }
-        const title = schedule.thesis.thesisTitles.find(
-          (t) => t.id === selectedTitleId,
-        );
-        if (!title) {
-          throw new AppError(
-            "Selected title must be one of the student's proposed titles.",
-            400,
-          );
-        }
-        await tx.thesisTitle.updateMany({
-          where: { thesisId: schedule.thesisId },
-          data: { isSelected: false },
-        });
-        await tx.thesisTitle.update({
-          where: { id: selectedTitleId },
-          data: { isSelected: true },
-        });
-      } else if (isTitle && outcome !== "PASSED") {
-        // Do not fabricate an official selected title for non-PASSED.
-        await tx.thesisTitle.updateMany({
-          where: { thesisId: schedule.thesisId },
-          data: { isSelected: false },
-        });
-      }
+      // 2026-10-15 correction: a Title Defense conclusion records ONLY the verdict.
+      // It does not require, select, or lock a binding official title, and it does
+      // not mutate ThesisTitle.isSelected (historical selections stay untouched).
+      // A legacy client-supplied selectedTitleId is kept as historical context only
+      // when it belongs to this thesis; otherwise it is stored as null.
+      const legacySelectedTitleId =
+        isTitle &&
+        selectedTitleId &&
+        schedule.thesis.thesisTitles.some((t) => t.id === selectedTitleId)
+          ? selectedTitleId
+          : null;
 
       // Proposal/Final: require evaluator completion + existing Summary.
       if (!isTitle) {
@@ -1368,12 +1347,14 @@ export class ThesisRepository {
         }
       }
 
+      // Legacy display context only — no selection authority is created here.
       const officialTitle =
-        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
-        (selectedTitleId
-          ? schedule.thesis.thesisTitles.find((t) => t.id === selectedTitleId)
-              ?.titleText
+        (legacySelectedTitleId
+          ? schedule.thesis.thesisTitles.find(
+              (t) => t.id === legacySelectedTitleId,
+            )?.titleText
           : null) ??
+        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
         null;
 
       // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
@@ -1410,7 +1391,7 @@ export class ThesisRepository {
           scheduleId,
           thesisId: schedule.thesisId,
           outcome,
-          selectedTitleId: isTitle ? selectedTitleId : null,
+          selectedTitleId: isTitle ? legacySelectedTitleId : null,
           finalRemarks,
           concludedById: chairmanUserId,
           concludedAt: new Date(),
