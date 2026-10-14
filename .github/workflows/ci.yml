@@ -48,10 +48,11 @@ jobs:
       run:
         working-directory: backend
     env:
-      # Placeholder connection string only. The backend unit tests are fully
-      # mocked (no Prisma connection is used), but `src/config/database.ts`
-      # reads DATABASE_URL at import time. No database service is started, no
-      # migration runs, and this is not a production credential.
+      # Test-only placeholder connection string. Some backend test imports load
+      # src/config/database.ts, which requires DATABASE_URL to be defined.
+      # No database service is provisioned for this CI phase, and tests do not
+      # depend on a live database. Any connection failure is handled by the
+      # existing database initialization code.
       DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/ci_placeholder
     steps:
       - name: Checkout repository
