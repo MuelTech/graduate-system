@@ -18,8 +18,7 @@ import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 const OUTCOMES = [
   { value: "PASSED", label: "PASSED" },
-  { value: "REVISION_REQUIRED", label: "REVISION_REQUIRED" },
-  { value: "FAILED", label: "FAILED" },
+  { value: "REDEFENSE_REQUIRED", label: "REDEFENSE_REQUIRED" },
 ] as const;
 
 export function ChairmanConclusionPanel({

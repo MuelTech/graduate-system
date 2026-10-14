@@ -165,7 +165,7 @@ describe("CP7 Title conclusion selected-title rules", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("Title FAILED does not require selected title", () => {
+  it("Title REDEFENSE_REQUIRED does not require selected title", () => {
     const result = validateConclusionPreconditions(
       {
         ...baseInput,
@@ -175,10 +175,10 @@ describe("CP7 Title conclusion selected-title rules", () => {
         finalizedEvaluatorScores: 0,
         selectedTitleId: null,
       },
-      "FAILED",
+      "REDEFENSE_REQUIRED",
     );
     expect(result.ok).toBe(true);
-    expect(result.outcome).toBe("FAILED");
+    expect(result.outcome).toBe("REDEFENSE_REQUIRED");
   });
 
   it("Title skips numerical Summary/evaluator prerequisites", () => {
@@ -307,21 +307,36 @@ describe("CP7 Title conclusion selected-title rules", () => {
 });
 
 describe("CP7 outcome safety", () => {
-  it("accepts REVISION alias and maps to REVISION_REQUIRED", () => {
-    expect(resolveExplicitOutcome("REVISION")).toBe("REVISION_REQUIRED");
+  it("new conclusions accept PASSED and REDEFENSE_REQUIRED only (legacy rejected)", () => {
+    expect(resolveExplicitOutcome("PASSED")).toBe("PASSED");
+    expect(resolveExplicitOutcome("REDEFENSE_REQUIRED")).toBe(
+      "REDEFENSE_REQUIRED",
+    );
+    // Legacy verdicts are readable history but NOT valid new writes.
+    expect(resolveExplicitOutcome("REVISION")).toBeNull();
+    expect(resolveExplicitOutcome("REVISION_REQUIRED")).toBeNull();
+    expect(resolveExplicitOutcome("FAILED")).toBeNull();
+
     const svc = new DefenseConclusionService();
     const outcome = svc.assertCanConclude(
       { ...baseInput, outcomeProvided: true },
-      "REVISION",
+      "REDEFENSE_REQUIRED",
     );
-    expect(outcome).toBe("REVISION_REQUIRED");
+    expect(outcome).toBe("REDEFENSE_REQUIRED");
+  });
+
+  it("rejects legacy verdicts as new conclusions", () => {
+    expect(
+      validateConclusionPreconditions(baseInput, "REVISION_REQUIRED").ok,
+    ).toBe(false);
+    expect(validateConclusionPreconditions(baseInput, "FAILED").ok).toBe(false);
   });
 
   it("Test 20: outcome is independent of numeric score", () => {
-    // Even with a high average the Chairman may record REVISION_REQUIRED.
-    const result = validateConclusionPreconditions(baseInput, "REVISION_REQUIRED");
+    // Even with a high average the Chairman may record REDEFENSE_REQUIRED.
+    const result = validateConclusionPreconditions(baseInput, "REDEFENSE_REQUIRED");
     expect(result.ok).toBe(true);
-    expect(result.outcome).toBe("REVISION_REQUIRED");
+    expect(result.outcome).toBe("REDEFENSE_REQUIRED");
   });
 
   it("isSessionChairmanRole recognizes CHAIRMAN only", () => {

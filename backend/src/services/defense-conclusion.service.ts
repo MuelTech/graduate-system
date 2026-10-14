@@ -6,10 +6,10 @@
  * No missing-outcome default. No score→PASS/FAIL. No outcome→OralRating mapping.
  */
 import type {
-  DefenseOutcomeStatus,
+  CanonicalDefenseOutcome,
 } from "./defense-workflow.rules";
 import {
-  normalizeDefenseOutcome,
+  normalizeNewDefenseOutcome,
   validateTitleConclusionSelection,
 } from "./defense-workflow.rules";
 import { AppError } from "../utils/AppError";
@@ -36,7 +36,7 @@ export interface ConclusionPreconditions {
 export interface ConclusionPreconditionResult {
   ok: boolean;
   errors: string[];
-  outcome: DefenseOutcomeStatus | null;
+  outcome: CanonicalDefenseOutcome | null;
   statusCode: 400 | 403 | 409;
 }
 
@@ -46,11 +46,12 @@ export function isSessionChairmanRole(role: string | null | undefined): boolean 
 
 /**
  * Explicit outcome is required. Missing outcome is a 400 — never defaults to PASSED.
+ * New conclusions accept only the canonical verdicts PASSED / REDEFENSE_REQUIRED.
  */
 export function resolveExplicitOutcome(
   raw: string | null | undefined,
-): DefenseOutcomeStatus | null {
-  return normalizeDefenseOutcome(raw ?? null);
+): CanonicalDefenseOutcome | null {
+  return normalizeNewDefenseOutcome(raw ?? null);
 }
 
 export function validateConclusionPreconditions(
@@ -62,7 +63,7 @@ export function validateConclusionPreconditions(
 
   if (!input.outcomeProvided) {
     errors.push(
-      "Defense outcome is required and must be PASSED, REVISION_REQUIRED (or REVISION), or FAILED.",
+      "Defense outcome is required and must be PASSED or REDEFENSE_REQUIRED.",
     );
     statusCode = 400;
     return { ok: false, errors, outcome: null, statusCode };
@@ -71,7 +72,7 @@ export function validateConclusionPreconditions(
   const outcome = resolveExplicitOutcome(rawOutcome);
   if (!outcome) {
     errors.push(
-      "Defense outcome must be PASSED, REVISION_REQUIRED (or REVISION), or FAILED.",
+      "Defense outcome must be PASSED or REDEFENSE_REQUIRED.",
     );
     return { ok: false, errors, outcome: null, statusCode: 400 };
   }
@@ -159,7 +160,7 @@ export class DefenseConclusionService {
   assertCanConclude(
     input: ConclusionPreconditions,
     rawOutcome: string | null | undefined,
-  ): DefenseOutcomeStatus {
+  ): CanonicalDefenseOutcome {
     const result = validateConclusionPreconditions(input, rawOutcome);
     if (!result.ok || !result.outcome) {
       throw new AppError(result.errors.join(" "), result.statusCode);
@@ -174,7 +175,7 @@ export class DefenseConclusionService {
  */
 export function assertOutcomeIndependentOfScore(
   _overallAverage: number | null | undefined,
-  outcome: DefenseOutcomeStatus,
-): DefenseOutcomeStatus {
+  outcome: CanonicalDefenseOutcome,
+): CanonicalDefenseOutcome {
   return outcome;
 }

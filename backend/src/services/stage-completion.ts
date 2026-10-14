@@ -8,7 +8,11 @@
  * deferred until the correction-clearance actor is confirmed.
  */
 
-export type DefenseOutcomeName = "PASSED" | "REVISION_REQUIRED" | "FAILED";
+export type DefenseOutcomeName =
+  | "PASSED"
+  | "REDEFENSE_REQUIRED"
+  | "REVISION_REQUIRED"
+  | "FAILED";
 
 export type StageCompletionState =
   | "NOT_STARTED"
@@ -148,6 +152,11 @@ export function computeStageCompletion(
 
   if (snap.outcome) {
     if (snap.outcome === "FAILED") return "BLOCKED";
+    if (snap.outcome === "REDEFENSE_REQUIRED") {
+      // Canonical re-defense verdict: the stage stays open (a new same-stage
+      // attempt is required); it is never COMPLETE.
+      return "POST_DEFENSE_IN_PROGRESS";
+    }
     if (snap.outcome === "REVISION_REQUIRED") return "POST_DEFENSE_IN_PROGRESS";
     // PASSED
     if (stage === "TITLE") {

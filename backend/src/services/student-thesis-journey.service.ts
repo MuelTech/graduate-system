@@ -46,6 +46,7 @@ function toAdminState(row: {
   const concluded = row.schedules.find((s) => s.conclusion)?.conclusion;
   if (concluded) {
     if (concluded.outcome === "PASSED") return "CONCLUDED_PASSED";
+    if (concluded.outcome === "REDEFENSE_REQUIRED") return "CONCLUDED_REDEFENSE";
     return concluded.outcome === "FAILED"
       ? "CONCLUDED_FAILED"
       : "CONCLUDED_OTHER";

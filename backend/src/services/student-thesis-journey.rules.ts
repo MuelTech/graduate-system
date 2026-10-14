@@ -43,6 +43,7 @@ export type DefenseSubstatus =
   | "COMPLETED"
   | "FAILED"
   | "REVISION_REQUIRED"
+  | "REDEFENSE_REQUIRED"
   | "REJECTED"
   | "CANCELLED_SESSION";
 
@@ -211,6 +212,7 @@ export type AdminSessionState =
   | "REJECTED"
   | "CONCLUDED_FAILED"
   | "CONCLUDED_PASSED"
+  | "CONCLUDED_REDEFENSE"
   | "CONCLUDED_OTHER";
 
 /** Terminal defense outcomes — do not poll merely because Journey state is WAITING. */
@@ -310,8 +312,11 @@ function adminSubstatus(admin: AdminSessionState): DefenseSubstatus {
       return "FINALIZING_RECORDS";
     case "CONCLUDED_FAILED":
       return "FAILED";
+    case "CONCLUDED_REDEFENSE":
+      // Canonical re-defense verdict: stage stays open for a new attempt.
+      return "REDEFENSE_REQUIRED";
     case "CONCLUDED_OTHER":
-      // REVISION_REQUIRED and other non-passing formal outcomes.
+      // REVISION_REQUIRED and other legacy non-passing formal outcomes.
       return "REVISION_REQUIRED";
     default:
       return "NOT_SUBMITTED";
@@ -337,6 +342,8 @@ function adminWaitingText(
       return `Your ${kind} Defense session was cancelled. Await rescheduling or further instructions.`;
     case "CONCLUDED_FAILED":
       return `Defense result: Failed. The formal ${kind} Defense result has been recorded.`;
+    case "CONCLUDED_REDEFENSE":
+      return `Re-defense required. Your ${kind} Defense attempt was concluded as Re-defense Required; the stage remains open for a new ${kind} Defense attempt.`;
     case "CONCLUDED_OTHER":
       return `Revision required. Follow the Graduate School / panel instructions for required revisions.`;
     default:
@@ -363,6 +370,8 @@ function adminNextAction(
       return "Await rescheduling or further instructions from the Graduate School.";
     case "CONCLUDED_FAILED":
       return "Contact / await instructions from the Graduate School regarding the next required action.";
+    case "CONCLUDED_REDEFENSE":
+      return "Await Graduate School instructions for a new defense attempt.";
     case "CONCLUDED_OTHER":
       return "Follow the Graduate School / panel instructions for required revisions.";
     default:

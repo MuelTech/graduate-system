@@ -6,7 +6,35 @@
  */
 
 export type ApplicationReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type DefenseOutcomeStatus = "PASSED" | "REVISION_REQUIRED" | "FAILED";
+/**
+ * Canonical verdicts for NEW defense attempts (Defense SOT v1.9, 2026-10-15).
+ * Only these two values may be written by a new conclusion (WF-C1a).
+ */
+export type CanonicalDefenseOutcome = "PASSED" | "REDEFENSE_REQUIRED";
+/**
+ * Read/legacy-tolerant outcome union. `REVISION_REQUIRED` and `FAILED` are
+ * retained so historical conclusions remain readable; they are NOT valid new
+ * write outcomes. Keep write semantics (`normalizeNewDefenseOutcome`) separate
+ * from legacy read compatibility (`normalizeDefenseOutcome`).
+ */
+export type DefenseOutcomeStatus =
+  | "PASSED"
+  | "REDEFENSE_REQUIRED"
+  | "REVISION_REQUIRED"
+  | "FAILED";
+
+export const CANONICAL_DEFENSE_OUTCOMES: readonly CanonicalDefenseOutcome[] = [
+  "PASSED",
+  "REDEFENSE_REQUIRED",
+];
+
+export function isCanonicalDefenseOutcome(
+  value: string,
+): value is CanonicalDefenseOutcome {
+  return (
+    value === "PASSED" || value === "REDEFENSE_REQUIRED"
+  );
+}
 export type DefenseSessionStatusName =
   | "UNSCHEDULED"
   | "SCHEDULED"
@@ -36,18 +64,41 @@ export function isDefenseOutcomeStatus(
 ): status is DefenseOutcomeStatus {
   return (
     status === "PASSED" ||
+    status === "REDEFENSE_REQUIRED" ||
     status === "REVISION_REQUIRED" ||
     status === "FAILED"
   );
 }
 
-/** API conclusion body may use REVISION as alias of REVISION_REQUIRED. */
+/**
+ * WRITE normalizer for NEW conclusions (WF-C1a). Accepts only the canonical
+ * verdicts PASSED / REDEFENSE_REQUIRED. Legacy REVISION_REQUIRED / FAILED are
+ * intentionally rejected here; historical data stays readable through
+ * `normalizeDefenseOutcome`.
+ */
+export function normalizeNewDefenseOutcome(
+  raw: string | null | undefined,
+): CanonicalDefenseOutcome | null {
+  if (!raw) return null;
+  const v = String(raw).trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (v === "PASSED") return "PASSED";
+  if (v === "REDEFENSE_REQUIRED" || v === "REDEFENSE") {
+    return "REDEFENSE_REQUIRED";
+  }
+  return null;
+}
+
+/**
+ * LEGACY-tolerant normalizer for existing/historical data. Do not use this to
+ * validate a new conclusion write; use `normalizeNewDefenseOutcome`.
+ */
 export function normalizeDefenseOutcome(
   raw: string | null | undefined,
 ): DefenseOutcomeStatus | null {
   if (!raw) return null;
   const v = String(raw).toUpperCase();
   if (v === "PASSED") return "PASSED";
+  if (v === "REDEFENSE_REQUIRED") return "REDEFENSE_REQUIRED";
   if (v === "FAILED") return "FAILED";
   if (v === "REVISION" || v === "REVISION_REQUIRED") return "REVISION_REQUIRED";
   return null;

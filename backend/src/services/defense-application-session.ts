@@ -15,6 +15,11 @@ export type ScheduleForPick = {
   defenseType: string;
   sessionStatus?: string | null;
   createdAt?: Date | string | null;
+  /**
+   * WF-C1a: formal conclusion for this attempt, when concluded. Used to decide
+   * whether a prior attempt blocks the next same-stage schedule.
+   */
+  conclusion?: { outcome?: string | null } | null;
 };
 
 /**

@@ -304,6 +304,7 @@ export class ThesisRepository {
         defenseType: true,
         sessionStatus: true,
         createdAt: true,
+        conclusion: { select: { outcome: true } },
       },
     });
   }
@@ -862,7 +863,7 @@ export class ThesisRepository {
             | "FINAL_DEFENSE",
           sessionStatus: { not: "CANCELLED" },
         },
-        select: { id: true, defenseType: true, sessionStatus: true, createdAt: true },
+        select: { id: true, defenseType: true, sessionStatus: true, createdAt: true, conclusion: { select: { outcome: true } } },
       });
       const gate = canCreateDefenseSchedule({
         defenseType: data.defenseType,
@@ -1188,7 +1189,8 @@ export class ThesisRepository {
     scheduleId: string,
     chairmanUserId: string,
     options: {
-      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED";
+      /** WF-C1a: new attempts may only be concluded PASSED or REDEFENSE_REQUIRED. */
+      outcome: "PASSED" | "REDEFENSE_REQUIRED";
       selectedTitleId?: string | null;
       finalRemarks?: string | null;
     },
@@ -1415,13 +1417,13 @@ export class ThesisRepository {
         },
       });
 
-      // Compat-mirror into ThesisStatus for existing UI. Never invents rating.
+      // Legacy ThesisStatus compat mirror ONLY. The canonical truth is
+      // DefenseConclusion.outcome (PASSED | REDEFENSE_REQUIRED); REDEFENSE_REQUIRED
+      // is mirrored as the legacy "REVISION" bucket. This mirror must NOT be used
+      // as the source of truth for re-defense scheduling — see
+      // canCreateDefenseSchedule, which reads the DefenseConclusion.
       const legacyStatus =
-        outcome === "PASSED"
-          ? ("PASSED" as const)
-          : outcome === "FAILED"
-            ? ("FAILED" as const)
-            : ("REVISION" as const);
+        outcome === "PASSED" ? ("PASSED" as const) : ("REVISION" as const);
       await tx.thesisRecord.update({
         where: { id: schedule.thesisId },
         data: { outcome, status: legacyStatus },

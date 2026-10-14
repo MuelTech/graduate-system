@@ -107,7 +107,7 @@ export class DefenseEligibilityRepository {
       id: string;
       stage: "TITLE" | "PROPOSAL" | "FINAL";
       status: string;
-      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+      outcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
       thesisDocuments: DocRow[];
       thesisTitles: { id: string; isSelected: boolean }[];
     } | null = null;
