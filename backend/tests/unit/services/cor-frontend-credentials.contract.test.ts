@@ -46,10 +46,10 @@ describe("COR frontend credential contracts", () => {
     expect(page).toContain("canVerify");
     expect(page).toContain("Confirm Verification");
 
-    // J. No password/default-password claim; existing password retained wording.
+    // J. No password/default-password claim; existing credentials retained.
     expect(page).not.toContain("default_password");
     expect(page).not.toMatch(/default password|initial password|last name in all caps/i);
-    expect(page).toMatch(/existing password/i);
+    expect(page).toMatch(/existing account and password/i);
 
     // B/C. No deferred or non-authoritative fields in the verification flow.
     expect(page).not.toMatch(/academicYear|semester|curriculumYear/i);
@@ -77,10 +77,10 @@ describe("COR frontend credential contracts", () => {
       /verifyMutation|rejectMutation|\.mutate\(|apiClientRequest|handleConfirmVerify/,
     );
 
-    // E. "Different" stays non-destructive (amber warning, never red).
+    // E. "Different" stays non-destructive (warning tone, never red).
     const differentCase = sliceBetween(badge, 'case "DIFFERENT"', 'case "NO_DATA"');
     expect(differentCase).not.toBe("");
-    expect(differentCase).toMatch(/amber/);
+    expect(differentCase).toMatch(/earist-warning/);
     expect(differentCase).not.toMatch(/red/);
 
     // C. Status computation must not invoke authority, and must derive from the
@@ -111,9 +111,14 @@ describe("COR frontend credential contracts", () => {
     expect(page).toContain("onClick={handleConfirmVerify}");
 
     // Reject is its own explicit action, isolated from verify/status paths.
-    const rejectModal = sliceBetween(page, "{/* Reject Modal */}", "{selectedDoc &&");
-    expect(rejectModal).toContain("rejectMutation.mutate");
+    // UIUX-2I replaced the inline reject modal with the shared Dialog, so the
+    // reject path is asserted through its dedicated handler.
+    const rejectModal = sliceBetween(page, "{/* Rejection confirmation */}", "{selectedDoc &&");
+    expect(rejectModal).toContain("handleConfirmReject");
     expect(rejectModal).not.toContain("verifyMutation");
+    expect(rejectModal).not.toContain("handleConfirmVerify");
+    const rejectHandler = sliceBetween(page, "function handleConfirmReject(", "function handleViewCor(");
+    expect(rejectHandler).toContain("rejectMutation.mutate");
     expect(confirm).not.toContain("rejectMutation");
   });
 
@@ -146,7 +151,9 @@ describe("COR frontend credential contracts", () => {
     expect(confirm).not.toContain("suggestions?.program");
 
     // Loading/failure disable Program selection; Verify cannot validate without it.
-    expect(page).toContain("disabled={programsLoading || programsError}");
+    expect(page).toMatch(
+      /disabled=\{\s*programsQuery\.isLoading \|\| programsQuery\.isError\s*\}/,
+    );
     expect(page).toContain("Loading programs");
     expect(page).not.toMatch(/createProgram|create program/i);
   });
