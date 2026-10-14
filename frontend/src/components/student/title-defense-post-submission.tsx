@@ -19,11 +19,9 @@ import type {
 import {
   CalendarDays,
   Clock,
-  MapPin,
   FileText,
   Eye,
   Info,
-  RefreshCw,
   ExternalLink,
 } from "lucide-react";
 
@@ -199,13 +197,9 @@ function DocRow({
 export function TitleDefensePostSubmission({
   defenseStatus,
   session,
-  onRefresh,
-  isRefreshing,
 }: {
   defenseStatus: TitlePostSubmissionStatus;
   session: DefenseSessionSummary | null | undefined;
-  onRefresh: () => void;
-  isRefreshing: boolean;
 }) {
   const [viewerDoc, setViewerDoc] = useState<CurrentEvidenceDto | null>(null);
   const copy = STATUS_COPY[defenseStatus];
@@ -222,15 +216,6 @@ export function TitleDefensePostSubmission({
       .filter((e) => e.isCurrent)
       .map((e) => [e.docType, e]),
   );
-
-  // Only the authoritative Journey refresh drives the button state; a passive
-  // documents refetch (e.g. window focus) must not read as "refreshing status".
-  const refreshing = isRefreshing;
-  const handleRefresh = () => {
-    // Authoritative Journey status first; documents are secondary.
-    void onRefresh();
-    void refetch();
-  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -267,16 +252,6 @@ export function TitleDefensePostSubmission({
           {copy.extra && (
             <p className="text-sm text-(--earist-body-text)">{copy.extra}</p>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Refreshing…" : "Refresh Status"}
-          </Button>
         </CardContent>
       </Card>
 
@@ -287,28 +262,35 @@ export function TitleDefensePostSubmission({
               Defense Schedule
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-(--earist-body-text)">
-            <p className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 shrink-0 text-(--earist-primary)" />
-              <span>
-                <span className="font-medium">Date:</span>{" "}
-                {formatDefenseDate(session?.defenseDate)}
-              </span>
-            </p>
-            <p className="flex items-center gap-2">
-              <Clock className="h-4 w-4 shrink-0 text-(--earist-primary)" />
-              <span>
-                <span className="font-medium">Time:</span>{" "}
-                {formatDefenseTime(session?.defenseTime)}
-              </span>
-            </p>
-            <p className="flex items-start gap-2">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-primary)" />
-              <span className="min-w-0">
-                <span className="font-medium">Venue / Meeting Details:</span>{" "}
-                <VenueValue venueOrLink={session?.venueOrLink} />
-              </span>
-            </p>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+                  Date
+                </p>
+                <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-(--earist-secondary)">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-(--earist-primary)" />
+                  {formatDefenseDate(session?.defenseDate)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+                  Time
+                </p>
+                <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-(--earist-secondary)">
+                  <Clock className="h-4 w-4 shrink-0 text-(--earist-primary)" />
+                  {formatDefenseTime(session?.defenseTime)}
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium tracking-wide text-(--earist-body-text) uppercase">
+                  Venue / Meeting Details
+                </p>
+                <div className="mt-0.5 text-sm text-(--earist-secondary)">
+                  <VenueValue venueOrLink={session?.venueOrLink} />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

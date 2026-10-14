@@ -472,8 +472,6 @@ export default function TitleDefensePage() {
         <TitleDefensePostSubmission
           defenseStatus={ds}
           session={titleStep?.defenseSession}
-          onRefresh={refreshStatus}
-          isRefreshing={isRefreshing}
         />
       );
     }
