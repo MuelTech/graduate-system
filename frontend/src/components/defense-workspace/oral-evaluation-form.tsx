@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Button } from "@/components/ui/button";
@@ -38,19 +38,20 @@ function evalQueryKey(scheduleId: string) {
   return ["oralEvaluation", scheduleId] as const;
 }
 
-export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
-  const queryClient = useQueryClient();
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [touchedCriteria, setTouchedCriteria] = useState<Set<string>>(new Set());
-  const [rating, setRating] = useState("");
-  const [ratingTouched, setRatingTouched] = useState(false);
-  const [recommendations, setRecommendations] = useState("");
-  const [signature, setSignature] = useState("");
-  const [dirty, setDirty] = useState(false);
-  const [showReview, setShowReview] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const ALL_CRITERIA = [...GROUP_I, ...GROUP_II];
 
+/** Seeds local criteria inputs from the server Draft record. */
+function initialCriteriaValues(
+  evaluation?: OralEvaluation,
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const [k, v] of Object.entries(evaluation?.criteria ?? {})) {
+    next[k] = v === null || v === undefined ? "" : String(v);
+  }
+  return next;
+}
+
+export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
   const { data: evaluation, isLoading } = useQuery({
     queryKey: evalQueryKey(scheduleId),
     queryFn: async () =>
@@ -59,24 +60,51 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       )) as OralEvaluation,
   });
 
-  // Restore server Draft without overwriting dirty local edits.
-  useEffect(() => {
-    if (!evaluation || dirty) return;
-    const next: Record<string, string> = {};
-    for (const [k, v] of Object.entries(evaluation.criteria ?? {})) {
-      next[k] = v === null || v === undefined ? "" : String(v);
-    }
-    setValues(next);
-    setTouchedCriteria(new Set());
-    setRating(evaluation.rating ?? "");
-    setRatingTouched(false);
-    setRecommendations(evaluation.recommendations ?? "");
-    setDirty(false);
-  }, [evaluation]);
+  if (isLoading && !evaluation) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-(--earist-body-text)">
+          Loading evaluation…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Remount per schedule so the server Draft seeds local form state exactly
+  // once (lazy initializers) without a state-syncing effect.
+  return (
+    <EvaluationEditor
+      key={scheduleId}
+      scheduleId={scheduleId}
+      evaluation={evaluation}
+    />
+  );
+}
+
+function EvaluationEditor({
+  scheduleId,
+  evaluation,
+}: {
+  scheduleId: string;
+  evaluation?: OralEvaluation;
+}) {
+  const queryClient = useQueryClient();
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    initialCriteriaValues(evaluation),
+  );
+  const [touchedCriteria, setTouchedCriteria] = useState<Set<string>>(new Set());
+  const [rating, setRating] = useState(evaluation?.rating ?? "");
+  const [ratingTouched, setRatingTouched] = useState(false);
+  const [recommendations, setRecommendations] = useState(
+    evaluation?.recommendations ?? "",
+  );
+  const [signature, setSignature] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const locked = evaluation?.isLocked === true;
-
-  const ALL_CRITERIA = [...GROUP_I, ...GROUP_II];
 
   /**
    * CP6-FIX2: single snapshot used by Review AND Finalize.
@@ -206,16 +234,6 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       />
     </label>
   );
-
-  if (isLoading && !evaluation) {
-    return (
-      <Card>
-        <CardContent className="pt-6 text-sm text-(--earist-body-text)">
-          Loading evaluation…
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>

@@ -34,7 +34,7 @@ A comprehensive Graduate School Management System with AI-powered features inclu
 ### Prerequisites
 - Node.js (v22.13.0 or higher) — required by `pdfjs-dist` and Prisma on the backend
 - MySQL (v8 or higher)
-- npm or yarn
+- npm
 - Ollama (for AI features)
 
 ### Installation
@@ -45,17 +45,29 @@ A comprehensive Graduate School Management System with AI-powered features inclu
    cd graduate-system
    ```
 
-2. **Install Frontend Dependencies**
+2. **Install Existing Frontend Dependencies**
+
+   For a fresh clone or when installing the dependency set already committed to the repository, use `npm ci` so the exact versions from `package-lock.json` are installed:
+
    ```bash
    cd frontend
-   npm install
+   npm ci
    ```
 
-3. **Install Backend Dependencies**
+3. **Install Existing Backend Dependencies**
+
+   The backend tree currently contains an upstream required-peer conflict
+   (`@langchain/community` peers on `@browserbasehq/stagehand`, which peers on
+   `dotenv@^16`, while this project uses `dotenv@^17`). A plain `npm ci`
+   therefore cannot resolve the current backend tree. Use:
+
    ```bash
    cd backend
-   npm install
+   npm ci --legacy-peer-deps
+   npx prisma generate
    ```
+
+   `npx prisma generate` should run before the backend build so the generated Prisma Client matches the committed schema.
 
 4. **Set up Environment Variables**
    - Copy `.env.example` to `.env` in the backend directory.
@@ -92,6 +104,78 @@ A comprehensive Graduate School Management System with AI-powered features inclu
    # Install Ollama from https://ollama.ai
    ollama pull qwen2.5:7b
    ```
+
+## Dependency Installation Workflow
+
+`npm ci` and `npm install` serve different purposes. **`npm ci` does not replace `npm install` when the project intentionally changes dependencies.**
+
+### Installing the Existing Committed Dependency Tree
+
+Use this after cloning, pulling dependency changes, switching branches, or when reproducing the repository's committed dependency state.
+
+Frontend:
+
+```bash
+cd frontend
+npm ci
+```
+
+Backend:
+
+```bash
+cd backend
+npm ci --legacy-peer-deps
+npx prisma generate
+```
+
+`npm ci` installs the exact dependency tree recorded in `package-lock.json` and does not intentionally update dependency definitions.
+
+### Adding, Removing, or Updating Dependencies
+
+When development work intentionally adds, removes, or upgrades a dependency, use `npm install` / `npm uninstall`.
+
+Examples:
+
+```bash
+# Add a runtime dependency
+npm install <package>
+
+# Add a development-only dependency
+npm install -D <package>
+
+# Install a specific version
+npm install <package>@<version>
+
+# Remove a dependency
+npm uninstall <package>
+```
+
+For backend dependency changes, use `--legacy-peer-deps` when npm needs the same currently documented peer-resolution behavior:
+
+```bash
+npm install <package> --legacy-peer-deps
+npm install -D <package> --legacy-peer-deps
+```
+
+When a dependency changes, review and commit **both** files when modified:
+
+```text
+package.json
+package-lock.json
+```
+
+Do not manually edit `package-lock.json`. Let npm update it from the intended dependency command.
+
+### Quick Rule
+
+| Situation | Recommended command |
+| --- | --- |
+| Fresh clone / install dependencies already committed | `npm ci` |
+| Backend fresh clone / existing committed dependencies | `npm ci --legacy-peer-deps` |
+| Add a new package | `npm install <package>` |
+| Add a new dev package | `npm install -D <package>` |
+| Upgrade/downgrade a package intentionally | `npm install <package>@<version>` |
+| Remove a package | `npm uninstall <package>` |
 
 ## Project Structure
 
@@ -178,31 +262,33 @@ This is also the migration command intended for staging and production deploymen
 
 ## Contributing
 
-The current integration branch is `refactor/system-ui-ux`. Unless the team explicitly changes the integration strategy, feature Pull Requests should target this branch rather than `main`.
+The current shared integration baseline is `main`. Unless the team explicitly chooses another target for a specific workstream, new feature/fix branches should start from the latest `main` and open Pull Requests back into `main`.
 
 Recommended workflow:
 
-1. Update your local integration branch:
+1. Update your local `main`:
    ```bash
-   git checkout refactor/system-ui-ux
-   git pull origin refactor/system-ui-ux
+   git checkout main
+   git pull origin main
    ```
-2. Create or update your feature branch from the current integration state.
-3. Implement and test only the intended feature scope.
-4. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
-5. Build/validate the affected application before pushing.
-6. Push the feature branch.
-7. Open a Pull Request with **base: `refactor/system-ui-ux`**.
-8. Address review findings on the feature branch before merge.
+2. Create a bounded feature/fix branch from the current `main`.
+3. Implement and test only the intended scope.
+4. If dependencies change, use `npm install` / `npm uninstall` and commit the resulting `package.json` and `package-lock.json` changes.
+5. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
+6. Build/validate the affected application before pushing.
+7. Push the feature/fix branch.
+8. Open a Pull Request with **base: `main`**.
+9. Address review findings on the feature/fix branch before merge.
 
 ### Pull Request Checklist
 
 Before requesting merge:
 
-- [ ] Pull Request targets `refactor/system-ui-ux`.
+- [ ] Pull Request targets `main` unless a different integration target was explicitly agreed.
 - [ ] Changes are limited to the intended feature/fix.
 - [ ] Frontend changes pass the relevant lint/build checks.
 - [ ] Backend changes compile successfully.
+- [ ] Dependency changes include the intended `package.json` and `package-lock.json` updates.
 - [ ] Prisma schema validates when Prisma is affected.
 - [ ] Every Prisma schema change includes its generated migration file.
 - [ ] Existing committed migrations are not rewritten or deleted without an explicit migration-history reason.

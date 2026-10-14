@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { PanelistResponse } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -279,10 +279,6 @@ export default function AdminPanelistsPage() {
     page * pageSize
   );
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, typeFilter]);
-
   const activeCount = panelists.filter((p) => p.isActive).length;
   const internalCount = panelists.filter((p) => !p.isExternal).length;
   const externalCount = panelists.filter((p) => p.isExternal).length;
@@ -377,7 +373,10 @@ export default function AdminPanelistsPage() {
               <Input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search by name, email, specialization, or affiliation..."
                 className="pl-10"
               />
@@ -386,7 +385,10 @@ export default function AdminPanelistsPage() {
               <Filter className="h-4 w-4 text-(--earist-body-text)" />
               <select
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-lg border border-(--earist-border-gray) px-3 py-2 text-sm text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
                 <option value="all">All Panelists</option>
@@ -601,8 +603,8 @@ export default function AdminPanelistsPage() {
               <div className="text-sm text-amber-800">
                 <p className="font-semibold">Default Password</p>
                 <p>
-                  The panelist's default password is their{" "}
-                  <strong>LAST NAME in ALL CAPS</strong> (e.g., "Marcial" →{" "}
+                  The panelist&apos;s default password is their{" "}
+                  <strong>LAST NAME in ALL CAPS</strong> (e.g., &quot;Marcial&quot; →{" "}
                   <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-xs">
                     MARCIAL
                   </code>
