@@ -2,8 +2,10 @@
 
 **Date:** 2026-10-04  
 **Branch:** `workflow/title-defense`  
-**Status:** CONFIRMED_PROJECT_DESIGN; implemented on `workflow/title-defense`, pending manual acceptance QA  
+**Status:** HISTORICAL / SUPERSEDED WHERE CONFLICTING; implemented on `workflow/title-defense`, pending manual acceptance QA  
 **Canonical parent:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`
+
+> **2026-10-15 supersession notice:** This file is retained as historical implementation context. The canonical SOT now supersedes this document wherever it (a) requires three structured manual title fields or a binding selected title, (b) exempts Title Defense from the shared evaluator lifecycle, or (c) permits Chairman conclusion before required RAP signatures/finalization. Do not implement those historical behaviors from this file.
 
 ---
 

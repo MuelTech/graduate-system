@@ -9,6 +9,8 @@
 
 > **2026-10-04 Title Defense supersession:** Do not use any Title-specific sequence in this historical plan that makes Rapporteur finalization a prerequisite to Chairman conclusion. The current rule is defined in `docs/superpowers/specs/2026-10-04-title-defense-workflow-correction.md` and the canonical SOT.
 
+> **2026-10-15 unified-lifecycle supersession:** This plan is historical. Current SOT rules supersede CP1/CP5/CP6/CP7/CP10 wording that requires a binding selected Title, treats three structured title fields as mandatory system data, exempts Title from evaluator scoring/finalization, or routes RAP signatures after Chairman conclusion. Current implementation work must follow `DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md` and the `refactor/unified-defense-lifecycle` correction sequence.
+
 ## 1. Read first
 
 In this order:

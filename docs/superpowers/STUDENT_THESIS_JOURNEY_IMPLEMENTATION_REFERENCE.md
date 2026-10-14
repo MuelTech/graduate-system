@@ -3,7 +3,7 @@
 **Date:** 2026-09-25  
 **Historical implementation branch:** `refactor/student-thesis-journey`  
 **Integration branch:** `refactor/defense-workflow`  
-**Active correction branch:** `refactor/defense-workflow-corrections`  
+**Active correction branch:** `refactor/unified-defense-lifecycle`  
 **Status:** Documentation-only implementation guide
 
 ## 1. Purpose
@@ -30,7 +30,7 @@ Do **not** continue with a hypothetical WP14 from the old plan. Use the 2026-09-
 
 Canonical corrections include:
 
-- Title, Proposal, and Final conducted attempts use applicable evaluator scoring plus evaluator e-sign/finalize; Title remains the three-title deliberation stage;
+- Title, Proposal, and Final conducted attempts use applicable evaluator scoring plus evaluator e-sign/finalize; Title uses the submitted Title Proposal document/package as its academic basis and does not require duplicate structured three-title entry;
 - Proposal/Final manuscript goes through active Adviser review and e-signed Adviser Certification before Admin review;
 - Title/Proposal/Final evaluators use the shared own-record e-sign/finalize lifecycle for each conducted attempt;
 - Oral Summary shows computed grades but does not auto-PASS/FAIL;
@@ -73,7 +73,7 @@ Comprehensive Examination PASSED
 ↓
 Title Defense attempt
 ├─ REDEFENSE_REQUIRED → remain at Title Defense → new Title attempt
-└─ PASSED + Title decision/title snapshot
+└─ PASSED + required evaluator/RAP records complete
       ↓
 Adviser Request
 ↓
@@ -141,24 +141,24 @@ Formal inputs include:
 
 - Comprehensive Exam result;
 - `DefenseConclusion`;
-- official selected Title;
+- submitted Title Proposal evidence/history and current working title when separately available;
 - Adviser Request state;
 - active `AdviserAssignment`;
 - Proposal formal outcome;
 - centralized STRIKE policy/evidence;
 - Final formal outcome.
 
-Application approval and scheduling remain distinct from the live defense. During a conducted attempt, applicable evaluator completion/signing and required RAP signing are conclusion preconditions; score calculation still does not decide the verdict. `PASSED` completes the defense stage (with the Title decision/title snapshot additionally required for Title), while `REDEFENSE_REQUIRED` closes only that attempt and keeps the Student at the same stage for a new attempt.
+Application approval and scheduling remain distinct from the live defense. During a conducted attempt, applicable evaluator completion/signing and required RAP signing are conclusion preconditions; score calculation still does not decide the verdict. `PASSED` completes the defense stage once the required attempt records are complete; Title does not require a binding selected-title/title-decision snapshot. `REDEFENSE_REQUIRED` closes only that attempt and keeps the Student at the same stage for a new attempt.
 
 ### 5.1 Accepted Title Defense submission / initial WAITING presentation — UIUX-4B
 
-Project-owner visual/UI/UX acceptance: **ACCEPTED 2026-10-14**, final implementation `4878ccc1fbae7859c934a2ed5d0c9eca8647b50a`.
+Project-owner visual/UI/UX acceptance: **ACCEPTED 2026-10-14**, final implementation `4878ccc1fbae7859c934a2ed5d0c9eca8647b50a`. **Workflow correction 2026-10-15 supersedes only the mandatory structured three-title-entry portion of that accepted filing UI; the document/evidence, review, receipt, and pre-defense status patterns remain accepted.**
 
 For the Title Defense page:
 
-- `CURRENT` / `AVAILABLE` filing uses exactly three structured proposed title fields plus three Title-stage evidence slots: one combined Title Defense Proposal Package PDF, Current Semester COR, and Defense-fee Proof of Payment.
-- The combined proposal package contains three complete title proposals, one corresponding to each structured title. Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile content remains inside the PDF rather than becoming duplicate system fields.
-- File selection and preview are local browser state until the Student confirms the submission. The review Dialog summarizes the three titles and all three selected documents before the POST begins.
+- `CURRENT` / `AVAILABLE` filing uses three Title-stage evidence slots: one combined Title Defense Proposal Package PDF, Current Semester COR, and Defense-fee Proof of Payment. The Student is not required to duplicate proposed titles into three structured text fields.
+- The combined proposal package remains the academic Title submission. If the institutional document contains three proposed titles/proposals, those remain inside the PDF. Rationale/SOP/Hypothesis/Population/Research Locale/Student Profile content likewise remains inside the PDF rather than becoming duplicate system fields.
+- File selection and preview are local browser state until the Student confirms the submission. The review Dialog summarizes the selected documents before the POST begins; it does not require retyping the titles contained in the proposal package.
 - The submission pending state is indeterminate and truthful; no fake upload percentage is shown.
 - When the authoritative defense status is `APPLICATION_UNDER_REVIEW`, the Title step remains a waiting/dependency state and presents a persistent **Under Graduate School Review** receipt with all three current evidence files viewable through authenticated document routes.
 - The Student cannot silently replace files while Graduate School review is active. A returned/rejected application enables stage-scoped versioned replacement of only the needed evidence while preserving unchanged current evidence and prior versions.
@@ -194,8 +194,9 @@ Candidate source:
 Backend unlock requires:
 
 - a fully concluded Title Defense attempt with Chairman verdict = `PASSED`;
-- the passed Title attempt retains its Title decision/title snapshot;
-- applicable evaluator records and required Title RAP signatures for that attempt are complete.
+- applicable evaluator records for the passed Title attempt are finalized;
+- required Title RAP signatures/finalization for that same attempt are complete;
+- no selected-title/title-decision snapshot is required to unlock Adviser Request.
 
 Flow:
 
@@ -250,7 +251,7 @@ Provide an Adviser Requests inbox scoped to the authenticated requested adviser 
 Show:
 
 - Student identity/program;
-- official selected title;
+- current working title/research context when available (optional display metadata, not a workflow gate);
 - Title Defense role;
 - Student remarks;
 - request date/status.
@@ -270,7 +271,7 @@ Show:
 
 - Student;
 - Program;
-- official selected title;
+- current working title/research context when available (optional display metadata, not a workflow gate);
 - Student-selected adviser;
 - adviser Title Defense role;
 - Adviser CONFORME state/remarks;
