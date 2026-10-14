@@ -42,7 +42,7 @@ Canonical corrections include:
 - role-aware Defense Workspace replaces the current lobby concept;
 - Research Variables is not an active Proposal blocker in the correction pass;
 - Proposal revisions are carried by RAP/history into Final Defense, without a separate revision upload gate;
-- Student WAITING/status UX and schedule visibility require correction. **UIUX-4B now resolves the initial Title submission + `APPLICATION_UNDER_REVIEW` receipt presentation; Approved / Waiting for Schedule / Scheduled refinement remains the separate UIUX-4C package.**
+- Student WAITING/status UX and schedule visibility require correction. **UIUX-4B resolves Title filing + the initial `APPLICATION_UNDER_REVIEW` receipt; UIUX-4C now resolves the accepted pre-defense progression through `APPROVED_WAITING_SCHEDULE` and `SCHEDULED`. Defense-session/result/completion presentation remains separate UIUX-4D work.**
 
 ## 2. Migration baseline — VERIFIED
 
@@ -158,7 +158,22 @@ For the Title Defense page:
 - When the authoritative defense status is `APPLICATION_UNDER_REVIEW`, the Title step remains a waiting/dependency state and presents a persistent **Under Graduate School Review** receipt with all three current evidence files viewable through authenticated document routes.
 - The Student cannot silently replace files while Graduate School review is active. A returned/rejected application enables stage-scoped versioned replacement of only the needed evidence while preserving unchanged current evidence and prior versions.
 - This presentation does not alter progression authority: **application submitted / approved / scheduled / formally PASSED / stage complete are distinct states**. UIUX-4B does not promote Admin approval into academic completion.
-- The later Student presentation for **Application Approved → Waiting for Schedule → Defense Scheduled** remains UIUX-4C and is not implied by this acceptance.
+- The later Student presentation for **Application Approved → Waiting for Schedule → Defense Scheduled** is independently accepted under UIUX-4C; it is not part of the UIUX-4B filing-pattern authority.
+
+### 5.2 Accepted Title Defense approved / scheduled presentation — UIUX-4C
+
+Project-owner visual/UI/UX acceptance: **ACCEPTED 2026-10-14**, final implementation `4595d81d598f0679f08ff65ea95c5118e7526ee2` (main UIUX-4C `48ef9f95b466a49490e1bce605163f86701d0b24` + FIX-1).
+
+For the Title Defense page:
+
+- `APPLICATION_UNDER_REVIEW` remains **Under Graduate School Review** with application/schedule/action/next-actor clarity and all three submitted Title evidence files visible.
+- `APPROVED_WAITING_SCHEDULE` presents **Application Approved** while explicitly stating that the defense is **not yet scheduled**. Student action is none; the Graduate School owns the next scheduling action.
+- `SCHEDULED` presents **Defense Scheduled** with the authoritative wall-clock Date, Time, and **Venue / Meeting Details**. Date/Time are compact and responsive; physical venue text remains plain, a complete safe HTTP(S) value exposes **Open Meeting Link**, and missing detail remains truthful.
+- The current package/COR/payment evidence stays read-only/viewable across all three pre-defense states. Supporting-document query failure is isolated and must not erase Journey status/schedule state.
+- No manual **Refresh Status** control is shown. Existing Journey polling/refetch-on-window-focus remains the passive update mechanism; explicit Retry is reserved for real request failures.
+- Pre-defense schedule presentation does not surface RAP merely because a schedule exists, and it does not fabricate committee data absent from the Student Journey read model.
+- These states are administrative/session preparation only: **Application Approved ≠ Defense Scheduled ≠ Defense PASSED ≠ Title stage COMPLETE**.
+- UIUX-4C stops before `DEFENSE_IN_PROGRESS`, `AWAITING_CONCLUSION`, `FINALIZING_RECORDS`, terminal result states, and completed-stage presentation. Those later defense/result/completion states remain UIUX-4D.
 
 ## 6. GS-020 Adviser Request
 
