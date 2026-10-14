@@ -1,7 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -26,6 +26,16 @@ const roles: { value: UserRole; label: string }[] = [
 ];
 
 export default function LoginPage() {
+  // `useSearchParams()` requires a Suspense boundary at prerender time in the
+  // Next.js App Router; the fallback is shown while the search params resolve.
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [role, setRole] = useState<UserRole>("applicant");
@@ -35,14 +45,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (searchParams.get("passwordChanged") === "true") {
-      setSuccess("Password changed successfully! Please login with your new password.");
-    }
-  }, [searchParams]);
+  // Derived directly from the URL (no effect/state): the "password changed"
+  // confirmation is a property of the query string, not mutable local state.
+  const success =
+    searchParams.get("passwordChanged") === "true"
+      ? "Password changed successfully! Please login with your new password."
+      : "";
 
   const clearFields = () => {
     setApplicantId("");
@@ -365,5 +375,12 @@ function PasswordInput({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Neutral fallback while the login search params resolve during prerender. */
+function LoginPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-(--earist-primary)" />
   );
 }
