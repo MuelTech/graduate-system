@@ -1031,6 +1031,8 @@ model Memo {
   content        String       @db.Text
   targetAudience MemoAudience @map("target_audience")
   programId      String?      @map("program_id")
+  attachmentUrl  String?      @map("attachment_url")
+  isArchived     Boolean      @default(false) @map("is_archived")
   sentAt         DateTime?    @map("sent_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   createdBy      User         @relation("MemoCreatedBy", fields: [createdById], references: [id])

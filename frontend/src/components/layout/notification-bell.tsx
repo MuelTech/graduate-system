@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { apiClientRequest } from "@/lib/api.client";
 import { NotificationItem } from "@/types/index";
 
-export function NotificationBell({ role = "STUDENT" }: { role?: "STUDENT" | "ADMIN" }) {
+export function NotificationBell({
+  role = "STUDENT",
+}: {
+  role?: "STUDENT" | "ADMIN" | "PANELIST";
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -32,7 +36,20 @@ export function NotificationBell({ role = "STUDENT" }: { role?: "STUDENT" | "ADM
 
   const unreadCount = notifications.filter((n: NotificationItem) => !n.isRead).length;
   const recentNotifications = notifications.slice(0, 5); // Show top 5 in dropdown
-  const basePath = role === "ADMIN" ? "/admin/notifications" : "/student/notifications";
+
+  const basePath =
+    role === "ADMIN"
+      ? "/admin/notifications"
+      : role === "PANELIST"
+      ? "/panelist/notifications"
+      : "/student/notifications";
+
+  const announcementsPath =
+    role === "ADMIN"
+      ? "/admin/memos"
+      : role === "PANELIST"
+      ? "/panelist/announcements"
+      : "/student/announcements";
 
   return (
     <div className="relative">
@@ -54,9 +71,13 @@ export function NotificationBell({ role = "STUDENT" }: { role?: "STUDENT" | "ADM
           <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-lg border border-(--earist-border-gray) bg-white shadow-lg overflow-hidden">
             <div className="bg-(--earist-surface-gray) px-4 py-3 flex justify-between items-center border-b border-(--earist-border-gray)">
               <span className="font-bold text-sm text-(--earist-primary)">Notifications</span>
-              {unreadCount > 0 && <Badge className="bg-(--earist-accent) text-(--earist-primary)">{unreadCount} New</Badge>}
+              {unreadCount > 0 && (
+                <Badge className="bg-(--earist-accent) text-(--earist-primary)">
+                  {unreadCount} New
+                </Badge>
+              )}
             </div>
-            
+
             <div className="max-h-80 overflow-y-auto">
               {recentNotifications.length === 0 ? (
                 <div className="p-4 text-center text-xs text-(--earist-body-text)">
@@ -64,15 +85,44 @@ export function NotificationBell({ role = "STUDENT" }: { role?: "STUDENT" | "ADM
                 </div>
               ) : (
                 recentNotifications.map((n: NotificationItem) => (
-                  <div key={n.id} className={`p-4 border-b border-(--earist-border-gray) text-sm transition-colors ${n.isRead ? 'opacity-70 bg-white' : 'bg-red-50/30'}`}>
-                    <p className="font-semibold text-(--earist-primary) mb-1">{n.title}</p>
-                    <p className="text-xs text-(--earist-body-text) line-clamp-2 mb-2">{n.message}</p>
+                  <div
+                    key={n.id}
+                    className={`p-4 border-b border-(--earist-border-gray) text-sm transition-colors ${
+                      n.isRead ? "opacity-70 bg-white" : "bg-red-50/30"
+                    }`}
+                  >
+                    {/* Deep-link MEMO notifications to announcements feed */}
+                    {n.type === "MEMO" ? (
+                      <Link
+                        href={announcementsPath}
+                        onClick={() => {
+                          setIsOpen(false);
+                          if (!n.isRead) markAsRead.mutate(n.id);
+                        }}
+                        className="block group"
+                      >
+                        <p className="font-semibold text-(--earist-primary) group-hover:underline mb-1">
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-(--earist-body-text) line-clamp-2 mb-2">
+                          {n.message}
+                        </p>
+                      </Link>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-(--earist-primary) mb-1">{n.title}</p>
+                        <p className="text-xs text-(--earist-body-text) line-clamp-2 mb-2">
+                          {n.message}
+                        </p>
+                      </>
+                    )}
+
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] text-(--earist-secondary)">
                         {new Date(n.createdAt).toLocaleDateString()}
                       </span>
                       {!n.isRead && (
-                        <button 
+                        <button
                           onClick={() => markAsRead.mutate(n.id)}
                           className="text-[10px] flex items-center gap-1 text-(--earist-primary) hover:underline"
                         >
@@ -84,8 +134,8 @@ export function NotificationBell({ role = "STUDENT" }: { role?: "STUDENT" | "ADM
                 ))
               )}
             </div>
-            
-            <Link 
+
+            <Link
               href={basePath}
               onClick={() => setIsOpen(false)}
               className="block bg-(--earist-surface-gray) text-center py-3 text-xs font-semibold text-(--earist-primary) hover:bg-(--earist-surface-light-red) transition-colors"
