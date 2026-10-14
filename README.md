@@ -48,13 +48,18 @@ A comprehensive Graduate School Management System with AI-powered features inclu
 2. **Install Frontend Dependencies**
    ```bash
    cd frontend
-   npm install
+   npm ci
    ```
 
 3. **Install Backend Dependencies**
+
+   The backend tree contains an upstream required-peer conflict
+   (`@langchain/community` peers on `@browserbasehq/stagehand`, which peers on
+   `dotenv@^16`, while this project uses `dotenv@^17`), so a plain `npm ci`
+   cannot resolve. Install with `--legacy-peer-deps`:
    ```bash
    cd backend
-   npm install
+   npm ci --legacy-peer-deps
    ```
 
 4. **Set up Environment Variables**
