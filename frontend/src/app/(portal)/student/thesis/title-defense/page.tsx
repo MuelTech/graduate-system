@@ -16,7 +16,7 @@ import {
   DefenseScheduleSummary,
   DefenseStatusPanel,
 } from "@/components/student/defense-status-panel";
-import { TitleDefenseUnderReview } from "@/components/student/title-defense-under-review";
+import { TitleDefensePostSubmission } from "@/components/student/title-defense-post-submission";
 import { LocalFilePreviewDialog } from "@/components/student/local-file-preview-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -461,9 +461,21 @@ export default function TitleDefensePage() {
   }
 
   if (state === "WAITING") {
-    // UIUX-4B: immediate post-submission receipt state.
-    if (titleStep?.defenseStatus === "APPLICATION_UNDER_REVIEW") {
-      return <TitleDefenseUnderReview />;
+    // UIUX-4C: Title post-submission status — Under Review / Approved / Scheduled.
+    const ds = titleStep?.defenseStatus;
+    if (
+      ds === "APPLICATION_UNDER_REVIEW" ||
+      ds === "APPROVED_WAITING_SCHEDULE" ||
+      ds === "SCHEDULED"
+    ) {
+      return (
+        <TitleDefensePostSubmission
+          defenseStatus={ds}
+          session={titleStep?.defenseSession}
+          onRefresh={refreshStatus}
+          isRefreshing={isRefreshing}
+        />
+      );
     }
     return (
       <div className="mx-auto max-w-3xl space-y-4">
