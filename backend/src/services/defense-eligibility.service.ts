@@ -365,7 +365,13 @@ export class DefenseEligibilityService {
         miss("STUDENT_NOT_FOUND", "Student profile not found.", stage),
       );
     }
-    if (snap.thesisStatus !== "APPROVED") {
+    // WF-C1a FIX-1: a concluded REDEFENSE_REQUIRED same-stage attempt permits the
+    // next attempt to be scheduled without fabricating an APPROVED application
+    // status. First attempts (and every other case) still require APPROVED, so
+    // normal application authority is not weakened.
+    const redefenseEligible =
+      snap.redefenseRequiredForStage?.[stage] === true;
+    if (snap.thesisStatus !== "APPROVED" && !redefenseEligible) {
       missing.push(
         miss(
           "THESIS_NOT_APPROVED",

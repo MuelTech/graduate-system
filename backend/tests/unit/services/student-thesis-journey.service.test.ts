@@ -450,3 +450,115 @@ describe("StudentThesisJourneyService (WP5 loader)", () => {
     expect(final?.state).toBe("LOCKED");
   });
 });
+
+describe("StudentThesisJourneyService — current attempt precedence", () => {
+  const svc = new StudentThesisJourneyService();
+
+  const activeAttempt = (
+    id: string,
+    defenseType: string,
+    sessionStatus: string,
+  ) => ({ id, defenseType, sessionStatus, conclusion: null });
+
+  const concludedAttempt = (
+    id: string,
+    defenseType: string,
+    outcome: string,
+  ) => ({
+    id,
+    defenseType,
+    sessionStatus: "CONCLUDED",
+    conclusion: { scheduleId: id, outcome },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.student.findUnique.mockResolvedValue(studentRow());
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(thesisRow());
+    prismaMock.rapReport.findMany.mockResolvedValue([]);
+  });
+
+  it("shows SCHEDULED Attempt #2 instead of a historical REDEFENSE_REQUIRED Attempt #1", async () => {
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(
+      thesisRow({
+        defenseSchedules: [
+          activeAttempt("title-2", "TITLE_DEFENSE", "SCHEDULED"),
+          concludedAttempt("title-1", "TITLE_DEFENSE", "REDEFENSE_REQUIRED"),
+        ],
+      }),
+    );
+
+    const journey = await svc.getJourney("user-1");
+    const title = journey.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("SCHEDULED");
+    expect(title?.defenseSession?.scheduleId).toBe("title-2");
+  });
+
+  it("shows DEFENSE_IN_PROGRESS for an IN_PROGRESS Attempt #2", async () => {
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(
+      thesisRow({
+        defenseSchedules: [
+          activeAttempt("title-2", "TITLE_DEFENSE", "IN_PROGRESS"),
+          concludedAttempt("title-1", "TITLE_DEFENSE", "REDEFENSE_REQUIRED"),
+        ],
+      }),
+    );
+
+    const journey = await svc.getJourney("user-1");
+    const title = journey.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("DEFENSE_IN_PROGRESS");
+    expect(title?.defenseSession?.scheduleId).toBe("title-2");
+  });
+
+  it("shows AWAITING_CONCLUSION for an AWAITING_CONCLUSION Attempt #2", async () => {
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(
+      thesisRow({
+        defenseSchedules: [
+          activeAttempt("title-2", "TITLE_DEFENSE", "AWAITING_CONCLUSION"),
+          concludedAttempt("title-1", "TITLE_DEFENSE", "REDEFENSE_REQUIRED"),
+        ],
+      }),
+    );
+
+    const journey = await svc.getJourney("user-1");
+    const title = journey.steps.find((s) => s.key === "TITLE_DEFENSE");
+    expect(title?.defenseStatus).toBe("AWAITING_CONCLUSION");
+    expect(title?.defenseSession?.scheduleId).toBe("title-2");
+  });
+
+  it("treats a PASSED Attempt #2 as the authoritative stage result (Attempt #1 remains history)", async () => {
+    prismaMock.rapReport.findMany.mockResolvedValue([
+      {
+        scheduleId: "title-2",
+        defenseType: "TITLE_DEFENSE",
+        status: "FINALIZED",
+      },
+    ]);
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(
+      thesisRow({
+        defenseSchedules: [
+          {
+            id: "title-2",
+            defenseType: "TITLE_DEFENSE",
+            sessionStatus: "CONCLUDED",
+            conclusion: {
+              scheduleId: "title-2",
+              outcome: "PASSED",
+              selectedTitle: { id: "t2", titleText: "Attempt 2 Title" },
+            },
+          },
+          concludedAttempt("title-1", "TITLE_DEFENSE", "REDEFENSE_REQUIRED"),
+        ],
+      }),
+    );
+
+    const journey = await svc.getJourney("user-1");
+    expect(
+      journey.steps.find((s) => s.key === "TITLE_DEFENSE")?.state,
+    ).toBe("COMPLETED");
+    expect(journey.selectedTitle).toEqual({
+      id: "t2",
+      titleText: "Attempt 2 Title",
+    });
+  });
+});

@@ -44,7 +44,7 @@ const DEFENSE_TYPES = [
   "FINAL_DEFENSE",
 ] as const;
 
-describe("WF-C1a outcome semantics (write vs legacy read)", () => {
+describe("Defense re-defense outcome semantics", () => {
   it("canonical outcomes are PASSED and REDEFENSE_REQUIRED", () => {
     expect([...CANONICAL_DEFENSE_OUTCOMES]).toEqual([
       "PASSED",
@@ -83,7 +83,7 @@ describe("WF-C1a outcome semantics (write vs legacy read)", () => {
   });
 });
 
-describe("WF-C1a re-defense scheduling (Title / Proposal / Final)", () => {
+describe("Defense re-defense scheduling (Title / Proposal / Final)", () => {
   for (const defenseType of DEFENSE_TYPES) {
     describe(defenseType, () => {
       it("allows the first attempt", () => {
@@ -161,7 +161,7 @@ describe("WF-C1a re-defense scheduling (Title / Proposal / Final)", () => {
   }
 });
 
-describe("WF-C1a stage completion stays open on REDEFENSE_REQUIRED", () => {
+describe("Re-defense stage completion stays open on REDEFENSE_REQUIRED", () => {
   it("Title/Proposal REDEFENSE_REQUIRED is not COMPLETE", () => {
     for (const stage of ["TITLE", "PROPOSAL", "FINAL"] as const) {
       expect(
@@ -202,7 +202,7 @@ const baseSnapshot = (over: Partial<JourneySnapshot> = {}): JourneySnapshot => (
   ...over,
 });
 
-describe("WF-C1a Student Journey on REDEFENSE_REQUIRED", () => {
+describe("Student Journey after re-defense", () => {
   it("keeps the stage open (not COMPLETED) and does not advance to Adviser Request", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnapshot({ titleAdminState: "CONCLUDED_REDEFENSE" }),

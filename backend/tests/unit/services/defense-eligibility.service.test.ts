@@ -398,6 +398,59 @@ describe("evaluateSchedule", () => {
   });
 });
 
+describe("evaluateSchedule re-defense attempt eligibility", () => {
+  const svc = new DefenseEligibilityService();
+
+  it("permits the next same-stage attempt after REDEFENSE_REQUIRED even though the mirror status is REVISION", () => {
+    for (const [defenseType, stage] of [
+      ["TITLE_DEFENSE", "TITLE"],
+      ["PROPOSAL_DEFENSE", "PROPOSAL"],
+      ["FINAL_DEFENSE", "FINAL"],
+    ] as const) {
+      const result = svc.evaluateSchedule(
+        {
+          ...baseSnap(),
+          thesisStage: stage,
+          // Post-conclusion compat mirror for a canonical REDEFENSE_REQUIRED verdict.
+          thesisStatus: "REVISION",
+          redefenseRequiredForStage: {
+            TITLE: stage === "TITLE",
+            PROPOSAL: stage === "PROPOSAL",
+            FINAL: stage === "FINAL",
+          },
+        },
+        defenseType,
+      );
+      expect(codes(result.missing)).not.toContain("THESIS_NOT_APPROVED");
+    }
+  });
+
+  it("preserves the APPROVED requirement for a first attempt (no re-defense history)", () => {
+    const result = svc.evaluateSchedule(
+      { ...baseSnap(), thesisStage: "TITLE", thesisStatus: "PENDING" },
+      "TITLE_DEFENSE",
+    );
+    expect(codes(result.missing)).toContain("THESIS_NOT_APPROVED");
+  });
+
+  it("does not treat a legacy concluded outcome as re-defense eligibility", () => {
+    const result = svc.evaluateSchedule(
+      {
+        ...baseSnap(),
+        thesisStage: "TITLE",
+        thesisStatus: "REVISION",
+        redefenseRequiredForStage: {
+          TITLE: false,
+          PROPOSAL: false,
+          FINAL: false,
+        },
+      },
+      "TITLE_DEFENSE",
+    );
+    expect(codes(result.missing)).toContain("THESIS_NOT_APPROVED");
+  });
+});
+
 describe("assertEligible", () => {
   const svc = new DefenseEligibilityService();
 

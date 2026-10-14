@@ -85,6 +85,13 @@ export interface EligibilitySnapshot {
   hasSelectedTitle: boolean;
   /** Formal Proposal DefenseConclusion outcome (academic authority for Proposal). */
   proposalOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
+  /**
+   * WF-C1a FIX-1: authoritative attempt history. True when the latest concluded
+   * same-stage attempt (DefenseSchedule + DefenseConclusion) is REDEFENSE_REQUIRED.
+   * Enables the next same-stage scheduling attempt WITHOUT weakening the normal
+   * first-attempt APPROVED application requirement. Optional for snapshot literals.
+   */
+  redefenseRequiredForStage?: Record<DefenseStage, boolean> | null;
   compExamPassed: boolean;
   compExamDismissed: boolean;
   activeAdviser: boolean;

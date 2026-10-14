@@ -33,6 +33,21 @@ async function hasFinalizedRapForSession(
   return rows.some((r) => isRapStatusComplete(r.status));
 }
 
+/**
+ * Current attempt for a stage: newest non-cancelled schedule, else the newest
+ * row. `defenseSchedules` is loaded newest-first (createdAt desc), so a
+ * historical concluded attempt must never override a newer active attempt.
+ */
+function pickCurrentAttempt<T extends { sessionStatus?: string | null }>(
+  rows: T[],
+): T | null {
+  return (
+    rows.find((s) => String(s.sessionStatus ?? "") !== "CANCELLED") ??
+    rows[0] ??
+    null
+  );
+}
+
 function toAdminState(row: {
   status: string;
   stage: string;
@@ -43,7 +58,10 @@ function toAdminState(row: {
   }>;
 } | null): AdminSessionState {
   if (!row) return "NONE";
-  const concluded = row.schedules.find((s) => s.conclusion)?.conclusion;
+  // Current state comes from the newest/current attempt — not from whichever
+  // historical attempt happens to carry a conclusion.
+  const current = pickCurrentAttempt(row.schedules);
+  const concluded = current?.conclusion ?? null;
   if (concluded) {
     if (concluded.outcome === "PASSED") return "CONCLUDED_PASSED";
     if (concluded.outcome === "REDEFENSE_REQUIRED") return "CONCLUDED_REDEFENSE";
@@ -51,8 +69,7 @@ function toAdminState(row: {
       ? "CONCLUDED_FAILED"
       : "CONCLUDED_OTHER";
   }
-  const latest = row.schedules[0];
-  const sessionStatus = latest?.sessionStatus;
+  const sessionStatus = current?.sessionStatus;
   if (sessionStatus === "IN_PROGRESS") return "IN_PROGRESS";
   if (sessionStatus === "AWAITING_CONCLUSION") return "AWAITING_CONCLUSION";
   if (sessionStatus === "CANCELLED") return "CANCELLED";
@@ -90,11 +107,12 @@ function toSessionSummary(
   };
 }
 
-function pickSessionSchedule<T extends { conclusion?: unknown }>(
+function pickSessionSchedule<T extends { sessionStatus?: string | null }>(
   rows: T[],
 ): T | null {
-  // Prefer the schedule that owns a formal conclusion (CP1-FIX1 session authority).
-  return rows.find((s) => s.conclusion) ?? rows[0] ?? null;
+  // Current attempt (newest non-cancelled) — a historical concluded attempt
+  // must not be shown as the current session while a newer attempt exists.
+  return pickCurrentAttempt(rows);
 }
 
 export class StudentThesisJourneyService {
