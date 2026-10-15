@@ -274,7 +274,9 @@ When hidden, a compact indicator remains visible, for example Evaluation: Draft 
 
 ### 5.4 Shared comments rail
 
-When Student Document is active, the right rail shows:
+The right-side Shared Comments rail is the committee discussion/reference surface.
+
+When **Student Document** is active, the rail shows:
 
 - Selected thread
 - All comments
@@ -285,7 +287,14 @@ When Student Document is active, the right rail shows:
 
 Selecting a highlight focuses its thread. Selecting a comment in the list scrolls/focuses the corresponding PDF anchor.
 
-The comments rail can also be hidden to maximize document width.
+For the **Rapporteur**, the Shared Comments rail remains available while either main tab is active:
+
+- **Student Document:** comments remain directly connected to manuscript highlights/anchors; selecting a comment focuses the exact PDF context.
+- **Committee Report:** the same committee comments remain visible as reference material while the Rapporteur writes. Eligible comments may expose **Insert into Report** without requiring a tab switch back to Student Document.
+
+Long comments must not make the workspace unusable. The rail may show a compact preview with **Show more / Show less**, but the full comment remains available in the thread. If Insert into Report is used, the full source comment content is inserted/copied rather than only the truncated preview.
+
+The comments rail can be hidden in either tab to maximize the main workspace. Hiding it is presentation state only and never changes the underlying comment/report workflow.
 
 ### 5.5 Responsive behavior
 
@@ -458,7 +467,16 @@ The Rapporteur uses the same workspace shell but sees:
 
 - Report Controls in the left rail;
 - Committee Report tab as editable while DRAFT;
-- Student Document tab with shared committee annotations/comments.
+- Student Document tab for direct manuscript review;
+- a persistent/collapsible Shared Comments rail in both tabs.
+
+The intended Rapporteur mental model is:
+
+    LEFT   = report status/actions
+    CENTER = report composer OR student PDF
+    RIGHT  = committee comments/reference
+
+The Rapporteur may switch between Committee Report and Student Document without leaving the defense workspace. This is intentional: comments alone may not contain enough surrounding manuscript context, so the Rapporteur must be able to inspect the exact highlighted paragraph/page before deciding how to represent it in the official report.
 
 Chairman and Panelists can view the Committee Report draft but cannot directly edit authoritative report content.
 
@@ -783,11 +801,14 @@ Target direction:
 
 - use a PDF.js-based browser rendering/text layer for the collaborative workspace so text selection and annotation overlays are under application control;
 - evaluate a maintained open-source React PDF highlighting/annotation library through a bounded proof of concept before committing to it;
+- replace the browser-native/iframe PDF chrome inside the Defense Workspace with an **EARIST-native collaborative viewer surface**;
+- provide application-controlled document actions needed by the defense workflow, such as page navigation, page indicator, zoom, fit-width, highlight/comment interaction, and exact comment-to-anchor navigation;
+- keep the original uploaded PDF immutable; highlights/comments are rendered as a separate application overlay and persisted separately;
 - keep EARIST visual design, comments, authorization, persistence, and report workflow under project control;
 - use React Query/refetch/polling for the foundation;
 - add Socket.IO only after the persisted UI/API workflow passes acceptance testing.
 
-Do not implement a full document editor.
+Do not build a full office-suite/page-layout editor, and do not make the student's submitted manuscript directly editable. The Rapporteur may still use the separately defined free-form rich-text Committee Report composer.
 
 ---
 
@@ -854,7 +875,11 @@ The collaborative Defense Workspace is not considered complete unless all of the
 - evaluation UI follows the confirmed scoring semantics and familiar Group I/II form structure;
 - shared comments persist after reload and are visible to authorized committee members;
 - comments remain bound to the exact manuscript/attempt;
-- Rapporteur can see shared comments and author a free-form rich-text report body;
+- Rapporteur can see shared comments while composing the report and while reviewing the Student Document;
+- Rapporteur can switch between report composer and exact manuscript context without leaving the Defense Workspace;
+- long comments remain fully readable and Insert into Report uses the full stored comment body;
+- Rapporteur can author a free-form rich-text report body;
+- the Defense Workspace uses an EARIST-native collaborative PDF viewer rather than browser-native PDF chrome as the primary review UI;
 - Panelists can see the report draft read-only;
 - the report can be frozen only after required evaluations and Summary readiness;
 - all signers review the same frozen RAP snapshot;

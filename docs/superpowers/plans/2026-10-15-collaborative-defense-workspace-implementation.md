@@ -331,6 +331,8 @@ Replace iframe-only rendering inside the Defense Workspace with an annotation-ca
 
 Create a dedicated collaborative manuscript viewer rather than weakening the generic DocumentViewer security contract.
 
+The final Defense Workspace must not expose the browser's generic/native PDF toolbar as its primary UX. Render an EARIST-native viewer shell over the controlled PDF rendering layer.
+
 Capabilities:
 
 - authenticated PDF load;
@@ -338,11 +340,14 @@ Capabilities:
 - text selection;
 - highlight rendering;
 - selected-thread focus;
-- page navigation;
-- zoom;
+- application-controlled page navigation/page indicator;
+- zoom and fit-width controls;
+- exact comment -> PDF anchor navigation;
 - restore stored anchors;
 - error/loading states;
 - no direct manuscript editing.
+
+The original PDF bytes remain immutable. Collaboration data is stored/rendered separately.
 
 ### Integration
 
@@ -431,6 +436,9 @@ Build the final workspace shell and integrate the official evaluator flow withou
 - collapsible left role rail;
 - center Committee Report / Student Document tabs;
 - collapsible shared comments rail;
+- for Rapporteur, keep the same Shared Comments rail available in both Committee Report and Student Document tabs;
+- in Committee Report mode, comments act as reference material and may expose Insert into Report;
+- in Student Document mode, comments retain exact highlight/page navigation;
 - responsive drawer behavior on smaller screens.
 
 ### Evaluator rail
@@ -488,8 +496,11 @@ Rapporteur:
 
 - Committee Report tab editable while DRAFT;
 - familiar rich-text composing controls appropriate to the approved editor library;
-- Student Document tab shows shared annotations/comments;
-- optional Insert into Report action from a selected comment;
+- Student Document tab for direct manuscript/PDF review;
+- persistent/collapsible Shared Comments rail while either Committee Report or Student Document is active;
+- optional Insert into Report action from a selected comment while composing;
+- long comments may be visually clamped with Show more/Show less, but full content remains available;
+- Insert into Report must copy the full comment content, not only a truncated preview;
 - save draft;
 - report status/readiness.
 
@@ -523,6 +534,7 @@ Do not implement page-layout editing, arbitrary floating objects, or simultaneou
 If implemented in this phase:
 
 - clicking Insert into Report copies the selected committee comment into the current editor insertion point or another explicitly chosen location;
+- the operation uses the full stored comment body even when the rail currently shows only a shortened preview;
 - it never automatically creates a mandatory section;
 - the inserted text becomes normal Rapporteur-owned editable content;
 - the Rapporteur may rewrite, move, combine, format, or delete it;
@@ -918,7 +930,10 @@ The initiative is complete only when:
 
 - pre-defense review works;
 - the exact manuscript is annotatable without modifying the file;
+- the Defense Workspace uses an EARIST-native collaborative PDF viewer instead of browser-native PDF chrome as the primary review surface;
 - shared comments are persisted and authorized;
+- Rapporteur can keep comments visible in both report-composer and Student Document modes;
+- long comments can be expanded and Insert into Report copies the full stored content;
 - evaluator UI follows confirmed institutional scoring semantics;
 - all stages open official scoring only after Start Defense;
 - Rapporteur free-form rich-text report composer works without mandatory body sections;
