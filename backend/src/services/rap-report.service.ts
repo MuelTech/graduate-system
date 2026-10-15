@@ -39,9 +39,46 @@ export interface RapReconciliationResult {
   roleFilled: number;
 }
 
+/** Candidate thesis title used only to resolve an attempt-bound selectedTitleId. */
+export interface AttemptTitleCandidate {
+  id: string;
+  titleText: string;
+  /**
+   * Present for typing/compatibility only. It is intentionally IGNORED here:
+   * thesis-global selection must never influence an attempt's title context.
+   */
+  isSelected?: boolean | null;
+}
+
+/**
+ * Resolve the attempt-bound Title context used by a RAP.
+ *
+ * 2026-10-15 correction: a Title Defense attempt records only a verdict and does
+ * not create a binding selected title. Only a `selectedTitleId` explicitly bound
+ * to THIS attempt may be used. Thesis-global `ThesisTitle.isSelected` must NEVER
+ * be consulted, so a new canonical attempt (attemptSelectedTitleId = null) cannot
+ * inherit an older attempt's title. Historical attempt-bound ids still resolve to
+ * their text for legacy historical context.
+ */
+export function resolveAttemptTitleContext(input: {
+  /** This attempt's bound selectedTitleId (DefenseConclusion / request). */
+  attemptSelectedTitleId?: string | null;
+  /** Thesis titles, used only to resolve the attempt-bound id to its text. */
+  thesisTitles?: AttemptTitleCandidate[] | null;
+}): { selectedTitleId: string | null; officialTitle: string | null } {
+  const id = input.attemptSelectedTitleId ?? null;
+  if (!id) return { selectedTitleId: null, officialTitle: null };
+  const title = (input.thesisTitles ?? []).find((t) => t.id === id) ?? null;
+  if (!title) return { selectedTitleId: null, officialTitle: null };
+  return { selectedTitleId: id, officialTitle: title.titleText };
+}
+
 /**
  * Shared RAP content builder. Used by both the formal-conclusion transaction
  * and the deferred Title RAP generation after Rapporteur finalization.
+ *
+ * `Official Title:` is emitted only when an attempt-bound historical title exists
+ * (legacy). A new canonical attempt passes officialTitle = null and omits the line.
  */
 export function buildRapContent(input: RapContentInput): string {
   return [
@@ -172,12 +209,25 @@ export class RapReportService {
           select: {
             thesisId: true,
             outcome: true,
-            selectedTitle: { select: { titleText: true } },
+            selectedTitleId: true,
+            selectedTitle: { select: { id: true, titleText: true } },
           },
         });
         if (!conclusion) return null;
 
-        const officialTitle = conclusion.selectedTitle?.titleText ?? null;
+        // Parity with the immediate conclusion path: attempt-bound context only.
+        const attemptTitle = resolveAttemptTitleContext({
+          attemptSelectedTitleId: conclusion.selectedTitleId,
+          thesisTitles: conclusion.selectedTitle
+            ? [
+                {
+                  id: conclusion.selectedTitle.id,
+                  titleText: conclusion.selectedTitle.titleText,
+                },
+              ]
+            : [],
+        });
+        const officialTitle = attemptTitle.officialTitle;
         const content = buildRapContent({
           defenseType: "TITLE_DEFENSE",
           officialTitle,

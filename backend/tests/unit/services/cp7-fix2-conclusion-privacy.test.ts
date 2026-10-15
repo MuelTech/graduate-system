@@ -62,21 +62,30 @@ const prismaMock = vi.hoisted(() => {
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 
 // Mock RapReportService.createRapAfterConclusion for deterministic generatedById assertions.
-vi.mock("../../../src/services/rap-report.service", () => ({
-  RapReportService: class {
-    createRapAfterConclusion = createRapAfterConclusion;
-    ensureRapAfterTitlePrerequisites = ensureRapAfterTitlePrerequisites;
-    signRapSlot = vi.fn();
-    recomputeRapStatus = vi.fn();
-    getStudentRapAccess = vi.fn();
-  },
-  buildRapContent: (input: {
-    defenseType: string;
-    outcome: string;
-    rapporteurNotes: string | null;
-  }) =>
-    `Defense Type: ${input.defenseType}\n${input.outcome}\n${input.rapporteurNotes ?? ""}`,
-}));
+// Spread the real module so shared pure helpers (e.g. resolveAttemptTitleContext)
+// keep their production behavior.
+vi.mock("../../../src/services/rap-report.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/services/rap-report.service")
+    >();
+  return {
+    ...actual,
+    RapReportService: class {
+      createRapAfterConclusion = createRapAfterConclusion;
+      ensureRapAfterTitlePrerequisites = ensureRapAfterTitlePrerequisites;
+      signRapSlot = vi.fn();
+      recomputeRapStatus = vi.fn();
+      getStudentRapAccess = vi.fn();
+    },
+    buildRapContent: (input: {
+      defenseType: string;
+      outcome: string;
+      rapporteurNotes: string | null;
+    }) =>
+      `Defense Type: ${input.defenseType}\n${input.outcome}\n${input.rapporteurNotes ?? ""}`,
+  };
+});
 
 const createRapAfterConclusion = vi.fn();
 const ensureRapAfterTitlePrerequisites = vi.fn();

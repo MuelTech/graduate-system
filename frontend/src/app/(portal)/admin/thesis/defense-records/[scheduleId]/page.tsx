@@ -390,10 +390,9 @@ export default function AdminDefenseRecordDetailPage() {
   const o = data.defenseOverview;
   const stage = stageFromDefenseType(o.defenseType);
   const isTitleDefense = stage === "TITLE";
-  const selectedTitle =
-    data.rapReport?.selectedTitle ??
-    o.proposedTitles.find((t) => t.isSelected)?.titleText ??
-    null;
+  // 2026-10-15: only the attempt-bound RAP/recorded title may be shown — never a
+  // thesis-global ThesisTitle.isSelected (cross-attempt leakage).
+  const recordedTitle = data.rapReport?.selectedTitle ?? null;
   const venue = parseVenueOrLink(o.venueOrLink);
 
   // RAP required-signature progress is derived from the signatory rows so it
@@ -488,8 +487,8 @@ export default function AdminDefenseRecordDetailPage() {
                 <span className="text-(--earist-body-text)">—</span>
               )}
             </MetaItem>
-            {selectedTitle ? (
-              <MetaItem label="Official Title">{selectedTitle}</MetaItem>
+            {recordedTitle ? (
+              <MetaItem label="Recorded Title (historical)">{recordedTitle}</MetaItem>
             ) : null}
           </div>
 

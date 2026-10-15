@@ -259,8 +259,9 @@ function DocumentSlot({
 /**
  * WP11 / UIUX-4B (FIX-1) — Title Defense application.
  * Academic progression comes only from GET /thesis/journey.
- * Confirmed Title scope: three proposed titles + ONE combined Title Defense
+ * Confirmed Title scope (2026-10-15): ONE combined Title Defense
  * Proposal Package + Current Semester COR + Defense-fee Proof of Payment.
+ * Structured proposed titles are optional legacy input only.
  */
 export default function TitleDefensePage() {
   const queryClient = useQueryClient();

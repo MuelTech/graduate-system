@@ -160,7 +160,7 @@ export default function AdviserRequestPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-xs font-medium uppercase tracking-wide text-(--earist-body-text)">
-              Official Title
+              Recorded Title (historical)
             </p>
             <p className="mt-1 text-sm font-semibold text-(--earist-primary)">
               {officialTitle}

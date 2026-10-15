@@ -414,7 +414,9 @@ export class ThesisRepository {
         },
       });
 
-      // 2. Insert the 3 proposed titles
+      // 2. Optional legacy title metadata — only non-empty supplied titles are
+      //    stored (2026-10-15: structured titles are no longer required; the Title
+      //    Proposal package is the academic submission).
       for (const title of titles) {
         await tx.thesisTitle.create({
           data: { thesisId: thesis.id, titleText: title },
@@ -1195,9 +1197,8 @@ export class ThesisRepository {
       finalRemarks?: string | null;
     },
   ) {
-    const { RapReportService, buildRapContent } = await import(
-      "../services/rap-report.service"
-    );
+    const { RapReportService, buildRapContent, resolveAttemptTitleContext } =
+      await import("../services/rap-report.service");
     const rapService = new RapReportService();
 
     const result = await prisma.$transaction(async (tx) => {
@@ -1304,17 +1305,15 @@ export class ThesisRepository {
           ? String(options.finalRemarks)
           : null;
 
-      // 2026-10-15 correction: a Title Defense conclusion records ONLY the verdict.
-      // It does not require, select, or lock a binding official title, and it does
-      // not mutate ThesisTitle.isSelected (historical selections stay untouched).
-      // A legacy client-supplied selectedTitleId is kept as historical context only
-      // when it belongs to this thesis; otherwise it is stored as null.
-      const legacySelectedTitleId =
-        isTitle &&
-        selectedTitleId &&
-        schedule.thesis.thesisTitles.some((t) => t.id === selectedTitleId)
-          ? selectedTitleId
-          : null;
+      // 2026-10-15 correction: attempt-bound Title context only. A new canonical
+      // Title attempt records only the verdict and must NOT inherit a thesis-global
+      // ThesisTitle.isSelected value. A legacy client-supplied selectedTitleId is
+      // kept as historical context only when it belongs to this thesis's titles.
+      const attemptTitle = resolveAttemptTitleContext({
+        attemptSelectedTitleId: isTitle ? selectedTitleId : null,
+        thesisTitles: schedule.thesis.thesisTitles,
+      });
+      const legacySelectedTitleId = attemptTitle.selectedTitleId;
 
       // Proposal/Final: require evaluator completion + existing Summary.
       if (!isTitle) {
@@ -1347,15 +1346,8 @@ export class ThesisRepository {
         }
       }
 
-      // Legacy display context only — no selection authority is created here.
-      const officialTitle =
-        (legacySelectedTitleId
-          ? schedule.thesis.thesisTitles.find(
-              (t) => t.id === legacySelectedTitleId,
-            )?.titleText
-          : null) ??
-        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
-        null;
+      // Attempt-bound title context only — never the thesis-global isSelected.
+      const officialTitle = attemptTitle.officialTitle;
 
       // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
       const evaluatorRoleSet = new Set(

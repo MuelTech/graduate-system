@@ -190,8 +190,9 @@ export class ThesisController {
       if (!req.user) throw new Error('Unauthorized');
       
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      // UIUX-4B FIX-1: Title requires three proposed titles + one combined
-      // Title Defense Proposal Package + Current Semester COR + fee proof.
+      // Title requires one combined Title Defense Proposal Package + Current
+      // Semester COR + fee proof. Structured proposed titles are optional legacy
+      // input, not required (2026-10-15 correction).
       if (!files || !files.conceptPaper || !files.cor || !files.receipt) {
         throw new Error(
           'Title Defense Proposal Package, COR, and proof of payment are all required.',

@@ -81,7 +81,10 @@ export interface EligibilitySnapshot {
   thesisOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
   /** Formal Title DefenseConclusion outcome (academic authority for Title). */
   titleOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
-  /** Official selected title from Title DefenseConclusion.selectedTitleId. */
+  /**
+   * Compatibility-only mirror of a historical Title DefenseConclusion.selectedTitleId.
+   * 2026-10-15: NOT an academic authority — never gates completion or Adviser Request.
+   */
   hasSelectedTitle: boolean;
   /** Formal Proposal DefenseConclusion outcome (academic authority for Proposal). */
   proposalOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;

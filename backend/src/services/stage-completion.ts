@@ -100,7 +100,7 @@ export function isFinalDefensePassed(
 
 /**
  * Proposal is unlocked only when Title is formally complete
- * (PASSED + selected title + finalized Title RAP).
+ * (PASSED + finalized Title RAP). No selected-title snapshot is required.
  * Do not infer unlock from ThesisRecord.stage alone.
  */
 export function canUnlockProposal(input: UnlockProposalInput): boolean {

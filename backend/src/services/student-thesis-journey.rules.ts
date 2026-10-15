@@ -10,7 +10,7 @@
  * completion. Those are administrative/session context only.
  *
  * Title stage completion uses the shared stage-completion authority:
- * formal PASSED + official selected title + finalized Title RAP.
+ * formal PASSED + finalized Title RAP.
  */
 import { isProposalStageComplete, isTitleStageComplete } from "./stage-completion";
 
@@ -164,7 +164,7 @@ export interface JourneySnapshot {
   /** Comprehensive Examination PASSED (CompExamRecord). */
   compExamPassed: boolean;
 
-  /** Formal Title Defense conclusion with selected title. */
+  /** Formal Title Defense conclusion (PASSED). */
   titlePassed: boolean;
   selectedTitleId: string | null;
   selectedTitleText: string | null;
@@ -543,7 +543,7 @@ export function evaluateStudentThesisJourney(
         "PROPOSAL_DEFENSE",
         "LOCKED",
         adviserCompleted
-          ? "Complete and pass Title Defense with an official selected title first."
+          ? "Complete and pass Title Defense first."
           : "Complete the Adviser Request process and obtain an approved adviser first.",
         null,
         null,

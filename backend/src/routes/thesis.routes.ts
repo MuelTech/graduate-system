@@ -6,8 +6,9 @@ import { secureUpload } from "../middlewares/upload.middleware";
 const router = Router();
 const thesisController = new ThesisController();
 
-// STUDENT ONLY: Title Defense — 3 proposed titles + one combined Title Defense
-// Proposal Package + Current Semester COR + Defense-fee Proof of Payment.
+// STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
+// Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
+// are optional legacy input, not required (2026-10-15 correction).
 router.post(
   "/defense/title",
   authenticateJWT,

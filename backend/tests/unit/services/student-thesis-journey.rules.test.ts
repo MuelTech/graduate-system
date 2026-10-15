@@ -758,3 +758,21 @@ describe("rejected applications are actionable, not WAITING", () => {
     expect(dto.steps[4].detail).not.toMatch(/under review/i);
   });
 });
+
+describe("no stale selected-title prerequisite in Journey copy", () => {
+  it("Proposal lock copy does not require an official selected title", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: false,
+        activeAdviser: { userId: "a", name: "Adviser" },
+      }),
+    );
+    const proposal = dto.steps.find((s) => s.key === "PROPOSAL_DEFENSE");
+    expect(proposal?.state).toBe("LOCKED");
+    expect(String(proposal?.lockReason ?? "")).not.toMatch(
+      /official selected title/i,
+    );
+    expect(String(proposal?.lockReason ?? "")).toMatch(/Title Defense/i);
+  });
+});
