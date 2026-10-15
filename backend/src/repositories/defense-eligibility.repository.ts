@@ -107,7 +107,7 @@ export class DefenseEligibilityRepository {
       id: string;
       stage: "TITLE" | "PROPOSAL" | "FINAL";
       status: string;
-      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+      outcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
       thesisDocuments: DocRow[];
       thesisTitles: { id: string; isSelected: boolean }[];
     } | null = null;
@@ -214,6 +214,25 @@ export class DefenseEligibilityRepository {
         })
       : null;
 
+    // WF-C1a FIX-1: latest formal conclusion per stage (Final included) drives
+    // the authoritative re-defense signal. Latest by concludedAt = latest attempt.
+    const finalConclusion = thesisIdForDocs
+      ? await prisma.defenseConclusion.findFirst({
+          where: {
+            thesisId: thesisIdForDocs,
+            schedule: { defenseType: "FINAL_DEFENSE" },
+          },
+          orderBy: { concludedAt: "desc" },
+          select: { outcome: true, scheduleId: true },
+        })
+      : null;
+
+    const redefenseRequiredForStage = {
+      TITLE: titleConclusion?.outcome === "REDEFENSE_REQUIRED",
+      PROPOSAL: proposalConclusion?.outcome === "REDEFENSE_REQUIRED",
+      FINAL: finalConclusion?.outcome === "REDEFENSE_REQUIRED",
+    };
+
     const titleRapSigned = titleConclusion?.scheduleId
       ? (await prisma.rapReport.count({
           where: {
@@ -236,12 +255,14 @@ export class DefenseEligibilityRepository {
 
     const titleOutcome =
       titleConclusion?.outcome === "PASSED" ||
+      titleConclusion?.outcome === "REDEFENSE_REQUIRED" ||
       titleConclusion?.outcome === "REVISION_REQUIRED" ||
       titleConclusion?.outcome === "FAILED"
         ? titleConclusion.outcome
         : null;
     const proposalOutcome =
       proposalConclusion?.outcome === "PASSED" ||
+      proposalConclusion?.outcome === "REDEFENSE_REQUIRED" ||
       proposalConclusion?.outcome === "REVISION_REQUIRED" ||
       proposalConclusion?.outcome === "FAILED"
         ? proposalConclusion.outcome
@@ -275,6 +296,7 @@ export class DefenseEligibilityRepository {
       titleOutcome,
       hasSelectedTitle: Boolean(titleConclusion?.selectedTitleId),
       proposalOutcome,
+      redefenseRequiredForStage,
       compExamPassed,
       compExamDismissed: failedStrikes >= 2,
       activeAdviser: (student?.adviserAssignments ?? []).length > 0,

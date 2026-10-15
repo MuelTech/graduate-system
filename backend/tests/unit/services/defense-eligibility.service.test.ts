@@ -51,7 +51,6 @@ const titleInput = (
   compExamPassed: true,
   compExamDismissed: false,
   hasActiveThesisBlocking: false,
-  titleCountFromRequest: 3,
   hasConceptPaper: true,
   hasCor: true,
   hasReceipt: true,
@@ -69,7 +68,7 @@ describe("evaluateApplyTitle", () => {
     expect(result.missing).toHaveLength(0);
   });
 
-  it("UIUX-4B FIX-1: requires 3 titles + package + COR + receipt", () => {
+  it("UIUX-4B FIX-1: requires the package + COR + receipt", () => {
     const result = svc.evaluateApplyTitle(titleInput());
     expect(result.eligible).toBe(true);
     expect(codes(result.missing)).not.toContain("COR");
@@ -91,9 +90,16 @@ describe("evaluateApplyTitle", () => {
     expect(codes(result.missing)).toContain("RECEIPT");
   });
 
-  it("requires three titles", () => {
-    const result = svc.evaluateApplyTitle(titleInput({ titleCountFromRequest: 2 }));
-    expect(codes(result.missing)).toContain("THREE_TITLES");
+  it("does not require structured title1/title2/title3 (Title Proposal package is authoritative)", () => {
+    // 2026-10-15 correction: structured titles are no longer an eligibility gate.
+    const result = svc.evaluateApplyTitle(titleInput());
+    expect(result.eligible).toBe(true);
+    expect(codes(result.missing)).not.toContain("THREE_TITLES");
+    // The proposal package remains required.
+    const missingPackage = svc.evaluateApplyTitle(
+      titleInput({ hasConceptPaper: false }),
+    );
+    expect(codes(missingPackage.missing)).toContain("TITLE_PROPOSAL");
   });
 
   it("requires comprehensive exam PASSED", () => {
@@ -173,7 +179,7 @@ describe("evaluateApplyProposal", () => {
     });
     expect(codes(caseA.missing)).toContain("THESIS_STAGE");
     const caseAMsg = caseA.missing.find((m) => m.code === "THESIS_STAGE");
-    expect(caseAMsg?.message).toMatch(/formally PASSED with an official selected title/i);
+    expect(caseAMsg?.message).toMatch(/formally PASSED/i);
     expect(caseA.missing.find((m) => m.code === "PRIOR_RAP")).toBeUndefined();
 
     // Case B — PASSED + selected title, RAP not finalized.
@@ -395,6 +401,59 @@ describe("evaluateSchedule", () => {
 
   it("maps defense type to stage via DEFENSE_TYPE_STAGE", () => {
     expect(DEFENSE_TYPE_STAGE.FINAL_DEFENSE).toBe("FINAL");
+  });
+});
+
+describe("evaluateSchedule re-defense attempt eligibility", () => {
+  const svc = new DefenseEligibilityService();
+
+  it("permits the next same-stage attempt after REDEFENSE_REQUIRED even though the mirror status is REVISION", () => {
+    for (const [defenseType, stage] of [
+      ["TITLE_DEFENSE", "TITLE"],
+      ["PROPOSAL_DEFENSE", "PROPOSAL"],
+      ["FINAL_DEFENSE", "FINAL"],
+    ] as const) {
+      const result = svc.evaluateSchedule(
+        {
+          ...baseSnap(),
+          thesisStage: stage,
+          // Post-conclusion compat mirror for a canonical REDEFENSE_REQUIRED verdict.
+          thesisStatus: "REVISION",
+          redefenseRequiredForStage: {
+            TITLE: stage === "TITLE",
+            PROPOSAL: stage === "PROPOSAL",
+            FINAL: stage === "FINAL",
+          },
+        },
+        defenseType,
+      );
+      expect(codes(result.missing)).not.toContain("THESIS_NOT_APPROVED");
+    }
+  });
+
+  it("preserves the APPROVED requirement for a first attempt (no re-defense history)", () => {
+    const result = svc.evaluateSchedule(
+      { ...baseSnap(), thesisStage: "TITLE", thesisStatus: "PENDING" },
+      "TITLE_DEFENSE",
+    );
+    expect(codes(result.missing)).toContain("THESIS_NOT_APPROVED");
+  });
+
+  it("does not treat a legacy concluded outcome as re-defense eligibility", () => {
+    const result = svc.evaluateSchedule(
+      {
+        ...baseSnap(),
+        thesisStage: "TITLE",
+        thesisStatus: "REVISION",
+        redefenseRequiredForStage: {
+          TITLE: false,
+          PROPOSAL: false,
+          FINAL: false,
+        },
+      },
+      "TITLE_DEFENSE",
+    );
+    expect(codes(result.missing)).toContain("THESIS_NOT_APPROVED");
   });
 });
 

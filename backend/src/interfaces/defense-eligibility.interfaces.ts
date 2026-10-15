@@ -78,13 +78,23 @@ export interface EligibilitySnapshot {
    * Compatibility mirror of ThesisRecord.outcome.
    * Prefer titleOutcome / proposalOutcome for academic unlock decisions.
    */
-  thesisOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+  thesisOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
   /** Formal Title DefenseConclusion outcome (academic authority for Title). */
-  titleOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
-  /** Official selected title from Title DefenseConclusion.selectedTitleId. */
+  titleOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
+  /**
+   * Compatibility-only mirror of a historical Title DefenseConclusion.selectedTitleId.
+   * 2026-10-15: NOT an academic authority — never gates completion or Adviser Request.
+   */
   hasSelectedTitle: boolean;
   /** Formal Proposal DefenseConclusion outcome (academic authority for Proposal). */
-  proposalOutcome: "PASSED" | "REVISION_REQUIRED" | "FAILED" | null;
+  proposalOutcome: "PASSED" | "REDEFENSE_REQUIRED" | "REVISION_REQUIRED" | "FAILED" | null;
+  /**
+   * WF-C1a FIX-1: authoritative attempt history. True when the latest concluded
+   * same-stage attempt (DefenseSchedule + DefenseConclusion) is REDEFENSE_REQUIRED.
+   * Enables the next same-stage scheduling attempt WITHOUT weakening the normal
+   * first-attempt APPROVED application requirement. Optional for snapshot literals.
+   */
+  redefenseRequiredForStage?: Record<DefenseStage, boolean> | null;
   compExamPassed: boolean;
   compExamDismissed: boolean;
   activeAdviser: boolean;

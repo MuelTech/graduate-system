@@ -2,7 +2,7 @@
  * Student Thesis Journey pure evaluation (WP5).
  *
  * Academic progression is derived from formal domain evidence only:
- * CompExam → Title DefenseConclusion (+ selectedTitleId) → AdviserRequest /
+ * CompExam → Title DefenseConclusion → AdviserRequest /
  * AdviserAssignment → Proposal DefenseConclusion → STRIKE (policy) →
  * Final DefenseConclusion.
  *
@@ -10,7 +10,7 @@
  * completion. Those are administrative/session context only.
  *
  * Title stage completion uses the shared stage-completion authority:
- * formal PASSED + official selected title + finalized Title RAP.
+ * formal PASSED + finalized Title RAP.
  */
 import { isProposalStageComplete, isTitleStageComplete } from "./stage-completion";
 
@@ -43,6 +43,7 @@ export type DefenseSubstatus =
   | "COMPLETED"
   | "FAILED"
   | "REVISION_REQUIRED"
+  | "REDEFENSE_REQUIRED"
   | "REJECTED"
   | "CANCELLED_SESSION";
 
@@ -163,7 +164,7 @@ export interface JourneySnapshot {
   /** Comprehensive Examination PASSED (CompExamRecord). */
   compExamPassed: boolean;
 
-  /** Formal Title Defense conclusion with selected title. */
+  /** Formal Title Defense conclusion (PASSED). */
   titlePassed: boolean;
   selectedTitleId: string | null;
   selectedTitleText: string | null;
@@ -211,6 +212,7 @@ export type AdminSessionState =
   | "REJECTED"
   | "CONCLUDED_FAILED"
   | "CONCLUDED_PASSED"
+  | "CONCLUDED_REDEFENSE"
   | "CONCLUDED_OTHER";
 
 /** Terminal defense outcomes — do not poll merely because Journey state is WAITING. */
@@ -310,8 +312,11 @@ function adminSubstatus(admin: AdminSessionState): DefenseSubstatus {
       return "FINALIZING_RECORDS";
     case "CONCLUDED_FAILED":
       return "FAILED";
+    case "CONCLUDED_REDEFENSE":
+      // Canonical re-defense verdict: stage stays open for a new attempt.
+      return "REDEFENSE_REQUIRED";
     case "CONCLUDED_OTHER":
-      // REVISION_REQUIRED and other non-passing formal outcomes.
+      // REVISION_REQUIRED and other legacy non-passing formal outcomes.
       return "REVISION_REQUIRED";
     default:
       return "NOT_SUBMITTED";
@@ -337,6 +342,8 @@ function adminWaitingText(
       return `Your ${kind} Defense session was cancelled. Await rescheduling or further instructions.`;
     case "CONCLUDED_FAILED":
       return `Defense result: Failed. The formal ${kind} Defense result has been recorded.`;
+    case "CONCLUDED_REDEFENSE":
+      return `Re-defense required. Your ${kind} Defense attempt was concluded as Re-defense Required; the stage remains open for a new ${kind} Defense attempt.`;
     case "CONCLUDED_OTHER":
       return `Revision required. Follow the Graduate School / panel instructions for required revisions.`;
     default:
@@ -363,6 +370,8 @@ function adminNextAction(
       return "Await rescheduling or further instructions from the Graduate School.";
     case "CONCLUDED_FAILED":
       return "Contact / await instructions from the Graduate School regarding the next required action.";
+    case "CONCLUDED_REDEFENSE":
+      return "Await Graduate School instructions for a new defense attempt.";
     case "CONCLUDED_OTHER":
       return "Follow the Graduate School / panel instructions for required revisions.";
     default:
@@ -411,7 +420,9 @@ function adminActionableStep(
 
 /**
  * Authoritative Journey evaluation — cumulative sequence.
- * selectedTitle must come from DefenseConclusion.selectedTitleId, not isSelected alone.
+ * A PASSED Title DefenseConclusion with its finalized Title RAP completes Title;
+ * a binding selected title is NOT required. Historical selected-title data (when
+ * present) is display context only.
  *
  * Downstream steps require ALL preceding academic prerequisites, so orphaned
  * legacy evidence cannot unlock a later milestone early.
@@ -419,14 +430,12 @@ function adminActionableStep(
 export function evaluateStudentThesisJourney(
   snap: JourneySnapshot,
 ): StudentThesisJourneyDto {
-  // Canonical Title completion: PASSED + official selected title + finalized Title RAP.
+  // Canonical Title completion: PASSED + finalized required Title RAP.
   const titleCompleted = isTitleStageComplete({
     outcome: snap.titlePassed ? "PASSED" : null,
-    hasSelectedTitle: Boolean(snap.selectedTitleId),
     titleRapFinalized: snap.titleRapFinalized,
   });
-  const titleResultAndTitleReady =
-    snap.titlePassed && Boolean(snap.selectedTitleId);
+  const titleResultAndTitleReady = snap.titlePassed;
   const titleRapPending = titleResultAndTitleReady && !snap.titleRapFinalized;
   const adviserCompleted = Boolean(snap.activeAdviser);
   const proposalCompleted = isProposalStageComplete({
@@ -470,9 +479,9 @@ export function evaluateStudentThesisJourney(
         ? step(
             "TITLE_DEFENSE",
             "WAITING",
-            "Title Defense academic result and official title are recorded. Required Title RAP is still awaiting finalization/signatures.",
+            "Title Defense academic result is recorded. Required Title RAP is still awaiting finalization/signatures.",
             "Finalizing Title Defense records.",
-            "Finalizing Title Defense records — academic result and official title are recorded; required Title RAP is still pending.",
+            "Finalizing Title Defense records — academic result is recorded; required Title RAP is still pending.",
             "FINALIZING_RECORDS",
             snap.titleSession ?? null,
           )
@@ -490,8 +499,8 @@ export function evaluateStudentThesisJourney(
         "ADVISER_REQUEST",
         "LOCKED",
         titleRapPending
-          ? "Title Defense academic result and official title are complete, but the required Title RAP must be finalized before Adviser Request."
-          : "Complete and pass Title Defense with an official selected title first.",
+          ? "Title Defense academic result is complete, but the required Title RAP must be finalized before Adviser Request."
+          : "Complete and pass Title Defense first.",
       )
     : adviserCompleted
       ? step("ADVISER_REQUEST", "COMPLETED", null, "Continue to Proposal Defense.")
@@ -534,7 +543,7 @@ export function evaluateStudentThesisJourney(
         "PROPOSAL_DEFENSE",
         "LOCKED",
         adviserCompleted
-          ? "Complete and pass Title Defense with an official selected title first."
+          ? "Complete and pass Title Defense first."
           : "Complete the Adviser Request process and obtain an approved adviser first.",
         null,
         null,

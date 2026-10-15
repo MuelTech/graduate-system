@@ -304,6 +304,7 @@ export class ThesisRepository {
         defenseType: true,
         sessionStatus: true,
         createdAt: true,
+        conclusion: { select: { outcome: true } },
       },
     });
   }
@@ -413,7 +414,9 @@ export class ThesisRepository {
         },
       });
 
-      // 2. Insert the 3 proposed titles
+      // 2. Optional legacy title metadata — only non-empty supplied titles are
+      //    stored (2026-10-15: structured titles are no longer required; the Title
+      //    Proposal package is the academic submission).
       for (const title of titles) {
         await tx.thesisTitle.create({
           data: { thesisId: thesis.id, titleText: title },
@@ -862,7 +865,7 @@ export class ThesisRepository {
             | "FINAL_DEFENSE",
           sessionStatus: { not: "CANCELLED" },
         },
-        select: { id: true, defenseType: true, sessionStatus: true, createdAt: true },
+        select: { id: true, defenseType: true, sessionStatus: true, createdAt: true, conclusion: { select: { outcome: true } } },
       });
       const gate = canCreateDefenseSchedule({
         defenseType: data.defenseType,
@@ -972,15 +975,13 @@ export class ThesisRepository {
           )
         : docs;
 
-      // CP9: own evaluation status from own assignment + own OralExamScore only.
-      // Title never uses Proposal/Final numerical evaluation. Non-evaluators: NONE.
+      // CP9 / WF-C1b: own evaluation status from own assignment + own
+      // OralExamScore only. Title, Proposal, and Final all use the shared
+      // evaluator lifecycle (CHAIRMAN + PANELIST). Non-evaluators: NONE.
       let evaluationStatus: "NOT_STARTED" | "DRAFT" | "FINALIZED" | "NONE" =
         "NONE";
-      const isNumerical =
-        defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
-      const isEvaluatorRole =
-        evaluatorRoles.includes(String(row.role)) && isNumerical;
-      if (isEvaluatorRole) {
+      const isEvaluatorAssignment = evaluatorRoles.includes(String(row.role));
+      if (isEvaluatorAssignment) {
         // oralExamScores relation is already scoped to this PanelAssignment.
         const ownScore = row.oralExamScores?.[0] ?? null;
         evaluationStatus =
@@ -1188,14 +1189,14 @@ export class ThesisRepository {
     scheduleId: string,
     chairmanUserId: string,
     options: {
-      outcome: "PASSED" | "REVISION_REQUIRED" | "FAILED";
+      /** WF-C1a: new attempts may only be concluded PASSED or REDEFENSE_REQUIRED. */
+      outcome: "PASSED" | "REDEFENSE_REQUIRED";
       selectedTitleId?: string | null;
       finalRemarks?: string | null;
     },
   ) {
-    const { RapReportService, buildRapContent } = await import(
-      "../services/rap-report.service"
-    );
+    const { RapReportService, buildRapContent, resolveAttemptTitleContext } =
+      await import("../services/rap-report.service");
     const rapService = new RapReportService();
 
     const result = await prisma.$transaction(async (tx) => {
@@ -1237,31 +1238,23 @@ export class ThesisRepository {
 
       const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
 
-      if (isTitle) {
-        // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-        // independently of Rapporteur notes/RAP finalization. Scheduling alone does
-        // not mean the defense occurred; require the active deliberation phase.
-        const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
-        if (!titleActiveStatuses.includes(String(schedule.sessionStatus))) {
-          throw new AppError(
-            "Title Defense formal result may be recorded only after the defense has been started (in progress).",
-            409,
-          );
-        }
-      } else {
-        if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
-          throw new AppError(
-            "Formal conclusion requires the session to be awaiting conclusion.",
-            409,
-          );
-        }
-
-        if (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes) {
-          throw new AppError(
-            "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
-            409,
-          );
-        }
+      // WF-C1b: every stage may conclude only from AWAITING_CONCLUSION. Proposal/
+      // Final additionally require finalized Rapporteur notes; Title does not yet
+      // (RAP-before-conclusion is deferred to WF-C1c).
+      if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
+        throw new AppError(
+          "Formal conclusion requires the session to be awaiting conclusion.",
+          409,
+        );
+      }
+      if (
+        !isTitle &&
+        (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes)
+      ) {
+        throw new AppError(
+          "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+          409,
+        );
       }
 
       // RAP is generated once the conclusion exists AND the official minutes are
@@ -1302,77 +1295,48 @@ export class ThesisRepository {
           ? String(options.finalRemarks)
           : null;
 
-      // Title: validate selected title only for PASSED.
-      if (isTitle && outcome === "PASSED") {
-        if (!selectedTitleId) {
-          throw new AppError(
-            "Title Defense PASSED requires selecting one of the student's proposed titles.",
-            400,
-          );
-        }
-        const title = schedule.thesis.thesisTitles.find(
-          (t) => t.id === selectedTitleId,
+      // 2026-10-15 correction: attempt-bound Title context only. A new canonical
+      // Title attempt records only the verdict and must NOT inherit a thesis-global
+      // ThesisTitle.isSelected value. A legacy client-supplied selectedTitleId is
+      // kept as historical context only when it belongs to this thesis's titles.
+      const attemptTitle = resolveAttemptTitleContext({
+        attemptSelectedTitleId: isTitle ? selectedTitleId : null,
+        thesisTitles: schedule.thesis.thesisTitles,
+      });
+      const legacySelectedTitleId = attemptTitle.selectedTitleId;
+
+      // WF-C1b: every stage — including Title — requires evaluator completion and
+      // an existing Oral Examination Summary before formal conclusion.
+      // CP7-FIX1 Issue 9: centralized evaluator-role policy.
+      const evaluatorRoles = new DefenseCommitteePolicy()
+        .getEvaluatorRoles(schedule.defenseType as never)
+        .map(String);
+      const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+        evaluatorRoles.includes(String(p.role)),
+      );
+      const finalized = schedule.oralExamScores.filter(
+        (s) =>
+          s.status === "FINALIZED" &&
+          evaluatorAssignments.some((a) => a.id === s.panelId),
+      );
+      if (
+        evaluatorAssignments.length === 0 ||
+        finalized.length < evaluatorAssignments.length
+      ) {
+        throw new AppError(
+          "All required evaluator evaluations must be finalized before formal conclusion.",
+          409,
         );
-        if (!title) {
-          throw new AppError(
-            "Selected title must be one of the student's proposed titles.",
-            400,
-          );
-        }
-        await tx.thesisTitle.updateMany({
-          where: { thesisId: schedule.thesisId },
-          data: { isSelected: false },
-        });
-        await tx.thesisTitle.update({
-          where: { id: selectedTitleId },
-          data: { isSelected: true },
-        });
-      } else if (isTitle && outcome !== "PASSED") {
-        // Do not fabricate an official selected title for non-PASSED.
-        await tx.thesisTitle.updateMany({
-          where: { thesisId: schedule.thesisId },
-          data: { isSelected: false },
-        });
+      }
+      if (!schedule.oralExamSummary) {
+        throw new AppError(
+          "Oral Examination Summary must exist before formal conclusion.",
+          409,
+        );
       }
 
-      // Proposal/Final: require evaluator completion + existing Summary.
-      if (!isTitle) {
-        // CP7-FIX1 Issue 9: centralized evaluator-role policy.
-        const evaluatorRoles = new DefenseCommitteePolicy()
-          .getEvaluatorRoles(schedule.defenseType as never)
-          .map(String);
-        const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
-          evaluatorRoles.includes(String(p.role)),
-        );
-        const finalized = schedule.oralExamScores.filter(
-          (s) =>
-            s.status === "FINALIZED" &&
-            evaluatorAssignments.some((a) => a.id === s.panelId),
-        );
-        if (
-          evaluatorAssignments.length === 0 ||
-          finalized.length < evaluatorAssignments.length
-        ) {
-          throw new AppError(
-            "All required evaluator evaluations must be finalized before formal conclusion.",
-            409,
-          );
-        }
-        if (!schedule.oralExamSummary) {
-          throw new AppError(
-            "Oral Examination Summary must exist before formal conclusion.",
-            409,
-          );
-        }
-      }
-
-      const officialTitle =
-        schedule.thesis.thesisTitles.find((t) => t.isSelected)?.titleText ??
-        (selectedTitleId
-          ? schedule.thesis.thesisTitles.find((t) => t.id === selectedTitleId)
-              ?.titleText
-          : null) ??
-        null;
+      // Attempt-bound title context only — never the thesis-global isSelected.
+      const officialTitle = attemptTitle.officialTitle;
 
       // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
       const evaluatorRoleSet = new Set(
@@ -1408,20 +1372,20 @@ export class ThesisRepository {
           scheduleId,
           thesisId: schedule.thesisId,
           outcome,
-          selectedTitleId: isTitle ? selectedTitleId : null,
+          selectedTitleId: isTitle ? legacySelectedTitleId : null,
           finalRemarks,
           concludedById: chairmanUserId,
           concludedAt: new Date(),
         },
       });
 
-      // Compat-mirror into ThesisStatus for existing UI. Never invents rating.
+      // Legacy ThesisStatus compat mirror ONLY. The canonical truth is
+      // DefenseConclusion.outcome (PASSED | REDEFENSE_REQUIRED); REDEFENSE_REQUIRED
+      // is mirrored as the legacy "REVISION" bucket. This mirror must NOT be used
+      // as the source of truth for re-defense scheduling — see
+      // canCreateDefenseSchedule, which reads the DefenseConclusion.
       const legacyStatus =
-        outcome === "PASSED"
-          ? ("PASSED" as const)
-          : outcome === "FAILED"
-            ? ("FAILED" as const)
-            : ("REVISION" as const);
+        outcome === "PASSED" ? ("PASSED" as const) : ("REVISION" as const);
       await tx.thesisRecord.update({
         where: { id: schedule.thesisId },
         data: { outcome, status: legacyStatus },

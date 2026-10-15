@@ -304,16 +304,16 @@ function isSessionActive(status: string): boolean {
 }
 
 function chairmanBlockedReason(a: DashboardAssignmentInput): string {
+  const isTitle = a.defenseType === TITLE_DEFENSE;
   if (a.sessionStatus !== "AWAITING_CONCLUSION") {
     return "Waiting for evaluator evaluations to complete";
-  }
-  if (!a.oralSummaryReady && !a.rapporteurNotesFinalized) {
-    return "Waiting for finalized evaluator evaluations and Rapporteur minutes";
   }
   if (!a.oralSummaryReady) {
     return "Waiting for the Oral Examination Summary to be generated";
   }
-  if (!a.rapporteurNotesFinalized) {
+  // Title does not require Rapporteur minutes before the formal result yet
+  // (RAP-before-conclusion is deferred to WF-C1c).
+  if (!isTitle && !a.rapporteurNotesFinalized) {
     return "Waiting for Rapporteur minutes to be finalized";
   }
   return "Waiting for conclusion prerequisites";
@@ -325,19 +325,22 @@ function tasksForAssignment(
 ): RankedTask[] {
   const tasks: RankedTask[] = [];
   const isTitle = a.defenseType === TITLE_DEFENSE;
-  const isNumerical =
-    a.defenseType === PROPOSAL_DEFENSE || a.defenseType === FINAL_DEFENSE;
   const sessionOpen = !NON_UPCOMING_SESSION_STATUSES.has(a.sessionStatus);
   const sessionActive = isSessionActive(a.sessionStatus);
   const sessionMs = parseWallClockMs(a.defenseDate, a.defenseTime);
   const sortMs = sessionMs ?? MAX_SORT;
+  // WF-C1b: every stage uses the evaluator lifecycle. Title evaluation becomes
+  // editable only after the explicit Chairman Start (IN_PROGRESS), never while
+  // merely SCHEDULED; Proposal/Final keep the accepted SCHEDULED behavior.
+  const evaluationEditable = isTitle
+    ? a.sessionStatus === "IN_PROGRESS"
+    : a.sessionStatus === "SCHEDULED" || a.sessionStatus === "IN_PROGRESS";
 
-  // 1. Proposal/Final numerical evaluation requiring completion.
+  // 1. Evaluator evaluation requiring completion (all stages).
   if (
-    isNumerical &&
-    isEvaluatorRole(a.role) &&
+    isEvaluatorRole(a.role, a.defenseType) &&
     sessionOpen &&
-    (a.sessionStatus === "SCHEDULED" || a.sessionStatus === "IN_PROGRESS") &&
+    evaluationEditable &&
     (a.evaluationStatus === "NOT_STARTED" || a.evaluationStatus === "DRAFT")
   ) {
     tasks.push({
@@ -358,16 +361,16 @@ function tasksForAssignment(
   }
 
   // 2. Chairman formal conclusion once all authoritative prerequisites hold.
+  // WF-C1b: every stage concludes only from AWAITING_CONCLUSION with the Oral
+  // Summary ready (which implies all evaluators finalized). Proposal/Final also
+  // require finalized Rapporteur minutes; Title does not yet (WF-C1c).
   const canConclude =
     a.role === "CHAIRMAN" &&
     !a.conclusionPresent &&
     sessionOpen &&
-    (isTitle
-      ? a.sessionStatus === "IN_PROGRESS" ||
-        a.sessionStatus === "AWAITING_CONCLUSION"
-      : a.sessionStatus === "AWAITING_CONCLUSION" &&
-        a.rapporteurNotesFinalized &&
-        a.oralSummaryReady);
+    a.sessionStatus === "AWAITING_CONCLUSION" &&
+    a.oralSummaryReady &&
+    (isTitle || a.rapporteurNotesFinalized);
   if (canConclude) {
     tasks.push({
       id: `conclusion:${a.scheduleId}`,
@@ -649,8 +652,6 @@ export function buildPanelistDashboard(
   for (const a of input.assignments) {
     if (a.role !== "CHAIRMAN" || a.conclusionPresent) continue;
     if (!isSessionActive(a.sessionStatus)) continue;
-    // Title Chairmen can always record a result while active.
-    if (a.defenseType === TITLE_DEFENSE) continue;
     // The Chairman's own unfinished evaluation is their actionable task, not a
     // dependency on another actor — never duplicate it here.
     if (a.evaluationStatus === "NOT_STARTED" || a.evaluationStatus === "DRAFT") {
@@ -658,8 +659,8 @@ export function buildPanelistDashboard(
     }
     const canConclude =
       a.sessionStatus === "AWAITING_CONCLUSION" &&
-      a.rapporteurNotesFinalized &&
-      a.oralSummaryReady;
+      a.oralSummaryReady &&
+      (a.defenseType === TITLE_DEFENSE || a.rapporteurNotesFinalized);
     if (canConclude) continue;
     rankedWaiting.push({
       id: `chairman-prereq:${a.scheduleId}`,

@@ -205,13 +205,13 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     ).rejects.toThrow(/formally PASSED Title Defense/i);
   });
 
-  it("rejects when passed conclusion has no selectedTitleId", async () => {
+  it("allows a passed conclusion with no selected title (2026-10-15)", async () => {
     prismaMock.defenseConclusion.findFirst.mockResolvedValue(
       titleConclusion({ selectedTitleId: null, selectedTitle: null }),
     );
-    await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
-    ).rejects.toThrow(/official selected title/i);
+    const list = await svc.listOdpCandidates("user-1");
+    expect(list.selectedTitle).toBeNull();
+    expect(list.candidates.length).toBeGreaterThan(0);
   });
 
   it("CP1: rejects when Title RAP is not finalized", async () => {

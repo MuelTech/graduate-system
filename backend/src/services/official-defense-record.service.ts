@@ -2,7 +2,8 @@
  * CP7 — Official defense record generation and read models.
  *
  * Oral Examination Summary is generated only from FINALIZED evaluator
- * assignments. Title Defense never produces a numerical summary.
+ * assignments. WF-C1b: Title, Proposal, and Final Defense all produce the
+ * official evaluator Criteria + Oral Examination Summary.
  * Academic outcome is never written here.
  */
 import prisma from "../config/database";
@@ -11,14 +12,9 @@ import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { deriveDefenseRecordStatus } from "./defense-record-status.rules";
 import { RapReportService } from "./rap-report.service";
+import { isEvaluationStage } from "./oral-evaluation.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
-
-export function isNumericalDefenseType(defenseType: string): boolean {
-  return (
-    defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE"
-  );
-}
 
 /** UIUX-2M: bounded, validated list filters for the Admin Defense Records index. */
 const DEFENSE_TYPE_VALUES = [
@@ -150,9 +146,9 @@ export class OfficialDefenseRecordService {
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    if (!isNumericalDefenseType(String(schedule.defenseType))) {
+    if (!isEvaluationStage(String(schedule.defenseType))) {
       throw new AppError(
-        "Title Defense does not generate a numerical Oral Examination Summary.",
+        "This defense session does not generate an Oral Examination Summary.",
         400,
       );
     }
@@ -350,10 +346,10 @@ export class OfficialDefenseRecordService {
       }
     }
 
-    // Issue 12: Title has no numerical Summary.
-    if (!isNumericalDefenseType(String(schedule.defenseType))) {
+    // WF-C1b: every canonical defense stage has an official evaluator Summary.
+    if (!isEvaluationStage(String(schedule.defenseType))) {
       throw new AppError(
-        "Title Defense does not use numerical Oral Examination Summary.",
+        "This defense session does not use an Oral Examination Summary.",
         400,
       );
     }

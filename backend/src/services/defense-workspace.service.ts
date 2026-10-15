@@ -220,7 +220,7 @@ export class DefenseWorkspaceService {
     const myAssignment = await this.resolveOwnAssignment(scheduleId, userId);
     const role = String(myAssignment.role) as WorkspaceRole;
     const defenseType = String(schedule.defenseType);
-    const isEvaluator = isEvaluatorRole(role) && defenseType !== "TITLE_DEFENSE";
+    const isEvaluator = isEvaluatorRole(role, defenseType);
     const canEditRapporteurNotes = role === "RAPPORTEUR";
     const canViewTitleDeliberation =
       defenseType === "TITLE_DEFENSE" &&
@@ -361,7 +361,7 @@ export class DefenseWorkspaceService {
       const r = String(pa.role);
       let evaluationStatus: DefenseWorkspaceDto["roster"][number]["evaluationStatus"] =
         "NONE";
-      if (isEvaluatorRole(r) && defenseType !== "TITLE_DEFENSE") {
+      if (isEvaluatorRole(r, defenseType)) {
         const st = evaluationByPanel.get(pa.id);
         evaluationStatus =
           st === "FINALIZED"
@@ -380,7 +380,7 @@ export class DefenseWorkspaceService {
 
     const myScore = evaluationByPanel.get(myAssignment.id);
     const evaluationStatus: DefenseWorkspaceDto["evaluationStatus"] =
-      !isEvaluator || defenseType === "TITLE_DEFENSE"
+      !isEvaluator
         ? "NONE"
         : myScore === "FINALIZED"
           ? "FINALIZED"
@@ -388,21 +388,21 @@ export class DefenseWorkspaceService {
             ? "DRAFT"
             : "NOT_STARTED";
 
-    // CP7 readiness. Title has no numerical evaluators (2026-10-04 correction),
-    // so it must never expose an evaluator-completion gate that would block
-    // Rapporteur note finalization.
+    // CP7 readiness. WF-C1b: every stage (incl. Title) has evaluator assignments
+    // derived from the stage-aware committee policy (CHAIRMAN + PANELIST).
     const isTitleDefense = defenseType === "TITLE_DEFENSE";
     const evaluatorRoles = committeePolicy
       .getEvaluatorRoles(defenseType as never)
       .map(String);
-    const evaluatorAssignments = isTitleDefense
-      ? []
-      : schedule.panelAssignments.filter((p) =>
-          evaluatorRoles.includes(String(p.role)),
-        );
+    const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+      evaluatorRoles.includes(String(p.role)),
+    );
     const finalizedEvaluations = evaluatorAssignments.filter(
       (p) => evaluationByPanel.get(p.id) === "FINALIZED",
     ).length;
+    const evaluationsComplete =
+      evaluatorAssignments.length > 0 &&
+      finalizedEvaluations >= evaluatorAssignments.length;
     const notesFinalizedAt = schedule.rapporteurNotesFinalizedAt ?? null;
     const isChairman = role === "CHAIRMAN";
     const sessionStatusValue = String(schedule.sessionStatus);
@@ -418,26 +418,23 @@ export class DefenseWorkspaceService {
       (isChairman || role === "RAPPORTEUR") &&
       !schedule.conclusion;
     const summaryReady = Boolean(schedule.oralExamSummary);
-    const isTitleConclusionPhase =
-      isTitleDefense &&
-      (sessionStatusValue === "IN_PROGRESS" ||
-        sessionStatusValue === "AWAITING_CONCLUSION");
     const canStartTitleDefense =
       isTitleDefense &&
       isChairman &&
       !schedule.conclusion &&
       sessionStatusValue === "SCHEDULED";
-    // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-    // independently of Rapporteur notes/RAP finalization, but only once the
-    // defense has actually started (not merely SCHEDULED).
+    // WF-C1b: the Chairman may record the formal result only once the session is
+    // awaiting conclusion, every required evaluator has finalized, and the Oral
+    // Examination Summary exists. Title no longer needs Rapporteur notes/RAP yet
+    // (RAP-before-conclusion is deferred to WF-C1c); Proposal/Final keep the
+    // accepted Rapporteur-notes requirement.
     const canRecordFormalResult =
       isChairman &&
       !schedule.conclusion &&
-      (isTitleDefense
-        ? isTitleConclusionPhase
-        : sessionStatusValue === "AWAITING_CONCLUSION" &&
-          Boolean(notesFinalizedAt) &&
-          summaryReady);
+      sessionStatusValue === "AWAITING_CONCLUSION" &&
+      evaluationsComplete &&
+      summaryReady &&
+      (isTitleDefense ? true : Boolean(notesFinalizedAt));
 
     return {
       schedule: {

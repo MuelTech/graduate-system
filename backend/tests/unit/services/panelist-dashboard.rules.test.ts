@@ -207,17 +207,70 @@ describe("panelist-dashboard rules", () => {
     expect(finalized.needsAttention).toEqual([]);
   });
 
-  it("6. Title Defense never produces a numerical evaluation task", () => {
-    const view = build({
+  it("6. WF-C1b: Title evaluator is actionable once IN_PROGRESS (not while SCHEDULED)", () => {
+    const active = build({
       assignments: [
         assignment({
           defenseType: "TITLE_DEFENSE",
           role: "PANELIST",
+          sessionStatus: "IN_PROGRESS",
           evaluationStatus: "NOT_STARTED",
         }),
       ],
     });
-    expect(view.needsAttention.filter((t) => t.category === "EVALUATION")).toEqual([]);
+    expect(
+      active.needsAttention.filter((t) => t.category === "EVALUATION"),
+    ).toHaveLength(1);
+
+    // Title is not evaluable before the explicit Chairman Start.
+    const scheduled = build({
+      assignments: [
+        assignment({
+          defenseType: "TITLE_DEFENSE",
+          role: "PANELIST",
+          sessionStatus: "SCHEDULED",
+          evaluationStatus: "NOT_STARTED",
+        }),
+      ],
+    });
+    expect(
+      scheduled.needsAttention.filter((t) => t.category === "EVALUATION"),
+    ).toEqual([]);
+  });
+
+  it("6b. WF-C1b: Title Chairman conclusion gated on AWAITING_CONCLUSION + Summary", () => {
+    const ready = build({
+      assignments: [
+        assignment({
+          defenseType: "TITLE_DEFENSE",
+          role: "CHAIRMAN",
+          sessionStatus: "AWAITING_CONCLUSION",
+          evaluationStatus: "FINALIZED",
+          oralSummaryReady: true,
+        }),
+      ],
+    });
+    expect(ready.needsAttention.map((t) => t.category)).toContain(
+      "CHAIRMAN_CONCLUSION",
+    );
+
+    const blocked = build({
+      assignments: [
+        assignment({
+          defenseType: "TITLE_DEFENSE",
+          role: "CHAIRMAN",
+          sessionStatus: "IN_PROGRESS",
+          evaluationStatus: "FINALIZED",
+          oralSummaryReady: false,
+        }),
+      ],
+    });
+    expect(
+      blocked.needsAttention.filter((t) => t.category === "CHAIRMAN_CONCLUSION"),
+    ).toEqual([]);
+    expect(
+      blocked.waitingOnOthers.some((w) => w.id === "chairman-prereq:sched-1"),
+    ).toBe(true);
   });
 
   it("7. evaluator on an active session is priority 1", () => {

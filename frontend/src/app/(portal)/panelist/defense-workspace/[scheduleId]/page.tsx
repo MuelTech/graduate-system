@@ -60,12 +60,9 @@ export default function DefenseWorkspacePage() {
   const isFinal = data?.schedule.defenseType === "FINAL_DEFENSE";
   const isChairman = data?.myAssignment.role === "CHAIRMAN";
   const workspaceSummaryReady = data?.oralSummary?.ready === true;
-  // CP7-FIX3: only Chairman + Proposal/Final + aggregate ready loads detailed rows.
+  // WF-C1b: every stage (incl. Title) has evaluator records + a detailed Summary.
   const showDetailedSummary =
-    Boolean(data) &&
-    isChairman &&
-    !isTitle &&
-    workspaceSummaryReady;
+    Boolean(data) && isChairman && workspaceSummaryReady;
 
   // Parent owns the single detailed Summary fetch (Option A).
   const {
@@ -112,28 +109,33 @@ export default function DefenseWorkspacePage() {
     );
   }
 
-  const canEvaluate = data.capabilities.canEvaluate && !isTitle;
+  // WF-C1b: Title evaluation opens only after the explicit Chairman Start; a
+  // merely SCHEDULED Title session must not present an editable scoring form.
+  const canEvaluate =
+    data.capabilities.canEvaluate &&
+    (!isTitle || data.schedule.sessionStatus === "IN_PROGRESS");
+  const evaluationPending =
+    data.capabilities.canEvaluate &&
+    isTitle &&
+    data.schedule.sessionStatus === "SCHEDULED";
   const isRapporteur = data.capabilities.canEditRapporteurNotes;
   const primaryDoc = data.documents[0];
   const progress = data.evaluationProgress;
 
-  // CP7-FIX3: successful detailed load + ready for Proposal/Final Chairman gate.
+  // Successful detailed load + ready (Chairman review + conclusion gate).
   const detailedSummaryLoadedSuccessfully =
     !detailedSummaryLoading &&
     !detailedSummaryFetching &&
     !detailedSummaryError &&
     detailedSummary !== undefined;
   const detailedSummaryReady =
-    !isTitle &&
     showDetailedSummary &&
     detailedSummaryLoadedSuccessfully &&
     detailedSummary?.ready === true;
 
-  const oralSummaryLabel = isTitle
-    ? null
-    : data.oralSummary?.ready
-      ? "Ready"
-      : "Waiting for evaluator completion";
+  const oralSummaryLabel = data.oralSummary?.ready
+    ? "Ready"
+    : "Waiting for evaluator completion";
   const formalResultLabel = data.formalResult
     ? data.formalResult
     : data.conclusionsPresent
@@ -149,22 +151,20 @@ export default function DefenseWorkspacePage() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
-          {!isTitle && (
-            <Card>
-              <CardContent className="pt-5 text-xs text-(--earist-body-text)">
-                <p>
-                  Evaluations finalized: {progress.finalizedEvaluations} /{" "}
-                  {progress.evaluatorAssignments}
-                </p>
-                <p>
-                  Summary:{" "}
-                  {data.oralSummary?.ready
-                    ? `Ready${data.oralSummary.overallAverage != null ? ` — avg ${data.oralSummary.overallAverage}` : ""}`
-                    : "Not ready"}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardContent className="pt-5 text-xs text-(--earist-body-text)">
+              <p>
+                Evaluations finalized: {progress.finalizedEvaluations} /{" "}
+                {progress.evaluatorAssignments}
+              </p>
+              <p>
+                Summary:{" "}
+                {data.oralSummary?.ready
+                  ? `Ready${data.oralSummary.overallAverage != null ? ` — avg ${data.oralSummary.overallAverage}` : ""}`
+                  : "Not ready"}
+              </p>
+            </CardContent>
+          </Card>
 
           {isTitle && (
             <Card>
@@ -227,7 +227,21 @@ export default function DefenseWorkspacePage() {
             />
           )}
 
-          {!canEvaluate && !isRapporteur && !isChairman && (
+          {evaluationPending && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Evaluation not open yet</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-(--earist-body-text)">
+                <p>
+                  The Title Defense has not been started. Your evaluation opens
+                  once the assigned Chairman starts the session.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!canEvaluate && !isRapporteur && !isChairman && !evaluationPending && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Your session role</CardTitle>
@@ -343,9 +357,7 @@ export default function DefenseWorkspacePage() {
                     {data.conclusionsPresent ? " · formal result recorded" : ""}
                   </p>
                   <div className="space-y-1 text-xs text-(--earist-body-text)">
-                    {oralSummaryLabel !== null && (
-                      <p>Oral Summary: {oralSummaryLabel}</p>
-                    )}
+                    <p>Oral Summary: {oralSummaryLabel}</p>
                     <p>Formal Result: {formalResultLabel}</p>
                     <p>RAP: {rapLabel}</p>
                   </div>

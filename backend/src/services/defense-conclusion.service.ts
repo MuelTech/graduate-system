@@ -6,11 +6,10 @@
  * No missing-outcome default. No score→PASS/FAIL. No outcome→OralRating mapping.
  */
 import type {
-  DefenseOutcomeStatus,
+  CanonicalDefenseOutcome,
 } from "./defense-workflow.rules";
 import {
-  normalizeDefenseOutcome,
-  validateTitleConclusionSelection,
+  normalizeNewDefenseOutcome,
 } from "./defense-workflow.rules";
 import { AppError } from "../utils/AppError";
 
@@ -28,15 +27,13 @@ export interface ConclusionPreconditions {
   sessionStatus: string;
   rapporteurNotesFinalized: boolean;
   oralSummaryExists: boolean;
-  selectedTitleId?: string | null;
-  thesisTitleIds: string[];
   outcomeProvided: boolean;
 }
 
 export interface ConclusionPreconditionResult {
   ok: boolean;
   errors: string[];
-  outcome: DefenseOutcomeStatus | null;
+  outcome: CanonicalDefenseOutcome | null;
   statusCode: 400 | 403 | 409;
 }
 
@@ -46,11 +43,12 @@ export function isSessionChairmanRole(role: string | null | undefined): boolean 
 
 /**
  * Explicit outcome is required. Missing outcome is a 400 — never defaults to PASSED.
+ * New conclusions accept only the canonical verdicts PASSED / REDEFENSE_REQUIRED.
  */
 export function resolveExplicitOutcome(
   raw: string | null | undefined,
-): DefenseOutcomeStatus | null {
-  return normalizeDefenseOutcome(raw ?? null);
+): CanonicalDefenseOutcome | null {
+  return normalizeNewDefenseOutcome(raw ?? null);
 }
 
 export function validateConclusionPreconditions(
@@ -62,7 +60,7 @@ export function validateConclusionPreconditions(
 
   if (!input.outcomeProvided) {
     errors.push(
-      "Defense outcome is required and must be PASSED, REVISION_REQUIRED (or REVISION), or FAILED.",
+      "Defense outcome is required and must be PASSED or REDEFENSE_REQUIRED.",
     );
     statusCode = 400;
     return { ok: false, errors, outcome: null, statusCode };
@@ -71,7 +69,7 @@ export function validateConclusionPreconditions(
   const outcome = resolveExplicitOutcome(rawOutcome);
   if (!outcome) {
     errors.push(
-      "Defense outcome must be PASSED, REVISION_REQUIRED (or REVISION), or FAILED.",
+      "Defense outcome must be PASSED or REDEFENSE_REQUIRED.",
     );
     return { ok: false, errors, outcome: null, statusCode: 400 };
   }
@@ -91,61 +89,39 @@ export function validateConclusionPreconditions(
 
   const isTitle = String(input.defenseType) === "TITLE_DEFENSE";
 
-  if (isTitle) {
-    // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-    // independently of Rapporteur notes/RAP finalization. Scheduling alone does
-    // not mean the defense occurred, so the session must be in the active
-    // deliberation phase. Title has no Group I/II scoring, so evaluator
-    // completion and the Oral Exam Summary are not required.
-    const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
-    if (!titleActiveStatuses.includes(String(input.sessionStatus))) {
-      errors.push(
-        "Title Defense formal result may be recorded only after the defense has been started (in progress).",
-      );
-      return { ok: false, errors, outcome: null, statusCode: 409 };
-    }
-  } else {
-    if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
-      errors.push(
-        "Formal conclusion requires the session to be awaiting conclusion.",
-      );
-      return { ok: false, errors, outcome: null, statusCode: 409 };
-    }
-
-    if (!input.rapporteurNotesFinalized) {
-      errors.push(
-        "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
-      );
-      statusCode = 409;
-    }
-
-    if (
-      input.evaluatorAssignments <= 0 ||
-      input.finalizedEvaluatorScores < input.evaluatorAssignments
-    ) {
-      errors.push(
-        "All required evaluator evaluations must be finalized before formal conclusion.",
-      );
-      statusCode = 409;
-    }
-    if (!input.oralSummaryExists) {
-      errors.push(
-        "Oral Examination Summary must be generated from finalized evaluator records before formal conclusion.",
-      );
-      statusCode = 409;
-    }
+  // WF-C1b: every stage — including Title — may be formally concluded only from
+  // the awaiting-conclusion phase. Title reaches that phase once all required
+  // evaluators have finalized and the Oral Examination Summary is generated.
+  if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
+    errors.push(
+      "Formal conclusion requires the session to be awaiting conclusion.",
+    );
+    return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  if (outcome === "PASSED" && isTitle) {
-    const titleCheck = validateTitleConclusionSelection(
-      input.defenseType,
-      input.selectedTitleId ?? null,
-      input.thesisTitleIds,
+  // Proposal/Final additionally require finalized Rapporteur notes. Title does
+  // not yet — RAP-before-conclusion is deferred to WF-C1c.
+  if (!isTitle && !input.rapporteurNotesFinalized) {
+    errors.push(
+      "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
     );
-    if (!titleCheck.valid && titleCheck.error) {
-      errors.push(titleCheck.error);
-      statusCode = 400;
-    }
+    statusCode = 409;
+  }
+
+  if (
+    input.evaluatorAssignments <= 0 ||
+    input.finalizedEvaluatorScores < input.evaluatorAssignments
+  ) {
+    errors.push(
+      "All required evaluator evaluations must be finalized before formal conclusion.",
+    );
+    statusCode = 409;
+  }
+  if (!input.oralSummaryExists) {
+    errors.push(
+      "Oral Examination Summary must be generated from finalized evaluator records before formal conclusion.",
+    );
+    statusCode = 409;
   }
 
   return { ok: errors.length === 0, errors, outcome, statusCode };
@@ -159,7 +135,7 @@ export class DefenseConclusionService {
   assertCanConclude(
     input: ConclusionPreconditions,
     rawOutcome: string | null | undefined,
-  ): DefenseOutcomeStatus {
+  ): CanonicalDefenseOutcome {
     const result = validateConclusionPreconditions(input, rawOutcome);
     if (!result.ok || !result.outcome) {
       throw new AppError(result.errors.join(" "), result.statusCode);
@@ -174,7 +150,7 @@ export class DefenseConclusionService {
  */
 export function assertOutcomeIndependentOfScore(
   _overallAverage: number | null | undefined,
-  outcome: DefenseOutcomeStatus,
-): DefenseOutcomeStatus {
+  outcome: CanonicalDefenseOutcome,
+): CanonicalDefenseOutcome {
   return outcome;
 }

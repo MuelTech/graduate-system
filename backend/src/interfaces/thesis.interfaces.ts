@@ -1,7 +1,13 @@
 export interface ApplyTitleDefenseInput {
-    title1: string;
-    title2: string;
-    title3: string;
+  /**
+   * Legacy compatibility only (2026-10-15 correction): structured proposed titles
+   * are no longer required — the Title Proposal document/package is authoritative.
+   * If supplied, they are stored as optional title metadata and never gate the
+   * defense verdict, completion, or Adviser Request.
+   */
+  title1?: string;
+  title2?: string;
+  title3?: string;
 }
 
 export interface RequestAdviserInput {

@@ -18,8 +18,7 @@ import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 const OUTCOMES = [
   { value: "PASSED", label: "PASSED" },
-  { value: "REVISION_REQUIRED", label: "REVISION_REQUIRED" },
-  { value: "FAILED", label: "FAILED" },
+  { value: "REDEFENSE_REQUIRED", label: "REDEFENSE_REQUIRED" },
 ] as const;
 
 export function ChairmanConclusionPanel({
@@ -41,7 +40,6 @@ export function ChairmanConclusionPanel({
 }) {
   const queryClient = useQueryClient();
   const [outcome, setOutcome] = useState<string>("");
-  const [selectedTitleId, setSelectedTitleId] = useState<string>("");
   const [finalRemarks, setFinalRemarks] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -55,40 +53,22 @@ export function ChairmanConclusionPanel({
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
   const sessionStatus = workspace.schedule.sessionStatus;
-  const titleReadyForConclusion =
-    isTitle &&
-    (sessionStatus === "IN_PROGRESS" || sessionStatus === "AWAITING_CONCLUSION");
   const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
 
-  /**
-   * Human-readable label for a proposed-title id. Base UI's SelectValue renders
-   * the raw value (a UUID) unless given a mapping, so the trigger must resolve it
-   * here while the controlled/submitted value stays the title id.
-   */
-  const selectedTitleLabel = (titleId: string) => {
-    const index = workspace.proposedTitles.findIndex((t) => t.id === titleId);
-    const title = index >= 0 ? workspace.proposedTitles[index] : null;
-    return title
-      ? `Title ${index + 1}: ${title.titleText.slice(0, 80)}`
-      : null;
-  };
-
-  // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
-  // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-  // independently of Rapporteur notes/RAP finalization, but only once the defense
-  // has actually started (not while merely SCHEDULED).
+  // WF-C1b: every stage concludes only from AWAITING_CONCLUSION with all required
+  // evaluators finalized and a loadable detailed Summary. Title does not require
+  // Rapporteur notes/RAP yet (RAP-before-conclusion is deferred to WF-C1c).
+  // A Title conclusion records the verdict only — no selected title is produced.
   const canSubmit =
     !concluded &&
     Boolean(outcome) &&
-    (isTitle
-      ? titleReadyForConclusion &&
-        (outcome !== "PASSED" || Boolean(selectedTitleId))
-      : notesReady &&
-        summaryReady &&
-        evalsComplete &&
-        detailedSummaryReady === true &&
-        !detailedSummaryLoading &&
-        !detailedSummaryError);
+    sessionStatus === "AWAITING_CONCLUSION" &&
+    (!isTitle ? notesReady : true) &&
+    evalsComplete &&
+    summaryReady &&
+    detailedSummaryReady === true &&
+    !detailedSummaryLoading &&
+    !detailedSummaryError;
 
   const conclude = useMutation({
     mutationFn: async () =>
@@ -96,7 +76,6 @@ export function ChairmanConclusionPanel({
         method: "POST",
         body: JSON.stringify({
           outcome,
-          selectedTitleId: isTitle && outcome === "PASSED" ? selectedTitleId : null,
           finalRemarks: finalRemarks.trim() || null,
         }),
       }),
@@ -157,9 +136,9 @@ export function ChairmanConclusionPanel({
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-(--earist-body-text)">
-            This session is scheduled. Start the Title Defense to begin panel
-            deliberation. The formal result can be recorded once deliberation is
-            in progress; Rapporteur minutes are not required first.
+            This session is scheduled. Start the Title Defense to open evaluator
+            scoring. The formal result can be recorded only after every assigned
+            evaluator finalizes and the Oral Examination Summary exists.
           </p>
           <Button
             type="button"
@@ -186,38 +165,36 @@ export function ChairmanConclusionPanel({
           </p>
         ) : (
           <>
-            {!isTitle && (
-              <div className="rounded border border-(--earist-border-gray) p-3 text-xs text-(--earist-body-text)">
-                <p>
-                  Evaluations finalized: {evals.finalizedEvaluations} /{" "}
-                  {evals.evaluatorAssignments}
+            <div className="rounded border border-(--earist-border-gray) p-3 text-xs text-(--earist-body-text)">
+              <p>
+                Evaluations finalized: {evals.finalizedEvaluations} /{" "}
+                {evals.evaluatorAssignments}
+              </p>
+              <p>
+                Summary:{" "}
+                {summaryReady
+                  ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
+                  : "Not ready"}
+              </p>
+              <p>
+                Detailed Summary:{" "}
+                {detailedSummaryError
+                  ? "unavailable (retry required)"
+                  : detailedSummaryLoading
+                    ? "loading"
+                    : detailedSummaryReady
+                      ? "reviewed/available"
+                      : summaryReady
+                        ? "unavailable"
+                        : "not ready"}
+              </p>
+              {detailedSummaryError && (
+                <p className="mt-1 text-red-700">
+                  Unable to load Summary. Formal result is disabled until a
+                  successful load.
                 </p>
-                <p>
-                  Summary:{" "}
-                  {summaryReady
-                    ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
-                    : "Not ready"}
-                </p>
-                <p>
-                  Detailed Summary:{" "}
-                  {detailedSummaryError
-                    ? "unavailable (retry required)"
-                    : detailedSummaryLoading
-                      ? "loading"
-                      : detailedSummaryReady
-                        ? "reviewed/available"
-                        : summaryReady
-                          ? "unavailable"
-                          : "not ready"}
-                </p>
-                {!isTitle && detailedSummaryError && (
-                  <p className="mt-1 text-red-700">
-                    Unable to load Summary. Formal result is disabled until a
-                    successful load.
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="outcome">Defense Outcome (required)</Label>
@@ -242,31 +219,6 @@ export function ChairmanConclusionPanel({
               </p>
             </div>
 
-            {isTitle && outcome === "PASSED" && (
-              <div className="space-y-2">
-                <Label htmlFor="title">Official Selected Title</Label>
-                <Select
-                  value={selectedTitleId}
-                  onValueChange={(v) => setSelectedTitleId(v ?? "")}
-                >
-                  <SelectTrigger id="title">
-                    <SelectValue placeholder="Select one proposed title…">
-                      {selectedTitleId
-                        ? selectedTitleLabel(selectedTitleId)
-                        : undefined}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspace.proposedTitles.map((t, i) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        Title {i + 1}: {t.titleText.slice(0, 80)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="remarks">Chairman Remarks (optional)</Label>
               <Textarea
@@ -286,30 +238,23 @@ export function ChairmanConclusionPanel({
                 <ul className="mt-2 space-y-1 text-xs text-amber-900">
                   <li>Student: {workspace.student.name}</li>
                   <li>Defense: {workspace.schedule.defenseType}</li>
-                  {!isTitle && (
-                    <>
-                      <li>
-                        Evaluators finalized: {evals.finalizedEvaluations} /{" "}
-                        {evals.evaluatorAssignments}
-                      </li>
-                      <li>
-                        Overall defense average:{" "}
-                        {workspace.oralSummary?.overallAverage ?? "—"}
-                      </li>
-                      <li>
-                        Generated Summary:{" "}
-                        {detailedSummaryReady
-                          ? "reviewed/available"
-                          : detailedSummaryLoading
-                            ? "loading"
-                            : "unavailable"}
-                      </li>
-                    </>
-                  )}
+                  <li>
+                    Evaluators finalized: {evals.finalizedEvaluations} /{" "}
+                    {evals.evaluatorAssignments}
+                  </li>
+                  <li>
+                    Overall defense average:{" "}
+                    {workspace.oralSummary?.overallAverage ?? "—"}
+                  </li>
+                  <li>
+                    Generated Summary:{" "}
+                    {detailedSummaryReady
+                      ? "reviewed/available"
+                      : detailedSummaryLoading
+                        ? "loading"
+                        : "unavailable"}
+                  </li>
                   <li>Selected result: {outcome}</li>
-                  {isTitle && outcome === "PASSED" && (
-                    <li>Selected title required</li>
-                  )}
                   <li className="font-semibold">
                     This action is irreversible. No result is recommended from
                     scores.

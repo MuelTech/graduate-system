@@ -8,7 +8,11 @@
  * deferred until the correction-clearance actor is confirmed.
  */
 
-export type DefenseOutcomeName = "PASSED" | "REVISION_REQUIRED" | "FAILED";
+export type DefenseOutcomeName =
+  | "PASSED"
+  | "REDEFENSE_REQUIRED"
+  | "REVISION_REQUIRED"
+  | "FAILED";
 
 export type StageCompletionState =
   | "NOT_STARTED"
@@ -21,7 +25,6 @@ export type StageCompletionState =
 
 export interface TitleCompletionInput {
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
 }
 
@@ -58,7 +61,6 @@ export function isRapCompleteForSchedule(
 export interface UnlockProposalInput {
   /** Formal Title DefenseConclusion outcome — not ThesisRecord.outcome. */
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
 }
 
@@ -75,12 +77,13 @@ export function isPassingOutcome(
   return outcome === "PASSED";
 }
 
+/**
+ * 2026-10-15 correction: Title completion requires the formal PASSED verdict and
+ * the required Title RAP finalization. A binding official selected title is NOT
+ * part of completion.
+ */
 export function isTitleStageComplete(input: TitleCompletionInput): boolean {
-  return (
-    isPassingOutcome(input.outcome) &&
-    input.hasSelectedTitle &&
-    input.titleRapFinalized
-  );
+  return isPassingOutcome(input.outcome) && input.titleRapFinalized;
 }
 
 export function isProposalStageComplete(
@@ -97,13 +100,12 @@ export function isFinalDefensePassed(
 
 /**
  * Proposal is unlocked only when Title is formally complete
- * (PASSED + selected title + finalized Title RAP).
+ * (PASSED + finalized Title RAP). No selected-title snapshot is required.
  * Do not infer unlock from ThesisRecord.stage alone.
  */
 export function canUnlockProposal(input: UnlockProposalInput): boolean {
   return isTitleStageComplete({
     outcome: input.outcome,
-    hasSelectedTitle: input.hasSelectedTitle,
     titleRapFinalized: input.titleRapFinalized,
   });
 }
@@ -124,7 +126,6 @@ export interface StageProgressSnapshot {
   stage: "TITLE" | "PROPOSAL" | "FINAL" | null;
   applicationStatus: string | null;
   outcome: DefenseOutcomeName | null;
-  hasSelectedTitle: boolean;
   titleRapFinalized: boolean;
   proposalRapFinalized: boolean;
 }
@@ -148,12 +149,16 @@ export function computeStageCompletion(
 
   if (snap.outcome) {
     if (snap.outcome === "FAILED") return "BLOCKED";
+    if (snap.outcome === "REDEFENSE_REQUIRED") {
+      // Canonical re-defense verdict: the stage stays open (a new same-stage
+      // attempt is required); it is never COMPLETE.
+      return "POST_DEFENSE_IN_PROGRESS";
+    }
     if (snap.outcome === "REVISION_REQUIRED") return "POST_DEFENSE_IN_PROGRESS";
     // PASSED
     if (stage === "TITLE") {
       return isTitleStageComplete({
         outcome: snap.outcome,
-        hasSelectedTitle: snap.hasSelectedTitle,
         titleRapFinalized: snap.titleRapFinalized,
       })
         ? "COMPLETE"

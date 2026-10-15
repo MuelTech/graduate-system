@@ -1,6 +1,10 @@
 /**
- * CP5 / CP5-FIX1 — Proposal/Final evaluator evaluation pure rules.
- * Title Defense does not use Group I/II numerical evaluation.
+ * CP5 / CP5-FIX1 — Defense evaluator evaluation pure rules.
+ *
+ * WF-C1b (2026-10-15): Title, Proposal, and Final Defense all use the same
+ * Group I/II numerical evaluator lifecycle. Evaluator authority is
+ * CHAIRMAN + PANELIST for every stage (DefenseCommitteePolicy); Adviser,
+ * Rapporteur, and Facilitator never submit an evaluation.
  */
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 
@@ -8,12 +12,32 @@ export type OralEvaluationStatusName = "DRAFT" | "FINALIZED";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
-/** Centralized evaluator-role authority (DefenseCommitteePolicy). */
-export function isEvaluatorRole(role: string | null | undefined): boolean {
-  return committeePolicy.isEvaluatorRole("PROPOSAL_DEFENSE", role as never);
+/**
+ * Centralized evaluator-role authority (DefenseCommitteePolicy).
+ * Callers pass the actual session `defenseType`; the evaluator set is
+ * stage-independent (CHAIRMAN + PANELIST) so Title is never special-cased.
+ */
+export function isEvaluatorRole(
+  role: string | null | undefined,
+  defenseType: string | null | undefined = "PROPOSAL_DEFENSE",
+): boolean {
+  return committeePolicy.isEvaluatorRole(defenseType as never, role as never);
 }
 
-/** Evaluation mutations only while session is in the evaluation phase. */
+/**
+ * The defense stages that use the shared evaluator scoring + e-signature
+ * lifecycle. All three canonical stages are participation-eligible.
+ */
+export function isEvaluationStage(
+  defenseType: string | null | undefined,
+): boolean {
+  return (
+    defenseType === "TITLE_DEFENSE" ||
+    defenseType === "PROPOSAL_DEFENSE" ||
+    defenseType === "FINAL_DEFENSE"
+  );
+}
+
 /** CP5-FIX1: count FINALIZED rows only for evaluator assignment IDs. */
 export function countEvaluatorFinalized(
   evaluatorAssignmentIds: string[],
@@ -24,16 +48,31 @@ export function countEvaluatorFinalized(
     .length;
 }
 
+/**
+ * Stage-aware evaluation editability.
+ *
+ * Title Defense requires the explicit Chairman Start action: evaluation is
+ * editable only once the session is IN_PROGRESS, never while merely
+ * SCHEDULED. Proposal/Final keep the accepted SCHEDULED-or-IN_PROGRESS
+ * behavior. AWAITING_CONCLUSION / CONCLUDED / CANCELLED are closed to all.
+ */
 export function isSessionEditableForEvaluation(
   sessionStatus: string | null | undefined,
+  defenseType?: string | null,
 ): boolean {
+  if (defenseType === "TITLE_DEFENSE") {
+    return sessionStatus === "IN_PROGRESS";
+  }
   return sessionStatus === "SCHEDULED" || sessionStatus === "IN_PROGRESS";
 }
 
 export function assertEvaluationSessionEditable(
   sessionStatus: string | null | undefined,
+  defenseType?: string | null,
 ): { ok: true } | { ok: false; reason: string; statusCode: number } {
-  if (isSessionEditableForEvaluation(sessionStatus)) return { ok: true };
+  if (isSessionEditableForEvaluation(sessionStatus, defenseType)) {
+    return { ok: true };
+  }
   return {
     ok: false,
     reason: "Evaluation editing is closed for this defense session.",
@@ -102,10 +141,6 @@ export function mergeOptionalField<T>(
     return (patch[field] ?? null) as T | null;
   }
   return existing ?? null;
-}
-
-export function isNumericalEvaluationDefense(defenseType: string | null | undefined): boolean {
-  return defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
 }
 
 export function validateCriterionValue(
@@ -206,12 +241,15 @@ export function isValidOralRating(rating: string | null | undefined): boolean {
   return (VALID_ORAL_RATINGS as readonly string[]).includes(String(rating ?? ""));
 }
 
-/** Evaluation completion for conclusion: TITLE skips numerical scores. */
-export function isNumericalEvaluationComplete(
-  defenseType: string,
+/**
+ * WF-C1b: canonical evaluation completion for every defense stage. Every
+ * required evaluator assignment (CHAIRMAN + PANELIST) must be FINALIZED.
+ * Assignment identity is authoritative — a raw FINALIZED row count is not.
+ * Title Defense is no longer exempt.
+ */
+export function isEvaluationComplete(
   evaluatorAssignments: number,
   finalizedEvaluations: number,
 ): boolean {
-  if (defenseType === "TITLE_DEFENSE") return true;
   return evaluatorAssignments > 0 && finalizedEvaluations >= evaluatorAssignments;
 }

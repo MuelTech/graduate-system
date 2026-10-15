@@ -333,7 +333,7 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
     expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
   });
 
-  it("formal PASSED without selectedTitleId keeps Adviser locked", () => {
+  it("formal PASSED without a selected title completes Title and unlocks Adviser (2026-10-15)", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({
         compExamPassed: true,
@@ -343,9 +343,9 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
         titleRapFinalized: true,
       }),
     );
-    // Title is waiting on official title selection (formal conclusion incomplete).
-    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
-    expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
+    expect(stateOf(dto, "TITLE_DEFENSE")).toBe("COMPLETED");
+    expect(stateOf(dto, "ADVISER_REQUEST")).toBe("CURRENT");
+    expect(dto.selectedTitle).toBeNull();
   });
 
   it("CP1: PASSED + selected title + RAP NOT finalized keeps Title incomplete and Adviser locked", () => {
@@ -396,14 +396,14 @@ describe("evaluateStudentThesisJourney — Title completion (CP1)", () => {
     expect(stateOf(dto, "ADVISER_REQUEST")).toBe("LOCKED");
   });
 
-  it("CP1: PASSED + no selected title + RAP finalized keeps Title incomplete and Adviser locked", () => {
+  it("CP1: PASSED + no selected title + RAP NOT finalized keeps Title incomplete and Adviser locked", () => {
     const dto = evaluateStudentThesisJourney(
       baseSnap({
         compExamPassed: true,
         titlePassed: true,
         selectedTitleId: null,
         selectedTitleText: null,
-        titleRapFinalized: true,
+        titleRapFinalized: false,
       }),
     );
     expect(stateOf(dto, "TITLE_DEFENSE")).not.toBe("COMPLETED");
@@ -756,5 +756,23 @@ describe("rejected applications are actionable, not WAITING", () => {
     expect(stateOf(dto, "FINAL_DEFENSE")).toBe("CURRENT");
     expect(dto.steps[4].detail).toMatch(/rejected/i);
     expect(dto.steps[4].detail).not.toMatch(/under review/i);
+  });
+});
+
+describe("no stale selected-title prerequisite in Journey copy", () => {
+  it("Proposal lock copy does not require an official selected title", () => {
+    const dto = evaluateStudentThesisJourney(
+      baseSnap({
+        compExamPassed: true,
+        titlePassed: false,
+        activeAdviser: { userId: "a", name: "Adviser" },
+      }),
+    );
+    const proposal = dto.steps.find((s) => s.key === "PROPOSAL_DEFENSE");
+    expect(proposal?.state).toBe("LOCKED");
+    expect(String(proposal?.lockReason ?? "")).not.toMatch(
+      /official selected title/i,
+    );
+    expect(String(proposal?.lockReason ?? "")).toMatch(/Title Defense/i);
   });
 });

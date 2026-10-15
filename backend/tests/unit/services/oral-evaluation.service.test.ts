@@ -136,15 +136,59 @@ describe("OralEvaluationService (CP5)", () => {
     }
   });
 
-  it("Test 6: Title Defense numerical evaluation rejected", async () => {
+  it("WF-C1b: Title Defense evaluator can save own Draft while IN_PROGRESS", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      id: "sched-1",
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "IN_PROGRESS",
+    });
+    const dto = await svc.saveDraft("sched-1", "user-a", {
+      criteria: { organization: 5 },
+    });
+    expect(prismaMock.__tx.oralExamScore.create).toHaveBeenCalled();
+    expect(dto.status).toBe("DRAFT");
+    expect(dto.defenseType).toBe("TITLE_DEFENSE");
+    expect(dto.panelAssignmentId).toBe("panel-1");
+  });
+
+  it("WF-C1b: Title Defense evaluation is blocked before the Chairman Start", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       id: "sched-1",
       defenseType: "TITLE_DEFENSE",
       sessionStatus: "SCHEDULED",
     });
     await expect(
-      svc.saveDraft("sched-1", "user-a", { criteria: {} }),
-    ).rejects.toThrow(/Title Defense does not use Group I/i);
+      svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1 } }),
+    ).rejects.toThrow(/Evaluation editing is closed/i);
+    await expect(
+      svc.finalize("sched-1", "user-a", {
+        signatureData: "sig",
+        criteria: completeCriteria,
+      }),
+    ).rejects.toThrow(/Evaluation editing is closed/i);
+    expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("WF-C1b: Title Defense evaluator can finalize with signature while IN_PROGRESS", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      id: "sched-1",
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "IN_PROGRESS",
+    });
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "DRAFT",
+      ...completeCriteria,
+    });
+    await svc.finalize("sched-1", "user-a", {
+      signatureData: "e-sign",
+      criteria: completeCriteria,
+    });
+    const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls[0]?.[0];
+    expect(call?.where?.status).toBe("DRAFT");
+    expect(call?.data?.status).toBe("FINALIZED");
+    expect(call?.data?.signedAt).toBeInstanceOf(Date);
   });
 
   it("Test 7: client panelId cannot impersonate another evaluator", async () => {
@@ -264,7 +308,7 @@ describe("OralEvaluationService (CP5)", () => {
     expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
   });
 
-  it("Test 10: unassigned caller gets 403 before Title-stage message", async () => {
+  it("Test 10: unassigned caller gets 403 before any stage gate", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       id: "sched-1",
       defenseType: "TITLE_DEFENSE",
@@ -274,9 +318,6 @@ describe("OralEvaluationService (CP5)", () => {
     await expect(
       svc.saveDraft("sched-1", "user-a", { criteria: {} }),
     ).rejects.toThrow(/not assigned/i);
-    await expect(
-      svc.saveDraft("sched-1", "user-a", { criteria: {} }),
-    ).rejects.to.not.throw(/Title Defense does not use/i);
   });
 
   it("Test 11–12: finalize does not create Summary/Conclusion/RAP", async () => {

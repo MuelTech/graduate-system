@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyWinningTitleFlags,
   canApplyReviewTransition,
   canApproveApplication,
   canRecordDefenseOutcome,
@@ -13,7 +12,6 @@ import {
   isStageUnlockedByPriorOutcome,
   isStageUnlockedByPriorStatus,
   normalizeDefenseOutcome,
-  validateTitleConclusionSelection,
 } from "../../../src/services/defense-workflow.rules";
 
 describe("APPROVED != PASSED", () => {
@@ -91,35 +89,16 @@ describe("application lifecycle", () => {
 });
 
 describe("Title Defense conclusion", () => {
-  it("winning title remains unset until conclusion selection", () => {
-    const flags = applyWinningTitleFlags(
-      [
-        { id: "a", isSelected: true },
-        { id: "b", isSelected: false },
-        { id: "c", isSelected: false },
-      ],
-      "b",
+  it("Title conclusion records a verdict only — no structured selected-title authority", () => {
+    // 2026-10-15 correction: validateTitleConclusionSelection /
+    // applyWinningTitleFlags were removed. A Title verdict no longer selects or
+    // validates a binding official title; the DefenseConclusion carries the
+    // PASSED / REDEFENSE_REQUIRED outcome and nothing else is required.
+    expect(normalizeDefenseOutcome("PASSED")).toBe("PASSED");
+    expect(normalizeDefenseOutcome("REDEFENSE_REQUIRED")).toBe(
+      "REDEFENSE_REQUIRED",
     );
-    expect(flags.find((t) => t.id === "b")?.isSelected).toBe(true);
-    expect(flags.filter((t) => t.isSelected)).toHaveLength(1);
-  });
-
-  it("title conclusion can only select one of the student's own proposed titles", () => {
-    expect(
-      validateTitleConclusionSelection("TITLE_DEFENSE", "a", ["a", "b", "c"])
-        .valid,
-    ).toBe(true);
-    expect(
-      validateTitleConclusionSelection("TITLE_DEFENSE", "zzz", ["a", "b", "c"])
-        .valid,
-    ).toBe(false);
-    expect(
-      validateTitleConclusionSelection("TITLE_DEFENSE", null, ["a"]).valid,
-    ).toBe(false);
-    // Proposal/Final do not require title selection
-    expect(
-      validateTitleConclusionSelection("FINAL_DEFENSE", null, ["a"]).valid,
-    ).toBe(true);
+    expect(isStageUnlockedByPriorOutcome("REDEFENSE_REQUIRED")).toBe(false);
   });
 });
 
@@ -127,6 +106,13 @@ describe("oral scoring completion", () => {
   it("non-evaluator roles do not block oral score completion", () => {
     // 2 evaluators assigned, 2 scores in, 5 total committee members
     expect(isScoringComplete(2, 2)).toBe(true);
+  });
+
+  it("WF-C1b: scoring completion requires all evaluators for every stage", () => {
+    expect(isScoringComplete(5, 0)).toBe(false);
+    expect(isScoringComplete(5, 4)).toBe(false);
+    expect(isScoringComplete(5, 5)).toBe(true);
+    expect(isScoringComplete(0, 0)).toBe(false);
   });
 
   it("non-evaluator cannot submit oral score unless policy allows it", () => {

@@ -5,10 +5,10 @@
 **Campus Context:** Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST), Manila Campus  
 **Scope:** Graduate Student Thesis / Dissertation workflow  
 **Integration Branch:** `refactor/defense-workflow`  
-**Active Correction Branch:** `refactor/defense-workflow-corrections`  
+**Active Correction Branch:** `refactor/unified-defense-lifecycle`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.8-draft  
-**Last Updated:** 2026-10-14  
+**Version:** 1.9-draft  
+**Last Updated:** 2026-10-15  
 
 ---
 
@@ -34,21 +34,61 @@ For historical Title-specific ordering, the 2026-10-04 correction superseded con
 
 Where older sections of this SOT or the 2026-09-25 Student Thesis Journey documents conflict with the following rules, the current correction rules win:
 
-1. **Title, Proposal, and Final Defense all use the defense evaluation/scoring lifecycle.** Title remains unique because the panel deliberates over the student's three proposed titles, but Title is no longer exempt from evaluator completion/signing.
+1. **Title, Proposal, and Final Defense all use the defense evaluation/scoring lifecycle.** For Title Defense, the submitted Title Proposal document/package is the academic basis for deliberation. Proposed title options may remain inside that document; GS-IS does not require the Student to duplicate three proposed titles as mandatory structured text fields.
 2. Every conducted defense attempt owns its own evaluator records. Required evaluators complete, e-sign/finalize, and lock their own evaluation for that attempt regardless of whether the eventual verdict is `PASSED` or `REDEFENSE_REQUIRED`.
 3. Finalized evaluator grades may feed the Oral Examination Summary, but score completion/calculation must **not** automatically decide the academic verdict.
-4. During the defense, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee** and records the panel's deliberation. For Title Defense this may include the selected proposal/title basis and panel-agreed or suggested revised wording. The Rapporteur documents the panel decision; the Rapporteur is not the formal verdict authority.
-5. Required stage-aware RAP signatories must sign/finalize the RAP for that defense attempt before the attempt is formally concluded. The exact Panelist UI/UX for viewing/signing the RAP is a separate bounded design problem and is not defined by this correction.
+4. During the defense, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee** and records the panel's deliberation. For Title Defense this may include research-direction comments and suggested title wording. Such wording is a recommendation/history record, not a permanently binding selected title. The Rapporteur documents the committee record; the Rapporteur is not the formal verdict authority.
+5. Required stage-aware RAP signatories must sign/finalize the RAP for that defense attempt before the attempt is formally concluded. The collaborative viewing/signing UX is now defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
 6. **The assigned session Chairman remains the sole formal academic verdict authority.**
 7. The current canonical verdicts for new defense attempts are `PASSED` and `REDEFENSE_REQUIRED` (**Re-defense Required**). Ordinary revisions/suggestions attached to an otherwise accepted defense do not create a separate `REVISION_REQUIRED` result; they remain in the RAP and are reflected in the next authoritative manuscript/document.
-8. For a `PASSED` Title Defense, the Title attempt must retain the title wording recorded from the panel deliberation. Later Proposal/Final manuscripts may use a subsequently revised title without rewriting the historical Title Defense records.
+8. A concluded Title attempt must preserve the submitted Title Proposal document/package, finalized evaluator records, RAP/recommendations, signatures, and formal verdict as immutable attempt history. A panel-suggested title may be retained in the RAP, but it is not a binding title-selection artifact. The Student and active Adviser may later refine the working title without rewriting the historical Title attempt.
 9. `REDEFENSE_REQUIRED` keeps the Student at the same defense stage and creates a **new defense attempt**. The new attempt gets a new schedule/session, evaluator records/signatures, RAP/signatures, and formal conclusion. Prior concluded attempt records remain immutable history.
-10. Adviser Request unlocks only after a `PASSED` Title attempt with the required Title decision/title snapshot and completed required defense records.
+10. Adviser Request unlocks only after a `PASSED` Title attempt whose required evaluator records and required RAP/signatures are complete. A selected-title/title-decision snapshot is **not** an Adviser Request prerequisite.
 11. RAP is system-owned evidence. A Student never downloads a system-generated RAP merely to upload it back as the next stage's requirement.
 12. Proposal/Final Adviser Certification remains an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
 13. Research Variables remains temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
 14. Student defense pages must distinguish application review, scheduling, live defense, formal result, re-defense, and completion rather than collapsing them into a generic WAITING message.
-15. The current Defense Lobby remains a prototype. A future role-aware Defense Workspace may improve how evaluators and RAP signatories access the same defense records, but document collaboration/editor mechanics are explicitly deferred from this workflow correction.
+15. The current Defense Lobby remains a prototype. The approved role-aware collaborative Defense Workspace, manuscript annotation model, Rapporteur report UX, RAP signing UX, defense history, and deferred realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
+
+### 0.1 2026-10-15 Title Proposal / title-authority correction
+
+**CONFIRMED_PROJECT_DESIGN**
+
+This correction supersedes older project wording that treated Title Defense as a system action that permanently selects one of three manually entered titles.
+
+- The Student submits the required **Title Proposal document/package**. If institutional practice expects three proposed titles, those proposals may live inside that academic document; GS-IS does not require duplicate structured `Title 1 / Title 2 / Title 3` input for the defense workflow.
+- The panel may discuss title wording and research direction during the defense. Those suggestions are recommendations, not a permanent title lock.
+- The Rapporteur records committee recommendations in the RAP, including suggested title wording when applicable.
+- The assigned Chairman's formal conclusion action records only the academic verdict for the attempt: `PASSED` or `REDEFENSE_REQUIRED`.
+- A `PASSED` Title Defense does not, by itself, create an immutable "official selected title." After an active Adviser is established, the Student and Adviser may refine the working title as the research develops.
+- Historical integrity is preserved by retaining the submitted Title Proposal document/package and the attempt's evaluation/RAP/signature/verdict records. Later working-title changes must not rewrite those records.
+- A structured current working title may still exist as useful system metadata when captured by an authorized workflow, but it is separate from the Title Defense verdict and is not required merely to unlock Adviser Request.
+
+### 0.2 2026-10-15 Collaborative Defense Workspace / RAP integration
+
+**CONFIRMED_PROJECT_DESIGN**
+
+The standalone RAP-before-conclusion correction previously referred to as WF-C1c is now incorporated into a broader collaborative Defense Workspace design rather than implemented as a temporary separate UX.
+
+Canonical extension documents:
+
+- docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md
+- docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
+
+The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report freezing before signatures, workspace-based RAP signing, defense-history/revision traceability, and a later Socket.IO synchronization layer.
+
+Important sequencing clarification:
+
+- the Rapporteur may draft the Committee Report during the live defense;
+- all required evaluator records must be finalized and the Oral Examination Summary ready before the report is frozen for signatures;
+- the frozen Committee Report/RAP is verdict-independent and must not require Formal Outcome content;
+- all required stage-aware RAP signatures must complete and the RAP must be FINALIZED before the Chairman records PASSED or REDEFENSE_REQUIRED;
+- the later DefenseConclusion remains a separate formal record and must not mutate the already frozen/signed RAP;
+- new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
+- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room.
+
+Where older sections describe post-conclusion RAP creation, Formal Outcome as required RAP content, Proposal/Final RAP after formal conclusion, or Panelist RAP signing as an undefined future UX, this 2026-10-15 extension supersedes that wording for new collaborative attempts.
+
 
 ## 1. Purpose
 
@@ -127,7 +167,7 @@ The current client clarification used by the project is:
 
 > **Title Defense application does not require an adviser.**
 
-After a Title Defense is formally concluded as `PASSED`, one official title is selected, and the required Title RAP is finalized/signed, the student may begin the Adviser Request process. The current client further clarified that the student's adviser must be chosen from the student's own Title Defense panel rather than from the full faculty/adviser directory.
+After a Title Defense attempt reaches the canonical conclusion sequence and is formally concluded as `PASSED`, the student may begin the Adviser Request process once the required evaluator records and Title RAP/signatures for that same attempt are complete. Title Defense does **not** require the Chairman to select a permanently binding title. The current client further clarified that the student's adviser must be chosen from the student's own Title Defense panel rather than from the full faculty/adviser directory.
 
 For current GS-IS terminology:
 
@@ -137,7 +177,7 @@ For current GS-IS terminology:
 - **External panelists may participate in defense panels but are never eligible to become a thesis/dissertation adviser.** Adviser candidacy is limited to internal panelists.
 - `isAvailableAsAdviser` remains the explicit Admin-controlled eligibility flag for internal panelists. When a panelist is external, effective adviser availability must be false regardless of any legacy/default stored value.
 
-An active adviser is required before Proposal/Final eligibility. Adviser selection begins only after the Title stage is complete: formal PASSED result + official selected title + required finalized/signed Title RAP.
+An active adviser is required before Proposal/Final eligibility. Adviser selection begins only after the Title stage is complete: formal `PASSED` result + applicable evaluator records finalized + required Title RAP/signatures finalized. No selected-title snapshot is required for this unlock.
 
 **Status:** Adviser not required for Title, adviser must come from the student's own Title Defense panel, and external panelists cannot become advisers are **CONFIRMED_CLIENT**. The exact `CHAIRMAN`/`PANELIST` role mapping to the current ODP is **PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION**, supported by legacy EARIST adviser-selection wording.
 
@@ -191,7 +231,7 @@ flowchart TD
     A[Student Enrolled] --> B[Comprehensive Examination]
     B -->|PASSED| C[Title Defense]
     B -->|Not Passed| B1[Title Application Locked]
-    C -->|PASSED + official title selected| D[Adviser Selection / Title Post-Defense]
+    C -->|PASSED + required defense records complete| D[Adviser Selection / Title Post-Defense]
     D -->|Title completion requirements satisfied| E[Proposal Defense]
     E -->|PASSED + required post-defense records| F[Research / Data Gathering / Analysis]
     F --> G[Final Defense]
@@ -210,12 +250,12 @@ flowchart TD
 4. Student files Title Defense application.
 5. Admin reviews application requirements.
 6. Approved application enters committee assignment and scheduling.
-7. Title Defense is conducted and the panel deliberates over the three proposed titles.
-8. After deliberation, the Chairman may record the panel-agreed official outcome without waiting for Rapporteur finalization.
-9. If the Title result is `PASSED`, the Chairman records exactly one official selected title from the student's submitted proposals.
-10. In parallel, the Rapporteur may capture/save draft defense notes and finalize the official Title minutes/RAP when its required content is complete.
-11. The required Title RAP/signatures are finalized.
-12. Adviser Request becomes available only after the Title result is `PASSED`, one official title is selected, and the required Title RAP is finalized/signed; the student then selects an eligible adviser candidate from the student's own Title Defense panel.
+7. Title Defense is conducted using the submitted Title Proposal document/package as the academic basis for discussion.
+8. Required Title evaluators complete and e-sign/finalize their own evaluation records for that defense attempt.
+9. The Rapporteur prepares/finalizes the RAP / Suggestions of the Evaluation Committee, including research-direction or suggested-title recommendations when applicable.
+10. Required Title RAP signatories complete their signatures and the RAP reaches its required finalized state.
+11. The assigned Chairman records the formal academic verdict for that attempt: `PASSED` or `REDEFENSE_REQUIRED`. The Chairman does not select or lock a permanent thesis title as part of this conclusion action.
+12. Adviser Request becomes available after a `PASSED` Title attempt with its required evaluator and RAP/signature records complete; the student then selects an eligible adviser candidate from the student's own Title Defense panel.
 13. Adviser CONFORME/acceptance and Dean approval are completed before an active `AdviserAssignment` is created.
 14. Student files Proposal Defense application.
 15. Proposal is reviewed, scheduled, conducted, and formally concluded.
@@ -239,8 +279,8 @@ Recommended domain structure:
 GraduateResearchProject
 ├── Student
 ├── Program / Program Type
-├── Proposed Titles
-├── Official Selected Title
+├── Title Proposal Submission / Document History
+├── Current Working Title (when captured; may evolve through authorized workflow)
 ├── Adviser Relationship(s)
 ├── Title Defense Application / Session / Outcome
 ├── Proposal Defense Application / Session / Outcome
@@ -350,7 +390,7 @@ COMPLETE
 BLOCKED
 ```
 
-A defense attempt may be formally concluded only after its required evaluator records and RAP signatures are complete. A stage becomes `COMPLETE` on a `PASSED` conclusion once any stage-specific conclusion data is present (for Title, the Title decision/title snapshot). A `REDEFENSE_REQUIRED` conclusion closes that attempt but keeps the Student at the same stage for a new attempt.
+A defense attempt may be formally concluded only after its required evaluator records and RAP signatures are complete. A stage becomes `COMPLETE` on a `PASSED` conclusion once its required attempt records are complete. Title completion does not require a binding selected-title/title-decision snapshot. A `REDEFENSE_REQUIRED` conclusion closes that attempt but keeps the Student at the same stage for a new attempt.
 
 Committee corrections on a passed defense remain in the RAP and flow forward into the next authoritative manuscript/document; they do not keep the completed defense attempt open.
 
@@ -366,8 +406,8 @@ These are engineering rules, not UI suggestions.
 4. A defense verdict may be recorded only by the authorized Chairman conclusion action.
 5. Title, Proposal, and Final conducted attempts require their applicable evaluator records to be completed and e-signed/finalized before formal conclusion.
 6. Required stage-aware RAP signatures must be complete before formal conclusion; the RAP-signing UI/UX mechanism is not defined here.
-7. Rapporteur records the committee deliberation/RAP and, for Title, the selected title basis and any panel-agreed/suggested revised wording; this documentation role does not transfer verdict authority from the Chairman.
-8. A `PASSED` Title attempt requires a retained Title decision/title snapshot for that attempt; later title changes must not rewrite the historical conclusion/RAP.
+7. Rapporteur records the committee deliberation/RAP and, for Title, any research-direction or suggested-title recommendations; this documentation role does not transfer verdict authority from the Chairman.
+8. A Title attempt preserves its submitted Title Proposal document/package and finalized defense records as immutable history. A `PASSED` Title attempt does not require a binding selected-title snapshot, and later working-title changes must not rewrite the historical attempt.
 9. `PASSED` may include committee revisions. Those revisions remain in RAP/history and are reflected in the next authoritative manuscript/document rather than becoming a separate defense outcome.
 10. `REDEFENSE_REQUIRED` closes the current attempt without completing the stage and permits a new same-stage defense attempt under the canonical re-defense rules.
 11. A re-defense must never overwrite or reopen the concluded attempt's evaluations, scores, signatures, RAP, committee snapshot, or conclusion.
@@ -389,7 +429,7 @@ Every defense requirement must be classified before implementation so the system
 
 | Classification | Meaning | Example | System behavior |
 |---|---|---|---|
-| **SYSTEM_DATA** | Structured data the system must keep/query | Three proposed title names, defense stage, selected title | Store as structured fields/records |
+| **SYSTEM_DATA** | Structured data the system must keep/query | Defense stage, attempt status, current working title when an authorized workflow captures one | Store as structured fields/records; do not duplicate Title Proposal document content merely to satisfy the defense workflow |
 | **SYSTEM_UPLOAD** | Student/user provides a file required by the digital workflow | Title proposal package PDF, Chapters 1–3, Chapters 1–5, proof of payment | Upload, validate, review, stage-scope |
 | **SYSTEM_GENERATED_DOCUMENT** | Official form can be generated from existing system data | GS-006/GS-007, GS-011 | Generate/preview/print; implementation may be deferred |
 | **EXTERNAL_MANUAL** | Process happens outside GS-IS; system may only retain evidence | Cashier payment, external expert evaluation | Do not recreate the outside process; store proof only when required |
@@ -436,7 +476,7 @@ Journey progression must not be inferred from mutable `ThesisRecord.stage/status
 At minimum, the derived state must distinguish and use:
 
 - formal `DefenseConclusion` outcomes;
-- selected official Title;
+- submitted Title Proposal evidence/history and, when separately captured, the current working title;
 - Adviser Request state;
 - active `AdviserAssignment`;
 - Proposal formal outcome;
@@ -454,7 +494,7 @@ Comprehensive Examination PASSED
         ↓
 Title Defense
         ↓
-formal PASSED + official selected title + finalized/signed required Title RAP
+formal PASSED + required evaluator records + finalized/signed required Title RAP
         ↓
 Adviser Request
         ↓
@@ -589,7 +629,7 @@ flowchart TD
 1. Open Title Defense application review queue.
 2. View student/program/degree type.
 3. View Comprehensive Exam result from system record.
-4. View three proposed titles.
+4. View the submitted Title Proposal document/package and its preserved application evidence.
 5. Verify stage-specific requirements.
 6. Return for compliance, reject, or approve.
 7. Approved application appears in scheduling queue.
@@ -601,12 +641,12 @@ flowchart TD
 
 During the defense:
 
-- Title Defense remains a three-title deliberation/selection workflow **and now follows the shared defense evaluation/scoring lifecycle**.
+- Title Defense evaluates the research direction represented by the submitted Title Proposal document/package and follows the shared defense evaluation/scoring lifecycle. The panel may discuss proposed title options or wording contained in the document, but GS-IS does not model the defense as a permanent title-selection action.
 - A newly scheduled Title session is still pre-defense. Scheduling alone does not make the defense concluded or passed.
 - The assigned session Chairman explicitly starts the Title Defense, transitioning the session from `SCHEDULED` to `IN_PROGRESS`. This start action means the defense/deliberation phase has begun; it is **not** an academic result.
 - Required Title evaluators complete their evaluation/scoring records and e-sign/finalize their own records for this attempt.
-- The panel deliberates over the student's three submitted title proposals.
-- During deliberation, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee**, records the selected proposal/title basis when applicable, captures any panel-agreed or suggested revised title wording, and documents committee suggestions.
+- The panel deliberates over the submitted research proposal and may discuss title options/wording contained in the Title Proposal document.
+- During deliberation, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee**, records committee recommendations, and may capture suggested title wording when applicable. Suggested wording is advisory/history data, not a binding title selection.
 - Required stage-aware RAP signatories sign/finalize the report for this attempt before formal conclusion.
 - Facilitator performs session facilitation and is non-evaluator by default.
 - Evaluation scores and RAP contents inform/document the committee process but do **not** automatically determine the verdict.
@@ -638,7 +678,7 @@ Chairman records:
 CONCLUDED
 ```
 
-The Rapporteur records the panel's Title deliberation; the Chairman does not need to re-enter the same title data merely to own the verdict. For a `PASSED` Title attempt, the Title decision/title wording recorded for that attempt becomes its historical Title Defense title snapshot. For `REDEFENSE_REQUIRED`, any suggested/revised wording remains part of that attempt's committee report and does not make the stage complete.
+The Rapporteur records the panel's Title deliberation and recommendations. The Chairman's conclusion action records the formal verdict only; it does not select or lock a permanent title. Any suggested/revised title wording remains part of that attempt's RAP/history whether the result is `PASSED` or `REDEFENSE_REQUIRED`.
 
 ### 8.7 Title Stage Completion
 
@@ -649,14 +689,11 @@ A Title attempt is conclusion-ready only after:
 - all required Title RAP signatories have signed/finalized their slots,
 - the Chairman is authorized and the attempt has not already been concluded.
 
-The Title stage becomes complete only when:
-
-- the Chairman's formal verdict is `PASSED`, and
-- the passed attempt retains the required Title decision/title snapshot.
+The Title stage becomes complete only when the Chairman's formal verdict is `PASSED` after the attempt's required evaluator records and RAP/signatures are complete. No binding selected-title/title-decision snapshot is required.
 
 If the Chairman records `REDEFENSE_REQUIRED`, the attempt closes as history and the Student remains at Title Defense for a new attempt. The previous attempt's evaluation/RAP/signature/conclusion records must remain immutable.
 
-**Adviser-selection timing — REVISED 2026-10-14:** Adviser Request unlocks only after a fully concluded `PASSED` Title attempt with its Title decision/title snapshot and required defense records completed.
+**Adviser-selection timing — REVISED 2026-10-15:** Adviser Request unlocks only after a fully concluded `PASSED` Title attempt with its required evaluator records and required RAP/signatures completed. A selected-title snapshot is not part of this gate.
 
 ---
 
@@ -667,7 +704,7 @@ The adviser relationship begins after the student's Title Defense has been forma
 ### 9.1 Confirmed system rules
 
 - Adviser is not required to file Title Defense. **CONFIRMED_CLIENT**
-- Adviser selection becomes available after the Title stage is complete: formal `PASSED`, one official title selected, and the required Title RAP finalized/signed. **CONFIRMED_CLIENT — clarified 2026-09-26**
+- Adviser selection becomes available after the Title stage is complete: formal `PASSED` plus the required evaluator records and required Title RAP/signatures finalized. A binding selected title is not required by the current project workflow. **CONFIRMED_PROJECT_DESIGN — revised 2026-10-15**
 - The adviser must be selected from the student's own Title Defense panel, not from the unrestricted faculty/adviser directory. **CONFIRMED_CLIENT**, also consistent with legacy EARIST adviser-selection material.
 - The current Adviser Request form, **EARIST-QSF-GS-020 Rev. 00 (06.20.25)**, represents Student request → Adviser **CONFORME** → Dean, Graduate School approval. **SUPPORTED_CURRENT_FORM**
 - `AdviserAssignment` becomes active only after the configured Adviser acceptance/conforme and Dean approval sequence succeeds. **PROPOSED_SYSTEM_DESIGN**
@@ -703,7 +740,6 @@ The adviser-selection screen must derive its candidates from the student's actua
 DefenseConclusion
 ├── defenseType = TITLE_DEFENSE
 ├── outcome = PASSED
-└── selectedTitleId exists
         ↓
 Title DefenseSchedule / DefenseSession
         ↓
@@ -730,7 +766,7 @@ Rules:
 ```text
 Title Defense formally PASSED
       ↓
-Official Title selected
+Required evaluator records finalized
       ↓
 Required Title RAP finalized/signed
       ↓
@@ -780,7 +816,7 @@ Preview / Download / Print official copy
 Recommended behavior:
 
 - The student should not be required to download a blank GS-020, fill it manually, and re-upload it as the primary workflow.
-- GS-IS should prefill the official GS-020 from authoritative records: student identity, program, official title/research context when present, requested adviser, request date, Adviser CONFORME status/date, Dean approval status/date, and other confirmed form fields.
+- GS-IS should prefill the official GS-020 from authoritative records: student identity, program, current working title/research context when available, requested adviser, request date, Adviser CONFORME status/date, Dean approval status/date, and other confirmed form fields. Absence of a structured title immediately after Title Defense must not block the Adviser Request workflow.
 - A draft/pending preview may be shown while the request is incomplete.
 - After final approval, the system should provide a finalized downloadable/printable GS-020 snapshot.
 - Wet, digital, or mixed signature handling should follow the cross-cutting official-document architecture in Section 34 and the signature mode approved by EARIST.
@@ -837,7 +873,7 @@ Current EARIST Graduate School Stage #2 public guidance supports the following w
 | Requirement | Classification / Representation | Rule Status |
 |---|---|---|
 | Title stage formally completed | SYSTEM_DATA — prior conclusion + required post-defense completion | SUPPORTED_LEGACY / PROJECT_REFERENCE |
-| Official selected title exists | SYSTEM_DATA — research title | SUPPORTED_LEGACY |
+| Current working title, when captured | SYSTEM_DATA — contextual research metadata; not a Proposal eligibility gate by itself | PROPOSED_SYSTEM_DESIGN — revised 2026-10-15 |
 | Active adviser | SYSTEM_DATA — Adviser assignment | Current project rule |
 | Proposal-stage Adviser Certification | SYSTEM_DATA / generated certification scoped to `PROPOSAL_DEFENSE` | SUPPORTED_CURRENT_PUBLIC_GUIDANCE + current form evidence |
 | Finalized/approved Title RAP / Rapporteur's Report | SYSTEM_DATA — internal RAP reference; no duplicate upload when GS-IS already owns the authoritative record | SUPPORTED_CURRENT_PUBLIC_GUIDANCE / PROJECT_REFERENCE |
@@ -856,7 +892,7 @@ The UI should distinguish:
 **System-derived requirements**
 
 - Title passed/completed
-- selected title
+- current working title when available (display/context only; not a standalone gate)
 - adviser assignment
 - Title RAP finalized
 - Research Variable approval **only when the research requires it**
@@ -918,9 +954,13 @@ Proposal Defense
               ↓
 Scores complete
               ↓
-Formal Conclusion
+Required evaluator records finalized
               ↓
-RAP / Required signatures
+Oral Examination Summary ready
+              ↓
+RAP / Required signatures finalized
+              ↓
+Chairman Formal Conclusion
               ↓
 Proposal Stage COMPLETE
 ```
@@ -1250,7 +1290,7 @@ Required before the Chairman may conclude a Title / Proposal / Final attempt:
 - the Oral Examination Summary/read model required by the current evaluation workflow is available;
 - the Rapporteur's RAP / **Suggestions of the Evaluation Committee** for the attempt is ready;
 - all required stage-aware RAP signature slots are signed/finalized;
-- for a `PASSED` Title Defense, the attempt has the required Title decision/title wording recorded from the panel deliberation;
+- for Title Defense, the submitted Title Proposal document/package remains the attempt evidence; no binding selected-title/title-decision snapshot is required;
 - current user is the assigned session Chairman;
 - defense attempt has not already been concluded.
 
@@ -1258,8 +1298,8 @@ Required before the Chairman may conclude a Title / Proposal / Final attempt:
 
 For Title Defense:
 
-- the panel collectively deliberates over the proposed titles;
-- the Rapporteur records the selected proposal/title basis and any panel-agreed or suggested revised wording in the committee report/workflow;
+- the panel collectively deliberates over the submitted research proposal and may discuss proposed title options/wording contained in the Title Proposal document;
+- the Rapporteur records committee recommendations and any suggested revised title wording in the committee report/workflow; such wording is advisory and does not create a binding selected title;
 - the Rapporteur's data-entry role does **not** make the Rapporteur the academic verdict authority;
 - the Chairman records only the formal verdict and confirms the conclusion once the required defense records are complete.
 
@@ -1272,7 +1312,7 @@ The conclusion operation should atomically:
 1. validate Chairman authorization,
 2. validate applicable evaluator completion/signatures,
 3. validate required RAP signature completion,
-4. validate the Title decision/title snapshot when concluding Title as `PASSED`,
+4. validate stage-specific attempt evidence and same-attempt associations without requiring a binding selected-title snapshot,
 5. preserve/generate the official Oral Examination Summary as required,
 6. record the official defense verdict (`PASSED` or `REDEFENSE_REQUIRED`),
 7. record conclusion timestamp and actor,
@@ -1294,7 +1334,7 @@ Admin manages operational review/scheduling/records but does not replace the Cha
 
 ### 15.1 RAP creation
 
-RAP should be generated after formal conclusion, not merely after score completion.
+RAP must be created/prepared during the active defense lifecycle and reach its required finalized/signature-complete state **before** the Chairman records the formal conclusion for a new attempt. It must not depend on post-conclusion creation.
 
 ### 15.2 RAP data
 
@@ -1302,11 +1342,11 @@ Recommended minimum:
 
 - defense stage/type,
 - researcher,
-- official title,
+- current working title/research context when available and the relevant Title Proposal document reference for Title attempts,
 - date/time/venue,
 - participant roster and roles,
-- official outcome,
 - panel recommendations,
+- frozen report content/version metadata,
 - rapporteur/session notes,
 - generated-by / generated-at,
 - revision/version,
@@ -1574,12 +1614,12 @@ Sections:
 
 1. Eligibility banner
 2. Comprehensive Exam status
-3. Three proposed titles
+3. Title Proposal document/package
 4. Required evidence
 5. Application status timeline
 6. Schedule/committee after approval
 7. Defense result
-8. Approved title
+8. Panel recommendations / suggested title wording when present
 9. RAP status
 10. Next-stage guidance
 
@@ -1590,7 +1630,7 @@ Do not show/request adviser as a Title filing prerequisite.
 Sections:
 
 1. Prior Title completion summary
-2. Official approved title
+2. Current working title / research context when available
 3. Adviser assignment
 4. Proposal-stage requirement checklist
 5. Chapters 1–3 upload
@@ -1716,9 +1756,9 @@ Admin/authorized users need a conclusion view containing:
 - score summary,
 - rapporteur notes,
 - recommendations,
-- proposed titles for Title stage,
-- official outcome control,
-- selected Title control when applicable,
+- Title Proposal document/research context for Title stage,
+- official outcome control restricted to the assigned Chairman,
+- no binding selected-Title control as part of defense conclusion,
 - confirmation/attestation.
 
 Do not allow a generic authenticated participant to conclude a defense.
@@ -2213,15 +2253,15 @@ RAP / signatures:
 
 1. Student without PASSED Comprehensive Exam cannot file Title Defense.
 2. Student with PASSED Comprehensive Exam may file Title without an adviser.
-3. Title application requires exactly three valid proposed titles.
-4. Admin approval does not select an official title.
+3. Title application requires the Title Proposal document/package and other active stage evidence, but does not require duplicate structured `Title 1 / Title 2 / Title 3` fields.
+4. Admin approval does not select or lock an official title.
 5. Admin approval does not unlock Proposal.
 6. Scheduling rejects invalid committee composition.
-7. A merely `SCHEDULED` Title session cannot be concluded or have its defense minutes finalized; the assigned Chairman starts the session, which moves it to `IN_PROGRESS`.
-8. Title Defense has no Proposal/Final-style numerical evaluator-score completion prerequisite; score state must not gate Chairman conclusion.
-9. After panel deliberation, the Chairman can record the formal Title result and selected title from `IN_PROGRESS` / `AWAITING_CONCLUSION` without waiting for Rapporteur notes/RAP finalization; a `PASSED` result requires exactly one submitted title.
-10. Rapporteur Save Draft and Finalize are both supported workflow actions after the session is active; Chairman conclusion alone does not complete the Title stage.
-11. Adviser Request/Proposal stay locked until Title completion rules are met: `PASSED` + exactly one official selected title + finalized/signed required Title RAP.
+7. A merely `SCHEDULED` Title session cannot be concluded or have active-defense records finalized; the assigned Chairman starts the session, which moves it to `IN_PROGRESS`.
+8. Required Title evaluators must complete and e-sign/finalize their own evaluation records before conclusion readiness.
+9. Rapporteur RAP content and all required Title RAP signatures must be complete/finalized before Chairman conclusion.
+10. The assigned Chairman records only `PASSED` or `REDEFENSE_REQUIRED`; the conclusion action does not require or create a binding selected title.
+11. Adviser Request/Proposal stay locked until the Title attempt is `PASSED` and its required evaluator plus RAP/signature records are complete.
 
 ### Proposal
 
@@ -2358,7 +2398,7 @@ These provide valuable process context but are **not automatically current polic
 3. **Requirements have provenance** — users should know whether a requirement is system-verified, uploaded, pending review, or missing.
 4. **Roles are functional** — use **Defense Committee** for the full session roster and **Oral Defense Panel (ODP)** for the evaluator subset; do not call Facilitator/Rapporteur generic panelists in screens where responsibilities differ.
 5. **Counts are visible** — committee builder shows required and assigned evaluator/session-role counts.
-6. **No duplicate uploads for internal records** — RAP, selected title, adviser assignment, and system-verified COR should be referenced internally.
+6. **No duplicate evidence entry** — RAP, adviser assignment, system-verified COR, and Title Proposal document content already owned by GS-IS should be referenced internally rather than re-uploaded or retyped.
 7. **Server truth** — UI cannot declare eligibility independently.
 8. **Auditability** — approvals, conclusions, signatures, and overrides identify actor and timestamp.
 9. **Accessible status** — text/icon + color; color is not the sole indicator.
@@ -2380,6 +2420,7 @@ Every workflow-policy update should add an entry below.
 | 1.3-draft | 2026-09-22 | Reconciled current EARIST Graduate School Stage #1/#2/#3 public requirement guides: Title supporting content stays in uploaded proposal package; Cashier payment is external with stage-specific proof; Proposal variables are conditional `IF ANY`; physical packaging remains manual; Application Form/Process Flow generation is deferred; unlisted legacy Final gates are marked for client reconfirmation. | Current EARIST Graduate School public guidance supplied by project + project scope decisions |
 | 1.4-draft | 2026-09-24 | Defined the post-Title Adviser Request / GS-020 workflow: adviser selection unlocks after formal Title PASS + official title; candidates come from the student's own Title Defense panel; GS-IS distinguishes full Defense Committee from the evaluative ODP; Adviser CONFORME precedes Dean approval; GS-020 is generated from structured workflow data. | Current client confirmation + GS-020 + legacy EARIST adviser-selection material |
 | 1.7-draft | 2026-10-14 | Clarified the accepted Title digital filing contract: three structured proposed titles; one combined PDF containing three complete title proposals and the required supporting content for each; Current COR and defense-fee proof remain separate stage-scoped evidence. | Current Stage #1 public guidance + project-owner confirmation + accepted UIUX-4B |
+| 1.9-draft | 2026-10-15 | Superseded mandatory structured three-title entry and binding selected-title semantics: the Title Proposal document/package is the academic submission basis; panel title wording is advisory and recorded in RAP; Chairman records only `PASSED` / `REDEFENSE_REQUIRED`; Adviser Request no longer depends on a selected-title snapshot. Also reconciled RAP-before-conclusion wording with the 2026-10-14 closing rule. | Current project-owner workflow clarification + unified defense lifecycle correction |
 
 ### Decision Log
 
@@ -2387,6 +2428,7 @@ Every workflow-policy update should add an entry below.
 |---|---|---|
 | 2026-09-22 | Title application does not require adviser. | Current client/project clarification — CONFIRMED_CLIENT |
 | 2026-09-24 | After formal Title Defense PASS and official-title selection, the student may begin Adviser Request. | Current client clarification — CONFIRMED_CLIENT |
+| 2026-10-15 | Supersede the project requirement that Title Defense must select/lock one title. The submitted Title Proposal document/package remains the defense basis; title suggestions are advisory; after `PASSED` and completed required defense records, Adviser Request may begin and the Student + Adviser may later refine the working title. | Current project-owner workflow clarification — CONFIRMED_PROJECT_DESIGN; supersedes the selected-title dependency above for GS-IS behavior |
 | 2026-09-24 | Adviser candidates are restricted to members of the student's own Title Defense panel rather than the unrestricted faculty directory. | Current client clarification, corroborated by legacy EARIST adviser-selection material — CONFIRMED_CLIENT |
 | 2026-09-24 | GS-IS uses **Defense Committee** for the full roster and **Oral Defense Panel (ODP)** for the evaluator/adviser-candidate subset. Working mapping is Chairman + evaluator Panelists; Facilitator/Rapporteur excluded pending exact client role confirmation. | PROPOSED_SYSTEM_DESIGN / OPEN_QUESTION |
 | 2026-09-24 | GS-020 is a system-native adviser-request workflow with a generated/downloadable official document output; active AdviserAssignment is created only after Adviser CONFORME and Dean approval. | Current GS-020 form + project design — SUPPORTED_CURRENT_FORM / PROPOSED_SYSTEM_DESIGN |
@@ -2891,7 +2933,7 @@ ADMIN / GRADUATE SCHOOL PORTAL
 71. Physical envelope/folder/ring-binding instructions can be shown or office-tracked without requiring meaningless file uploads.
 72. Application Form / Process Flow PDF generation can be absent during the core refactor without blocking eligibility, scheduling, scoring, conclusion, or RAP.
 73. STRIKE, Statistician Certification, and Research Instruments do not remain unconditional Final application gates unless current client confirmation enables those rules.
-74. Adviser Selection is unavailable before a formal Title Defense `PASSED` conclusion with an official selected title.
+74. Adviser Selection is unavailable before a formal Title Defense `PASSED` conclusion with the required evaluator records and required Title RAP/signatures complete; no binding selected-title snapshot is required.
 75. Adviser candidates are derived only from the student's own passed Title Defense session and never from an unrestricted faculty directory.
 76. Only roles configured as current ODP/evaluator roles are offered as adviser candidates; Facilitator and Rapporteur remain excluded under the current working design unless the client explicitly changes the rule.
 77. Submitting an Adviser Request does not create an active AdviserAssignment.
@@ -2900,7 +2942,7 @@ ADMIN / GRADUATE SCHOOL PORTAL
 80. A declined/rejected Adviser Request creates no active AdviserAssignment and the student may select another eligible candidate from the same Title Defense ODP.
 
 81. Student Thesis Journey progression is derived from formal domain records and not from `ThesisRecord.stage/status` alone.
-82. A formally PASSED Title Defense with a selected official title makes Adviser Request available even when Proposal has not started.
+82. A formally `PASSED` Title Defense with its required evaluator and RAP/signature records complete makes Adviser Request available even when Proposal has not started; a binding selected title is not required.
 83. Proposal remains locked until an active AdviserAssignment exists.
 84. An Adviser Request waiting for adviser response or Dean review is represented as WAITING and does not unlock Proposal.
 85. Rejected/declined Adviser Requests do not create an active assignment and permit another eligible request.

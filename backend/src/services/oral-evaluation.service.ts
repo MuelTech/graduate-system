@@ -12,9 +12,9 @@ import {
   calculateEvaluationScores,
   canFinalizeEvaluation,
   CRITERION_LIMITS,
+  isEvaluationComplete,
   isEvaluatorRole,
-  isNumericalEvaluationComplete,
-  isNumericalEvaluationDefense,
+  isEvaluationStage,
   isValidOralRating,
   mergeOptionalField,
   mergePartialCriteria,
@@ -22,12 +22,14 @@ import {
   type CriterionKey,
   type CriteriaInput,
 } from "./oral-evaluation.rules";
+import type { DefenseTypeName } from "../interfaces/defense-eligibility.interfaces";
 
 const CRITERION_KEYS = Object.keys(CRITERION_LIMITS) as CriterionKey[];
 const committeePolicy = new DefenseCommitteePolicy();
 
-function evaluatorRoleList(): string[] {
-  return committeePolicy.getEvaluatorRoles("PROPOSAL_DEFENSE") as string[];
+/** Evaluator-role authority derived from the actual session defense type. */
+function evaluatorRoleList(defenseType: string): string[] {
+  return committeePolicy.getEvaluatorRoles(defenseType as DefenseTypeName) as string[];
 }
 
 export interface OralEvaluationDto {
@@ -126,17 +128,24 @@ export class OralEvaluationService {
     return schedule;
   }
 
-  private assertNumericalStage(defenseType: string) {
-    if (!isNumericalEvaluationDefense(defenseType)) {
+  /**
+   * WF-C1b: Title, Proposal, and Final Defense all use the evaluator
+   * evaluation lifecycle. This rejects only an unrecognized defense type.
+   */
+  private assertEvaluationStage(defenseType: string) {
+    if (!isEvaluationStage(defenseType)) {
       throw new AppError(
-        "Title Defense does not use Group I / Group II numerical evaluation.",
+        "This defense session does not use the evaluator evaluation lifecycle.",
         400,
       );
     }
   }
 
-  private assertSessionEditable(sessionStatus: string | null | undefined) {
-    const gate = assertEvaluationSessionEditable(sessionStatus);
+  private assertSessionEditable(
+    sessionStatus: string | null | undefined,
+    defenseType: string,
+  ) {
+    const gate = assertEvaluationSessionEditable(sessionStatus, defenseType);
     if (!gate.ok) throw new AppError(gate.reason, gate.statusCode);
   }
 
@@ -156,7 +165,7 @@ export class OralEvaluationService {
     ) {
       return;
     }
-    const evaluatorRoles = evaluatorRoleList();
+    const evaluatorRoles = evaluatorRoleList(schedule.defenseType);
     const assignments = await prisma.panelAssignment.findMany({
       where: { scheduleId, role: { in: evaluatorRoles as never[] } },
       select: { id: true },
@@ -168,11 +177,7 @@ export class OralEvaluationService {
         panelId: { in: assignments.map((a) => a.id) },
       },
     });
-    const complete = isNumericalEvaluationComplete(
-      schedule.defenseType,
-      assignments.length,
-      finalized,
-    );
+    const complete = isEvaluationComplete(assignments.length, finalized);
     if (complete && assignments.length > 0) {
       await prisma.defenseSchedule.updateMany({
         where: {
@@ -210,7 +215,7 @@ export class OralEvaluationService {
     // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
-    this.assertNumericalStage(schedule.defenseType);
+    this.assertEvaluationStage(schedule.defenseType);
     const row = await prisma.oralExamScore.findUnique({
       where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
     });
@@ -235,8 +240,8 @@ export class OralEvaluationService {
     // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
-    this.assertNumericalStage(schedule.defenseType);
-    this.assertSessionEditable(schedule.sessionStatus);
+    this.assertEvaluationStage(schedule.defenseType);
+    this.assertSessionEditable(schedule.sessionStatus, schedule.defenseType);
 
     if (
       input.clientPanelId &&
@@ -257,7 +262,7 @@ export class OralEvaluationService {
           where: { id: scheduleId },
           select: { sessionStatus: true },
         });
-        this.assertSessionEditable(current?.sessionStatus);
+        this.assertSessionEditable(current?.sessionStatus, schedule.defenseType);
 
         const existing = await tx.oralExamScore.findUnique({
           where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
@@ -348,9 +353,13 @@ export class OralEvaluationService {
           });
         }
 
+        // Proposal/Final: a scheduled session becomes active on first scoring.
+        // Title never auto-starts here — only the explicit Chairman Start action
+        // moves SCHEDULED → IN_PROGRESS (and Title is not editable while SCHEDULED).
         if (
-          schedule.sessionStatus === "SCHEDULED" ||
-          schedule.sessionStatus === "UNSCHEDULED"
+          schedule.defenseType !== "TITLE_DEFENSE" &&
+          (schedule.sessionStatus === "SCHEDULED" ||
+            schedule.sessionStatus === "UNSCHEDULED")
         ) {
           await tx.defenseSchedule.updateMany({
             where: {
@@ -395,8 +404,8 @@ export class OralEvaluationService {
     // CP5-FIX1: assignment auth BEFORE stage disclosure.
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     this.assertEvaluatorRole(assignment.role);
-    this.assertNumericalStage(schedule.defenseType);
-    this.assertSessionEditable(schedule.sessionStatus);
+    this.assertEvaluationStage(schedule.defenseType);
+    this.assertSessionEditable(schedule.sessionStatus, schedule.defenseType);
 
     if (
       input.clientPanelId &&
@@ -473,7 +482,7 @@ export class OralEvaluationService {
         where: { id: scheduleId },
         select: { sessionStatus: true },
       });
-      this.assertSessionEditable(current?.sessionStatus);
+      this.assertSessionEditable(current?.sessionStatus, schedule.defenseType);
 
       const result = await tx.oralExamScore.updateMany({
         where: {
@@ -529,7 +538,10 @@ export class OralEvaluationService {
 
     // CP7: when all required evaluators are FINALIZED, generate Oral Summary once.
     try {
-      const counts = await this.getFinalizedEvaluatorCount(scheduleId);
+      const counts = await this.getFinalizedEvaluatorCount(
+        scheduleId,
+        schedule.defenseType,
+      );
       if (
         counts.evaluatorAssignments > 0 &&
         counts.finalizedEvaluations >= counts.evaluatorAssignments
@@ -552,11 +564,14 @@ export class OralEvaluationService {
   }
 
   /** Session evaluator completion for conclusion readiness (FINALIZED only). */
-  async getFinalizedEvaluatorCount(scheduleId: string): Promise<{
+  async getFinalizedEvaluatorCount(
+    scheduleId: string,
+    defenseType: string,
+  ): Promise<{
     evaluatorAssignments: number;
     finalizedEvaluations: number;
   }> {
-    const evaluatorRoles = evaluatorRoleList();
+    const evaluatorRoles = evaluatorRoleList(defenseType);
     const assignments = await prisma.panelAssignment.findMany({
       where: { scheduleId, role: { in: evaluatorRoles as never[] } },
       select: { id: true },

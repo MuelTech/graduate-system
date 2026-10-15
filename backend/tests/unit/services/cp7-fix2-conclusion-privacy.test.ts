@@ -62,21 +62,30 @@ const prismaMock = vi.hoisted(() => {
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 
 // Mock RapReportService.createRapAfterConclusion for deterministic generatedById assertions.
-vi.mock("../../../src/services/rap-report.service", () => ({
-  RapReportService: class {
-    createRapAfterConclusion = createRapAfterConclusion;
-    ensureRapAfterTitlePrerequisites = ensureRapAfterTitlePrerequisites;
-    signRapSlot = vi.fn();
-    recomputeRapStatus = vi.fn();
-    getStudentRapAccess = vi.fn();
-  },
-  buildRapContent: (input: {
-    defenseType: string;
-    outcome: string;
-    rapporteurNotes: string | null;
-  }) =>
-    `Defense Type: ${input.defenseType}\n${input.outcome}\n${input.rapporteurNotes ?? ""}`,
-}));
+// Spread the real module so shared pure helpers (e.g. resolveAttemptTitleContext)
+// keep their production behavior.
+vi.mock("../../../src/services/rap-report.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/services/rap-report.service")
+    >();
+  return {
+    ...actual,
+    RapReportService: class {
+      createRapAfterConclusion = createRapAfterConclusion;
+      ensureRapAfterTitlePrerequisites = ensureRapAfterTitlePrerequisites;
+      signRapSlot = vi.fn();
+      recomputeRapStatus = vi.fn();
+      getStudentRapAccess = vi.fn();
+    },
+    buildRapContent: (input: {
+      defenseType: string;
+      outcome: string;
+      rapporteurNotes: string | null;
+    }) =>
+      `Defense Type: ${input.defenseType}\n${input.outcome}\n${input.rapporteurNotes ?? ""}`,
+  };
+});
 
 const createRapAfterConclusion = vi.fn();
 const ensureRapAfterTitlePrerequisites = vi.fn();
@@ -88,10 +97,12 @@ function scheduleFixture({
   finalizerId,
   notesFinalizedAt = new Date("2026-09-28T11:00:00Z"),
   sessionStatus = "AWAITING_CONCLUSION",
+  overrides = {},
 }: {
   finalizerId: string | null;
   notesFinalizedAt?: Date | null;
   sessionStatus?: string;
+  overrides?: Record<string, unknown>;
 }) {
   return {
     id: "sched-1",
@@ -103,8 +114,13 @@ function scheduleFixture({
     rapporteurNotesFinalizedAt: notesFinalizedAt,
     rapporteurNotesFinalizedById: finalizerId,
     conclusion: null,
-    oralExamSummary: null,
-    oralExamScores: [],
+    // WF-C1b: Title now requires finalized evaluators + an Oral Summary before
+    // the formal conclusion transaction will proceed.
+    oralExamSummary: { id: "sum-1" },
+    oralExamScores: [
+      { panelId: "pa-c", status: "FINALIZED" },
+      { panelId: "pa-p", status: "FINALIZED" },
+    ],
     panelAssignments: [
       { id: "pa-c", userId: "chair-1", role: "CHAIRMAN" },
       { id: "pa-p", userId: "panel-1", role: "PANELIST" },
@@ -118,6 +134,7 @@ function scheduleFixture({
       ],
       student: { studentNumber: "2026-001" },
     },
+    ...overrides,
   };
 }
 
@@ -224,12 +241,12 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     prismaMock.__tx.thesisTitle.update.mockResolvedValue({});
   });
 
-  it("Title conclusion is allowed while notes are still draft; deferred RAP check converges", async () => {
+  it("Title conclusion is allowed (evaluators done + Summary) while notes are still draft; deferred RAP check converges", async () => {
     prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
       scheduleFixture({
         finalizerId: null,
         notesFinalizedAt: null,
-        sessionStatus: "IN_PROGRESS",
+        sessionStatus: "AWAITING_CONCLUSION",
       }),
     );
 
@@ -247,6 +264,38 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     expect(createRapAfterConclusion).not.toHaveBeenCalled();
     expect(ensureRapAfterTitlePrerequisites).toHaveBeenCalledWith("sched-1");
     expect(result.rapReport).toBeNull();
+  });
+
+  it("WF-C1b: Title conclusion requires finalized evaluators + Summary in the transaction", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        notesFinalizedAt: null,
+        sessionStatus: "AWAITING_CONCLUSION",
+        overrides: { oralExamSummary: null, oralExamScores: [] },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+  });
+
+  it("WF-C1b: Title conclusion rejected while the session is IN_PROGRESS", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        notesFinalizedAt: null,
+        sessionStatus: "IN_PROGRESS",
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
   });
 
   it("pre-defense SCHEDULED Title cannot be formally concluded", async () => {

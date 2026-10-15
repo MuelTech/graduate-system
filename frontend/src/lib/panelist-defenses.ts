@@ -7,11 +7,10 @@
  * authority:
  *
  * - session status is the raw `DefenseSchedule.sessionStatus`;
- * - the evaluator action is offered only for Proposal/Final evaluator roles with
- *   a non-finalized own evaluation while the session is still editable;
+ * - the evaluator action is offered only for Title/Proposal/Final evaluator roles
+ *   with a non-finalized own evaluation while the session is still editable;
  * - every other assignment uses a generic workspace/read-only action;
- * - Title Defense, Facilitator, Rapporteur, and Adviser never receive a numerical
- *   evaluation action.
+ * - Facilitator, Rapporteur, and Adviser never receive an evaluation action.
  */
 import type {
   PanelistAssignmentData,
@@ -20,9 +19,25 @@ import type {
 
 export const ALL = "ALL";
 
-const NUMERICAL_DEFENSES = new Set(["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]);
+const EVALUATION_DEFENSES = new Set([
+  "TITLE_DEFENSE",
+  "PROPOSAL_DEFENSE",
+  "FINAL_DEFENSE",
+]);
 const EVALUATOR_ROLES = new Set(["CHAIRMAN", "PANELIST"]);
-const EDITABLE_SESSION_STATUSES = new Set(["SCHEDULED", "IN_PROGRESS"]);
+const PROPOSAL_FINAL_EDITABLE_STATUSES = new Set(["SCHEDULED", "IN_PROGRESS"]);
+
+/**
+ * WF-C1b: Title evaluation opens only after the explicit Chairman Start
+ * (IN_PROGRESS). Proposal/Final keep the accepted SCHEDULED/IN_PROGRESS window.
+ */
+function isEvaluationSessionEditable(a: PanelistAssignmentData): boolean {
+  const status = String(a.schedule?.sessionStatus ?? "");
+  if (String(a.schedule?.defenseType) === "TITLE_DEFENSE") {
+    return status === "IN_PROGRESS";
+  }
+  return PROPOSAL_FINAL_EDITABLE_STATUSES.has(status);
+}
 
 /* ------------------------------------------------------------------ labels */
 
@@ -189,11 +204,11 @@ export function isUpcomingAssignment(
   return ms !== null && ms >= nowMs;
 }
 
-/** Only Proposal/Final evaluator roles carry numerical evaluation status. */
+/** Title/Proposal/Final evaluator roles carry an evaluation status. */
 export function isEvaluationRelevant(a: PanelistAssignmentData): boolean {
   return (
     EVALUATOR_ROLES.has(String(a.role)) &&
-    NUMERICAL_DEFENSES.has(String(a.schedule?.defenseType))
+    EVALUATION_DEFENSES.has(String(a.schedule?.defenseType))
   );
 }
 
@@ -202,9 +217,7 @@ export function isEvaluationActionEligible(
   a: PanelistAssignmentData,
 ): boolean {
   if (!isEvaluationRelevant(a)) return false;
-  if (!EDITABLE_SESSION_STATUSES.has(String(a.schedule?.sessionStatus))) {
-    return false;
-  }
+  if (!isEvaluationSessionEditable(a)) return false;
   return a.evaluationStatus === "NOT_STARTED" || a.evaluationStatus === "DRAFT";
 }
 

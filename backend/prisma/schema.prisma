@@ -1400,6 +1400,9 @@ enum DefenseOutcome {
   PASSED
   REVISION_REQUIRED
   FAILED
+  /// 2026-10-15 canonical re-defense verdict for NEW attempts (WF-C1a).
+  /// REVISION_REQUIRED / FAILED remain readable for historical records only.
+  REDEFENSE_REQUIRED
 
   @@map("defense_outcome")
 }

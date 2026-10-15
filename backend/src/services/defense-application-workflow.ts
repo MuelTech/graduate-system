@@ -83,42 +83,84 @@ export function hasCurrentStageConclusion(
   );
 }
 
-/**
- * Any non-cancelled schedule for this defense type (current stage or re-defense).
- * Used to reject a second scheduling attempt — rescheduling is out of scope.
- */
-export function findBlockingScheduleForScheduling<T extends ScheduleForPick>(
+/** Non-cancelled schedules for one defense type, newest first. */
+function sameStageAttempts<T extends ScheduleForPick>(
   defenseType: string,
   schedules: T[] | null | undefined,
-): T | null {
+): T[] {
   const wanted = String(defenseType || "").toUpperCase();
   const matches = (schedules ?? []).filter(
     (s) =>
       String(s.defenseType).toUpperCase() === wanted &&
       s.sessionStatus !== "CANCELLED",
   );
-  if (!matches.length) return null;
-  return sortLatestFirst(matches)[0];
+  return sortLatestFirst(matches);
+}
+
+/**
+ * WF-C1a: whether a prior/latest same-stage attempt still blocks a new schedule.
+ * - active / unscheduled (not CONCLUDED) → blocks (duplicate/active attempt)
+ * - CONCLUDED + PASSED → blocks (stage already completed)
+ * - CONCLUDED + legacy/unknown outcome → blocks (preserve historical behavior)
+ * - CONCLUDED + REDEFENSE_REQUIRED → does NOT block (a new attempt is allowed)
+ */
+export function isAttemptBlockingScheduling(
+  attempt: ScheduleForPick | null | undefined,
+): boolean {
+  if (!attempt) return false;
+  const status = String(attempt.sessionStatus ?? "").toUpperCase();
+  if (status !== "CONCLUDED") return true;
+  const outcome = String(attempt.conclusion?.outcome ?? "").toUpperCase();
+  return outcome !== "REDEFENSE_REQUIRED";
+}
+
+/**
+ * The latest same-stage attempt when it still blocks scheduling, otherwise null.
+ * A concluded REDEFENSE_REQUIRED attempt is historical and never blocks the next
+ * same-stage attempt.
+ */
+export function findBlockingScheduleForScheduling<T extends ScheduleForPick>(
+  defenseType: string,
+  schedules: T[] | null | undefined,
+): T | null {
+  const latest = sameStageAttempts(defenseType, schedules)[0] ?? null;
+  return isAttemptBlockingScheduling(latest) ? latest : null;
 }
 
 export function canCreateDefenseSchedule(input: {
   defenseType: string;
   schedules: ScheduleForPick[] | null | undefined;
 }): { allowed: boolean; reason?: string } {
-  const blocking = findBlockingScheduleForScheduling(
-    input.defenseType,
-    input.schedules,
-  );
-  if (blocking) {
-    const label = String(input.defenseType)
-      .toLowerCase()
-      .replace(/_/g, " ");
+  const label = String(input.defenseType || "")
+    .toLowerCase()
+    .replace(/_/g, " ");
+  const latest = sameStageAttempts(input.defenseType, input.schedules)[0] ?? null;
+  if (!latest) return { allowed: true };
+
+  const status = String(latest.sessionStatus ?? "").toUpperCase();
+  if (status !== "CONCLUDED") {
     return {
       allowed: false,
-      reason: `A non-cancelled ${label} schedule already exists for this research project. Rescheduling is not available yet.`,
+      reason: `An active ${label} attempt already exists for this research project. Rescheduling is not available yet.`,
     };
   }
-  return { allowed: true };
+
+  const outcome = String(latest.conclusion?.outcome ?? "").toUpperCase();
+  if (outcome === "REDEFENSE_REQUIRED") {
+    // Concluded as re-defense required → the next same-stage attempt is allowed.
+    return { allowed: true };
+  }
+  if (outcome === "PASSED") {
+    return {
+      allowed: false,
+      reason: `This research project has already completed its ${label} stage (PASSED). A further ${label} attempt is not allowed.`,
+    };
+  }
+  // Legacy/unknown concluded outcome → preserve historical blocking behavior.
+  return {
+    allowed: false,
+    reason: `A concluded ${label} attempt already exists for this research project. Rescheduling is not available yet.`,
+  };
 }
 
 /**

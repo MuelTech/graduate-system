@@ -6,8 +6,8 @@ import {
   canEditEvaluation,
   canFinalizeEvaluation,
   countEvaluatorFinalized,
-  isNumericalEvaluationComplete,
-  isNumericalEvaluationDefense,
+  isEvaluationComplete,
+  isEvaluationStage,
   isEvaluatorRole,
   mergeOptionalField,
   mergePartialCriteria,
@@ -15,10 +15,11 @@ import {
 } from "../../../src/services/oral-evaluation.rules";
 
 describe("oral-evaluation.rules (CP5)", () => {
-  it("Test 6: Title Defense rejected; Proposal/Final allowed", () => {
-    expect(isNumericalEvaluationDefense("TITLE_DEFENSE")).toBe(false);
-    expect(isNumericalEvaluationDefense("PROPOSAL_DEFENSE")).toBe(true);
-    expect(isNumericalEvaluationDefense("FINAL_DEFENSE")).toBe(true);
+  it("WF-C1b: all three defense stages use the shared evaluator lifecycle", () => {
+    expect(isEvaluationStage("TITLE_DEFENSE")).toBe(true);
+    expect(isEvaluationStage("PROPOSAL_DEFENSE")).toBe(true);
+    expect(isEvaluationStage("FINAL_DEFENSE")).toBe(true);
+    expect(isEvaluationStage("UNKNOWN")).toBe(false);
   });
 
   it("Test 2–5: evaluator roles only CHAIRMAN + PANELIST", () => {
@@ -107,11 +108,14 @@ describe("oral-evaluation.rules (CP5)", () => {
     ).toBe(true);
   });
 
-  it("Test 21–23/25: completion uses FINALIZED evaluators; Title skips", () => {
-    expect(isNumericalEvaluationComplete("TITLE_DEFENSE", 4, 0)).toBe(true);
-    expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, 3)).toBe(false);
-    expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, 4)).toBe(true);
-    expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 0, 0)).toBe(false);
+  it("WF-C1b: completion requires every evaluator assignment for all stages", () => {
+    // Title is no longer exempt: it needs all evaluator records finalized.
+    expect(isEvaluationComplete(5, 0)).toBe(false);
+    expect(isEvaluationComplete(5, 4)).toBe(false);
+    expect(isEvaluationComplete(5, 5)).toBe(true);
+    expect(isEvaluationComplete(4, 3)).toBe(false);
+    expect(isEvaluationComplete(4, 4)).toBe(true);
+    expect(isEvaluationComplete(0, 0)).toBe(false);
   });
 
   it("Test 1–3: partial Draft merge preserves omitted fields", () => {
@@ -142,7 +146,7 @@ describe("oral-evaluation.rules (CP5)", () => {
     expect(mergeOptionalField("S", { rating: null }, "rating")).toBeNull();
   });
 
-  it("Test 4–6: session mutation gate", () => {
+  it("Test 4–6: Proposal/Final session mutation gate (SCHEDULED/IN_PROGRESS)", () => {
     expect(assertEvaluationSessionEditable("SCHEDULED").ok).toBe(true);
     expect(assertEvaluationSessionEditable("IN_PROGRESS").ok).toBe(true);
     expect(assertEvaluationSessionEditable("AWAITING_CONCLUSION").ok).toBe(false);
@@ -151,6 +155,25 @@ describe("oral-evaluation.rules (CP5)", () => {
     expect(
       assertEvaluationSessionEditable("CONCLUDED").statusCode,
     ).toBe(409);
+  });
+
+  it("WF-C1b: Title evaluation editing requires the explicit Start (IN_PROGRESS)", () => {
+    // Title must not be evaluable before the Chairman starts the defense.
+    expect(
+      assertEvaluationSessionEditable("SCHEDULED", "TITLE_DEFENSE").ok,
+    ).toBe(false);
+    expect(
+      assertEvaluationSessionEditable("IN_PROGRESS", "TITLE_DEFENSE").ok,
+    ).toBe(true);
+    expect(
+      assertEvaluationSessionEditable("AWAITING_CONCLUSION", "TITLE_DEFENSE").ok,
+    ).toBe(false);
+    expect(
+      assertEvaluationSessionEditable("CONCLUDED", "TITLE_DEFENSE").ok,
+    ).toBe(false);
+    expect(
+      assertEvaluationSessionEditable("CANCELLED", "TITLE_DEFENSE").ok,
+    ).toBe(false);
   });
 
   it("evaluator role uses centralized committee policy", () => {
@@ -169,8 +192,6 @@ describe("oral-evaluation.rules (CP5)", () => {
     ];
     const count = countEvaluatorFinalized(evaluators, scores);
     expect(count).toBe(3);
-    expect(isNumericalEvaluationComplete("PROPOSAL_DEFENSE", 4, count)).toBe(
-      false,
-    );
+    expect(isEvaluationComplete(4, count)).toBe(false);
   });
 });

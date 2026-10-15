@@ -47,8 +47,12 @@ export interface OdpSeatEvaluation {
 export interface PassedTitleDefenseContext {
   scheduleId: string;
   conclusionId: string;
-  selectedTitleId: string;
-  selectedTitleText: string;
+  /**
+   * Historical display context only (2026-10-15 correction). Nullable — a
+   * selected title is NOT an Adviser Request prerequisite.
+   */
+  selectedTitleId: string | null;
+  selectedTitleText: string | null;
   candidates: OdpCandidateDto[];
   /** Every ODP seat with eligibility reason — used for precise request errors. */
   seats: OdpSeatEvaluation[];
@@ -56,8 +60,9 @@ export interface PassedTitleDefenseContext {
 
 export class AdviserRequestService {
   /**
-   * Authoritative source: DefenseConclusion.outcome = PASSED with selectedTitleId.
-   * Never derive from ThesisRecord.status alone or application APPROVED.
+   * Authoritative source: DefenseConclusion.outcome = PASSED (Title) with a
+   * finalized same-session Title RAP. Never derive from ThesisRecord.status
+   * alone or application APPROVED. A selected title is not required.
    */
   async getPassedTitleDefenseContext(
     studentId: string,
@@ -118,15 +123,15 @@ export class AdviserRequestService {
 
     const gate = evaluateTitleDefenseGate({
       hasPassedTitleConclusion: Boolean(conclusion),
-      hasOfficialSelectedTitle: Boolean(conclusion?.selectedTitleId),
       hasFinalizedTitleRap,
     });
     if (!gate.allowed) {
       throw new AppError(gate.reason, gate.statusCode);
     }
-    if (!conclusion?.selectedTitle || !conclusion.selectedTitleId) {
+    if (!conclusion) {
+      // Unreachable after the gate; narrows the type for the reads below.
       throw new AppError(
-        "Adviser Request requires an official selected title from Title Defense conclusion.",
+        "Adviser Request requires a formally PASSED Title Defense conclusion.",
         400,
       );
     }
@@ -169,8 +174,8 @@ export class AdviserRequestService {
     return {
       scheduleId: conclusion.scheduleId,
       conclusionId: conclusion.id,
-      selectedTitleId: conclusion.selectedTitleId,
-      selectedTitleText: conclusion.selectedTitle.titleText,
+      selectedTitleId: conclusion.selectedTitleId ?? null,
+      selectedTitleText: conclusion.selectedTitle?.titleText ?? null,
       candidates,
       seats,
     };
@@ -179,7 +184,8 @@ export class AdviserRequestService {
   /** Student-facing ODP candidates only — never the unrestricted faculty directory. */
   async listOdpCandidates(userId: string): Promise<{
     sourceDefenseScheduleId: string;
-    selectedTitle: { id: string; titleText: string };
+    /** Historical context only — nullable; not required to list candidates. */
+    selectedTitle: { id: string; titleText: string } | null;
     candidates: OdpCandidateDto[];
   }> {
     const student = await prisma.student.findUnique({ where: { userId } });
@@ -188,10 +194,10 @@ export class AdviserRequestService {
     const ctx = await this.getPassedTitleDefenseContext(student.id);
     return {
       sourceDefenseScheduleId: ctx.scheduleId,
-      selectedTitle: {
-        id: ctx.selectedTitleId,
-        titleText: ctx.selectedTitleText,
-      },
+      selectedTitle:
+        ctx.selectedTitleId && ctx.selectedTitleText
+          ? { id: ctx.selectedTitleId, titleText: ctx.selectedTitleText }
+          : null,
       candidates: ctx.candidates,
     };
   }

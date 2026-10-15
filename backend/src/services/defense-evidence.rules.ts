@@ -12,9 +12,9 @@ export const STAGE_EVIDENCE_SLOTS: Record<
   DefenseEvidenceStage,
   DefenseEvidenceDocType[]
 > = {
-  // UIUX-4B FIX-1: a Title Defense application requires three proposed titles +
-  // ONE combined Title Defense Proposal Package + Current Semester COR +
-  // Defense-fee Proof of Payment.
+  // A Title Defense application requires ONE combined Title Defense Proposal
+  // Package + Current Semester COR + Defense-fee Proof of Payment. Structured
+  // proposed titles are optional legacy input, not required (2026-10-15).
   TITLE: ["TITLE_PROPOSAL", "COR", "RECEIPT"],
   PROPOSAL: ["COR", "RECEIPT"],
   FINAL: ["COR", "RECEIPT"],
