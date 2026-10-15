@@ -38,7 +38,7 @@ Where older sections of this SOT or the 2026-09-25 Student Thesis Journey docume
 2. Every conducted defense attempt owns its own evaluator records. Required evaluators complete, e-sign/finalize, and lock their own evaluation for that attempt regardless of whether the eventual verdict is `PASSED` or `REDEFENSE_REQUIRED`.
 3. Finalized evaluator grades may feed the Oral Examination Summary, but score completion/calculation must **not** automatically decide the academic verdict.
 4. During the defense, the Rapporteur prepares the RAP / **Suggestions of the Evaluation Committee** and records the panel's deliberation. For Title Defense this may include research-direction comments and suggested title wording. Such wording is a recommendation/history record, not a permanently binding selected title. The Rapporteur documents the committee record; the Rapporteur is not the formal verdict authority.
-5. Required stage-aware RAP signatories must sign/finalize the RAP for that defense attempt before the attempt is formally concluded. The exact Panelist UI/UX for viewing/signing the RAP is a separate bounded design problem and is not defined by this correction.
+5. Required stage-aware RAP signatories must sign/finalize the RAP for that defense attempt before the attempt is formally concluded. The collaborative viewing/signing UX is now defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
 6. **The assigned session Chairman remains the sole formal academic verdict authority.**
 7. The current canonical verdicts for new defense attempts are `PASSED` and `REDEFENSE_REQUIRED` (**Re-defense Required**). Ordinary revisions/suggestions attached to an otherwise accepted defense do not create a separate `REVISION_REQUIRED` result; they remain in the RAP and are reflected in the next authoritative manuscript/document.
 8. A concluded Title attempt must preserve the submitted Title Proposal document/package, finalized evaluator records, RAP/recommendations, signatures, and formal verdict as immutable attempt history. A panel-suggested title may be retained in the RAP, but it is not a binding title-selection artifact. The Student and active Adviser may later refine the working title without rewriting the historical Title attempt.
@@ -48,7 +48,7 @@ Where older sections of this SOT or the 2026-09-25 Student Thesis Journey docume
 12. Proposal/Final Adviser Certification remains an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
 13. Research Variables remains temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
 14. Student defense pages must distinguish application review, scheduling, live defense, formal result, re-defense, and completion rather than collapsing them into a generic WAITING message.
-15. The current Defense Lobby remains a prototype. A future role-aware Defense Workspace may improve how evaluators and RAP signatories access the same defense records, but document collaboration/editor mechanics are explicitly deferred from this workflow correction.
+15. The current Defense Lobby remains a prototype. The approved role-aware collaborative Defense Workspace, manuscript annotation model, Rapporteur report UX, RAP signing UX, defense history, and deferred realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
 
 ### 0.1 2026-10-15 Title Proposal / title-authority correction
 
@@ -63,6 +63,32 @@ This correction supersedes older project wording that treated Title Defense as a
 - A `PASSED` Title Defense does not, by itself, create an immutable "official selected title." After an active Adviser is established, the Student and Adviser may refine the working title as the research develops.
 - Historical integrity is preserved by retaining the submitted Title Proposal document/package and the attempt's evaluation/RAP/signature/verdict records. Later working-title changes must not rewrite those records.
 - A structured current working title may still exist as useful system metadata when captured by an authorized workflow, but it is separate from the Title Defense verdict and is not required merely to unlock Adviser Request.
+
+### 0.2 2026-10-15 Collaborative Defense Workspace / RAP integration
+
+**CONFIRMED_PROJECT_DESIGN**
+
+The standalone RAP-before-conclusion correction previously referred to as WF-C1c is now incorporated into a broader collaborative Defense Workspace design rather than implemented as a temporary separate UX.
+
+Canonical extension documents:
+
+- docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md
+- docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
+
+The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report freezing before signatures, workspace-based RAP signing, defense-history/revision traceability, and a later Socket.IO synchronization layer.
+
+Important sequencing clarification:
+
+- the Rapporteur may draft the Committee Report during the live defense;
+- all required evaluator records must be finalized and the Oral Examination Summary ready before the report is frozen for signatures;
+- the frozen Committee Report/RAP is verdict-independent and must not require Formal Outcome content;
+- all required stage-aware RAP signatures must complete and the RAP must be FINALIZED before the Chairman records PASSED or REDEFENSE_REQUIRED;
+- the later DefenseConclusion remains a separate formal record and must not mutate the already frozen/signed RAP;
+- new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
+- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room.
+
+Where older sections describe post-conclusion RAP creation, Formal Outcome as required RAP content, Proposal/Final RAP after formal conclusion, or Panelist RAP signing as an undefined future UX, this 2026-10-15 extension supersedes that wording for new collaborative attempts.
+
 
 ## 1. Purpose
 
@@ -928,9 +954,13 @@ Proposal Defense
               ↓
 Scores complete
               ↓
-Formal Conclusion
+Required evaluator records finalized
               ↓
-RAP / Required signatures
+Oral Examination Summary ready
+              ↓
+RAP / Required signatures finalized
+              ↓
+Chairman Formal Conclusion
               ↓
 Proposal Stage COMPLETE
 ```
@@ -1260,7 +1290,7 @@ Required before the Chairman may conclude a Title / Proposal / Final attempt:
 - the Oral Examination Summary/read model required by the current evaluation workflow is available;
 - the Rapporteur's RAP / **Suggestions of the Evaluation Committee** for the attempt is ready;
 - all required stage-aware RAP signature slots are signed/finalized;
-- for a `PASSED` Title Defense, the attempt has the required Title decision/title wording recorded from the panel deliberation;
+- for Title Defense, the submitted Title Proposal document/package remains the attempt evidence; no binding selected-title/title-decision snapshot is required;
 - current user is the assigned session Chairman;
 - defense attempt has not already been concluded.
 
@@ -1315,8 +1345,8 @@ Recommended minimum:
 - current working title/research context when available and the relevant Title Proposal document reference for Title attempts,
 - date/time/venue,
 - participant roster and roles,
-- official outcome,
 - panel recommendations,
+- frozen report content/version metadata,
 - rapporteur/session notes,
 - generated-by / generated-at,
 - revision/version,
