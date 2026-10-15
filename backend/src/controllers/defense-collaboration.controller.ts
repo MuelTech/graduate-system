@@ -9,14 +9,23 @@ import { Response } from "express";
 
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { DefenseCollaborationService } from "../services/defense-collaboration.service";
+import { AppError } from "../utils/AppError";
 
 export class DefenseCollaborationController {
   private collaboration = new DefenseCollaborationService();
 
+  /**
+   * Controlled domain errors keep their status + safe message. Anything else is
+   * an unexpected internal failure: log server-side and return a generic 500 so
+   * Prisma/query text, stack traces and internal paths are never exposed.
+   */
   private sendError(res: Response, error: unknown): void {
-    const status = (error as { statusCode?: number })?.statusCode || 400;
-    const message = error instanceof Error ? error.message : "Unexpected error.";
-    res.status(status).json({ error: message });
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    console.error("[defense-collaboration] unexpected error:", error);
+    res.status(500).json({ error: "Internal server error." });
   }
 
   private requireUser(req: AuthenticatedRequest, res: Response): string | null {

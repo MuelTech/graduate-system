@@ -258,3 +258,26 @@ export function serializeReportDocument(doc: unknown): string {
 export function hashReportDocument(doc: unknown): string {
   return createHash("sha256").update(serializeReportDocument(doc), "utf8").digest("hex");
 }
+
+function nodeHasMeaningfulText(node: unknown): boolean {
+  const record = asRecord(node);
+  if (record.type === "text") {
+    return typeof record.text === "string" && record.text.trim().length > 0;
+  }
+  const content = record.content;
+  return Array.isArray(content) ? content.some(nodeHasMeaningfulText) : false;
+}
+
+/**
+ * Freeze-gate helper: a committee report must contain at least one non-whitespace
+ * text run. Empty documents, empty paragraphs, hard-break-only nodes, and
+ * whitespace-only text are NOT meaningful institutional report content and are
+ * therefore not eligible for freeze/signatures. (Draft saving may still allow
+ * an empty document.)
+ */
+export function hasMeaningfulReportContent(doc: unknown): boolean {
+  const root = asRecord(doc);
+  if (root.type !== "doc") return false;
+  const content = Array.isArray(root.content) ? root.content : [];
+  return content.some(nodeHasMeaningfulText);
+}

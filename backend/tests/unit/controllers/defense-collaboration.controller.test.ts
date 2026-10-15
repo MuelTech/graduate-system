@@ -132,4 +132,25 @@ describe("DefenseCollaborationController (CDW-1)", () => {
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith({ error: "not assigned" });
   });
+
+  it("maps unexpected errors to a generic 500 without leaking internals", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      listAnnotations.mockRejectedValue(
+        new Error("PrismaClientKnownRequestError: SELECT user_id FROM users WHERE ..."),
+      );
+      await controller.getCollaborationAnnotations(
+        makeReq({ query: { documentId: "doc-1" } }),
+        res as never,
+      );
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Internal server error." });
+      const payload = (res.json as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0] as {
+        error: string;
+      };
+      expect(payload.error).not.toMatch(/Prisma|SELECT|user_id|stack/i);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

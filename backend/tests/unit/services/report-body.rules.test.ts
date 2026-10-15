@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   REPORT_BODY_LIMITS,
   canonicalizeReportDocument,
+  hasMeaningfulReportContent,
   hashReportDocument,
   serializeReportDocument,
   validateReportDocument,
@@ -148,5 +149,58 @@ describe("canonicalizeReportDocument / hashReportDocument", () => {
     // Sanity: canonicalizing VALID_DOC does not throw and is JSON-serializable.
     expect(canonicalizeReportDocument(VALID_DOC)).toBeDefined();
     expect(() => JSON.parse(serializeReportDocument(VALID_DOC))).not.toThrow();
+  });
+});
+
+describe("hasMeaningfulReportContent (CDW-1 freeze gate)", () => {
+  it("rejects an empty document", () => {
+    expect(hasMeaningfulReportContent({ type: "doc", content: [] })).toBe(false);
+  });
+
+  it("rejects an empty paragraph", () => {
+    expect(hasMeaningfulReportContent({ type: "doc", content: [{ type: "paragraph", content: [] }] })).toBe(false);
+  });
+
+  it("rejects whitespace-only text", () => {
+    expect(
+      hasMeaningfulReportContent({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "   \n\t " }] }],
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a document that only contains hard breaks", () => {
+    expect(
+      hasMeaningfulReportContent({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "hardBreak" }, { type: "hardBreak" }] }],
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts meaningful narrative content", () => {
+    expect(
+      hasMeaningfulReportContent({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Revise the title" }] }],
+      }),
+    ).toBe(true);
+  });
+
+  it("accepts meaningful content nested inside lists", () => {
+    expect(
+      hasMeaningfulReportContent({
+        type: "doc",
+        content: [
+          {
+            type: "bulletList",
+            content: [
+              { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }] },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 });

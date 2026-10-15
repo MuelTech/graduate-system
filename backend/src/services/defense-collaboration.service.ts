@@ -25,10 +25,20 @@ import {
 import {
   type CanonicalReportDocument,
   canonicalizeReportDocument,
-  hashReportDocument,
+  hasMeaningfulReportContent,
   validateReportDocument,
 } from "./report-body.rules";
+import {
+  type RapSnapshotCommitteeMember,
+  buildRapSigningSnapshot,
+  hashRapSnapshot,
+} from "./rap-snapshot.rules";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
+import { OfficialDefenseRecordService } from "./official-defense-record.service";
+import {
+  selectCertifiedFinalManuscript,
+  selectCertifiedProposalManuscript,
+} from "./proposal-adviser-review.rules";
 
 const ANNOTATION_WRITE_ROLES = ["CHAIRMAN", "PANELIST"];
 const COMMENT_WRITE_ROLES = ["CHAIRMAN", "PANELIST", "RAPPORTEUR"];
@@ -44,6 +54,11 @@ const STAGE_DOC_BINDING: Record<string, { stage: string; docTypes: string[] }> =
   PROPOSAL_DEFENSE: { stage: "PROPOSAL", docTypes: ["PROPOSAL_CHAPTERS"] },
   FINAL_DEFENSE: { stage: "FINAL", docTypes: ["FINAL_MANUSCRIPT"] },
 };
+
+/** Single source of truth for whether collaboration writes are open. */
+function isCollaborationWritableStatus(status: string): boolean {
+  return COLLAB_WRITABLE_STATUSES.includes(status);
+}
 
 export interface CollaborationAuthor {
   assignmentId: string;
@@ -210,6 +225,8 @@ function toAnnotationDto(row: AnnotationRow, comments: CommentRow[]): Annotation
 }
 
 export class DefenseCollaborationService {
+  private officialRecords = new OfficialDefenseRecordService();
+
   /**
    * Load a schedule and its (single) RAP report. Throws 404 when missing.
    * `rap` is null when no report row exists yet for the attempt.
@@ -234,6 +251,56 @@ export class DefenseCollaborationService {
     return { schedule, rap: schedule.rapReports[0] ?? null };
   }
 
+  /**
+   * Load the fixed institutional metadata needed for the complete signing
+   * snapshot (student/program identity, schedule, committee roster, prepared-by).
+   * The report body itself comes from the RapReport being frozen.
+   */
+  private async loadFreezeContext(scheduleId: string, rapporteurUserId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        panelAssignments: {
+          include: { user: { select: { id: true, firstName: true, lastName: true } } },
+        },
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+                program: { select: { programName: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const student = schedule.thesis?.student;
+    const studentName = student
+      ? `${student.user?.firstName ?? ""} ${student.user?.lastName ?? ""}`.trim()
+      : "";
+    const committee: RapSnapshotCommitteeMember[] = schedule.panelAssignments.map((pa) => ({
+      role: String(pa.role),
+      userId: pa.userId,
+      name: `${pa.user?.firstName ?? ""} ${pa.user?.lastName ?? ""}`.trim(),
+    }));
+
+    return {
+      thesisId: schedule.thesisId,
+      defenseType: String(schedule.defenseType),
+      studentName,
+      studentNumber: student?.studentNumber ?? null,
+      programName: student?.program?.programName ?? null,
+      defenseDate: schedule.defenseDate ? schedule.defenseDate.toISOString() : null,
+      defenseTime: schedule.defenseTime ? schedule.defenseTime.toISOString() : null,
+      venue: schedule.venueOrLink ?? null,
+      committee,
+      preparedByName: committee.find((c) => c.userId === rapporteurUserId)?.name ?? null,
+    };
+  }
+
   /** Authority comes from the caller's own assignment for the exact schedule. */
   private async resolveAssignment(scheduleId: string, userId: string) {
     const assignment = await prisma.panelAssignment.findFirst({
@@ -246,10 +313,83 @@ export class DefenseCollaborationService {
   }
 
   /**
-   * Prove the document is the exact authorized manuscript for this attempt:
-   * same thesis, correct stage, correct manuscript doc type, and current.
+   * LIVE WRITE authority. Prove the target document is the exact authoritative
+   * manuscript for the live attempt:
+   *  - TITLE_DEFENSE: the current authoritative Title Proposal package;
+   *  - PROPOSAL/FINAL: the exact ISSUED AdviserCertification.reviewedDocumentId
+   *    (the certified manuscript is authoritative — `isCurrent` is NOT authority).
+   * Fails closed; never substitutes a newer/latest/current manuscript.
    */
-  private async resolveAuthorizedDocument(
+  private async resolveLiveWriteDocument(
+    schedule: { thesisId: string; defenseType: unknown },
+    thesisDocumentId: string,
+  ) {
+    const defenseType = String(schedule.defenseType);
+    const binding = STAGE_DOC_BINDING[defenseType];
+    if (!binding) {
+      throw new AppError("Collaboration is not supported for this defense type.", 400);
+    }
+    const document = await prisma.thesisDocument.findUnique({
+      where: { id: thesisDocumentId },
+    });
+    if (!document) throw new AppError("Defense document not found.", 404);
+    if (document.thesisId !== schedule.thesisId) {
+      throw new AppError("Document does not belong to this defense attempt.", 403);
+    }
+    if (String(document.defenseStage ?? "") !== binding.stage) {
+      throw new AppError("Document does not belong to this defense stage.", 403);
+    }
+    if (!binding.docTypes.includes(String(document.docType))) {
+      throw new AppError("Document is not an authorized defense manuscript.", 403);
+    }
+
+    if (defenseType === "TITLE_DEFENSE") {
+      const authoritative = await prisma.thesisDocument.findFirst({
+        where: {
+          thesisId: schedule.thesisId,
+          docType: "TITLE_PROPOSAL",
+          OR: [{ defenseStage: "TITLE" }, { defenseStage: null }],
+        },
+        orderBy: { uploadedAt: "desc" },
+        select: { id: true },
+      });
+      if (!authoritative || authoritative.id !== document.id || document.isCurrent !== true) {
+        throw new AppError("Only the current Title Proposal package can be annotated.", 409);
+      }
+      return document;
+    }
+
+    const cert = await prisma.adviserCertification.findFirst({
+      where: {
+        thesisId: schedule.thesisId,
+        defenseStage: defenseType as never,
+        status: "ISSUED",
+      },
+      select: { status: true, defenseStage: true, reviewedDocumentId: true },
+    });
+    const docLike = {
+      id: document.id,
+      thesisId: document.thesisId,
+      docType: String(document.docType),
+      defenseStage: document.defenseStage ?? null,
+    };
+    const certified =
+      defenseType === "PROPOSAL_DEFENSE"
+        ? selectCertifiedProposalManuscript([docLike], cert, schedule.thesisId)
+        : selectCertifiedFinalManuscript([docLike], cert, schedule.thesisId);
+    if (!certified) {
+      throw new AppError("Only the certified defense manuscript can be annotated.", 409);
+    }
+    return document;
+  }
+
+  /**
+   * HISTORICAL / READ authority. Existing annotations for an attempt must remain
+   * readable even after their manuscript is superseded, so this verifies only the
+   * same thesis + valid stage/docType — NEVER `isCurrent` and NEVER certification.
+   * Reads are additionally scoped by BOTH scheduleId and thesisDocumentId.
+   */
+  private async resolveReadableDocument(
     schedule: { thesisId: string; defenseType: unknown },
     thesisDocumentId: string,
   ) {
@@ -270,9 +410,6 @@ export class DefenseCollaborationService {
     if (!binding.docTypes.includes(String(document.docType))) {
       throw new AppError("Document is not an authorized defense manuscript.", 403);
     }
-    if (document.isCurrent !== true) {
-      throw new AppError("Only the current defense manuscript can be annotated.", 409);
-    }
     return document;
   }
 
@@ -284,7 +421,7 @@ export class DefenseCollaborationService {
     if (status === "CANCELLED") {
       throw new AppError("This defense session was cancelled.", 409);
     }
-    if (!COLLAB_WRITABLE_STATUSES.includes(status)) {
+    if (!isCollaborationWritableStatus(status)) {
       throw new AppError("Collaboration is not open for this defense session.", 409);
     }
   }
@@ -312,7 +449,7 @@ export class DefenseCollaborationService {
     if (!thesisDocumentId) throw new AppError("A defense document is required.", 400);
     const { schedule } = await this.loadSchedule(scheduleId);
     await this.resolveAssignment(scheduleId, userId);
-    await this.resolveAuthorizedDocument(schedule, thesisDocumentId);
+    await this.resolveReadableDocument(schedule, thesisDocumentId);
 
     const rows = await prisma.defenseAnnotation.findMany({
       where: { scheduleId, thesisDocumentId },
@@ -345,7 +482,7 @@ export class DefenseCollaborationService {
       throw new AppError("Your defense role cannot create annotations.", 403);
     }
     this.assertCollaborationWritable(schedule, rap);
-    const document = await this.resolveAuthorizedDocument(schedule, thesisDocumentId);
+    const document = await this.resolveLiveWriteDocument(schedule, thesisDocumentId);
 
     const validation = validateAnchorPayload(input.anchor);
     if (!validation.ok) throw new AppError(validation.error, 400);
@@ -442,9 +579,6 @@ export class DefenseCollaborationService {
   async getReportReadModel(scheduleId: string, userId: string): Promise<ReportReadModel> {
     const { schedule, rap } = await this.loadSchedule(scheduleId);
     const assignment = await this.resolveAssignment(scheduleId, userId);
-    const isRapporteur = String(assignment.role) === RAPPORTEUR_ROLE;
-    const concluded = String(schedule.sessionStatus) === "CONCLUDED";
-    const frozen = Boolean(rap?.frozenAt);
     const reportStatus = rap ? String(rap.status) : "NOT_CREATED";
     const body = (rap?.bodyDocument ?? null) as CanonicalReportDocument | null;
     const student = schedule.thesis?.student;
@@ -473,8 +607,27 @@ export class DefenseCollaborationService {
         frozenById: rap?.frozenById ?? null,
         frozenContentHash: rap?.frozenContentHash ?? null,
       },
-      canEditBody: isRapporteur && reportStatus === "DRAFT" && !frozen && !concluded,
+      canEditBody: this.computeCanEditBody(schedule, rap, assignment.role),
     };
+  }
+
+  /**
+   * Single shared rule for report-body write eligibility, used by BOTH the read
+   * model (`canEditBody`) and the write paths: assigned Rapporteur, session in a
+   * writable status, report exists and is DRAFT, and not frozen.
+   */
+  private computeCanEditBody(
+    schedule: { sessionStatus: unknown },
+    rap: { status: unknown; frozenAt: Date | null } | null,
+    role: unknown,
+  ): boolean {
+    return (
+      String(role) === RAPPORTEUR_ROLE &&
+      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
+      Boolean(rap) &&
+      String(rap?.status) === "DRAFT" &&
+      !rap?.frozenAt
+    );
   }
 
   async saveReportDraft(
@@ -500,18 +653,23 @@ export class DefenseCollaborationService {
     if (!validation.ok) throw new AppError(validation.error, 400);
     const canonical = canonicalizeReportDocument(body);
 
-    const updated = await prisma.rapReport.updateMany({
-      where: { id: rap.id, status: "DRAFT", frozenAt: null },
-      data: {
-        bodyDocument: canonical as never,
-        bodyVersion: { increment: 1 },
-        bodyUpdatedAt: new Date(),
-      },
-    });
-    if (updated.count === 0) {
-      throw new AppError("Report state changed. Refresh and try again.", 409);
+    try {
+      const updated = await prisma.rapReport.update({
+        where: { id: rap.id, status: "DRAFT", frozenAt: null },
+        data: {
+          bodyDocument: canonical as never,
+          bodyVersion: { increment: 1 },
+          bodyUpdatedAt: new Date(),
+        },
+        select: { bodyVersion: true },
+      });
+      return { saved: true, bodyVersion: updated.bodyVersion };
+    } catch (error) {
+      if ((error as { code?: string })?.code === "P2025") {
+        throw new AppError("Report state changed. Refresh and try again.", 409);
+      }
+      throw error;
     }
-    return { saved: true, bodyVersion: (rap.bodyVersion ?? 0) + 1 };
   }
 
   async freezeReportForSignatures(
@@ -549,23 +707,45 @@ export class DefenseCollaborationService {
     if (!validation.ok) {
       throw new AppError("The stored report body is invalid and cannot be frozen.", 409);
     }
+    if (!hasMeaningfulReportContent(rap.bodyDocument)) {
+      throw new AppError("The committee report has no meaningful content to freeze.", 409);
+    }
 
-    const canonical = canonicalizeReportDocument(rap.bodyDocument);
-    const contentHash = hashReportDocument(rap.bodyDocument);
+    // Canonical prerequisite (COLLABORATIVE SOT §10.2 / §11): all required
+    // evaluator records FINALIZED and the Oral Examination Summary available.
+    // Reuses the official-record service, which safely ensures the Summary from
+    // finalized records and throws a 409 when evaluations are incomplete. This
+    // never fabricates scores and never derives a verdict.
+    await this.officialRecords.ensureOralExamSummary(scheduleId);
+
+    const freezeContext = await this.loadFreezeContext(scheduleId, assignment.userId);
     const contentVersion = (rap.contentVersion ?? 0) + 1;
     const now = new Date();
+    const snapshot = buildRapSigningSnapshot({
+      scheduleId,
+      thesisId: freezeContext.thesisId,
+      defenseType: freezeContext.defenseType,
+      studentName: freezeContext.studentName,
+      studentNumber: freezeContext.studentNumber,
+      programName: freezeContext.programName,
+      defenseDate: freezeContext.defenseDate,
+      defenseTime: freezeContext.defenseTime,
+      venue: freezeContext.venue,
+      committee: freezeContext.committee,
+      preparedByUserId: assignment.userId,
+      preparedByName: freezeContext.preparedByName,
+      contentVersion,
+      frozenAt: now.toISOString(),
+      body: rap.bodyDocument,
+    });
+    const contentHash = hashRapSnapshot(snapshot);
 
     const updated = await prisma.rapReport.updateMany({
       where: { id: rap.id, status: "DRAFT", frozenAt: null, bodyVersion: rap.bodyVersion ?? 0 },
       data: {
         frozenAt: now,
         frozenById: assignment.userId,
-        frozenContent: {
-          body: canonical,
-          contentVersion,
-          frozenByUserId: assignment.userId,
-          frozenAt: now.toISOString(),
-        } as never,
+        frozenContent: snapshot as never,
         frozenContentHash: contentHash,
         contentVersion,
         reportDate: rap.reportDate ?? now,

@@ -3,15 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   defenseSchedule: { findUnique: vi.fn() },
   panelAssignment: { findFirst: vi.fn() },
-  thesisDocument: { findUnique: vi.fn() },
+  thesisDocument: { findUnique: vi.fn(), findFirst: vi.fn() },
+  adviserCertification: { findFirst: vi.fn() },
   defenseAnnotation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   defenseAnnotationComment: { findUnique: vi.fn(), create: vi.fn() },
-  rapReport: { updateMany: vi.fn(), findUnique: vi.fn() },
+  rapReport: { updateMany: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
 }));
 
+const { ensureSummary } = vi.hoisted(() => ({ ensureSummary: vi.fn() }));
+
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+vi.mock("../../../src/services/official-defense-record.service", () => ({
+  OfficialDefenseRecordService: class {
+    ensureOralExamSummary = ensureSummary;
+  },
+}));
 
 import { DefenseCollaborationService } from "../../../src/services/defense-collaboration.service";
+import { AppError } from "../../../src/utils/AppError";
 
 const VALID_ANCHOR = {
   anchorVersion: 1,
@@ -32,9 +41,28 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
     thesisId: "thesis-1",
     defenseType: "TITLE_DEFENSE",
     sessionStatus: "IN_PROGRESS",
+    defenseDate: new Date("2026-10-20T00:00:00.000Z"),
+    defenseTime: new Date("1970-01-01T09:00:00.000Z"),
+    venueOrLink: "Room 201",
     rapporteurNotes: null,
-    thesis: { student: { user: { firstName: "Ana", lastName: "Cruz" } } },
+    thesis: {
+      student: {
+        studentNumber: "2020-001",
+        user: { firstName: "Ana", lastName: "Cruz" },
+        program: { programName: "MSIT" },
+      },
+    },
+    panelAssignments: [] as unknown[],
     rapReports: [] as unknown[],
+    ...overrides,
+  };
+}
+
+function certRow(overrides: Record<string, unknown> = {}) {
+  return {
+    status: "ISSUED",
+    defenseStage: "PROPOSAL_DEFENSE",
+    reviewedDocumentId: "doc-1",
     ...overrides,
   };
 }
@@ -96,6 +124,15 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow());
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
     prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow());
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow());
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    ensureSummary.mockResolvedValue({
+      created: false,
+      summaryId: "sum-1",
+      evaluatorCount: 1,
+      overallAverage: 0,
+      finalRating: null,
+    });
     prismaMock.defenseAnnotation.create.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
       ...annotationRow(),
       ...args.data,
@@ -310,15 +347,15 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     await expect(svc.saveReportDraft("sched-1", "u-PANELIST", VALID_BODY)).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  it("saves a Rapporteur draft and increments the body version", async () => {
+  it("saves a Rapporteur draft and returns the persisted body version", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [rapRow({ bodyVersion: 2 })] }));
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.rapReport.update.mockResolvedValue({ bodyVersion: 7 });
     await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toEqual({
       saved: true,
-      bodyVersion: 3,
+      bodyVersion: 7,
     });
-    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
+    expect(prismaMock.rapReport.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ bodyVersion: { increment: 1 } }) }),
     );
   });
@@ -364,19 +401,26 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     );
   });
 
-  it("produces a deterministic frozen hash regardless of source key order", async () => {
-    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
-
-    const bodyA = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "z", marks: ["underline", "bold"] }] }] };
-    const bodyB = { content: [{ content: [{ marks: ["bold", "underline"], text: "z", type: "text" }], type: "paragraph" }], type: "doc" };
-
-    prismaMock.defenseSchedule.findUnique.mockResolvedValueOnce(scheduleRow({ rapReports: [rapRow({ bodyDocument: bodyA })] }));
-    const first = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
-    prismaMock.defenseSchedule.findUnique.mockResolvedValueOnce(scheduleRow({ rapReports: [rapRow({ bodyDocument: bodyB })] }));
-    const second = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
-
-    expect(first.contentHash).toBe(second.contentHash);
+  it("hashes the complete signing snapshot deterministically and includes fixed metadata", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-20T01:00:00.000Z"));
+    try {
+      prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+      prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+      const freezeWith = async (venue: string) => {
+        prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+          scheduleRow({ venueOrLink: venue, rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
+        );
+        return svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
+      };
+      const a = await freezeWith("Room A");
+      const b = await freezeWith("Room A");
+      const c = await freezeWith("Room B");
+      expect(a.contentHash).toBe(b.contentHash);
+      expect(a.contentHash).not.toBe(c.contentHash);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("is idempotent: a second freeze never replaces the existing snapshot", async () => {
@@ -433,6 +477,14 @@ describe("DefenseCollaborationService (CDW-1 final-review fixes)", () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow());
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
     prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow());
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow());
+    ensureSummary.mockResolvedValue({
+      created: false,
+      summaryId: "sum-1",
+      evaluatorCount: 1,
+      overallAverage: 0,
+      finalRating: null,
+    });
   });
 
   it("pins the freeze to the exact read body version (a concurrent save cannot desync the hash)", async () => {
@@ -471,5 +523,218 @@ describe("DefenseCollaborationService (CDW-1 final-review fixes)", () => {
     await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).rejects.toMatchObject({
       statusCode: 409,
     });
+  });
+});
+
+describe("DefenseCollaborationService — CDW-1 corrections", () => {
+  const svc = new DefenseCollaborationService();
+
+  function setStage(defenseType: string) {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType, rapReports: [rapRow({ status: "DRAFT", bodyDocument: VALID_BODY })] }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow());
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    ensureSummary.mockResolvedValue({
+      created: false,
+      summaryId: "sum-1",
+      evaluatorCount: 1,
+      overallAverage: 0,
+      finalRating: null,
+    });
+  });
+
+  // ---- Fix 1: Proposal/Final certified manuscript authority ----
+
+  it("allows the exact certified Proposal manuscript", async () => {
+    setStage("PROPOSAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ defenseStage: "PROPOSAL", docType: "PROPOSAL_CHAPTERS", isCurrent: true }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(
+      certRow({ defenseStage: "PROPOSAL_DEFENSE", reviewedDocumentId: "doc-1" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects a newer current-but-uncertified Proposal manuscript (the cert points elsewhere)", async () => {
+    setStage("PROPOSAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ id: "doc-B", defenseStage: "PROPOSAL", docType: "PROPOSAL_CHAPTERS", isCurrent: true }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(
+      certRow({ defenseStage: "PROPOSAL_DEFENSE", reviewedDocumentId: "doc-A" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-B", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("allows the exact certified Final manuscript", async () => {
+    setStage("FINAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ defenseStage: "FINAL", docType: "FINAL_MANUSCRIPT", isCurrent: true }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(
+      certRow({ defenseStage: "FINAL_DEFENSE", reviewedDocumentId: "doc-1" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects a newer current-but-uncertified Final manuscript", async () => {
+    setStage("FINAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ id: "doc-B", defenseStage: "FINAL", docType: "FINAL_MANUSCRIPT", isCurrent: true }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(
+      certRow({ defenseStage: "FINAL_DEFENSE", reviewedDocumentId: "doc-A" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-B", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("treats the certified manuscript as authoritative even when a newer revision exists", async () => {
+    setStage("FINAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ defenseStage: "FINAL", docType: "FINAL_MANUSCRIPT", isCurrent: false }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(
+      certRow({ defenseStage: "FINAL_DEFENSE", reviewedDocumentId: "doc-1" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects a Title proposal that is not the current authoritative package", async () => {
+    setStage("TITLE_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow({ id: "doc-1", isCurrent: true }));
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow({ id: "doc-other" }));
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("rejects a Proposal write when there is no valid ISSUED certification (fail closed)", async () => {
+    setStage("PROPOSAL_DEFENSE");
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ defenseStage: "PROPOSAL", docType: "PROPOSAL_CHAPTERS" }),
+    );
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  // ---- Fix 2: historical read vs live write ----
+
+  it("keeps attempt annotations readable after the manuscript becomes non-current", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ sessionStatus: "CONCLUDED" }));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow({ isCurrent: false }));
+    prismaMock.defenseAnnotation.findMany.mockResolvedValue([annotationRow()]);
+    await expect(svc.listAnnotations("sched-1", "u-PANELIST", "doc-1")).resolves.toHaveLength(1);
+  });
+
+  it("does not let another thesis/schedule read annotations for this document", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ thesisId: "thesis-2" }));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow({ thesisId: "thesis-1" }));
+    await expect(svc.listAnnotations("sched-1", "u-PANELIST", "doc-1")).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  // ---- Fix 3: freeze readiness (evaluator + Summary) ----
+
+  it("rejects freeze when required evaluations are incomplete (Summary cannot be ensured)", async () => {
+    setStage("TITLE_DEFENSE");
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    ensureSummary.mockRejectedValue(
+      new AppError(
+        "All required evaluator evaluations must be finalized before the Oral Examination Summary can be generated.",
+        409,
+      ),
+    );
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("freezes when all required evaluations are finalized and the Summary is available", async () => {
+    setStage("TITLE_DEFENSE");
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    ensureSummary.mockResolvedValue({
+      created: true,
+      summaryId: "sum-1",
+      evaluatorCount: 2,
+      overallAverage: 0,
+      finalRating: null,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).resolves.toMatchObject({
+      frozen: true,
+      status: "FOR_SIGNATURE",
+    });
+    expect(ensureSummary).toHaveBeenCalledWith("sched-1");
+  });
+
+  // ---- Fix 4: meaningful content ----
+
+  it("rejects freezing an empty/whitespace-only report body", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        rapReports: [
+          rapRow({
+            status: "DRAFT",
+            bodyDocument: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "   " }] }] },
+          }),
+        ],
+      }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
+  });
+
+  // ---- Fix 7: canEditBody read model ----
+
+  it("reports canEditBody=false when the session is not writable", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    for (const sessionStatus of ["UNSCHEDULED", "CONCLUDED", "CANCELLED"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({ sessionStatus, rapReports: [rapRow({ status: "DRAFT", bodyDocument: VALID_BODY })] }),
+      );
+      const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
+      expect(model.canEditBody).toBe(false);
+    }
+  });
+
+  it("reports canEditBody only for an assigned Rapporteur on a writable DRAFT", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        sessionStatus: "IN_PROGRESS",
+        rapReports: [rapRow({ status: "FOR_SIGNATURE", frozenAt: new Date(), bodyDocument: VALID_BODY })],
+      }),
+    );
+    expect((await svc.getReportReadModel("sched-1", "u-RAPPORTEUR")).canEditBody).toBe(false);
+
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "IN_PROGRESS", rapReports: [rapRow({ status: "DRAFT", bodyDocument: VALID_BODY })] }),
+    );
+    expect((await svc.getReportReadModel("sched-1", "u-RAPPORTEUR")).canEditBody).toBe(true);
+
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
+    expect((await svc.getReportReadModel("sched-1", "u-PANELIST")).canEditBody).toBe(false);
   });
 });
