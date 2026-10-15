@@ -1,0 +1,668 @@
+/**
+ * CDW-1 — collaborative Defense Workspace foundation (server-authoritative).
+ *
+ * Provides the authorization + persistence foundation for manuscript annotations,
+ * comment threads, the Rapporteur Committee Report body, report freeze/hash, and
+ * a read-only conclusion-readiness model.
+ *
+ * This is NOT the collaborative UI (CDW-2/CDW-3/CDW-5). It intentionally does
+ * NOT change the RAP-creation sequence or the Chairman conclusion lifecycle:
+ * report draft/freeze operate on an EXISTING RapReport row in DRAFT state.
+ * Creating the report during the defense belongs to RAP-C1.
+ *
+ * Security model (fail closed):
+ *  - authority comes from the caller's PanelAssignment for the exact schedule,
+ *    never from an account-level role or a client-supplied assignment id;
+ *  - the target document must belong to the exact attempt/stage/current slot;
+ *  - concluded/frozen/cancelled attempts reject writes.
+ */
+import prisma from "../config/database";
+import { AppError } from "../utils/AppError";
+import {
+  type AnchorPayload,
+  validateAnchorPayload,
+} from "./anchor-validation.rules";
+import {
+  type CanonicalReportDocument,
+  canonicalizeReportDocument,
+  hashReportDocument,
+  validateReportDocument,
+} from "./report-body.rules";
+import { DefenseCommitteePolicy } from "./defense-committee.policy";
+
+const ANNOTATION_WRITE_ROLES = ["CHAIRMAN", "PANELIST"];
+const COMMENT_WRITE_ROLES = ["CHAIRMAN", "PANELIST", "RAPPORTEUR"];
+const RAPPORTEUR_ROLE = "RAPPORTEUR";
+const CHAIRMAN_ROLE = "CHAIRMAN";
+const COLLAB_WRITABLE_STATUSES = ["SCHEDULED", "IN_PROGRESS", "AWAITING_CONCLUSION"];
+const FROZEN_RAP_STATUSES = ["FOR_SIGNATURE", "PARTIALLY_SIGNED", "ALL_SIGNED", "DISTRIBUTED", "FINALIZED"];
+const MAX_COMMENT_LENGTH = 5000;
+
+/** Exact stage/document binding per defense stage (prevents cross-stage injection). */
+const STAGE_DOC_BINDING: Record<string, { stage: string; docTypes: string[] }> = {
+  TITLE_DEFENSE: { stage: "TITLE", docTypes: ["TITLE_PROPOSAL"] },
+  PROPOSAL_DEFENSE: { stage: "PROPOSAL", docTypes: ["PROPOSAL_CHAPTERS"] },
+  FINAL_DEFENSE: { stage: "FINAL", docTypes: ["FINAL_MANUSCRIPT"] },
+};
+
+export interface CollaborationAuthor {
+  assignmentId: string;
+  userId: string;
+  name: string;
+  role: string;
+}
+
+export interface AnnotationCommentDto {
+  id: string;
+  annotationId: string;
+  parentCommentId: string | null;
+  body: string;
+  author: CollaborationAuthor;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnnotationDto {
+  id: string;
+  scheduleId: string;
+  thesisDocumentId: string;
+  pageNumber: number;
+  selectedText: string;
+  anchor: AnchorPayload;
+  author: CollaborationAuthor;
+  createdAt: string;
+  updatedAt: string;
+  comments: AnnotationCommentDto[];
+}
+
+export interface ReportReadModel {
+  scheduleId: string;
+  defenseType: string;
+  sessionStatus: string;
+  studentName: string;
+  reportDate: string | null;
+  venue: string | null;
+  reportStatus: string;
+  bodyVersion: number;
+  contentVersion: number;
+  body: CanonicalReportDocument | null;
+  hasCollaborativeBody: boolean;
+  legacyContent: {
+    decisionsAndRecommendations: string | null;
+    rapporteurNotes: string | null;
+  };
+  freeze: {
+    frozenAt: string | null;
+    frozenById: string | null;
+    frozenContentHash: string | null;
+  };
+  canEditBody: boolean;
+}
+
+export interface ConclusionReadiness {
+  scheduleId: string;
+  defenseType: string;
+  sessionStatus: string;
+  isChairman: boolean;
+  concluded: boolean;
+  evaluatorAssignments: number;
+  finalizedEvaluations: number;
+  allEvaluationsFinalized: boolean;
+  oralSummaryExists: boolean;
+  reportExists: boolean;
+  reportFrozen: boolean;
+  reportFinalized: boolean;
+  requiredSignatures: number;
+  signedSignatures: number;
+  allSignaturesSigned: boolean;
+  blockers: string[];
+  readyForConclusion: boolean;
+}
+
+type AssignmentWithUser = {
+  id: string;
+  userId: string;
+  role: unknown;
+  user?: { firstName: string | null; lastName: string | null } | null;
+};
+
+type AnnotationRow = {
+  id: string;
+  scheduleId: string;
+  thesisDocumentId: string;
+  pageNumber: number;
+  selectedText: string;
+  anchorData: unknown;
+  anchorVersion: number;
+  createdAt: Date;
+  updatedAt: Date;
+  author: AssignmentWithUser;
+};
+
+type CommentRow = {
+  id: string;
+  annotationId: string;
+  parentCommentId: string | null;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author: AssignmentWithUser;
+};
+
+function authorName(assignment: AssignmentWithUser): string {
+  const user = assignment.user ?? null;
+  if (!user) return "";
+  return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+}
+
+function toAuthor(assignment: AssignmentWithUser): CollaborationAuthor {
+  return {
+    assignmentId: assignment.id,
+    userId: assignment.userId,
+    name: authorName(assignment),
+    role: String(assignment.role),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function buildAnchorFromRow(row: AnnotationRow): AnchorPayload {
+  const data = asRecord(row.anchorData);
+  return {
+    anchorVersion: row.anchorVersion,
+    pageNumber: row.pageNumber,
+    selectedText: row.selectedText,
+    rects: Array.isArray(data.rects) ? (data.rects as AnchorPayload["rects"]) : [],
+    prefix: typeof data.prefix === "string" ? data.prefix : "",
+    suffix: typeof data.suffix === "string" ? data.suffix : "",
+  };
+}
+
+function toCommentDto(row: CommentRow): AnnotationCommentDto {
+  return {
+    id: row.id,
+    annotationId: row.annotationId,
+    parentCommentId: row.parentCommentId,
+    body: row.body,
+    author: toAuthor(row.author),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function toAnnotationDto(row: AnnotationRow, comments: CommentRow[]): AnnotationDto {
+  return {
+    id: row.id,
+    scheduleId: row.scheduleId,
+    thesisDocumentId: row.thesisDocumentId,
+    pageNumber: row.pageNumber,
+    selectedText: row.selectedText,
+    anchor: buildAnchorFromRow(row),
+    author: toAuthor(row.author),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    comments: comments.map(toCommentDto),
+  };
+}
+
+export class DefenseCollaborationService {
+  /**
+   * Load a schedule and its (single) RAP report. Throws 404 when missing.
+   * `rap` is null when no report row exists yet for the attempt.
+   */
+  private async loadSchedule(scheduleId: string) {
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        rapReports: { orderBy: { createdAt: "desc" }, take: 1 },
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+    return { schedule, rap: schedule.rapReports[0] ?? null };
+  }
+
+  /** Authority comes from the caller's own assignment for the exact schedule. */
+  private async resolveAssignment(scheduleId: string, userId: string) {
+    const assignment = await prisma.panelAssignment.findFirst({
+      where: { scheduleId, userId },
+    });
+    if (!assignment) {
+      throw new AppError("You are not assigned to this defense session.", 403);
+    }
+    return assignment;
+  }
+
+  /**
+   * Prove the document is the exact authorized manuscript for this attempt:
+   * same thesis, correct stage, correct manuscript doc type, and current.
+   */
+  private async resolveAuthorizedDocument(
+    schedule: { thesisId: string; defenseType: unknown },
+    thesisDocumentId: string,
+  ) {
+    const binding = STAGE_DOC_BINDING[String(schedule.defenseType)];
+    if (!binding) {
+      throw new AppError("Collaboration is not supported for this defense type.", 400);
+    }
+    const document = await prisma.thesisDocument.findUnique({
+      where: { id: thesisDocumentId },
+    });
+    if (!document) throw new AppError("Defense document not found.", 404);
+    if (document.thesisId !== schedule.thesisId) {
+      throw new AppError("Document does not belong to this defense attempt.", 403);
+    }
+    if (String(document.defenseStage ?? "") !== binding.stage) {
+      throw new AppError("Document does not belong to this defense stage.", 403);
+    }
+    if (!binding.docTypes.includes(String(document.docType))) {
+      throw new AppError("Document is not an authorized defense manuscript.", 403);
+    }
+    if (document.isCurrent !== true) {
+      throw new AppError("Only the current defense manuscript can be annotated.", 409);
+    }
+    return document;
+  }
+
+  private assertCollaborationWritable(
+    schedule: { sessionStatus: unknown },
+    rap: { status: unknown; frozenAt: Date | null } | null,
+  ): void {
+    const status = String(schedule.sessionStatus);
+    if (status === "CONCLUDED") {
+      throw new AppError("This defense attempt is concluded and is read-only.", 409);
+    }
+    if (status === "CANCELLED") {
+      throw new AppError("This defense session was cancelled.", 409);
+    }
+    if (!COLLAB_WRITABLE_STATUSES.includes(status)) {
+      throw new AppError("Collaboration is not open for this defense session.", 409);
+    }
+    if (rap && (rap.frozenAt || FROZEN_RAP_STATUSES.includes(String(rap.status)))) {
+      throw new AppError(
+        "The committee report is frozen for signatures; collaboration is read-only.",
+        409,
+      );
+    }
+  }
+
+  // ---- Annotations -------------------------------------------------------
+
+  async listAnnotations(
+    scheduleId: string,
+    userId: string,
+    thesisDocumentId: string,
+  ): Promise<AnnotationDto[]> {
+    if (!thesisDocumentId) throw new AppError("A defense document is required.", 400);
+    const { schedule } = await this.loadSchedule(scheduleId);
+    await this.resolveAssignment(scheduleId, userId);
+    await this.resolveAuthorizedDocument(schedule, thesisDocumentId);
+
+    const rows = await prisma.defenseAnnotation.findMany({
+      where: { scheduleId, thesisDocumentId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        author: { include: { user: { select: { firstName: true, lastName: true } } } },
+        comments: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            author: { include: { user: { select: { firstName: true, lastName: true } } } },
+          },
+        },
+      },
+    });
+    return rows.map((row) => toAnnotationDto(row as AnnotationRow, (row.comments ?? []) as CommentRow[]));
+  }
+
+  async createAnnotation(
+    scheduleId: string,
+    userId: string,
+    input: { thesisDocumentId?: unknown; anchor?: unknown },
+  ): Promise<AnnotationDto> {
+    const thesisDocumentId =
+      typeof input.thesisDocumentId === "string" ? input.thesisDocumentId : "";
+    if (!thesisDocumentId) throw new AppError("A defense document is required.", 400);
+
+    const { schedule, rap } = await this.loadSchedule(scheduleId);
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    if (!ANNOTATION_WRITE_ROLES.includes(String(assignment.role))) {
+      throw new AppError("Your defense role cannot create annotations.", 403);
+    }
+    this.assertCollaborationWritable(schedule, rap);
+    const document = await this.resolveAuthorizedDocument(schedule, thesisDocumentId);
+
+    const validation = validateAnchorPayload(input.anchor);
+    if (!validation.ok) throw new AppError(validation.error, 400);
+    const anchor = validation.anchor;
+
+    const created = await prisma.defenseAnnotation.create({
+      data: {
+        scheduleId,
+        thesisDocumentId: document.id,
+        authorAssignmentId: assignment.id,
+        pageNumber: anchor.pageNumber,
+        selectedText: anchor.selectedText,
+        anchorData: {
+          rects: anchor.rects,
+          prefix: anchor.prefix,
+          suffix: anchor.suffix,
+        } as never,
+        anchorVersion: anchor.anchorVersion,
+      },
+      include: {
+        author: { include: { user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    return toAnnotationDto(created as AnnotationRow, []);
+  }
+
+  async createComment(
+    scheduleId: string,
+    userId: string,
+    input: { annotationId?: unknown; body?: unknown; parentCommentId?: unknown },
+  ): Promise<AnnotationCommentDto> {
+    const annotationId =
+      typeof input.annotationId === "string" ? input.annotationId : "";
+    if (!annotationId) throw new AppError("An annotation is required.", 400);
+    const body = typeof input.body === "string" ? input.body.trim() : "";
+    if (!body) throw new AppError("Comment body is required.", 400);
+    if (body.length > MAX_COMMENT_LENGTH) {
+      throw new AppError("Comment is too long.", 400);
+    }
+    const parentCommentId =
+      input.parentCommentId === undefined || input.parentCommentId === null
+        ? null
+        : String(input.parentCommentId);
+
+    const { schedule, rap } = await this.loadSchedule(scheduleId);
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    if (!COMMENT_WRITE_ROLES.includes(String(assignment.role))) {
+      throw new AppError("Your defense role cannot comment on annotations.", 403);
+    }
+    this.assertCollaborationWritable(schedule, rap);
+
+    const annotation = await prisma.defenseAnnotation.findUnique({
+      where: { id: annotationId },
+      select: { id: true, scheduleId: true },
+    });
+    if (!annotation) throw new AppError("Annotation not found.", 404);
+    if (annotation.scheduleId !== scheduleId) {
+      throw new AppError("Annotation belongs to another defense attempt.", 403);
+    }
+
+    if (parentCommentId) {
+      const parent = await prisma.defenseAnnotationComment.findUnique({
+        where: { id: parentCommentId },
+        select: { id: true, annotationId: true, parentCommentId: true },
+      });
+      if (!parent) throw new AppError("Parent comment not found.", 404);
+      if (parent.annotationId !== annotationId) {
+        throw new AppError("Parent comment belongs to a different annotation.", 400);
+      }
+      if (parent.parentCommentId) {
+        throw new AppError("Replies support only one level of nesting.", 400);
+      }
+    }
+
+    const created = await prisma.defenseAnnotationComment.create({
+      data: { annotationId, authorAssignmentId: assignment.id, body, parentCommentId },
+      include: {
+        author: { include: { user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    return toCommentDto(created as CommentRow);
+  }
+
+  // ---- Committee Report --------------------------------------------------
+
+  async getReportReadModel(scheduleId: string, userId: string): Promise<ReportReadModel> {
+    const { schedule, rap } = await this.loadSchedule(scheduleId);
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    const isRapporteur = String(assignment.role) === RAPPORTEUR_ROLE;
+    const concluded = String(schedule.sessionStatus) === "CONCLUDED";
+    const frozen = Boolean(rap?.frozenAt);
+    const reportStatus = rap ? String(rap.status) : "NOT_CREATED";
+    const body = (rap?.bodyDocument ?? null) as CanonicalReportDocument | null;
+    const student = schedule.thesis?.student;
+    const studentName = student
+      ? `${student.user?.firstName ?? ""} ${student.user?.lastName ?? ""}`.trim()
+      : "";
+
+    return {
+      scheduleId,
+      defenseType: String(schedule.defenseType),
+      sessionStatus: String(schedule.sessionStatus),
+      studentName,
+      reportDate: rap?.reportDate ? rap.reportDate.toISOString() : null,
+      venue: rap?.venue ?? null,
+      reportStatus,
+      bodyVersion: rap?.bodyVersion ?? 0,
+      contentVersion: rap?.contentVersion ?? 0,
+      body,
+      hasCollaborativeBody: body !== null,
+      legacyContent: {
+        decisionsAndRecommendations: rap?.decisionsAndRecommendations ?? null,
+        rapporteurNotes: schedule.rapporteurNotes ?? null,
+      },
+      freeze: {
+        frozenAt: rap?.frozenAt ? rap.frozenAt.toISOString() : null,
+        frozenById: rap?.frozenById ?? null,
+        frozenContentHash: rap?.frozenContentHash ?? null,
+      },
+      canEditBody: isRapporteur && reportStatus === "DRAFT" && !frozen && !concluded,
+    };
+  }
+
+  async saveReportDraft(
+    scheduleId: string,
+    userId: string,
+    body: unknown,
+  ): Promise<{ saved: true; bodyVersion: number }> {
+    const { schedule, rap } = await this.loadSchedule(scheduleId);
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    if (String(assignment.role) !== RAPPORTEUR_ROLE) {
+      throw new AppError("Only the assigned Rapporteur may edit the committee report.", 403);
+    }
+    const status = String(schedule.sessionStatus);
+    if (status === "CONCLUDED" || status === "CANCELLED") {
+      throw new AppError("This defense attempt is closed; the committee report is read-only.", 409);
+    }
+    if (!rap) {
+      throw new AppError("The committee report has not been created for this attempt yet.", 404);
+    }
+    if (rap.frozenAt || String(rap.status) !== "DRAFT") {
+      throw new AppError("The committee report is frozen and can no longer be edited.", 409);
+    }
+
+    const validation = validateReportDocument(body);
+    if (!validation.ok) throw new AppError(validation.error, 400);
+    const canonical = canonicalizeReportDocument(body);
+
+    const updated = await prisma.rapReport.updateMany({
+      where: { id: rap.id, status: "DRAFT", frozenAt: null },
+      data: {
+        bodyDocument: canonical as never,
+        bodyVersion: { increment: 1 },
+        bodyUpdatedAt: new Date(),
+      },
+    });
+    if (updated.count === 0) {
+      throw new AppError("Report state changed. Refresh and try again.", 409);
+    }
+    return { saved: true, bodyVersion: (rap.bodyVersion ?? 0) + 1 };
+  }
+
+  async freezeReportForSignatures(
+    scheduleId: string,
+    userId: string,
+  ): Promise<{ frozen: true; alreadyFrozen: boolean; contentVersion: number; contentHash: string; status: string }> {
+    const { schedule, rap } = await this.loadSchedule(scheduleId);
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    if (String(assignment.role) !== RAPPORTEUR_ROLE) {
+      throw new AppError("Only the assigned Rapporteur may freeze the committee report.", 403);
+    }
+    const status = String(schedule.sessionStatus);
+    if (status === "CONCLUDED" || status === "CANCELLED") {
+      throw new AppError("This defense attempt is closed; the committee report is read-only.", 409);
+    }
+    if (!rap) {
+      throw new AppError("The committee report has not been created for this attempt yet.", 404);
+    }
+
+    // Idempotent-safe: an existing freeze is returned, never replaced.
+    if (rap.frozenAt && rap.frozenContentHash) {
+      return {
+        frozen: true,
+        alreadyFrozen: true,
+        contentVersion: rap.contentVersion ?? 0,
+        contentHash: rap.frozenContentHash,
+        status: String(rap.status),
+      };
+    }
+    if (String(rap.status) !== "DRAFT") {
+      throw new AppError("Only a draft committee report can be frozen.", 409);
+    }
+    if (!rap.bodyDocument) {
+      throw new AppError("The committee report has no content to freeze.", 409);
+    }
+    const validation = validateReportDocument(rap.bodyDocument);
+    if (!validation.ok) {
+      throw new AppError("The stored report body is invalid and cannot be frozen.", 409);
+    }
+
+    const canonical = canonicalizeReportDocument(rap.bodyDocument);
+    const contentHash = hashReportDocument(rap.bodyDocument);
+    const contentVersion = (rap.contentVersion ?? 0) + 1;
+    const now = new Date();
+
+    const updated = await prisma.rapReport.updateMany({
+      where: { id: rap.id, status: "DRAFT", frozenAt: null },
+      data: {
+        frozenAt: now,
+        frozenById: assignment.userId,
+        frozenContent: {
+          body: canonical,
+          contentVersion,
+          frozenByUserId: assignment.userId,
+          frozenAt: now.toISOString(),
+        } as never,
+        frozenContentHash: contentHash,
+        contentVersion,
+        reportDate: rap.reportDate ?? now,
+        status: "FOR_SIGNATURE",
+      },
+    });
+    if (updated.count === 0) {
+      const current = await prisma.rapReport.findUnique({
+        where: { id: rap.id },
+        select: { status: true, contentVersion: true, frozenContentHash: true },
+      });
+      if (current?.frozenContentHash) {
+        return {
+          frozen: true,
+          alreadyFrozen: true,
+          contentVersion: current.contentVersion ?? 0,
+          contentHash: current.frozenContentHash,
+          status: String(current.status),
+        };
+      }
+      throw new AppError("Report state changed. Refresh and try again.", 409);
+    }
+    return {
+      frozen: true,
+      alreadyFrozen: false,
+      contentVersion,
+      contentHash,
+      status: "FOR_SIGNATURE",
+    };
+  }
+
+  // ---- Conclusion readiness (read-only facts) ----------------------------
+
+  async getConclusionReadiness(
+    scheduleId: string,
+    userId: string,
+  ): Promise<ConclusionReadiness> {
+    const assignment = await this.resolveAssignment(scheduleId, userId);
+    const isChairman = String(assignment.role) === CHAIRMAN_ROLE;
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        panelAssignments: { select: { id: true, userId: true, role: true } },
+        oralExamScores: { select: { panelId: true, status: true } },
+        oralExamSummary: { select: { id: true } },
+        conclusion: { select: { id: true } },
+        rapReports: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: { signatures: { select: { required: true, isSigned: true } } },
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const evaluatorRoles = new DefenseCommitteePolicy()
+      .getEvaluatorRoles(schedule.defenseType as never)
+      .map(String);
+    const evaluatorAssignments = schedule.panelAssignments.filter((a) =>
+      evaluatorRoles.includes(String(a.role)),
+    );
+    const evaluatorIds = new Set(evaluatorAssignments.map((a) => a.id));
+    const finalized = schedule.oralExamScores.filter(
+      (s) => evaluatorIds.has(s.panelId) && String(s.status) === "FINALIZED",
+    );
+    const allEvaluationsFinalized =
+      evaluatorAssignments.length > 0 && finalized.length >= evaluatorAssignments.length;
+
+    const rap = schedule.rapReports[0] ?? null;
+    const requiredSlots = (rap?.signatures ?? []).filter((s) => s.required !== false);
+    const signedSlots = requiredSlots.filter((s) => s.isSigned === true);
+    const reportFrozen = Boolean(rap?.frozenAt);
+    const reportFinalized = String(rap?.status ?? "") === "FINALIZED";
+    const concluded = Boolean(schedule.conclusion);
+    const oralSummaryExists = Boolean(schedule.oralExamSummary);
+
+    const blockers: string[] = [];
+    if (!isChairman) blockers.push("Caller is not the assigned session Chairman.");
+    if (concluded) blockers.push("Defense attempt is already concluded.");
+    if (evaluatorAssignments.length === 0) blockers.push("No evaluator assignments exist.");
+    if (!allEvaluationsFinalized) blockers.push("Not all required evaluations are finalized.");
+    if (!oralSummaryExists) blockers.push("Oral Examination Summary is not available.");
+    if (!rap) blockers.push("Committee report has not been created.");
+    if (!reportFrozen) blockers.push("Committee report is not frozen.");
+    if (!reportFinalized) blockers.push("RAP is not finalized.");
+
+    return {
+      scheduleId,
+      defenseType: String(schedule.defenseType),
+      sessionStatus: String(schedule.sessionStatus),
+      isChairman,
+      concluded,
+      evaluatorAssignments: evaluatorAssignments.length,
+      finalizedEvaluations: finalized.length,
+      allEvaluationsFinalized,
+      oralSummaryExists,
+      reportExists: rap !== null,
+      reportFrozen,
+      reportFinalized,
+      requiredSignatures: requiredSlots.length,
+      signedSignatures: signedSlots.length,
+      allSignaturesSigned: requiredSlots.length > 0 && signedSlots.length >= requiredSlots.length,
+      blockers,
+      readyForConclusion: blockers.length === 0,
+    };
+  }
+}
