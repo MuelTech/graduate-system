@@ -424,3 +424,52 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     expect(readiness.blockers.join(" ")).toMatch(/evaluations are finalized/i);
   });
 });
+
+describe("DefenseCollaborationService (CDW-1 final-review fixes)", () => {
+  const svc = new DefenseCollaborationService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow());
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow());
+  });
+
+  it("pins the freeze to the exact read body version (a concurrent save cannot desync the hash)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY, bodyVersion: 4 })] }),
+    );
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ bodyVersion: 4 }) }),
+    );
+  });
+
+  it("treats an empty/whitespace parentCommentId as no parent (no FK error)", async () => {
+    prismaMock.defenseAnnotation.findUnique.mockResolvedValue({ id: "ann-1", scheduleId: "sched-1" });
+    prismaMock.defenseAnnotationComment.create.mockResolvedValue({
+      id: "c-1",
+      annotationId: "ann-1",
+      parentCommentId: null,
+      body: "x",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+      author: { id: "pa-RAPPORTEUR", userId: "u-RAPPORTEUR", role: "RAPPORTEUR", user: { firstName: "R", lastName: "P" } },
+    });
+    await svc.createComment("sched-1", "u-RAPPORTEUR", { annotationId: "ann-1", body: "x", parentCommentId: "" });
+    expect(prismaMock.defenseAnnotationComment.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.defenseAnnotationComment.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ parentCommentId: null }) }),
+    );
+  });
+
+  it("rejects a report draft while the session status is not writable (UNSCHEDULED)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "UNSCHEDULED", rapReports: [rapRow()] }),
+    );
+    await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
+});

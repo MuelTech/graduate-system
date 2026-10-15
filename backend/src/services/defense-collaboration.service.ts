@@ -276,11 +276,8 @@ export class DefenseCollaborationService {
     return document;
   }
 
-  private assertCollaborationWritable(
-    schedule: { sessionStatus: unknown },
-    rap: { status: unknown; frozenAt: Date | null } | null,
-  ): void {
-    const status = String(schedule.sessionStatus);
+  private assertSessionOpen(sessionStatus: unknown): void {
+    const status = String(sessionStatus);
     if (status === "CONCLUDED") {
       throw new AppError("This defense attempt is concluded and is read-only.", 409);
     }
@@ -290,6 +287,13 @@ export class DefenseCollaborationService {
     if (!COLLAB_WRITABLE_STATUSES.includes(status)) {
       throw new AppError("Collaboration is not open for this defense session.", 409);
     }
+  }
+
+  private assertCollaborationWritable(
+    schedule: { sessionStatus: unknown },
+    rap: { status: unknown; frozenAt: Date | null } | null,
+  ): void {
+    this.assertSessionOpen(schedule.sessionStatus);
     if (rap && (rap.frozenAt || FROZEN_RAP_STATUSES.includes(String(rap.status)))) {
       throw new AppError(
         "The committee report is frozen for signatures; collaboration is read-only.",
@@ -381,10 +385,18 @@ export class DefenseCollaborationService {
     if (body.length > MAX_COMMENT_LENGTH) {
       throw new AppError("Comment is too long.", 400);
     }
+    const rawParentCommentId = input.parentCommentId;
+    if (
+      rawParentCommentId !== undefined &&
+      rawParentCommentId !== null &&
+      typeof rawParentCommentId !== "string"
+    ) {
+      throw new AppError("parentCommentId must be a string.", 400);
+    }
     const parentCommentId =
-      input.parentCommentId === undefined || input.parentCommentId === null
-        ? null
-        : String(input.parentCommentId);
+      typeof rawParentCommentId === "string" && rawParentCommentId.trim()
+        ? rawParentCommentId.trim()
+        : null;
 
     const { schedule, rap } = await this.loadSchedule(scheduleId);
     const assignment = await this.resolveAssignment(scheduleId, userId);
@@ -476,9 +488,7 @@ export class DefenseCollaborationService {
       throw new AppError("Only the assigned Rapporteur may edit the committee report.", 403);
     }
     const status = String(schedule.sessionStatus);
-    if (status === "CONCLUDED" || status === "CANCELLED") {
-      throw new AppError("This defense attempt is closed; the committee report is read-only.", 409);
-    }
+    this.assertSessionOpen(status);
     if (!rap) {
       throw new AppError("The committee report has not been created for this attempt yet.", 404);
     }
@@ -514,9 +524,7 @@ export class DefenseCollaborationService {
       throw new AppError("Only the assigned Rapporteur may freeze the committee report.", 403);
     }
     const status = String(schedule.sessionStatus);
-    if (status === "CONCLUDED" || status === "CANCELLED") {
-      throw new AppError("This defense attempt is closed; the committee report is read-only.", 409);
-    }
+    this.assertSessionOpen(status);
     if (!rap) {
       throw new AppError("The committee report has not been created for this attempt yet.", 404);
     }
@@ -548,7 +556,7 @@ export class DefenseCollaborationService {
     const now = new Date();
 
     const updated = await prisma.rapReport.updateMany({
-      where: { id: rap.id, status: "DRAFT", frozenAt: null },
+      where: { id: rap.id, status: "DRAFT", frozenAt: null, bodyVersion: rap.bodyVersion ?? 0 },
       data: {
         frozenAt: now,
         frozenById: assignment.userId,
@@ -591,6 +599,17 @@ export class DefenseCollaborationService {
 
   // ---- Conclusion readiness (read-only facts) ----------------------------
 
+  /**
+   * Read-only conclusion-readiness facts for the canonical pre-conclusion
+   * sequence (COLLABORATIVE SOT §11): required evaluations finalized, Summary
+   * available, committee report frozen, RAP finalized, not already concluded,
+   * caller is the assigned Chairman.
+   *
+   * NOTE: this models the CANONICAL target gate. The current RAP lifecycle still
+   * creates the report at conclusion time, so `reportFrozen`/`reportFinalized`
+   * remain false until RAP-C1 creates/freezes the report during the defense; the
+   * endpoint reports facts and never derives PASSED / REDEFENSE_REQUIRED.
+   */
   async getConclusionReadiness(
     scheduleId: string,
     userId: string,
