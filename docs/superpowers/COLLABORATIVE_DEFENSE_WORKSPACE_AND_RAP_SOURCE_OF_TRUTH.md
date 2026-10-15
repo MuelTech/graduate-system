@@ -462,38 +462,59 @@ The Rapporteur uses the same workspace shell but sees:
 
 Chairman and Panelists can view the Committee Report draft but cannot directly edit authoritative report content.
 
-### 9.2 Structured report
+### 9.2 System-owned report with a free-form Rapporteur body
 
-The report should be a system-owned structured record inspired by the supplied GS Form No. 22 / Suggestions of the Evaluation Committee rather than a generic Word-like editor.
+The report is a system-owned institutional record, but the **narrative body is authored freely by the assigned Rapporteur**.
 
-Recommended content areas:
+The system owns and renders fixed metadata/workflow elements such as:
 
 - student/researcher identity;
 - defense type/stage;
 - program;
 - defense date/time/venue;
-- research/title context;
-- committee suggestions;
-- general observations;
-- Title-stage suggested wording/research-direction notes when applicable;
-- source links to selected manuscript annotations when an item was derived from a comment;
+- committee roster/roles;
 - prepared-by Rapporteur identity and timestamps;
-- RAP signature/readiness metadata.
+- RAP lifecycle/readiness;
+- required signature identities/status.
 
-The report may support manually authored items and items derived from annotations.
+These fixed elements are not ordinary editable text inside the Rapporteur's document body.
 
-### 9.3 Add to Report
+The Rapporteur owns the report body itself. The system must **not** force mandatory body sections such as Committee Suggestions, General Observations, Research/Title Recommendations, or any other fixed heading. The Rapporteur may create whatever headings, paragraphs, lists, ordering, and wording are appropriate for the committee record.
 
-A shared annotation may offer Add to Report to the Rapporteur.
+Target authoring experience:
 
-This action:
+- familiar rich-text editing comparable to the basic composing experience of Word/Google Docs;
+- headings/paragraphs;
+- bold/italic/underline;
+- bullet and numbered lists;
+- indentation and alignment where supported;
+- undo/redo;
+- safe copy/paste;
+- save draft;
+- no requirement to reproduce full word-processing/page-layout capabilities.
 
-- does not remove or mutate the original annotation;
-- creates a report item or linked draft reference;
-- allows the Rapporteur to rewrite/normalize official wording;
-- preserves sourceAnnotationId or equivalent traceability when practical.
+The system is not a full Microsoft Word/Google Docs clone. Page-layout editing, arbitrary floating objects, live multi-author editing of the report body, and other office-suite features are outside the initial scope.
 
-No annotation is automatically promoted into the official report.
+The report body remains exclusively Rapporteur-controlled while DRAFT. Chairman/Panelists may view it but do not edit it.
+
+### 9.3 Optional Insert into Report from a committee comment
+
+A shared manuscript annotation/comment may offer **Insert into Report** as an optional Rapporteur productivity action.
+
+The intent is convenience, not automatic synchronization.
+
+When used:
+
+- the selected comment text is copied/inserted into the Rapporteur's report body at the current editor insertion point or another clearly chosen location;
+- the original annotation/comment remains unchanged;
+- the inserted text becomes ordinary editable report content under the Rapporteur's control;
+- the Rapporteur may rewrite it, combine it with other comments, move it, format it, or delete it;
+- sourceAnnotationId/sourceCommentId may be retained as non-visible traceability metadata when practical;
+- later edits to the source comment do not silently rewrite already-inserted report text.
+
+No annotation/comment is automatically promoted into the official report. The Rapporteur alone decides what enters the report and how it is worded.
+
+This action may be deferred from the first report-editor package if necessary. Manual reading and authoring remains a valid foundation.
 
 ### 9.4 Draft visibility
 
@@ -833,7 +854,7 @@ The collaborative Defense Workspace is not considered complete unless all of the
 - evaluation UI follows the confirmed scoring semantics and familiar Group I/II form structure;
 - shared comments persist after reload and are visible to authorized committee members;
 - comments remain bound to the exact manuscript/attempt;
-- Rapporteur can see shared comments and build a structured report;
+- Rapporteur can see shared comments and author a free-form rich-text report body;
 - Panelists can see the report draft read-only;
 - the report can be frozen only after required evaluations and Summary readiness;
 - all signers review the same frozen RAP snapshot;

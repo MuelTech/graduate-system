@@ -219,7 +219,8 @@ Finalize additive models/fields for:
 
 - DefenseAnnotation;
 - DefenseAnnotationComment;
-- structured report items or report JSON;
+- a persisted Rapporteur-owned rich-text document body (JSON/document model or equivalent safe representation);
+- optional source-annotation/source-comment traceability for inserted material;
 - report freeze metadata;
 - content hash/version;
 - signature-to-version binding.
@@ -473,20 +474,22 @@ Shared manuscript comments remain visible according to role policy.
 
 ---
 
-## 8. Phase CDW-5 — Structured Rapporteur Committee Report
+## 8. Phase CDW-5 — Rapporteur rich-text Committee Report composer
 
 ### Goal
 
-Replace the single notes textarea as the primary new-attempt authoring model with a structured Committee Report.
+Replace the single notes textarea as the primary new-attempt authoring model with a system-owned Committee Report that has a **free-form Rapporteur-controlled rich-text body**.
+
+Do not model Committee Suggestions, General Observations, Research/Title Recommendations, or similar headings as mandatory fixed body fields.
 
 ### UI
 
 Rapporteur:
 
-- Committee Report tab editable;
-- Student Document tab shows shared annotations;
-- Add to Report from an annotation;
-- manual Add Suggestion / Add Observation;
+- Committee Report tab editable while DRAFT;
+- familiar rich-text composing controls appropriate to the approved editor library;
+- Student Document tab shows shared annotations/comments;
+- optional Insert into Report action from a selected comment;
 - save draft;
 - report status/readiness.
 
@@ -495,34 +498,63 @@ Chairman/Panelist:
 - Committee Report tab read-only while DRAFT;
 - can see current report after polling/refetch.
 
+The system separately renders non-editable institutional metadata such as student identity, program, defense stage/date, committee roster, prepared-by identity, RAP status, and signature state. Those values must not depend on the Rapporteur manually typing them into the rich-text body.
+
+### Editor-library decision
+
+Use a maintained open-source rich-text editor compatible with the current Next.js/React stack rather than building a document editor from scratch.
+
+The target is basic Word/Google-Docs-like composing familiarity, not a full office-suite clone.
+
+Required initial editor capabilities should be bounded to what the report actually needs, such as:
+
+- paragraph/headings;
+- bold/italic/underline;
+- bullet/numbered lists;
+- indentation/alignment where supported;
+- undo/redo;
+- safe paste;
+- controlled serialization.
+
+Do not implement page-layout editing, arbitrary floating objects, or simultaneous multi-author editing of the report body.
+
+### Optional Insert into Report behavior
+
+If implemented in this phase:
+
+- clicking Insert into Report copies the selected committee comment into the current editor insertion point or another explicitly chosen location;
+- it never automatically creates a mandatory section;
+- the inserted text becomes normal Rapporteur-owned editable content;
+- the Rapporteur may rewrite, move, combine, format, or delete it;
+- the source comment remains intact;
+- optional sourceAnnotationId/sourceCommentId metadata may be retained for traceability;
+- source-comment changes do not silently update previously inserted report text.
+
+This convenience action may be deferred if necessary. Manual reading plus free-form report authoring remains an acceptable first implementation.
+
 ### Data compatibility
 
 Legacy rapporteurNotes must remain readable.
 
 Do not destructively erase old RapReport text.
 
-A migration may map new structured report content into RapReport while preserving legacy fields for old records.
+A migration may map new rich-text document content into RapReport or a related model while preserving legacy fields for old records.
 
-### Report content
+### Report content rules
 
-Must not include formal verdict as a prerequisite.
-
-Include:
-
-- defense metadata;
-- research/title context;
-- committee suggestions;
-- general observations;
-- Title suggested wording when applicable;
-- prepared-by Rapporteur data;
-- source annotation linkage where present.
+- formal verdict is not a prerequisite and must not be embedded as required pre-signature content;
+- report body structure and wording are controlled by the assigned Rapporteur;
+- fixed system metadata remains authoritative outside the editable body;
+- the exact serialized draft is frozen into the RAP snapshot before signatures.
 
 ### Tests
 
 - only assigned Rapporteur edits;
 - non-Rapporteur view only;
-- Add to Report preserves original annotation;
-- draft saves and reloads;
+- Rapporteur can freely create/reorder headings, paragraphs, and lists without mandatory report sections;
+- draft serialization saves and reloads without losing supported formatting;
+- Insert into Report, if implemented, preserves the original annotation/comment and produces editable copied text rather than a live binding;
+- draft remains editable until freeze;
 - report remains DRAFT before freeze;
 - no verdict required to create/save report.
 
@@ -889,7 +921,7 @@ The initiative is complete only when:
 - shared comments are persisted and authorized;
 - evaluator UI follows confirmed institutional scoring semantics;
 - all stages open official scoring only after Start Defense;
-- Rapporteur structured report works;
+- Rapporteur free-form rich-text report composer works without mandatory body sections;
 - report draft is visible read-only to committee;
 - report freezes before signatures;
 - required stage-aware signatures complete before verdict;
