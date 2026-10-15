@@ -53,25 +53,22 @@ export function ChairmanConclusionPanel({
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
   const sessionStatus = workspace.schedule.sessionStatus;
-  const titleReadyForConclusion =
-    isTitle &&
-    (sessionStatus === "IN_PROGRESS" || sessionStatus === "AWAITING_CONCLUSION");
   const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
 
-  // CP7-FIX3: Proposal/Final formal result requires successful detailed Summary load.
-  // 2026-10-15 correction: a Title conclusion records the verdict only — no
-  // official selected title is required or produced.
+  // WF-C1b: every stage concludes only from AWAITING_CONCLUSION with all required
+  // evaluators finalized and a loadable detailed Summary. Title does not require
+  // Rapporteur notes/RAP yet (RAP-before-conclusion is deferred to WF-C1c).
+  // A Title conclusion records the verdict only — no selected title is produced.
   const canSubmit =
     !concluded &&
     Boolean(outcome) &&
-    (isTitle
-      ? titleReadyForConclusion
-      : notesReady &&
-        summaryReady &&
-        evalsComplete &&
-        detailedSummaryReady === true &&
-        !detailedSummaryLoading &&
-        !detailedSummaryError);
+    sessionStatus === "AWAITING_CONCLUSION" &&
+    (!isTitle ? notesReady : true) &&
+    evalsComplete &&
+    summaryReady &&
+    detailedSummaryReady === true &&
+    !detailedSummaryLoading &&
+    !detailedSummaryError;
 
   const conclude = useMutation({
     mutationFn: async () =>
@@ -139,9 +136,9 @@ export function ChairmanConclusionPanel({
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-(--earist-body-text)">
-            This session is scheduled. Start the Title Defense to begin panel
-            deliberation. The formal result can be recorded once deliberation is
-            in progress; Rapporteur minutes are not required first.
+            This session is scheduled. Start the Title Defense to open evaluator
+            scoring. The formal result can be recorded only after every assigned
+            evaluator finalizes and the Oral Examination Summary exists.
           </p>
           <Button
             type="button"
@@ -168,37 +165,36 @@ export function ChairmanConclusionPanel({
           </p>
         ) : (
           <>
-            {!isTitle && (
-              <div className="rounded border border-(--earist-border-gray) p-3 text-xs text-(--earist-body-text)">
-                <p>
-                  Evaluations finalized: {evals.finalizedEvaluations} /{" "}
-                  {evals.evaluatorAssignments}
-                </p>                <p>
-                  Summary:{" "}
-                  {summaryReady
-                    ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
-                    : "Not ready"}
+            <div className="rounded border border-(--earist-border-gray) p-3 text-xs text-(--earist-body-text)">
+              <p>
+                Evaluations finalized: {evals.finalizedEvaluations} /{" "}
+                {evals.evaluatorAssignments}
+              </p>
+              <p>
+                Summary:{" "}
+                {summaryReady
+                  ? `Ready — overall average ${workspace.oralSummary?.overallAverage ?? "—"}`
+                  : "Not ready"}
+              </p>
+              <p>
+                Detailed Summary:{" "}
+                {detailedSummaryError
+                  ? "unavailable (retry required)"
+                  : detailedSummaryLoading
+                    ? "loading"
+                    : detailedSummaryReady
+                      ? "reviewed/available"
+                      : summaryReady
+                        ? "unavailable"
+                        : "not ready"}
+              </p>
+              {detailedSummaryError && (
+                <p className="mt-1 text-red-700">
+                  Unable to load Summary. Formal result is disabled until a
+                  successful load.
                 </p>
-                <p>
-                  Detailed Summary:{" "}
-                  {detailedSummaryError
-                    ? "unavailable (retry required)"
-                    : detailedSummaryLoading
-                      ? "loading"
-                      : detailedSummaryReady
-                        ? "reviewed/available"
-                        : summaryReady
-                          ? "unavailable"
-                          : "not ready"}
-                </p>
-                {!isTitle && detailedSummaryError && (
-                  <p className="mt-1 text-red-700">
-                    Unable to load Summary. Formal result is disabled until a
-                    successful load.
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="outcome">Defense Outcome (required)</Label>
@@ -242,26 +238,22 @@ export function ChairmanConclusionPanel({
                 <ul className="mt-2 space-y-1 text-xs text-amber-900">
                   <li>Student: {workspace.student.name}</li>
                   <li>Defense: {workspace.schedule.defenseType}</li>
-                  {!isTitle && (
-                    <>
-                      <li>
-                        Evaluators finalized: {evals.finalizedEvaluations} /{" "}
-                        {evals.evaluatorAssignments}
-                      </li>
-                      <li>
-                        Overall defense average:{" "}
-                        {workspace.oralSummary?.overallAverage ?? "—"}
-                      </li>
-                      <li>
-                        Generated Summary:{" "}
-                        {detailedSummaryReady
-                          ? "reviewed/available"
-                          : detailedSummaryLoading
-                            ? "loading"
-                            : "unavailable"}
-                      </li>
-                    </>
-                  )}
+                  <li>
+                    Evaluators finalized: {evals.finalizedEvaluations} /{" "}
+                    {evals.evaluatorAssignments}
+                  </li>
+                  <li>
+                    Overall defense average:{" "}
+                    {workspace.oralSummary?.overallAverage ?? "—"}
+                  </li>
+                  <li>
+                    Generated Summary:{" "}
+                    {detailedSummaryReady
+                      ? "reviewed/available"
+                      : detailedSummaryLoading
+                        ? "loading"
+                        : "unavailable"}
+                  </li>
                   <li>Selected result: {outcome}</li>
                   <li className="font-semibold">
                     This action is irreversible. No result is recommended from

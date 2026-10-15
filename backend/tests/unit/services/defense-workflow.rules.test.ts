@@ -108,6 +108,13 @@ describe("oral scoring completion", () => {
     expect(isScoringComplete(2, 2)).toBe(true);
   });
 
+  it("WF-C1b: scoring completion requires all evaluators for every stage", () => {
+    expect(isScoringComplete(5, 0)).toBe(false);
+    expect(isScoringComplete(5, 4)).toBe(false);
+    expect(isScoringComplete(5, 5)).toBe(true);
+    expect(isScoringComplete(0, 0)).toBe(false);
+  });
+
   it("non-evaluator cannot submit oral score unless policy allows it", () => {
     expect(canSubmitOralScore("PANELIST", ["CHAIRMAN", "PANELIST"])).toBe(true);
     expect(canSubmitOralScore("ADVISER", ["CHAIRMAN", "PANELIST"])).toBe(false);

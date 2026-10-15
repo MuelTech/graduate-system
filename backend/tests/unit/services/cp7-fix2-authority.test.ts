@@ -146,6 +146,32 @@ describe("CP7-FIX2 REAL tests — ThesisService.concludeDefense production path"
     expect(result.rapReport.id).toBe("rap-1");
   });
 
+  it("WF-C1b REAL A-Title: Title Chairman recovers missing Summary then concludes once", async () => {
+    getDefenseScheduleForConclude
+      .mockResolvedValueOnce(
+        readySchedule({
+          defenseType: "TITLE_DEFENSE",
+          rapporteurNotesFinalized: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        readySchedule({
+          defenseType: "TITLE_DEFENSE",
+          rapporteurNotesFinalized: false,
+          oralSummaryExists: true,
+        }),
+      );
+
+    const result = await service.concludeDefense("sched-1", "chair-1", {
+      outcome: "PASSED",
+    });
+
+    expect(ensureOralExamSummary).toHaveBeenCalledTimes(1);
+    expect(ensureOralExamSummary).toHaveBeenCalledWith("sched-1");
+    expect(concludeDefense).toHaveBeenCalledTimes(1);
+    expect(result.rapReport.id).toBe("rap-1");
+  });
+
   it("REAL B: non-Chairman actor gets 403 and does NOT trigger Summary recovery", async () => {
     getSessionPanelAssignments.mockResolvedValue([
       { id: "pa-p", userId: "panel-1", role: "PANELIST" },

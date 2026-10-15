@@ -805,23 +805,25 @@ export class ThesisService {
       );
     }
 
-    // CP7-FIX1 Issue 5: recover missing Summary after Chairman auth (transient failure).
-    if (schedule.defenseType !== "TITLE_DEFENSE") {
-      try {
-        await this.officialRecords.ensureOralExamSummary(scheduleId);
-      } catch {
-        // Genuine incomplete evaluator state still rejects below / in transaction.
-      }
-      // Re-fetch authoritative readiness after recovery attempt.
-      const refreshed = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
-      if (refreshed) {
-        schedule.oralSummaryExists = refreshed.oralSummaryExists;
-        schedule.evaluatorAssignments = refreshed.evaluatorAssignments;
-        schedule.finalizedEvaluatorScores = refreshed.finalizedEvaluatorScores;
-        schedule.sessionStatus = refreshed.sessionStatus;
-        schedule.rapporteurNotesFinalized = refreshed.rapporteurNotesFinalized;
-        schedule.alreadyConcluded = refreshed.alreadyConcluded;
-      }
+    // CP7-FIX1 Issue 5: recover a missing Summary after Chairman auth (transient
+    // failure between evaluator completion and Summary generation).
+    // WF-C1b: Title Defense now requires the Summary too, so this recovery must
+    // run for every stage — otherwise a transient summary failure would leave a
+    // Title session in AWAITING_CONCLUSION with no way to conclude or re-finalize.
+    try {
+      await this.officialRecords.ensureOralExamSummary(scheduleId);
+    } catch {
+      // Genuine incomplete evaluator state still rejects below / in transaction.
+    }
+    // Re-fetch authoritative readiness after recovery attempt.
+    const refreshed = await this.thesisRepo.getDefenseScheduleForConclude(scheduleId);
+    if (refreshed) {
+      schedule.oralSummaryExists = refreshed.oralSummaryExists;
+      schedule.evaluatorAssignments = refreshed.evaluatorAssignments;
+      schedule.finalizedEvaluatorScores = refreshed.finalizedEvaluatorScores;
+      schedule.sessionStatus = refreshed.sessionStatus;
+      schedule.rapporteurNotesFinalized = refreshed.rapporteurNotesFinalized;
+      schedule.alreadyConcluded = refreshed.alreadyConcluded;
     }
 
     const outcome = this.conclusion.assertCanConclude(

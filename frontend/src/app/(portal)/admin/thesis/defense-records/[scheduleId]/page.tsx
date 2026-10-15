@@ -389,7 +389,6 @@ export default function AdminDefenseRecordDetailPage() {
 
   const o = data.defenseOverview;
   const stage = stageFromDefenseType(o.defenseType);
-  const isTitleDefense = stage === "TITLE";
   // 2026-10-15: only the attempt-bound RAP/recorded title may be shown — never a
   // thesis-global ThesisTitle.isSelected (cross-attempt leakage).
   const recordedTitle = data.rapReport?.selectedTitle ?? null;
@@ -501,17 +500,8 @@ export default function AdminDefenseRecordDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Numerical evaluation — Title N/A (compact) vs Proposal/Final sections */}
-      {isTitleDefense ? (
-        <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-4 py-3">
-          <p className="text-sm text-(--earist-body-text)">
-            Numerical Oral Examination Criteria and Summary are not applicable
-            to Title Defense. The formal Chairman-recorded result and the
-            RAP / Committee Report remain the official outputs for this session.
-          </p>
-        </div>
-      ) : (
-        <>
+      {/* WF-C1b: evaluator Criteria + Oral Examination Summary for every stage */}
+      <>
           {/* Evaluation Results */}
           <Card>
             <CardHeader className="pb-3">
@@ -652,8 +642,7 @@ export default function AdminDefenseRecordDetailPage() {
               )}
             </CardContent>
           </Card>
-        </>
-      )}
+      </>
 
       {/* RAP / Committee Report */}
       <Card>

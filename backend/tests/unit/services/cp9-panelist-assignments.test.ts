@@ -113,7 +113,7 @@ describe("CP9 getPanelistAssignments evaluationStatus", () => {
     expect(rows[2].evaluationStatus).toBe("NONE");
   });
 
-  it("TITLE_DEFENSE + CHAIRMAN/PANELIST → NONE (no numerical evaluation)", async () => {
+  it("WF-C1b: TITLE_DEFENSE evaluators surface own status; Rapporteur → NONE", async () => {
     prismaMock.panelAssignment.findMany.mockResolvedValue([
       assignmentRow({
         role: "CHAIRMAN",
@@ -121,10 +121,16 @@ describe("CP9 getPanelistAssignments evaluationStatus", () => {
         oralExamScores: [{ panelId: "pa-1", status: "DRAFT" }],
       }),
       assignmentRow({ role: "PANELIST", defenseType: "TITLE_DEFENSE" }),
+      assignmentRow({
+        role: "RAPPORTEUR",
+        defenseType: "TITLE_DEFENSE",
+        oralExamScores: [{ panelId: "pa-1", status: "DRAFT" }],
+      }),
     ]);
     const rows = await repo.getPanelistAssignments("u1");
-    expect(rows[0].evaluationStatus).toBe("NONE");
-    expect(rows[1].evaluationStatus).toBe("NONE");
+    expect(rows[0].evaluationStatus).toBe("DRAFT");
+    expect(rows[1].evaluationStatus).toBe("NOT_STARTED");
+    expect(rows[2].evaluationStatus).toBe("NONE");
   });
 
   it("privacy: response has no other-evaluator criteria/recommendations/signatureData", async () => {

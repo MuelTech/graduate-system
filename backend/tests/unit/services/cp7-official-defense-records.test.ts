@@ -223,14 +223,76 @@ describe("CP7 Oral Examination Summary", () => {
     expect(createArgs.data.attestedById).toBeNull();
   });
 
-  it("rejects Title numerical Summary generation", async () => {
+  it("WF-C1b: Title Defense generates the Oral Examination Summary from finalized evaluators", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
     });
-    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
-      /Title Defense does not generate/i,
-    );
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+      { id: "p2", userId: "u2", role: "PANELIST", user: { id: "u2", firstName: "C", lastName: "D" } },
+      { id: "p3", userId: "u3", role: "PANELIST", user: { id: "u3", firstName: "E", lastName: "F" } },
+      { id: "p4", userId: "u4", role: "PANELIST", user: { id: "u4", firstName: "G", lastName: "H" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([
+      finalizedScore("p1"),
+      finalizedScore("p2"),
+      finalizedScore("p3"),
+      finalizedScore("p4"),
+      {
+        ...finalizedScore("rap"),
+        panel: { id: "rap", userId: "ur", role: "RAPPORTEUR", user: { id: "ur", firstName: "R", lastName: "P" } },
+      },
+    ]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: any) => ({
+      id: "sum-1",
+      ...args.data,
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1");
+    expect(result.created).toBe(true);
+    expect(result.evaluatorCount).toBe(4);
+    expect(result.finalRating).toBeNull();
+    const snapshot = prismaMock.oralExamSummary.create.mock.calls[0][0].data
+      .snapshotData;
+    expect(snapshot.defenseType).toBe("TITLE_DEFENSE");
+    expect(snapshot.evaluators).toHaveLength(4);
+    expect(
+      snapshot.evaluators.some((e: any) => e.functionalRole === "CHAIRMAN"),
+    ).toBe(true);
+    expect(
+      snapshot.evaluators.every((e: any) => e.functionalRole !== "RAPPORTEUR"),
+    ).toBe(true);
+  });
+
+  it("WF-C1b: Title detailed Summary read model is available (no Title rejection)", async () => {
+    const row = {
+      evaluatorName: "A B",
+      functionalRole: "CHAIRMAN",
+      groupIValue: 20,
+      groupIIValue: 16,
+      overallValue: 80,
+      rating: null,
+    };
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      ...scheduleBase,
+      defenseType: "TITLE_DEFENSE",
+      oralExamSummary: {
+        overallAverage: 80,
+        finalRating: null,
+        snapshotData: { evaluators: [row], evaluatorCount: 1 },
+        createdAt: new Date("2026-09-28T12:00:00Z"),
+      },
+    });
+    prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
+    prismaMock.oralExamScore.count.mockResolvedValue(1);
+
+    const result = await svc.getSummaryReadModel("sched-1");
+    expect(result.ready).toBe(true);
+    expect(result.defenseType).toBe("TITLE_DEFENSE");
+    expect(result.evaluators).toHaveLength(1);
+    expect(result.finalRating).toBeNull();
   });
 
   it("concurrency: unique race converges to one Summary", async () => {
@@ -333,7 +395,7 @@ describe("CP7 Rapporteur notes finalization", () => {
     });
   });
 
-  it("Test 10: Title Rapporteur finalizes notes → AWAITING_CONCLUSION, no Summary/outcome", async () => {
+  it("WF-C1b: Title Rapporteur finalization does not force AWAITING_CONCLUSION before evaluations finish", async () => {
     const titleSchedule = {
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
@@ -342,7 +404,7 @@ describe("CP7 Rapporteur notes finalization", () => {
     prismaMock.defenseSchedule.findUnique
       .mockResolvedValueOnce(titleSchedule)
       .mockResolvedValueOnce({
-        sessionStatus: "AWAITING_CONCLUSION",
+        sessionStatus: "IN_PROGRESS",
         rapporteurNotesFinalizedAt: new Date("2026-09-28T12:00:00Z"),
         rapporteurNotesFinalizedById: "user-r",
       });
@@ -355,7 +417,12 @@ describe("CP7 Rapporteur notes finalization", () => {
     prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
-    expect(result.sessionStatus).toBe("AWAITING_CONCLUSION");
+    expect(result.finalized).toBe(true);
+    // Session progression to AWAITING_CONCLUSION is owned by evaluator completion.
+    expect(result.sessionStatus).toBe("IN_PROGRESS");
+    const updateArgs = prismaMock.__tx.defenseSchedule.updateMany.mock.calls[0][0];
+    expect(updateArgs.data.sessionStatus).toBeUndefined();
+    expect(updateArgs.data.rapporteurNotesFinalizedById).toBe("user-r");
     expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
     expect(prismaMock.defenseConclusion.create).not.toHaveBeenCalled();
   });
@@ -772,6 +839,28 @@ describe("CP7 official Criteria eligibility", () => {
     expect(result.signatureData).toContain("data:image/png");
     expect(result.finalizedAt).toBeTruthy();
     expect(result.signedAt).toBeTruthy();
+  });
+
+  it("WF-C1b: Title finalized evaluator Criteria snapshot is available", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      ...scheduleBase,
+      defenseType: "TITLE_DEFENSE",
+    });
+    prismaMock.panelAssignment.findUnique.mockResolvedValue({
+      id: "p1",
+      scheduleId: "sched-1",
+      userId: "u1",
+      role: "PANELIST",
+      user: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
+    prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    expect(result.available).toBe(true);
+    expect(result.defenseType).toBe("TITLE_DEFENSE");
+    expect(result.functionalRole).toBe("PANELIST");
+    expect(result.signatureData).toContain("data:image/png");
   });
 
   it("rejects non-evaluator panel assignment for Criteria", async () => {

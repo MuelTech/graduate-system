@@ -207,17 +207,28 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
     expect(result.ready).toBe(true);
   });
 
-  it("Test 24: Title Summary detail → 400, no fabricated numerical content", async () => {
+  it("WF-C1b: Title Summary detail is available (no numerical N/A rejection)", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
-      panelAssignments: [],
-      oralExamSummary: null,
+      panelAssignments: [{ role: "CHAIRMAN" }],
+      oralExamSummary: {
+        overallAverage: 80,
+        finalRating: null,
+        createdAt: new Date(),
+        snapshotData: { evaluators: [] },
+      },
       conclusion: null,
     });
-    await expect(
-      svc.getSummaryReadModel("sched-1", { userId: "admin", role: "ADMIN" }),
-    ).rejects.toThrow(/Title Defense does not use numerical/i);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
+    prismaMock.oralExamScore.count.mockResolvedValue(1);
+    const result = await svc.getSummaryReadModel("sched-1", {
+      userId: "admin",
+      role: "ADMIN",
+    });
+    expect(result.ready).toBe(true);
+    expect(result.defenseType).toBe("TITLE_DEFENSE");
+    expect(result.finalRating).toBeNull();
   });
 });
 

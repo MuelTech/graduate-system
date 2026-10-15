@@ -12,9 +12,6 @@ import type {
   DashboardSignedRapSlotInput,
 } from "../services/panelist-dashboard.rules";
 
-const PROPOSAL_DEFENSE = "PROPOSAL_DEFENSE";
-const FINAL_DEFENSE = "FINAL_DEFENSE";
-
 /** Stored wall-clock date (`YYYY-MM-DD`) without timezone conversion. */
 function toWallDate(value: Date | string | null | undefined): string | null {
   if (!value) return null;
@@ -61,11 +58,10 @@ export class PanelistDashboardRepository {
 
     return rows.map((row) => {
       const defenseType = String(row.schedule?.defenseType ?? "");
-      const isNumerical =
-        defenseType === PROPOSAL_DEFENSE || defenseType === FINAL_DEFENSE;
       let evaluationStatus: DashboardAssignmentInput["evaluationStatus"] =
         "NONE";
-      if (isEvaluatorRole(String(row.role)) && isNumerical) {
+      // WF-C1b: Title, Proposal, and Final all carry evaluator records.
+      if (isEvaluatorRole(String(row.role), defenseType)) {
         const ownScore = row.oralExamScores?.[0] ?? null;
         evaluationStatus =
           ownScore?.status === "FINALIZED"

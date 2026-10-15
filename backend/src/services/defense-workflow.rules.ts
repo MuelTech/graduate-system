@@ -242,15 +242,13 @@ export function canRecordDefenseOutcome(input: {
  */
 
 /**
- * CP5: Proposal/Final require all evaluator evaluations FINALIZED.
- * Title Defense does not use Group I/II scores — always complete.
+ * WF-C1b: every defense stage (Title/Proposal/Final) requires all required
+ * evaluator evaluations FINALIZED. Title Defense is no longer exempt.
  */
 export function isScoringComplete(
   evaluatorAssignments: number,
   submittedEvaluatorScores: number,
-  defenseType?: string,
 ): boolean {
-  if (defenseType === "TITLE_DEFENSE") return true;
   return (
     evaluatorAssignments > 0 && submittedEvaluatorScores >= evaluatorAssignments
   );

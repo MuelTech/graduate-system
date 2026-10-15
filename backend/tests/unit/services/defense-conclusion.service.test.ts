@@ -115,118 +115,87 @@ describe("CP7 readiness gates", () => {
   });
 });
 
-describe("CP7 Title conclusion (verdict-only; no selected-title requirement)", () => {
-  it("Title PASSED without a selected title is allowed", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "AWAITING_CONCLUSION",
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
-      "PASSED",
-    );
+describe("WF-C1b Title conclusion (evaluators + Summary required; no selected title)", () => {
+  /**
+   * Title readiness after WF-C1b: awaiting conclusion + all evaluators finalized
+   * + Oral Summary exists. Rapporteur notes/RAP are NOT required yet (WF-C1c).
+   */
+  const titleReady = {
+    ...baseInput,
+    defenseType: "TITLE_DEFENSE",
+    sessionStatus: "AWAITING_CONCLUSION",
+    rapporteurNotesFinalized: false,
+    evaluatorAssignments: 5,
+    finalizedEvaluatorScores: 5,
+    oralSummaryExists: true,
+  };
+
+  it("Title PASSED allowed with finalized evaluators + Summary and no selected title", () => {
+    const result = validateConclusionPreconditions(titleReady, "PASSED");
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("PASSED");
   });
 
-  it("Title REDEFENSE_REQUIRED without a selected title is allowed", () => {
+  it("Title REDEFENSE_REQUIRED allowed under the same readiness", () => {
     const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "AWAITING_CONCLUSION",
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
+      titleReady,
       "REDEFENSE_REQUIRED",
     );
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("REDEFENSE_REQUIRED");
   });
 
-  it("pre-defense SCHEDULED Title cannot be formally concluded", () => {
+  it("Title conclusion requires all required evaluators finalized", () => {
     const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "SCHEDULED",
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
+      { ...titleReady, finalizedEvaluatorScores: 4 },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/evaluator/i);
+  });
+
+  it("Title conclusion requires the Oral Examination Summary", () => {
+    const result = validateConclusionPreconditions(
+      { ...titleReady, oralSummaryExists: false },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/Oral Examination Summary/i);
+  });
+
+  it("Title cannot conclude from IN_PROGRESS (must be AWAITING_CONCLUSION)", () => {
+    const result = validateConclusionPreconditions(
+      { ...titleReady, sessionStatus: "IN_PROGRESS" },
       "PASSED",
     );
     expect(result.ok).toBe(false);
     expect(result.statusCode).toBe(409);
   });
 
-  it("Title Chairman may conclude while Rapporteur notes are still draft (in progress)", () => {
+  it("pre-defense SCHEDULED Title cannot be formally concluded", () => {
     const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "IN_PROGRESS",
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
+      { ...titleReady, sessionStatus: "SCHEDULED" },
       "PASSED",
     );
-    expect(result.ok).toBe(true);
-    expect(result.outcome).toBe("PASSED");
-  });
-
-  it("Title Chairman may conclude from AWAITING_CONCLUSION as well", () => {
-    const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "AWAITING_CONCLUSION",
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
-      "PASSED",
-    );
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(409);
   });
 
   it("Title conclusion is rejected while the session is still UNSCHEDULED", () => {
     const result = validateConclusionPreconditions(
-      {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "UNSCHEDULED",
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
-      },
+      { ...titleReady, sessionStatus: "UNSCHEDULED" },
       "PASSED",
     );
     expect(result.ok).toBe(false);
     expect(result.statusCode).toBe(409);
   });
 
-  it("Title non-Chairman cannot conclude even with draft notes", () => {
+  it("Title non-Chairman cannot conclude even when otherwise ready", () => {
     const result = validateConclusionPreconditions(
       {
-        ...baseInput,
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "IN_PROGRESS",
+        ...titleReady,
         sessionRole: "PANELIST",
         isSessionChairman: false,
-        rapporteurNotesFinalized: false,
-        oralSummaryExists: false,
-        evaluatorAssignments: 0,
-        finalizedEvaluatorScores: 0,
       },
       "PASSED",
     );

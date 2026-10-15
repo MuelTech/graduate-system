@@ -89,55 +89,39 @@ export function validateConclusionPreconditions(
 
   const isTitle = String(input.defenseType) === "TITLE_DEFENSE";
 
-  if (isTitle) {
-    // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-    // independently of Rapporteur notes/RAP finalization. Scheduling alone does
-    // not mean the defense occurred, so the session must be in the active
-    // deliberation phase. Title has no Group I/II scoring, so evaluator
-    // completion and the Oral Exam Summary are not required.
-    const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
-    if (!titleActiveStatuses.includes(String(input.sessionStatus))) {
-      errors.push(
-        "Title Defense formal result may be recorded only after the defense has been started (in progress).",
-      );
-      return { ok: false, errors, outcome: null, statusCode: 409 };
-    }
-  } else {
-    if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
-      errors.push(
-        "Formal conclusion requires the session to be awaiting conclusion.",
-      );
-      return { ok: false, errors, outcome: null, statusCode: 409 };
-    }
-
-    if (!input.rapporteurNotesFinalized) {
-      errors.push(
-        "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
-      );
-      statusCode = 409;
-    }
-
-    if (
-      input.evaluatorAssignments <= 0 ||
-      input.finalizedEvaluatorScores < input.evaluatorAssignments
-    ) {
-      errors.push(
-        "All required evaluator evaluations must be finalized before formal conclusion.",
-      );
-      statusCode = 409;
-    }
-    if (!input.oralSummaryExists) {
-      errors.push(
-        "Oral Examination Summary must be generated from finalized evaluator records before formal conclusion.",
-      );
-      statusCode = 409;
-    }
+  // WF-C1b: every stage — including Title — may be formally concluded only from
+  // the awaiting-conclusion phase. Title reaches that phase once all required
+  // evaluators have finalized and the Oral Examination Summary is generated.
+  if (String(input.sessionStatus) !== "AWAITING_CONCLUSION") {
+    errors.push(
+      "Formal conclusion requires the session to be awaiting conclusion.",
+    );
+    return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  if (outcome === "PASSED" && isTitle) {
-    // 2026-10-15 correction: a PASSED Title Defense does NOT require or create a
-    // binding official selected title. The verdict is recorded independently of
-    // any structured title. A finalized title snapshot is not part of the verdict.
+  // Proposal/Final additionally require finalized Rapporteur notes. Title does
+  // not yet — RAP-before-conclusion is deferred to WF-C1c.
+  if (!isTitle && !input.rapporteurNotesFinalized) {
+    errors.push(
+      "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+    );
+    statusCode = 409;
+  }
+
+  if (
+    input.evaluatorAssignments <= 0 ||
+    input.finalizedEvaluatorScores < input.evaluatorAssignments
+  ) {
+    errors.push(
+      "All required evaluator evaluations must be finalized before formal conclusion.",
+    );
+    statusCode = 409;
+  }
+  if (!input.oralSummaryExists) {
+    errors.push(
+      "Oral Examination Summary must be generated from finalized evaluator records before formal conclusion.",
+    );
+    statusCode = 409;
   }
 
   return { ok: errors.length === 0, errors, outcome, statusCode };

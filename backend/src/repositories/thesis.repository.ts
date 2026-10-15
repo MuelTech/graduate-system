@@ -975,15 +975,13 @@ export class ThesisRepository {
           )
         : docs;
 
-      // CP9: own evaluation status from own assignment + own OralExamScore only.
-      // Title never uses Proposal/Final numerical evaluation. Non-evaluators: NONE.
+      // CP9 / WF-C1b: own evaluation status from own assignment + own
+      // OralExamScore only. Title, Proposal, and Final all use the shared
+      // evaluator lifecycle (CHAIRMAN + PANELIST). Non-evaluators: NONE.
       let evaluationStatus: "NOT_STARTED" | "DRAFT" | "FINALIZED" | "NONE" =
         "NONE";
-      const isNumerical =
-        defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE";
-      const isEvaluatorRole =
-        evaluatorRoles.includes(String(row.role)) && isNumerical;
-      if (isEvaluatorRole) {
+      const isEvaluatorAssignment = evaluatorRoles.includes(String(row.role));
+      if (isEvaluatorAssignment) {
         // oralExamScores relation is already scoped to this PanelAssignment.
         const ownScore = row.oralExamScores?.[0] ?? null;
         evaluationStatus =
@@ -1240,31 +1238,23 @@ export class ThesisRepository {
 
       const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
 
-      if (isTitle) {
-        // 2026-10-04 Title correction: the Chairman records the panel-agreed result
-        // independently of Rapporteur notes/RAP finalization. Scheduling alone does
-        // not mean the defense occurred; require the active deliberation phase.
-        const titleActiveStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
-        if (!titleActiveStatuses.includes(String(schedule.sessionStatus))) {
-          throw new AppError(
-            "Title Defense formal result may be recorded only after the defense has been started (in progress).",
-            409,
-          );
-        }
-      } else {
-        if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
-          throw new AppError(
-            "Formal conclusion requires the session to be awaiting conclusion.",
-            409,
-          );
-        }
-
-        if (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes) {
-          throw new AppError(
-            "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
-            409,
-          );
-        }
+      // WF-C1b: every stage may conclude only from AWAITING_CONCLUSION. Proposal/
+      // Final additionally require finalized Rapporteur notes; Title does not yet
+      // (RAP-before-conclusion is deferred to WF-C1c).
+      if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
+        throw new AppError(
+          "Formal conclusion requires the session to be awaiting conclusion.",
+          409,
+        );
+      }
+      if (
+        !isTitle &&
+        (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes)
+      ) {
+        throw new AppError(
+          "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+          409,
+        );
       }
 
       // RAP is generated once the conclusion exists AND the official minutes are
@@ -1315,35 +1305,34 @@ export class ThesisRepository {
       });
       const legacySelectedTitleId = attemptTitle.selectedTitleId;
 
-      // Proposal/Final: require evaluator completion + existing Summary.
-      if (!isTitle) {
-        // CP7-FIX1 Issue 9: centralized evaluator-role policy.
-        const evaluatorRoles = new DefenseCommitteePolicy()
-          .getEvaluatorRoles(schedule.defenseType as never)
-          .map(String);
-        const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
-          evaluatorRoles.includes(String(p.role)),
+      // WF-C1b: every stage — including Title — requires evaluator completion and
+      // an existing Oral Examination Summary before formal conclusion.
+      // CP7-FIX1 Issue 9: centralized evaluator-role policy.
+      const evaluatorRoles = new DefenseCommitteePolicy()
+        .getEvaluatorRoles(schedule.defenseType as never)
+        .map(String);
+      const evaluatorAssignments = schedule.panelAssignments.filter((p) =>
+        evaluatorRoles.includes(String(p.role)),
+      );
+      const finalized = schedule.oralExamScores.filter(
+        (s) =>
+          s.status === "FINALIZED" &&
+          evaluatorAssignments.some((a) => a.id === s.panelId),
+      );
+      if (
+        evaluatorAssignments.length === 0 ||
+        finalized.length < evaluatorAssignments.length
+      ) {
+        throw new AppError(
+          "All required evaluator evaluations must be finalized before formal conclusion.",
+          409,
         );
-        const finalized = schedule.oralExamScores.filter(
-          (s) =>
-            s.status === "FINALIZED" &&
-            evaluatorAssignments.some((a) => a.id === s.panelId),
+      }
+      if (!schedule.oralExamSummary) {
+        throw new AppError(
+          "Oral Examination Summary must exist before formal conclusion.",
+          409,
         );
-        if (
-          evaluatorAssignments.length === 0 ||
-          finalized.length < evaluatorAssignments.length
-        ) {
-          throw new AppError(
-            "All required evaluator evaluations must be finalized before formal conclusion.",
-            409,
-          );
-        }
-        if (!schedule.oralExamSummary) {
-          throw new AppError(
-            "Oral Examination Summary must exist before formal conclusion.",
-            409,
-          );
-        }
       }
 
       // Attempt-bound title context only — never the thesis-global isSelected.

@@ -9,7 +9,6 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
-import { isNumericalDefenseType } from "./official-defense-record.service";
 import { RapReportService } from "./rap-report.service";
 
 const committeePolicy = new DefenseCommitteePolicy();
@@ -111,8 +110,6 @@ export class RapporteurFinalizationService {
     }
 
     const finalizedAt = new Date();
-    const isTitleStillActive =
-      isTitle && schedule.sessionStatus === "IN_PROGRESS";
 
     await prisma.$transaction(async (tx) => {
       const result = await tx.defenseSchedule.updateMany({
@@ -134,9 +131,9 @@ export class RapporteurFinalizationService {
         data: {
           rapporteurNotesFinalizedAt: finalizedAt,
           rapporteurNotesFinalizedById: userId,
-          ...(isTitleStillActive
-            ? { sessionStatus: "AWAITING_CONCLUSION" as never }
-            : {}),
+          // WF-C1b: Title minutes finalization never forces AWAITING_CONCLUSION.
+          // That state is owned solely by evaluator-completion recomputation, so a
+          // Rapporteur cannot close the session before the panel finishes scoring.
         },
       });
 
@@ -187,5 +184,3 @@ export class RapporteurFinalizationService {
     }
   }
 }
-
-export { isNumericalDefenseType };

@@ -187,7 +187,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
     expect(ws.rapporteurDraft?.notes).toBe("draft notes");
   });
 
-  it("Test 5/6: FACILITATOR and Title cannot evaluate", async () => {
+  it("Test 5: FACILITATOR cannot evaluate", async () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pa-fac",
       scheduleId: "sched-1",
@@ -196,30 +196,59 @@ describe("DefenseWorkspaceService (CP6)", () => {
     });
     const fac = await svc.getWorkspace("sched-1", "u-fac");
     expect(fac.capabilities.canEvaluate).toBe(false);
+  });
 
+  it("WF-C1b: Title Chairman + Panelist are evaluators; Rapporteur/Facilitator are not", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({ defenseType: "TITLE_DEFENSE" }),
+      scheduleRow({ defenseType: "TITLE_DEFENSE", sessionStatus: "IN_PROGRESS" }),
     );
+
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pa-eval",
       scheduleId: "sched-1",
       userId: "u-eval",
       role: "PANELIST",
     });
-    const title = await svc.getWorkspace("sched-1", "u-eval");
-    expect(title.capabilities.canEvaluate).toBe(false);
-    expect(title.proposedTitles.length).toBeGreaterThan(0);
-    expect(title.capabilities.canViewTitleChairmanResult).toBe(false);
+    const panelist = await svc.getWorkspace("sched-1", "u-eval");
+    expect(panelist.capabilities.canEvaluate).toBe(true);
+    expect(panelist.evaluationStatus).toBe("DRAFT");
+    expect(panelist.evaluationProgress.evaluatorAssignments).toBe(1);
+    expect(panelist.evaluationProgress.finalizedEvaluations).toBe(0);
+    expect(
+      panelist.roster.find((r) => r.userId === "u-eval")?.evaluationStatus,
+    ).toBe("DRAFT");
+    expect(panelist.proposedTitles.length).toBeGreaterThan(0);
+    expect(panelist.capabilities.canViewTitleChairmanResult).toBe(false);
 
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pa-chair",
       scheduleId: "sched-1",
-      userId: "u-eval",
+      userId: "u-chair",
       role: "CHAIRMAN",
     });
-    const titleChair = await svc.getWorkspace("sched-1", "u-eval");
-    expect(titleChair.capabilities.canViewTitleChairmanResult).toBe(true);
-    expect(titleChair.capabilities.canViewTitleDeliberation).toBe(true);
+    const chair = await svc.getWorkspace("sched-1", "u-chair");
+    expect(chair.capabilities.canEvaluate).toBe(true);
+    expect(chair.capabilities.canViewTitleChairmanResult).toBe(true);
+    expect(chair.capabilities.canViewTitleDeliberation).toBe(true);
+
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-rap",
+      scheduleId: "sched-1",
+      userId: "u-rap",
+      role: "RAPPORTEUR",
+    });
+    const rap = await svc.getWorkspace("sched-1", "u-rap");
+    expect(rap.capabilities.canEvaluate).toBe(false);
+    expect(rap.evaluationStatus).toBe("NONE");
+
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-fac",
+      scheduleId: "sched-1",
+      userId: "u-fac",
+      role: "FACILITATOR",
+    });
+    const fac = await svc.getWorkspace("sched-1", "u-fac");
+    expect(fac.capabilities.canEvaluate).toBe(false);
   });
 
   it("Test 8: notes updateMany count=0 → 409", async () => {
@@ -315,7 +344,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
     expect(titleWs.documents.map((d) => d.id)).toEqual(["d-title"]);
   });
 
-  it("2026-10-04: Title Chairman records result with draft notes in the active phase (no evaluator gate)", async () => {
+  it("WF-C1b: Title Chairman cannot record a result before evaluations + Summary are ready", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({
         defenseType: "TITLE_DEFENSE",
@@ -330,11 +359,33 @@ describe("DefenseWorkspaceService (CP6)", () => {
       role: "CHAIRMAN",
     });
     const ws = await svc.getWorkspace("sched-1", "u-chair");
-    expect(ws.capabilities.canRecordFormalResult).toBe(true);
+    expect(ws.capabilities.canRecordFormalResult).toBe(false);
     expect(ws.capabilities.canStartTitleDefense).toBe(false);
-    // Title has no numerical evaluator-completion gate.
-    expect(ws.evaluationProgress.evaluatorAssignments).toBe(0);
+    // Title now has a real evaluator-completion gate.
+    expect(ws.evaluationProgress.evaluatorAssignments).toBe(1);
     expect(ws.evaluationProgress.finalizedEvaluations).toBe(0);
+  });
+
+  it("WF-C1b: Title Chairman may record a result once evaluators finalize and Summary exists", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "AWAITING_CONCLUSION",
+        rapporteurNotesFinalizedAt: null,
+        oralExamScores: [{ panelId: "pa-eval", status: "FINALIZED" }],
+        oralExamSummary: { id: "sum-1", overallAverage: 80, finalRating: null },
+      }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-chair",
+      role: "CHAIRMAN",
+    });
+    const ws = await svc.getWorkspace("sched-1", "u-chair");
+    expect(ws.capabilities.canRecordFormalResult).toBe(true);
+    expect(ws.evaluationProgress.finalizedEvaluations).toBe(1);
+    expect(ws.oralSummary?.ready).toBe(true);
   });
 
   it("2026-10-04: scheduled Title exposes start capability but not conclusion readiness", async () => {
