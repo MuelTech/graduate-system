@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
+import { DefenseCollaborationController } from "../controllers/defense-collaboration.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
 import { secureUpload } from "../middlewares/upload.middleware";
 
 const router = Router();
 const thesisController = new ThesisController();
+const defenseCollaborationController = new DefenseCollaborationController();
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -493,6 +495,53 @@ router.post(
   authenticateJWT,
   requireRole(["PANELIST"]),
   thesisController.finalizeRapporteurNotes,
+);
+
+// CDW-1: Collaborative Defense Workspace foundation — manuscript annotations,
+// comment threads, committee report body, report freeze, conclusion readiness.
+// Account-level PANELIST guard only; the exact schedule assignment + document
+// binding remain authoritative inside DefenseCollaborationService.
+router.get(
+  "/defense/:scheduleId/collaboration/annotations",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getCollaborationAnnotations,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/annotations",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.createCollaborationAnnotation,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/annotations/:annotationId/comments",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.createAnnotationComment,
+);
+router.get(
+  "/defense/:scheduleId/collaboration/report",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getCommitteeReport,
+);
+router.put(
+  "/defense/:scheduleId/collaboration/report",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.saveCommitteeReportDraft,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/report/freeze",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.freezeCommitteeReport,
+);
+router.get(
+  "/defense/:scheduleId/collaboration/conclusion-readiness",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getConclusionReadiness,
 );
 
 // CP7: Official Criteria (ADMIN or owning evaluator)
