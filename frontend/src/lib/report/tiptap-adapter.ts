@@ -63,10 +63,12 @@ function blockToTiptap(node: ReportBlockNode): TiptapNode {
       type: "paragraph",
       content: (node.content ?? []).map(inlineToTiptap),
     };
-    // Preservation only: canonical textAlign / indentLevel must not be dropped.
+    // Preservation only: canonical paragraph attrs must not be dropped.
     const attrs: Record<string, unknown> = {};
     if (node.attrs?.textAlign) attrs.textAlign = node.attrs.textAlign;
     if (node.attrs?.indentLevel) attrs.indentLevel = node.attrs.indentLevel;
+    if (node.attrs?.fontSizePt) attrs.fontSizePt = node.attrs.fontSizePt;
+    if (node.attrs?.lineSpacing) attrs.lineSpacing = node.attrs.lineSpacing;
     if (Object.keys(attrs).length > 0) out.attrs = attrs;
     return out;
   }

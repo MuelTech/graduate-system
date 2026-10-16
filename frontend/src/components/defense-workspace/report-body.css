@@ -38,7 +38,7 @@
   max-width: 800px;
   margin: 0 auto;
   background-color: #ffffff;
-  color: #2b2f36;
+  color: #000000;
   border: 1px solid var(--earist-border-gray);
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
@@ -55,10 +55,14 @@
 /* 3. Document typography ------------------------------------------------- */
 
 .cdwReportBody {
-  color: #2b2f36;
-  line-height: 1.7;
+  /* Institutional academic document defaults: Arial, black, 12 pt, 1.5 spacing.
+   * The surrounding workspace/dashboard keeps its own EARIST typography. */
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000000;
+  font-size: 12pt;
+  line-height: 1.5;
   /* One indentation step per canonical indentLevel (presentation only). */
-  --cdw-indent-step: 1.5rem;
+  --cdw-indent-step: 1.5em;
 }
 
 .cdwReportBody > :first-child {
@@ -76,25 +80,25 @@
 .cdwReportBody h1,
 .cdwReportBody h2,
 .cdwReportBody h3 {
-  color: #1c1f24;
+  color: #000000;
   line-height: 1.3;
 }
 
 .cdwReportBody h1 {
-  font-size: 1.5rem;
+  font-size: 14pt;
   font-weight: 700;
   margin: 1.6em 0 0.6em;
 }
 
 .cdwReportBody h2 {
-  font-size: 1.25rem;
+  font-size: 13pt;
   font-weight: 700;
   margin: 1.4em 0 0.5em;
 }
 
 .cdwReportBody h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 12pt;
+  font-weight: 700;
   margin: 1.2em 0 0.4em;
 }
 
@@ -159,9 +163,38 @@
   margin-left: calc(var(--cdw-indent-step) * 6);
 }
 
+/* 3c. Controlled paragraph font size + line spacing ------------------------
+ * Both the editor (ProseMirror renderHTML) and the read-only renderer emit the
+ * same data attributes. When absent, the document defaults (12 pt / 1.5) apply. */
+.cdwReportBody p[data-font-size-pt="11"] {
+  font-size: 11pt;
+}
+.cdwReportBody p[data-font-size-pt="12"] {
+  font-size: 12pt;
+}
+
+.cdwReportBody p[data-line-spacing="1"] {
+  line-height: 1;
+}
+.cdwReportBody p[data-line-spacing="1.15"] {
+  line-height: 1.15;
+}
+.cdwReportBody p[data-line-spacing="1.5"] {
+  line-height: 1.5;
+}
+.cdwReportBody p[data-line-spacing="2"] {
+  line-height: 2;
+}
+.cdwReportBody p[data-line-spacing="2.5"] {
+  line-height: 2.5;
+}
+.cdwReportBody p[data-line-spacing="3"] {
+  line-height: 3;
+}
+
 @media (max-width: 640px) {
   .cdwReportBody {
-    --cdw-indent-step: 1rem;
+    --cdw-indent-step: 1em;
   }
 }
 

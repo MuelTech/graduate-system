@@ -306,3 +306,128 @@ describe("paragraph indentation (CDW-5 authoring ergonomics)", () => {
     expect(canonical.content[1].attrs).toBeUndefined();
   });
 });
+
+describe("controlled academic formatting (CDW-5 Word-like formatting)", () => {
+  const paragraphWith = (attrs: unknown) => ({
+    type: "doc",
+    content: [{ type: "paragraph", attrs, content: [{ type: "text", text: "x" }] }],
+  });
+
+  it("accepts fontSizePt 11 and 12", () => {
+    expect(validateReportDocument(paragraphWith({ fontSizePt: 11 })).ok).toBe(true);
+    expect(validateReportDocument(paragraphWith({ fontSizePt: 12 })).ok).toBe(true);
+  });
+
+  it("rejects unsupported font sizes (10, 13)", () => {
+    expect(validateReportDocument(paragraphWith({ fontSizePt: 10 })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ fontSizePt: 13 })).ok).toBe(false);
+  });
+
+  it("rejects a string font size", () => {
+    expect(validateReportDocument(paragraphWith({ fontSizePt: "11" })).ok).toBe(false);
+  });
+
+  it("rejects an unsupported decimal font size", () => {
+    expect(validateReportDocument(paragraphWith({ fontSizePt: 11.5 })).ok).toBe(false);
+  });
+
+  it("accepts every supported line spacing", () => {
+    for (const lineSpacing of [1, 1.15, 1.5, 2, 2.5, 3]) {
+      expect(validateReportDocument(paragraphWith({ lineSpacing })).ok).toBe(true);
+    }
+  });
+
+  it("rejects unsupported line spacing values", () => {
+    expect(validateReportDocument(paragraphWith({ lineSpacing: 1.2 })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ lineSpacing: 2.25 })).ok).toBe(false);
+  });
+
+  it("rejects a string line spacing", () => {
+    expect(validateReportDocument(paragraphWith({ lineSpacing: "1.5" })).ok).toBe(false);
+  });
+
+  it("rejects a negative line spacing", () => {
+    expect(validateReportDocument(paragraphWith({ lineSpacing: -1 })).ok).toBe(false);
+  });
+
+  it("accepts textAlign + indentLevel + fontSizePt + lineSpacing together", () => {
+    const doc = paragraphWith({
+      textAlign: "justify",
+      indentLevel: 2,
+      fontSizePt: 11,
+      lineSpacing: 1.5,
+    });
+    expect(validateReportDocument(doc).ok).toBe(true);
+    expect(canonicalizeReportDocument(doc).content[0].attrs).toEqual({
+      textAlign: "justify",
+      indentLevel: 2,
+      fontSizePt: 11,
+      lineSpacing: 1.5,
+    });
+  });
+
+  it("emits paragraph attrs in a fixed deterministic order", () => {
+    const canonical = canonicalizeReportDocument(
+      paragraphWith({ lineSpacing: 2, fontSizePt: 11, indentLevel: 1, textAlign: "center" }),
+    );
+    expect(Object.keys(canonical.content[0].attrs as object)).toEqual([
+      "textAlign",
+      "indentLevel",
+      "fontSizePt",
+      "lineSpacing",
+    ]);
+  });
+
+  it("rejects fontSizePt on a heading", () => {
+    expect(
+      validateReportDocument({
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 2, fontSizePt: 11 }, content: [{ type: "text", text: "H" }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects lineSpacing on a heading", () => {
+    expect(
+      validateReportDocument({
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 2, lineSpacing: 1.5 }, content: [{ type: "text", text: "H" }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("still fails closed on unknown paragraph attrs", () => {
+    expect(validateReportDocument(paragraphWith({ fontFamily: "Arial" })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ color: "#000" })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ fontWeight: 700 })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ style: "font-size: 11pt" })).ok).toBe(false);
+  });
+
+  it("canonical serialization is deterministic regardless of input attr key order", () => {
+    const a = paragraphWith({ fontSizePt: 11, lineSpacing: 2, textAlign: "justify" });
+    const b = paragraphWith({ textAlign: "justify", lineSpacing: 2, fontSizePt: 11 });
+    expect(serializeReportDocument(a)).toBe(serializeReportDocument(b));
+    expect(hashReportDocument(a)).toBe(hashReportDocument(b));
+  });
+
+  it("changes the hash when the size or spacing changes", () => {
+    expect(hashReportDocument(paragraphWith({ fontSizePt: 11 }))).not.toBe(
+      hashReportDocument(paragraphWith({ fontSizePt: 12 })),
+    );
+    expect(hashReportDocument(paragraphWith({ lineSpacing: 1 }))).not.toBe(
+      hashReportDocument(paragraphWith({ lineSpacing: 1.5 })),
+    );
+  });
+
+  it("keeps pre-existing documents without the new attrs valid and unchanged", () => {
+    expect(validateReportDocument(VALID_DOC).ok).toBe(true);
+    // No new attrs are injected for content that never used them.
+    expect(canonicalizeReportDocument(VALID_DOC).content[1].attrs).toBeUndefined();
+    const legacy = paragraphWith({ textAlign: "center" });
+    expect(canonicalizeReportDocument(legacy).content[0].attrs).toEqual({ textAlign: "center" });
+  });
+});

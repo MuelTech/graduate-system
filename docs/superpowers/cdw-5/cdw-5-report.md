@@ -207,3 +207,90 @@ own passes.)
 
 **NO NEW DATABASE MIGRATION** — `RapReport.bodyDocument` already stores
 structured JSON.
+
+## CDW-5 Word-like academic formatting — controlled typography, alignment, line spacing
+
+Brings the authoring experience closer to the Rapporteur's Word academic
+workflow, without building a full word processor. The report model stays
+structured, bounded, deterministic, and safe for Preview/read-only and a future
+official PDF renderer. **No database migration.**
+
+**Document defaults (system-owned, not authored values)**
+
+- **Font family:** the document body uses a fixed `Arial, Helvetica, sans-serif`
+  stack (`report-body.css`); the toolbar shows a static, non-selectable "Arial"
+  field. No custom fonts and no multi-font picker.
+- **Color:** document body text, headings, and list text are `#000000`. EARIST
+  branding remains on the surrounding application UI only — there is no color
+  picker.
+- **Default size:** 12 pt (the previous 16px body equals 12 pt). A stored
+  paragraph may set 11 pt.
+- **Default line spacing:** 1.5. Both defaults apply when a paragraph carries no
+  explicit attribute, so pre-existing content renders unchanged.
+
+**Controlled font size and line spacing**
+
+- Paragraph attrs gained `fontSizePt: 11 | 12` and
+  `lineSpacing: 1 | 1.15 | 1.5 | 2 | 2.5 | 3`. Only semantic, bounded numbers
+  are stored — never CSS strings, pixel values, colors, or font families.
+- The toolbar exposes a compact **font-size selector (11/12)** and a
+  **line-spacing dropdown** (1.0, 1.15, 1.5, 2.0, 2.5, 3.0), applied to the
+  whole paragraph (block-level, applied to all compatible paragraphs in a
+  multi-paragraph selection via `updateAttributes`). No per-character font-size
+  marks are created.
+- Headings stay semantic (`level`, `textAlign`) and are **not** size- or
+  spacing-controlled; their presentation is defined in CSS.
+
+**Alignment controls**
+
+- The four canonical alignments — Align left, Align center, Align right, Justify
+  — are exposed in the toolbar, reusing the existing `@tiptap/extension-text-align`
+  and the existing canonical `textAlign` field. No new alignments were added.
+
+**Canonical model + validation**
+
+- Paragraph attrs remain a closed allow-list: `textAlign`, `indentLevel`,
+  `fontSizePt`, `lineSpacing`. Unknown attrs still fail closed.
+- `report-body.rules.ts` validates `fontSizePt` as exactly 11 or 12 and
+  `lineSpacing` as exactly one of 1/1.15/1.5/2/2.5/3; strings, decimals, NaN,
+  and out-of-range values are rejected; headings reject both.
+- Canonicalization emits a fixed attr order —
+  `textAlign` → `indentLevel` → `fontSizePt` → `lineSpacing` — so hashing stays
+  deterministic. Documents that never used the new attrs canonicalize and hash
+  exactly as before.
+
+**Tiptap boundary + persistence**
+
+- A small local extension (`report-paragraph-formatting.ts`) adds the bounded
+  `fontSizePt` / `lineSpacing` attributes to paragraphs and exposes
+  `setReportFontSize` / `setReportLineSpacing`. The adapter round-trips all four
+  paragraph attrs (`textAlign`, `indentLevel`, `fontSizePt`, `lineSpacing`)
+  plus marks, so formatting survives Editor → Save → reload.
+
+**Preview / read-only parity**
+
+- The editor emits `data-font-size-pt` / `data-line-spacing` (alongside
+  `data-indent-level`) via `renderHTML`; the read-only renderer emits the same
+  attributes. Both are styled by the shared `.cdwReportBody
+  p[data-font-size-pt]` / `p[data-line-spacing]` rules, so the Editor, Preview
+  Report, and the Chairman/Panelist read-only view render the same Arial, black,
+  11/12 pt, line-spaced, aligned, indented document. CSS `pt` is used for
+  fidelity; no pixel values are stored.
+
+**Not pagination.** The editor remains one continuous document canvas. No page
+size, page splitting, page-break node, print CSS, or PDF generation was added.
+
+**Deferred (unchanged):** arbitrary fonts, arbitrary sizes, color picker,
+highlight, super/subscript, tables, images, page numbers, true pagination, the
+official GS Form No. 22 renderer, signatures, RAP-C1, and WebSocket.
+
+**Verification (Word-like formatting):** backend `npx prisma validate` +
+`npx prisma generate` + `npm run build` + full `npx vitest run` — 134 files /
+1438 passed / 5 skipped (`report-body.rules.test.ts` now 50). Frontend: 138
+assertions across the 7 verify scripts (`verify-cdw5-report` now 52) +
+`npx tsc --noEmit` + scoped `eslint` + `npm run build` — all clean. (The
+118/120/127 totals in the earlier CDW-5 sections are historical snapshots from
+their own passes.)
+
+**NO NEW DATABASE MIGRATION** — `RapReport.bodyDocument` already stores
+structured JSON.

@@ -30,6 +30,7 @@ const TOOLBAR = "src/components/defense-workspace/report-editor-toolbar.tsx";
 const VIEW = "src/components/defense-workspace/report-document-view.tsx";
 const CSS = "src/components/defense-workspace/report-body.css";
 const INDENT = "src/components/defense-workspace/report-paragraph-indent.ts";
+const FORMATTING = "src/components/defense-workspace/report-paragraph-formatting.ts";
 const PANEL = "src/components/defense-workspace/committee-report-panel.tsx";
 const BRIDGE = "src/components/defense-workspace/report-composer-context.tsx";
 const RAIL = "src/components/defense-workspace/shared-comments-rail.tsx";
@@ -502,6 +503,124 @@ test("the editor implements semantic Tab / Shift+Tab indentation", () => {
   assert.match(e, /ReportParagraphIndent/);
 });
 
+// ---- Word-like academic formatting (CDW-5) --------------------------------
+
+test("canonical 11pt and 12pt survive canonical → Tiptap → canonical", () => {
+  for (const fontSizePt of [11, 12]) {
+    const canonical = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { fontSizePt },
+          content: [{ type: "text", text: "x", marks: [] }],
+        },
+      ],
+    };
+    assert.equal(toTiptapDocument(canonical).content[0].attrs.fontSizePt, fontSizePt);
+    assert.deepEqual(fromTiptapDocument(toTiptapDocument(canonical)), canonical);
+  }
+});
+
+test("unsupported font sizes never become canonical content", () => {
+  for (const bad of [10, 13, 11.5, "11", null, true]) {
+    const normalized = normalizeReportDocument({
+      type: "doc",
+      content: [
+        { type: "paragraph", attrs: { fontSizePt: bad }, content: [{ type: "text", text: "x" }] },
+      ],
+    });
+    assert.equal(normalized.content[0].attrs, undefined, `fontSizePt ${String(bad)} must be dropped`);
+  }
+});
+
+test("every supported line spacing survives canonical → Tiptap → canonical", () => {
+  for (const lineSpacing of [1, 1.15, 1.5, 2, 2.5, 3]) {
+    const canonical = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { lineSpacing },
+          content: [{ type: "text", text: "x", marks: [] }],
+        },
+      ],
+    };
+    assert.equal(toTiptapDocument(canonical).content[0].attrs.lineSpacing, lineSpacing);
+    assert.deepEqual(fromTiptapDocument(toTiptapDocument(canonical)), canonical);
+  }
+});
+
+test("invalid line spacing never becomes canonical content", () => {
+  for (const bad of [1.2, 2.25, 0, -1, "1.5", null]) {
+    const normalized = normalizeReportDocument({
+      type: "doc",
+      content: [
+        { type: "paragraph", attrs: { lineSpacing: bad }, content: [{ type: "text", text: "x" }] },
+      ],
+    });
+    assert.equal(normalized.content[0].attrs, undefined, `lineSpacing ${String(bad)} must be dropped`);
+  }
+});
+
+test("alignment + size + spacing + indent + marks survive together", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "justify", indentLevel: 1, fontSizePt: 11, lineSpacing: 1.5 },
+        content: [{ type: "text", text: "x", marks: ["bold", "italic", "underline"] }],
+      },
+    ],
+  };
+  assert.deepEqual(fromTiptapDocument(toTiptapDocument(canonical)), canonical);
+});
+
+test("the read-only renderer emits the same paragraph formatting semantics", () => {
+  const v = read(VIEW);
+  assert.match(v, /data-indent-level/);
+  assert.match(v, /data-font-size-pt/);
+  assert.match(v, /data-line-spacing/);
+  assert.match(v, /textAlign: align/);
+  // No arbitrary style/pixel formatting in the renderer.
+  assert.doesNotMatch(v, /fontSize:|lineHeight:|marginLeft|fontFamily/);
+});
+
+test("the document body uses the fixed Arial font stack", () => {
+  const css = read(CSS);
+  assert.match(css, /font-family:\s*Arial,\s*Helvetica,\s*sans-serif/);
+});
+
+test("the document body text is black (no leftover web-gray document colors)", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /\.cdwReportBody\s*\{[^}]*color:\s*#000000/is);
+  assert.doesNotMatch(css, /#2b2f36|#1c1f24/i);
+});
+
+test("the document CSS maps the bounded sizes and line spacings", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /p\[data-font-size-pt="11"\]/);
+  assert.match(css, /p\[data-font-size-pt="12"\]/);
+  for (const spacing of ["1", "1.15", "1.5", "2", "2.5", "3"]) {
+    assert.match(css, new RegExp(`p\\[data-line-spacing="${spacing.replace(".", "\\.")}"\\]`));
+  }
+  // Bounded: no unapproved spacing selector exists.
+  assert.doesNotMatch(css, /data-line-spacing="(?:1\.2|2\.25|0|4)"/);
+});
+
+test("the editor implements controlled paragraph font size + line spacing", () => {
+  const formatting = read(FORMATTING);
+  assert.match(formatting, /setReportFontSize/);
+  assert.match(formatting, /setReportLineSpacing/);
+  assert.match(formatting, /REPORT_FONT_SIZES_PT\s*=\s*\[11,\s*12\]/);
+  assert.match(formatting, /REPORT_LINE_SPACINGS\s*=\s*\[1,\s*1\.15,\s*1\.5,\s*2,\s*2\.5,\s*3\]/);
+  // No CSS strings / colors / fonts persisted from the extension.
+  assert.doesNotMatch(formatting, /font-size:|line-height:|fontFamily|#000/i);
+  // Registered by the editor.
+  assert.match(read(EDITOR), /ReportParagraphFormatting/);
+});
+
 // ---- Dependency + file contracts ------------------------------------------
 
 test("the rich-text editor dependency is present and minimal", () => {
@@ -533,7 +652,7 @@ test("the editor is configured to exactly the canonical document model", () => {
   assert.doesNotMatch(e, /dangerouslySetInnerHTML/);
 });
 
-test("the editor preserves canonical alignment (TextAlign) without exposing alignment controls", () => {
+test("the editor uses the canonical TextAlign extension and exposes the four alignment controls", () => {
   const pkg = JSON.parse(read(PKG));
   assert.ok(
     pkg.dependencies["@tiptap/extension-text-align"],
@@ -542,12 +661,28 @@ test("the editor preserves canonical alignment (TextAlign) without exposing alig
   const e = read(EDITOR);
   assert.match(e, /@tiptap\/extension-text-align/);
   assert.match(e, /TextAlign\.configure\(\{\s*types:\s*\["heading",\s*"paragraph"\]\s*\}\)/);
-  // No alignment toolbar buttons were added (preservation only).
   const t = read(TOOLBAR);
-  assert.doesNotMatch(
-    t,
-    /textAlign|setTextAlign|AlignLeft|AlignCenter|AlignRight|AlignJustify/i,
-  );
+  assert.match(t, /setTextAlign/);
+  for (const label of ["Align left", "Align center", "Align right", "Justify"]) {
+    assert.match(t, new RegExp(label), `${label} control expected`);
+  }
+  // Only the four canonical alignments (no vertical/other alignment features).
+  assert.doesNotMatch(t, /AlignTop|AlignBottom|AlignStart|AlignEnd|setTextDirection/i);
+});
+
+test("the toolbar offers only a fixed Arial field and bounded selectors", () => {
+  const t = read(TOOLBAR);
+  // Arial is displayed as a fixed document font, never a selectable picker.
+  assert.match(t, /Arial/);
+  assert.doesNotMatch(t, /fontFamily|font-family|type="color"|textColor|setColor/i);
+  // Font size: only 11 and 12.
+  assert.match(t, /FONT_SIZES_PT\s*=\s*\[11,\s*12\]/);
+  assert.match(t, /setReportFontSize/);
+  // Line spacing: only the approved values.
+  for (const label of ["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"]) {
+    assert.match(t, new RegExp(label.replace(".", "\\.")), `spacing ${label} expected`);
+  }
+  assert.match(t, /setReportLineSpacing/);
 });
 
 test("the toolbar exposes the required, accessible controls with pressed state", () => {
@@ -564,8 +699,14 @@ test("the toolbar exposes the required, accessible controls with pressed state",
     "Bold",
     "Italic",
     "Underline",
+    "Align left",
+    "Align center",
+    "Align right",
+    "Justify",
     "Bullet list",
     "Numbered list",
+    "Font size",
+    "Line spacing",
   ]) {
     assert.match(t, new RegExp(label), `${label} control expected`);
   }
@@ -632,7 +773,7 @@ test("the report panel gates authoring on canEditBody and offers read-only other
 
 test("no official-form / PDF / print implementation exists in this phase", () => {
   const combined =
-    read(PANEL) + read(VIEW) + read(EDITOR) + read(TOOLBAR);
+    read(PANEL) + read(VIEW) + read(EDITOR) + read(TOOLBAR) + read(FORMATTING);
   assert.doesNotMatch(combined, /jsPDF|@react-pdf|html2canvas|window\.print|@media\s+print/i);
   assert.doesNotMatch(combined, /GS Form No\. 22|GS-022|Official Form Renderer/i);
 });

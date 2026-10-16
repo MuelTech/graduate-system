@@ -57,10 +57,14 @@ function Block({ node }: { node: ReportBlockNode }) {
   if (node.type === "paragraph") {
     const align = node.attrs?.textAlign;
     const indent = node.attrs?.indentLevel;
+    const fontSizePt = node.attrs?.fontSizePt;
+    const lineSpacing = node.attrs?.lineSpacing;
     return (
       <p
         style={align ? { textAlign: align } : undefined}
         data-indent-level={indent ? String(indent) : undefined}
+        data-font-size-pt={fontSizePt ? String(fontSizePt) : undefined}
+        data-line-spacing={lineSpacing ? String(lineSpacing) : undefined}
       >
         <InlineList nodes={node.content ?? []} />
       </p>
@@ -92,7 +96,7 @@ export function ReportDocumentView({
     return <p className="text-[15px] text-(--earist-body-text)">{emptyLabel}</p>;
   }
   return (
-    <div className={"cdwReportBody text-[16px] " + (className ?? "")}>
+    <div className={"cdwReportBody " + (className ?? "")}>
       {blocks.map((node, index) => (
         <Block key={index} node={node} />
       ))}

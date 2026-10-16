@@ -33,6 +33,7 @@ import { fromTiptapDocument, toTiptapDocument } from "@/lib/report/tiptap-adapte
 
 import { ReportEditorToolbar } from "./report-editor-toolbar";
 import { ReportDocumentCanvas } from "./report-document-view";
+import { ReportParagraphFormatting } from "./report-paragraph-formatting";
 import { ReportParagraphIndent } from "./report-paragraph-indent";
 import { useReportComposer } from "./report-composer-context";
 import "./report-body.css";
@@ -78,11 +79,15 @@ export function RichTextReportEditor({
       // CDW-5 authoring ergonomics: Tab / Shift+Tab — semantic list nesting
       // inside lists, bounded canonical indentLevel in plain paragraphs.
       ReportParagraphIndent,
+      // CDW-5 Word-like formatting: controlled paragraph font size + line
+      // spacing (semantic, bounded; presentation handled by shared CSS).
+      ReportParagraphFormatting,
     ],
     content: toTiptapDocument(initialDocument ?? emptyReportDocument()),
     editorProps: {
       attributes: {
-        class: "cdwReportBody text-[16px]",
+        // Document typography (Arial, black, 12pt default) lives in report-body.css.
+        class: "cdwReportBody",
         "aria-label": ariaLabel,
         role: "textbox",
         "aria-multiline": "true",

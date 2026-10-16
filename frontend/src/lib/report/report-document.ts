@@ -17,6 +17,10 @@ export type ReportMark = "bold" | "italic" | "underline";
 export type ReportAlignment = "left" | "center" | "right" | "justify";
 /** Bounded canonical paragraph indentation (0 is represented by omission). */
 export type ReportIndentLevel = 1 | 2 | 3 | 4 | 5 | 6;
+/** Controlled paragraph font sizes in points (document default is 12). */
+export type ReportFontSizePt = 11 | 12;
+/** Controlled paragraph line spacing multipliers. */
+export type ReportLineSpacing = 1 | 1.15 | 1.5 | 2 | 2.5 | 3;
 
 export interface ReportTextNode {
   type: "text";
@@ -31,7 +35,12 @@ export type ReportInlineNode = ReportTextNode | ReportHardBreakNode;
 export interface ReportParagraphNode {
   type: "paragraph";
   content: ReportInlineNode[];
-  attrs?: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel };
+  attrs?: {
+    textAlign?: ReportAlignment;
+    indentLevel?: ReportIndentLevel;
+    fontSizePt?: ReportFontSizePt;
+    lineSpacing?: ReportLineSpacing;
+  };
 }
 export interface ReportHeadingNode {
   type: "heading";
@@ -64,6 +73,8 @@ export interface ReportDocument {
 const MARK_SET: readonly ReportMark[] = ["bold", "italic", "underline"];
 const ALIGN_SET: readonly string[] = ["left", "center", "right", "justify"];
 const MAX_PARAGRAPH_INDENT = 6;
+const FONT_SIZES_PT: readonly number[] = [11, 12];
+const LINE_SPACINGS: readonly number[] = [1, 1.15, 1.5, 2, 2.5, 3];
 
 export function emptyReportDocument(): ReportDocument {
   return { type: "doc", content: [{ type: "paragraph", content: [] }] };
@@ -125,6 +136,22 @@ function normalizeIndentLevel(attrs: unknown): ReportIndentLevel | null {
   return value as ReportIndentLevel;
 }
 
+/** Controlled paragraph font size (points). Anything else is omitted. */
+function normalizeFontSizePt(attrs: unknown): ReportFontSizePt | null {
+  const value = (attrs as Record<string, unknown> | undefined)?.fontSizePt;
+  return typeof value === "number" && FONT_SIZES_PT.includes(value)
+    ? (value as ReportFontSizePt)
+    : null;
+}
+
+/** Controlled paragraph line spacing. Anything else is omitted. */
+function normalizeLineSpacing(attrs: unknown): ReportLineSpacing | null {
+  const value = (attrs as Record<string, unknown> | undefined)?.lineSpacing;
+  return typeof value === "number" && LINE_SPACINGS.includes(value)
+    ? (value as ReportLineSpacing)
+    : null;
+}
+
 function normalizeBlock(node: unknown): ReportBlockNode {
   const record = (node ?? {}) as Record<string, unknown>;
   const content = asArray(record.content);
@@ -159,10 +186,14 @@ function normalizeBlock(node: unknown): ReportBlockNode {
   };
   const align = normalizeTextAlign(record.attrs);
   const indent = normalizeIndentLevel(record.attrs);
-  if (align || indent) {
+  const fontSizePt = normalizeFontSizePt(record.attrs);
+  const lineSpacing = normalizeLineSpacing(record.attrs);
+  if (align || indent || fontSizePt || lineSpacing) {
     paragraph.attrs = {};
     if (align) paragraph.attrs.textAlign = align;
     if (indent) paragraph.attrs.indentLevel = indent;
+    if (fontSizePt) paragraph.attrs.fontSizePt = fontSizePt;
+    if (lineSpacing) paragraph.attrs.lineSpacing = lineSpacing;
   }
   return paragraph;
 }

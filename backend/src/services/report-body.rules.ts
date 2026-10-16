@@ -27,13 +27,24 @@ export type ReportAlignment = "left" | "center" | "right" | "justify";
 export type ReportHeadingLevel = 1 | 2 | 3;
 /** Canonical stored paragraph indentation (0 is represented by omission). */
 export type ReportIndentLevel = 1 | 2 | 3 | 4 | 5 | 6;
+/** Controlled paragraph font sizes (points). Default document size is 12. */
+export type ReportFontSizePt = 11 | 12;
+/** Controlled paragraph line spacing multipliers. */
+export type ReportLineSpacing = 1 | 1.15 | 1.5 | 2 | 2.5 | 3;
 
 const ALLOWED_MARKS: readonly ReportMark[] = ["bold", "italic", "underline"];
 const ALLOWED_ALIGNMENTS: readonly ReportAlignment[] = ["left", "center", "right", "justify"];
+const ALLOWED_FONT_SIZES_PT: readonly number[] = [11, 12];
+const ALLOWED_LINE_SPACINGS: readonly number[] = [1, 1.15, 1.5, 2, 2.5, 3];
 
 /** Paragraph attrs are a closed set: nothing else may be persisted. */
-const ALLOWED_PARAGRAPH_ATTRS: readonly string[] = ["textAlign", "indentLevel"];
-/** Heading attrs are a closed set; headings are NOT indentable. */
+const ALLOWED_PARAGRAPH_ATTRS: readonly string[] = [
+  "textAlign",
+  "indentLevel",
+  "fontSizePt",
+  "lineSpacing",
+];
+/** Heading attrs are a closed set; headings are NOT indentable or size-controlled. */
 const ALLOWED_HEADING_ATTRS: readonly string[] = ["level", "textAlign"];
 
 export interface CanonicalTextNode {
@@ -49,7 +60,12 @@ export type CanonicalInlineNode = CanonicalTextNode | CanonicalBreakNode;
 export interface CanonicalParagraphNode {
   type: "paragraph";
   content: CanonicalInlineNode[];
-  attrs?: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel };
+  attrs?: {
+    textAlign?: ReportAlignment;
+    indentLevel?: ReportIndentLevel;
+    fontSizePt?: ReportFontSizePt;
+    lineSpacing?: ReportLineSpacing;
+  };
 }
 export interface CanonicalHeadingNode {
   type: "heading";
@@ -116,6 +132,26 @@ function validateIndentLevel(value: unknown): string | null {
   return isIndentLevel(value)
     ? null
     : `indentLevel must be an integer between 0 and ${REPORT_BODY_LIMITS.maxIndentLevel}.`;
+}
+
+function isFontSizePt(value: unknown): value is ReportFontSizePt {
+  return typeof value === "number" && ALLOWED_FONT_SIZES_PT.includes(value);
+}
+
+function validateFontSizePt(value: unknown): string | null {
+  if (value === undefined) return null;
+  return isFontSizePt(value) ? null : "fontSizePt must be exactly 11 or 12.";
+}
+
+function isLineSpacing(value: unknown): value is ReportLineSpacing {
+  return typeof value === "number" && ALLOWED_LINE_SPACINGS.includes(value);
+}
+
+function validateLineSpacing(value: unknown): string | null {
+  if (value === undefined) return null;
+  return isLineSpacing(value)
+    ? null
+    : "lineSpacing must be exactly one of 1, 1.15, 1.5, 2, 2.5, 3.";
 }
 
 /** Fail closed on any attribute outside the bounded allow-list. */
@@ -185,6 +221,10 @@ function validateBlock(node: unknown, ctx: ValidationContext, depth: number): st
         if (attrError) return attrError;
         const indentError = validateIndentLevel(node.attrs.indentLevel);
         if (indentError) return indentError;
+        const fontError = validateFontSizePt(node.attrs.fontSizePt);
+        if (fontError) return fontError;
+        const spacingError = validateLineSpacing(node.attrs.lineSpacing);
+        if (spacingError) return spacingError;
       }
       return validateInlineList(node.content, ctx, depth + 1);
     }
@@ -264,13 +304,20 @@ function canonicalizeBlock(node: unknown): CanonicalBlockNode {
       type: "paragraph",
       content: content.map(canonicalizeInline),
     };
-    // Deterministic attr order (textAlign, then indentLevel). A canonical level
-    // of 0 is represented by omission, never by an explicit indeterminate value.
-    const canonicalAttrs: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel } = {};
+    // Deterministic attr order: textAlign, indentLevel, fontSizePt, lineSpacing.
+    // An omitted level/size/spacing means the documented document default.
+    const canonicalAttrs: {
+      textAlign?: ReportAlignment;
+      indentLevel?: ReportIndentLevel;
+      fontSizePt?: ReportFontSizePt;
+      lineSpacing?: ReportLineSpacing;
+    } = {};
     if (attrs.textAlign !== undefined) canonicalAttrs.textAlign = attrs.textAlign as ReportAlignment;
     if (isIndentLevel(attrs.indentLevel) && attrs.indentLevel > 0) {
       canonicalAttrs.indentLevel = attrs.indentLevel as ReportIndentLevel;
     }
+    if (isFontSizePt(attrs.fontSizePt)) canonicalAttrs.fontSizePt = attrs.fontSizePt;
+    if (isLineSpacing(attrs.lineSpacing)) canonicalAttrs.lineSpacing = attrs.lineSpacing;
     if (Object.keys(canonicalAttrs).length > 0) paragraph.attrs = canonicalAttrs;
     return paragraph;
   }
