@@ -220,6 +220,28 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
       "chair-1",
     );
   });
+
+  it("CDW-5 FIX: a failing RAP-lifecycle (non-finalized report) aborts the conclusion (409 propagates)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({ finalizerId: "rap-1" }),
+    );
+    // Same rejection the real RapReportService throws when the attempt already has
+    // a DRAFT report (see cp7-official-defense-records). It must propagate out of
+    // concludeDefense so the surrounding $transaction rolls back.
+    createRapAfterConclusion.mockRejectedValue(
+      new AppError(
+        "The Committee Report must complete the required RAP lifecycle before the defense can be formally concluded.",
+        409,
+      ),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
 });
 
 describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur finalization", () => {

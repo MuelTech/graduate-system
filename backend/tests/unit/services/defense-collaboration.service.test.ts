@@ -391,6 +391,19 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     );
   });
 
+  it("CDW-5 FIX: saving a report never sets FOR_SIGNATURE, freeze, or signatures", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.rapReport.create.mockResolvedValue({ id: "rap-1", bodyVersion: 1 });
+    await svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY);
+    const created = prismaMock.rapReport.create.mock.calls[0][0];
+    expect(created.data.status).toBe("DRAFT");
+    expect(JSON.stringify(created.data)).not.toContain("FOR_SIGNATURE");
+    expect(created.data).not.toHaveProperty("frozenAt");
+    expect(created.data).not.toHaveProperty("frozenContentHash");
+    expect(created.data).not.toHaveProperty("frozenContent");
+  });
+
   it("CDW-5: concurrent first-save converges via unique(scheduleId) (P2002 → update)", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));

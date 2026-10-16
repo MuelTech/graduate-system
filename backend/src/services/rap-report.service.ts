@@ -106,13 +106,34 @@ export class RapReportService {
     tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
     input: RapCreationInput,
   ) {
-    // CDW-5: if the attempt already owns a report (for example a Rapporteur
-    // authoring DRAFT created during the defense), reuse it instead of creating a
-    // duplicate. Freeze/signing/status promotion remain RAP-C1 concerns.
+    // CDW-5 transitional guard. A new canonical attempt must NOT become CONCLUDED
+    // while its Committee Report is still a DRAFT or awaiting required signatures.
+    // The full canonical sequence (draft → freeze → signatures → FINALIZED →
+    // conclusion) is RAP-C1; until then this legacy post-conclusion creation path
+    // FAILS CLOSED when a non-finalized report already exists. Because this runs
+    // inside the formal-conclusion transaction, throwing aborts the whole
+    // conclusion (DefenseConclusion, schedule CONCLUDED, and the thesis mirror).
     const existing = await tx.rapReport.findUnique({
       where: { scheduleId: input.scheduleId },
     });
-    if (existing) return existing;
+    if (existing) {
+      const status = String(existing.status);
+      if (status === "FINALIZED") {
+        // Safe compatibility: reuse the already-finalized report.
+        return existing;
+      }
+      if (status === "DRAFT") {
+        throw new AppError(
+          "The Committee Report must complete the required RAP lifecycle (freeze and signatures) before the defense can be formally concluded. The report is still a draft.",
+          409,
+        );
+      }
+      // FOR_SIGNATURE / PARTIALLY_SIGNED / ALL_SIGNED / DISTRIBUTED.
+      throw new AppError(
+        "Required RAP signatures must be completed before the defense can be formally concluded.",
+        409,
+      );
+    }
 
     const participants = await tx.panelAssignment.findMany({
       where: { scheduleId: input.scheduleId },

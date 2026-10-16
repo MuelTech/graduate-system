@@ -732,10 +732,47 @@ describe("CP7 RAP signing lifecycle", () => {
     expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
   });
 
-  it("CDW-5: reuses an existing authored report instead of creating a duplicate", async () => {
+  it("CDW-5 FIX: an existing DRAFT report blocks formal RAP creation (409, no duplicate)", async () => {
     prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
       id: "rap-existing",
       status: "DRAFT",
+    });
+    await expect(
+      svc.createRapAfterConclusion(prismaMock.__tx, {
+        scheduleId: "sched-1",
+        thesisId: "thesis-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        decisionsAndRecommendations: "notes",
+        generatedById: "user-r",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5 FIX: an existing FOR_SIGNATURE / PARTIALLY_SIGNED report blocks formal RAP creation (409)", async () => {
+    for (const status of ["FOR_SIGNATURE", "PARTIALLY_SIGNED"]) {
+      prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+        id: "rap-existing",
+        status,
+      });
+      await expect(
+        svc.createRapAfterConclusion(prismaMock.__tx, {
+          scheduleId: "sched-1",
+          thesisId: "thesis-1",
+          defenseType: "PROPOSAL_DEFENSE",
+          decisionsAndRecommendations: "notes",
+          generatedById: "user-r",
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-5 FIX: an existing FINALIZED report is safely reused (no duplicate)", async () => {
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+      id: "rap-final",
+      status: "FINALIZED",
     });
     const result = await svc.createRapAfterConclusion(prismaMock.__tx, {
       scheduleId: "sched-1",
@@ -744,7 +781,7 @@ describe("CP7 RAP signing lifecycle", () => {
       decisionsAndRecommendations: "notes",
       generatedById: "user-r",
     });
-    expect(result).toMatchObject({ id: "rap-existing" });
+    expect(result).toMatchObject({ id: "rap-final" });
     expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
     expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
   });
