@@ -11,8 +11,9 @@
  *   - surrounding prefix/suffix text for future text-fallback resilience;
  *   - an anchor format version.
  *
- * This is an isolated proof-of-concept module. It is NOT yet wired into the
- * production Defense Workspace (that belongs to CDW-2).
+ * This is the production anchor contract used by the Collaborative Manuscript
+ * Viewer (CDW-2). The format is immutable once stored; `anchorVersion` lets a
+ * future viewer refuse (fail closed) an anchor it does not understand.
  */
 
 export const ANCHOR_VERSION = 1 as const;

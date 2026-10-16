@@ -21,6 +21,7 @@ import { AlertCircle, FileWarning, Loader2 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 import { apiClientRequest } from "@/lib/api.client";
+import { Button } from "@/components/ui/button";
 import { type PdfAnchor } from "@/lib/pdf-annotation/anchors";
 import {
   type CollaborationAnnotation,
@@ -202,14 +203,23 @@ export function CollaborativeManuscriptViewer({
     };
   }, [documentId]);
 
-  // --- Fit width on first render / page change while fit mode is active ---
+  // --- Fit width: react to container resize while fit mode is active ---
+  // Recomputes the fit scale from the container width WITHOUT refetching the PDF
+  // or reloading the document (the getDocument effect only depends on documentId).
   useEffect(() => {
-    (async () => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const applyFit = () => {
       if (!fitMode || !baseSize) return;
-      const container = scrollRef.current;
-      if (!container) return;
       setScale(computeFitWidthScale(baseSize.width, container.clientWidth, 32));
+    };
+    void (async () => {
+      applyFit();
     })();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(applyFit);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [fitMode, baseSize]);
 
   // --- Focus contract: navigate to the focused annotation's page ---
@@ -277,6 +287,20 @@ export function CollaborativeManuscriptViewer({
             Text selection and highlighting are unavailable for this document (no
             extractable text layer).
           </p>
+        )}
+
+        {readAnnotations && annotationsQuery.isError && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+            <span>Stored annotations could not be loaded. The manuscript is still available.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => void annotationsQuery.refetch()}
+            >
+              Retry
+            </Button>
+          </div>
         )}
 
         <div

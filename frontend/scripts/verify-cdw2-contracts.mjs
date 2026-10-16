@@ -70,3 +70,26 @@ test("CDW-0 POC route/components are removed and reusable anchors are retained",
   assert.equal(existsSync(resolve(root, "src/components/poc/pdf-annotation-poc.css")), false);
   assert.equal(existsSync(resolve(root, "src/lib/pdf-annotation/anchors.ts")), true);
 });
+
+test("viewer reacts to container resize for fit-width and cleans up the observer", () => {
+  const viewer = read(VIEWER);
+  assert.match(viewer, /ResizeObserver/);
+  assert.match(viewer, /\.observe\(/);
+  assert.match(viewer, /\.disconnect\(\)/);
+  assert.match(viewer, /fitMode/);
+  // Manual zoom disables auto-fit; Fit Width re-enables it.
+  assert.match(viewer, /setFitMode\(false\)/);
+  assert.match(viewer, /setFitMode\(true\)/);
+});
+
+test("viewer warns when stored annotations fail to load (distinct from empty success)", () => {
+  const viewer = read(VIEWER);
+  assert.match(viewer, /annotationsQuery\.isError/);
+  assert.match(viewer, /Stored annotations could not be loaded/);
+});
+
+test("anchor module documentation reflects production status (no stale POC wording)", () => {
+  const anchors = read("src/lib/pdf-annotation/anchors.ts");
+  assert.doesNotMatch(anchors, /proof-of-concept/i);
+  assert.doesNotMatch(anchors, /NOT yet wired into the production/i);
+});
