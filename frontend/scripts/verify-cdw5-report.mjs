@@ -15,6 +15,10 @@ import {
   isReportDocumentEmpty,
   commentTextToContent,
 } from "../src/lib/report/report-document.ts";
+import {
+  fromTiptapDocument,
+  toTiptapDocument,
+} from "../src/lib/report/tiptap-adapter.ts";
 
 const root = process.cwd();
 const read = (relative) => readFileSync(resolve(root, relative), "utf8");
@@ -85,6 +89,194 @@ test("commentTextToContent preserves the FULL comment text (no truncation)", () 
     .join("\n");
   assert.equal(rejoined, `Line one ${"x".repeat(400)}\nLine two\nLine three`);
   assert.ok(rejoined.includes("x".repeat(400)));
+});
+
+// ---- Tiptap ⇄ canonical adapters (REAL Tiptap-shaped marks) ---------------
+
+test("fromTiptapDocument converts Tiptap mark OBJECTS to canonical string marks", () => {
+  const canonical = fromTiptapDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Example", marks: [{ type: "bold" }, { type: "italic" }] },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(canonical.content[0].content[0].marks, ["bold", "italic"]);
+});
+
+test("bold + italic + underline all survive Tiptap → canonical", () => {
+  const canonical = fromTiptapDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "x",
+            marks: [{ type: "underline" }, { type: "bold" }, { type: "italic" }],
+          },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(
+    [...canonical.content[0].content[0].marks].sort(),
+    ["bold", "italic", "underline"],
+  );
+});
+
+test("toTiptapDocument converts canonical string marks to Tiptap mark objects", () => {
+  const tiptap = toTiptapDocument({
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "x", marks: ["bold"] }] },
+    ],
+  });
+  assert.deepEqual(tiptap.content[0].content[0].marks, [{ type: "bold" }]);
+});
+
+test("round trip canonical → Tiptap → canonical preserves formatting", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "Heading", marks: ["bold", "underline"] }],
+      },
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Body ", marks: [] },
+          { type: "text", text: "italic", marks: ["italic"] },
+          { type: "hardBreak" },
+          { type: "text", text: "after", marks: [] },
+        ],
+      },
+      {
+        type: "bulletList",
+        content: [
+          {
+            type: "listItem",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "item", marks: ["bold"] }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "orderedList",
+        content: [
+          {
+            type: "listItem",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "one", marks: [] }] }],
+          },
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(fromTiptapDocument(toTiptapDocument(canonical)), canonical);
+});
+
+test("round trip Tiptap → canonical → Tiptap preserves formatting", () => {
+  const tiptap = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "x", marks: [{ type: "bold" }, { type: "underline" }] },
+        ],
+      },
+    ],
+  };
+  const roundTrip = toTiptapDocument(fromTiptapDocument(tiptap));
+  assert.deepEqual(roundTrip.content[0].content[0].marks, [
+    { type: "bold" },
+    { type: "underline" },
+  ]);
+});
+
+test("unsupported marks never become canonical content", () => {
+  const canonical = fromTiptapDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "x", marks: [{ type: "strike" }, { type: "code" }] },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(canonical.content[0].content[0].marks, []);
+});
+
+test("heading/list/hardBreak structures survive the adapters", () => {
+  const tiptap = {
+    type: "doc",
+    content: [
+      { type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "H" }] },
+      {
+        type: "bulletList",
+        content: [
+          {
+            type: "listItem",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "a" }] }],
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "p" },
+          { type: "hardBreak" },
+          { type: "text", text: "q" },
+        ],
+      },
+    ],
+  };
+  const canonical = fromTiptapDocument(tiptap);
+  assert.equal(canonical.content[0].type, "heading");
+  assert.equal(canonical.content[0].attrs.level, 3);
+  assert.equal(canonical.content[1].type, "bulletList");
+  assert.equal(canonical.content[1].content[0].content[0].type, "paragraph");
+  assert.equal(canonical.content[2].content[1].type, "hardBreak");
+  const roundTrip = toTiptapDocument(canonical);
+  assert.equal(roundTrip.content[2].content[1].type, "hardBreak");
+});
+
+test("save/reload model preserves bold/italic/underline", () => {
+  const canonical = fromTiptapDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "x",
+            marks: [{ type: "bold" }, { type: "italic" }, { type: "underline" }],
+          },
+        ],
+      },
+    ],
+  });
+  // Simulate the JSON round trip through server storage and reload.
+  const reloaded = normalizeReportDocument(JSON.parse(JSON.stringify(canonical)));
+  assert.deepEqual(reloaded.content[0].content[0].marks, [
+    "bold",
+    "italic",
+    "underline",
+  ]);
 });
 
 // ---- Dependency + file contracts ------------------------------------------
@@ -185,11 +377,36 @@ test("Insert into Report copies the FULL comment body and is never a live bindin
   assert.doesNotMatch(thread, /updateAnnotation|deleteAnnotation|updateComment/);
 });
 
-test("the editor inserts via structured content (never HTML)", () => {
+test("the editor converts Tiptap JSON ⇄ canonical at the boundary (never HTML)", () => {
+  const e = read(EDITOR);
+  assert.match(e, /toTiptapDocument/);
+  assert.match(e, /fromTiptapDocument/);
+  assert.match(e, /insertContent/);
+  assert.match(e, /commentTextToContent/);
+  assert.doesNotMatch(e, /dangerouslySetInnerHTML/);
+});
+
+test("the Insert bridge follows the editor mount lifecycle (registered in the editor, cleared on unmount)", () => {
+  const e = read(EDITOR);
+  assert.match(e, /useReportComposer/);
+  assert.match(e, /registerInsert\(/);
+  assert.match(e, /return \(\) => registerInsert\(null\)/);
+  // The panel must no longer own registration (fixes stale-handler-after-unmount).
   const p = read(PANEL);
-  assert.match(p, /insertContent/);
-  assert.match(p, /commentTextToContent/);
-  assert.doesNotMatch(p, /dangerouslySetInnerHTML/);
+  assert.doesNotMatch(p, /registerInsert/);
+});
+
+test("unsaved status reflects the local dirty flag only", () => {
+  const p = read(PANEL);
+  assert.match(p, /dirty \? "Draft \(unsaved\)" : "Draft"/);
+  assert.doesNotMatch(p, /hasCollaborativeBody \|\| dirty/);
+});
+
+test("an editable legacy DRAFT stays visibly read-only and is not converted", () => {
+  const p = read(PANEL);
+  assert.match(p, /LegacyAuthoringNotice/);
+  assert.match(p, /Legacy report content \(read-only\)/);
+  assert.doesNotMatch(p, /importLegacy|convertLegacy|autoConvert/);
 });
 
 test("Shared Comments behavior is preserved and no realtime was added", () => {

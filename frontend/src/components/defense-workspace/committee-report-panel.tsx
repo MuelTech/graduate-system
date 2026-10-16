@@ -17,16 +17,14 @@
  * rendering is deferred to a later Official Defense Forms phase.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Editor } from "@tiptap/react";
 import { AlertCircle, CheckCircle2, Eye, FileText, PencilLine, Save } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiClientRequest } from "@/lib/api.client";
 import {
-  commentTextToContent,
   emptyReportDocument,
   isReportDocumentEmpty,
   normalizeReportDocument,
@@ -35,7 +33,6 @@ import {
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 import { ReportDocumentView } from "./report-document-view";
-import { useReportComposer } from "./report-composer-context";
 import { RichTextReportEditor } from "./rich-text-report-editor";
 
 export interface CommitteeReportReadModel {
@@ -166,7 +163,6 @@ function ReportAuthoringPanel({
   report: CommitteeReportReadModel;
 }) {
   const queryClient = useQueryClient();
-  const { registerInsert } = useReportComposer();
 
   const [body, setBody] = useState<ReportDocument>(() =>
     report.body ? normalizeReportDocument(report.body) : emptyReportDocument(),
@@ -177,24 +173,10 @@ function ReportAuthoringPanel({
   const [previewing, setPreviewing] = useState(false);
   const savedVersionRef = useRef<number>(report.bodyVersion ?? 0);
 
-  const handleEditorReady = useCallback(
-    (editor: Editor) => {
-      // Register the "Insert into Report" handler for the Shared Comments rail.
-      registerInsert((text: string) => {
-        const nodes = commentTextToContent(text);
-        if (nodes.length === 0) return false;
-        editor.chain().focus().insertContent(nodes).run();
-        setBody(normalizeReportDocument(editor.getJSON()));
-        setDirty(true);
-        setMessage(null);
-        return true;
-      });
-    },
-    [registerInsert],
-  );
-
-  // Clear the bridge on unmount so the rail hides Insert into Report.
-  useEffect(() => () => registerInsert(null), [registerInsert]);
+  const legacyText =
+    report.legacyContent.decisionsAndRecommendations ??
+    report.legacyContent.rapporteurNotes;
+  const showLegacyNotice = !report.hasCollaborativeBody && Boolean(legacyText);
 
   const saveDraft = useMutation({
     mutationFn: async () =>
@@ -235,11 +217,13 @@ function ReportAuthoringPanel({
         </h2>
         <StatusBadge status={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus} />
         <span className="text-[13px] text-(--earist-body-text)">
-          {report.hasCollaborativeBody || dirty ? "Draft (unsaved)" : "Draft"}
+          {dirty ? "Draft (unsaved)" : "Draft"}
         </span>
       </div>
 
       <ReportContextBlock report={report} />
+
+      {showLegacyNotice && <LegacyAuthoringNotice legacyText={legacyText as string} />}
 
       {previewing ? (
         <ReportPreview
@@ -255,7 +239,6 @@ function ReportAuthoringPanel({
             setDirty(true);
             setMessage(null);
           }}
-          onEditorReady={handleEditorReady}
         />
       )}
 
@@ -298,6 +281,24 @@ function ReportAuthoringPanel({
         )}
       </footer>
     </div>
+  );
+}
+
+/** Legacy plain-text report shown READ-ONLY alongside the new editor (no conversion). */
+function LegacyAuthoringNotice({ legacyText }: { legacyText: string }) {
+  return (
+    <section className="shrink-0 space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <p className="text-[13px] font-semibold text-amber-900">
+        Legacy report content (read-only)
+      </p>
+      <p className="max-h-40 overflow-auto rounded border border-amber-200 bg-white p-3 text-[14px] whitespace-pre-wrap text-(--earist-body)">
+        {legacyText}
+      </p>
+      <p className="text-[13px] text-amber-900">
+        This report was created using the legacy report format and is not
+        converted. Saving new structured content below does not delete or change it.
+      </p>
+    </section>
   );
 }
 

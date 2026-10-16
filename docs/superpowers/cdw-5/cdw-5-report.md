@@ -43,3 +43,28 @@ NO NEW DATABASE MIGRATION ADDED — CDW-1's `RapReport.bodyDocument` / `bodyVers
 Backend: `prisma validate`, `npm run build`, full suite 134 files / 1400 passed /
 5 skipped. Frontend: 100 verify assertions across the 7 scripts (incl. new
 `verify-cdw5-report` 14) + `tsc --noEmit` + scoped eslint + `npm run build`.
+
+## CDW-5 FIX (functional corrections)
+
+1. **Tiptap ⇄ canonical adapter.** Tiptap emits mark OBJECTS
+   (`marks: [{ type: "bold" }]`) while the canonical server model stores STRINGS
+   (`marks: ["bold"]`). Added `lib/report/tiptap-adapter.ts`
+   (`toTiptapDocument` / `fromTiptapDocument`) and made normalization
+   mark-object-aware so formatting is never lost across editor → Preview → Save →
+   reload. The editor now exchanges canonical documents with the app.
+2. **Conclusion safety.** `createRapAfterConclusion` now FAILS CLOSED (409) when
+   the attempt already has a non-finalized report (DRAFT / FOR_SIGNATURE /
+   PARTIALLY_SIGNED); only FINALIZED is safely reused. Because it runs inside the
+   formal-conclusion transaction, the throw aborts the whole conclusion. Freeze /
+   signature-slot creation / status transitions remain RAP-C1.
+3. **Insert bridge lifecycle.** The "Insert into Report" handler is now registered
+   by the editor component and cleared on unmount, so Preview Report (editor
+   unmounted) hides Insert into Report and no destroyed editor can receive
+   content.
+4. **Unsaved status.** The header label is now driven by the local dirty flag
+   only (`Draft (unsaved)` vs `Draft`).
+5. **Legacy editable draft.** An editable legacy DRAFT with no `bodyDocument` now
+   shows the legacy text read-only in the authoring surface; it is never
+   converted or overwritten.
+
+NO NEW DATABASE MIGRATION ADDED.

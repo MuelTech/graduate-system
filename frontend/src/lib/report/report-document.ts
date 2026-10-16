@@ -1,10 +1,14 @@
 /**
  * CDW-5 — frontend mirror of the canonical Committee Report document model.
  *
- * The SERVER (`report-body.rules.ts`) is the authority; this module only mirrors
- * the bounded ProseMirror-shaped nodes/marks so the editor and read-only renderer
+ * The SERVER (`report-body.rules.ts`) is the authority; this module mirrors the
+ * bounded ProseMirror-shaped nodes/marks so the editor and read-only renderer
  * speak the same shape, plus a normalizer that guarantees a payload the strict
  * server validator accepts (arrays present, no null textAlign, no extra marks).
+ *
+ * Marks are CANONICALIZED to strings here (`["bold","italic"]`). Tiptap emits mark
+ * OBJECTS (`[{ type: "bold" }]`); both shapes are accepted on input so the editor
+ * boundary is safe, and the explicit boundary adapters live in `tiptap-adapter.ts`.
  *
  * No HTML is produced or consumed anywhere — the body is structured JSON.
  */
@@ -66,12 +70,32 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Accept a canonical string mark ("bold") OR a Tiptap/ProseMirror mark object
+ * (`{ type: "bold" }`); return the canonical mark name or null for anything the
+ * bounded model does not support (the server remains the final authority).
+ */
+function markName(mark: unknown): ReportMark | null {
+  if (typeof mark === "string") {
+    return (MARK_SET as readonly string[]).includes(mark) ? (mark as ReportMark) : null;
+  }
+  if (mark && typeof mark === "object") {
+    const type = (mark as { type?: unknown }).type;
+    if (typeof type === "string" && (MARK_SET as readonly string[]).includes(type)) {
+      return type as ReportMark;
+    }
+  }
+  return null;
+}
+
 function normalizeInline(node: unknown): ReportInlineNode {
   const record = (node ?? {}) as Record<string, unknown>;
   if (record.type === "hardBreak") return { type: "hardBreak" };
-  const marks = asArray(record.marks)
-    .filter((mark): mark is ReportMark => MARK_SET.includes(mark as ReportMark))
-    .filter((mark, index, all) => all.indexOf(mark) === index);
+  const marks: ReportMark[] = [];
+  for (const raw of asArray(record.marks)) {
+    const name = markName(raw);
+    if (name && !marks.includes(name)) marks.push(name);
+  }
   return {
     type: "text",
     text: typeof record.text === "string" ? record.text : "",
