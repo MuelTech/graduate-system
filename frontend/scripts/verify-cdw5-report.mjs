@@ -279,6 +279,113 @@ test("save/reload model preserves bold/italic/underline", () => {
   ]);
 });
 
+// ---- textAlign preservation (canonical field, no toolbar) -----------------
+
+test("canonical centered paragraph survives canonical → Tiptap → canonical", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "center" },
+        content: [{ type: "text", text: "center", marks: [] }],
+      },
+    ],
+  };
+  const tiptap = toTiptapDocument(canonical);
+  assert.equal(tiptap.content[0].attrs.textAlign, "center");
+  assert.equal(fromTiptapDocument(tiptap).content[0].attrs.textAlign, "center");
+});
+
+test("canonical justified paragraph survives the round trip", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "justify" },
+        content: [{ type: "text", text: "j", marks: [] }],
+      },
+    ],
+  };
+  assert.equal(
+    fromTiptapDocument(toTiptapDocument(canonical)).content[0].attrs.textAlign,
+    "justify",
+  );
+});
+
+test("canonical centered heading survives the round trip", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 2, textAlign: "center" },
+        content: [{ type: "text", text: "H", marks: [] }],
+      },
+    ],
+  };
+  const back = fromTiptapDocument(toTiptapDocument(canonical));
+  assert.equal(back.content[0].attrs.level, 2);
+  assert.equal(back.content[0].attrs.textAlign, "center");
+  assert.deepEqual(back, canonical);
+});
+
+test("left/right alignment also survive", () => {
+  for (const align of ["left", "right"]) {
+    const canonical = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { textAlign: align },
+          content: [{ type: "text", text: "x", marks: [] }],
+        },
+      ],
+    };
+    assert.equal(
+      fromTiptapDocument(toTiptapDocument(canonical)).content[0].attrs.textAlign,
+      align,
+    );
+  }
+});
+
+test("an invalid alignment never becomes canonical", () => {
+  const canonical = fromTiptapDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "upside-down" },
+        content: [{ type: "text", text: "x" }],
+      },
+    ],
+  });
+  assert.equal(canonical.content[0].attrs, undefined);
+});
+
+test("alignment AND marks are preserved together", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "center" },
+        content: [{ type: "text", text: "x", marks: ["bold", "italic"] }],
+      },
+    ],
+  };
+  const tiptap = toTiptapDocument(canonical);
+  assert.equal(tiptap.content[0].attrs.textAlign, "center");
+  assert.deepEqual(tiptap.content[0].content[0].marks, [
+    { type: "bold" },
+    { type: "italic" },
+  ]);
+  const back = fromTiptapDocument(tiptap);
+  assert.equal(back.content[0].attrs.textAlign, "center");
+  assert.deepEqual(back.content[0].content[0].marks, ["bold", "italic"]);
+});
+
 // ---- Dependency + file contracts ------------------------------------------
 
 test("the rich-text editor dependency is present and minimal", () => {
@@ -308,6 +415,23 @@ test("the editor is configured to exactly the canonical document model", () => {
   // Accessible editor label + no HTML.
   assert.match(e, /aria-label/);
   assert.doesNotMatch(e, /dangerouslySetInnerHTML/);
+});
+
+test("the editor preserves canonical alignment (TextAlign) without exposing alignment controls", () => {
+  const pkg = JSON.parse(read(PKG));
+  assert.ok(
+    pkg.dependencies["@tiptap/extension-text-align"],
+    "@tiptap/extension-text-align expected",
+  );
+  const e = read(EDITOR);
+  assert.match(e, /@tiptap\/extension-text-align/);
+  assert.match(e, /TextAlign\.configure\(\{\s*types:\s*\["heading",\s*"paragraph"\]\s*\}\)/);
+  // No alignment toolbar buttons were added (preservation only).
+  const t = read(TOOLBAR);
+  assert.doesNotMatch(
+    t,
+    /textAlign|setTextAlign|AlignLeft|AlignCenter|AlignRight|AlignJustify/i,
+  );
 });
 
 test("the toolbar exposes the required, accessible controls with pressed state", () => {

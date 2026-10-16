@@ -5,14 +5,15 @@ foundation, NOT the official-form/PDF phase and NOT RAP-C1.
 
 ## Decisions (approved)
 1. The assigned Rapporteur's first save get-or-creates an editable DRAFT
-   `RapReport` (status DRAFT, no signature slots). Conclusion-time
-   `createRapAfterConclusion` becomes idempotent (reuses an existing report) so the
-   current conclusion flow cannot crash on `unique(scheduleId)`. Freeze / signing /
-   status transitions remain RAP-C1.
+   `RapReport` (status DRAFT, no signature slots). The legacy conclusion-time RAP
+   path FAILS CLOSED when the attempt already owns a non-finalized report (a
+   DRAFT / awaiting-signature report may not be concluded); only an existing
+   FINALIZED report is safely reused. Freeze / signing / status transitions remain
+   RAP-C1.
 2. Editor: Tiptap 3.32.0 (`@tiptap/react`, `@tiptap/pm`, `@tiptap/core`,
-   `@tiptap/starter-kit`) configured to exactly the canonical server document
-   model. StarterKit bundles underline, so no extra extension is needed; alignment
-   was omitted (optional) to keep the dependency set minimal.
+   `@tiptap/starter-kit`, plus `@tiptap/extension-text-align` for alignment
+   PRESERVATION only) configured to exactly the canonical server document model.
+   StarterKit bundles underline, so no extra underline extension is needed.
 3. Preview Report shows the current local editor state, labelled when it includes
    unsaved changes.
 
@@ -21,8 +22,9 @@ foundation, NOT the official-form/PDF phase and NOT RAP-C1.
   (`studentNumber`, `program`, `defenseDate`); `canEditBody` is true for the
   assigned Rapporteur when the session is writable and the report is absent or an
   unfrozen DRAFT; `saveReportDraft` creates the DRAFT on first save and applies an
-  optional `expectedBodyVersion` CAS (`409 Report changed…` on mismatch);
-  `createRapAfterConclusion` reuses an existing report.
+  optional `expectedBodyVersion` CAS (`409 Report changed…` on mismatch). The
+  legacy conclusion path rejects an existing non-finalized report and reuses only
+  a FINALIZED one.
 - Frontend: Tiptap rich-text editor + accessible toolbar (headings 1–3, bold,
   italic, underline, bullet/ordered lists, undo/redo); XSS-safe read-only renderer;
   authoring panel (Save Draft + Preview Report + status) vs read-only committee
@@ -68,3 +70,22 @@ Backend: `prisma validate`, `npm run build`, full suite 134 files / 1400 passed 
    converted or overwritten.
 
 NO NEW DATABASE MIGRATION ADDED.
+
+## CDW-5 FINAL functional correction
+
+- **All-stage Title conclusion guard.** The fail-closed check previously lived
+  only in `createRapAfterConclusion`, which Title's legacy "conclude while notes
+  are draft" path skips. `ThesisRepository.concludeDefense` now loads the exact
+  schedule's `RapReport` inside the formal-conclusion transaction and, BEFORE any
+  authoritative write, rejects any existing report whose status is not FINALIZED
+  (DRAFT / FOR_SIGNATURE / PARTIALLY_SIGNED / any other non-finalized state) with a
+  controlled 409. No RapReport at all preserves the current legacy behavior.
+  RAP-C1 remains responsible for the real draft → freeze → signatures → FINALIZED
+  lifecycle.
+- **textAlign preservation.** `toTiptapDocument` previously dropped canonical
+  `attrs.textAlign`. The editor now registers `@tiptap/extension-text-align`
+  configured for `["heading","paragraph"]` (no alignment toolbar controls), so a
+  canonical left/center/right/justify survives canonical → Tiptap → canonical.
+- **Verification (final):** backend full suite 134 files / 1404 passed / 5 skipped;
+  frontend 118 verify assertions across the 7 scripts (incl. `verify-cdw5-report`
+  32) + `tsc --noEmit` + scoped eslint + `npm run build`.

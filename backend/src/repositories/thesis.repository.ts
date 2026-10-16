@@ -1249,6 +1249,7 @@ export class ThesisRepository {
           panelAssignments: true,
           conclusion: true,
           oralExamSummary: true,
+          rapReports: { select: { id: true, status: true } },
           thesis: {
             include: {
               thesisTitles: true,
@@ -1328,6 +1329,21 @@ export class ThesisRepository {
             409,
           );
         }
+      }
+
+      // CDW-5 FINAL: ALL-STAGE fail-closed guard. If the attempt already owns a
+      // canonical Committee Report/RAP, it must have reached FINALIZED before the
+      // defense may be formally concluded. This runs INDEPENDENTLY of the legacy
+      // Title "conclude while notes are draft" path (which skips
+      // createRapAfterConclusion), so Title cannot bypass the guard, and it runs
+      // before ANY authoritative conclusion write. No RapReport at all preserves
+      // the current legacy behavior untouched.
+      const existingRap = (schedule.rapReports ?? [])[0] ?? null;
+      if (existingRap && String(existingRap.status) !== "FINALIZED") {
+        throw new AppError(
+          "The Committee Report must be finalized before the defense can be formally concluded.",
+          409,
+        );
       }
 
       const outcome = options.outcome;

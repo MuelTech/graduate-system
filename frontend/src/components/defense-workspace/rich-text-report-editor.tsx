@@ -22,6 +22,7 @@
 import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
 
 import {
   commentTextToContent,
@@ -68,6 +69,10 @@ export function RichTextReportEditor({
         horizontalRule: false,
         link: false,
       }),
+      // Preservation-only: an already-stored canonical textAlign (left/center/
+      // right/justify) must survive the Tiptap boundary unchanged. No alignment
+      // toolbar controls are exposed.
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: toTiptapDocument(initialDocument ?? emptyReportDocument()),
     editorProps: {

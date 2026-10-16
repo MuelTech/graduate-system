@@ -50,14 +50,22 @@ function inlineToTiptap(node: ReportInlineNode): TiptapNode {
 
 function blockToTiptap(node: ReportBlockNode): TiptapNode {
   if (node.type === "heading") {
+    const attrs: Record<string, unknown> = { level: node.attrs.level };
+    if (node.attrs.textAlign) attrs.textAlign = node.attrs.textAlign;
     return {
       type: "heading",
-      attrs: { level: node.attrs.level },
+      attrs,
       content: (node.content ?? []).map(inlineToTiptap),
     };
   }
   if (node.type === "paragraph") {
-    return { type: "paragraph", content: (node.content ?? []).map(inlineToTiptap) };
+    const out: TiptapNode = {
+      type: "paragraph",
+      content: (node.content ?? []).map(inlineToTiptap),
+    };
+    // Preservation only: a canonical textAlign already present must not be dropped.
+    if (node.attrs?.textAlign) out.attrs = { textAlign: node.attrs.textAlign };
+    return out;
   }
   // bulletList / orderedList
   return {

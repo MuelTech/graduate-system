@@ -242,6 +242,99 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
   });
+
+  it("CDW-5 FINAL: TITLE with an existing DRAFT report → 409 and NO official writes", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        overrides: { rapReports: [{ id: "rap-1", status: "DRAFT" }] },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    // The guard runs BEFORE any authoritative write, so nothing partial commits.
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5 FINAL: TITLE with an existing FOR_SIGNATURE / PARTIALLY_SIGNED report → 409", async () => {
+    for (const status of ["FOR_SIGNATURE", "PARTIALLY_SIGNED"]) {
+      prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleFixture({
+          finalizerId: null,
+          notesFinalizedAt: null,
+          overrides: { rapReports: [{ id: "rap-1", status }] },
+        }),
+      );
+      await expect(
+        repo.concludeDefense("sched-1", "chair-1", {
+          outcome: "PASSED",
+          selectedTitleId: "t1",
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-5 FINAL: TITLE with an existing FINALIZED report → conclusion may proceed", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: { rapReports: [{ id: "rap-1", status: "FINALIZED" }] },
+      }),
+    );
+
+    const result = await repo.concludeDefense("sched-1", "chair-1", {
+      outcome: "PASSED",
+      selectedTitleId: "t1",
+    });
+    expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
+    expect(result.conclusion.id).toBe("c-1");
+  });
+
+  it("CDW-5 FINAL: Proposal/Final with an existing DRAFT report → 409 (guard is all-stage)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: {
+          defenseType: "PROPOSAL_DEFENSE",
+          rapReports: [{ id: "rap-1", status: "DRAFT" }],
+        },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5 FINAL: no existing RapReport → legacy Title behavior is preserved", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        overrides: { rapReports: [] },
+      }),
+    );
+
+    const result = await repo.concludeDefense("sched-1", "chair-1", {
+      outcome: "PASSED",
+      selectedTitleId: "t1",
+    });
+    expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
+    expect(result.conclusion.id).toBe("c-1");
+  });
 });
 
 describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur finalization", () => {
@@ -263,12 +356,13 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     prismaMock.__tx.thesisTitle.update.mockResolvedValue({});
   });
 
-  it("Title conclusion is allowed (evaluators done + Summary) while notes are still draft; deferred RAP check converges", async () => {
+  it("Title conclusion is allowed while notes are still draft ONLY when no existing incomplete RapReport exists; deferred RAP check converges", async () => {
     prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
       scheduleFixture({
         finalizerId: null,
         notesFinalizedAt: null,
         sessionStatus: "AWAITING_CONCLUSION",
+        overrides: { rapReports: [] },
       }),
     );
 
