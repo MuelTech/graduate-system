@@ -490,18 +490,23 @@ Replace the single notes textarea as the primary new-attempt authoring model wit
 
 Do not model Committee Suggestions, General Observations, Research/Title Recommendations, or similar headings as mandatory fixed body fields.
 
+The editor itself is **not** a paper-form/page-layout replica. The exact institutional appearance belongs to an Official Form Preview / generated print-PDF renderer.
+
 ### UI
 
 Rapporteur:
 
 - Committee Report tab editable while DRAFT;
 - familiar rich-text composing controls appropriate to the approved editor library;
+- compact non-editable defense context (for example student, stage, program, date) rather than a literal reproduction of the paper form;
 - Student Document tab for direct manuscript/PDF review;
 - persistent/collapsible Shared Comments rail while either Committee Report or Student Document is active;
 - optional Insert into Report action from a selected comment while composing;
 - long comments may be visually clamped with Show more/Show less, but full content remains available;
 - Insert into Report must copy the full comment content, not only a truncated preview;
 - save draft;
+- Preview Official Form;
+- print/download DRAFT output with an unmistakable **DRAFT - NOT FOR OFFICIAL FILING** label;
 - report status/readiness.
 
 Chairman/Panelist:
@@ -510,6 +515,32 @@ Chairman/Panelist:
 - can see current report after polling/refetch.
 
 The system separately renders non-editable institutional metadata such as student identity, program, defense stage/date, committee roster, prepared-by identity, RAP status, and signature state. Those values must not depend on the Rapporteur manually typing them into the rich-text body.
+
+### Official-form preview / export foundation
+
+Build one reusable report renderer that composes:
+
+- the exact defense-attempt identity;
+- authoritative student/program/defense metadata;
+- committee roster and roles;
+- the Rapporteur-authored rich-text body;
+- assigned Rapporteur as Prepared by;
+- current report/signature state.
+
+Where the current institutional template applies, the generated preview/export should preserve the familiar GS Form No. 22-style structure, including the institutional heading/form identity and the Panelist / Conforme presentation, without forcing the browser editor itself to behave like Word or a paginated paper form.
+
+The renderer must preserve the distinction between report-body content and fixed institutional fields. A sample heading such as Statement of the Problem or General Observation is not automatically a required schema field; it appears only when present in the Rapporteur-authored body or when separately confirmed as a true institutional invariant.
+
+CDW-5 should support:
+
+- Rapporteur Preview Official Form while DRAFT;
+- Rapporteur DRAFT print/download;
+- explicit draft-state labeling/watermark;
+- a renderer contract that can later render the exact frozen/final signed snapshot without rewriting the body.
+
+Do not render other signers' raw signature images in the live authoring UI. The Panelist / Conforme table in the eventual official document is output presentation, not an editable authoring table.
+
+If the current paper template includes Approved by / OIC-Dean, reserve/display that area only as an institutional template element. Do not create a Dean digital signature slot, workflow action, or RAP completion gate until policy is confirmed.
 
 ### Editor-library decision
 
@@ -564,8 +595,12 @@ A migration may map new rich-text document content into RapReport or a related m
 - only assigned Rapporteur edits;
 - non-Rapporteur view only;
 - Rapporteur can freely create/reorder headings, paragraphs, and lists without mandatory report sections;
+- fixed student/defense/committee metadata is system-owned and not editable body content;
+- the authoring surface does not require literal GS Form page geometry;
 - draft serialization saves and reloads without losing supported formatting;
 - Insert into Report, if implemented, preserves the original annotation/comment and produces editable copied text rather than a live binding;
+- Preview Official Form uses authoritative attempt metadata plus the current report body;
+- DRAFT print/download is clearly marked as non-official;
 - draft remains editable until freeze;
 - report remains DRAFT before freeze;
 - no verdict required to create/save report.
@@ -632,11 +667,32 @@ Facilitator excluded.
 
 Sign inside the Defense Workspace after viewing the actual frozen report.
 
+The frozen report view must be the same immutable version/hash for every signer.
+
+Rapporteur signing-progress visibility:
+
+- show required signer name and functional role;
+- show Pending / Signed;
+- show signed timestamp when available;
+- show aggregate progress such as 4 of 6 signed;
+- do not expose raw signatureData or another signer's private signature blob/image in the live status UI.
+
+Output permissions/state:
+
+- Rapporteur may continue to view/print/download the exact frozen version while signatures are pending, with its current state clearly labeled;
+- after RAP FINALIZED, Rapporteur may view/print/download the finalized official copy;
+- Admin may view/print/download the official record from the Admin records/archive surface;
+- required signers must be able to view the exact frozen report before signing, but committee-wide download/print entitlement is not required by the current policy.
+
+Reuse the CDW-5 official-form renderer against the frozen snapshot; do not reconstruct a different body for signing or final PDF/print output.
+
 Change /panelist/signatures from primary signing surface to a secondary task inbox/history:
 
 - pending item identifies student/stage;
 - Open Defense Workspace;
 - no placeholder-only blind signing path for new attempts.
+
+Polling/refetch remains sufficient for RAP-C1 correctness. Socket.IO/WebSocket realtime is deliberately deferred to the later realtime phase.
 
 ### Conclusion gate
 

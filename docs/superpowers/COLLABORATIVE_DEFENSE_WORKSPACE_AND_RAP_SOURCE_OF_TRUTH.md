@@ -259,10 +259,13 @@ For Chairman/Panelist:
 
 For Rapporteur:
 
-- Report status
-- draft/frozen status
-- save/finalize controls
-- source-comment count or report-item summary
+- Report status and DRAFT/frozen state;
+- save-draft controls while editable;
+- Preview Official Form;
+- print/download actions according to report state and authorization;
+- later freeze-for-signatures action when RAP-C1 is enabled;
+- source-comment count or report-item summary;
+- signature-progress summary once the report enters the signing lifecycle.
 
 For Adviser/Facilitator:
 
@@ -515,6 +518,12 @@ The system is not a full Microsoft Word/Google Docs clone. Page-layout editing, 
 
 The report body remains exclusively Rapporteur-controlled while DRAFT. Chairman/Panelists may view it but do not edit it.
 
+The Rapporteur authoring surface must **not** imitate the full page geometry of the institutional paper form. The editor is content-focused. It may show a compact, non-editable defense context such as student name, defense type, program, and date so the Rapporteur always knows which attempt is being documented, but it should not make the Rapporteur retype or manually maintain the institutional metadata.
+
+The familiar institutional layout belongs to a separate **Official Form Preview / renderer**. That renderer composes authoritative system metadata with the Rapporteur-authored body. Where the current institutional template applies, the generated output may include the form identity/header, Name, Type of Defense, Program, Date, committee roster / Panelist-Conforme area, relevant research/title context, Prepared by, and other fixed institutional fields. These fixed fields are generated from the exact defense attempt and are not editable body content.
+
+The report renderer must not turn sample document headings into mandatory database fields. For example, Statement of the Problem, General Observation, or similar headings may appear when the Rapporteur chooses to author them, but the system must not require those headings merely because they appeared in one institutional sample.
+
 ### 9.3 Optional Insert into Report from a committee comment
 
 A shared manuscript annotation/comment may offer **Insert into Report** as an optional Rapporteur productivity action.
@@ -544,6 +553,56 @@ While DRAFT:
 - later Socket.IO may make draft changes appear nearly immediately.
 
 The draft is not an official signed institutional record.
+
+### 9.5 Official preview, print, and download
+
+The system must separate the **authoring experience** from the **official document output**.
+
+Rapporteur:
+
+- may open Preview Official Form while the report is DRAFT;
+- may print/download a DRAFT rendering for working purposes;
+- any DRAFT export must be visibly marked **DRAFT - NOT FOR OFFICIAL FILING** or an equivalent unmistakable state label;
+- after freeze, may view/print/download the exact frozen version with its current signature state;
+- after RAP FINALIZED, may view/print/download the finalized official copy.
+
+Admin:
+
+- remains the official records/archive surface and may view/print/download the institutional record according to Admin records policy;
+- is not made the author of the Rapporteur's academic narrative merely because Admin can print or archive it.
+
+Chairman/Panelists:
+
+- may view the current DRAFT read-only;
+- required signers must be able to review the exact frozen version before signing;
+- committee-wide print/download entitlement is **not** required by the current policy and may be added later only if EARIST requests it.
+
+The renderer must make document state explicit:
+
+- DRAFT output is not an official filing;
+- FOR_SIGNATURE / PARTIALLY_SIGNED output is frozen but still awaiting required signatures;
+- FINALIZED output is the completed signed RAP/Committee Report record.
+
+The Panelist / Conforme presentation belongs to the generated official form, not to a manually editable table inside the Rapporteur editor. In the live workspace, signer state should use a task-oriented status presentation instead of reproducing the paper table literally.
+
+The assigned Rapporteur is the authoritative Prepared by identity. If the institutional template contains an Approved by / OIC-Dean area, the renderer may reserve/display that institutional area, but **Dean digital signing/approval remains unresolved**. It must not become a RAP finalization gate or a fabricated signature slot until EARIST confirms the policy.
+
+### 9.6 Signature-progress visibility for the Rapporteur
+
+Once a report has been frozen and signature slots exist, the Rapporteur must be able to see progress for the exact frozen version.
+
+The live workspace may show:
+
+- required signer name;
+- functional role;
+- Pending / Signed state;
+- signed timestamp when available;
+- aggregate progress such as 4 of 6 signed;
+- frozen content version/hash identifier when useful for audit/debug presentation.
+
+The live progress UI must **not** expose raw signatureData, base64 signature images, or another signer's private evidence payload. Signature evidence is rendered only where authorized in the exact frozen/final institutional document and official records.
+
+REST/database state remains authoritative. Polling/refetch is sufficient for this foundation; Socket.IO/WebSocket realtime remains a later optimization and must not be required for signing correctness.
 
 ---
 
@@ -609,7 +668,7 @@ Not required under current policy:
 
 - Facilitator.
 
-Dean approval/signature remains a separate institutional question and is not automatically inserted as a normal committee signature slot.
+Dean approval/signature remains a separate institutional question and is not automatically inserted as a normal committee signature slot. The official renderer may preserve/reserve a Dean approval area when the current institutional form requires it, but the system must not infer a digital Dean-signing workflow or block RAP finalization on that area until client policy is explicitly confirmed.
 
 ### 10.4 Signing UX
 
@@ -622,6 +681,8 @@ A required signer must:
 3. provide their own e-signature;
 4. confirm;
 5. receive a signed/locked state.
+
+Every signer signs the same immutable report version/hash. The Rapporteur may monitor signer completion from the workspace but must not receive raw signature payloads from other signers.
 
 There is no valid new-attempt state where the defense is CONCLUDED while a required RAP signature remains pending.
 
