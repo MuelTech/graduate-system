@@ -1,26 +1,26 @@
 /*
- * CDW-0A proof of concept — minimal, namespaced pdf.js text-layer styling.
+ * CDW-2 — Collaborative Manuscript Viewer styling (scoped under .mw*).
  *
- * Reproduced (and scoped under .cdw0*) from pdfjs-dist/web/pdf_viewer.css so the
- * POC does not pull the whole global viewer stylesheet into the application.
- * Positioning is percentage-based inside the page box, which is what makes a
- * stored highlight independent of zoom.
+ * The text-layer rules are reproduced (scoped) from pdfjs-dist/web/pdf_viewer.css
+ * so the viewer does not pull the whole global pdf.js stylesheet into the app.
+ * Highlight positioning is percentage-based inside the page box, which is what
+ * keeps stored anchors aligned across zoom levels.
  */
 
-.cdw0Page {
+.mwPage {
   position: relative;
   margin: 0 auto;
   background: #ffffff;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
 }
 
-.cdw0Canvas {
+.mwCanvas {
   position: absolute;
   inset: 0;
   display: block;
 }
 
-.cdw0TextLayer {
+.mwTextLayer {
   position: absolute;
   text-align: initial;
   inset: 0;
@@ -39,7 +39,7 @@
   --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
-.cdw0TextLayer :is(span, br) {
+.mwTextLayer :is(span, br) {
   color: transparent;
   position: absolute;
   white-space: pre;
@@ -48,8 +48,8 @@
   user-select: text;
 }
 
-.cdw0TextLayer > :not(.markedContent),
-.cdw0TextLayer .markedContent span:not(.markedContent) {
+.mwTextLayer > :not(.markedContent),
+.mwTextLayer .markedContent span:not(.markedContent) {
   z-index: 1;
   --font-height: 0;
   font-size: calc(var(--text-scale-factor) * var(--font-height));
@@ -58,25 +58,32 @@
   transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 
-.cdw0TextLayer .markedContent {
+.mwTextLayer .markedContent {
   display: contents;
 }
 
-.cdw0TextLayer ::selection {
+.mwTextLayer ::selection {
   background: rgb(37 99 235 / 0.35);
   color: transparent;
 }
 
-.cdw0Overlay {
+.mwOverlay {
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
 }
 
-.cdw0Highlight {
+.mwHighlightRect {
   position: absolute;
-  background: rgb(250 204 21 / 0.45);
-  outline: 1px solid rgb(202 138 4 / 0.6);
+  background: rgb(250 204 21 / 0.4);
+  outline: 1px solid rgb(202 138 4 / 0.55);
   border-radius: 2px;
+}
+
+/* A focused annotation is visually distinguishable from ordinary highlights. */
+.mwHighlightRect--focused {
+  background: rgb(249 115 22 / 0.5);
+  outline: 2px solid rgb(194 65 12 / 0.95);
+  box-shadow: 0 0 0 2px rgb(249 115 22 / 0.25);
 }

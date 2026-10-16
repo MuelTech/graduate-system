@@ -13,6 +13,7 @@ import { RapporteurNotesWorkspace } from "@/components/defense-workspace/rapport
 import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman-conclusion-panel";
 import { ChairmanOralSummary } from "@/components/defense-workspace/chairman-oral-summary";
 import { ProposalHistoryPanel } from "@/components/defense-workspace/proposal-history-panel";
+import { CollaborativeManuscriptViewer } from "@/components/defense-workspace/collaborative-manuscript-viewer";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 /** CP7-FIX3: shared detailed Summary contract for Chairman review + conclusion gate. */
@@ -297,14 +298,12 @@ export default function DefenseWorkspacePage() {
                 </CardHeader>
                 <CardContent>
                   {primaryDoc ? (
-                    <iframe
-                      title={
-                        isFinal
-                          ? "Current Final Manuscript"
-                          : "Student document"
+                    <CollaborativeManuscriptViewer
+                      documentId={primaryDoc.id}
+                      scheduleId={scheduleId}
+                      documentLabel={
+                        isFinal ? "Current Final Manuscript" : primaryDoc.displayName
                       }
-                      src={`/api/documents/thesis-document/${primaryDoc.id}/file`}
-                      className="h-[70vh] w-full rounded border border-(--earist-border-gray)"
                     />
                   ) : (
                     <p className="text-sm text-(--earist-body-text)">
@@ -324,10 +323,10 @@ export default function DefenseWorkspacePage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <iframe
-                        title="Previous Proposal Manuscript"
-                        src={`/api/documents/thesis-document/${data.proposalHistory.manuscript.id}/file`}
-                        className="h-[50vh] w-full rounded border border-(--earist-border-gray)"
+                      <CollaborativeManuscriptViewer
+                        documentId={data.proposalHistory.manuscript.id}
+                        documentLabel="Previous Proposal Manuscript"
+                        enableStoredAnnotations={false}
                       />
                     </CardContent>
                   </Card>
