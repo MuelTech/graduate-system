@@ -40,6 +40,12 @@ router.put(
   requireRole(["ADMIN"]),
   controller.unpublish,
 );
+router.put(
+  "/admin/entries/:id/metadata",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  controller.updateMetadata,
+);
 
 // Public publication routes (auth is deliberately not applied).
 router.get("/", controller.listPublic);

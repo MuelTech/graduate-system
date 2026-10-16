@@ -1,3 +1,4 @@
+import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
   DatabankArchiveRepository,
@@ -381,6 +382,26 @@ export class DatabankArchiveService {
         documents,
         certificationsPath: files?.certifications?.path ?? null,
       });
+
+      // Audit Log: DATABANK_ARCHIVE_SUBMITTED (NFR7 Compliance)
+      await prisma.auditLog.create({
+        data: {
+          actorId: userId,
+          actionType: "DATABANK_ARCHIVE_SUBMITTED",
+          targetTable: "e_library",
+          targetId: created.id,
+          description: `Student submitted research databank archive for "${context.officialTitle}".`,
+          newValue: JSON.stringify({
+            thesisId: context.thesisId,
+            title: context.officialTitle,
+            hasManuscript: Boolean(manuscript),
+            hasRespondentData: Boolean(respondentData),
+            hasInstruments: Boolean(instruments),
+            hasCertifications: Boolean(files?.certifications),
+          }),
+        },
+      });
+
       return toArchiveDto(created, context.officialTitle);
     } catch (error) {
       // ELibrary.thesisId is unique: map the race loser cleanly.

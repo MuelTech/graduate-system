@@ -1,3 +1,4 @@
+import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
   RepositoryPublicationRepository,
@@ -43,6 +44,16 @@ export interface RepositoryAdminEntryDto {
   abstract: string | null;
   keywords: string[];
   archiveRegisteredAt: string;
+  hasManuscript: boolean;
+  hasRespondentData: boolean;
+  documents?: Array<{
+    id: string;
+    docType: string;
+    defenseStage: string | null;
+    originalFilename: string | null;
+    verifiedMimeType: string | null;
+    sizeBytes: number | null;
+  }>;
   publication: {
     isPublished: boolean;
     publishedAt: string | null;
@@ -97,6 +108,16 @@ function toAdminDto(row: AdminEntryRow): RepositoryAdminEntryDto {
     abstract: row.abstract ?? null,
     keywords: normalizeKeywords(row.keywords),
     archiveRegisteredAt: row.createdAt.toISOString(),
+    hasManuscript: Boolean(row.fullPaperPath),
+    hasRespondentData: Boolean(row.respondentDataPath),
+    documents: row.thesis?.thesisDocuments?.map((d) => ({
+      id: d.id,
+      docType: d.docType,
+      defenseStage: d.defenseStage,
+      originalFilename: d.originalFilename,
+      verifiedMimeType: d.verifiedMimeType,
+      sizeBytes: d.sizeBytes,
+    })),
     publication: {
       isPublished: row.isPublic,
       publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
@@ -160,6 +181,24 @@ export class RepositoryPublicationService {
     if (!updated) {
       throw new AppError("Archive not found.", 404);
     }
+
+    // Audit Log: REPOSITORY_ENTRY_PUBLISHED (NFR7 Compliance)
+    await prisma.auditLog.create({
+      data: {
+        actorId: adminId,
+        actionType: "REPOSITORY_ENTRY_PUBLISHED",
+        targetTable: "e_library",
+        targetId: id,
+        description: `Admin published research entry "${updated.title}" to the public repository.`,
+        newValue: JSON.stringify({
+          id,
+          title: updated.title,
+          isPublic: true,
+          publishedAt: updated.publishedAt,
+        }),
+      },
+    });
+
     return toAdminDto(updated);
   }
 
@@ -167,7 +206,7 @@ export class RepositoryPublicationService {
    * Admin removes metadata from the public Repository. This does NOT delete or
    * mutate the private archive registration.
    */
-  async unpublishMetadata(id: string): Promise<RepositoryAdminEntryDto> {
+  async unpublishMetadata(id: string, adminId?: string): Promise<RepositoryAdminEntryDto> {
     const state = await this.repo.getPublicationState(id);
     if (!state) {
       throw new AppError("Archive not found.", 404);
@@ -185,6 +224,95 @@ export class RepositoryPublicationService {
     if (!updated) {
       throw new AppError("Archive not found.", 404);
     }
+
+    // Audit Log: REPOSITORY_ENTRY_UNPUBLISHED (NFR7 Compliance)
+    await prisma.auditLog.create({
+      data: {
+        actorId: adminId ?? null,
+        actionType: "REPOSITORY_ENTRY_UNPUBLISHED",
+        targetTable: "e_library",
+        targetId: id,
+        description: `Admin unpublished research entry "${updated.title}" from the public repository.`,
+        newValue: JSON.stringify({
+          id,
+          title: updated.title,
+          isPublic: false,
+        }),
+      },
+    });
+
+    return toAdminDto(updated);
+  }
+
+  /**
+   * Admin updates metadata (title, abstract, keywords) to fix typos prior to or
+   * after publication without deleting the entry.
+   */
+  async updateMetadata(
+    id: string,
+    adminId: string,
+    input: {
+      title?: string;
+      abstract?: string | null;
+      keywords?: string[] | string | null;
+    },
+  ): Promise<RepositoryAdminEntryDto> {
+    const current = await this.repo.findAdminById(id);
+    if (!current) {
+      throw new AppError("Archive not found.", 404);
+    }
+
+    const title = input.title !== undefined ? input.title.trim() : undefined;
+    if (title !== undefined && title.length === 0) {
+      throw new AppError("Title cannot be empty.", 400);
+    }
+
+    const abstract = input.abstract !== undefined
+      ? (typeof input.abstract === "string" ? input.abstract.trim() || null : null)
+      : undefined;
+
+    let keywords: string | null | undefined = undefined;
+    if (input.keywords !== undefined) {
+      if (Array.isArray(input.keywords)) {
+        keywords = input.keywords.map((k) => k.trim()).filter((k) => k.length > 0).join(", ");
+      } else if (typeof input.keywords === "string") {
+        keywords = input.keywords.trim() || null;
+      } else {
+        keywords = null;
+      }
+    }
+
+    const updated = await this.repo.updateMetadata(id, {
+      title,
+      abstract,
+      keywords,
+    });
+
+    if (!updated) {
+      throw new AppError("Archive not found.", 404);
+    }
+
+    // Audit Log: REPOSITORY_METADATA_UPDATED (NFR7 Compliance)
+    await prisma.auditLog.create({
+      data: {
+        actorId: adminId,
+        actionType: "REPOSITORY_METADATA_UPDATED",
+        targetTable: "e_library",
+        targetId: id,
+        description: `Admin updated metadata for research entry "${updated.title}".`,
+        oldValue: JSON.stringify({
+          title: current.title,
+          abstract: current.abstract,
+          keywords: current.keywords,
+        }),
+        newValue: JSON.stringify({
+          title: updated.title,
+          abstract: updated.abstract,
+          keywords: updated.keywords,
+        }),
+      },
+    });
+
     return toAdminDto(updated);
   }
 }

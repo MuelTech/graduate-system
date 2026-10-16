@@ -29,7 +29,7 @@ export interface PublishedEntryRow {
   } | null;
 }
 
-/** Row shape for the ADMIN-only publication queue (adds student number). */
+/** Row shape for the ADMIN-only publication queue (adds student number and documents). */
 export interface AdminEntryRow {
   id: string;
   title: string;
@@ -38,12 +38,24 @@ export interface AdminEntryRow {
   isPublic: boolean;
   publishedAt: Date | null;
   createdAt: Date;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
   thesis: {
+    id: string;
     student: {
       studentNumber: string | null;
       user: { firstName: string; lastName: string } | null;
       program: { programName: string } | null;
     } | null;
+    thesisDocuments?: Array<{
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      filePath: string;
+      originalFilename: string | null;
+      verifiedMimeType: string | null;
+      sizeBytes: number | null;
+    }>;
   } | null;
 }
 
@@ -78,13 +90,28 @@ const ADMIN_SELECT = {
   isPublic: true,
   publishedAt: true,
   createdAt: true,
+  fullPaperPath: true,
+  respondentDataPath: true,
   thesis: {
     select: {
+      id: true,
       student: {
         select: {
           studentNumber: true,
           user: { select: { firstName: true, lastName: true } },
           program: { select: { programName: true } },
+        },
+      },
+      thesisDocuments: {
+        where: { isCurrent: true },
+        select: {
+          id: true,
+          docType: true,
+          defenseStage: true,
+          filePath: true,
+          originalFilename: true,
+          verifiedMimeType: true,
+          sizeBytes: true,
         },
       },
     },
@@ -197,5 +224,27 @@ export class RepositoryPublicationRepository {
       data: { isPublic: false },
     });
     return result.count;
+  }
+
+  /**
+   * Admin updates metadata (title, abstract, keywords) for a databank / repository entry.
+   */
+  async updateMetadata(
+    id: string,
+    data: {
+      title?: string;
+      abstract?: string | null;
+      keywords?: string | null;
+    },
+  ): Promise<AdminEntryRow | null> {
+    await prisma.eLibrary.update({
+      where: { id },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.abstract !== undefined ? { abstract: data.abstract } : {}),
+        ...(data.keywords !== undefined ? { keywords: data.keywords } : {}),
+      },
+    });
+    return this.findAdminById(id);
   }
 }
