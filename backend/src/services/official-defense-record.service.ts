@@ -13,8 +13,23 @@ import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { deriveDefenseRecordStatus } from "./defense-record-status.rules";
 import { RapReportService } from "./rap-report.service";
 import { isEvaluationStage } from "./oral-evaluation.rules";
+import {
+  INSTITUTIONAL_MATRIX_V2,
+  LEGACY_POINTS_V1,
+  type OralEvaluationScoringVersionValue,
+} from "./oral-evaluation.institutional.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
+
+/**
+ * CDW-4 FIX: official snapshots must record which scoring semantics produced the
+ * values. A row without an explicit marker is legacy (pre-migration).
+ */
+function scoringVersionOf(row: { scoringVersion?: unknown } | null | undefined): OralEvaluationScoringVersionValue {
+  return row?.scoringVersion === INSTITUTIONAL_MATRIX_V2
+    ? INSTITUTIONAL_MATRIX_V2
+    : LEGACY_POINTS_V1;
+}
 
 /** UIUX-2M: bounded, validated list filters for the Admin Defense Records index. */
 const DEFENSE_TYPE_VALUES = [
@@ -45,6 +60,8 @@ export interface SummaryEvaluatorRow {
   overallValue: number | null;
   rating: string | null;
   recommendations: string | null;
+  /** CDW-4 FIX: scoring semantics for this evaluator row. */
+  scoringVersion: OralEvaluationScoringVersionValue;
 }
 
 export interface OralExamSummarySnapshot {
@@ -110,6 +127,8 @@ export interface OralExamScoreOfficialSnapshot {
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-4 FIX: scoring semantics the frozen criteria were recorded under. */
+  scoringVersion: OralEvaluationScoringVersionValue;
   snapshotAt: string;
 }
 
@@ -220,6 +239,23 @@ export class OfficialDefenseRecordService {
       };
     }
 
+    // CDW-4 FIX: the institutional Overall/Summary formula is NOT confirmed.
+    // Never fabricate an overall (e.g. a null→0 average) or derive a rating for
+    // V2 records; surface a clear domain blocker instead. Individual evaluator
+    // finalization is unaffected (this path is best-effort at finalize time).
+    const hasInstitutionalSemantics = finalizedRows.some(
+      (r) =>
+        scoringVersionOf(r) === INSTITUTIONAL_MATRIX_V2 ||
+        r.overallAverage === null ||
+        r.overallAverage === undefined,
+    );
+    if (hasInstitutionalSemantics) {
+      throw new AppError(
+        "The institutional Oral Examination Summary cannot be generated yet: the institutional Overall/Rating formula is not confirmed. Individual evaluations remain valid and finalized.",
+        409,
+      );
+    }
+
     const rowByPanel = new Map(finalizedRows.map((r) => [r.panelId, r]));
     const evaluators: SummaryEvaluatorRow[] = assignments.map((a) => {
       const row = rowByPanel.get(a.id);
@@ -233,6 +269,7 @@ export class OfficialDefenseRecordService {
         overallValue: toNumber(row?.overallAverage),
         rating: (row?.rating as string | null) ?? null,
         recommendations: row?.recommendations ?? null,
+        scoringVersion: scoringVersionOf(row),
       };
     });
 
@@ -541,6 +578,7 @@ export class OfficialDefenseRecordService {
         recommendations: row.recommendations ?? null,
         signedAt: row.signedAt?.toISOString() ?? null,
         finalizedAt: row.finalizedAt?.toISOString() ?? null,
+        scoringVersion: scoringVersionOf(row),
         snapshotAt: new Date().toISOString(),
       };
       // Never overwrite academic values during backfill.
@@ -645,6 +683,7 @@ export class OfficialDefenseRecordService {
       recommendations: row.recommendations ?? null,
       signedAt: row.signedAt?.toISOString() ?? null,
       finalizedAt: row.finalizedAt?.toISOString() ?? null,
+      scoringVersion: scoringVersionOf(row),
       snapshotAt: new Date().toISOString(),
     };
 

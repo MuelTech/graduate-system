@@ -318,6 +318,42 @@ describe("CP7 Oral Examination Summary", () => {
     expect(result.created).toBe(false);
     expect(result.summaryId).toBe("sum-existing");
   });
+
+  it("CDW-4 FIX: V2 institutional rows fail closed instead of fabricating a 0 overall", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+      { id: "p2", userId: "u2", role: "PANELIST", user: { id: "u2", firstName: "C", lastName: "D" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([
+      { ...finalizedScore("p1"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.5, groupBAverage: 1.375, rating: null },
+      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.25, groupBAverage: 1.5, rating: null },
+    ]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+
+    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
+      /overall formula|not (yet )?confirmed|cannot be generated/i,
+    );
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+  });
+
+  it("CDW-4 FIX: a single V2 row in a mixed session also fails closed", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+      { id: "p2", userId: "u2", role: "PANELIST", user: { id: "u2", firstName: "C", lastName: "D" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([
+      finalizedScore("p1", 80),
+      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null },
+    ]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+
+    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
+      /overall formula|not (yet )?confirmed/i,
+    );
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("CP7 Rapporteur notes finalization", () => {
@@ -875,6 +911,46 @@ describe("CP7 official Criteria eligibility", () => {
     await expect(svc.getOfficialCriteria("sched-1", "pr")).rejects.toThrow(
       /evaluator/i,
     );
+  });
+
+  it("CDW-4 FIX: snapshotFinalizedEvaluation records the scoring version", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findUnique.mockResolvedValue({
+      id: "p1",
+      scheduleId: "sched-1",
+      userId: "u1",
+      role: "PANELIST",
+      user: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    prismaMock.oralExamScore.findUnique.mockResolvedValue({
+      ...finalizedScore("p1"),
+      scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+      officialSnapshot: null,
+    });
+    prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
+
+    await svc.snapshotFinalizedEvaluation("sched-1", "p1");
+    const call = prismaMock.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
+    expect(call?.data?.officialSnapshot?.scoringVersion).toBe(
+      "INSTITUTIONAL_MATRIX_V2",
+    );
+  });
+
+  it("CDW-4 FIX: legacy Criteria snapshot backfill defaults to LEGACY_POINTS_V1", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findUnique.mockResolvedValue({
+      id: "p1",
+      scheduleId: "sched-1",
+      userId: "u1",
+      role: "PANELIST",
+      user: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    // No scoringVersion on the row → legacy semantics.
+    prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
+    prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    expect(result.officialSnapshot?.scoringVersion).toBe("LEGACY_POINTS_V1");
   });
 });
 

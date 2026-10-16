@@ -23,9 +23,30 @@ import {
   type CriteriaInput,
 } from "./oral-evaluation.rules";
 import type { DefenseTypeName } from "../interfaces/defense-eligibility.interfaces";
+import {
+  INSTITUTIONAL_MATRIX_V2,
+  LEGACY_POINTS_V1,
+  calculateInstitutionalScores,
+  isInstitutionalEvaluationComplete,
+  validateInstitutionalCriterionValue,
+  type OralEvaluationScoringVersionValue,
+} from "./oral-evaluation.institutional.rules";
 
 const CRITERION_KEYS = Object.keys(CRITERION_LIMITS) as CriterionKey[];
 const committeePolicy = new DefenseCommitteePolicy();
+
+type ScoringVersion = OralEvaluationScoringVersionValue;
+
+/**
+ * CDW-4 FIX: a row's scoring semantics are immutable once created. Existing rows
+ * (including any pre-migration row) are LEGACY_POINTS_V1; only NEW evaluations
+ * created by the collaborative workspace are INSTITUTIONAL_MATRIX_V2.
+ */
+function resolveScoringVersion(row: { scoringVersion?: unknown } | null | undefined): ScoringVersion {
+  return row?.scoringVersion === INSTITUTIONAL_MATRIX_V2
+    ? INSTITUTIONAL_MATRIX_V2
+    : LEGACY_POINTS_V1;
+}
 
 /** Evaluator-role authority derived from the actual session defense type. */
 function evaluatorRoleList(defenseType: string): string[] {
@@ -42,6 +63,11 @@ export interface OralEvaluationDto {
   groupIValue: number | null;
   groupIIValue: number | null;
   overallValue: number | null;
+  /**
+   * CDW-4 FIX: which scoring semantics this record uses. Legacy rows keep
+   * 10/15-point meaning; new rows use the institutional 1.00–2.50 matrix.
+   */
+  scoringVersion: ScoringVersion;
   rating: string | null;
   recommendations: string | null;
   signedAt: string | null;
@@ -85,6 +111,7 @@ export class OralEvaluationService {
       recommendations: string | null;
       signedAt: Date | null;
       finalizedAt: Date | null;
+      scoringVersion?: unknown;
     } | null,
   ): OralEvaluationDto {
     const num = (v: unknown): number | null => {
@@ -112,6 +139,11 @@ export class OralEvaluationService {
       groupIValue: num(row?.groupAAverage),
       groupIIValue: num(row?.groupBAverage),
       overallValue: num(row?.overallAverage),
+      // CDW-4 FIX: no row yet → the evaluation will be created as V2; an
+      // existing row without an explicit marker is a legacy (pre-migration) row.
+      scoringVersion: row
+        ? resolveScoringVersion(row)
+        : INSTITUTIONAL_MATRIX_V2,
       rating: row?.rating ?? null,
       recommendations: row?.recommendations ?? null,
       signedAt: row?.signedAt ? row.signedAt.toISOString() : null,
@@ -210,6 +242,49 @@ export class OralEvaluationService {
     }
   }
 
+  /**
+   * CDW-4 FIX: validate + derive per scoring version. V2 uses the institutional
+   * matrix and yields group AVERAGES with NO overall (the Overall formula is not
+   * confirmed); LEGACY keeps the historical 10/15-point validation + point sums.
+   */
+  private validateAndDerive(
+    version: ScoringVersion,
+    merged: CriteriaInput,
+  ): {
+    validated: Partial<Record<CriterionKey, number | null>>;
+    groupA: number | null;
+    groupB: number | null;
+    overall: number | null;
+  } {
+    const validated: Partial<Record<CriterionKey, number | null>> = {};
+    if (version === INSTITUTIONAL_MATRIX_V2) {
+      for (const key of CRITERION_KEYS) {
+        const result = validateInstitutionalCriterionValue(key, merged[key]);
+        if (!result.ok) throw new AppError(result.reason, 400);
+        validated[key] = result.value;
+      }
+      const institutional = calculateInstitutionalScores(validated);
+      return {
+        validated,
+        groupA: institutional.groupIAverage,
+        groupB: institutional.groupIIAverage,
+        overall: null,
+      };
+    }
+    for (const key of CRITERION_KEYS) {
+      const result = validateCriterionValue(key, merged[key]);
+      if (!result.ok) throw new AppError(result.reason, 400);
+      validated[key] = result.value;
+    }
+    const legacy = calculateEvaluationScores(validated);
+    return {
+      validated,
+      groupA: legacy.groupIValue,
+      groupB: legacy.groupIIValue,
+      overall: legacy.overallValue,
+    };
+  }
+
   async getMyEvaluation(scheduleId: string, userId: string): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
     // CP5-FIX1: assignment auth BEFORE stage disclosure.
@@ -272,6 +347,10 @@ export class OralEvaluationService {
         }
 
         // CP5-FIX1: PATCH merge — absent fields preserve stored values.
+        const version = existing
+          ? resolveScoringVersion(existing)
+          : INSTITUTIONAL_MATRIX_V2;
+
         const merged = mergePartialCriteria(
           {
             timelinessRelevance: (existing as any)?.timelinessRelevance,
@@ -286,20 +365,23 @@ export class OralEvaluationService {
           },
           input.criteria ?? {},
         );
-        const validated: Partial<Record<CriterionKey, number | null>> = {};
-        for (const key of CRITERION_KEYS) {
-          const result = validateCriterionValue(key, merged[key]);
-          if (!result.ok) throw new AppError(result.reason, 400);
-          validated[key] = result.value;
-        }
-
-        const rating = mergeOptionalField<string>(
-          existing?.rating as string | null,
-          (input ?? {}) as Record<string, unknown>,
-          "rating",
+        const { validated, groupA, groupB, overall } = this.validateAndDerive(
+          version,
+          merged,
         );
-        if (rating !== null && rating !== "" && !isValidOralRating(rating)) {
-          throw new AppError("Invalid evaluation rating value.", 400);
+
+        // V2 never stores a rating (digital Rating semantics are unconfirmed);
+        // legacy rows keep their optional historical rating.
+        let rating: string | null = null;
+        if (version === LEGACY_POINTS_V1) {
+          rating = mergeOptionalField<string>(
+            existing?.rating as string | null,
+            (input ?? {}) as Record<string, unknown>,
+            "rating",
+          );
+          if (rating !== null && rating !== "" && !isValidOralRating(rating)) {
+            throw new AppError("Invalid evaluation rating value.", 400);
+          }
         }
         const recommendations = mergeOptionalField<string>(
           existing?.recommendations as string | null,
@@ -307,23 +389,15 @@ export class OralEvaluationService {
           "recommendations",
         );
 
-        const derived = calculateEvaluationScores(validated);
         const data = {
-          timelinessRelevance: validated.timelinessRelevance,
-          organization: validated.organization,
-          depthComprehensiveness: validated.depthComprehensiveness,
-          relevanceConclusions: validated.relevanceConclusions,
-          evidenceOriginalThinking: validated.evidenceOriginalThinking,
-          presentation: validated.presentation,
-          masterySubject: validated.masterySubject,
-          communicationSkill: validated.communicationSkill,
-          attitude: validated.attitude,
-          groupAAverage: derived.groupIValue,
-          groupBAverage: derived.groupIIValue,
-          overallAverage: derived.overallValue,
+          ...validated,
+          groupAAverage: groupA,
+          groupBAverage: groupB,
+          overallAverage: overall,
           rating: (rating || null) as never,
           recommendations,
           scoredAt: now,
+          scoringVersion: version,
         };
 
         if (existing) {
@@ -405,64 +479,10 @@ export class OralEvaluationService {
       );
     }
 
-    const existing = await prisma.oralExamScore.findUnique({
-      where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
-    });
-    if (existing?.status === "FINALIZED") {
-      throw new AppError("Evaluation is already finalized.", 409);
-    }
-
-    const criteria = mergePartialCriteria(
-      {
-        timelinessRelevance: (existing as any)?.timelinessRelevance,
-        organization: (existing as any)?.organization,
-        depthComprehensiveness: (existing as any)?.depthComprehensiveness,
-        relevanceConclusions: (existing as any)?.relevanceConclusions,
-        evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
-        presentation: (existing as any)?.presentation,
-        masterySubject: (existing as any)?.masterySubject,
-        communicationSkill: (existing as any)?.communicationSkill,
-        attitude: (existing as any)?.attitude,
-      },
-      input.criteria ?? {},
-    );
-    const validated: Partial<Record<CriterionKey, number | null>> = {};
-    for (const key of CRITERION_KEYS) {
-      const result = validateCriterionValue(key, criteria[key]);
-      if (!result.ok) throw new AppError(result.reason, 400);
-      validated[key] = result.value;
-    }
-    const derived = calculateEvaluationScores(validated);
-    const complete = areAllCriteriaComplete(validated);
-    const gate = canFinalizeEvaluation({
-      status: existing?.status ?? null,
-      criteriaComplete: complete,
-      signaturePresent: Boolean(input.signatureData?.trim()),
-    });
-    if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
-
-    if (
-      input.rating !== null &&
-      input.rating !== undefined &&
-      input.rating !== "" &&
-      !isValidOralRating(input.rating)
-    ) {
-      throw new AppError("Invalid evaluation rating value.", 400);
-    }
-
-    // Server-authoritative timestamps (ignore client signedAt/finalizedAt).
+    // Server-authoritative timestamps (client values are ignored).
     const signedAt = new Date();
     const finalizedAt = signedAt;
-    const rating = mergeOptionalField<string>(
-      existing?.rating as string | null,
-      (input ?? {}) as Record<string, unknown>,
-      "rating",
-    );
-    const recommendations = mergeOptionalField<string>(
-      existing?.recommendations as string | null,
-      (input ?? {}) as Record<string, unknown>,
-      "recommendations",
-    );
+    const signatureData = input.signatureData.trim();
 
     await prisma.$transaction(async (tx) => {
       // CP5-FIX2: re-check session editability inside the write transaction.
@@ -472,6 +492,71 @@ export class OralEvaluationService {
       });
       this.assertSessionEditable(current?.sessionStatus, schedule.defenseType);
 
+      // CDW-4 FIX: the persisted row determines the scoring semantics, so read
+      // it on the same transaction client that performs the CAS update.
+      const existing = await tx.oralExamScore.findUnique({
+        where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
+      });
+      if (existing?.status === "FINALIZED") {
+        throw new AppError("Evaluation is already finalized.", 409);
+      }
+
+      const version = existing
+        ? resolveScoringVersion(existing)
+        : INSTITUTIONAL_MATRIX_V2;
+      const criteria = mergePartialCriteria(
+        {
+          timelinessRelevance: (existing as any)?.timelinessRelevance,
+          organization: (existing as any)?.organization,
+          depthComprehensiveness: (existing as any)?.depthComprehensiveness,
+          relevanceConclusions: (existing as any)?.relevanceConclusions,
+          evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
+          presentation: (existing as any)?.presentation,
+          masterySubject: (existing as any)?.masterySubject,
+          communicationSkill: (existing as any)?.communicationSkill,
+          attitude: (existing as any)?.attitude,
+        },
+        input.criteria ?? {},
+      );
+      const { validated, groupA, groupB, overall } = this.validateAndDerive(
+        version,
+        criteria,
+      );
+      const complete =
+        version === INSTITUTIONAL_MATRIX_V2
+          ? isInstitutionalEvaluationComplete(validated)
+          : areAllCriteriaComplete(validated);
+      const gate = canFinalizeEvaluation({
+        status: existing?.status ?? null,
+        criteriaComplete: complete,
+        signaturePresent: Boolean(signatureData),
+      });
+      if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
+
+      // V2 finalization stores NO rating (digital Rating semantics unconfirmed);
+      // legacy rows keep the existing optional-rating behavior.
+      let rating: string | null = null;
+      if (version === LEGACY_POINTS_V1) {
+        if (
+          input.rating !== null &&
+          input.rating !== undefined &&
+          input.rating !== "" &&
+          !isValidOralRating(input.rating)
+        ) {
+          throw new AppError("Invalid evaluation rating value.", 400);
+        }
+        rating = mergeOptionalField<string>(
+          existing?.rating as string | null,
+          (input ?? {}) as Record<string, unknown>,
+          "rating",
+        );
+      }
+      const recommendations = mergeOptionalField<string>(
+        existing?.recommendations as string | null,
+        (input ?? {}) as Record<string, unknown>,
+        "recommendations",
+      );
+
       const result = await tx.oralExamScore.updateMany({
         where: {
           scheduleId,
@@ -480,24 +565,17 @@ export class OralEvaluationService {
         },
         data: {
           status: "FINALIZED",
-          timelinessRelevance: validated.timelinessRelevance,
-          organization: validated.organization,
-          depthComprehensiveness: validated.depthComprehensiveness,
-          relevanceConclusions: validated.relevanceConclusions,
-          evidenceOriginalThinking: validated.evidenceOriginalThinking,
-          presentation: validated.presentation,
-          masterySubject: validated.masterySubject,
-          communicationSkill: validated.communicationSkill,
-          attitude: validated.attitude,
-          groupAAverage: derived.groupIValue,
-          groupBAverage: derived.groupIIValue,
-          overallAverage: derived.overallValue,
+          ...validated,
+          groupAAverage: groupA,
+          groupBAverage: groupB,
+          overallAverage: overall,
           rating: (rating || null) as never,
           recommendations,
-          signatureData: input.signatureData.trim(),
+          signatureData,
           signedAt,
           finalizedAt,
           scoredAt: signedAt,
+          scoringVersion: version,
         },
       });
       if (result.count === 0) {

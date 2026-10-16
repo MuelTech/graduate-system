@@ -116,7 +116,7 @@ describe("OralEvaluationService (CP5)", () => {
 
   it("Test 1: evaluator can save own partial draft", async () => {
     const dto = await svc.saveDraft("sched-1", "user-a", {
-      criteria: { organization: 5 },
+      criteria: { organization: 1.5 },
     });
     expect(prismaMock.__tx.oralExamScore.create).toHaveBeenCalled();
     expect(dto.status).toBe("DRAFT");
@@ -144,7 +144,7 @@ describe("OralEvaluationService (CP5)", () => {
       sessionStatus: "IN_PROGRESS",
     });
     const dto = await svc.saveDraft("sched-1", "user-a", {
-      criteria: { organization: 5 },
+      criteria: { organization: 1.5 },
     });
     expect(prismaMock.__tx.oralExamScore.create).toHaveBeenCalled();
     expect(dto.status).toBe("DRAFT");
@@ -237,10 +237,16 @@ describe("OralEvaluationService (CP5)", () => {
     await expect(
       svc.finalize("sched-1", "user-a", {
         signatureData: "e-sign",
-        criteria: { organization: 5 },
+        criteria: { organization: 1.5 },
       }),
     ).rejects.toThrow(/All evaluation criteria/i);
 
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "DRAFT",
+      scoringVersion: "LEGACY_POINTS_V1",
+      ...completeCriteria,
+    });
     await expect(
       svc.finalize("sched-1", "user-a", {
         signatureData: "",
@@ -392,7 +398,7 @@ describe("OralEvaluationService (CP5)", () => {
       meta: { target: ["schedule_id", "panel_id"] },
     });
     await expect(
-      svc.saveDraft("sched-1", "user-a", { criteria: { organization: 3 } }),
+      svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1.5 } }),
     ).rejects.toThrow(/Evaluation state changed/i);
   });
 
@@ -446,5 +452,130 @@ describe("OralEvaluationService (CP5)", () => {
     // Allowed: evaluation finalized + session recompute only
     expect(prismaMock.__tx.oralExamScore.updateMany).toHaveBeenCalled();
     expect(prismaMock.defenseSchedule.updateMany).toHaveBeenCalled();
+  });
+
+  describe("CDW-4 FIX scoring version (institutional matrix V2)", () => {
+    const instComplete = {
+      timelinessRelevance: 1,
+      organization: 1.25,
+      depthComprehensiveness: 1.5,
+      relevanceConclusions: 1.75,
+      evidenceOriginalThinking: 2,
+      presentation: 1,
+      masterySubject: 1.25,
+      communicationSkill: 1.5,
+      attitude: 1.75,
+    };
+
+    it("creates NEW evaluations as INSTITUTIONAL_MATRIX_V2", async () => {
+      await svc.saveDraft("sched-1", "user-a", {
+        criteria: { organization: 1.5 },
+      });
+      const arg = prismaMock.__tx.oralExamScore.create.mock.calls[0][0];
+      expect(arg.data.scoringVersion).toBe("INSTITUTIONAL_MATRIX_V2");
+    });
+
+    it("supports partial matrix selections without fabricating an overall", async () => {
+      await svc.saveDraft("sched-1", "user-a", {
+        criteria: { organization: 1.5, attitude: 2.5 },
+      });
+      const arg = prismaMock.__tx.oralExamScore.create.mock.calls[0][0];
+      expect(Number(arg.data.organization)).toBe(1.5);
+      expect(Number(arg.data.attitude)).toBe(2.5);
+      // Groups incomplete → no derived average.
+      expect(arg.data.groupAAverage).toBeNull();
+      expect(arg.data.groupBAverage).toBeNull();
+      expect(arg.data.overallAverage).toBeNull();
+      expect(arg.data.rating).toBeNull();
+    });
+
+    it("rejects values outside the six-level institutional matrix", async () => {
+      for (const bad of [0, 2.25, 2.75, 3, 1.1]) {
+        await expect(
+          svc.saveDraft("sched-1", "user-a", {
+            criteria: { organization: bad },
+          }),
+        ).rejects.toThrow(/institutional ratings/i);
+      }
+    });
+
+    it("finalize requires all nine institutional ratings", async () => {
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: { organization: 1.5 },
+        }),
+      ).rejects.toThrow(/All evaluation criteria/i);
+    });
+
+    it("finalize requires a signature for V2", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "",
+          criteria: instComplete,
+        }),
+      ).rejects.toThrow(/e-signature/i);
+    });
+
+    it("finalize derives group averages and never fabricates an overall/rating", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      await svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: instComplete,
+      });
+      const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
+      expect(Number(call?.data?.groupAAverage)).toBeCloseTo(1.5, 5);
+      expect(Number(call?.data?.groupBAverage)).toBeCloseTo(1.375, 5);
+      expect(call?.data?.overallAverage).toBeNull();
+      expect(call?.data?.rating).toBeNull();
+      expect(call?.data?.scoringVersion).toBe("INSTITUTIONAL_MATRIX_V2");
+    });
+
+    it("continues an existing LEGACY row without reinterpretation (still point sums)", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "LEGACY_POINTS_V1",
+        ...completeCriteria,
+      });
+      await svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: completeCriteria,
+      });
+      const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
+      // Legacy Group I point sum stays 48; legacy overall point total stays 80.
+      expect(Number(call?.data?.groupAAverage)).toBe(48);
+      expect(Number(call?.data?.overallAverage)).toBe(80);
+      expect(call?.data?.scoringVersion).toBe("LEGACY_POINTS_V1");
+    });
+
+    it("reads a legacy row as LEGACY_POINTS_V1 with its original values", async () => {
+      prismaMock.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "LEGACY_POINTS_V1",
+        organization: 8,
+        groupAAverage: 48,
+        groupBAverage: 16,
+        overallAverage: 64,
+        rating: "S",
+      });
+      const dto = await svc.getMyEvaluation("sched-1", "user-a");
+      expect(dto.scoringVersion).toBe("LEGACY_POINTS_V1");
+      expect(dto.criteria.organization).toBe(8);
+      expect(dto.groupIValue).toBe(48);
+      expect(dto.rating).toBe("S");
+    });
   });
 });
