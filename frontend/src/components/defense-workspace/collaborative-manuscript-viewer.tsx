@@ -229,10 +229,10 @@ export function CollaborativeManuscriptViewer({
   const currentPageAnnotations = annotationsByPage.get(pageNumber) ?? [];
 
   return (
-    <div className={className}>
-      <div className="overflow-hidden rounded border border-(--earist-border-gray) bg-(--earist-surface-gray)">
+    <div className={"flex h-full min-h-0 flex-col " + (className ?? "")}>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray)">
         {documentLabel && (
-          <div className="border-b border-(--earist-border-gray) px-3 py-1.5 text-xs font-medium text-(--earist-body-text)">
+          <div className="shrink-0 border-b border-(--earist-border-gray) px-3 py-1.5 text-[14px] font-medium text-(--earist-body-text)">
             {documentLabel}
           </div>
         )}
@@ -259,7 +259,7 @@ export function CollaborativeManuscriptViewer({
         )}
 
         {status === "ready" && !textAvailable && (
-          <p className="border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+          <p className="shrink-0 border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-[14px] text-amber-800">
             Text selection and highlighting are unavailable for this document (no
             extractable text layer).
           </p>
@@ -267,7 +267,7 @@ export function CollaborativeManuscriptViewer({
 
         <div
           ref={scrollRef}
-          className="flex max-h-[70vh] min-h-[40vh] justify-center overflow-auto p-3"
+          className="flex min-h-0 flex-1 justify-center overflow-auto p-3"
         >
           {status === "loading" && (
             <div className="flex items-center justify-center gap-2 self-center">

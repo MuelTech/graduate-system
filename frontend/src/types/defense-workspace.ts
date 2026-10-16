@@ -107,6 +107,11 @@ export interface OralEvaluation {
   groupIValue: number | null;
   groupIIValue: number | null;
   overallValue: number | null;
+  /**
+   * CDW-4 FIX: which scoring semantics this record uses. LEGACY_POINTS_V1 rows are
+   * read-only in the workspace; INSTITUTIONAL_MATRIX_V2 uses the 1.00–2.50 matrix.
+   */
+  scoringVersion: "LEGACY_POINTS_V1" | "INSTITUTIONAL_MATRIX_V2";
   rating: string | null;
   recommendations: string | null;
   signedAt: string | null;

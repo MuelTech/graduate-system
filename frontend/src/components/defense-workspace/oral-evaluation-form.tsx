@@ -1,52 +1,54 @@
 "use client";
 
-import { useMemo, useState } from "react";
+/**
+ * CDW-4 FIX — My Evaluation (institutional individual evaluation).
+ *
+ * New records use the institutional 1.00–2.50 matrix (INSTITUTIONAL_MATRIX_V2):
+ * the whole cell is the radio target, the Legend is always visible, Group I/II
+ * AVERAGES are shown, and there is deliberately NO Overall value and NO Rating
+ * input (the institutional Overall/Rating formulas are not yet confirmed).
+ *
+ * Legacy rows (LEGACY_POINTS_V1) are shown READ-ONLY with an explicit notice and
+ * are never reinterpreted as institutional ratings.
+ */
+
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle2, FileSignature, Save, Eye } from "lucide-react";
+
 import { apiClientRequest, ApiError } from "@/lib/api.client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileSignature,
-  Save,
-  Eye,
-} from "lucide-react";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import type { OralEvaluation } from "@/types/defense-workspace";
 
-const GROUP_I = [
-  { key: "timelinessRelevance", label: "Timeliness & Relevance", max: 10 },
-  { key: "organization", label: "Organization", max: 10 },
-  { key: "depthComprehensiveness", label: "Depth & Comprehensiveness", max: 15 },
-  { key: "relevanceConclusions", label: "Relevance of Conclusions", max: 10 },
-  { key: "evidenceOriginalThinking", label: "Evidence of Original Thinking", max: 15 },
-] as const;
+import {
+  INSTITUTIONAL_GROUP_I,
+  INSTITUTIONAL_GROUP_II,
+  INSTITUTIONAL_RATING_LEVELS,
+  InstitutionalEvaluationMatrix,
+  InstitutionalLegend,
+} from "./institutional-evaluation-matrix";
 
-const GROUP_II = [
-  { key: "presentation", label: "Presentation", max: 10 },
-  { key: "masterySubject", label: "Mastery of Subject", max: 10 },
-  { key: "communicationSkill", label: "Communication Skill", max: 10 },
-  { key: "attitude", label: "Attitude / Receptiveness", max: 10 },
-] as const;
-
-const RATINGS = ["E", "HS", "VS", "S", "BS", "F"] as const;
+const ALL_CRITERIA = [...INSTITUTIONAL_GROUP_I, ...INSTITUTIONAL_GROUP_II];
 
 function evalQueryKey(scheduleId: string) {
   return ["oralEvaluation", scheduleId] as const;
 }
 
-const ALL_CRITERIA = [...GROUP_I, ...GROUP_II];
+function levelLabel(raw: string): string {
+  const value = Number(raw);
+  const level = INSTITUTIONAL_RATING_LEVELS.find((l) => l.value === value);
+  if (!level) return raw;
+  return `${level.value.toFixed(2)} ${level.code}`;
+}
 
-/** Seeds local criteria inputs from the server Draft record. */
-function initialCriteriaValues(
-  evaluation?: OralEvaluation,
-): Record<string, string> {
+function initialMatrixValues(evaluation?: OralEvaluation): Record<string, string> {
   const next: Record<string, string> = {};
-  for (const [k, v] of Object.entries(evaluation?.criteria ?? {})) {
-    next[k] = v === null || v === undefined ? "" : String(v);
+  for (const criterion of ALL_CRITERIA) {
+    const raw = evaluation?.criteria?.[criterion.key];
+    next[criterion.key] = raw === null || raw === undefined ? "" : String(raw);
   }
   return next;
 }
@@ -62,16 +64,13 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
 
   if (isLoading && !evaluation) {
     return (
-      <Card>
-        <CardContent className="pt-6 text-sm text-(--earist-body-text)">
-          Loading evaluation…
-        </CardContent>
-      </Card>
+      <p className="rounded-lg border border-(--earist-border-gray) p-4 text-sm text-(--earist-body-text)">
+        Loading evaluation…
+      </p>
     );
   }
 
-  // Remount per schedule so the server Draft seeds local form state exactly
-  // once (lazy initializers) without a state-syncing effect.
+  // Remount per schedule so the server Draft seeds local form state exactly once.
   return (
     <EvaluationEditor
       key={scheduleId}
@@ -88,115 +87,143 @@ function EvaluationEditor({
   scheduleId: string;
   evaluation?: OralEvaluation;
 }) {
+  if (evaluation && evaluation.scoringVersion === "LEGACY_POINTS_V1") {
+    return <LegacyEvaluationNotice evaluation={evaluation} />;
+  }
+  return <MatrixEvaluationEditor scheduleId={scheduleId} evaluation={evaluation} />;
+}
+
+/** Legacy 10/15-point rows are read-only in the new workspace. */
+function LegacyEvaluationNotice({ evaluation }: { evaluation: OralEvaluation }) {
+  return (
+    <section className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+      <p className="text-base font-semibold text-amber-900">
+        Legacy scoring (10/15-point)
+      </p>
+      <p className="mt-1 text-[14px] text-amber-900">
+        This evaluation was recorded under the previous 10/15-point model and is
+        shown read-only. Its stored values are <strong>not</strong> the
+        institutional 1.00–2.50 ratings and are not converted. New evaluations use
+        the institutional matrix.
+      </p>
+      <dl className="mt-2 space-y-1 text-[14px] text-amber-950">
+        {ALL_CRITERIA.map((criterion) => (
+          <div key={criterion.key} className="flex items-center justify-between gap-3">
+            <dt>{criterion.label}</dt>
+            <dd className="font-medium">{evaluation.criteria?.[criterion.key] ?? "—"}</dd>
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-3 border-t border-amber-200 pt-1">
+          <dt className="font-semibold">Group I (points)</dt>
+          <dd className="font-semibold">{evaluation.groupIValue ?? "—"}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="font-semibold">Group II (points)</dt>
+          <dd className="font-semibold">{evaluation.groupIIValue ?? "—"}</dd>
+        </div>
+      </dl>
+      {evaluation.recommendations && (
+        <p className="mt-2 text-[14px] whitespace-pre-wrap text-amber-950">
+          Recommendations: {evaluation.recommendations}
+        </p>
+      )}
+      {evaluation.isLocked && (
+        <p className="mt-2 text-[13px] text-amber-800">
+          Finalized{" "}
+          {evaluation.finalizedAt
+            ? new Date(evaluation.finalizedAt).toLocaleString()
+            : ""}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function MatrixEvaluationEditor({
+  scheduleId,
+  evaluation,
+}: {
+  scheduleId: string;
+  evaluation?: OralEvaluation;
+}) {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>(() =>
-    initialCriteriaValues(evaluation),
+    initialMatrixValues(evaluation),
   );
-  const [touchedCriteria, setTouchedCriteria] = useState<Set<string>>(new Set());
-  const [rating, setRating] = useState(evaluation?.rating ?? "");
-  const [ratingTouched, setRatingTouched] = useState(false);
   const [recommendations, setRecommendations] = useState(
     evaluation?.recommendations ?? "",
   );
   const [signature, setSignature] = useState("");
-  const [dirty, setDirty] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const locked = evaluation?.isLocked === true;
 
-  /**
-   * CP6-FIX2: single snapshot used by Review AND Finalize.
-   * Only touched criteria are sent; blank → null; "0" → 0.
-   */
-  const buildCurrentEvaluationPatch = () => {
-    const criteria: Record<string, number | null> = {};
-    for (const key of touchedCriteria) {
-      const raw = values[key];
-      criteria[key] = raw === undefined || raw === "" ? null : Number(raw);
-    }
-    const body: Record<string, unknown> = { criteria };
-    if (ratingTouched) {
-      body.rating = rating === "" ? null : rating;
-    }
-    if (recommendations !== (evaluation?.recommendations ?? "")) {
-      body.recommendations = recommendations;
-    }
-    return body;
+  const selectedValues = (criteria: readonly { key: string }[]): number[] =>
+    criteria
+      .map((criterion) => values[criterion.key])
+      .filter((raw) => raw !== undefined && raw !== "")
+      .map(Number)
+      .filter((value) => Number.isFinite(value));
+
+  const previewAverage = (criteria: readonly { key: string }[]): number | null => {
+    const nums = selectedValues(criteria);
+    if (nums.length === 0) return null;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
   };
 
-  const reviewCriteriaView = useMemo(() => {
-    // Review shows current form state for all fields; blank → "—".
-    return ALL_CRITERIA.map((c) => {
-      const raw = values[c.key];
-      const display =
-        raw === undefined || raw === null || raw === ""
-          ? "—"
-          : String(Number(raw));
-      const n = raw === undefined || raw === null || raw === "" ? 0 : Number(raw);
-      return { key: c.key, label: c.label, display, numeric: n };
-    });
-  }, [values]);
+  const groupIComplete =
+    selectedValues(INSTITUTIONAL_GROUP_I).length === INSTITUTIONAL_GROUP_I.length;
+  const groupIIComplete =
+    selectedValues(INSTITUTIONAL_GROUP_II).length === INSTITUTIONAL_GROUP_II.length;
+  const allCriteriaComplete = groupIComplete && groupIIComplete;
 
-  const localPreview = useMemo(() => {
-    const g1 = GROUP_I.reduce((s, c) => {
-      const raw = values[c.key];
-      return s + (raw === "" || raw === undefined ? 0 : Number(raw) || 0);
-    }, 0);
-    const g2 = GROUP_II.reduce((s, c) => {
-      const raw = values[c.key];
-      return s + (raw === "" || raw === undefined ? 0 : Number(raw) || 0);
-    }, 0);
-    return { g1, g2, overall: g1 + g2 };
-  }, [values]);
+  // Server values are authoritative once present; otherwise show an explicitly
+  // labelled incomplete local preview.
+  const groupIPreview = previewAverage(INSTITUTIONAL_GROUP_I);
+  const groupIIPreview = previewAverage(INSTITUTIONAL_GROUP_II);
 
-  const allCriteriaComplete = ALL_CRITERIA.every((c) => {
-    const raw = values[c.key];
-    return raw !== undefined && raw !== null && raw !== "";
-  });
+  const buildCriteriaPayload = (): Record<string, number | null> => {
+    const criteria: Record<string, number | null> = {};
+    for (const criterion of ALL_CRITERIA) {
+      const raw = values[criterion.key];
+      criteria[criterion.key] = raw === undefined || raw === "" ? null : Number(raw);
+    }
+    return criteria;
+  };
 
   const saveDraft = useMutation({
-    mutationFn: async () => {
-      const body = buildCurrentEvaluationPatch();
-      return apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/draft`, {
+    mutationFn: async () =>
+      apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/draft`, {
         method: "PUT",
-        body: JSON.stringify(body),
-      });
-    },
+        body: JSON.stringify({
+          criteria: buildCriteriaPayload(),
+          recommendations,
+        }),
+      }),
     onSuccess: async () => {
       setMessage("Draft saved");
       setError(null);
-      setDirty(false);
-      setRatingTouched(false);
       await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
     },
     onError: (e: Error) => setError(e.message),
   });
 
   const finalize = useMutation({
-    mutationFn: async () => {
-      const patch = buildCurrentEvaluationPatch();
-      return apiClientRequest(
-        `/thesis/defense/${scheduleId}/evaluation/finalize`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            signatureData: signature,
-            criteria: patch.criteria,
-            ...(Object.prototype.hasOwnProperty.call(patch, "rating")
-              ? { rating: patch.rating }
-              : {}),
-            recommendations: patch.recommendations ?? recommendations,
-          }),
-        },
-      );
-    },
+    mutationFn: async () =>
+      apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/finalize`, {
+        method: "POST",
+        body: JSON.stringify({
+          signatureData: signature,
+          criteria: buildCriteriaPayload(),
+          recommendations,
+        }),
+      }),
     onSuccess: async () => {
       setMessage("Evaluation finalized and locked");
       setError(null);
       setShowReview(false);
-      setDirty(false);
       await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
     },
@@ -209,116 +236,81 @@ function EvaluationEditor({
     },
   });
 
-  const renderField = (item: { key: string; label: string; max: number }) => (
-    <label key={item.key} className="block text-xs">
-      <span className="mb-1 block font-medium text-(--earist-secondary)">
-        {item.label}{" "}
-        <span className="text-(--earist-body-text)">(max {item.max})</span>
-      </span>
-      <input
-        type="number"
-        min={0}
-        max={item.max}
-        disabled={locked}
-        value={values[item.key] ?? ""}
-        onChange={(e) => {
-          setDirty(true);
-          setTouchedCriteria((prev) => {
-            const next = new Set(prev);
-            next.add(item.key);
-            return next;
-          });
-          setValues((prev) => ({ ...prev, [item.key]: e.target.value }));
-        }}
-        className="w-full rounded border border-(--earist-border-gray) px-2 py-1.5 text-sm"
-      />
-    </label>
-  );
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-sm">
-          <span>My Evaluation</span>
-          <Badge
-            className={
-              locked
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-amber-100 text-amber-800"
-            }
-          >
-            {locked ? "FINALIZED" : "DRAFT"}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <section className="flex min-h-0 flex-col rounded-lg border border-(--earist-border-gray)">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
+        <span className="text-base font-semibold text-(--earist-primary)">
+          My Evaluation
+        </span>
+        <Badge
+          className={
+            locked
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-amber-100 text-amber-800"
+          }
+        >
+          {locked ? "FINALIZED" : "DRAFT"}
+        </Badge>
+      </header>
+
+      <div className="min-h-0 flex-1 space-y-4 p-3">
         {message && (
-          <p className="flex items-center gap-2 text-xs text-emerald-700">
+          <p className="flex items-center gap-2 text-[14px] text-emerald-700">
             <CheckCircle2 className="h-4 w-4" /> {message}
           </p>
         )}
         {error && (
-          <p className="flex items-center gap-2 text-xs text-red-600">
+          <p className="flex items-center gap-2 text-[14px] text-red-600">
             <AlertCircle className="h-4 w-4" /> {error}
           </p>
         )}
 
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--earist-body-text)">
-            Group I
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">{GROUP_I.map(renderField)}</div>
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-(--earist-body-text)">
-            Group II
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">{GROUP_II.map(renderField)}</div>
+        <InstitutionalEvaluationMatrix
+          values={values}
+          disabled={locked}
+          onChange={(key, value) => {
+            setMessage(null);
+            setValues((prev) => ({ ...prev, [key]: value }));
+          }}
+        />
+
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-[14px] text-(--earist-body)">
+          <span>
+            Group I Average:{" "}
+            <strong>
+              {evaluation?.groupIValue != null
+                ? evaluation.groupIValue.toFixed(2)
+                : groupIPreview != null
+                  ? groupIPreview.toFixed(2)
+                  : "—"}
+            </strong>
+            {evaluation?.groupIValue == null && !groupIComplete && groupIPreview != null && (
+              <span className="ml-1 text-[13px] text-(--earist-body-text)">
+                (incomplete)
+              </span>
+            )}
+          </span>
+          <span>
+            Group II Average:{" "}
+            <strong>
+              {evaluation?.groupIIValue != null
+                ? evaluation.groupIIValue.toFixed(2)
+                : groupIIPreview != null
+                  ? groupIIPreview.toFixed(2)
+                  : "—"}
+            </strong>
+            {evaluation?.groupIIValue == null && !groupIIComplete && groupIIPreview != null && (
+              <span className="ml-1 text-[13px] text-(--earist-body-text)">
+                (incomplete)
+              </span>
+            )}
+          </span>
         </div>
 
-        <div className="flex flex-wrap gap-3 text-xs">
-          <span>
-            Group I:{" "}
-            <strong>{evaluation?.groupIValue ?? localPreview.g1}</strong>
-          </span>
-          <span>
-            Group II:{" "}
-            <strong>{evaluation?.groupIIValue ?? localPreview.g2}</strong>
-          </span>
-          <span>
-            Overall:{" "}
-            <strong>{evaluation?.overallValue ?? localPreview.overall}</strong>
-          </span>
-          <span className="text-(--earist-body-text)">
-            (server values are authoritative)
-          </span>
-        </div>
+        <InstitutionalLegend />
 
-        <label className="block text-xs">
-          <span className="mb-1 block font-medium text-(--earist-secondary)">
-            Rating (optional)
-          </span>
-          <select
-            disabled={locked}
-            value={rating}
-            onChange={(e) => {
-              setDirty(true);
-              setRatingTouched(true);
-              setRating(e.target.value);
-            }}
-            className="w-full rounded border border-(--earist-border-gray) px-2 py-1.5 text-sm"
-          >
-            <option value="">—</option>
-            {RATINGS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-xs">
-          <span className="mb-1 block font-medium text-(--earist-secondary)">
+        <label className="block">
+          <span className="mb-1 block text-[14px] font-medium text-(--earist-secondary)">
             Recommendations
           </span>
           <Textarea
@@ -326,17 +318,20 @@ function EvaluationEditor({
             rows={3}
             value={recommendations}
             onChange={(e) => {
-              setDirty(true);
+              setMessage(null);
               setRecommendations(e.target.value);
             }}
           />
         </label>
 
-        {locked ? (
-          <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+        {locked && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[14px] text-emerald-900">
             <p className="font-semibold">This evaluation is locked.</p>
             <p>
-              Signed: {evaluation?.signedAt ? new Date(evaluation.signedAt).toLocaleString() : "—"}
+              Signed:{" "}
+              {evaluation?.signedAt
+                ? new Date(evaluation.signedAt).toLocaleString()
+                : "—"}
             </p>
             <p>
               Finalized:{" "}
@@ -345,66 +340,30 @@ function EvaluationEditor({
                 : "—"}
             </p>
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={saveDraft.isPending}
-              onClick={() => saveDraft.mutate()}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saveDraft.isPending ? "Saving..." : "Save Draft"}
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setShowReview(true)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Review &amp; Finalize
-            </Button>
-          </div>
         )}
 
         {showReview && !locked && (
-          <div className="rounded border border-(--earist-border-gray) p-3 text-xs">
+          <div className="rounded-lg border border-(--earist-border-gray) p-3 text-[14px]">
             <p className="mb-2 font-semibold text-(--earist-primary)">
               Review Evaluation (irreversible after finalize)
             </p>
             <ul className="mb-2 list-disc space-y-1 pl-5 text-(--earist-body-text)">
-              {GROUP_I.map((c) => (
-                <li key={c.key}>
-                  {c.label}:{" "}
-                  {
-                    reviewCriteriaView.find((r) => r.key === c.key)?.display
-                  }
+              {ALL_CRITERIA.map((criterion) => (
+                <li key={criterion.key}>
+                  {criterion.label}: {values[criterion.key] ? levelLabel(values[criterion.key]) : "—"}
                 </li>
               ))}
-              <li>Group I total: {localPreview.g1}</li>
-              {GROUP_II.map((c) => (
-                <li key={c.key}>
-                  {c.label}:{" "}
-                  {
-                    reviewCriteriaView.find((r) => r.key === c.key)?.display
-                  }
-                </li>
-              ))}
-              <li>Group II total: {localPreview.g2}</li>
-              <li>
-                Overall: {localPreview.overall}
-                {dirty ? " (current form)" : ""}
-              </li>
-              <li>Rating: {rating || "—"}</li>
+              <li>Group I Average: {groupIPreview != null ? groupIPreview.toFixed(2) : "—"}</li>
+              <li>Group II Average: {groupIIPreview != null ? groupIIPreview.toFixed(2) : "—"}</li>
               <li>Recommendations: {recommendations || "—"}</li>
             </ul>
             {!allCriteriaComplete && (
               <p className="mb-2 font-medium text-amber-700">
-                Incomplete — all criteria are required before finalization.
+                Incomplete — all nine criteria are required before finalization.
               </p>
             )}
-            <p className="mb-2 text-xs text-(--earist-body-text)">
-              Final server values are recalculated on submission from these
-              criteria.
-            </p>
             <ESignaturePad value={signature} onChange={setSignature} disabled={locked} />
-            <div className="flex gap-2">
+            <div className="mt-2 flex gap-2">
               <Button
                 type="button"
                 disabled={
@@ -417,17 +376,32 @@ function EvaluationEditor({
                 <FileSignature className="mr-2 h-4 w-4" />
                 Confirm Finalize
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowReview(false)}
-              >
+              <Button type="button" variant="ghost" onClick={() => setShowReview(false)}>
                 Cancel
               </Button>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Sticky actions stay reachable while the criteria list scrolls. */}
+      {!locked && (
+        <footer className="sticky bottom-0 flex shrink-0 flex-wrap gap-2 border-t border-(--earist-border-gray) bg-white/95 px-3 py-2 backdrop-blur motion-reduce:backdrop-blur-none">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saveDraft.isPending}
+            onClick={() => saveDraft.mutate()}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {saveDraft.isPending ? "Saving…" : "Save Draft"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setShowReview(true)}>
+            <Eye className="mr-2 h-4 w-4" />
+            {"Review & Finalize"}
+          </Button>
+        </footer>
+      )}
+    </section>
   );
 }

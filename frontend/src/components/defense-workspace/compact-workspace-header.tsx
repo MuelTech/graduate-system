@@ -62,20 +62,20 @@ export function CompactWorkspaceHeader({
     <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-(--earist-border-gray) bg-white px-3 py-2">
       <Link
         href="/panelist/defenses"
-        className="inline-flex items-center gap-1 text-xs font-medium text-(--earist-primary) hover:underline"
+        className="inline-flex items-center gap-1 text-[14px] font-medium text-(--earist-primary) hover:underline"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         My Defenses
       </Link>
 
       <div className="flex min-w-0 items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-(--earist-primary)" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-(--earist-primary)">
+          <p className="truncate text-[16px] font-semibold text-(--earist-primary)">
             {workspace.student.name}
             {workspace.student.studentNumber ? ` · ${workspace.student.studentNumber}` : ""}
           </p>
-          <p className="truncate text-[11px] text-(--earist-body-text)">
+          <p className="truncate text-[13px] text-(--earist-body-text)">
             {workspace.student.program ?? "—"} · {DEFENSE_LABELS[workspace.schedule.defenseType] ?? workspace.schedule.defenseType}
             {" · "}
             {formatWallDate(workspace.schedule.defenseDate)} {formatWallTime(workspace.schedule.defenseTime)}

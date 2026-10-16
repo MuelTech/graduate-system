@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IconTooltipButton } from "@/components/ui/tooltip";
+import { PanelRightClose } from "lucide-react";
 import type { PdfAnchor } from "@/lib/pdf-annotation/anchors";
 import type { CollaborationAnnotation } from "@/lib/pdf-annotation/annotations";
 import { defenseRoleLabel, formatCommentTimestamp } from "@/lib/pdf-annotation/collaboration-client";
@@ -45,6 +47,8 @@ export interface SharedCommentsRailProps {
   /** Controlled view (owned by the container so create/select can focus Selected). */
   view: "selected" | "all";
   onViewChange: (view: "selected" | "all") => void;
+  /** CDW-4 FIX: rail-local icon collapse control (presentation only). */
+  onCollapse?: () => void;
 }
 
 function preview(text: string, max = 120): string {
@@ -71,6 +75,7 @@ export function SharedCommentsRail({
   replyError,
   view,
   onViewChange,
+  onCollapse,
 }: SharedCommentsRailProps) {
   const selected =
     annotations.find((annotation) => annotation.id === selectedAnnotationId) ?? null;
@@ -83,7 +88,14 @@ export function SharedCommentsRail({
   return (
     <Card className="flex h-full min-h-0 flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">Shared Comments</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">Shared Comments</CardTitle>
+          {onCollapse && (
+            <IconTooltipButton label="Collapse comments panel" onClick={onCollapse}>
+              <PanelRightClose className="h-5 w-5" />
+            </IconTooltipButton>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1">
         <Tabs
@@ -109,7 +121,7 @@ export function SharedCommentsRail({
                   autoFocus
                   header={
                     <div className="space-y-1">
-                      <blockquote className="border-l-2 border-(--earist-primary) bg-(--earist-surface-gray) px-2 py-1 text-xs italic text-(--earist-body-text)">
+                      <blockquote className="border-l-2 border-(--earist-primary) bg-(--earist-surface-gray) px-2 py-1 text-[14px] italic text-(--earist-body-text)">
                         “{preview(pendingAnchor.selectedText, 200)}”
                       </blockquote>
                       <Badge variant="outline">Page {pendingAnchor.pageNumber}</Badge>
@@ -127,7 +139,7 @@ export function SharedCommentsRail({
                   replyError={replyError}
                 />
               ) : (
-                <p className="text-xs text-(--earist-body-text)">
+                <p className="text-[14px] text-(--earist-body-text)">
                   {canAnnotate
                     ? "Select text in the manuscript to add a comment, or choose a comment from All Comments."
                     : "Choose a comment from All Comments to read the thread."}
@@ -139,11 +151,11 @@ export function SharedCommentsRail({
           <TabsContent value="all" className="mt-3">
             <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
               {isLoading && (
-                <p className="text-xs text-(--earist-body-text)">Loading comments…</p>
+                <p className="text-[14px] text-(--earist-body-text)">Loading comments…</p>
               )}
               {isError && (
                 <div className="space-y-2">
-                  <p className="text-xs text-amber-700">
+                  <p className="text-[14px] text-amber-700">
                     Comments could not be loaded.
                   </p>
                   <Button type="button" size="sm" variant="outline" onClick={onRetry}>
@@ -152,7 +164,7 @@ export function SharedCommentsRail({
                 </div>
               )}
               {!isLoading && !isError && annotations.length === 0 && (
-                <p className="text-xs text-(--earist-body-text)">No comments yet.</p>
+                <p className="text-[14px] text-(--earist-body-text)">No comments yet.</p>
               )}
               {annotations.map((annotation) => {
                 const isActive = annotation.id === selectedAnnotationId;
@@ -169,10 +181,10 @@ export function SharedCommentsRail({
                         : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)")
                     }
                   >
-                    <p className="line-clamp-2 text-xs italic text-(--earist-body-text)">
+                    <p className="line-clamp-2 text-[14px] italic text-(--earist-body-text)">
                       “{preview(annotation.selectedText)}”
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--earist-body-text)">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-(--earist-body-text)">
                       <Badge variant="outline">Page {annotation.pageNumber}</Badge>
                       <span className="font-medium text-(--earist-body)">
                         {annotation.author.name || "Unknown"}

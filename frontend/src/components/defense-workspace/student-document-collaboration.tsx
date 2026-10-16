@@ -256,22 +256,24 @@ export function StudentDocumentCollaboration({
 export function CollaborationViewerPane({ className }: { className?: string }) {
   const c = useCollaboration();
   return (
-    <div className={"min-w-0 " + (className ?? "")}>
+    <div className={"flex h-full min-h-0 min-w-0 flex-col " + (className ?? "")}>
       {!c.active && (
-        <p className="mb-2 rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-xs text-(--earist-body-text)">
+        <p className="mb-2 shrink-0 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-[14px] text-(--earist-body-text)">
           Collaboration is read-only for this defense. Existing comments remain visible.
         </p>
       )}
-      <CollaborativeManuscriptViewer
-        documentId={c.documentId}
-        documentLabel={c.documentLabel}
-        annotations={c.annotations}
-        onTextSelection={c.handleTextSelection}
-        onAnnotationSelect={c.selectAnnotation}
-        focusedAnnotationId={c.selectedAnnotationId}
-      />
+      <div className="min-h-0 flex-1">
+        <CollaborativeManuscriptViewer
+          documentId={c.documentId}
+          documentLabel={c.documentLabel}
+          annotations={c.annotations}
+          onTextSelection={c.handleTextSelection}
+          onAnnotationSelect={c.selectAnnotation}
+          focusedAnnotationId={c.selectedAnnotationId}
+        />
+      </div>
       {c.isError && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+        <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-[14px] text-amber-800">
           <span>Stored annotations could not be loaded. The manuscript is still available.</span>
           <Button type="button" variant="outline" size="xs" onClick={c.refetch}>
             Retry
@@ -283,7 +285,13 @@ export function CollaborationViewerPane({ className }: { className?: string }) {
 }
 
 /** Right pane: the committee Shared Comments rail. */
-export function CollaborationRailPane({ className }: { className?: string }) {
+export function CollaborationRailPane({
+  className,
+  onCollapse,
+}: {
+  className?: string;
+  onCollapse?: () => void;
+}) {
   const c = useCollaboration();
   return (
     <div className={className}>
@@ -306,6 +314,7 @@ export function CollaborationRailPane({ className }: { className?: string }) {
         replyError={c.replyError}
         view={c.railView}
         onViewChange={c.setRailView}
+        onCollapse={onCollapse}
       />
     </div>
   );
