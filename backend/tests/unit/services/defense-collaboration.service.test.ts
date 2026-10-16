@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
+  $queryRaw: vi.fn(),
   defenseSchedule: { findUnique: vi.fn() },
   panelAssignment: { findFirst: vi.fn() },
   thesisDocument: { findUnique: vi.fn(), findFirst: vi.fn() },
@@ -21,6 +23,14 @@ vi.mock("../../../src/services/official-defense-record.service", () => ({
 
 import { DefenseCollaborationService } from "../../../src/services/defense-collaboration.service";
 import { AppError } from "../../../src/utils/AppError";
+
+// Mirror the repo's transaction-mock convention: run the interactive callback
+// against the same mock client so `tx.<model>` resolves to the shared mocks.
+// `clearAllMocks()` clears calls but keeps these implementations.
+prismaMock.$transaction.mockImplementation(
+  async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock),
+);
+prismaMock.$queryRaw.mockResolvedValue([]);
 
 const VALID_ANCHOR = {
   anchorVersion: 1,
@@ -918,5 +928,142 @@ describe("DefenseCollaborationService — CDW-3 atomic highlight + initial comme
       }),
     ).rejects.toThrow();
     expect(prismaMock.defenseAnnotationComment.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("DefenseCollaborationService — CDW-3 freeze/write serialization", () => {
+  const svc = new DefenseCollaborationService();
+
+  function frozenRap() {
+    return rapRow({
+      status: "FOR_SIGNATURE",
+      frozenAt: new Date("2026-10-20T00:00:00Z"),
+      frozenContentHash: "a".repeat(64),
+    });
+  }
+
+  function writableSchedule() {
+    return scheduleRow({ rapReports: [rapRow({ status: "DRAFT" })] });
+  }
+
+  function mockAnnotationCreate() {
+    prismaMock.defenseAnnotation.create.mockResolvedValue(annotationRow());
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // clearAllMocks keeps implementations, so re-establish the lock mock cleanly
+    // (the race tests override $queryRaw to simulate a freeze winning).
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock),
+    );
+    prismaMock.$queryRaw.mockReset();
+    prismaMock.$queryRaw.mockResolvedValue([]);
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(writableSchedule());
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow());
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow());
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+    prismaMock.defenseAnnotation.findUnique.mockResolvedValue({ id: "ann-1", scheduleId: "sched-1" });
+    prismaMock.defenseAnnotationComment.create.mockResolvedValue({
+      id: "c-9",
+      annotationId: "ann-1",
+      parentCommentId: null,
+      body: "reply",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+      author: { id: "pa-PANELIST", userId: "u-PANELIST", role: "PANELIST", user: { firstName: "P", lastName: "N" } },
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    ensureSummary.mockResolvedValue({
+      created: false,
+      summaryId: "sum-1",
+      evaluatorCount: 1,
+      overallAverage: 0,
+      finalRating: null,
+    });
+  });
+
+  function expectAttemptLockAcquired() {
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
+    const strings = prismaMock.$queryRaw.mock.calls[0][0] as unknown as TemplateStringsArray;
+    const sql = Array.from(strings).join("");
+    expect(sql).toMatch(/defense_schedules/);
+    expect(sql).toMatch(/FOR UPDATE/);
+  }
+
+  it("serializes annotation creation under the per-attempt lock", async () => {
+    mockAnnotationCreate();
+    await svc.createAnnotation("sched-1", "u-PANELIST", {
+      thesisDocumentId: "doc-1",
+      anchor: VALID_ANCHOR,
+      initialComment: "hello",
+    });
+    expectAttemptLockAcquired();
+  });
+
+  it("serializes comment creation under the per-attempt lock", async () => {
+    await svc.createComment("sched-1", "u-PANELIST", { annotationId: "ann-1", body: "reply" });
+    expectAttemptLockAcquired();
+  });
+
+  it("serializes RAP freeze under the SAME per-attempt lock", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
+    expectAttemptLockAcquired();
+  });
+
+  it("rejects an annotation when the RAP froze before the locked read (freeze won the race)", async () => {
+    // Simulate the freeze committing between request start and lock acquisition:
+    // the FOR UPDATE acquisition now observes a frozen RAP.
+    prismaMock.$queryRaw.mockImplementation(async () => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({ rapReports: [frozenRap()] }),
+      );
+      return [];
+    });
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", {
+        thesisDocumentId: "doc-1",
+        anchor: VALID_ANCHOR,
+        initialComment: "should not persist",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.defenseAnnotation.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a comment when the RAP froze before the locked read (freeze won the race)", async () => {
+    prismaMock.$queryRaw.mockImplementation(async () => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({ rapReports: [frozenRap()] }),
+      );
+      return [];
+    });
+    await expect(
+      svc.createComment("sched-1", "u-PANELIST", { annotationId: "ann-1", body: "late" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.defenseAnnotationComment.create).not.toHaveBeenCalled();
+  });
+
+  it("allows a pre-freeze comment to commit; a subsequent freeze still succeeds", async () => {
+    // Case A: comment acquires the lock first on a writable DRAFT.
+    await expect(
+      svc.createComment("sched-1", "u-PANELIST", { annotationId: "ann-1", body: "pre-freeze" }),
+    ).resolves.toMatchObject({ id: "c-9" });
+    expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
+
+    // The comment is valid pre-freeze history; freeze then proceeds.
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).resolves.toMatchObject({
+      frozen: true,
+      status: "FOR_SIGNATURE",
+    });
   });
 });

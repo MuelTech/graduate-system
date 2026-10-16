@@ -16,6 +16,7 @@
  *  - the target document must belong to the exact attempt/stage/current slot;
  *  - concluded/frozen/cancelled attempts reject writes.
  */
+import type { PrismaClient } from "@prisma/client";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
@@ -47,6 +48,16 @@ const CHAIRMAN_ROLE = "CHAIRMAN";
 const COLLAB_WRITABLE_STATUSES = ["SCHEDULED", "IN_PROGRESS", "AWAITING_CONCLUSION"];
 const FROZEN_RAP_STATUSES = ["FOR_SIGNATURE", "PARTIALLY_SIGNED", "ALL_SIGNED", "DISTRIBUTED", "FINALIZED"];
 const MAX_COMMENT_LENGTH = 5000;
+
+/**
+ * A Prisma client usable both outside and inside an interactive transaction.
+ * Key resolution helpers accept this so the exact same authorization logic runs
+ * on the locked transaction client (never duplicated for transactions).
+ */
+type DbClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
 
 /** Exact stage/document binding per defense stage (prevents cross-stage injection). */
 const STAGE_DOC_BINDING: Record<string, { stage: string; docTypes: string[] }> = {
@@ -249,8 +260,8 @@ export class DefenseCollaborationService {
    * Load a schedule and its (single) RAP report. Throws 404 when missing.
    * `rap` is null when no report row exists yet for the attempt.
    */
-  private async loadSchedule(scheduleId: string) {
-    const schedule = await prisma.defenseSchedule.findUnique({
+  private async loadSchedule(scheduleId: string, db: DbClient = prisma) {
+    const schedule = await db.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         rapReports: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -274,8 +285,12 @@ export class DefenseCollaborationService {
    * snapshot (student/program identity, schedule, committee roster, prepared-by).
    * The report body itself comes from the RapReport being frozen.
    */
-  private async loadFreezeContext(scheduleId: string, rapporteurUserId: string) {
-    const schedule = await prisma.defenseSchedule.findUnique({
+  private async loadFreezeContext(
+    scheduleId: string,
+    rapporteurUserId: string,
+    db: DbClient = prisma,
+  ) {
+    const schedule = await db.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         panelAssignments: {
@@ -320,14 +335,32 @@ export class DefenseCollaborationService {
   }
 
   /** Authority comes from the caller's own assignment for the exact schedule. */
-  private async resolveAssignment(scheduleId: string, userId: string) {
-    const assignment = await prisma.panelAssignment.findFirst({
+  private async resolveAssignment(scheduleId: string, userId: string, db: DbClient = prisma) {
+    const assignment = await db.panelAssignment.findFirst({
       where: { scheduleId, userId },
     });
     if (!assignment) {
       throw new AppError("You are not assigned to this defense session.", 403);
     }
     return assignment;
+  }
+
+  /**
+   * Serialize the write decision + write against the RAP freeze boundary for ONE
+   * attempt. Locks the exact DefenseSchedule row (`SELECT ... FOR UPDATE`) and
+   * runs the callback on the transaction client, so annotation creation,
+   * comment/reply creation, and RAP freeze all share a single lock authority and
+   * order (schedule → RAP). A collaboration write therefore cannot observe a
+   * pre-freeze DRAFT and commit after the freeze has won.
+   */
+  private async withAttemptLock<T>(
+    scheduleId: string,
+    fn: (tx: DbClient) => Promise<T>,
+  ): Promise<T> {
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT schedule_id FROM defense_schedules WHERE schedule_id = ${scheduleId} FOR UPDATE`;
+      return fn(tx);
+    });
   }
 
   /**
@@ -341,13 +374,14 @@ export class DefenseCollaborationService {
   private async resolveLiveWriteDocument(
     schedule: { thesisId: string; defenseType: unknown; manuscriptDocumentId?: string | null },
     thesisDocumentId: string,
+    db: DbClient = prisma,
   ) {
     const defenseType = String(schedule.defenseType);
     const binding = STAGE_DOC_BINDING[defenseType];
     if (!binding) {
       throw new AppError("Collaboration is not supported for this defense type.", 400);
     }
-    const document = await prisma.thesisDocument.findUnique({
+    const document = await db.thesisDocument.findUnique({
       where: { id: thesisDocumentId },
     });
     if (!document) throw new AppError("Defense document not found.", 404);
@@ -376,7 +410,7 @@ export class DefenseCollaborationService {
     }
 
     if (defenseType === "TITLE_DEFENSE") {
-      const authoritative = await prisma.thesisDocument.findFirst({
+      const authoritative = await db.thesisDocument.findFirst({
         where: {
           thesisId: schedule.thesisId,
           docType: "TITLE_PROPOSAL",
@@ -391,7 +425,7 @@ export class DefenseCollaborationService {
       return document;
     }
 
-    const cert = await prisma.adviserCertification.findFirst({
+    const cert = await db.adviserCertification.findFirst({
       where: {
         thesisId: schedule.thesisId,
         defenseStage: defenseType as never,
@@ -424,12 +458,13 @@ export class DefenseCollaborationService {
   private async resolveReadableDocument(
     schedule: { thesisId: string; defenseType: unknown },
     thesisDocumentId: string,
+    db: DbClient = prisma,
   ) {
     const binding = STAGE_DOC_BINDING[String(schedule.defenseType)];
     if (!binding) {
       throw new AppError("Collaboration is not supported for this defense type.", 400);
     }
-    const document = await prisma.thesisDocument.findUnique({
+    const document = await db.thesisDocument.findUnique({
       where: { id: thesisDocumentId },
     });
     if (!document) throw new AppError("Defense document not found.", 404);
@@ -511,52 +546,55 @@ export class DefenseCollaborationService {
     // CDW-3: the canonical "highlight + initial comment" action is validated up
     // front so a rejected comment never leaves an orphan published annotation.
     const initialComment = normalizeInitialComment(input.initialComment);
-
-    const { schedule, rap } = await this.loadSchedule(scheduleId);
-    const assignment = await this.resolveAssignment(scheduleId, userId);
-    if (!ANNOTATION_WRITE_ROLES.includes(String(assignment.role))) {
-      throw new AppError("Your defense role cannot create annotations.", 403);
-    }
-    this.assertCollaborationWritable(schedule, rap);
-    const document = await this.resolveLiveWriteDocument(schedule, thesisDocumentId);
-
     const validation = validateAnchorPayload(input.anchor);
     if (!validation.ok) throw new AppError(validation.error, 400);
     const anchor = validation.anchor;
 
-    // Single nested write: the annotation and its initial comment commit together
-    // or not at all (no two-request window that could strand an empty highlight).
-    const created = await prisma.defenseAnnotation.create({
-      data: {
-        scheduleId,
-        thesisDocumentId: document.id,
-        authorAssignmentId: assignment.id,
-        pageNumber: anchor.pageNumber,
-        selectedText: anchor.selectedText,
-        anchorData: {
-          rects: anchor.rects,
-          prefix: anchor.prefix,
-          suffix: anchor.suffix,
-        } as never,
-        anchorVersion: anchor.anchorVersion,
-        ...(initialComment
-          ? { comments: { create: { authorAssignmentId: assignment.id, body: initialComment } } }
-          : {}),
-      },
-      include: {
-        author: { include: { user: { select: { firstName: true, lastName: true } } } },
-        comments: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            author: { include: { user: { select: { firstName: true, lastName: true } } } },
+    // The write decision (writable state) and the write are serialized on the
+    // per-attempt lock so a freeze that wins the race rejects this annotation.
+    return this.withAttemptLock(scheduleId, async (tx) => {
+      const { schedule, rap } = await this.loadSchedule(scheduleId, tx);
+      const assignment = await this.resolveAssignment(scheduleId, userId, tx);
+      if (!ANNOTATION_WRITE_ROLES.includes(String(assignment.role))) {
+        throw new AppError("Your defense role cannot create annotations.", 403);
+      }
+      this.assertCollaborationWritable(schedule, rap);
+      const document = await this.resolveLiveWriteDocument(schedule, thesisDocumentId, tx);
+
+      // Single nested write: the annotation and its initial comment commit together
+      // or not at all (no two-request window that could strand an empty highlight).
+      const created = await tx.defenseAnnotation.create({
+        data: {
+          scheduleId,
+          thesisDocumentId: document.id,
+          authorAssignmentId: assignment.id,
+          pageNumber: anchor.pageNumber,
+          selectedText: anchor.selectedText,
+          anchorData: {
+            rects: anchor.rects,
+            prefix: anchor.prefix,
+            suffix: anchor.suffix,
+          } as never,
+          anchorVersion: anchor.anchorVersion,
+          ...(initialComment
+            ? { comments: { create: { authorAssignmentId: assignment.id, body: initialComment } } }
+            : {}),
+        },
+        include: {
+          author: { include: { user: { select: { firstName: true, lastName: true } } } },
+          comments: {
+            orderBy: { createdAt: "asc" },
+            include: {
+              author: { include: { user: { select: { firstName: true, lastName: true } } } },
+            },
           },
         },
-      },
+      });
+      const createdComments = Array.isArray((created as { comments?: unknown }).comments)
+        ? ((created as { comments: CommentRow[] }).comments)
+        : [];
+      return toAnnotationDto(created as AnnotationRow, createdComments);
     });
-    const createdComments = Array.isArray((created as { comments?: unknown }).comments)
-      ? ((created as { comments: CommentRow[] }).comments)
-      : [];
-    return toAnnotationDto(created as AnnotationRow, createdComments);
   }
 
   async createComment(
@@ -585,43 +623,47 @@ export class DefenseCollaborationService {
         ? rawParentCommentId.trim()
         : null;
 
-    const { schedule, rap } = await this.loadSchedule(scheduleId);
-    const assignment = await this.resolveAssignment(scheduleId, userId);
-    if (!COMMENT_WRITE_ROLES.includes(String(assignment.role))) {
-      throw new AppError("Your defense role cannot comment on annotations.", 403);
-    }
-    this.assertCollaborationWritable(schedule, rap);
+    // Serialize the writable-state check + insert with RAP freeze: if a freeze
+    // wins the lock first, this transaction re-reads the frozen RAP and rejects.
+    return this.withAttemptLock(scheduleId, async (tx) => {
+      const { schedule, rap } = await this.loadSchedule(scheduleId, tx);
+      const assignment = await this.resolveAssignment(scheduleId, userId, tx);
+      if (!COMMENT_WRITE_ROLES.includes(String(assignment.role))) {
+        throw new AppError("Your defense role cannot comment on annotations.", 403);
+      }
+      this.assertCollaborationWritable(schedule, rap);
 
-    const annotation = await prisma.defenseAnnotation.findUnique({
-      where: { id: annotationId },
-      select: { id: true, scheduleId: true },
-    });
-    if (!annotation) throw new AppError("Annotation not found.", 404);
-    if (annotation.scheduleId !== scheduleId) {
-      throw new AppError("Annotation belongs to another defense attempt.", 403);
-    }
-
-    if (parentCommentId) {
-      const parent = await prisma.defenseAnnotationComment.findUnique({
-        where: { id: parentCommentId },
-        select: { id: true, annotationId: true, parentCommentId: true },
+      const annotation = await tx.defenseAnnotation.findUnique({
+        where: { id: annotationId },
+        select: { id: true, scheduleId: true },
       });
-      if (!parent) throw new AppError("Parent comment not found.", 404);
-      if (parent.annotationId !== annotationId) {
-        throw new AppError("Parent comment belongs to a different annotation.", 400);
+      if (!annotation) throw new AppError("Annotation not found.", 404);
+      if (annotation.scheduleId !== scheduleId) {
+        throw new AppError("Annotation belongs to another defense attempt.", 403);
       }
-      if (parent.parentCommentId) {
-        throw new AppError("Replies support only one level of nesting.", 400);
-      }
-    }
 
-    const created = await prisma.defenseAnnotationComment.create({
-      data: { annotationId, authorAssignmentId: assignment.id, body, parentCommentId },
-      include: {
-        author: { include: { user: { select: { firstName: true, lastName: true } } } },
-      },
+      if (parentCommentId) {
+        const parent = await tx.defenseAnnotationComment.findUnique({
+          where: { id: parentCommentId },
+          select: { id: true, annotationId: true, parentCommentId: true },
+        });
+        if (!parent) throw new AppError("Parent comment not found.", 404);
+        if (parent.annotationId !== annotationId) {
+          throw new AppError("Parent comment belongs to a different annotation.", 400);
+        }
+        if (parent.parentCommentId) {
+          throw new AppError("Replies support only one level of nesting.", 400);
+        }
+      }
+
+      const created = await tx.defenseAnnotationComment.create({
+        data: { annotationId, authorAssignmentId: assignment.id, body, parentCommentId },
+        include: {
+          author: { include: { user: { select: { firstName: true, lastName: true } } } },
+        },
+      });
+      return toCommentDto(created as CommentRow);
     });
-    return toCommentDto(created as CommentRow);
   }
 
   // ---- Committee Report --------------------------------------------------
@@ -726,105 +768,112 @@ export class DefenseCollaborationService {
     scheduleId: string,
     userId: string,
   ): Promise<{ frozen: true; alreadyFrozen: boolean; contentVersion: number; contentHash: string; status: string }> {
-    const { schedule, rap } = await this.loadSchedule(scheduleId);
-    const assignment = await this.resolveAssignment(scheduleId, userId);
-    if (String(assignment.role) !== RAPPORTEUR_ROLE) {
-      throw new AppError("Only the assigned Rapporteur may freeze the committee report.", 403);
-    }
-    const status = String(schedule.sessionStatus);
-    this.assertSessionOpen(status);
-    if (!rap) {
-      throw new AppError("The committee report has not been created for this attempt yet.", 404);
-    }
+    // Freeze participates in the SAME per-attempt lock as collaboration writes:
+    // it re-reads the RAP under the lock before deciding, so a write that wins
+    // the lock first commits as pre-freeze history, and a write that arrives
+    // after the freeze wins observes the frozen state and is rejected.
+    return this.withAttemptLock(scheduleId, async (tx) => {
+      const { schedule, rap } = await this.loadSchedule(scheduleId, tx);
+      const assignment = await this.resolveAssignment(scheduleId, userId, tx);
+      if (String(assignment.role) !== RAPPORTEUR_ROLE) {
+        throw new AppError("Only the assigned Rapporteur may freeze the committee report.", 403);
+      }
+      const status = String(schedule.sessionStatus);
+      this.assertSessionOpen(status);
+      if (!rap) {
+        throw new AppError("The committee report has not been created for this attempt yet.", 404);
+      }
 
-    // Idempotent-safe: an existing freeze is returned, never replaced.
-    if (rap.frozenAt && rap.frozenContentHash) {
-      return {
-        frozen: true,
-        alreadyFrozen: true,
-        contentVersion: rap.contentVersion ?? 0,
-        contentHash: rap.frozenContentHash,
-        status: String(rap.status),
-      };
-    }
-    if (String(rap.status) !== "DRAFT") {
-      throw new AppError("Only a draft committee report can be frozen.", 409);
-    }
-    if (!rap.bodyDocument) {
-      throw new AppError("The committee report has no content to freeze.", 409);
-    }
-    const validation = validateReportDocument(rap.bodyDocument);
-    if (!validation.ok) {
-      throw new AppError("The stored report body is invalid and cannot be frozen.", 409);
-    }
-    if (!hasMeaningfulReportContent(rap.bodyDocument)) {
-      throw new AppError("The committee report has no meaningful content to freeze.", 409);
-    }
-
-    // Canonical prerequisite (COLLABORATIVE SOT §10.2 / §11): all required
-    // evaluator records FINALIZED and the Oral Examination Summary available.
-    // Reuses the official-record service, which safely ensures the Summary from
-    // finalized records and throws a 409 when evaluations are incomplete. This
-    // never fabricates scores and never derives a verdict.
-    await this.officialRecords.ensureOralExamSummary(scheduleId);
-
-    const freezeContext = await this.loadFreezeContext(scheduleId, assignment.userId);
-    const contentVersion = (rap.contentVersion ?? 0) + 1;
-    const now = new Date();
-    const snapshot = buildRapSigningSnapshot({
-      scheduleId,
-      thesisId: freezeContext.thesisId,
-      defenseType: freezeContext.defenseType,
-      studentName: freezeContext.studentName,
-      studentNumber: freezeContext.studentNumber,
-      programName: freezeContext.programName,
-      defenseDate: freezeContext.defenseDate,
-      defenseTime: freezeContext.defenseTime,
-      venue: freezeContext.venue,
-      committee: freezeContext.committee,
-      preparedByUserId: assignment.userId,
-      preparedByName: freezeContext.preparedByName,
-      contentVersion,
-      frozenAt: now.toISOString(),
-      body: rap.bodyDocument,
-    });
-    const contentHash = hashRapSnapshot(snapshot);
-
-    const updated = await prisma.rapReport.updateMany({
-      where: { id: rap.id, status: "DRAFT", frozenAt: null, bodyVersion: rap.bodyVersion ?? 0 },
-      data: {
-        frozenAt: now,
-        frozenById: assignment.userId,
-        frozenContent: snapshot as never,
-        frozenContentHash: contentHash,
-        contentVersion,
-        reportDate: rap.reportDate ?? now,
-        status: "FOR_SIGNATURE",
-      },
-    });
-    if (updated.count === 0) {
-      const current = await prisma.rapReport.findUnique({
-        where: { id: rap.id },
-        select: { status: true, contentVersion: true, frozenContentHash: true },
-      });
-      if (current?.frozenContentHash) {
+      // Idempotent-safe: an existing freeze is returned, never replaced.
+      if (rap.frozenAt && rap.frozenContentHash) {
         return {
           frozen: true,
           alreadyFrozen: true,
-          contentVersion: current.contentVersion ?? 0,
-          contentHash: current.frozenContentHash,
-          status: String(current.status),
+          contentVersion: rap.contentVersion ?? 0,
+          contentHash: rap.frozenContentHash,
+          status: String(rap.status),
         };
       }
-      throw new AppError("Report state changed. Refresh and try again.", 409);
-    }
-    return {
-      frozen: true,
-      alreadyFrozen: false,
-      contentVersion,
-      contentHash,
-      status: "FOR_SIGNATURE",
-    };
+      if (String(rap.status) !== "DRAFT") {
+        throw new AppError("Only a draft committee report can be frozen.", 409);
+      }
+      if (!rap.bodyDocument) {
+        throw new AppError("The committee report has no content to freeze.", 409);
+      }
+      const validation = validateReportDocument(rap.bodyDocument);
+      if (!validation.ok) {
+        throw new AppError("The stored report body is invalid and cannot be frozen.", 409);
+      }
+      if (!hasMeaningfulReportContent(rap.bodyDocument)) {
+        throw new AppError("The committee report has no meaningful content to freeze.", 409);
+      }
+
+      // Canonical prerequisite (COLLABORATIVE SOT §10.2 / §11): all required
+      // evaluator records FINALIZED and the Oral Examination Summary available.
+      // Reuses the official-record service, which safely ensures the Summary from
+      // finalized records and throws a 409 when evaluations are incomplete. This
+      // never fabricates scores and never derives a verdict. Runs after
+      // authorization so an unauthorized caller cannot trigger the side effect.
+      await this.officialRecords.ensureOralExamSummary(scheduleId);
+
+      const freezeContext = await this.loadFreezeContext(scheduleId, assignment.userId, tx);
+      const contentVersion = (rap.contentVersion ?? 0) + 1;
+      const now = new Date();
+      const snapshot = buildRapSigningSnapshot({
+        scheduleId,
+        thesisId: freezeContext.thesisId,
+        defenseType: freezeContext.defenseType,
+        studentName: freezeContext.studentName,
+        studentNumber: freezeContext.studentNumber,
+        programName: freezeContext.programName,
+        defenseDate: freezeContext.defenseDate,
+        defenseTime: freezeContext.defenseTime,
+        venue: freezeContext.venue,
+        committee: freezeContext.committee,
+        preparedByUserId: assignment.userId,
+        preparedByName: freezeContext.preparedByName,
+        contentVersion,
+        frozenAt: now.toISOString(),
+        body: rap.bodyDocument,
+      });
+      const contentHash = hashRapSnapshot(snapshot);
+
+      const updated = await tx.rapReport.updateMany({
+        where: { id: rap.id, status: "DRAFT", frozenAt: null, bodyVersion: rap.bodyVersion ?? 0 },
+        data: {
+          frozenAt: now,
+          frozenById: assignment.userId,
+          frozenContent: snapshot as never,
+          frozenContentHash: contentHash,
+          contentVersion,
+          reportDate: rap.reportDate ?? now,
+          status: "FOR_SIGNATURE",
+        },
+      });
+      if (updated.count === 0) {
+        const current = await tx.rapReport.findUnique({
+          where: { id: rap.id },
+          select: { status: true, contentVersion: true, frozenContentHash: true },
+        });
+        if (current?.frozenContentHash) {
+          return {
+            frozen: true,
+            alreadyFrozen: true,
+            contentVersion: current.contentVersion ?? 0,
+            contentHash: current.frozenContentHash,
+            status: String(current.status),
+          };
+        }
+        throw new AppError("Report state changed. Refresh and try again.", 409);
+      }
+      return {
+        frozen: true,
+        alreadyFrozen: false,
+        contentVersion,
+        contentHash,
+        status: "FOR_SIGNATURE",
+      };
+    });
   }
 
   // ---- Conclusion readiness (read-only facts) ----------------------------

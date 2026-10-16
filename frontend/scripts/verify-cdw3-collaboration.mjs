@@ -18,6 +18,7 @@ import {
   collaborationPollIntervalMs,
   normalizeCommentInput,
   collaborationErrorMessage,
+  formatCommentTimestamp,
   MAX_COMMENT_LENGTH,
   COLLAB_POLL_INTERVAL_MS,
 } from "../src/lib/pdf-annotation/collaboration-client.ts";
@@ -290,4 +291,50 @@ test("the rail exposes Selected + All Comments views and reply wiring", () => {
   assert.match(rail, /All Comments/);
   const thread = read(THREAD);
   assert.match(thread, /parentCommentId|reply/i);
+});
+
+// ---- CDW-3 correction pass contracts --------------------------------------
+
+test("read-only viewer preserves native text selection/copy (no anchor, no clearing)", () => {
+  const page = read(PAGE);
+  // When there is no annotation callback, a non-collapsed selection returns
+  // BEFORE anchoring/clearing so the browser keeps the selection for copy.
+  assert.match(page, /if\s*\(\s*!callbacksRef\.current\.onTextSelection\s*\)\s*return/);
+  // Writable path still clears once the draft owns the interaction.
+  assert.match(page, /removeAllRanges/);
+});
+
+test("409 conflict refreshes the workspace state, not only annotations", () => {
+  const container = read(CONTAINER);
+  assert.match(container, /useQueryClient/);
+  assert.match(container, /invalidateQueries/);
+  assert.match(container, /"defenseWorkspace",\s*scheduleId/);
+});
+
+test("mutation errors reset between composer sessions", () => {
+  const container = read(CONTAINER);
+  // Either `mutation.reset()` or a destructured reset helper is acceptable.
+  assert.match(container, /\.reset\(\)|reset(Create|Reply)\(\)/);
+});
+
+test("comment timestamps use local time (never silently display UTC)", () => {
+  assert.equal(formatCommentTimestamp(null), "");
+  assert.equal(formatCommentTimestamp("not-a-date"), "");
+  const iso = "2026-03-03T09:04:00.000Z";
+  const date = new Date(iso);
+  const options = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  };
+  const localExpected = new Intl.DateTimeFormat("en-US", options).format(date);
+  assert.equal(formatCommentTimestamp(iso), localExpected);
+  // When the environment is not UTC, local output must differ from a forced-UTC
+  // rendering (i.e. it is not silently UTC).
+  if (date.getTimezoneOffset() !== 0) {
+    const utc = new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(date);
+    assert.notEqual(formatCommentTimestamp(iso), utc);
+  }
 });

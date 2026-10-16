@@ -134,6 +134,11 @@ export function ManuscriptPage({
 
       // A drag selection becomes a candidate anchor (never persisted here).
       if (selection && !selection.isCollapsed) {
+        // Read-only viewers (Rapporteur/Adviser/Facilitator, frozen/concluded,
+        // Proposal Context) keep normal selection + copy: do not anchor and do
+        // NOT clear the browser selection.
+        if (!callbacksRef.current.onTextSelection) return;
+
         const anchorNode = selection.anchorNode;
         const focusNode = selection.focusNode;
         const inside =

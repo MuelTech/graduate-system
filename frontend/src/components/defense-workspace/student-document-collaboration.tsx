@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 
 import type { PdfAnchor } from "@/lib/pdf-annotation/anchors";
@@ -64,11 +65,24 @@ export function StudentDocumentCollaboration({
   const canAnnotate = active && canAnnotateRole(role);
   const canComment = active && canCommentRole(role);
 
+  const queryClient = useQueryClient();
   const annotationsQuery = useDefenseAnnotations(scheduleId, documentId, {
     pollIntervalMs,
   });
   const createMutation = useCreateDefenseAnnotation(scheduleId, documentId);
   const replyMutation = useCreateDefenseComment(scheduleId, documentId);
+  const {
+    mutateAsync: createAnnotation,
+    isPending: isCreating,
+    error: createError,
+    reset: resetCreate,
+  } = createMutation;
+  const {
+    mutateAsync: createReply,
+    isPending: isReplying,
+    error: replyError,
+    reset: resetReply,
+  } = replyMutation;
 
   const annotations = useMemo(() => {
     if (annotationsQuery.data === undefined) return [];
@@ -82,28 +96,48 @@ export function StudentDocumentCollaboration({
   const selectedAnnotation =
     annotations.find((annotation) => annotation.id === selectedAnnotationId) ?? null;
 
+  /**
+   * A 409 means the collaboration/report state changed (e.g. the RAP was frozen
+   * or the attempt concluded). Refreshing only the annotations is not enough:
+   * `active`/`canAnnotate`/`canComment` derive from the workspace query, so
+   * invalidate that immediately too, keeping write controls from lingering until
+   * the next 20s workspace poll.
+   */
+  const refreshAfterConflict = useCallback(() => {
+    void annotationsQuery.refetch();
+    void queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
+  }, [annotationsQuery, queryClient, scheduleId]);
+
   const handleTextSelection = useCallback(
     (anchor: PdfAnchor) => {
       if (!canAnnotate) return;
       // Selection alone is NOT publication — it only opens the draft composer.
+      // Starting a fresh composer session drops any previous mutation error.
+      resetCreate();
       setSelectedAnnotationId(null);
       setPendingAnchor(anchor);
       setRailView("selected");
     },
-    [canAnnotate],
+    [canAnnotate, resetCreate],
   );
 
-  const handleSelectAnnotation = useCallback((annotationId: string) => {
-    setPendingAnchor(null);
-    setSelectedAnnotationId(annotationId);
-    setRailView("selected");
-  }, []);
+  const handleSelectAnnotation = useCallback(
+    (annotationId: string) => {
+      // A new thread context starts fresh composer sessions.
+      resetCreate();
+      resetReply();
+      setPendingAnchor(null);
+      setSelectedAnnotationId(annotationId);
+      setRailView("selected");
+    },
+    [resetCreate, resetReply],
+  );
 
   const handleSubmitNewComment = useCallback(
     async (body: string) => {
       if (!pendingAnchor) return;
       try {
-        const result = (await createMutation.mutateAsync({
+        const result = (await createAnnotation({
           thesisDocumentId: documentId,
           anchor: pendingAnchor,
           initialComment: body,
@@ -116,28 +150,28 @@ export function StudentDocumentCollaboration({
         setRailView("selected");
       } catch (error) {
         // Composer stays open with the typed text preserved.
-        if (isConflict(error)) void annotationsQuery.refetch();
+        if (isConflict(error)) refreshAfterConflict();
       }
     },
-    [annotationsQuery, createMutation, documentId, pendingAnchor],
+    [createAnnotation, documentId, pendingAnchor, refreshAfterConflict],
   );
 
   const handleReply = useCallback(
     async (parentCommentId: string | null, body: string): Promise<boolean> => {
       if (!selectedAnnotation) return false;
       try {
-        await replyMutation.mutateAsync({
+        await createReply({
           annotationId: selectedAnnotation.id,
           body,
           parentCommentId,
         });
         return true;
       } catch (error) {
-        if (isConflict(error)) void annotationsQuery.refetch();
+        if (isConflict(error)) refreshAfterConflict();
         return false;
       }
     },
-    [annotationsQuery, replyMutation, selectedAnnotation],
+    [createReply, refreshAfterConflict, selectedAnnotation],
   );
 
   return (
@@ -186,13 +220,16 @@ export function StudentDocumentCollaboration({
           canAnnotate={canAnnotate}
           canComment={canComment}
           pendingAnchor={pendingAnchor}
-          isCreating={createMutation.isPending}
-          createError={createMutation.error ? collaborationErrorMessage(createMutation.error) : null}
+          isCreating={isCreating}
+          createError={createError ? collaborationErrorMessage(createError) : null}
           onSubmitNewComment={handleSubmitNewComment}
-          onCancelNewComment={() => setPendingAnchor(null)}
+          onCancelNewComment={() => {
+            resetCreate();
+            setPendingAnchor(null);
+          }}
           onReply={handleReply}
-          isReplying={replyMutation.isPending}
-          replyError={replyMutation.error ? collaborationErrorMessage(replyMutation.error) : null}
+          isReplying={isReplying}
+          replyError={replyError ? collaborationErrorMessage(replyError) : null}
           view={railView}
           onViewChange={setRailView}
         />

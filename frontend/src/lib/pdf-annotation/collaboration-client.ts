@@ -148,8 +148,10 @@ export function defenseRoleLabel(role: string | null | undefined): string {
 }
 
 /**
- * Deterministic timestamp formatter (fixed locale + UTC) so the client render is
- * stable and never causes a hydration mismatch.
+ * Comment timestamp formatter. Uses the same browser-LOCAL timezone convention as
+ * the rest of the authenticated frontend (never a silently-UTC rendering, which
+ * would read eight hours early for EARIST users). Timestamps are only rendered
+ * client-side (after the React Query fetch), so this stays hydration-safe.
  */
 export function formatCommentTimestamp(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -161,6 +163,5 @@ export function formatCommentTimestamp(iso: string | null | undefined): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "UTC",
   }).format(date);
 }
