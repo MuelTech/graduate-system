@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
-import { buildAnchor, type PageRect, type PdfAnchor } from "@/lib/pdf-annotation/anchors";
+import { buildAnchor, denormalizeRects, type PageRect, type PdfAnchor } from "@/lib/pdf-annotation/anchors";
 import type { CollaborationAnnotation } from "@/lib/pdf-annotation/annotations";
 import { hasUsableTextLayer } from "@/lib/pdf-annotation/viewer-core";
 
@@ -29,6 +29,8 @@ export interface ManuscriptPageProps {
   annotations: CollaborationAnnotation[];
   focusedAnnotationId: string | null;
   onTextSelection?: (anchor: PdfAnchor) => void;
+  /** CDW-3: select an existing highlight's thread via pointer hit-testing. */
+  onAnnotationSelect?: (annotationId: string) => void;
   onTextLayerStatus?: (hasText: boolean) => void;
   onBaseSize?: (size: { width: number; height: number }) => void;
 }
@@ -41,6 +43,7 @@ export function ManuscriptPage({
   annotations,
   focusedAnnotationId,
   onTextSelection,
+  onAnnotationSelect,
   onTextLayerStatus,
   onBaseSize,
 }: ManuscriptPageProps) {
@@ -122,47 +125,75 @@ export function ManuscriptPage({
     };
   }, [pdfjs, pdf, pageNumber, scale]);
 
-  const handleMouseUp = useCallback(() => {
-    const selection = window.getSelection();
-    const textLayerContainer = textLayerRef.current;
-    const pageContainer = pageRef.current;
-    if (!selection || selection.isCollapsed || !textLayerContainer || !pageContainer) return;
+  const handleMouseUp = useCallback(
+    (event: { clientX: number; clientY: number }) => {
+      const selection = window.getSelection();
+      const textLayerContainer = textLayerRef.current;
+      const pageContainer = pageRef.current;
+      if (!textLayerContainer || !pageContainer) return;
 
-    const anchorNode = selection.anchorNode;
-    const focusNode = selection.focusNode;
-    const inside =
-      (anchorNode && textLayerContainer.contains(anchorNode)) ||
-      (focusNode && textLayerContainer.contains(focusNode));
-    if (!inside) return;
+      // A drag selection becomes a candidate anchor (never persisted here).
+      if (selection && !selection.isCollapsed) {
+        const anchorNode = selection.anchorNode;
+        const focusNode = selection.focusNode;
+        const inside =
+          (anchorNode && textLayerContainer.contains(anchorNode)) ||
+          (focusNode && textLayerContainer.contains(focusNode));
+        if (!inside) return;
 
-    const selectedText = selection.toString().replace(/\s+/g, " ").trim();
-    if (!selectedText) return;
+        const selectedText = selection.toString().replace(/\s+/g, " ").trim();
+        if (!selectedText) return;
 
-    const box = pageContainer.getBoundingClientRect();
-    const clientRects: PageRect[] = [];
-    for (let i = 0; i < selection.rangeCount; i += 1) {
-      const range = selection.getRangeAt(i);
-      for (const rect of Array.from(range.getClientRects())) {
-        if (rect.width <= 0 || rect.height <= 0) continue;
-        clientRects.push({
-          left: rect.left - box.left,
-          top: rect.top - box.top,
-          width: rect.width,
-          height: rect.height,
+        const box = pageContainer.getBoundingClientRect();
+        const clientRects: PageRect[] = [];
+        for (let i = 0; i < selection.rangeCount; i += 1) {
+          const range = selection.getRangeAt(i);
+          for (const rect of Array.from(range.getClientRects())) {
+            if (rect.width <= 0 || rect.height <= 0) continue;
+            clientRects.push({
+              left: rect.left - box.left,
+              top: rect.top - box.top,
+              width: rect.width,
+              height: rect.height,
+            });
+          }
+        }
+        if (clientRects.length === 0) return;
+
+        const anchor = buildAnchor({
+          pageNumber,
+          selectedText,
+          clientRects,
+          page: { width: box.width, height: box.height },
         });
+        callbacksRef.current.onTextSelection?.(anchor);
+        selection.removeAllRanges();
+        return;
       }
-    }
-    if (clientRects.length === 0) return;
 
-    const anchor = buildAnchor({
-      pageNumber,
-      selectedText,
-      clientRects,
-      page: { width: box.width, height: box.height },
-    });
-    callbacksRef.current.onTextSelection?.(anchor);
-    selection.removeAllRanges();
-  }, [pageNumber]);
+      // A collapsed click: hit-test existing highlights so a highlight opens its
+      // thread WITHOUT making the overlay intercept text selection (the overlay
+      // stays pointer-events:none; we resolve the click against stored geometry).
+      if (!onAnnotationSelect || annotations.length === 0) return;
+      const box = pageContainer.getBoundingClientRect();
+      const px = event.clientX - box.left;
+      const py = event.clientY - box.top;
+      const hit = annotations.find((annotation) =>
+        denormalizeRects(annotation.anchor.rects, {
+          width: box.width,
+          height: box.height,
+        }).some(
+          (rect) =>
+            px >= rect.left &&
+            px <= rect.left + rect.width &&
+            py >= rect.top &&
+            py <= rect.top + rect.height,
+        ),
+      );
+      if (hit) onAnnotationSelect(hit.id);
+    },
+    [annotations, onAnnotationSelect, pageNumber],
+  );
 
   return (
     <div ref={pageRef} className="mwPage" onMouseUp={handleMouseUp}>

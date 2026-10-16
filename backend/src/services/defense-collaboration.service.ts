@@ -60,6 +60,24 @@ function isCollaborationWritableStatus(status: string): boolean {
   return COLLAB_WRITABLE_STATUSES.includes(status);
 }
 
+/**
+ * CDW-3: validate an optional initial comment supplied with a new annotation.
+ * Returns the trimmed body, or null when absent. Fails closed on a non-string,
+ * empty/whitespace, or over-length value (same limit as the reply endpoint).
+ */
+function normalizeInitialComment(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new AppError("Comment body is required.", 400);
+  }
+  const body = value.trim();
+  if (!body) throw new AppError("Comment body is required.", 400);
+  if (body.length > MAX_COMMENT_LENGTH) {
+    throw new AppError("Comment is too long.", 400);
+  }
+  return body;
+}
+
 export interface CollaborationAuthor {
   assignmentId: string;
   userId: string;
@@ -484,11 +502,15 @@ export class DefenseCollaborationService {
   async createAnnotation(
     scheduleId: string,
     userId: string,
-    input: { thesisDocumentId?: unknown; anchor?: unknown },
+    input: { thesisDocumentId?: unknown; anchor?: unknown; initialComment?: unknown },
   ): Promise<AnnotationDto> {
     const thesisDocumentId =
       typeof input.thesisDocumentId === "string" ? input.thesisDocumentId : "";
     if (!thesisDocumentId) throw new AppError("A defense document is required.", 400);
+
+    // CDW-3: the canonical "highlight + initial comment" action is validated up
+    // front so a rejected comment never leaves an orphan published annotation.
+    const initialComment = normalizeInitialComment(input.initialComment);
 
     const { schedule, rap } = await this.loadSchedule(scheduleId);
     const assignment = await this.resolveAssignment(scheduleId, userId);
@@ -502,6 +524,8 @@ export class DefenseCollaborationService {
     if (!validation.ok) throw new AppError(validation.error, 400);
     const anchor = validation.anchor;
 
+    // Single nested write: the annotation and its initial comment commit together
+    // or not at all (no two-request window that could strand an empty highlight).
     const created = await prisma.defenseAnnotation.create({
       data: {
         scheduleId,
@@ -515,12 +539,24 @@ export class DefenseCollaborationService {
           suffix: anchor.suffix,
         } as never,
         anchorVersion: anchor.anchorVersion,
+        ...(initialComment
+          ? { comments: { create: { authorAssignmentId: assignment.id, body: initialComment } } }
+          : {}),
       },
       include: {
         author: { include: { user: { select: { firstName: true, lastName: true } } } },
+        comments: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            author: { include: { user: { select: { firstName: true, lastName: true } } } },
+          },
+        },
       },
     });
-    return toAnnotationDto(created as AnnotationRow, []);
+    const createdComments = Array.isArray((created as { comments?: unknown }).comments)
+      ? ((created as { comments: CommentRow[] }).comments)
+      : [];
+    return toAnnotationDto(created as AnnotationRow, createdComments);
   }
 
   async createComment(

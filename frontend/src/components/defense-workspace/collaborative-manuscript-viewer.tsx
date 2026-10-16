@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * CDW-2 — Collaborative Manuscript Viewer (production).
+ * CDW-2/CDW-3 — Collaborative Manuscript Viewer (controlled).
  *
  * Renders the EXACT authoritative ThesisDocument resolved by the server read model
  * inside the Defense Workspace, using a controlled pdf.js viewer instead of the
@@ -11,22 +11,18 @@
  * (`/api/documents/thesis-document/<id>/file`); no storage path / public URL is
  * used. The source PDF is never modified — highlights are a separate overlay.
  *
- * Scope: display only. Text selection is exposed via `onTextSelection` for CDW-3;
- * this component never POSTs annotations and builds no comment UI.
+ * CDW-3: this viewer is CONTROLLED. It no longer owns the annotation query; the
+ * Student Document collaboration container is the single React Query source and
+ * passes parsed annotations + selection callbacks in. It exposes text selection
+ * and highlight selection to the parent and never writes.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, FileWarning, Loader2 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
-import { apiClientRequest } from "@/lib/api.client";
-import { Button } from "@/components/ui/button";
 import { type PdfAnchor } from "@/lib/pdf-annotation/anchors";
-import {
-  type CollaborationAnnotation,
-  parseCollaborationAnnotations,
-} from "@/lib/pdf-annotation/annotations";
+import type { CollaborationAnnotation } from "@/lib/pdf-annotation/annotations";
 import {
   DEFAULT_ZOOM,
   clampPage,
@@ -81,13 +77,13 @@ export interface CollaborativeManuscriptViewerProps {
   /** EXACT authoritative ThesisDocument id from the server read model. */
   documentId: string;
   documentLabel?: string;
-  /** Exact schedule/attempt — required to read stored annotations. */
-  scheduleId?: string;
-  /** Read stored CDW-1 annotations (default: when scheduleId is provided). */
-  enableStoredAnnotations?: boolean;
-  /** CDW-2 does not persist; CDW-3 wires this to annotation creation. */
+  /** Parsed collaboration annotations for this exact document (controlled). */
+  annotations?: CollaborationAnnotation[];
+  /** Report a new text selection as a candidate anchor (not persisted here). */
   onTextSelection?: (anchor: PdfAnchor) => void;
-  /** Navigate to + emphasize a specific annotation (CDW-3 focus contract). */
+  /** Select an existing highlight's thread (CDW-3 focus contract). */
+  onAnnotationSelect?: (annotationId: string) => void;
+  /** Navigate to + emphasize a specific annotation. */
   focusedAnnotationId?: string | null;
   className?: string;
 }
@@ -95,14 +91,12 @@ export interface CollaborativeManuscriptViewerProps {
 export function CollaborativeManuscriptViewer({
   documentId,
   documentLabel,
-  scheduleId,
-  enableStoredAnnotations,
+  annotations = [],
   onTextSelection,
+  onAnnotationSelect,
   focusedAnnotationId = null,
   className,
 }: CollaborativeManuscriptViewerProps) {
-  const readAnnotations = (enableStoredAnnotations ?? Boolean(scheduleId)) && Boolean(scheduleId);
-
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "empty">("loading");
   const [errorCode, setErrorCode] = useState<ViewerErrorCode | null>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -116,24 +110,6 @@ export function CollaborativeManuscriptViewer({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const loadingTaskRef = useRef<ReturnType<PdfJsModule["getDocument"]> | null>(null);
-
-  // --- CDW-1 stored-annotation READ (display only; no comment UI) ---
-  const annotationsQuery = useQuery({
-    queryKey: ["collaborationAnnotations", scheduleId, documentId],
-    enabled: readAnnotations,
-    queryFn: async () =>
-      apiClientRequest(
-        `/thesis/defense/${scheduleId}/collaboration/annotations?documentId=${encodeURIComponent(documentId)}`,
-      ),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
-    retry: 1,
-  });
-
-  const annotations: CollaborationAnnotation[] = useMemo(() => {
-    if (!readAnnotations || annotationsQuery.data === undefined) return [];
-    return parseCollaborationAnnotations(annotationsQuery.data, documentId).annotations;
-  }, [readAnnotations, annotationsQuery.data, documentId]);
 
   const annotationsByPage = useMemo(() => {
     const map = new Map<number, CollaborationAnnotation[]>();
@@ -289,20 +265,6 @@ export function CollaborativeManuscriptViewer({
           </p>
         )}
 
-        {readAnnotations && annotationsQuery.isError && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-            <span>Stored annotations could not be loaded. The manuscript is still available.</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => void annotationsQuery.refetch()}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-
         <div
           ref={scrollRef}
           className="flex max-h-[70vh] min-h-[40vh] justify-center overflow-auto p-3"
@@ -342,6 +304,7 @@ export function CollaborativeManuscriptViewer({
               annotations={currentPageAnnotations}
               focusedAnnotationId={focusedAnnotationId}
               onTextSelection={onTextSelection}
+              onAnnotationSelect={onAnnotationSelect}
               onTextLayerStatus={setTextAvailable}
               onBaseSize={handleBaseSize}
             />

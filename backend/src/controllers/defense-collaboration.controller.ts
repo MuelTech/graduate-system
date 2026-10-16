@@ -70,6 +70,7 @@ export class DefenseCollaborationController {
         {
           thesisDocumentId: req.body?.thesisDocumentId,
           anchor: req.body?.anchor,
+          initialComment: req.body?.initialComment,
         },
       );
       res.status(200).json({ annotation });

@@ -789,3 +789,134 @@ describe("DefenseCollaborationService — CDW-2 schedule manuscript binding", ()
     ).resolves.toBeDefined();
   });
 });
+
+describe("DefenseCollaborationService — CDW-3 atomic highlight + initial comment", () => {
+  const svc = new DefenseCollaborationService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow());
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow());
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow());
+    prismaMock.adviserCertification.findFirst.mockResolvedValue(null);
+  });
+
+  /** Mirrors the real nested create: returns the embedded comments array. */
+  function mockNestedCreate() {
+    prismaMock.defenseAnnotation.create.mockImplementation(
+      async (args: { data: Record<string, unknown> }) => {
+        const nested = (args.data.comments as { create?: { body: string } } | undefined)
+          ?.create;
+        return {
+          ...annotationRow(),
+          ...args.data,
+          comments: nested
+            ? [
+                {
+                  id: "c-1",
+                  annotationId: "ann-1",
+                  parentCommentId: null,
+                  body: nested.body,
+                  createdAt: new Date("2026-01-01T00:00:00Z"),
+                  updatedAt: new Date("2026-01-01T00:00:00Z"),
+                  author: {
+                    id: "pa-PANELIST",
+                    userId: "u-PANELIST",
+                    role: "PANELIST",
+                    user: { firstName: "P", lastName: "N" },
+                  },
+                },
+              ]
+            : [],
+          author: {
+            id: args.data.authorAssignmentId,
+            userId: "u-PANELIST",
+            role: "PANELIST",
+            user: { firstName: "P", lastName: "N" },
+          },
+        };
+      },
+    );
+  }
+
+  it("creates the annotation and its initial comment in ONE atomic write (no second request)", async () => {
+    mockNestedCreate();
+    const dto = await svc.createAnnotation("sched-1", "u-PANELIST", {
+      thesisDocumentId: "doc-1",
+      anchor: VALID_ANCHOR,
+      initialComment: "  First thought  ",
+    });
+
+    expect(dto.comments.map((c) => c.body)).toEqual(["First thought"]);
+    expect(dto.comments[0].author.role).toBe("PANELIST");
+
+    const call = prismaMock.defenseAnnotation.create.mock.calls[0][0] as {
+      data: { comments: { create: { body: string; authorAssignmentId: string } } };
+    };
+    expect(call.data.comments.create.body).toBe("First thought");
+    expect(call.data.comments.create.authorAssignmentId).toBe("pa-PANELIST");
+    // One create call = atomic; the separate comment endpoint is not used.
+    expect(prismaMock.defenseAnnotation.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.defenseAnnotationComment.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty/whitespace initial comment with 400 and persists nothing (no orphan)", async () => {
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", {
+        thesisDocumentId: "doc-1",
+        anchor: VALID_ANCHOR,
+        initialComment: "   ",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(prismaMock.defenseAnnotation.create).not.toHaveBeenCalled();
+    expect(prismaMock.defenseAnnotationComment.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an over-length initial comment with 400 and persists nothing", async () => {
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", {
+        thesisDocumentId: "doc-1",
+        anchor: VALID_ANCHOR,
+        initialComment: "x".repeat(5001),
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(prismaMock.defenseAnnotation.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-string initial comment with 400", async () => {
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", {
+        thesisDocumentId: "doc-1",
+        anchor: VALID_ANCHOR,
+        initialComment: 123,
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(prismaMock.defenseAnnotation.create).not.toHaveBeenCalled();
+  });
+
+  it("still creates a plain annotation without an initial comment (backwards compatible)", async () => {
+    mockNestedCreate();
+    const dto = await svc.createAnnotation("sched-1", "u-PANELIST", {
+      thesisDocumentId: "doc-1",
+      anchor: VALID_ANCHOR,
+    });
+    expect(dto.comments).toEqual([]);
+    const call = prismaMock.defenseAnnotation.create.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(call.data.comments).toBeUndefined();
+  });
+
+  it("leaves no orphan annotation when the atomic create fails", async () => {
+    prismaMock.defenseAnnotation.create.mockRejectedValue(new Error("db down"));
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", {
+        thesisDocumentId: "doc-1",
+        anchor: VALID_ANCHOR,
+        initialComment: "hello",
+      }),
+    ).rejects.toThrow();
+    expect(prismaMock.defenseAnnotationComment.create).not.toHaveBeenCalled();
+  });
+});

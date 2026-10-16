@@ -50,11 +50,16 @@ test("viewer performs no write/mutation request (overlays only)", () => {
   assert.doesNotMatch(combined, /apiClientRequest\([^)]*method/i);
 });
 
-test("viewer reads CDW-1 annotations but exposes no creation/comment workflow", () => {
+test("collaboration read is owned by the shared hook; viewer stays a controlled highlight surface", () => {
+  // CDW-3 moved the single annotation read into the shared hook (one React Query
+  // source for the viewer + comments rail). The viewer itself no longer fetches.
+  const hook = read("src/hooks/use-defense-collaboration.ts");
+  assert.match(hook, /\/collaboration\/annotations/);
+  const container = read("src/components/defense-workspace/student-document-collaboration.tsx");
+  assert.match(container, /parseCollaborationAnnotations/);
   const viewer = read(VIEWER);
-  assert.match(viewer, /\/collaboration\/annotations/);
-  assert.match(viewer, /parseCollaborationAnnotations/);
-  // No comment composer / reply UI / thread rail in CDW-2.
+  assert.doesNotMatch(viewer, /useQuery/);
+  // No creation/comment UI lives in the viewer.
   assert.doesNotMatch(viewer, /AddComment|commentComposer|createComment|replyTo/i);
 });
 
@@ -82,10 +87,12 @@ test("viewer reacts to container resize for fit-width and cleans up the observer
   assert.match(viewer, /setFitMode\(true\)/);
 });
 
-test("viewer warns when stored annotations fail to load (distinct from empty success)", () => {
-  const viewer = read(VIEWER);
-  assert.match(viewer, /annotationsQuery\.isError/);
-  assert.match(viewer, /Stored annotations could not be loaded/);
+test("stored-annotation load failure is surfaced with a retry (collaboration container)", () => {
+  // CDW-3 moved this warning from the viewer to the collaboration container,
+  // which owns the annotation query. The manuscript stays usable either way.
+  const container = read("src/components/defense-workspace/student-document-collaboration.tsx");
+  assert.match(container, /annotationsQuery\.isError/);
+  assert.match(container, /Stored annotations could not be loaded/);
 });
 
 test("anchor module documentation reflects production status (no stale POC wording)", () => {

@@ -14,6 +14,7 @@ import { ChairmanConclusionPanel } from "@/components/defense-workspace/chairman
 import { ChairmanOralSummary } from "@/components/defense-workspace/chairman-oral-summary";
 import { ProposalHistoryPanel } from "@/components/defense-workspace/proposal-history-panel";
 import { CollaborativeManuscriptViewer } from "@/components/defense-workspace/collaborative-manuscript-viewer";
+import { StudentDocumentCollaboration } from "@/components/defense-workspace/student-document-collaboration";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 /** CP7-FIX3: shared detailed Summary contract for Chairman review + conclusion gate. */
@@ -298,12 +299,15 @@ export default function DefenseWorkspacePage() {
                 </CardHeader>
                 <CardContent>
                   {primaryDoc ? (
-                    <CollaborativeManuscriptViewer
-                      documentId={primaryDoc.id}
+                    <StudentDocumentCollaboration
                       scheduleId={scheduleId}
+                      documentId={primaryDoc.id}
                       documentLabel={
                         isFinal ? "Current Final Manuscript" : primaryDoc.displayName
                       }
+                      role={data.myAssignment.role}
+                      sessionStatus={data.schedule.sessionStatus}
+                      rapStatus={data.rapStatus}
                     />
                   ) : (
                     <p className="text-sm text-(--earist-body-text)">
@@ -326,7 +330,7 @@ export default function DefenseWorkspacePage() {
                       <CollaborativeManuscriptViewer
                         documentId={data.proposalHistory.manuscript.id}
                         documentLabel="Previous Proposal Manuscript"
-                        enableStoredAnnotations={false}
+                        annotations={[]}
                       />
                     </CardContent>
                   </Card>
