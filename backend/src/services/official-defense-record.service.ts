@@ -344,8 +344,12 @@ export class OfficialDefenseRecordService {
   }
 
   /**
-   * CP7-FIX1 Issue 3: detailed Summary is ADMIN or session CHAIRMAN only.
-   * Issue 12: Title Defense never fabricates numerical Summary content.
+   * CDW-4 FIX: the detailed Oral Examination Summary is an ADMIN-side official
+   * record. Committee accounts (including the session Chairman) are no longer
+   * authorized to read it — the live workspace exposes only evaluation progress
+   * and roster status. Issue 12: Title never fabricates numerical content.
+   *
+   * `actor` is optional for internal callers; when supplied, only ADMIN passes.
    */
   async getSummaryReadModel(
     scheduleId: string,
@@ -366,30 +370,16 @@ export class OfficialDefenseRecordService {
         },
         oralExamSummary: true,
         conclusion: true,
-        panelAssignments: {
-          where: actor
-            ? { userId: actor.userId }
-            : { id: { in: [] } },
-          select: { role: true },
-          take: 1,
-        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    // Authorization: ADMIN or session CHAIRMAN assignment.
-    if (actor) {
-      const isAdmin = actor.role === "ADMIN";
-      const sessionRole = schedule.panelAssignments[0]
-        ? String(schedule.panelAssignments[0].role)
-        : null;
-      const isChairman = sessionRole === "CHAIRMAN";
-      if (!isAdmin && !isChairman) {
-        throw new AppError(
-          "Detailed Oral Examination Summary is restricted to Admin and the session Chairman.",
-          403,
-        );
-      }
+    // Authorization: ADMIN only (committee-facing fallback removed in CDW-4 FIX).
+    if (actor && actor.role !== "ADMIN") {
+      throw new AppError(
+        "Detailed Oral Examination Summary is restricted to Admin.",
+        403,
+      );
     }
 
     // WF-C1b: every canonical defense stage has an official evaluator Summary.

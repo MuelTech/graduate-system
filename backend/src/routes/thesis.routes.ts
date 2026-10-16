@@ -552,11 +552,12 @@ router.get(
   thesisController.getOfficialCriteria,
 );
 
-// CP7: Oral Examination Summary — ADMIN or session CHAIRMAN only (auth inside service)
+// CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
+// data. Committee accounts (incl. the session Chairman) are denied.
 router.get(
   "/defense/:scheduleId/records/summary",
   authenticateJWT,
-  requireRole(["ADMIN", "PANELIST"]),
+  requireRole(["ADMIN"]),
   thesisController.getOralExamSummary,
 );
 

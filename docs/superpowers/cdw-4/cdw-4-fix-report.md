@@ -82,3 +82,28 @@ then restart the backend.
 - Digital **Remarks** semantics — deferred.
 - The V2 **aggregate Oral Examination Summary** formula (depends on the above) —
   fails closed until confirmed.
+
+## 7. Final corrections pass (2026-10-16)
+
+Three bounded corrections on top of the accepted CDW-4 result:
+
+1. **Fresh V2 direct finalization.** A new evaluator with no `OralExamScore` row
+   can now finalize directly (no Save Draft required): the transaction creates the
+   row already `FINALIZED` (V2, group averages set, `overallAverage`/`rating` null,
+   recommendations + signature + timestamps). A concurrent direct create races on
+   the unique `(schedule_id, panel_id)` constraint and maps `P2002` to the friendly
+   409. Existing DRAFT still uses the CAS update; FINALIZED stays immutable; legacy
+   drafts are untouched.
+2. **Radio keyboard focus.** The native radio is now `peer sr-only` so the custom
+   visual reflects `peer-focus-visible:`; native radios, arrow-key navigation, and
+   the `"<criterion> — <value> <code> <label>"` accessible name are preserved.
+3. **Summary privacy.** `oralSummary` (ready/overallAverage/finalRating) is removed
+   from the live Defense Workspace DTO/read model (the query only selects the
+   Summary id for internal readiness gating), and the detailed
+   `getSummaryReadModel` / `GET /records/summary` route are now **ADMIN-only**
+   (session Chairman removed). Internal `OralExamSummary` domain logic and the
+   conclusion-readiness prerequisite are unchanged; the V2 summary blocker is
+   preserved.
+
+**No new database migration** was added for this pass.
+

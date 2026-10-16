@@ -128,7 +128,7 @@ function MatrixGroup({
                           checked={selected}
                           disabled={disabled}
                           onChange={() => onChange(criterion.key, String(level.value))}
-                          className="sr-only"
+                          className="peer sr-only"
                           aria-label={`${criterion.label} — ${level.value.toFixed(2)} ${level.code} ${level.label}`}
                         />
                         <span

@@ -387,7 +387,8 @@ describe("DefenseWorkspaceService (CP6)", () => {
     const ws = await svc.getWorkspace("sched-1", "u-chair");
     expect(ws.capabilities.canRecordFormalResult).toBe(true);
     expect(ws.evaluationProgress.finalizedEvaluations).toBe(1);
-    expect(ws.oralSummary?.ready).toBe(true);
+    // CDW-4 FIX: no committee-facing Oral Summary aggregate is exposed.
+    expect(ws).not.toHaveProperty("oralSummary");
   });
 
   it("2026-10-04: scheduled Title exposes start capability but not conclusion readiness", async () => {
@@ -544,16 +545,41 @@ describe("DefenseWorkspaceService (CP6)", () => {
     ]) {
       expect(serialized).not.toContain(privateField);
     }
-    // Aggregate average is Chairman-only; a Panelist sees readiness only.
-    expect(ws.oralSummary?.ready).toBe(true);
-    expect(ws.oralSummary?.overallAverage).toBeNull();
+    // CDW-4 FIX: the live workspace exposes NO Oral Summary aggregate for anyone.
+    expect(ws).not.toHaveProperty("oralSummary");
+    expect(serialized).not.toContain("overallAverage");
+    expect(serialized).not.toContain("finalRating");
   });
 
-  it("CDW-4 privacy: the assigned Chairman may see the aggregate Summary average", async () => {
+  it("CDW-4 FIX: no role receives an Oral Summary aggregate from the live workspace", async () => {
+    for (const role of ["CHAIRMAN", "PANELIST", "RAPPORTEUR", "ADVISER", "FACILITATOR"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({
+          sessionStatus: "AWAITING_CONCLUSION",
+          oralExamSummary: { id: "sum-1", overallAverage: 88, finalRating: "VS" },
+        }),
+      );
+      prismaMock.panelAssignment.findFirst.mockResolvedValue({
+        id: `pa-${role}`,
+        scheduleId: "sched-1",
+        userId: `u-${role}`,
+        role,
+      });
+      const ws = await svc.getWorkspace("sched-1", `u-${role}`);
+      expect(ws).not.toHaveProperty("oralSummary");
+      const serialized = JSON.stringify(ws);
+      expect(serialized).not.toContain("overallAverage");
+      expect(serialized).not.toContain("finalRating");
+      expect(serialized).not.toContain("sum-1");
+    }
+  });
+
+  it("CDW-4 FIX: Chairman still receives evaluation progress + roster status", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({
         sessionStatus: "AWAITING_CONCLUSION",
         oralExamSummary: { id: "sum-1", overallAverage: 88, finalRating: null },
+        oralExamScores: [{ panelId: "pa-eval", status: "FINALIZED" }],
       }),
     );
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
@@ -563,7 +589,9 @@ describe("DefenseWorkspaceService (CP6)", () => {
       role: "CHAIRMAN",
     });
     const ws = await svc.getWorkspace("sched-1", "u-chair");
-    expect(ws.oralSummary?.overallAverage).toBe(88);
+    expect(ws.evaluationProgress).toBeDefined();
+    expect(ws.roster.length).toBeGreaterThan(0);
+    expect(ws).not.toHaveProperty("oralSummary");
   });
 
   it("CDW-4: evaluationOpen is true only for an evaluator on an IN_PROGRESS session", async () => {

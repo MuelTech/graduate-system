@@ -459,7 +459,7 @@ describe("CP7-FIX2 REAL 11–12: OfficialDefenseRecordService Summary authorizat
     };
   }
 
-  it("Test 11: session Chairman allowed through production getSummaryReadModel", async () => {
+  it("Test 11 (CDW-4 FIX): session Chairman (non-Admin) denied through getSummaryReadModel", async () => {
     const svc = new OfficialDefenseRecordService();
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       summarySchedule([{ role: "CHAIRMAN" }]),
@@ -467,11 +467,12 @@ describe("CP7-FIX2 REAL 11–12: OfficialDefenseRecordService Summary authorizat
     prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
     prismaMock.oralExamScore.count.mockResolvedValue(4);
 
-    const result = await svc.getSummaryReadModel("sched-1", {
-      userId: "chair-1",
-      role: "PANELIST",
-    });
-    expect(result.ready).toBe(true);
+    await expect(
+      svc.getSummaryReadModel("sched-1", {
+        userId: "chair-1",
+        role: "PANELIST",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it("Test 12: ordinary Panelist denied through production getSummaryReadModel", async () => {

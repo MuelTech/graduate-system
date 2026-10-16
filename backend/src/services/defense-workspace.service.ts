@@ -78,11 +78,6 @@ export interface DefenseWorkspaceDto {
     evaluatorAssignments: number;
     finalizedEvaluations: number;
   };
-  oralSummary: {
-    ready: boolean;
-    overallAverage: number | null;
-    finalRating: string | null;
-  } | null;
   formalResult: string | null;
   rapStatus: string | null;
   /**
@@ -203,7 +198,9 @@ export class DefenseWorkspaceService {
           select: { id: true, outcome: true },
         },
         oralExamSummary: {
-          select: { id: true, overallAverage: true, finalRating: true },
+          // CDW-4 FIX: only existence is needed internally (readiness gating).
+          // The aggregate Summary is Admin-side and never committee-facing.
+          select: { id: true },
         },
         rapReports: {
           select: { status: true },
@@ -459,20 +456,6 @@ export class DefenseWorkspaceService {
         evaluatorAssignments: evaluatorAssignments.length,
         finalizedEvaluations,
       },
-      oralSummary: schedule.oralExamSummary
-        ? {
-            ready: true,
-            // CDW-4 privacy: the aggregate average/rating are shown only to the
-            // assigned Chairman (who has the detailed Summary surface). A fellow
-            // Panelist sees readiness only, never derived numeric values.
-            overallAverage: isChairman
-              ? Number(schedule.oralExamSummary.overallAverage)
-              : null,
-            finalRating: isChairman
-              ? schedule.oralExamSummary.finalRating ?? null
-              : null,
-          }
-        : { ready: false, overallAverage: null, finalRating: null },
       formalResult: schedule.conclusion
         ? String(schedule.conclusion.outcome)
         : null,

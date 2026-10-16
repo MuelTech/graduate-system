@@ -162,7 +162,7 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
     ).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  it("Test 7: assigned CHAIRMAN → 200", async () => {
+  it("Test 7 (CDW-4 FIX): assigned session Chairman (non-Admin account) → 403", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       panelAssignments: [{ role: "CHAIRMAN" }],
@@ -174,12 +174,26 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
       },
       conclusion: { outcome: "PASSED" },
     });
-    const result = await svc.getSummaryReadModel("sched-1", {
-      userId: "u1",
-      role: "PANELIST",
-    });
-    expect(result.ready).toBe(true);
-    expect(result.formalOutcome).toBe("PASSED");
+    await expect(
+      svc.getSummaryReadModel("sched-1", {
+        userId: "u1",
+        role: "PANELIST",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("CDW-4 FIX: only ADMIN may read the detailed Summary (committee accounts denied)", async () => {
+    for (const role of ["PANELIST", "STUDENT"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleBase,
+        panelAssignments: [{ role: "CHAIRMAN" }],
+        oralExamSummary: null,
+        conclusion: null,
+      });
+      await expect(
+        svc.getSummaryReadModel("sched-1", { userId: "u-x", role }),
+      ).rejects.toMatchObject({ statusCode: 403 });
+    }
   });
 
   it("Test 8: STUDENT → 403", async () => {

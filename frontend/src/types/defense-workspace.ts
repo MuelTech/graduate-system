@@ -69,11 +69,6 @@ export interface DefenseWorkspace {
     evaluatorAssignments: number;
     finalizedEvaluations: number;
   };
-  oralSummary: {
-    ready: boolean;
-    overallAverage: number | null;
-    finalRating: string | null;
-  } | null;
   formalResult: string | null;
   rapStatus: string | null;
   /**

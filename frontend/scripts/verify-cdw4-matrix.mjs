@@ -68,6 +68,20 @@ test("matrix renders Group I + Group II with accessible per-cell labels", () => 
   assert.match(m, /cursor-pointer/);
 });
 
+test("radio focus indicator is wired: native peer input + focus-visible visual", () => {
+  const m = read(MATRIX);
+  // The native radio must be the Tailwind `peer` so the custom visual reacts.
+  assert.match(m, /peer sr-only/);
+  assert.match(m, /peer-focus-visible:ring/);
+  // Native radio retained (not replaced by div-only controls).
+  assert.match(m, /type="radio"/);
+});
+
+test("DefenseWorkspace type no longer exposes the committee-facing Oral Summary aggregate", () => {
+  const types = read("src/types/defense-workspace.ts");
+  assert.doesNotMatch(types, /oralSummary/);
+});
+
 test("evaluation form uses the matrix, not numeric point inputs", () => {
   const f = read(FORM);
   assert.match(f, /InstitutionalEvaluationMatrix/);
