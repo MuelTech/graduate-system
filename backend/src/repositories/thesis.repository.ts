@@ -9,6 +9,7 @@ import {
   type DefenseEvidenceStage,
 } from "../services/defense-evidence.rules";
 import { DEFENSE_REVIEW_ACTIONS } from "../services/defense-review-events";
+import { selectAuthoritativeAttemptManuscript } from "../services/defense-attempt-manuscript.rules";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -854,15 +855,16 @@ export class ThesisRepository {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      const defenseType = data.defenseType.toUpperCase() as
+        | "TITLE_DEFENSE"
+        | "PROPOSAL_DEFENSE"
+        | "FINAL_DEFENSE";
       // Hard guard: never create a second non-cancelled schedule for the same
       // thesis + defense type (rescheduling is a separate, unimplemented workflow).
       const existing = await tx.defenseSchedule.findMany({
         where: {
           thesisId,
-          defenseType: data.defenseType.toUpperCase() as
-            | "TITLE_DEFENSE"
-            | "PROPOSAL_DEFENSE"
-            | "FINAL_DEFENSE",
+          defenseType,
           sessionStatus: { not: "CANCELLED" },
         },
         select: { id: true, defenseType: true, sessionStatus: true, createdAt: true, conclusion: { select: { outcome: true } } },
@@ -875,16 +877,44 @@ export class ThesisRepository {
         throw new Error(gate.reason);
       }
 
+      // CDW-2 correction: bind the EXACT manuscript evidence for THIS attempt.
+      // Resolved server-side from the authoritative document (never client-supplied).
+      const thesisForBinding = await tx.thesisRecord.findUnique({
+        where: { id: thesisId },
+        select: {
+          thesisDocuments: {
+            select: {
+              id: true,
+              thesisId: true,
+              docType: true,
+              defenseStage: true,
+              uploadedAt: true,
+            },
+          },
+          adviserCertifications: {
+            where: {
+              status: "ISSUED",
+              defenseStage: { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
+            },
+            select: { status: true, defenseStage: true, reviewedDocumentId: true },
+          },
+        },
+      });
+      const attemptManuscript = selectAuthoritativeAttemptManuscript(
+        thesisForBinding?.thesisDocuments ?? [],
+        thesisForBinding?.adviserCertifications ?? [],
+        defenseType,
+        thesisId,
+      );
+
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,
           defenseDate: new Date(data.defenseDate),
           defenseTime: new Date(`1970-01-01T${data.defenseTime}:00.000Z`),
           venueOrLink: data.venueOrLink,
-          defenseType: data.defenseType.toUpperCase() as
-            | "TITLE_DEFENSE"
-            | "PROPOSAL_DEFENSE"
-            | "FINAL_DEFENSE",
+          defenseType,
+          manuscriptDocumentId: attemptManuscript?.id ?? null,
           setById: adminId,
         },
       });

@@ -41,6 +41,7 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
     thesisId: "thesis-1",
     defenseType: "TITLE_DEFENSE",
     sessionStatus: "IN_PROGRESS",
+    manuscriptDocumentId: null,
     defenseDate: new Date("2026-10-20T00:00:00.000Z"),
     defenseTime: new Date("1970-01-01T09:00:00.000Z"),
     venueOrLink: "Room 201",
@@ -736,5 +737,55 @@ describe("DefenseCollaborationService — CDW-1 corrections", () => {
 
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
     expect((await svc.getReportReadModel("sched-1", "u-PANELIST")).canEditBody).toBe(false);
+  });
+});
+
+describe("DefenseCollaborationService — CDW-2 schedule manuscript binding", () => {
+  const svc = new DefenseCollaborationService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("PANELIST"));
+    prismaMock.defenseAnnotation.create.mockResolvedValue(annotationRow());
+  });
+
+  it("annotates only the manuscript bound to the attempt (ignores a newer/current doc)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType: "PROPOSAL_DEFENSE", manuscriptDocumentId: "doc-A" }),
+    );
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ id: "doc-A", defenseStage: "PROPOSAL", docType: "PROPOSAL_CHAPTERS" }),
+    );
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-A", anchor: VALID_ANCHOR }),
+    ).resolves.toBeDefined();
+
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(
+      documentRow({ id: "doc-B", defenseStage: "PROPOSAL", docType: "PROPOSAL_CHAPTERS", isCurrent: true }),
+    );
+    prismaMock.defenseAnnotation.create.mockClear();
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-B", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.defenseAnnotation.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-attempt document even when it is current", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType: "TITLE_DEFENSE", manuscriptDocumentId: "doc-A" }),
+    );
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow({ id: "doc-C", isCurrent: true }));
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-C", anchor: VALID_ANCHOR }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("keeps the legacy (unbound) Title behaviour when no binding is present", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ manuscriptDocumentId: null }));
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(documentRow({ id: "doc-1" }));
+    prismaMock.thesisDocument.findFirst.mockResolvedValue(documentRow({ id: "doc-1" }));
+    await expect(
+      svc.createAnnotation("sched-1", "u-PANELIST", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
+    ).resolves.toBeDefined();
   });
 });

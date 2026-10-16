@@ -78,6 +78,8 @@ export function canPanelistAccessThesisDocument(
       }> | null;
       defenseSchedules?: Array<{
         defenseType?: string;
+        /** CDW-2: the exact document bound to this attempt, when set. */
+        manuscriptDocumentId?: string | null;
         panelAssignments?: Array<{ userId: string }>;
       }> | null;
     } | null;
@@ -88,6 +90,21 @@ export function canPanelistAccessThesisDocument(
     record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
   if (activeAdviserIds.includes(userId)) return true;
 
+  const schedules = record.thesis?.defenseSchedules ?? [];
+  const documentId = typeof record.id === "string" && record.id.length > 0 ? record.id : null;
+
+  // CDW-2 correction: once a document is bound to a defense attempt, only that
+  // attempt's assigned committee (plus owner/admin) may access it. This keeps a
+  // historical attempt's exact manuscript reachable by its own committee while
+  // denying unrelated schedules/users.
+  if (documentId && schedules.some((ds) => ds.manuscriptDocumentId === documentId)) {
+    return schedules.some(
+      (ds) =>
+        ds.manuscriptDocumentId === documentId &&
+        ds.panelAssignments?.some((pa) => pa.userId === userId),
+    );
+  }
+
   const effectiveStage = resolveThesisDocumentStage({
     docType: record.docType,
     defenseStage: record.defenseStage,
@@ -96,7 +113,6 @@ export function canPanelistAccessThesisDocument(
   if (!effectiveStage) return false;
 
   const requiredType = STAGE_TO_DEFENSE_TYPE[effectiveStage];
-  const schedules = record.thesis?.defenseSchedules ?? [];
   const isPanelistStageDocType = PANELIST_STAGE_DOC_TYPES.has(
     String(record.docType ?? ""),
   );

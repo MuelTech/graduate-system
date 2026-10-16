@@ -602,6 +602,7 @@ model ThesisDocument {
   supersedes         ThesisDocument?        @relation("ThesisDocumentSupersession", fields: [supersedesDocumentId], references: [id])
   supersededBy       ThesisDocument[]       @relation("ThesisDocumentSupersession")
   defenseAnnotations DefenseAnnotation[]
+  schedulesAsManuscript DefenseSchedule[]  @relation("ScheduleManuscriptDocument")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
   @@index([storageKey], map: "thesis_documents_storage_key_idx")
@@ -613,6 +614,12 @@ model ThesisDocument {
 model DefenseSchedule {
   id                           String                   @id @default(uuid()) @map("schedule_id")
   thesisId                     String                   @map("thesis_id")
+  /**
+   * CDW-2 correction: the EXACT manuscript evidence for THIS defense attempt.
+   * Bound server-side at scheduling and immutable for the attempt through normal
+   * APIs (FK is ON DELETE RESTRICT so historical evidence cannot be destroyed).
+   */
+  manuscriptDocumentId         String?                  @map("manuscript_document_id")
   defenseDate                  DateTime                 @map("defense_date") @db.Date
   defenseTime                  DateTime                 @map("defense_time") @db.Time(0)
   venueOrLink                  String?                  @map("venue_or_link")
@@ -630,6 +637,7 @@ model DefenseSchedule {
   setBy                        User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
   rapporteurNotesFinalizedBy   User?                    @relation("RapporteurNotesFinalizedBy", fields: [rapporteurNotesFinalizedById], references: [id])
   thesis                       ThesisRecord             @relation(fields: [thesisId], references: [id])
+  manuscriptDocument           ThesisDocument?          @relation("ScheduleManuscriptDocument", fields: [manuscriptDocumentId], references: [id], onDelete: Restrict)
   oralExamScores               OralExamScore[]
   oralExamSummary              OralExamSummary?
   conclusion                   DefenseConclusion?
@@ -641,6 +649,7 @@ model DefenseSchedule {
   @@index([setById], map: "defense_schedules_set_by_fkey")
   @@index([thesisId], map: "defense_schedules_thesis_id_fkey")
   @@index([rapporteurNotesFinalizedById])
+  @@index([manuscriptDocumentId], map: "defense_schedules_manuscript_document_id_fkey")
   @@map("defense_schedules")
 }
 

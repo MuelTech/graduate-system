@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   defenseSchedule: {
     findUnique: vi.fn(),
+    updateMany: vi.fn(),
   },
   panelAssignment: { findFirst: vi.fn() },
   defenseConclusion: { findFirst: vi.fn() },

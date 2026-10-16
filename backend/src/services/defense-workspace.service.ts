@@ -7,18 +7,10 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { isEvaluatorRole, assertEvaluationSessionEditable } from "./oral-evaluation.rules";
-import { selectCertifiedProposalManuscript, selectCertifiedFinalManuscript } from "./proposal-adviser-review.rules";
+import { selectCertifiedProposalManuscript } from "./proposal-adviser-review.rules";
+import { selectAuthoritativeAttemptManuscript } from "./defense-attempt-manuscript.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
-
-const DOC_BY_DEFENSE: Record<
-  string,
-  { docType: string; defenseStage: string }
-> = {
-  TITLE_DEFENSE: { docType: "TITLE_PROPOSAL", defenseStage: "TITLE" },
-  PROPOSAL_DEFENSE: { docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
-  FINAL_DEFENSE: { docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" },
-};
 
 export type WorkspaceRole =
   | "CHAIRMAN"
@@ -212,6 +204,9 @@ export class DefenseWorkspaceService {
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        manuscriptDocument: {
+          select: { id: true, docType: true, defenseStage: true, uploadedAt: true },
+        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
@@ -242,65 +237,57 @@ export class DefenseWorkspaceService {
     /** CP8: prior Proposal context — only for FINAL_DEFENSE. */
     let proposalHistory: DefenseWorkspaceDto["proposalHistory"] = null;
 
-    if (defenseType === "PROPOSAL_DEFENSE") {
-      const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE");
-      const exact = selectCertifiedProposalManuscript(
-        allDocs.map((d) => ({
-          id: d.id,
-          thesisId: d.thesisId ?? thesisId,
-          docType: d.docType,
-          defenseStage: d.defenseStage ?? null,
-        })),
-        cert ?? null,
-        thesisId,
-      );
-      if (!exact) {
-        throw new AppError(
-          "Certified defense manuscript is unavailable for this session.",
-          409,
-        );
-      }
-      docs = [
-        {
-          id: exact.id,
-          docType: exact.docType,
-          defenseStage: exact.defenseStage,
-          uploadedAt:
-            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
-            null,
-          displayName: "Certified Proposal Manuscript",
-        },
-      ];
-    } else if (defenseType === "FINAL_DEFENSE") {
-      const cert = certs.find((c) => c.defenseStage === "FINAL_DEFENSE");
-      const exact = selectCertifiedFinalManuscript(
-        allDocs.map((d) => ({
-          id: d.id,
-          thesisId: d.thesisId ?? thesisId,
-          docType: d.docType,
-          defenseStage: d.defenseStage ?? null,
-        })),
-        cert ?? null,
-        thesisId,
-      );
-      if (!exact) {
-        throw new AppError(
-          "Certified defense manuscript is unavailable for this session.",
-          409,
-        );
-      }
-      docs = [
-        {
-          id: exact.id,
-          docType: exact.docType,
-          defenseStage: exact.defenseStage,
-          uploadedAt:
-            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
-            null,
-          displayName: "Certified Final Manuscript",
-        },
-      ];
+    const attemptDocDisplayName =
+      defenseType === "PROPOSAL_DEFENSE"
+        ? "Certified Proposal Manuscript"
+        : defenseType === "FINAL_DEFENSE"
+          ? "Certified Final Manuscript"
+          : "Title Defense Proposal Package";
 
+    const toWorkspaceDoc = (d: {
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      uploadedAt?: Date | string | null;
+    }) => ({
+      id: d.id,
+      docType: String(d.docType),
+      defenseStage: d.defenseStage ?? null,
+      uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString() : null,
+      displayName: attemptDocDisplayName,
+    });
+
+    // CDW-2 correction: an already-bound schedule returns its EXACT attempt
+    // manuscript — even if a newer/current document or certification exists.
+    const boundDocument = schedule.manuscriptDocument;
+    if (boundDocument) {
+      docs = [toWorkspaceDoc(boundDocument)];
+    } else {
+      const derived = selectAuthoritativeAttemptManuscript(
+        allDocs,
+        certs,
+        defenseType,
+        thesisId,
+      );
+      if (derived) {
+        docs = [toWorkspaceDoc(derived)];
+        // Safe one-time binding for an ACTIVE (non-concluded) attempt only;
+        // concluded attempts are never re-bound from current state.
+        if (String(schedule.sessionStatus) !== "CONCLUDED") {
+          await prisma.defenseSchedule.updateMany({
+            where: { id: scheduleId, manuscriptDocumentId: null },
+            data: { manuscriptDocumentId: derived.id },
+          });
+        }
+      } else if (defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE") {
+        throw new AppError(
+          "Certified defense manuscript is unavailable for this session.",
+          409,
+        );
+      }
+    }
+
+    if (defenseType === "FINAL_DEFENSE") {
       // CP8: exact certified prior Proposal manuscript (never a later revision).
       const proposalCert = certs.find(
         (c) => c.defenseStage === "PROPOSAL_DEFENSE",
@@ -334,23 +321,6 @@ export class DefenseWorkspaceService {
           : null,
         rap: proposalRap,
       };
-    } else {
-      const docRule = DOC_BY_DEFENSE[defenseType];
-      docs = allDocs
-        .filter(
-          (d) =>
-            docRule &&
-            d.docType === docRule.docType &&
-            (d.defenseStage === docRule.defenseStage || d.defenseStage == null),
-        )
-        .slice(0, 1)
-        .map((d) => ({
-          id: d.id,
-          docType: d.docType,
-          defenseStage: d.defenseStage,
-          uploadedAt: d.uploadedAt ? d.uploadedAt.toISOString() : null,
-          displayName: "Title Defense Proposal Package",
-        }));
     }
 
     const evaluationByPanel = new Map(

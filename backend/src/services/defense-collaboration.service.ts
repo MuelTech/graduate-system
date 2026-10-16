@@ -321,7 +321,7 @@ export class DefenseCollaborationService {
    * Fails closed; never substitutes a newer/latest/current manuscript.
    */
   private async resolveLiveWriteDocument(
-    schedule: { thesisId: string; defenseType: unknown },
+    schedule: { thesisId: string; defenseType: unknown; manuscriptDocumentId?: string | null },
     thesisDocumentId: string,
   ) {
     const defenseType = String(schedule.defenseType);
@@ -341,6 +341,20 @@ export class DefenseCollaborationService {
     }
     if (!binding.docTypes.includes(String(document.docType))) {
       throw new AppError("Document is not an authorized defense manuscript.", 403);
+    }
+
+    // CDW-2 correction: once an attempt is bound, the SCHEDULE binding is the
+    // attempt authority. A later upload / certification rebind / isCurrent change
+    // must never switch the annotatable manuscript.
+    const boundDocumentId = schedule.manuscriptDocumentId ?? null;
+    if (boundDocumentId) {
+      if (document.id !== boundDocumentId) {
+        throw new AppError(
+          "Only the manuscript bound to this defense attempt can be annotated.",
+          409,
+        );
+      }
+      return document;
     }
 
     if (defenseType === "TITLE_DEFENSE") {
