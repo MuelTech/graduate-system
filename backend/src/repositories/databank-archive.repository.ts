@@ -4,9 +4,7 @@ import prisma from "../config/database";
  * DL-9: Research Databank private archival registration.
  *
  * Read/resolve the authenticated Student's completed Final research context and
- * persist a private archive record. No storage paths are read or written here;
- * the archival manuscript policy is unresolved, so archive rows are created
- * with null legacy path fields.
+ * persist a private archive record with attached physical files and integrity metadata.
  */
 
 export interface ArchiveRecord {
@@ -19,6 +17,31 @@ export interface ArchiveRecord {
   publishedAt: Date | null;
   approvedById: string | null;
   createdAt: Date;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
+}
+
+export interface CreateArchiveInput {
+  thesisId: string;
+  title: string;
+  abstract: string | null;
+  keywords: string | null;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
+  documents?: Array<{
+    docType: "FINAL_MANUSCRIPT" | "INSTRUMENTS" | "RESPONDENT_DATA";
+    defenseStage: "FINAL";
+    filePath: string;
+    storageKey?: string | null;
+    storageProvider?: string | null;
+    originalFilename?: string | null;
+    verifiedMimeType?: string | null;
+    sizeBytes?: number | null;
+    checksum?: string | null;
+    checksumAlgorithm?: string | null;
+    uploadedById?: string | null;
+  }>;
+  certificationsPath?: string | null;
 }
 
 const ARCHIVE_SELECT = {
@@ -31,6 +54,8 @@ const ARCHIVE_SELECT = {
   publishedAt: true,
   approvedById: true,
   createdAt: true,
+  fullPaperPath: true,
+  respondentDataPath: true,
 } as const;
 
 export class DatabankArchiveRepository {
@@ -109,29 +134,76 @@ export class DatabankArchiveRepository {
   }
 
   /**
-   * Creates the private archive registration. Legacy path fields are explicitly
-   * null; publication fields remain unset. `is_public` is false by schema
-   * default and explicitly here (defense in depth).
+   * Creates the private archive registration with attached physical files and
+   * creates corresponding ThesisDocument rows inside a database transaction.
    */
-  async createArchive(data: {
-    thesisId: string;
-    title: string;
-    abstract: string | null;
-    keywords: string | null;
-  }): Promise<ArchiveRecord> {
-    return prisma.eLibrary.create({
-      data: {
-        thesisId: data.thesisId,
-        title: data.title,
-        abstract: data.abstract,
-        keywords: data.keywords,
-        fullPaperPath: null,
-        respondentDataPath: null,
-        isPublic: false,
-        publishedAt: null,
-        approvedById: null,
-      },
-      select: ARCHIVE_SELECT,
+  async createArchive(data: CreateArchiveInput): Promise<ArchiveRecord> {
+    return prisma.$transaction(async (tx) => {
+      // 1. Create the e_library archival row
+      const elibrary = await tx.eLibrary.create({
+        data: {
+          thesisId: data.thesisId,
+          title: data.title,
+          abstract: data.abstract,
+          keywords: data.keywords,
+          fullPaperPath: data.fullPaperPath ?? null,
+          respondentDataPath: data.respondentDataPath ?? null,
+          isPublic: false,
+          publishedAt: null,
+          approvedById: null,
+        },
+        select: ARCHIVE_SELECT,
+      });
+
+      // 2. Persist archival ThesisDocuments (Manuscript, Instruments, Respondent Data)
+      if (data.documents && data.documents.length > 0) {
+        for (const doc of data.documents) {
+          // Deactivate any prior active rows for this slot
+          await tx.thesisDocument.updateMany({
+            where: {
+              thesisId: data.thesisId,
+              defenseStage: doc.defenseStage,
+              docType: doc.docType,
+              isCurrent: true,
+            },
+            data: { isCurrent: false },
+          });
+
+          await tx.thesisDocument.create({
+            data: {
+              thesisId: data.thesisId,
+              docType: doc.docType,
+              defenseStage: doc.defenseStage,
+              filePath: doc.filePath,
+              storageKey: doc.storageKey ?? null,
+              storageProvider: doc.storageProvider ?? null,
+              originalFilename: doc.originalFilename ?? null,
+              verifiedMimeType: doc.verifiedMimeType ?? null,
+              sizeBytes: doc.sizeBytes ?? null,
+              checksum: doc.checksum ?? null,
+              checksumAlgorithm: doc.checksumAlgorithm ?? null,
+              uploadedById: doc.uploadedById ?? null,
+              isCurrent: true,
+              uploadedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      // 3. Upsert Grammarian / Research Certification record if provided
+      if (data.certificationsPath) {
+        await tx.grammarianCertification.upsert({
+          where: { thesisId: data.thesisId },
+          update: { filePath: data.certificationsPath },
+          create: {
+            thesisId: data.thesisId,
+            filePath: data.certificationsPath,
+            status: "SUBMITTED",
+          },
+        });
+      }
+
+      return elibrary;
     });
   }
 }
