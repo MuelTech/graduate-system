@@ -15,6 +15,8 @@
 
 export type ReportMark = "bold" | "italic" | "underline";
 export type ReportAlignment = "left" | "center" | "right" | "justify";
+/** Bounded canonical paragraph indentation (0 is represented by omission). */
+export type ReportIndentLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ReportTextNode {
   type: "text";
@@ -29,7 +31,7 @@ export type ReportInlineNode = ReportTextNode | ReportHardBreakNode;
 export interface ReportParagraphNode {
   type: "paragraph";
   content: ReportInlineNode[];
-  attrs?: { textAlign?: ReportAlignment };
+  attrs?: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel };
 }
 export interface ReportHeadingNode {
   type: "heading";
@@ -61,6 +63,7 @@ export interface ReportDocument {
 
 const MARK_SET: readonly ReportMark[] = ["bold", "italic", "underline"];
 const ALIGN_SET: readonly string[] = ["left", "center", "right", "justify"];
+const MAX_PARAGRAPH_INDENT = 6;
 
 export function emptyReportDocument(): ReportDocument {
   return { type: "doc", content: [{ type: "paragraph", content: [] }] };
@@ -110,6 +113,18 @@ function normalizeTextAlign(attrs: unknown): ReportAlignment | null {
     : null;
 }
 
+/**
+ * Bounded paragraph indentation. Accepts an integer 1..6; 0, negatives,
+ * decimals, strings, and out-of-range values are represented by omission so the
+ * canonical payload always matches the strict server validator.
+ */
+function normalizeIndentLevel(attrs: unknown): ReportIndentLevel | null {
+  const value = (attrs as Record<string, unknown> | undefined)?.indentLevel;
+  if (typeof value !== "number" || !Number.isInteger(value)) return null;
+  if (value < 1 || value > MAX_PARAGRAPH_INDENT) return null;
+  return value as ReportIndentLevel;
+}
+
 function normalizeBlock(node: unknown): ReportBlockNode {
   const record = (node ?? {}) as Record<string, unknown>;
   const content = asArray(record.content);
@@ -143,7 +158,12 @@ function normalizeBlock(node: unknown): ReportBlockNode {
     content: content.map(normalizeInline),
   };
   const align = normalizeTextAlign(record.attrs);
-  if (align) paragraph.attrs = { textAlign: align };
+  const indent = normalizeIndentLevel(record.attrs);
+  if (align || indent) {
+    paragraph.attrs = {};
+    if (align) paragraph.attrs.textAlign = align;
+    if (indent) paragraph.attrs.indentLevel = indent;
+  }
   return paragraph;
 }
 

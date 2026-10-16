@@ -29,6 +29,7 @@ const EDITOR = "src/components/defense-workspace/rich-text-report-editor.tsx";
 const TOOLBAR = "src/components/defense-workspace/report-editor-toolbar.tsx";
 const VIEW = "src/components/defense-workspace/report-document-view.tsx";
 const CSS = "src/components/defense-workspace/report-body.css";
+const INDENT = "src/components/defense-workspace/report-paragraph-indent.ts";
 const PANEL = "src/components/defense-workspace/committee-report-panel.tsx";
 const BRIDGE = "src/components/defense-workspace/report-composer-context.tsx";
 const RAIL = "src/components/defense-workspace/shared-comments-rail.tsx";
@@ -385,6 +386,120 @@ test("alignment AND marks are preserved together", () => {
   const back = fromTiptapDocument(tiptap);
   assert.equal(back.content[0].attrs.textAlign, "center");
   assert.deepEqual(back.content[0].content[0].marks, ["bold", "italic"]);
+});
+
+// ---- Paragraph indentation (CDW-5 authoring ergonomics) -------------------
+
+test("paragraph indentLevel survives canonical → Tiptap → canonical", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { indentLevel: 2 },
+        content: [{ type: "text", text: "x", marks: [] }],
+      },
+    ],
+  };
+  const tiptap = toTiptapDocument(canonical);
+  assert.equal(tiptap.content[0].attrs.indentLevel, 2);
+  assert.deepEqual(fromTiptapDocument(tiptap), canonical);
+});
+
+test("textAlign and indentLevel survive the round trip together", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { textAlign: "center", indentLevel: 3 },
+        content: [{ type: "text", text: "x", marks: [] }],
+      },
+    ],
+  };
+  const back = fromTiptapDocument(toTiptapDocument(canonical));
+  assert.equal(back.content[0].attrs.textAlign, "center");
+  assert.equal(back.content[0].attrs.indentLevel, 3);
+  assert.deepEqual(back, canonical);
+});
+
+test("marks and indentLevel survive the round trip together", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        attrs: { indentLevel: 1 },
+        content: [{ type: "text", text: "x", marks: ["bold", "italic"] }],
+      },
+    ],
+  };
+  const back = fromTiptapDocument(toTiptapDocument(canonical));
+  assert.equal(back.content[0].attrs.indentLevel, 1);
+  assert.deepEqual(back.content[0].content[0].marks, ["bold", "italic"]);
+  assert.deepEqual(back, canonical);
+});
+
+test("invalid indentLevel never becomes accepted canonical content", () => {
+  for (const bad of [-1, 7, 1.5, "2", null, true]) {
+    const normalized = normalizeReportDocument({
+      type: "doc",
+      content: [
+        { type: "paragraph", attrs: { indentLevel: bad }, content: [{ type: "text", text: "x" }] },
+      ],
+    });
+    assert.equal(normalized.content[0].attrs, undefined, `indentLevel ${String(bad)} must be dropped`);
+  }
+  // Level 0 is canonicalized to omission, matching the server.
+  const zero = normalizeReportDocument({
+    type: "doc",
+    content: [
+      { type: "paragraph", attrs: { indentLevel: 0 }, content: [{ type: "text", text: "x" }] },
+    ],
+  });
+  assert.equal(zero.content[0].attrs, undefined);
+});
+
+test("indentLevel survives a persisted save/reload JSON round trip", () => {
+  const canonical = {
+    type: "doc",
+    content: [
+      { type: "paragraph", attrs: { indentLevel: 4 }, content: [{ type: "text", text: "x" }] },
+    ],
+  };
+  const reloaded = normalizeReportDocument(JSON.parse(JSON.stringify(canonical)));
+  assert.equal(reloaded.content[0].attrs.indentLevel, 4);
+});
+
+test("the paragraph indentation renderer emits bounded data-indent-level", () => {
+  const v = read(VIEW);
+  assert.match(v, /data-indent-level/);
+  // No arbitrary style/pixel indentation in the renderer.
+  assert.doesNotMatch(v, /marginLeft|margin-left|paddingLeft/);
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /\.cdwReportBody p\[data-indent-level="1"\]/);
+  assert.match(css, /\.cdwReportBody p\[data-indent-level="6"\]/);
+  // Bounded: no selector above the supported maximum.
+  assert.doesNotMatch(css, /data-indent-level="(?:7|8|9)/);
+});
+
+test("the editor implements semantic Tab / Shift+Tab indentation", () => {
+  const indent = read(INDENT);
+  assert.match(indent, /Tab:\s*\(\{\s*editor\s*\}\)\s*=>/);
+  assert.match(indent, /"Shift-Tab":\s*\(\{\s*editor\s*\}\)\s*=>/);
+  // Lists use structural nesting, not literal tabs/spaces.
+  assert.match(indent, /sinkListItem/);
+  assert.match(indent, /liftListItem/);
+  // Plain paragraphs use a bounded canonical attr.
+  assert.match(indent, /updateAttributes\("paragraph"/);
+  assert.match(indent, /REPORT_INDENT_MAX\s*=\s*6/);
+  // No text/spaces/tabs are ever inserted to fake indentation.
+  assert.doesNotMatch(indent, /insertContent|insertText/);
+  // No pagination concepts leak in through the extension.
+  assert.doesNotMatch(indent, /pageBreak|page-break|@page|break-inside|297mm|210mm/i);
+  // Registered by the editor, which still speaks canonical JSON at the boundary.
+  const e = read(EDITOR);
+  assert.match(e, /ReportParagraphIndent/);
 });
 
 // ---- Dependency + file contracts ------------------------------------------

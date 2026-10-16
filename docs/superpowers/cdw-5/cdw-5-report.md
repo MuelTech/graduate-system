@@ -137,3 +137,73 @@ backend/domain suite was not re-run. Frontend: 120 assertions across the 7
 verify scripts (`verify-cdw5-report` now 34, including 2 new static
 presentation contracts) + `npx tsc --noEmit` + scoped `eslint` +
 `npm run build` — all clean.
+
+## CDW-5 authoring ergonomics — semantic Tab / Shift+Tab indentation
+
+Adds the missing document-editor keyboard interaction. This is an editor-behavior
+change only; the bounded canonical model gained one optional paragraph
+attribute. **No database migration.**
+
+**Behavior**
+
+- **Tab inside a list item** → structural list nesting (`sinkListItem`); nothing
+  is inserted, and no spaces or literal `\t` characters are stored.
+- **Shift+Tab inside a list item** → structural outdent (`liftListItem`).
+- **Tab in a normal paragraph** → the paragraph's bounded canonical
+  `indentLevel` increases by one (maximum 6).
+- **Shift+Tab in a normal paragraph** → decreases by one; at level 0 it does
+  nothing (indentation never goes negative).
+- Headings are not indentable. If no semantic operation is possible the shortcut
+  returns `false`, so Tab keeps its default browser focus behavior — there is no
+  unconditional keyboard trap.
+
+**Canonical model**
+
+- Paragraph attrs are a closed set: `textAlign?` and `indentLevel?` only.
+- `indentLevel` is an integer 0–6; level 0 is represented by **omission** (never
+  stored explicitly). Negatives, decimals, strings, and out-of-range values are
+  rejected by the server (`report-body.rules.ts`) and dropped by the frontend
+  normalizer.
+- `report-body.rules.ts` now also fails closed on any unknown paragraph/heading
+  attribute, so no arbitrary `style` / `className` / pixel field can be
+  persisted.
+- Canonicalization is deterministic (attrs emitted in a fixed `textAlign` →
+  `indentLevel` order), so the freeze/hash output is stable and pre-indent
+  documents are unchanged.
+- No arbitrary style objects are stored: the canonical body stays
+  presentation-independent (`indentLevel: 2`, never `marginLeft: "37px"`).
+
+**Tiptap boundary**
+
+- A small local extension (`report-paragraph-indent.ts`) adds the bounded
+  `indentLevel` attribute to paragraphs, exposes `increaseReportIndent` /
+  `decreaseReportIndent`, and registers Tab / Shift+Tab. It uses a lower
+  priority so the built-in list Tab handlers keep precedence, and it delegates
+  to the structural list commands for the list case.
+- The Tiptap ⇄ canonical adapter round-trips `indentLevel` unchanged (with
+  `textAlign` and marks when present), so indentation survives Editor → Save →
+  reload.
+
+**Preview / read-only parity**
+
+- The editor renders `data-indent-level` via the extension's `renderHTML`; the
+  read-only renderer emits the same attribute. Both are styled by the shared
+  `.cdwReportBody p[data-indent-level]` rules, so the Editor, Preview Report, and
+  the Chairman/Panelist read-only view indent identically. The step is a CSS
+  variable reduced on narrow screens, and `margin-left` shrinks the text box
+  rather than forcing horizontal overflow.
+
+**Not pagination.** The editor remains one continuous document canvas. No page
+size, page splitting, page-break node, or print pagination was added — that
+belongs to the future Official Defense Forms / Document Rendering phase.
+
+**Verification (authoring ergonomics):** backend `npx prisma validate` +
+`npx prisma generate` + `npm run build` + full `npx vitest run` — 134 files /
+1422 passed / 5 skipped (`report-body.rules.test.ts` now 34). Frontend: 127
+assertions across the 7 verify scripts (`verify-cdw5-report` now 41) +
+`npx tsc --noEmit` + scoped `eslint` + `npm run build` — all clean. (The
+118/120 totals in the earlier CDW-5 sections are historical snapshots from their
+own passes.)
+
+**NO NEW DATABASE MIGRATION** — `RapReport.bodyDocument` already stores
+structured JSON.

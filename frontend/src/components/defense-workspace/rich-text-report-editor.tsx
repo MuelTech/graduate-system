@@ -33,6 +33,7 @@ import { fromTiptapDocument, toTiptapDocument } from "@/lib/report/tiptap-adapte
 
 import { ReportEditorToolbar } from "./report-editor-toolbar";
 import { ReportDocumentCanvas } from "./report-document-view";
+import { ReportParagraphIndent } from "./report-paragraph-indent";
 import { useReportComposer } from "./report-composer-context";
 import "./report-body.css";
 
@@ -74,6 +75,9 @@ export function RichTextReportEditor({
       // right/justify) must survive the Tiptap boundary unchanged. No alignment
       // toolbar controls are exposed.
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      // CDW-5 authoring ergonomics: Tab / Shift+Tab — semantic list nesting
+      // inside lists, bounded canonical indentLevel in plain paragraphs.
+      ReportParagraphIndent,
     ],
     content: toTiptapDocument(initialDocument ?? emptyReportDocument()),
     editorProps: {

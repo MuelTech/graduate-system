@@ -56,8 +56,12 @@ function Block({ node }: { node: ReportBlockNode }) {
 
   if (node.type === "paragraph") {
     const align = node.attrs?.textAlign;
+    const indent = node.attrs?.indentLevel;
     return (
-      <p style={align ? { textAlign: align } : undefined}>
+      <p
+        style={align ? { textAlign: align } : undefined}
+        data-indent-level={indent ? String(indent) : undefined}
+      >
         <InlineList nodes={node.content ?? []} />
       </p>
     );

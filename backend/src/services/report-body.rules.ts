@@ -18,14 +18,23 @@ export const REPORT_BODY_LIMITS = {
   maxNodes: 5000,
   maxDepth: 20,
   maxTextLength: 20000,
+  /** Bounded paragraph indentation levels (0 = none, 1..6 = progressively indented). */
+  maxIndentLevel: 6,
 } as const;
 
 export type ReportMark = "bold" | "italic" | "underline";
 export type ReportAlignment = "left" | "center" | "right" | "justify";
 export type ReportHeadingLevel = 1 | 2 | 3;
+/** Canonical stored paragraph indentation (0 is represented by omission). */
+export type ReportIndentLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 const ALLOWED_MARKS: readonly ReportMark[] = ["bold", "italic", "underline"];
 const ALLOWED_ALIGNMENTS: readonly ReportAlignment[] = ["left", "center", "right", "justify"];
+
+/** Paragraph attrs are a closed set: nothing else may be persisted. */
+const ALLOWED_PARAGRAPH_ATTRS: readonly string[] = ["textAlign", "indentLevel"];
+/** Heading attrs are a closed set; headings are NOT indentable. */
+const ALLOWED_HEADING_ATTRS: readonly string[] = ["level", "textAlign"];
 
 export interface CanonicalTextNode {
   type: "text";
@@ -40,7 +49,7 @@ export type CanonicalInlineNode = CanonicalTextNode | CanonicalBreakNode;
 export interface CanonicalParagraphNode {
   type: "paragraph";
   content: CanonicalInlineNode[];
-  attrs?: { textAlign: ReportAlignment };
+  attrs?: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel };
 }
 export interface CanonicalHeadingNode {
   type: "heading";
@@ -93,6 +102,33 @@ function validateTextAlign(value: unknown): string | null {
   return isAlignment(value) ? null : "textAlign must be a supported alignment.";
 }
 
+function isIndentLevel(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= REPORT_BODY_LIMITS.maxIndentLevel
+  );
+}
+
+function validateIndentLevel(value: unknown): string | null {
+  if (value === undefined) return null;
+  return isIndentLevel(value)
+    ? null
+    : `indentLevel must be an integer between 0 and ${REPORT_BODY_LIMITS.maxIndentLevel}.`;
+}
+
+/** Fail closed on any attribute outside the bounded allow-list. */
+function validateAllowedAttrs(
+  attrs: Record<string, unknown>,
+  allowed: readonly string[],
+): string | null {
+  for (const key of Object.keys(attrs)) {
+    if (!allowed.includes(key)) return `Unsupported attribute: ${key}.`;
+  }
+  return null;
+}
+
 function validateInline(node: unknown, ctx: ValidationContext, depth: number): string | null {
   ctx.nodes += 1;
   if (ctx.nodes > REPORT_BODY_LIMITS.maxNodes) return "Report body exceeds the node limit.";
@@ -143,13 +179,19 @@ function validateBlock(node: unknown, ctx: ValidationContext, depth: number): st
     case "paragraph": {
       if (node.attrs !== undefined) {
         if (!isPlainObject(node.attrs)) return "paragraph attrs must be an object.";
+        const allowedError = validateAllowedAttrs(node.attrs, ALLOWED_PARAGRAPH_ATTRS);
+        if (allowedError) return allowedError;
         const attrError = validateTextAlign(node.attrs.textAlign);
         if (attrError) return attrError;
+        const indentError = validateIndentLevel(node.attrs.indentLevel);
+        if (indentError) return indentError;
       }
       return validateInlineList(node.content, ctx, depth + 1);
     }
     case "heading": {
       if (!isPlainObject(node.attrs)) return "heading requires attrs.";
+      const allowedError = validateAllowedAttrs(node.attrs, ALLOWED_HEADING_ATTRS);
+      if (allowedError) return allowedError;
       const level = node.attrs.level;
       if (level !== 1 && level !== 2 && level !== 3) return "heading level must be 1, 2, or 3.";
       const attrError = validateTextAlign(node.attrs.textAlign);
@@ -217,12 +259,19 @@ function canonicalizeBlock(node: unknown): CanonicalBlockNode {
   }
 
   if (record.type === "paragraph") {
+    const attrs = asRecord(record.attrs);
     const paragraph: CanonicalParagraphNode = {
       type: "paragraph",
       content: content.map(canonicalizeInline),
     };
-    const attrs = asRecord(record.attrs);
-    if (attrs.textAlign !== undefined) paragraph.attrs = { textAlign: attrs.textAlign as ReportAlignment };
+    // Deterministic attr order (textAlign, then indentLevel). A canonical level
+    // of 0 is represented by omission, never by an explicit indeterminate value.
+    const canonicalAttrs: { textAlign?: ReportAlignment; indentLevel?: ReportIndentLevel } = {};
+    if (attrs.textAlign !== undefined) canonicalAttrs.textAlign = attrs.textAlign as ReportAlignment;
+    if (isIndentLevel(attrs.indentLevel) && attrs.indentLevel > 0) {
+      canonicalAttrs.indentLevel = attrs.indentLevel as ReportIndentLevel;
+    }
+    if (Object.keys(canonicalAttrs).length > 0) paragraph.attrs = canonicalAttrs;
     return paragraph;
   }
 

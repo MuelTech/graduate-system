@@ -57,6 +57,8 @@
 .cdwReportBody {
   color: #2b2f36;
   line-height: 1.7;
+  /* One indentation step per canonical indentLevel (presentation only). */
+  --cdw-indent-step: 1.5rem;
 }
 
 .cdwReportBody > :first-child {
@@ -131,6 +133,36 @@
 /* A list item's own paragraph must not double the paragraph rhythm. */
 .cdwReportBody li > p {
   margin: 0;
+}
+
+/* 3b. Paragraph indentation (bounded canonical indentLevel) ----------------
+ * Presentation only — driven by the shared `data-indent-level` attribute that
+ * both the editor (ProseMirror renderHTML) and the read-only renderer emit.
+ * No persisted pixel/style values. margin-left shrinks the text box instead of
+ * overflowing, and the step is reduced on narrow screens. */
+.cdwReportBody p[data-indent-level="1"] {
+  margin-left: calc(var(--cdw-indent-step) * 1);
+}
+.cdwReportBody p[data-indent-level="2"] {
+  margin-left: calc(var(--cdw-indent-step) * 2);
+}
+.cdwReportBody p[data-indent-level="3"] {
+  margin-left: calc(var(--cdw-indent-step) * 3);
+}
+.cdwReportBody p[data-indent-level="4"] {
+  margin-left: calc(var(--cdw-indent-step) * 4);
+}
+.cdwReportBody p[data-indent-level="5"] {
+  margin-left: calc(var(--cdw-indent-step) * 5);
+}
+.cdwReportBody p[data-indent-level="6"] {
+  margin-left: calc(var(--cdw-indent-step) * 6);
+}
+
+@media (max-width: 640px) {
+  .cdwReportBody {
+    --cdw-indent-step: 1rem;
+  }
 }
 
 /* 4. Editable surface ---------------------------------------------------- */

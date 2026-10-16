@@ -204,3 +204,105 @@ describe("hasMeaningfulReportContent (CDW-1 freeze gate)", () => {
     ).toBe(true);
   });
 });
+
+describe("paragraph indentation (CDW-5 authoring ergonomics)", () => {
+  const paragraphWith = (attrs: unknown) => ({
+    type: "doc",
+    content: [{ type: "paragraph", attrs, content: [{ type: "text", text: "x" }] }],
+  });
+
+  it("accepts indentLevel 1", () => {
+    expect(validateReportDocument(paragraphWith({ indentLevel: 1 })).ok).toBe(true);
+  });
+
+  it("accepts the maximum indentLevel", () => {
+    expect(
+      validateReportDocument(paragraphWith({ indentLevel: REPORT_BODY_LIMITS.maxIndentLevel })).ok,
+    ).toBe(true);
+  });
+
+  it("accepts indentLevel 0 and canonicalizes it to an omitted attr", () => {
+    const doc = paragraphWith({ indentLevel: 0 });
+    expect(validateReportDocument(doc).ok).toBe(true);
+    expect(canonicalizeReportDocument(doc).content[0].attrs).toBeUndefined();
+    // Canonical output matches a paragraph that never carried the attribute.
+    expect(serializeReportDocument(doc)).toBe(
+      serializeReportDocument({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }],
+      }),
+    );
+  });
+
+  it("rejects negative indentLevel", () => {
+    expect(validateReportDocument(paragraphWith({ indentLevel: -1 })).ok).toBe(false);
+  });
+
+  it("rejects indentLevel above the bound", () => {
+    expect(validateReportDocument(paragraphWith({ indentLevel: 7 })).ok).toBe(false);
+  });
+
+  it("rejects a decimal indentLevel", () => {
+    expect(validateReportDocument(paragraphWith({ indentLevel: 1.5 })).ok).toBe(false);
+  });
+
+  it("rejects a string indentLevel", () => {
+    expect(validateReportDocument(paragraphWith({ indentLevel: "2" })).ok).toBe(false);
+  });
+
+  it("rejects indentLevel on a heading (headings are not indentable)", () => {
+    expect(
+      validateReportDocument({
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 2, indentLevel: 2 }, content: [{ type: "text", text: "H" }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("fails closed on unknown paragraph attrs (no arbitrary style objects)", () => {
+    expect(validateReportDocument(paragraphWith({ marginLeft: "37px" })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ style: "margin-left: 37px" })).ok).toBe(false);
+    expect(validateReportDocument(paragraphWith({ className: "x" })).ok).toBe(false);
+  });
+
+  it("fails closed on unknown heading attrs", () => {
+    expect(
+      validateReportDocument({
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 2, foo: "bar" }, content: [{ type: "text", text: "H" }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("keeps textAlign and indentLevel together, deterministically", () => {
+    const a = paragraphWith({ indentLevel: 3, textAlign: "center" });
+    const b = paragraphWith({ textAlign: "center", indentLevel: 3 });
+    expect(validateReportDocument(a).ok).toBe(true);
+    expect(canonicalizeReportDocument(a).content[0].attrs).toEqual({
+      textAlign: "center",
+      indentLevel: 3,
+    });
+    // Attr key order never changes the hash.
+    expect(hashReportDocument(a)).toBe(hashReportDocument(b));
+  });
+
+  it("changes the canonical hash when the indent level changes", () => {
+    expect(hashReportDocument(paragraphWith({ indentLevel: 1 }))).not.toBe(
+      hashReportDocument(paragraphWith({ indentLevel: 2 })),
+    );
+    expect(hashReportDocument(paragraphWith({ indentLevel: 2 }))).not.toBe(
+      hashReportDocument(paragraphWith({ indentLevel: 0 })),
+    );
+  });
+
+  it("keeps documents without indentLevel valid and unchanged", () => {
+    expect(validateReportDocument(VALID_DOC).ok).toBe(true);
+    const canonical = canonicalizeReportDocument(VALID_DOC);
+    // The textAlign-free paragraph still has no attrs object.
+    expect(canonical.content[1].attrs).toBeUndefined();
+  });
+});
