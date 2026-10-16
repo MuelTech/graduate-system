@@ -557,32 +557,59 @@ export class OralEvaluationService {
         "recommendations",
       );
 
-      const result = await tx.oralExamScore.updateMany({
-        where: {
-          scheduleId,
-          panelId: assignment.id,
-          status: "DRAFT",
-        },
-        data: {
-          status: "FINALIZED",
-          ...validated,
-          groupAAverage: groupA,
-          groupBAverage: groupB,
-          overallAverage: overall,
-          rating: (rating || null) as never,
-          recommendations,
-          signatureData,
-          signedAt,
-          finalizedAt,
-          scoredAt: signedAt,
-          scoringVersion: version,
-        },
-      });
-      if (result.count === 0) {
-        throw new AppError(
-          "Evaluation state changed. Refresh and try again.",
-          409,
-        );
+      const data = {
+        status: "FINALIZED" as const,
+        ...validated,
+        groupAAverage: groupA,
+        groupBAverage: groupB,
+        overallAverage: overall,
+        rating: (rating || null) as never,
+        recommendations,
+        signatureData,
+        signedAt,
+        finalizedAt,
+        scoredAt: signedAt,
+        scoringVersion: version,
+      };
+
+      if (existing) {
+        // Existing DRAFT → CAS update (unchanged behavior).
+        const result = await tx.oralExamScore.updateMany({
+          where: {
+            scheduleId,
+            panelId: assignment.id,
+            status: "DRAFT",
+          },
+          data,
+        });
+        if (result.count === 0) {
+          throw new AppError(
+            "Evaluation state changed. Refresh and try again.",
+            409,
+          );
+        }
+      } else {
+        // CDW-4 FIX: a FRESH evaluation finalizes directly — faculty are NOT
+        // required to press Save Draft first. The unique (schedule_id, panel_id)
+        // constraint keeps the concurrent case race-safe; a P2002 loser gets the
+        // same friendly 409 as a stale CAS.
+        try {
+          await tx.oralExamScore.create({
+            data: {
+              scheduleId,
+              panelId: assignment.id,
+              ...data,
+            },
+          });
+        } catch (err: any) {
+          if (err?.code === "P2002") {
+            throw new AppError(
+              "Evaluation state changed. Refresh and try again.",
+              409,
+            );
+          }
+          throw err;
+        }
       }
     });
 

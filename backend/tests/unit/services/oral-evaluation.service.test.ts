@@ -578,4 +578,90 @@ describe("OralEvaluationService (CP5)", () => {
       expect(dto.rating).toBe("S");
     });
   });
+
+  describe("CDW-4 FIX direct finalize (fresh evaluation, no Save Draft)", () => {
+    const instComplete = {
+      timelinessRelevance: 1,
+      organization: 1.25,
+      depthComprehensiveness: 1.5,
+      relevanceConclusions: 1.75,
+      evidenceOriginalThinking: 2,
+      presentation: 1,
+      masterySubject: 1.25,
+      communicationSkill: 1.5,
+      attitude: 1.75,
+    };
+
+    it("creates a FINALIZED V2 row directly when no row exists", async () => {
+      await svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: instComplete,
+        recommendations: "Direct finalize",
+      });
+      // Fresh record: create, never a CAS update.
+      expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+      const created = prismaMock.__tx.oralExamScore.create.mock.calls[0][0];
+      expect(created.data.scheduleId).toBe("sched-1");
+      expect(created.data.panelId).toBe("panel-1");
+      expect(created.data.status).toBe("FINALIZED");
+      expect(created.data.scoringVersion).toBe("INSTITUTIONAL_MATRIX_V2");
+      expect(Number(created.data.groupAAverage)).toBeCloseTo(1.5, 5);
+      expect(Number(created.data.groupBAverage)).toBeCloseTo(1.375, 5);
+      expect(created.data.overallAverage).toBeNull();
+      expect(created.data.rating).toBeNull();
+      expect(created.data.recommendations).toBe("Direct finalize");
+      expect(created.data.signatureData).toBe("e-sign");
+      expect(created.data.signedAt).toBeInstanceOf(Date);
+      expect(created.data.finalizedAt).toBeInstanceOf(Date);
+      expect(created.data.scoredAt).toBeInstanceOf(Date);
+    });
+
+    it("rejects an incomplete fresh evaluation without creating a row", async () => {
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: { organization: 1.5 },
+        }),
+      ).rejects.toThrow(/All evaluation criteria/i);
+      expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a fresh finalize without a signature and creates no row", async () => {
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "",
+          criteria: instComplete,
+        }),
+      ).rejects.toThrow(/e-signature/i);
+      expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    });
+
+    it("maps a concurrent direct-create unique race (P2002) to a friendly 409", async () => {
+      prismaMock.__tx.oralExamScore.create.mockRejectedValueOnce({
+        code: "P2002",
+        meta: { target: ["schedule_id", "panel_id"] },
+      });
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+        }),
+      ).rejects.toThrow(/Evaluation state changed/i);
+    });
+
+    it("existing DRAFT still finalizes via CAS update (behavior preserved)", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      await svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: instComplete,
+      });
+      expect(prismaMock.__tx.oralExamScore.updateMany).toHaveBeenCalled();
+      expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    });
+  });
 });
