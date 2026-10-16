@@ -48,7 +48,7 @@ function ToolbarButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex size-8 items-center justify-center rounded-md text-(--earist-body-text) transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none disabled:opacity-40",
+        "inline-flex size-8 items-center justify-center rounded-md text-(--earist-body-text) transition-colors hover:bg-(--earist-surface-gray) focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none disabled:opacity-40",
         active && "bg-(--earist-primary) text-white hover:bg-(--earist-primary)",
       )}
     >
@@ -72,7 +72,7 @@ export function ReportEditorToolbar({
     <div
       role="toolbar"
       aria-label="Committee Report formatting"
-      className="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-(--earist-border-gray) bg-(--earist-surface-gray) px-2 py-1.5"
+      className="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-(--earist-border-gray) bg-white px-2 py-1.5"
     >
       <ToolbarButton
         label="Undo"

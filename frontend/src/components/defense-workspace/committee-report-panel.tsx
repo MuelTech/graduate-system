@@ -32,7 +32,7 @@ import {
 } from "@/lib/report/report-document";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
-import { ReportDocumentView } from "./report-document-view";
+import { ReportDocumentCanvas, ReportDocumentView } from "./report-document-view";
 import { RichTextReportEditor } from "./rich-text-report-editor";
 
 export interface CommitteeReportReadModel {
@@ -323,14 +323,16 @@ function ReportPreview({
           Content preview — not an official institutional form.
         </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-(--earist-border-gray) bg-white p-5">
-        {isReportDocumentEmpty(doc) ? (
-          <p className="text-[15px] text-(--earist-body-text)">
-            The report is empty. Add content in the editor.
-          </p>
-        ) : (
-          <ReportDocumentView doc={doc} />
-        )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">
+        <ReportDocumentCanvas>
+          {isReportDocumentEmpty(doc) ? (
+            <p className="text-[15px] text-(--earist-body-text)">
+              The report is empty. Add content in the editor.
+            </p>
+          ) : (
+            <ReportDocumentView doc={doc} />
+          )}
+        </ReportDocumentCanvas>
       </div>
       <div className="shrink-0">
         <Button type="button" variant="outline" onClick={onBack}>
@@ -355,7 +357,7 @@ function ReportReadOnly({
 
   return (
     <div className="h-full overflow-auto p-4">
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto w-full max-w-4xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-(--earist-primary)">
             <FileText className="h-5 w-5" /> Committee Report
@@ -366,17 +368,23 @@ function ReportReadOnly({
         <ReportContextBlock report={report} />
 
         {hasBody ? (
-          <div className="rounded-lg border border-(--earist-border-gray) bg-white p-5">
-            <ReportDocumentView doc={report.body} />
+          <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">
+            <ReportDocumentCanvas>
+              <ReportDocumentView doc={report.body} />
+            </ReportDocumentCanvas>
           </div>
         ) : legacyText ? (
           <section className="space-y-1">
             <h3 className="text-[13px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
               Committee Report (legacy, read-only)
             </h3>
-            <p className="rounded-lg border border-(--earist-border-gray) bg-white p-4 text-[15px] whitespace-pre-wrap text-(--earist-body)">
-              {legacyText}
-            </p>
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">
+              <ReportDocumentCanvas>
+                <div className="cdwReportBody text-[16px]">
+                  <p className="whitespace-pre-wrap">{legacyText}</p>
+                </div>
+              </ReportDocumentCanvas>
+            </div>
           </section>
         ) : (
           <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-8 text-center">

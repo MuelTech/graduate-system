@@ -7,6 +7,11 @@
  * NO raw-HTML injection and no HTML anywhere: the body is data, so this is
  * XSS-safe by construction and identical for the Rapporteur preview and the
  * Chairman/Panelist read-only view.
+ *
+ * `ReportDocumentCanvas` is the shared document presentation wrapper (neutral
+ * work surface + centered, A4-inspired white page). The Rapporteur editor,
+ * Preview Report, and the read-only view all reuse it so the authored content
+ * reads the same in every mode. It is presentation only — no pagination.
  */
 
 import type { ReactNode } from "react";
@@ -87,6 +92,26 @@ export function ReportDocumentView({
       {blocks.map((node, index) => (
         <Block key={index} node={node} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Shared document presentation wrappers. The neutral workspace scrolls around a
+ * centered white document canvas. Pure CSS classes (report-body.css) — reused by
+ * the editor, Preview Report, and the read-only view so their body presentation
+ * matches. No page boundaries or pagination are implied.
+ */
+export function ReportDocumentCanvas({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={"cdwReportWorkspace min-h-0 flex-1 overflow-auto " + (className ?? "")}>
+      <div className="cdwReportCanvas">{children}</div>
     </div>
   );
 }

@@ -32,6 +32,7 @@ import {
 import { fromTiptapDocument, toTiptapDocument } from "@/lib/report/tiptap-adapter";
 
 import { ReportEditorToolbar } from "./report-editor-toolbar";
+import { ReportDocumentCanvas } from "./report-document-view";
 import { useReportComposer } from "./report-composer-context";
 import "./report-body.css";
 
@@ -105,11 +106,11 @@ export function RichTextReportEditor({
   }, [editor, editable, registerInsert]);
 
   return (
-    <div className="cdwReportEditor flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray) bg-white">
+    <div className="cdwReportEditor flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">
       {editable && editor && <ReportEditorToolbar editor={editor} />}
-      <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+      <ReportDocumentCanvas>
         <EditorContent editor={editor} />
-      </div>
+      </ReportDocumentCanvas>
     </div>
   );
 }

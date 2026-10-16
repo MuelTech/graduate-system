@@ -28,6 +28,7 @@ const PKG = "package.json";
 const EDITOR = "src/components/defense-workspace/rich-text-report-editor.tsx";
 const TOOLBAR = "src/components/defense-workspace/report-editor-toolbar.tsx";
 const VIEW = "src/components/defense-workspace/report-document-view.tsx";
+const CSS = "src/components/defense-workspace/report-body.css";
 const PANEL = "src/components/defense-workspace/committee-report-panel.tsx";
 const BRIDGE = "src/components/defense-workspace/report-composer-context.tsx";
 const RAIL = "src/components/defense-workspace/shared-comments-rail.tsx";
@@ -463,6 +464,39 @@ test("read-only rendering is semantic and XSS-safe (no HTML injection)", () => {
   // Semantic elements for headings/lists.
   assert.match(v, /<h1|<h2|<h3/);
   assert.match(v, /<ul|<ol/);
+});
+
+test("the document canvas is shared by the editor, preview, and read-only view", () => {
+  const css = read(CSS);
+  assert.match(css, /\.cdwReportWorkspace\b/);
+  assert.match(css, /\.cdwReportCanvas\b/);
+  assert.match(css, /\.cdwReportBody\b/);
+
+  const v = read(VIEW);
+  assert.match(v, /export function ReportDocumentCanvas/);
+  assert.match(v, /cdwReportWorkspace/);
+  assert.match(v, /cdwReportCanvas/);
+
+  // The authoring surface also uses the shared canvas wrapper.
+  const e = read(EDITOR);
+  assert.match(e, /ReportDocumentCanvas/);
+
+  // Preview + read-only + authoring all reuse it (>= 3 uses in the panel/module).
+  const p = read(PANEL);
+  assert.ok(
+    (p.match(/ReportDocumentCanvas/g) ?? []).length >= 3,
+    "panel should reuse the shared canvas in preview and read-only",
+  );
+});
+
+test("the report presentation stays pagination-free and print-free", () => {
+  // Strip CSS comments so prose about pagination can never satisfy the check.
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(css, /@media\s+print/i);
+  assert.doesNotMatch(css, /@page\b/i);
+  assert.doesNotMatch(css, /page-break|break-before|break-after|break-inside/i);
+  // No fixed A4 page height / physical page units.
+  assert.doesNotMatch(css, /210mm|297mm|\b11in\b|\b8\.5in\b/i);
 });
 
 test("the report panel gates authoring on canEditBody and offers read-only otherwise", () => {

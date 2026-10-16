@@ -89,3 +89,51 @@ NO NEW DATABASE MIGRATION ADDED.
 - **Verification (final):** backend full suite 134 files / 1404 passed / 5 skipped;
   frontend 118 verify assertions across the 7 scripts (incl. `verify-cdw5-report`
   32) + `tsc --noEmit` + scoped eslint + `npm run build`.
+
+## CDW-5 UI refinement — document-like / A4-inspired authoring surface
+
+Presentation-only refinement of the Committee Report experience. No workflow,
+document-model, authorization, or persistence change; **no backend/domain code
+and no database migration** were touched.
+
+**What changed**
+
+- The Rapporteur editor, Preview Report, and the Chairman/Panelist read-only
+  view now share three reusable classes in `report-body.css`:
+  `cdwReportWorkspace` (neutral `--earist-surface-gray` work surface),
+  `cdwReportCanvas` (centered, A4-inspired white document, `max-width: 800px`,
+  restrained border/shadow, generous inner margins), and `cdwReportBody`
+  (document typography). `ReportDocumentCanvas` in `report-document-view.tsx`
+  is the single shared wrapper.
+- Document margins are responsive via `clamp()` (desktop ≈48–60px horizontal /
+  ≈28–48px vertical, reduced proportionally on narrower screens). The canvas is
+  `width: 100%; max-width: 800px`, so narrow layouts flow instead of forcing
+  horizontal paper overflow.
+- Typography: 16px body, `line-height: 1.7`, restrained heading scale with
+  useful before/after spacing, and academic list indentation/spacing (nested
+  lists indent distinctly; a list-item's own paragraph no longer doubles the
+  paragraph rhythm). The project's existing safe font stack is used — no custom
+  fonts.
+- Toolbar: unchanged command set (undo/redo, H1–H3, bold/italic/underline,
+  bullet/numbered lists) presented as a white control bar over the gray
+  workspace. No font/size/line-spacing/table/image/page-break/header/print
+  controls were added.
+- The workspace scrolls around the centered document; the toolbar and the
+  Save Draft / Preview Report footer remain pinned. The legacy report notice
+  remains above the document surface and is never converted.
+
+**Editor / Preview / read-only parity:** all three render the body through the
+same `cdwReportWorkspace` → `cdwReportCanvas` → `cdwReportBody` classes, so the
+authored content reads identically in every mode. Preview remains a content
+preview, explicitly not the official institutional form.
+
+**Still deferred (unchanged):** true pagination / fixed A4 page height / page
+splitting / page-break separators / print CSS / PDF / GS Form No. 22 /
+signatures / RAP-C1 / WebSocket. Exact institutional rendering remains the
+future Official Defense Forms / Document Processing phase.
+
+**Verification (UI refinement):** backend files were not modified, so the
+backend/domain suite was not re-run. Frontend: 120 assertions across the 7
+verify scripts (`verify-cdw5-report` now 34, including 2 new static
+presentation contracts) + `npx tsc --noEmit` + scoped `eslint` +
+`npm run build` — all clean.
