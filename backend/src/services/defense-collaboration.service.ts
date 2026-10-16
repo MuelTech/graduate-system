@@ -16,7 +16,7 @@
  *  - the target document must belong to the exact attempt/stage/current slot;
  *  - concluded/frozen/cancelled attempts reject writes.
  */
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
@@ -50,14 +50,11 @@ const FROZEN_RAP_STATUSES = ["FOR_SIGNATURE", "PARTIALLY_SIGNED", "ALL_SIGNED", 
 const MAX_COMMENT_LENGTH = 5000;
 
 /**
- * A Prisma client usable both outside and inside an interactive transaction.
- * Key resolution helpers accept this so the exact same authorization logic runs
- * on the locked transaction client (never duplicated for transactions).
+ * A Prisma transaction client (also satisfied by the shared client). Key
+ * resolution helpers accept this so the exact same authorization logic runs on
+ * the locked transaction client (never duplicated for transactions).
  */
-type DbClient = Omit<
-  PrismaClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
->;
+type DbClient = Prisma.TransactionClient;
 
 /** Exact stage/document binding per defense stage (prevents cross-stage injection). */
 const STAGE_DOC_BINDING: Record<string, { stage: string; docTypes: string[] }> = {
@@ -813,8 +810,10 @@ export class DefenseCollaborationService {
       // Reuses the official-record service, which safely ensures the Summary from
       // finalized records and throws a 409 when evaluations are incomplete. This
       // never fabricates scores and never derives a verdict. Runs after
-      // authorization so an unauthorized caller cannot trigger the side effect.
-      await this.officialRecords.ensureOralExamSummary(scheduleId);
+      // authorization so an unauthorized caller cannot trigger the side effect,
+      // and on the SAME transaction client that holds the DefenseSchedule lock so
+      // no second connection can deadlock on the parent row.
+      await this.officialRecords.ensureOralExamSummary(scheduleId, tx);
 
       const freezeContext = await this.loadFreezeContext(scheduleId, assignment.userId, tx);
       const contentVersion = (rap.contentVersion ?? 0) + 1;

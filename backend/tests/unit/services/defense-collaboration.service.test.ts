@@ -694,7 +694,9 @@ describe("DefenseCollaborationService — CDW-1 corrections", () => {
       frozen: true,
       status: "FOR_SIGNATURE",
     });
-    expect(ensureSummary).toHaveBeenCalledWith("sched-1");
+    // CDW-3 correction: Summary generation runs on the SAME transaction client
+    // that owns the DefenseSchedule lock (tx === the shared mock here).
+    expect(ensureSummary).toHaveBeenCalledWith("sched-1", prismaMock);
   });
 
   // ---- Fix 4: meaningful content ----
@@ -1015,6 +1017,17 @@ describe("DefenseCollaborationService — CDW-3 freeze/write serialization", () 
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
     await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
     expectAttemptLockAcquired();
+  });
+
+  it("generates the Oral Examination Summary on the SAME transaction client as the freeze", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
+    // The active tx (the shared mock here) is handed to the Summary service.
+    expect(ensureSummary).toHaveBeenCalledWith("sched-1", prismaMock);
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalled();
   });
 
   it("rejects an annotation when the RAP froze before the locked read (freeze won the race)", async () => {

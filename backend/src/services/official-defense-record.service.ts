@@ -117,15 +117,24 @@ export class OfficialDefenseRecordService {
   /**
    * Idempotent, race-safe Oral Examination Summary generation.
    * Uses OralExamSummary.scheduleId uniqueness as the convergence point.
+   *
+   * Transaction-aware: pass `db` (a Prisma transaction client) to run all reads
+   * and the create on the caller's transaction — required by the locked RAP
+   * freeze so Summary generation cannot open a second connection that deadlocks
+   * on the parent DefenseSchedule row lock. Ordinary callers omit `db` and use
+   * the shared client.
    */
-  async ensureOralExamSummary(scheduleId: string): Promise<{
+  async ensureOralExamSummary(
+    scheduleId: string,
+    db: Prisma.TransactionClient = prisma,
+  ): Promise<{
     created: boolean;
     summaryId: string;
     evaluatorCount: number;
     overallAverage: number;
     finalRating: string | null;
   }> {
-    const schedule = await prisma.defenseSchedule.findUnique({
+    const schedule = await db.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         thesis: {
@@ -157,7 +166,7 @@ export class OfficialDefenseRecordService {
       .getEvaluatorRoles(schedule.defenseType as never)
       .map(String);
 
-    const assignments = await prisma.panelAssignment.findMany({
+    const assignments = await db.panelAssignment.findMany({
       where: { scheduleId, role: { in: evaluatorRoles as never[] } },
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
@@ -173,7 +182,7 @@ export class OfficialDefenseRecordService {
     }
 
     const assignmentIds = assignments.map((a) => a.id);
-    const finalizedRows = await prisma.oralExamScore.findMany({
+    const finalizedRows = await db.oralExamScore.findMany({
       where: {
         scheduleId,
         status: "FINALIZED",
@@ -196,7 +205,7 @@ export class OfficialDefenseRecordService {
     }
 
     // Existing summary is authoritative (idempotent).
-    const existing = await prisma.oralExamSummary.findUnique({
+    const existing = await db.oralExamSummary.findUnique({
       where: { scheduleId },
     });
     if (existing) {
@@ -258,7 +267,7 @@ export class OfficialDefenseRecordService {
     };
 
     try {
-      const created = await prisma.oralExamSummary.create({
+      const created = await db.oralExamSummary.create({
         data: {
           scheduleId,
           overallAverage,
@@ -280,7 +289,7 @@ export class OfficialDefenseRecordService {
       // Concurrent last-finalizer race: unique(scheduleId) converges to one row.
       const code = (error as { code?: string })?.code;
       if (code === "P2002") {
-        const winner = await prisma.oralExamSummary.findUnique({
+        const winner = await db.oralExamSummary.findUnique({
           where: { scheduleId },
         });
         if (winner) {

@@ -877,3 +877,94 @@ describe("CP7 official Criteria eligibility", () => {
     );
   });
 });
+
+describe("CDW-3 correction: ensureOralExamSummary is transaction-client aware", () => {
+  const svc = new OfficialDefenseRecordService();
+  // The hoisted mock exposes a separate transaction client model set.
+  const tx = prismaMock.__tx as unknown as {
+    defenseSchedule: { findUnique: ReturnType<typeof vi.fn> };
+    panelAssignment: { findMany: ReturnType<typeof vi.fn> };
+    oralExamScore: { findMany: ReturnType<typeof vi.fn> };
+    oralExamSummary: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  };
+
+  const evaluatorAssignments = () => [
+    { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses the supplied transaction client for every read/write (global prisma untouched)", async () => {
+    const globalFail = () => {
+      throw new Error("global prisma must not be used when a tx client is supplied");
+    };
+    prismaMock.defenseSchedule.findUnique.mockImplementation(globalFail);
+    prismaMock.panelAssignment.findMany.mockImplementation(globalFail);
+    prismaMock.oralExamScore.findMany.mockImplementation(globalFail);
+    prismaMock.oralExamSummary.findUnique.mockImplementation(globalFail);
+    prismaMock.oralExamSummary.create.mockImplementation(globalFail);
+
+    tx.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    tx.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    tx.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1", 90)]);
+    tx.oralExamSummary.findUnique.mockResolvedValue(null);
+    tx.oralExamSummary.create.mockImplementation(async (args: { data: unknown }) => ({
+      id: "sum-1",
+      ...(args.data as object),
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1", tx as never);
+
+    expect(result.created).toBe(true);
+    expect(tx.oralExamSummary.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+  });
+
+  it("P2002 convergence re-read uses the same supplied transaction client", async () => {
+    prismaMock.oralExamSummary.findUnique.mockImplementation(() => {
+      throw new Error("global prisma must not be used");
+    });
+    prismaMock.oralExamSummary.create.mockImplementation(() => {
+      throw new Error("global prisma must not be used");
+    });
+
+    tx.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    tx.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    tx.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1")]);
+    tx.oralExamSummary.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "sum-winner",
+        overallAverage: 80,
+        finalRating: null,
+        snapshotData: { evaluatorCount: 1 },
+      });
+    tx.oralExamSummary.create.mockRejectedValue(
+      Object.assign(new Error("Unique constraint"), { code: "P2002" }),
+    );
+
+    const result = await svc.ensureOralExamSummary("sched-1", tx as never);
+
+    expect(result.created).toBe(false);
+    expect(result.summaryId).toBe("sum-winner");
+    expect(tx.oralExamSummary.findUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("defaults to the global client when no db is supplied (existing behavior preserved)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    prismaMock.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1")]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: { data: unknown }) => ({
+      id: "sum-global",
+      ...(args.data as object),
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1");
+
+    expect(result.created).toBe(true);
+    expect(prismaMock.oralExamSummary.create).toHaveBeenCalledTimes(1);
+  });
+});
