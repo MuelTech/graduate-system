@@ -261,11 +261,12 @@ For Rapporteur:
 
 - Report status and DRAFT/frozen state;
 - save-draft controls while editable;
-- Preview Official Form;
-- print/download actions according to report state and authorization;
+- Preview Report / read-only report review;
 - later freeze-for-signatures action when RAP-C1 is enabled;
 - source-comment count or report-item summary;
 - signature-progress summary once the report enters the signing lifecycle.
+
+Exact institutional-form preview, PDF generation, print CSS, and download/print rendering are deferred to a later unified Official Defense Forms / Document Processing phase.
 
 For Adviser/Facilitator:
 
@@ -520,9 +521,11 @@ The report body remains exclusively Rapporteur-controlled while DRAFT. Chairman/
 
 The Rapporteur authoring surface must **not** imitate the full page geometry of the institutional paper form. The editor is content-focused. It may show a compact, non-editable defense context such as student name, defense type, program, and date so the Rapporteur always knows which attempt is being documented, but it should not make the Rapporteur retype or manually maintain the institutional metadata.
 
-The familiar institutional layout belongs to a separate **Official Form Preview / renderer**. That renderer composes authoritative system metadata with the Rapporteur-authored body. Where the current institutional template applies, the generated output may include the form identity/header, Name, Type of Defense, Program, Date, committee roster / Panelist-Conforme area, relevant research/title context, Prepared by, and other fixed institutional fields. These fixed fields are generated from the exact defense attempt and are not editable body content.
+The live CDW-5 preview is a clean **content/read-model preview**, not an attempt to reproduce the institutional paper form. Exact institutional rendering is intentionally deferred so the project can later implement Evaluation forms, Oral Examination Summary forms, the Committee Report / GS Form No. 22, and other official defense documents under one consistent document-processing architecture.
 
-The report renderer must not turn sample document headings into mandatory database fields. For example, Statement of the Problem, General Observation, or similar headings may appear when the Rapporteur chooses to author them, but the system must not require those headings merely because they appeared in one institutional sample.
+A later official-form renderer may compose authoritative system metadata with the Rapporteur-authored body and may include the form identity/header, Name, Type of Defense, Program, Date, committee roster / Panelist-Conforme area, relevant research/title context, Prepared by, and other fixed institutional fields. These fixed fields remain system-owned and must not become editable Rapporteur body content.
+
+Neither CDW-5 nor RAP-C1 should turn sample document headings into mandatory database fields. For example, Statement of the Problem, General Observation, or similar headings may appear when the Rapporteur chooses to author them, but the system must not require those headings merely because they appeared in one institutional sample.
 
 ### 9.3 Optional Insert into Report from a committee comment
 
@@ -554,38 +557,33 @@ While DRAFT:
 
 The draft is not an official signed institutional record.
 
-### 9.5 Official preview, print, and download
+### 9.5 Report preview and deferred official-form rendering
 
-The system must separate the **authoring experience** from the **official document output**.
+CDW-5 must separate **authoring/review** from later institutional document rendering.
 
-Rapporteur:
+Current CDW-5 requirement:
 
-- may open Preview Official Form while the report is DRAFT;
-- may print/download a DRAFT rendering for working purposes;
-- any DRAFT export must be visibly marked **DRAFT - NOT FOR OFFICIAL FILING** or an equivalent unmistakable state label;
-- after freeze, may view/print/download the exact frozen version with its current signature state;
-- after RAP FINALIZED, may view/print/download the finalized official copy.
+- Rapporteur may open a clean read-only Preview Report while the report is DRAFT;
+- Chairman/Panelists may view the current DRAFT read-only;
+- the preview may show compact system-owned defense context plus the report body;
+- the preview is not required to reproduce page size, institutional header, Panelist / Conforme table, signature placement, exact typography, or pagination.
 
-Admin:
+Deferred to a later unified Official Defense Forms / Document Processing source of truth and implementation:
 
-- remains the official records/archive surface and may view/print/download the institutional record according to Admin records policy;
-- is not made the author of the Rapporteur's academic narrative merely because Admin can print or archive it.
+- exact GS Form No. 22 layout;
+- Individual Oral Examination Evaluation printable form;
+- Oral Examination Summary printable form;
+- institutional headers and revision labels;
+- typography, spacing, margins, pagination, and print CSS;
+- PDF/download generation and official print fidelity;
+- template-version management;
+- authorized rendering of signature evidence in official forms.
 
-Chairman/Panelists:
+Future access policy is already decided at a high level: the Rapporteur is not excluded from official output merely because Admin owns the records/archive surface. The later document-processing design should support authorized Rapporteur view/print/download of the report and Admin archival/official-record access. Committee-wide download/print entitlement remains a separate policy question.
 
-- may view the current DRAFT read-only;
-- required signers must be able to review the exact frozen version before signing;
-- committee-wide print/download entitlement is **not** required by the current policy and may be added later only if EARIST requests it.
+The Panelist / Conforme presentation belongs to that future generated official form, not to a manually editable table inside the Rapporteur editor.
 
-The renderer must make document state explicit:
-
-- DRAFT output is not an official filing;
-- FOR_SIGNATURE / PARTIALLY_SIGNED output is frozen but still awaiting required signatures;
-- FINALIZED output is the completed signed RAP/Committee Report record.
-
-The Panelist / Conforme presentation belongs to the generated official form, not to a manually editable table inside the Rapporteur editor. In the live workspace, signer state should use a task-oriented status presentation instead of reproducing the paper table literally.
-
-The assigned Rapporteur is the authoritative Prepared by identity. If the institutional template contains an Approved by / OIC-Dean area, the renderer may reserve/display that institutional area, but **Dean digital signing/approval remains unresolved**. It must not become a RAP finalization gate or a fabricated signature slot until EARIST confirms the policy.
+The assigned Rapporteur remains the authoritative Prepared by identity. If the institutional template contains an Approved by / OIC-Dean area, the future renderer may reserve/display that institutional area, but **Dean digital signing/approval remains unresolved**. It must not become a RAP finalization gate or a fabricated signature slot until EARIST confirms the policy.
 
 ### 9.6 Signature-progress visibility for the Rapporteur
 
