@@ -1000,9 +1000,7 @@ export class ThesisController {
       }
       res
         .status(200)
-        .json(
-          await this.defenseWorkspace.startTitleDefense(scheduleId, userId),
-        );
+        .json(await this.defenseWorkspace.startDefense(scheduleId, userId));
     } catch (error: any) {
       res.status(error?.statusCode || 400).json({ error: error.message });
     }

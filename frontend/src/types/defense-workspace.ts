@@ -35,14 +35,16 @@ export interface DefenseWorkspace {
   };
   capabilities: {
     canEvaluate: boolean;
+    /** CDW-4: official scoring is open right now (IN_PROGRESS). Server-authoritative. */
+    evaluationOpen: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
-    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
-    canStartTitleDefense: boolean;
+    /** CDW-4: assigned Chairman may Start Defense for ANY stage from SCHEDULED. */
+    canStartDefense: boolean;
   };
   documents: Array<{
     id: string;

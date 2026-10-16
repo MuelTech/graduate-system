@@ -39,15 +39,21 @@ export interface DefenseWorkspaceDto {
     role: WorkspaceRole;
   };
   capabilities: {
+    /** Caller's role is a numerical evaluator (Chairman/Panelist) for this stage. */
     canEvaluate: boolean;
+    /**
+     * CDW-4: official scoring is OPEN right now — the caller is an evaluator, the
+     * session is IN_PROGRESS, and the attempt is not concluded. Server-authoritative.
+     */
+    evaluationOpen: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
-    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
-    canStartTitleDefense: boolean;
+    /** CDW-4: assigned Chairman may Start Defense for ANY stage from SCHEDULED. */
+    canStartDefense: boolean;
   };
   documents: Array<{
     id: string;
@@ -375,11 +381,17 @@ export class DefenseWorkspaceService {
       (isChairman || role === "RAPPORTEUR") &&
       !schedule.conclusion;
     const summaryReady = Boolean(schedule.oralExamSummary);
-    const canStartTitleDefense =
-      isTitleDefense &&
+    // CDW-4: Start Defense applies to EVERY stage (Title/Proposal/Final). Only the
+    // assigned Chairman may start, only from SCHEDULED, never after conclusion.
+    const canStartDefense =
       isChairman &&
       !schedule.conclusion &&
       sessionStatusValue === "SCHEDULED";
+    // Official scoring is server-authoritative gated on IN_PROGRESS (all stages).
+    const evaluationOpen =
+      isEvaluator &&
+      !schedule.conclusion &&
+      sessionStatusValue === "IN_PROGRESS";
     // WF-C1b: the Chairman may record the formal result only once the session is
     // awaiting conclusion, every required evaluator has finalized, and the Oral
     // Examination Summary exists. Title no longer needs Rapporteur notes/RAP yet
@@ -416,13 +428,14 @@ export class DefenseWorkspaceService {
       },
       capabilities: {
         canEvaluate: isEvaluator,
+        evaluationOpen,
         canEditRapporteurNotes,
         canViewTitleDeliberation,
         canViewTitleChairmanResult,
         canFinalizeRapporteurNotes,
         canRecordFormalResult,
         canViewFinalizedRapporteurNotes,
-        canStartTitleDefense,
+        canStartDefense,
       },
       documents: docs,
       proposedTitles:
@@ -449,8 +462,15 @@ export class DefenseWorkspaceService {
       oralSummary: schedule.oralExamSummary
         ? {
             ready: true,
-            overallAverage: Number(schedule.oralExamSummary.overallAverage),
-            finalRating: schedule.oralExamSummary.finalRating ?? null,
+            // CDW-4 privacy: the aggregate average/rating are shown only to the
+            // assigned Chairman (who has the detailed Summary surface). A fellow
+            // Panelist sees readiness only, never derived numeric values.
+            overallAverage: isChairman
+              ? Number(schedule.oralExamSummary.overallAverage)
+              : null,
+            finalRating: isChairman
+              ? schedule.oralExamSummary.finalRating ?? null
+              : null,
           }
         : { ready: false, overallAverage: null, finalRating: null },
       formalResult: schedule.conclusion
@@ -552,14 +572,14 @@ export class DefenseWorkspaceService {
   }
 
   /**
-   * 2026-10-04 Title correction: the assigned Chairman explicitly starts a
-   * scheduled Title Defense, moving it SCHEDULED → IN_PROGRESS. This is the
-   * earliest phase in which the panel has begun deliberation, so the Chairman
-   * may record the formal result and the Rapporteur may finalize minutes.
+   * CDW-4: the assigned Chairman explicitly starts the defense for ANY stage
+   * (Title/Proposal/Final), moving it SCHEDULED → IN_PROGRESS. Only the assigned
+   * session Chairman may start; this is the gate that opens official scoring.
    *
-   * Idempotent while already active; never touches Proposal/Final sessions.
+   * Idempotent while already active (IN_PROGRESS / AWAITING_CONCLUSION); never
+   * restarts a concluded/cancelled session.
    */
-  async startTitleDefense(
+  async startDefense(
     scheduleId: string,
     userId: string,
   ): Promise<{ started: true; sessionStatus: string }> {
@@ -572,17 +592,11 @@ export class DefenseWorkspaceService {
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
-    if (String(schedule.defenseType) !== "TITLE_DEFENSE") {
-      throw new AppError(
-        "Only Title Defense uses the digital start action.",
-        400,
-      );
-    }
 
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     if (String(assignment.role) !== "CHAIRMAN") {
       throw new AppError(
-        "Only the assigned session Chairman may start the Title Defense.",
+        "Only the assigned session Chairman may start the defense.",
         403,
       );
     }
@@ -596,7 +610,7 @@ export class DefenseWorkspaceService {
     }
     if (status !== "SCHEDULED") {
       throw new AppError(
-        "Title Defense can be started only from a scheduled session.",
+        "The defense can be started only from a scheduled session.",
         409,
       );
     }

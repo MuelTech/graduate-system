@@ -15,11 +15,14 @@ const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 const WORKSPACE_PAGE = "src/app/(portal)/panelist/defense-workspace/[scheduleId]/page.tsx";
 const VIEWER = "src/components/defense-workspace/collaborative-manuscript-viewer.tsx";
 const PAGE = "src/components/defense-workspace/manuscript-page.tsx";
+const SHELL = "src/components/defense-workspace/workspace-shell.tsx";
 
 test("workspace uses the production viewer and no longer embeds the PDF in an iframe", () => {
-  const page = read(WORKSPACE_PAGE);
-  assert.match(page, /CollaborativeManuscriptViewer/);
-  assert.doesNotMatch(page, /<iframe/i);
+  // CDW-4 moved viewer composition into the immersive shell (the page composes
+  // the shell + collaboration provider); the PDF is still the controlled viewer.
+  const combined = read(WORKSPACE_PAGE) + read(SHELL);
+  assert.match(combined, /CollaborativeManuscriptViewer|CollaborationViewerPane/);
+  assert.doesNotMatch(combined, /<iframe/i);
 });
 
 test("workspace passes the exact server-resolved document id (no latest-document fallback)", () => {

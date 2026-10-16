@@ -67,7 +67,8 @@ describe("OralEvaluationService (CP5)", () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       id: "sched-1",
       defenseType: "PROPOSAL_DEFENSE",
-      sessionStatus: "SCHEDULED",
+      // CDW-4: official scoring is editable only while IN_PROGRESS.
+      sessionStatus: "IN_PROGRESS",
     });
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "panel-1",
@@ -306,6 +307,44 @@ describe("OralEvaluationService (CP5)", () => {
       ).rejects.toThrow(/Evaluation editing is closed/i);
     }
     expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("CDW-4: Proposal/Final scoring is rejected while merely SCHEDULED", async () => {
+    for (const defenseType of ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        id: "sched-1",
+        defenseType,
+        sessionStatus: "SCHEDULED",
+      });
+      await expect(
+        svc.saveDraft("sched-1", "user-a", { criteria: { organization: 1 } }),
+      ).rejects.toThrow(/Evaluation editing is closed/i);
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "sig",
+          criteria: completeCriteria,
+        }),
+      ).rejects.toThrow(/Evaluation editing is closed/i);
+    }
+    expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("CDW-4 privacy: getMyEvaluation resolves only the caller's OWN assignment", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "panel-1",
+      scheduleId: "sched-1",
+      userId: "user-a",
+      role: "PANELIST",
+    });
+    const mine = await svc.getMyEvaluation("sched-1", "user-a");
+    expect(mine.panelAssignmentId).toBe("panel-1");
+
+    // A different caller with no matching assignment is rejected (own-record only).
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(null);
+    await expect(svc.getMyEvaluation("sched-1", "user-b")).rejects.toThrow(
+      /not assigned/i,
+    );
   });
 
   it("Test 10: unassigned caller gets 403 before any stage gate", async () => {

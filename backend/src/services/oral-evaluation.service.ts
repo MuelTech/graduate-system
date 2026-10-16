@@ -353,22 +353,10 @@ export class OralEvaluationService {
           });
         }
 
-        // Proposal/Final: a scheduled session becomes active on first scoring.
-        // Title never auto-starts here — only the explicit Chairman Start action
-        // moves SCHEDULED → IN_PROGRESS (and Title is not editable while SCHEDULED).
-        if (
-          schedule.defenseType !== "TITLE_DEFENSE" &&
-          (schedule.sessionStatus === "SCHEDULED" ||
-            schedule.sessionStatus === "UNSCHEDULED")
-        ) {
-          await tx.defenseSchedule.updateMany({
-            where: {
-              id: scheduleId,
-              sessionStatus: { in: ["SCHEDULED", "UNSCHEDULED"] },
-            },
-            data: { sessionStatus: "IN_PROGRESS" },
-          });
-        }
+        // CDW-4: no scoring path auto-starts the session. Every stage moves
+        // SCHEDULED → IN_PROGRESS ONLY through the assigned Chairman's explicit
+        // Start Defense action; scoring is impossible until then (the editable
+        // gate above already requires IN_PROGRESS).
       });
     } catch (err: any) {
       // Concurrent first-create unique race → friendly 409.

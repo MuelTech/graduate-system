@@ -53,7 +53,6 @@ export function ChairmanConclusionPanel({
     evals.finalizedEvaluations >= evals.evaluatorAssignments;
 
   const sessionStatus = workspace.schedule.sessionStatus;
-  const canStartTitleDefense = workspace.capabilities.canStartTitleDefense;
 
   // WF-C1b: every stage concludes only from AWAITING_CONCLUSION with all required
   // evaluators finalized and a loadable detailed Summary. Title does not require
@@ -90,22 +89,6 @@ export function ChairmanConclusionPanel({
     },
   });
 
-  const startDefense = useMutation({
-    mutationFn: async () =>
-      apiClientRequest(`/thesis/defense/${scheduleId}/start`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["defenseWorkspace", scheduleId],
-      });
-    },
-    onError: (e: Error) => {
-      console.error(e.message);
-    },
-  });
-
   if (concluded) {
     return (
       <Card>
@@ -128,26 +111,20 @@ export function ChairmanConclusionPanel({
     );
   }
 
-  if (isTitle && canStartTitleDefense) {
+  // CDW-4: Start Defense now lives in the role rail (all stages). This panel is
+  // the conclusion surface only; while SCHEDULED it shows a neutral waiting state.
+  if (sessionStatus === "SCHEDULED") {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Title Defense Deliberation</CardTitle>
+          <CardTitle className="text-sm">Formal Academic Result</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-(--earist-body-text)">
-            This session is scheduled. Start the Title Defense to open evaluator
-            scoring. The formal result can be recorded only after every assigned
-            evaluator finalizes and the Oral Examination Summary exists.
+        <CardContent className="space-y-2 text-sm text-(--earist-body-text)">
+          <p>
+            This session is scheduled. The formal result can be recorded only after
+            the Chairman starts the defense, every assigned evaluator finalizes, and
+            the Oral Examination Summary exists.
           </p>
-          <Button
-            type="button"
-            disabled={startDefense.isPending}
-            onClick={() => startDefense.mutate()}
-            className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
-          >
-            Start Title Defense
-          </Button>
         </CardContent>
       </Card>
     );

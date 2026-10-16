@@ -329,12 +329,10 @@ function tasksForAssignment(
   const sessionActive = isSessionActive(a.sessionStatus);
   const sessionMs = parseWallClockMs(a.defenseDate, a.defenseTime);
   const sortMs = sessionMs ?? MAX_SORT;
-  // WF-C1b: every stage uses the evaluator lifecycle. Title evaluation becomes
-  // editable only after the explicit Chairman Start (IN_PROGRESS), never while
-  // merely SCHEDULED; Proposal/Final keep the accepted SCHEDULED behavior.
-  const evaluationEditable = isTitle
-    ? a.sessionStatus === "IN_PROGRESS"
-    : a.sessionStatus === "SCHEDULED" || a.sessionStatus === "IN_PROGRESS";
+  // CDW-4: every stage uses the same rule — evaluation becomes editable only
+  // after the explicit Chairman Start (IN_PROGRESS), never while merely
+  // SCHEDULED (SCHEDULED is pre-defense review/collaboration only).
+  const evaluationEditable = a.sessionStatus === "IN_PROGRESS";
 
   // 1. Evaluator evaluation requiring completion (all stages).
   if (
@@ -414,9 +412,10 @@ function tasksForAssignment(
     });
   }
 
-  // 4. Eligible Title Defense start — only once the scheduled time has arrived.
+  // 4. CDW-4: eligible Chairman Start Defense for EVERY stage — only once the
+  // scheduled time has arrived. (The category id keeps its legacy name but now
+  // applies to Title/Proposal/Final alike.)
   if (
-    isTitle &&
     a.role === "CHAIRMAN" &&
     !a.conclusionPresent &&
     a.sessionStatus === "SCHEDULED" &&
@@ -424,9 +423,9 @@ function tasksForAssignment(
     sessionMs <= nowMs
   ) {
     tasks.push({
-      id: `title-start:${a.scheduleId}`,
+      id: `start:${a.scheduleId}`,
       category: "TITLE_START",
-      title: "Start Title Defense",
+      title: `Start ${defenseTypeLabel(a.defenseType)}`,
       studentName: a.studentName,
       scheduleId: a.scheduleId,
       stage: stageLabel(a.defenseType),

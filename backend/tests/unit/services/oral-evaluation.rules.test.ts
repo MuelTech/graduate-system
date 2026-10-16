@@ -146,34 +146,24 @@ describe("oral-evaluation.rules (CP5)", () => {
     expect(mergeOptionalField("S", { rating: null }, "rating")).toBeNull();
   });
 
-  it("Test 4–6: Proposal/Final session mutation gate (SCHEDULED/IN_PROGRESS)", () => {
-    expect(assertEvaluationSessionEditable("SCHEDULED").ok).toBe(true);
+  it("CDW-4 Test 4–6: official scoring requires IN_PROGRESS for ALL stages", () => {
+    // SCHEDULED is pre-defense review only; no stage may score while SCHEDULED.
+    expect(assertEvaluationSessionEditable("SCHEDULED").ok).toBe(false);
+    expect(assertEvaluationSessionEditable("SCHEDULED", "TITLE_DEFENSE").ok).toBe(false);
+    expect(assertEvaluationSessionEditable("SCHEDULED", "PROPOSAL_DEFENSE").ok).toBe(false);
+    expect(assertEvaluationSessionEditable("SCHEDULED", "FINAL_DEFENSE").ok).toBe(false);
+    // Only IN_PROGRESS opens official scoring.
     expect(assertEvaluationSessionEditable("IN_PROGRESS").ok).toBe(true);
-    expect(assertEvaluationSessionEditable("AWAITING_CONCLUSION").ok).toBe(false);
-    expect(assertEvaluationSessionEditable("CONCLUDED").ok).toBe(false);
-    expect(assertEvaluationSessionEditable("CANCELLED").ok).toBe(false);
-    expect(
-      assertEvaluationSessionEditable("CONCLUDED").statusCode,
-    ).toBe(409);
-  });
-
-  it("WF-C1b: Title evaluation editing requires the explicit Start (IN_PROGRESS)", () => {
-    // Title must not be evaluable before the Chairman starts the defense.
-    expect(
-      assertEvaluationSessionEditable("SCHEDULED", "TITLE_DEFENSE").ok,
-    ).toBe(false);
-    expect(
-      assertEvaluationSessionEditable("IN_PROGRESS", "TITLE_DEFENSE").ok,
-    ).toBe(true);
-    expect(
-      assertEvaluationSessionEditable("AWAITING_CONCLUSION", "TITLE_DEFENSE").ok,
-    ).toBe(false);
-    expect(
-      assertEvaluationSessionEditable("CONCLUDED", "TITLE_DEFENSE").ok,
-    ).toBe(false);
-    expect(
-      assertEvaluationSessionEditable("CANCELLED", "TITLE_DEFENSE").ok,
-    ).toBe(false);
+    expect(assertEvaluationSessionEditable("IN_PROGRESS", "TITLE_DEFENSE").ok).toBe(true);
+    expect(assertEvaluationSessionEditable("IN_PROGRESS", "PROPOSAL_DEFENSE").ok).toBe(true);
+    expect(assertEvaluationSessionEditable("IN_PROGRESS", "FINAL_DEFENSE").ok).toBe(true);
+    // Closed states reject every stage.
+    for (const stage of ["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
+      expect(assertEvaluationSessionEditable("AWAITING_CONCLUSION", stage).ok).toBe(false);
+      expect(assertEvaluationSessionEditable("CONCLUDED", stage).ok).toBe(false);
+      expect(assertEvaluationSessionEditable("CANCELLED", stage).ok).toBe(false);
+    }
+    expect(assertEvaluationSessionEditable("CONCLUDED").statusCode).toBe(409);
   });
 
   it("evaluator role uses centralized committee policy", () => {

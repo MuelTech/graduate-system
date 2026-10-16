@@ -1,25 +1,36 @@
 "use client";
 
 /**
- * CDW-3 — Student Document collaboration container.
+ * CDW-3/CDW-4 — Student Document collaboration provider.
  *
  * Owns the ONE React Query source for the current attempt's exact manuscript
  * (`documentId` is the server-resolved attempt document — never a latest/current
  * fallback), the selected-annotation/focus state, the pending text-selection draft,
- * and the create/reply mutations. The PDF viewer and the Shared Comments rail are
- * rendered from this same dataset.
+ * and the create/reply mutations. CDW-4 composes the viewer and the Shared
+ * Comments rail as separate immersive panes from this same context, so there is
+ * never a duplicated annotation state.
  *
  * Writes are gated by role (Chairman/Panelist annotate; +Rapporteur comment) and
  * by state (active, non-frozen session). The backend remains authoritative; a 409
- * state change is handled by refreshing the collaboration data.
+ * state change refreshes BOTH the annotations and the workspace query.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 
 import type { PdfAnchor } from "@/lib/pdf-annotation/anchors";
-import { parseCollaborationAnnotations } from "@/lib/pdf-annotation/annotations";
+import {
+  parseCollaborationAnnotations,
+  type CollaborationAnnotation,
+} from "@/lib/pdf-annotation/annotations";
 import {
   canAnnotateRole,
   canCommentRole,
@@ -46,6 +57,42 @@ export interface StudentDocumentCollaborationProps {
   role: string;
   sessionStatus: string;
   rapStatus: string | null;
+  children: ReactNode;
+}
+
+interface CollaborationContextValue {
+  documentId: string;
+  documentLabel?: string;
+  active: boolean;
+  canAnnotate: boolean;
+  canComment: boolean;
+  annotations: CollaborationAnnotation[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+  selectedAnnotationId: string | null;
+  selectAnnotation: (annotationId: string) => void;
+  handleTextSelection?: (anchor: PdfAnchor) => void;
+  pendingAnchor: PdfAnchor | null;
+  submitNewComment: (body: string) => void;
+  cancelNewComment: () => void;
+  isCreating: boolean;
+  createError: string | null;
+  reply: (parentCommentId: string | null, body: string) => Promise<boolean>;
+  isReplying: boolean;
+  replyError: string | null;
+  railView: "selected" | "all";
+  setRailView: (view: "selected" | "all") => void;
+}
+
+const CollaborationContext = createContext<CollaborationContextValue | null>(null);
+
+export function useCollaboration(): CollaborationContextValue {
+  const ctx = useContext(CollaborationContext);
+  if (!ctx) {
+    throw new Error("useCollaboration must be used within StudentDocumentCollaboration.");
+  }
+  return ctx;
 }
 
 function isConflict(error: unknown): boolean {
@@ -59,6 +106,7 @@ export function StudentDocumentCollaboration({
   role,
   sessionStatus,
   rapStatus,
+  children,
 }: StudentDocumentCollaborationProps) {
   const active = isCollaborationActive(sessionStatus, rapStatus);
   const pollIntervalMs = collaborationPollIntervalMs(sessionStatus, rapStatus);
@@ -98,10 +146,8 @@ export function StudentDocumentCollaboration({
 
   /**
    * A 409 means the collaboration/report state changed (e.g. the RAP was frozen
-   * or the attempt concluded). Refreshing only the annotations is not enough:
-   * `active`/`canAnnotate`/`canComment` derive from the workspace query, so
-   * invalidate that immediately too, keeping write controls from lingering until
-   * the next 20s workspace poll.
+   * or the attempt concluded). Refresh the annotations AND the workspace query
+   * (state/role gating derive from it) so write controls update immediately.
    */
   const refreshAfterConflict = useCallback(() => {
     void annotationsQuery.refetch();
@@ -123,7 +169,6 @@ export function StudentDocumentCollaboration({
 
   const handleSelectAnnotation = useCallback(
     (annotationId: string) => {
-      // A new thread context starts fresh composer sessions.
       resetCreate();
       resetReply();
       setPendingAnchor(null);
@@ -144,9 +189,7 @@ export function StudentDocumentCollaboration({
         })) as { annotation?: { id?: string } } | undefined;
         setPendingAnchor(null);
         const newId = result?.annotation?.id ?? null;
-        if (newId) {
-          setSelectedAnnotationId(newId);
-        }
+        if (newId) setSelectedAnnotationId(newId);
         setRailView("selected");
       } catch (error) {
         // Composer stays open with the typed text preserved.
@@ -174,66 +217,96 @@ export function StudentDocumentCollaboration({
     [createReply, refreshAfterConflict, selectedAnnotation],
   );
 
+  const value: CollaborationContextValue = {
+    documentId,
+    documentLabel,
+    active,
+    canAnnotate,
+    canComment,
+    annotations,
+    isLoading: annotationsQuery.isLoading,
+    isError: annotationsQuery.isError,
+    refetch: () => void annotationsQuery.refetch(),
+    selectedAnnotationId,
+    selectAnnotation: handleSelectAnnotation,
+    handleTextSelection: canAnnotate ? handleTextSelection : undefined,
+    pendingAnchor,
+    submitNewComment: handleSubmitNewComment,
+    cancelNewComment: () => {
+      resetCreate();
+      setPendingAnchor(null);
+    },
+    isCreating,
+    createError: createError ? collaborationErrorMessage(createError) : null,
+    reply: handleReply,
+    isReplying,
+    replyError: replyError ? collaborationErrorMessage(replyError) : null,
+    railView,
+    setRailView,
+  };
+
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="min-w-0 space-y-2">
-        {!active && (
-          <p className="rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-xs text-(--earist-body-text)">
-            Collaboration is read-only for this defense. Existing comments remain visible.
-          </p>
-        )}
+    <CollaborationContext.Provider value={value}>
+      {children}
+    </CollaborationContext.Provider>
+  );
+}
 
-        <CollaborativeManuscriptViewer
-          documentId={documentId}
-          documentLabel={documentLabel}
-          annotations={annotations}
-          onTextSelection={canAnnotate ? handleTextSelection : undefined}
-          onAnnotationSelect={handleSelectAnnotation}
-          focusedAnnotationId={selectedAnnotationId}
-        />
+/** Center pane: the exact attempt manuscript with highlight + selection support. */
+export function CollaborationViewerPane({ className }: { className?: string }) {
+  const c = useCollaboration();
+  return (
+    <div className={"min-w-0 " + (className ?? "")}>
+      {!c.active && (
+        <p className="mb-2 rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-xs text-(--earist-body-text)">
+          Collaboration is read-only for this defense. Existing comments remain visible.
+        </p>
+      )}
+      <CollaborativeManuscriptViewer
+        documentId={c.documentId}
+        documentLabel={c.documentLabel}
+        annotations={c.annotations}
+        onTextSelection={c.handleTextSelection}
+        onAnnotationSelect={c.selectAnnotation}
+        focusedAnnotationId={c.selectedAnnotationId}
+      />
+      {c.isError && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+          <span>Stored annotations could not be loaded. The manuscript is still available.</span>
+          <Button type="button" variant="outline" size="xs" onClick={c.refetch}>
+            Retry
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
-        {annotationsQuery.isError && (
-          <div className="flex flex-wrap items-center gap-2 rounded border border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-            <span>
-              Stored annotations could not be loaded. The manuscript is still available.
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => void annotationsQuery.refetch()}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="min-h-0">
-        <SharedCommentsRail
-          annotations={annotations}
-          selectedAnnotationId={selectedAnnotationId}
-          onSelectAnnotation={handleSelectAnnotation}
-          isLoading={annotationsQuery.isLoading}
-          isError={annotationsQuery.isError}
-          onRetry={() => void annotationsQuery.refetch()}
-          canAnnotate={canAnnotate}
-          canComment={canComment}
-          pendingAnchor={pendingAnchor}
-          isCreating={isCreating}
-          createError={createError ? collaborationErrorMessage(createError) : null}
-          onSubmitNewComment={handleSubmitNewComment}
-          onCancelNewComment={() => {
-            resetCreate();
-            setPendingAnchor(null);
-          }}
-          onReply={handleReply}
-          isReplying={isReplying}
-          replyError={replyError ? collaborationErrorMessage(replyError) : null}
-          view={railView}
-          onViewChange={setRailView}
-        />
-      </div>
+/** Right pane: the committee Shared Comments rail. */
+export function CollaborationRailPane({ className }: { className?: string }) {
+  const c = useCollaboration();
+  return (
+    <div className={className}>
+      <SharedCommentsRail
+        annotations={c.annotations}
+        selectedAnnotationId={c.selectedAnnotationId}
+        onSelectAnnotation={c.selectAnnotation}
+        isLoading={c.isLoading}
+        isError={c.isError}
+        onRetry={c.refetch}
+        canAnnotate={c.canAnnotate}
+        canComment={c.canComment}
+        pendingAnchor={c.pendingAnchor}
+        isCreating={c.isCreating}
+        createError={c.createError}
+        onSubmitNewComment={c.submitNewComment}
+        onCancelNewComment={c.cancelNewComment}
+        onReply={c.reply}
+        isReplying={c.isReplying}
+        replyError={c.replyError}
+        view={c.railView}
+        onViewChange={c.setRailView}
+      />
     </div>
   );
 }
