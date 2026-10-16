@@ -265,10 +265,10 @@ test("highlight overlay stays pointer-transparent and page hit-tests highlight c
   assert.match(page, /onAnnotationSelect/);
 });
 
-test("no Socket.IO / realtime and no Insert into Report in CDW-3", () => {
+test("no Socket.IO / realtime in the CDW-3 collaboration UI", () => {
   const combined = read(HOOK) + read(CONTAINER) + read(RAIL) + read(THREAD);
   assert.doesNotMatch(combined, /socket\.io|Socket\.IO|io\(/);
-  assert.doesNotMatch(combined, /Insert into Report|insertIntoReport/i);
+  // NOTE: Insert into Report is implemented in CDW-5 (see verify-cdw5-report).
 });
 
 test("text selection stages a pending anchor; persistence happens only on explicit submit", () => {

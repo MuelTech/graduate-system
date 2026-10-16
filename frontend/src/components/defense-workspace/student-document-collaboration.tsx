@@ -30,6 +30,7 @@ import type { PdfAnchor } from "@/lib/pdf-annotation/anchors";
 import {
   parseCollaborationAnnotations,
   type CollaborationAnnotation,
+  type CollaborationComment,
 } from "@/lib/pdf-annotation/annotations";
 import {
   canAnnotateRole,
@@ -46,6 +47,7 @@ import {
 } from "@/hooks/use-defense-collaboration";
 
 import { CollaborativeManuscriptViewer } from "./collaborative-manuscript-viewer";
+import { useReportComposer } from "./report-composer-context";
 import { SharedCommentsRail } from "./shared-comments-rail";
 
 export interface StudentDocumentCollaborationProps {
@@ -293,6 +295,14 @@ export function CollaborationRailPane({
   onCollapse?: () => void;
 }) {
   const c = useCollaboration();
+  const { canInsert, insertComment } = useReportComposer();
+  const handleInsertIntoReport = useCallback(
+    (comment: CollaborationComment) => {
+      // CDW-5: copy the FULL stored comment body (never a truncated preview).
+      insertComment(comment.body);
+    },
+    [insertComment],
+  );
   return (
     <div className={className}>
       <SharedCommentsRail
@@ -315,6 +325,8 @@ export function CollaborationRailPane({
         view={c.railView}
         onViewChange={c.setRailView}
         onCollapse={onCollapse}
+        canInsertIntoReport={canInsert}
+        onInsertIntoReport={handleInsertIntoReport}
       />
     </div>
   );

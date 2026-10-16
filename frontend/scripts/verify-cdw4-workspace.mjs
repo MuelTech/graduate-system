@@ -70,10 +70,11 @@ test("role rail is role-aware: evaluation only for evaluators; Start Defense onl
   assert.match(rail, /Report authoring arrives in a later package/);
 });
 
-test("Committee Report tab is a read-only status surface (no authoring, no Insert into Report)", () => {
+test("Committee Report tab gates authoring on canEditBody (CDW-5 authoring surface)", () => {
   const report = read(REPORT);
-  assert.match(report, /read-only|status/);
-  assert.doesNotMatch(report, /contentEditable|Insert into Report|insertIntoReport|useMutation/i);
+  assert.match(report, /canEditBody/);
+  assert.match(report, /read-only|ReadOnly/);
+  assert.match(report, /ReportDocumentView/);
 });
 
 test("page composes the shell and provides the exact attempt document to collaboration", () => {
@@ -84,8 +85,9 @@ test("page composes the shell and provides the exact attempt document to collabo
   assert.doesNotMatch(page, /documents\/latest|latestDocument/i);
 });
 
-test("no CDW-5 leakage (rich-text editor / report freeze UX / RAP signing) in CDW-4 files", () => {
+test("no realtime or RAP signing UI in the workspace files (CDW-5 boundary)", () => {
   const combined = read(SHELL) + read(ROLE_RAIL) + read(REPORT);
-  assert.doesNotMatch(combined, /Insert into Report|insertIntoReport/i);
   assert.doesNotMatch(combined, /socket\.io|Socket\.IO/i);
+  // Freeze/signature lifecycle belongs to RAP-C1, not CDW-5.
+  assert.doesNotMatch(combined, /FOR_SIGNATURE|PARTIALLY_SIGNED|signRapSlot/);
 });

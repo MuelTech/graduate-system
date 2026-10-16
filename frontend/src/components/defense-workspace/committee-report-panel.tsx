@@ -1,24 +1,58 @@
 "use client";
 
 /**
- * CDW-4 — Committee Report tab: a READ-ONLY status/context surface.
+ * CDW-5 — Committee Report tab.
  *
- * This package establishes the tab/shell only. It shows the existing safe report
- * read model (status, freeze state, legacy minutes) or a neutral empty state.
- * The rich-text Report composer, comment-to-report insertion, report freeze
- * controls, and RAP signatures belong to CDW-5 / RAP-C1 and are NOT implemented.
+ * Assigned Rapporteur (canEditBody): a free-form rich-text authoring surface with
+ * a compact, NON-editable system context, a formatting toolbar, Save Draft, and a
+ * clean read-only Preview Report. There are no mandatory sections — the body is
+ * whatever the Rapporteur authors. No evaluator controls.
+ *
+ * Chairman/Panelist/etc.: the same report body rendered READ-ONLY (semantic
+ * elements, no editable DOM), or the legacy plain-text report, or a clear empty
+ * state. Report-body edits and status transitions (freeze/signing) belong to the
+ * Rapporteur / RAP-C1.
+ *
+ * Preview is explicitly NOT an institutional paper form — exact official-form
+ * rendering is deferred to a later Official Defense Forms phase.
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { FileText } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Editor } from "@tiptap/react";
+import { AlertCircle, CheckCircle2, Eye, FileText, PencilLine, Save } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { apiClientRequest } from "@/lib/api.client";
+import {
+  commentTextToContent,
+  emptyReportDocument,
+  isReportDocumentEmpty,
+  normalizeReportDocument,
+  type ReportDocument,
+} from "@/lib/report/report-document";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
-interface CommitteeReportReadModel {
-  reportStatus: string;
+import { ReportDocumentView } from "./report-document-view";
+import { useReportComposer } from "./report-composer-context";
+import { RichTextReportEditor } from "./rich-text-report-editor";
+
+export interface CommitteeReportReadModel {
+  scheduleId: string;
+  defenseType: string;
+  sessionStatus: string;
+  reportId: string | null;
+  studentName: string;
+  studentNumber: string | null;
+  program: string | null;
+  defenseDate: string | null;
+  reportDate: string | null;
   venue: string | null;
+  reportStatus: string;
+  bodyVersion: number;
+  contentVersion: number;
+  body: ReportDocument | null;
   hasCollaborativeBody: boolean;
   legacyContent: {
     decisionsAndRecommendations: string | null;
@@ -32,13 +66,43 @@ interface CommitteeReportReadModel {
   canEditBody: boolean;
 }
 
-function StatusRow({ label, value }: { label: string; value: string }) {
+const DEFENSE_LABELS: Record<string, string> = {
+  TITLE_DEFENSE: "Title Defense",
+  PROPOSAL_DEFENSE: "Proposal Defense",
+  FINAL_DEFENSE: "Final Defense",
+};
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString();
+}
+
+/** Compact, NON-editable system-owned context (never part of the report body). */
+function ReportContextBlock({ report }: { report: CommitteeReportReadModel }) {
+  const items: Array<[string, string]> = [
+    ["Student", report.studentName || "—"],
+    ["Student No.", report.studentNumber || "—"],
+    ["Program", report.program || "—"],
+    ["Defense", DEFENSE_LABELS[report.defenseType] ?? report.defenseType],
+    ["Defense Date", formatDate(report.defenseDate)],
+  ];
   return (
-    <p className="flex flex-wrap items-center gap-2 text-xs text-(--earist-body-text)">
-      <span className="font-medium text-(--earist-secondary)">{label}:</span>
-      <span>{value}</span>
-    </p>
+    <dl className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-2 text-[13px]">
+      {items.map(([label, value]) => (
+        <div key={label} className="flex items-baseline gap-1.5">
+          <dt className="font-medium text-(--earist-secondary)">{label}:</dt>
+          <dd className="text-(--earist-body)">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const label =
+    status === "NOT_CREATED" ? "Not started" : status.replace(/_/g, " ").toLowerCase();
+  return <Badge variant="outline" className="capitalize">{label}</Badge>;
 }
 
 export function CommitteeReportPanel({
@@ -48,85 +112,285 @@ export function CommitteeReportPanel({
   workspace: DefenseWorkspace;
   scheduleId: string;
 }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery<CommitteeReportReadModel>({
     queryKey: ["committeeReport", scheduleId],
     queryFn: async () =>
       (await apiClientRequest(
         `/thesis/defense/${scheduleId}/collaboration/report`,
       )) as CommitteeReportReadModel,
-    staleTime: 30_000,
+    // Read-only committee viewers poll modestly for Rapporteur draft updates;
+    // the Rapporteur's own authoring surface does not poll.
+    refetchInterval: (query) =>
+      (query.state.data as CommitteeReportReadModel | undefined)?.canEditBody
+        ? false
+        : 20000,
+    staleTime: 5_000,
     retry: 1,
   });
+
+  if (isLoading && !data) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-[15px] text-(--earist-body-text)">
+        Loading Committee Report…
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 p-8 text-center">
+        <p className="text-[15px] text-amber-700">
+          {isError
+            ? "The Committee Report could not be loaded."
+            : "No committee report is available for this defense yet."}
+        </p>
+        <Button type="button" variant="outline" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  return data.canEditBody ? (
+    <ReportAuthoringPanel scheduleId={scheduleId} report={data} />
+  ) : (
+    <ReportReadOnly report={data} role={workspace.myAssignment.role} />
+  );
+}
+
+function ReportAuthoringPanel({
+  scheduleId,
+  report,
+}: {
+  scheduleId: string;
+  report: CommitteeReportReadModel;
+}) {
+  const queryClient = useQueryClient();
+  const { registerInsert } = useReportComposer();
+
+  const [body, setBody] = useState<ReportDocument>(() =>
+    report.body ? normalizeReportDocument(report.body) : emptyReportDocument(),
+  );
+  const [dirty, setDirty] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const savedVersionRef = useRef<number>(report.bodyVersion ?? 0);
+
+  const handleEditorReady = useCallback(
+    (editor: Editor) => {
+      // Register the "Insert into Report" handler for the Shared Comments rail.
+      registerInsert((text: string) => {
+        const nodes = commentTextToContent(text);
+        if (nodes.length === 0) return false;
+        editor.chain().focus().insertContent(nodes).run();
+        setBody(normalizeReportDocument(editor.getJSON()));
+        setDirty(true);
+        setMessage(null);
+        return true;
+      });
+    },
+    [registerInsert],
+  );
+
+  // Clear the bridge on unmount so the rail hides Insert into Report.
+  useEffect(() => () => registerInsert(null), [registerInsert]);
+
+  const saveDraft = useMutation({
+    mutationFn: async () =>
+      apiClientRequest(`/thesis/defense/${scheduleId}/collaboration/report`, {
+        method: "PUT",
+        body: JSON.stringify({
+          body: normalizeReportDocument(body),
+          expectedBodyVersion: savedVersionRef.current,
+        }),
+      }),
+    onSuccess: async (result) => {
+      const version = (result as { bodyVersion?: number })?.bodyVersion;
+      if (typeof version === "number") savedVersionRef.current = version;
+      setDirty(false);
+      setMessage("Saved");
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ["committeeReport", scheduleId] });
+    },
+    onError: (e: Error) => {
+      setError(e.message || "Save failed");
+      setMessage(null);
+    },
+  });
+
+  const saveStatus = saveDraft.isPending
+    ? "Saving…"
+    : error
+      ? "Save failed"
+      : dirty
+        ? "Unsaved changes"
+        : message ?? "Saved";
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3 p-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-3">
+        <h2 className="flex items-center gap-2 text-base font-bold text-(--earist-primary)">
+          <FileText className="h-5 w-5" /> Committee Report
+        </h2>
+        <StatusBadge status={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus} />
+        <span className="text-[13px] text-(--earist-body-text)">
+          {report.hasCollaborativeBody || dirty ? "Draft (unsaved)" : "Draft"}
+        </span>
+      </div>
+
+      <ReportContextBlock report={report} />
+
+      {previewing ? (
+        <ReportPreview
+          doc={body}
+          unsaved={dirty}
+          onBack={() => setPreviewing(false)}
+        />
+      ) : (
+        <RichTextReportEditor
+          initialDocument={body}
+          onChange={(doc) => {
+            setBody(normalizeReportDocument(doc));
+            setDirty(true);
+            setMessage(null);
+          }}
+          onEditorReady={handleEditorReady}
+        />
+      )}
+
+      <footer className="sticky bottom-0 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border-t border-(--earist-border-gray) bg-white/95 px-1 pt-2 backdrop-blur motion-reduce:backdrop-blur-none">
+        {previewing ? (
+          <Button type="button" variant="outline" onClick={() => setPreviewing(false)}>
+            <PencilLine className="mr-2 h-4 w-4" /> Back to editor
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="button"
+              disabled={saveDraft.isPending}
+              onClick={() => saveDraft.mutate()}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {saveDraft.isPending ? "Saving…" : "Save Draft"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreviewing(true)}
+            >
+              <Eye className="mr-2 h-4 w-4" /> Preview Report
+            </Button>
+            <span className="flex items-center gap-1.5 text-[13px] text-(--earist-body-text)">
+              {error ? (
+                <>
+                  <AlertCircle className="h-4 w-4 text-red-600" /> {saveStatus}
+                </>
+              ) : !dirty && message ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {saveStatus}
+                </>
+              ) : (
+                saveStatus
+              )}
+            </span>
+          </>
+        )}
+      </footer>
+    </div>
+  );
+}
+
+function ReportPreview({
+  doc,
+  unsaved,
+  onBack,
+}: {
+  doc: ReportDocument;
+  unsaved: boolean;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <h3 className="text-[15px] font-semibold text-(--earist-primary)">Preview Report</h3>
+        <Badge variant="outline">Read-only</Badge>
+        {unsaved && (
+          <Badge className="bg-amber-100 text-amber-800">Includes unsaved changes</Badge>
+        )}
+        <span className="text-[13px] text-(--earist-body-text)">
+          Content preview — not an official institutional form.
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-(--earist-border-gray) bg-white p-5">
+        {isReportDocumentEmpty(doc) ? (
+          <p className="text-[15px] text-(--earist-body-text)">
+            The report is empty. Add content in the editor.
+          </p>
+        ) : (
+          <ReportDocumentView doc={doc} />
+        )}
+      </div>
+      <div className="shrink-0">
+        <Button type="button" variant="outline" onClick={onBack}>
+          <PencilLine className="mr-2 h-4 w-4" /> Back to editor
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReportReadOnly({
+  report,
+  role,
+}: {
+  report: CommitteeReportReadModel;
+  role: string;
+}) {
+  const hasBody = report.hasCollaborativeBody && report.body;
+  const legacyText =
+    report.legacyContent.decisionsAndRecommendations ??
+    report.legacyContent.rapporteurNotes;
 
   return (
     <div className="h-full overflow-auto p-4">
       <div className="mx-auto max-w-3xl space-y-4">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-(--earist-primary)" />
-          <h2 className="text-base font-bold text-(--earist-primary)">Committee Report</h2>
-          <Badge variant="outline">
-            {data?.reportStatus ?? workspace.rapStatus ?? "Not created"}
-          </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="flex items-center gap-2 text-base font-bold text-(--earist-primary)">
+            <FileText className="h-5 w-5" /> Committee Report
+          </h2>
+          <StatusBadge status={report.reportStatus} />
         </div>
 
-        <div className="space-y-1 rounded border border-(--earist-border-gray) p-3">
-          <StatusRow
-            label="Status"
-            value={data?.reportStatus ?? workspace.rapStatus ?? "Not created yet"}
-          />
-          <StatusRow
-            label="Frozen"
-            value={data?.freeze?.frozenAt ? new Date(data.freeze.frozenAt).toLocaleString() : "No"}
-          />
-          <StatusRow
-            label="Session"
-            value={workspace.schedule.sessionStatus}
-          />
-        </div>
+        <ReportContextBlock report={report} />
 
-        {isLoading && <p className="text-xs text-(--earist-body-text)">Loading report…</p>}
-
-        {isError && (
-          <p className="text-xs text-amber-700">
-            The report read model could not be loaded. Status above reflects the session.
-          </p>
-        )}
-
-        {data && !data.hasCollaborativeBody && !data.legacyContent.decisionsAndRecommendations && !data.legacyContent.rapporteurNotes && (
-          <div className="rounded border border-dashed border-(--earist-border-gray) p-6 text-center">
-            <p className="text-sm text-(--earist-body-text)">No committee report content yet.</p>
-            <p className="mt-1 text-xs text-(--earist-body-text)">
-              The Rapporteur report authoring experience arrives in a later package.
+        {hasBody ? (
+          <div className="rounded-lg border border-(--earist-border-gray) bg-white p-5">
+            <ReportDocumentView doc={report.body} />
+          </div>
+        ) : legacyText ? (
+          <section className="space-y-1">
+            <h3 className="text-[13px] font-semibold tracking-wide text-(--earist-body-text) uppercase">
+              Committee Report (legacy, read-only)
+            </h3>
+            <p className="rounded-lg border border-(--earist-border-gray) bg-white p-4 text-[15px] whitespace-pre-wrap text-(--earist-body)">
+              {legacyText}
+            </p>
+          </section>
+        ) : (
+          <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-8 text-center">
+            <p className="text-[15px] text-(--earist-body-text)">
+              {role === "RAPPORTEUR"
+                ? "You have not started the Committee Report yet."
+                : "The Rapporteur has not started the Committee Report yet."}
             </p>
           </div>
         )}
 
-        {data?.legacyContent.rapporteurNotes && (
-          <section className="space-y-1">
-            <h3 className="text-xs font-semibold tracking-wide text-(--earist-body-text) uppercase">
-              Rapporteur notes (read-only)
-            </h3>
-            <p className="rounded border border-(--earist-border-gray) bg-white p-3 text-sm whitespace-pre-wrap text-(--earist-body)">
-              {data.legacyContent.rapporteurNotes}
-            </p>
-          </section>
-        )}
-
-        {data?.legacyContent.decisionsAndRecommendations && (
-          <section className="space-y-1">
-            <h3 className="text-xs font-semibold tracking-wide text-(--earist-body-text) uppercase">
-              Decisions &amp; recommendations (read-only)
-            </h3>
-            <p className="rounded border border-(--earist-border-gray) bg-white p-3 text-sm whitespace-pre-wrap text-(--earist-body)">
-              {data.legacyContent.decisionsAndRecommendations}
-            </p>
-          </section>
-        )}
-
-        {data?.hasCollaborativeBody && (
-          <p className="rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
-            This committee report has a structured body. The rich-text report reader/composer
-            arrives in the next package.
+        {report.freeze.frozenAt && (
+          <p className="text-[13px] text-(--earist-body-text)">
+            This report was frozen for signatures on{" "}
+            {new Date(report.freeze.frozenAt).toLocaleString()}.
           </p>
         )}
       </div>

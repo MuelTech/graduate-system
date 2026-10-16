@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IconTooltipButton } from "@/components/ui/tooltip";
 import { PanelRightClose } from "lucide-react";
 import type { PdfAnchor } from "@/lib/pdf-annotation/anchors";
-import type { CollaborationAnnotation } from "@/lib/pdf-annotation/annotations";
+import type { CollaborationAnnotation, CollaborationComment } from "@/lib/pdf-annotation/annotations";
 import { defenseRoleLabel, formatCommentTimestamp } from "@/lib/pdf-annotation/collaboration-client";
 
 import { AnnotationCommentComposer } from "./annotation-comment-composer";
@@ -49,6 +49,9 @@ export interface SharedCommentsRailProps {
   onViewChange: (view: "selected" | "all") => void;
   /** CDW-4 FIX: rail-local icon collapse control (presentation only). */
   onCollapse?: () => void;
+  /** CDW-5: Rapporteur-only "Insert into Report" for a full comment body. */
+  canInsertIntoReport?: boolean;
+  onInsertIntoReport?: (comment: CollaborationComment) => void;
 }
 
 function preview(text: string, max = 120): string {
@@ -76,6 +79,8 @@ export function SharedCommentsRail({
   view,
   onViewChange,
   onCollapse,
+  canInsertIntoReport,
+  onInsertIntoReport,
 }: SharedCommentsRailProps) {
   const selected =
     annotations.find((annotation) => annotation.id === selectedAnnotationId) ?? null;
@@ -137,6 +142,8 @@ export function SharedCommentsRail({
                   onReply={onReply}
                   isReplying={isReplying}
                   replyError={replyError}
+                  canInsertIntoReport={canInsertIntoReport}
+                  onInsertIntoReport={onInsertIntoReport}
                 />
               ) : (
                 <p className="text-[14px] text-(--earist-body-text)">

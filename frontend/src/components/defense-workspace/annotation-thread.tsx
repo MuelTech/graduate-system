@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { FilePlus2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,9 @@ export interface AnnotationThreadProps {
   onReply: (parentCommentId: string | null, body: string) => Promise<boolean> | void;
   isReplying: boolean;
   replyError: string | null;
+  /** CDW-5: Rapporteur-only copy of the FULL comment body into the report. */
+  canInsertIntoReport?: boolean;
+  onInsertIntoReport?: (comment: CollaborationComment) => void;
 }
 
 function CommentMeta({ comment }: { comment: CollaborationComment }) {
@@ -42,6 +46,8 @@ export function AnnotationThread({
   onReply,
   isReplying,
   replyError,
+  canInsertIntoReport,
+  onInsertIntoReport,
 }: AnnotationThreadProps) {
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
   const tops = topLevelComments(annotation);
@@ -74,6 +80,20 @@ export function AnnotationThread({
                   {comment.body}
                 </p>
               </div>
+
+              {canInsertIntoReport && onInsertIntoReport && (
+                <div className="ml-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onInsertIntoReport(comment)}
+                  >
+                    <FilePlus2 className="mr-1 h-3.5 w-3.5" />
+                    Insert into Report
+                  </Button>
+                </div>
+              )}
 
               {repliesFor(annotation, comment.id).length > 0 && (
                 <ul className="ml-4 space-y-2 border-l border-(--earist-border-gray) pl-3">

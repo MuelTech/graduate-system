@@ -1,0 +1,75 @@
+/*
+ * CDW-5 — scoped report body styling for both the rich-text editor
+ * (.ProseMirror) and the read-only renderer. Tailwind preflight removes list
+ * markers and heading sizes, so restore a readable, faculty-friendly document
+ * presentation here instead of duplicating utility classes on every node.
+ *
+ * This is intentionally NOT a paper/print form: no page geometry, margins,
+ * headers, or pagination.
+ */
+
+.cdwReportBody {
+  color: var(--earist-body);
+  line-height: 1.55;
+}
+
+.cdwReportBody p {
+  margin: 0.4rem 0;
+}
+
+.cdwReportBody h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--earist-primary);
+  margin: 1rem 0 0.5rem;
+}
+
+.cdwReportBody h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--earist-primary);
+  margin: 0.9rem 0 0.4rem;
+}
+
+.cdwReportBody h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--earist-secondary);
+  margin: 0.8rem 0 0.3rem;
+}
+
+.cdwReportBody ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.4rem 0;
+}
+
+.cdwReportBody ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.4rem 0;
+}
+
+.cdwReportBody li {
+  margin: 0.15rem 0;
+}
+
+/* Editable surface: a clearly focusable document area (keyboard accessibility). */
+.cdwReportEditor .ProseMirror {
+  min-height: 14rem;
+  outline: none;
+}
+
+.cdwReportEditor .ProseMirror:focus-visible {
+  outline: 2px solid var(--earist-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.cdwReportEditor .ProseMirror p.is-editor-empty:first-child::before {
+  content: "Start the Committee Report…";
+  color: var(--earist-body-text);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClientRequest } from "@/lib/api.client";
 import { StudentDocumentCollaboration } from "@/components/defense-workspace/student-document-collaboration";
+import { ReportComposerProvider } from "@/components/defense-workspace/report-composer-context";
 import { WorkspaceShell } from "@/components/defense-workspace/workspace-shell";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
@@ -77,9 +78,13 @@ export default function DefenseWorkspacePage() {
       sessionStatus={data.schedule.sessionStatus}
       rapStatus={data.rapStatus}
     >
-      <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument />
+      <ReportComposerProvider>
+        <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument />
+      </ReportComposerProvider>
     </StudentDocumentCollaboration>
   ) : (
-    <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument={false} />
+    <ReportComposerProvider>
+      <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument={false} />
+    </ReportComposerProvider>
   );
 }
