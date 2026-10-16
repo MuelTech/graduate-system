@@ -24,6 +24,12 @@ export interface AttemptManuscriptDoc {
   thesisId?: string | null;
   docType: string;
   defenseStage: string | null;
+  /**
+   * DL-6 version chain head flag. The authoritative Title package must be the
+   * CURRENT version (`isCurrent === true`); a superseded tail is never bound even
+   * when its uploadedAt is newer.
+   */
+  isCurrent?: boolean | null;
   uploadedAt?: Date | string | null;
 }
 
@@ -56,13 +62,22 @@ export function selectAuthoritativeAttemptManuscript<T extends AttemptManuscript
   thesisId: string,
 ): T | null {
   if (defenseType === "TITLE_DEFENSE") {
+    // Authoritative Title authority = the CURRENT (isCurrent === true) Title
+    // Proposal package. A superseded row is never bound merely because its
+    // uploadedAt is newer. Among current rows (inconsistent data), pick the
+    // newest deterministically with an id tie-break; never fail to a stale row.
     const candidates = docs
       .filter(
         (d) =>
           d.docType === "TITLE_PROPOSAL" &&
-          (d.defenseStage === "TITLE" || d.defenseStage == null),
+          (d.defenseStage === "TITLE" || d.defenseStage == null) &&
+          d.isCurrent === true,
       )
-      .sort((a, b) => toTime(b.uploadedAt) - toTime(a.uploadedAt));
+      .sort((a, b) => {
+        const byTime = toTime(b.uploadedAt) - toTime(a.uploadedAt);
+        if (byTime !== 0) return byTime;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
     return candidates[0] ?? null;
   }
 

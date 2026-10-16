@@ -79,3 +79,110 @@ describe("canPanelistAccessThesisDocument — CDW-2 schedule binding", () => {
     expect(canPanelistAccessThesisDocument(rec, "u-adv")).toBe(true);
   });
 });
+
+describe("canPanelistAccessThesisDocument — Final → exact passed Proposal attempt", () => {
+  const passedProposal = {
+    defenseType: "PROPOSAL_DEFENSE",
+    manuscriptDocumentId: "doc-A",
+    conclusion: { outcome: "PASSED" },
+    panelAssignments: [{ userId: "u-prop" }],
+  };
+  const finalSchedule = {
+    defenseType: "FINAL_DEFENSE",
+    manuscriptDocumentId: "doc-F",
+    conclusion: null,
+    panelAssignments: [{ userId: "u-final" }],
+  };
+  const thesisWith = (
+    schedules: Array<Record<string, unknown>>,
+  ) => ({
+    id: "thesis-1",
+    student: { adviserAssignments: [] },
+    adviserCertifications: [],
+    defenseSchedules: schedules,
+  });
+
+  it("allows a DIFFERENT Final committee to fetch the exact manuscript bound to the PASSED Proposal attempt", () => {
+    const rec = record({
+      id: "doc-A",
+      thesis: thesisWith([passedProposal, finalSchedule]),
+    });
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(true);
+    // The binding Proposal committee keeps its own access.
+    expect(canPanelistAccessThesisDocument(rec, "u-prop")).toBe(true);
+  });
+
+  it("denies an arbitrary Proposal revision that is not the bound passed attempt", () => {
+    const rec = record({
+      id: "doc-B",
+      thesis: thesisWith([passedProposal, finalSchedule]),
+    });
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
+  });
+
+  it("denies a manuscript bound to a REDEFENSE_REQUIRED Proposal attempt", () => {
+    const rec = record({
+      id: "doc-X",
+      thesis: thesisWith([
+        {
+          defenseType: "PROPOSAL_DEFENSE",
+          manuscriptDocumentId: "doc-X",
+          conclusion: { outcome: "REDEFENSE_REQUIRED" },
+          panelAssignments: [{ userId: "u-prop" }],
+        },
+        finalSchedule,
+      ]),
+    });
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
+  });
+
+  it("denies a manuscript bound to a FAILED Proposal attempt", () => {
+    const rec = record({
+      id: "doc-X",
+      thesis: thesisWith([
+        {
+          defenseType: "PROPOSAL_DEFENSE",
+          manuscriptDocumentId: "doc-X",
+          conclusion: { outcome: "FAILED" },
+          panelAssignments: [{ userId: "u-prop" }],
+        },
+        finalSchedule,
+      ]),
+    });
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
+  });
+
+  it("denies an unrelated panelist the passed Proposal bound manuscript", () => {
+    const rec = record({
+      id: "doc-A",
+      thesis: thesisWith([passedProposal, finalSchedule]),
+    });
+    expect(canPanelistAccessThesisDocument(rec, "u-unrelated")).toBe(false);
+  });
+
+  it("keeps each attempt isolated: only the owning attempt committee reaches its bound doc", () => {
+    const recA = record({
+      id: "doc-A",
+      docType: "FINAL_MANUSCRIPT",
+      defenseStage: "FINAL",
+      thesis: thesisWith([
+        { defenseType: "FINAL_DEFENSE", manuscriptDocumentId: "doc-A", conclusion: null, panelAssignments: [{ userId: "u-1" }] },
+        { defenseType: "FINAL_DEFENSE", manuscriptDocumentId: "doc-B", conclusion: null, panelAssignments: [{ userId: "u-2" }] },
+      ]),
+    });
+    expect(canPanelistAccessThesisDocument(recA, "u-1")).toBe(true);
+    expect(canPanelistAccessThesisDocument(recA, "u-2")).toBe(false);
+
+    const recB = record({
+      id: "doc-B",
+      docType: "FINAL_MANUSCRIPT",
+      defenseStage: "FINAL",
+      thesis: thesisWith([
+        { defenseType: "FINAL_DEFENSE", manuscriptDocumentId: "doc-A", conclusion: null, panelAssignments: [{ userId: "u-1" }] },
+        { defenseType: "FINAL_DEFENSE", manuscriptDocumentId: "doc-B", conclusion: null, panelAssignments: [{ userId: "u-2" }] },
+      ]),
+    });
+    expect(canPanelistAccessThesisDocument(recB, "u-2")).toBe(true);
+    expect(canPanelistAccessThesisDocument(recB, "u-1")).toBe(false);
+  });
+});

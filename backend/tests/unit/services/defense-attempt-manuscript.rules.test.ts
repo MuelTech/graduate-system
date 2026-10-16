@@ -10,9 +10,17 @@ function doc(overrides: Record<string, unknown> = {}) {
     thesisId: T,
     docType: "TITLE_PROPOSAL",
     defenseStage: "TITLE",
+    isCurrent: true,
     uploadedAt: new Date("2026-01-01T00:00:00Z"),
     ...overrides,
-  } as { id: string; thesisId?: string | null; docType: string; defenseStage: string | null; uploadedAt?: Date | null };
+  } as {
+    id: string;
+    thesisId?: string | null;
+    docType: string;
+    defenseStage: string | null;
+    isCurrent?: boolean | null;
+    uploadedAt?: Date | null;
+  };
 }
 
 describe("selectAuthoritativeAttemptManuscript", () => {
@@ -31,6 +39,27 @@ describe("selectAuthoritativeAttemptManuscript", () => {
 
   it("TITLE returns null when no proposal exists", () => {
     expect(selectAuthoritativeAttemptManuscript([], [], "TITLE_DEFENSE", T)).toBeNull();
+  });
+
+  it("TITLE selects the CURRENT package even when a newer superseded upload exists", () => {
+    const docs = [
+      doc({ id: "current-older", isCurrent: true, uploadedAt: new Date("2026-01-01T00:00:00Z") }),
+      doc({ id: "superseded-newer", isCurrent: false, uploadedAt: new Date("2026-06-01T00:00:00Z") }),
+    ];
+    expect(selectAuthoritativeAttemptManuscript(docs, [], "TITLE_DEFENSE", T)?.id).toBe("current-older");
+  });
+
+  it("TITLE never binds a non-current (superseded) package", () => {
+    const docs = [doc({ id: "superseded", isCurrent: false })];
+    expect(selectAuthoritativeAttemptManuscript(docs, [], "TITLE_DEFENSE", T)).toBeNull();
+  });
+
+  it("TITLE selects the CURRENT legacy (null stage) package over a newer superseded one", () => {
+    const docs = [
+      doc({ id: "legacy-current", defenseStage: null, isCurrent: true, uploadedAt: new Date("2026-01-01T00:00:00Z") }),
+      doc({ id: "legacy-superseded", defenseStage: null, isCurrent: false, uploadedAt: new Date("2026-06-01T00:00:00Z") }),
+    ];
+    expect(selectAuthoritativeAttemptManuscript(docs, [], "TITLE_DEFENSE", T)?.id).toBe("legacy-current");
   });
 
   it("PROPOSAL binds the exact ISSUED certification reviewedDocumentId", () => {

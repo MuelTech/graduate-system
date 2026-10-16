@@ -888,6 +888,7 @@ export class ThesisRepository {
               thesisId: true,
               docType: true,
               defenseStage: true,
+              isCurrent: true,
               uploadedAt: true,
             },
           },
@@ -907,6 +908,17 @@ export class ThesisRepository {
         thesisId,
       );
 
+      // Each NEW defense attempt must preserve its EXACT manuscript evidence.
+      // The nullable column exists only for legacy rows: a new schedule is never
+      // created without a provable authoritative manuscript. Fail the whole
+      // transaction before any schedule/roster/status mutation.
+      if (!attemptManuscript) {
+        throw new AppError(
+          "Authoritative defense manuscript is unavailable for scheduling.",
+          409,
+        );
+      }
+
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,
@@ -914,7 +926,7 @@ export class ThesisRepository {
           defenseTime: new Date(`1970-01-01T${data.defenseTime}:00.000Z`),
           venueOrLink: data.venueOrLink,
           defenseType,
-          manuscriptDocumentId: attemptManuscript?.id ?? null,
+          manuscriptDocumentId: attemptManuscript.id,
           setById: adminId,
         },
       });

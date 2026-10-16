@@ -36,6 +36,23 @@ const finalDocC = {
   thesisId: "thesis-1",
 };
 
+/**
+ * CDW-2 correction: the authoritative prior Proposal context is the manuscript
+ * BOUND to the formally PASSED Proposal attempt, resolved as ONE historical unit
+ * (passed conclusion -> exact schedule -> exact bound manuscript + that
+ * schedule's FINALIZED RAP).
+ */
+function passedProposalConclusion(overrides: Record<string, unknown> = {}) {
+  return {
+    scheduleId: "sched-proposal",
+    schedule: {
+      manuscriptDocumentId: "doc-proposal-a",
+      manuscriptDocument: proposalDocA,
+    },
+    ...overrides,
+  };
+}
+
 function finalWorkspaceRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "sched-final",
@@ -86,7 +103,7 @@ function finalWorkspaceRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("CP8 Final Workspace proposalHistory", () => {
+describe("CDW-2 Final Workspace proposalHistory — passed Proposal attempt binding", () => {
   const svc = new DefenseWorkspaceService();
 
   beforeEach(() => {
@@ -97,10 +114,9 @@ describe("CP8 Final Workspace proposalHistory", () => {
       userId: "u-eval",
       role: "PANELIST",
     });
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal",
-      outcome: "PASSED",
-    });
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      passedProposalConclusion(),
+    );
     prismaMock.rapReport.findFirst.mockResolvedValue({
       id: "rap-proposal-1",
       finalizedAt: new Date("2026-08-20T00:00:00Z"),
@@ -109,23 +125,19 @@ describe("CP8 Final Workspace proposalHistory", () => {
     });
   });
 
-  it("Test 1: Final workspace returns certified Final + certified prior Proposal + finalized Proposal RAP", async () => {
+  it("Test 1: Final workspace returns certified Final + bound prior Proposal + finalized Proposal RAP", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
 
     const dto = await svc.getWorkspace("sched-final", "u-eval");
 
-    // Certified Final manuscript preserved
     expect(dto.documents).toHaveLength(1);
     expect(dto.documents[0].id).toBe("doc-final-c");
     expect(dto.documents[0].displayName).toBe("Certified Final Manuscript");
 
-    // CP8: exact certified prior Proposal manuscript (A, not newer B)
     expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
     expect(dto.proposalHistory?.manuscript?.displayName).toBe(
       "Previous Proposal Manuscript",
     );
-
-    // Finalized Proposal RAP
     expect(dto.proposalHistory?.rap?.id).toBe("rap-proposal-1");
     expect(dto.proposalHistory?.rap?.status).toBe("FINALIZED");
     expect(dto.proposalHistory?.rap?.decisionsAndRecommendations).toContain(
@@ -133,21 +145,122 @@ describe("CP8 Final Workspace proposalHistory", () => {
     );
   });
 
-  it("Test 2: prior Proposal manuscript is certification-bound (A never B)", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+  it("Test 2: bound Proposal manuscript wins even when today's cert points elsewhere", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      finalWorkspaceRow({
+        thesis: {
+          ...finalWorkspaceRow().thesis,
+          // Current Proposal certification has drifted to the newer revision.
+          adviserCertifications: [
+            {
+              defenseStage: "PROPOSAL_DEFENSE",
+              status: "ISSUED",
+              reviewedDocumentId: "doc-proposal-b",
+            },
+            {
+              defenseStage: "FINAL_DEFENSE",
+              status: "ISSUED",
+              reviewedDocumentId: "doc-final-c",
+            },
+          ],
+        },
+      }),
+    );
     const dto = await svc.getWorkspace("sched-final", "u-eval");
     expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
     expect(dto.proposalHistory?.manuscript?.id).not.toBe("doc-proposal-b");
   });
 
-  it("Test 3: certified Final manuscript selection does not regress", async () => {
+  it("resolves the passed Proposal conclusion by thesis + PASSED + PROPOSAL_DEFENSE", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.documents[0].id).toBe("doc-final-c");
-    expect(dto.documents[0].id).not.toBe("doc-proposal-b");
+    await svc.getWorkspace("sched-final", "u-eval");
+
+    const call = prismaMock.defenseConclusion.findFirst.mock.calls[0][0];
+    expect(call.where.thesisId).toBe("thesis-1");
+    expect(call.where.outcome).toBe("PASSED");
+    expect(call.where.schedule.defenseType).toBe("PROPOSAL_DEFENSE");
+    expect(call.orderBy).toEqual({ concludedAt: "desc" });
   });
 
-  it("Test 4: Proposal workspace does not receive proposalHistory", async () => {
+  it("binds the RAP to the SAME passed Proposal schedule as the manuscript", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    await svc.getWorkspace("sched-final", "u-eval");
+
+    const rapCall = prismaMock.rapReport.findFirst.mock.calls[0][0];
+    expect(rapCall.where.scheduleId).toBe("sched-proposal");
+    expect(rapCall.where.status).toBe("FINALIZED");
+    expect(rapCall.where.defenseType).toBe("PROPOSAL_DEFENSE");
+  });
+
+  it("REDEFENSE_REQUIRED Proposal attempt is never the authoritative prior context", async () => {
+    // No PASSED Proposal conclusion exists → query returns null.
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(null);
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.manuscript ?? null).toBeNull();
+    expect(dto.proposalHistory?.rap ?? null).toBeNull();
+  });
+
+  it("legacy PASSED Proposal attempt with NO binding → reconciliation (no today-fallback), RAP preserved", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      passedProposalConclusion({
+        schedule: { manuscriptDocumentId: null, manuscriptDocument: null },
+      }),
+    );
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.manuscript).toBeNull();
+    // The RAP is separately provable for the same passed attempt.
+    expect(dto.proposalHistory?.rap?.id).toBe("rap-proposal-1");
+  });
+
+  it("does not expose a passed attempt when the bound manuscript id mismatches", async () => {
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue(
+      passedProposalConclusion({
+        schedule: {
+          manuscriptDocumentId: "doc-proposal-a",
+          manuscriptDocument: proposalDocB,
+        },
+      }),
+    );
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.manuscript).toBeNull();
+  });
+
+  it("non-FINALIZED Proposal RAP is not exposed while the bound manuscript remains", async () => {
+    prismaMock.rapReport.findFirst.mockResolvedValue(null);
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.rap).toBeNull();
+    expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
+  });
+
+  it("re-defense: the PASSED attempt's bound manuscript is the context (not the REDEFENSE attempt)", async () => {
+    // Attempt 1 (REDEFENSE_REQUIRED) → doc-proposal-a; Attempt 2 (PASSED) → doc-proposal-b.
+    // The passed-attempt query (outcome PASSED, latest concludedAt) must yield attempt 2.
+    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
+      scheduleId: "sched-proposal-2",
+      schedule: {
+        manuscriptDocumentId: "doc-proposal-b",
+        manuscriptDocument: proposalDocB,
+      },
+    });
+    prismaMock.rapReport.findFirst.mockResolvedValue({
+      id: "rap-proposal-2",
+      finalizedAt: new Date("2026-09-30T00:00:00Z"),
+      decisionsAndRecommendations: "Attempt 2 recommendations.",
+    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
+    const dto = await svc.getWorkspace("sched-final", "u-eval");
+    expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-b");
+    expect(dto.proposalHistory?.rap?.id).toBe("rap-proposal-2");
+
+    const rapCall = prismaMock.rapReport.findFirst.mock.calls[0][0];
+    expect(rapCall.where.scheduleId).toBe("sched-proposal-2");
+  });
+
+  it("Proposal workspace does not receive proposalHistory", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...finalWorkspaceRow(),
       id: "sched-prop",
@@ -165,153 +278,5 @@ describe("CP8 Final Workspace proposalHistory", () => {
     });
     const dto = await svc.getWorkspace("sched-prop", "u-eval");
     expect(dto.proposalHistory).toBeNull();
-  });
-
-  it("Test 5: non-FINALIZED Proposal RAP is not exposed as history", async () => {
-    prismaMock.rapReport.findFirst.mockResolvedValue(null);
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.rap).toBeNull();
-    // Manuscript still present independently
-    expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
-  });
-
-  it("fails closed when Proposal cert binding is missing", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      finalWorkspaceRow({
-        thesis: {
-          ...finalWorkspaceRow().thesis,
-          adviserCertifications: [
-            {
-              defenseStage: "FINAL_DEFENSE",
-              status: "ISSUED",
-              reviewedDocumentId: "doc-final-c",
-            },
-          ],
-        },
-      }),
-    );
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.manuscript).toBeNull();
-  });
-
-  it("fails closed when Proposal cert points at wrong thesis document", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      finalWorkspaceRow({
-        thesis: {
-          ...finalWorkspaceRow().thesis,
-          thesisDocuments: [
-            proposalDocA,
-            proposalDocB,
-            finalDocC,
-            {
-              id: "doc-other-thesis",
-              docType: "PROPOSAL_CHAPTERS",
-              defenseStage: "PROPOSAL",
-              uploadedAt: new Date(),
-              thesisId: "other-thesis",
-            },
-          ],
-          adviserCertifications: [
-            {
-              defenseStage: "PROPOSAL_DEFENSE",
-              status: "ISSUED",
-              reviewedDocumentId: "doc-other-thesis",
-            },
-            {
-              defenseStage: "FINAL_DEFENSE",
-              status: "ISSUED",
-              reviewedDocumentId: "doc-final-c",
-            },
-          ],
-        },
-      }),
-    );
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.manuscript).toBeNull();
-  });
-
-  it("CP8-FIX1: PASSED Proposal conclusion + FINALIZED RAP → exposed", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal",
-      outcome: "PASSED",
-    });
-    prismaMock.rapReport.findFirst.mockResolvedValue({
-      id: "rap-passed",
-      finalizedAt: new Date("2026-08-20T00:00:00Z"),
-      decisionsAndRecommendations: "ok",
-    });
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.rap?.id).toBe("rap-passed");
-    // Conclusion query must filter outcome PASSED
-    const conclusionWhere = prismaMock.defenseConclusion.findFirst.mock.calls[0][0].where;
-    expect(conclusionWhere.outcome).toBe("PASSED");
-    expect(conclusionWhere.schedule.defenseType).toBe("PROPOSAL_DEFENSE");
-  });
-
-  it("CP8-FIX1: FAILED Proposal conclusion + FINALIZED RAP → not exposed", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal-failed",
-      outcome: "FAILED",
-    });
-    prismaMock.rapReport.findFirst.mockResolvedValue({
-      id: "rap-failed-conclusion",
-      finalizedAt: new Date(),
-      decisionsAndRecommendations: "should not appear",
-    });
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.rap).toBeNull();
-  });
-
-  it("CP8-FIX1: REVISION_REQUIRED Proposal conclusion + FINALIZED RAP → not exposed", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal-rev",
-      outcome: "REVISION_REQUIRED",
-    });
-    prismaMock.rapReport.findFirst.mockResolvedValue({
-      id: "rap-rev-conclusion",
-      finalizedAt: new Date(),
-      decisionsAndRecommendations: "should not appear",
-    });
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.rap).toBeNull();
-  });
-
-  it("CP8-FIX1: PASSED Proposal conclusion + non-finalized RAP → not exposed", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal",
-      outcome: "PASSED",
-    });
-    prismaMock.rapReport.findFirst.mockResolvedValue(null);
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    const dto = await svc.getWorkspace("sched-final", "u-eval");
-    expect(dto.proposalHistory?.rap).toBeNull();
-    expect(dto.proposalHistory?.manuscript?.id).toBe("doc-proposal-a");
-  });
-
-  it("CP8-FIX1: RAP query bound to exact PASSED Proposal conclusion scheduleId", async () => {
-    prismaMock.defenseConclusion.findFirst.mockResolvedValue({
-      scheduleId: "sched-proposal-passed",
-      outcome: "PASSED",
-    });
-    prismaMock.rapReport.findFirst.mockResolvedValue({
-      id: "rap-bound",
-      finalizedAt: new Date(),
-      decisionsAndRecommendations: "bound",
-    });
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(finalWorkspaceRow());
-    await svc.getWorkspace("sched-final", "u-eval");
-
-    const conclusionCall = prismaMock.defenseConclusion.findFirst.mock.calls[0][0];
-    expect(conclusionCall.where.scheduleId).toBeUndefined();
-    expect(conclusionCall.where.outcome).toBe("PASSED");
-
-    const rapCall = prismaMock.rapReport.findFirst.mock.calls[0][0];
-    expect(rapCall.where.scheduleId).toBe("sched-proposal-passed");
-    expect(rapCall.where.status).toBe("FINALIZED");
-    expect(rapCall.where.defenseType).toBe("PROPOSAL_DEFENSE");
   });
 });

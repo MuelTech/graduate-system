@@ -23,9 +23,10 @@ function thesisWithDocs(docs: Array<Record<string, unknown>>, certs: Array<Recor
   return {
     thesisDocuments: docs.map((d) => ({
       id: d.id,
-      thesisId: "thesis-1",
+      thesisId: d.thesisId ?? "thesis-1",
       docType: d.docType,
       defenseStage: d.defenseStage ?? null,
+      isCurrent: d.isCurrent ?? true,
       uploadedAt: d.uploadedAt ?? new Date("2026-01-01T00:00:00Z"),
     })),
     adviserCertifications: certs,
@@ -59,6 +60,12 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
     { defenseDate: "2026-10-20", defenseTime: "09:00", venueOrLink: "Room 201", defenseType: "TITLE_DEFENSE", assignments: [{ userId: "u1", role: "CHAIRMAN" }] },
   ];
 
+  function expectNoPartialPersistence() {
+    expect(tx.defenseSchedule.create).not.toHaveBeenCalled();
+    expect(tx.panelAssignment.createMany).not.toHaveBeenCalled();
+    expect(tx.thesisRecord.update).not.toHaveBeenCalled();
+  }
+
   it("TITLE binds the authoritative Title Proposal package", async () => {
     tx.thesisRecord.findUnique.mockResolvedValue(
       thesisWithDocs([
@@ -68,6 +75,17 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
     );
     await repo.scheduleDefense(...baseArgs);
     expect(createdData.manuscriptDocumentId).toBe("title-new");
+  });
+
+  it("TITLE binds the CURRENT package over a newer superseded upload", async () => {
+    tx.thesisRecord.findUnique.mockResolvedValue(
+      thesisWithDocs([
+        { id: "title-current", docType: "TITLE_PROPOSAL", defenseStage: "TITLE", isCurrent: true, uploadedAt: new Date("2026-01-01T00:00:00Z") },
+        { id: "title-superseded", docType: "TITLE_PROPOSAL", defenseStage: "TITLE", isCurrent: false, uploadedAt: new Date("2026-06-01T00:00:00Z") },
+      ]),
+    );
+    await repo.scheduleDefense(...baseArgs);
+    expect(createdData.manuscriptDocumentId).toBe("title-current");
   });
 
   it("PROPOSAL binds the ISSUED certification reviewedDocumentId", async () => {
@@ -95,20 +113,52 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
     expect(createdData.manuscriptDocumentId).toBe("doc-F");
   });
 
-  it("binds null (fail closed) when no authoritative manuscript can be proven", async () => {
+  it("rejects scheduling (no partial persistence) when no Title package can be proven", async () => {
     tx.thesisRecord.findUnique.mockResolvedValue(thesisWithDocs([]));
-    await repo.scheduleDefense(...baseArgs);
-    expect(createdData.manuscriptDocumentId).toBeNull();
+    await expect(repo.scheduleDefense(...baseArgs)).rejects.toMatchObject({ statusCode: 409 });
+    expectNoPartialPersistence();
   });
 
-  it("refuses to bind a cross-thesis / wrong-stage document", async () => {
+  it("rejects scheduling when only a superseded Title package exists", async () => {
+    tx.thesisRecord.findUnique.mockResolvedValue(
+      thesisWithDocs([
+        { id: "title-superseded", docType: "TITLE_PROPOSAL", defenseStage: "TITLE", isCurrent: false },
+      ]),
+    );
+    await expect(repo.scheduleDefense(...baseArgs)).rejects.toMatchObject({ statusCode: 409 });
+    expectNoPartialPersistence();
+  });
+
+  it("rejects scheduling when the Proposal certification is missing", async () => {
+    tx.thesisRecord.findUnique.mockResolvedValue(
+      thesisWithDocs([{ id: "doc-A", docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" }]),
+    );
+    await expect(
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expectNoPartialPersistence();
+  });
+
+  it("rejects scheduling when the Final certification is missing", async () => {
+    tx.thesisRecord.findUnique.mockResolvedValue(
+      thesisWithDocs([{ id: "doc-F", docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" }]),
+    );
+    await expect(
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "FINAL_DEFENSE" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expectNoPartialPersistence();
+  });
+
+  it("rejects scheduling for a cross-thesis / wrong-stage certification target", async () => {
     tx.thesisRecord.findUnique.mockResolvedValue(
       thesisWithDocs(
         [{ id: "doc-x", docType: "TITLE_PROPOSAL", defenseStage: "TITLE" }],
         [{ status: "ISSUED", defenseStage: "PROPOSAL_DEFENSE", reviewedDocumentId: "doc-x" }],
       ),
     );
-    await repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" });
-    expect(createdData.manuscriptDocumentId).toBeNull();
+    await expect(
+      repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expectNoPartialPersistence();
   });
 });
