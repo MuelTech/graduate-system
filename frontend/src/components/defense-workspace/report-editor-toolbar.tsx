@@ -59,7 +59,7 @@ const LINE_SPACING_VALUES: readonly number[] = LINE_SPACING_OPTIONS.map(
 
 /** Document defaults when a paragraph carries no explicit value (see report-body.css). */
 const DEFAULT_FONT_SIZE_PT = 12;
-const DEFAULT_LINE_SPACING = 1.5;
+const DEFAULT_LINE_SPACING = 1;
 
 const ALIGNMENT_CONTROLS: Array<{ value: Alignment; label: string; Icon: typeof AlignLeft }> = [
   { value: "left", label: "Align left", Icon: AlignLeft },

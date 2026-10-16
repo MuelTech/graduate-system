@@ -751,8 +751,50 @@ test("the report presentation stays pagination-free and print-free", () => {
   assert.doesNotMatch(css, /@media\s+print/i);
   assert.doesNotMatch(css, /@page\b/i);
   assert.doesNotMatch(css, /page-break|break-before|break-after|break-inside/i);
-  // No fixed A4 page height / physical page units.
-  assert.doesNotMatch(css, /210mm|297mm|\b11in\b|\b8\.5in\b/i);
+  // No A4 geometry and no fixed page HEIGHT (Letter WIDTH is intentional).
+  assert.doesNotMatch(css, /210mm|297mm/i);
+  assert.doesNotMatch(css, /\b11in\b/);
+});
+
+// ---- Word layout fidelity (Letter geometry) -------------------------------
+
+test("the document canvas uses US Letter desktop geometry, not A4", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  // Letter width on desktop, never wider than the available workspace.
+  assert.match(css, /\.cdwReportCanvas\s*\{[^}]*width:\s*8\.5in/is);
+  assert.match(css, /\.cdwReportCanvas\s*\{[^}]*max-width:\s*100%/is);
+  // ~1in Letter side margins on desktop.
+  assert.match(css, /\.cdwReportCanvas\s*\{[^}]*padding:\s*1in/is);
+  // No A4 geometry remains.
+  assert.doesNotMatch(css, /210mm|297mm/i);
+});
+
+test("ordered lists use deliberate Word-like hanging-indent geometry", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  // First-level text start ≈ 0.5in with outside (hanging) markers.
+  assert.match(css, /\.cdwReportBody ol\s*\{[^}]*padding-left:\s*0\.5in/is);
+  assert.match(css, /\.cdwReportBody ol\s*\{[^}]*list-style-position:\s*outside/is);
+  // Nested ordered items sit deeper than the first level.
+  assert.match(css, /\.cdwReportBody ol ol[\s\S]{0,60}padding-left:\s*0\.75in/);
+});
+
+test("paragraph spacing is no longer the generic web rhythm", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(css, /0\.8em 0/);
+  assert.match(css, /\.cdwReportBody p\s*\{[^}]*margin:\s*0 0 0\.2em/is);
+});
+
+test("no typographic distortion hacks were introduced", () => {
+  const css = read(CSS).replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(css, /letter-spacing|word-spacing|font-stretch|transform:\s*scale/i);
+});
+
+test("no hardcoded sample report text or forced line breaks were introduced", () => {
+  const combined = read(CSS) + read(VIEW) + read(EDITOR) + read(PANEL);
+  assert.doesNotMatch(
+    combined,
+    /Statement of the Problem|CHAPTER 1|How do the district supervisors|district supervisors/i,
+  );
 });
 
 test("the report panel gates authoring on canEditBody and offers read-only otherwise", () => {

@@ -90,7 +90,7 @@ NO NEW DATABASE MIGRATION ADDED.
   frontend 118 verify assertions across the 7 scripts (incl. `verify-cdw5-report`
   32) + `tsc --noEmit` + scoped eslint + `npm run build`.
 
-## CDW-5 UI refinement — document-like / A4-inspired authoring surface
+## CDW-5 UI refinement — document-like authoring surface
 
 Presentation-only refinement of the Committee Report experience. No workflow,
 document-model, authorization, or persistence change; **no backend/domain code
@@ -101,14 +101,13 @@ and no database migration** were touched.
 - The Rapporteur editor, Preview Report, and the Chairman/Panelist read-only
   view now share three reusable classes in `report-body.css`:
   `cdwReportWorkspace` (neutral `--earist-surface-gray` work surface),
-  `cdwReportCanvas` (centered, A4-inspired white document, `max-width: 800px`,
-  restrained border/shadow, generous inner margins), and `cdwReportBody`
+  `cdwReportCanvas` (centered white document; originally ~800px, later
+  calibrated to US Letter — see "Word Layout Fidelity" below), and `cdwReportBody`
   (document typography). `ReportDocumentCanvas` in `report-document-view.tsx`
   is the single shared wrapper.
-- Document margins are responsive via `clamp()` (desktop ≈48–60px horizontal /
-  ≈28–48px vertical, reduced proportionally on narrower screens). The canvas is
-  `width: 100%; max-width: 800px`, so narrow layouts flow instead of forcing
-  horizontal paper overflow.
+- Document margins are responsive (reduced proportionally on narrower screens).
+  The canvas is `width: 8.5in; max-width: 100%` (US Letter; see below), so narrow
+  layouts flow instead of forcing horizontal paper overflow.
 - Typography: 16px body, `line-height: 1.7`, restrained heading scale with
   useful before/after spacing, and academic list indentation/spacing (nested
   lists indent distinctly; a list-item's own paragraph no longer doubles the
@@ -127,7 +126,7 @@ same `cdwReportWorkspace` → `cdwReportCanvas` → `cdwReportBody` classes, so 
 authored content reads identically in every mode. Preview remains a content
 preview, explicitly not the official institutional form.
 
-**Still deferred (unchanged):** true pagination / fixed A4 page height / page
+**Still deferred (unchanged):** true pagination / fixed page height / page
 splitting / page-break separators / print CSS / PDF / GS Form No. 22 /
 signatures / RAP-C1 / WebSocket. Exact institutional rendering remains the
 future Official Defense Forms / Document Processing phase.
@@ -294,3 +293,71 @@ their own passes.)
 
 **NO NEW DATABASE MIGRATION** — `RapReport.bodyDocument` already stores
 structured JSON.
+
+## CDW-5 Word Layout Fidelity — Letter page geometry and Word-like text flow
+
+Final authoring/layout calibration of the Committee Report so horizontal text
+flow and list indentation track the actual institutional Word (DOCX) reference
+more closely. Presentation-only: no canonical model change, **no backend/domain
+change, no database migration.**
+
+**Page geometry**
+
+- The reference is **US Letter**, not A4 (8.5in × 11in). The desktop authoring
+  canvas is calibrated to Letter width: `.cdwReportCanvas { width: 8.5in;
+  max-width: 100%; padding: 1in; }` — approximately **1in left/right document
+  margins** (≈6.5in content region), matching the DOCX.
+- `max-width: 100%` plus reduced padding at ≤960px (0.6in) and ≤640px
+  (1.25rem) keep the document fluid on narrower viewports — Letter width is never
+  forced and never causes horizontal overflow.
+- **No fixed Letter page height.** The canvas stays vertically continuous.
+
+**Word-like list geometry (hanging indent)**
+
+- Ordered and bullet lists use `list-style-position: outside` with
+  `padding-left: 0.5in`, so the text start is ≈0.5in and the marker hangs to its
+  left; wrapped continuation lines align with the text start (not the marker).
+  No inserted spaces or tab characters are used.
+- Nested ordered items (`1.1`, `1.2`, `1.3`) sit deliberately deeper:
+  `ol ol`/`ol ul` add `padding-left: 0.75in` → text start ≈1.25in, matching the
+  Word reference. Nested bullets use a 0.5in step. Narrow viewports reduce these
+  indents so no overflow occurs.
+
+**Paragraph rhythm**
+
+- The generic web-style `.cdwReportBody p { margin: 0.8em 0; }` is replaced by
+  `margin: 0 0 0.2em` — minimal paragraph-after spacing; line spacing owns the
+  internal leading (paragraph spacing is not conflated with line spacing).
+- Document default line spacing is **single (1.0)**, matching the Word sample
+  for this report style (previously 1.5). Explicitly stored `lineSpacing` values
+  remain authoritative; documents without the attr simply use the new default —
+  stored JSON is never rewritten.
+- Nested list item paragraphs keep zero margin (`li > p { margin: 0 }`).
+
+**No hardcoding / no distortion**
+
+- No selectors or line breaks based on sample text ("Statement of the Problem",
+  "CHAPTER 1", sample question wording). The geometry generalizes.
+- No `letter-spacing`, `word-spacing`, `font-stretch`, or `transform: scale`
+  hacks — Arial metrics are used normally; wrap fidelity comes from real page
+  geometry.
+- Arial, black text, 11/12 pt, alignment, and line-spacing controls are
+  unchanged.
+
+**Shared geometry.** Editor, Preview Report, and the Chairman/Panelist read-only
+view all use the same `cdwReportWorkspace → cdwReportCanvas → cdwReportBody`
+CSS — including Letter width, margins, list geometry, paragraph rhythm, and the
+font-size/line-spacing/indent data-attribute rules. There is no preview-only
+layout.
+
+**Still deferred (unchanged):** fixed page height, page 1/2 splitting,
+page-break node, automatic pagination, page count, print pagination, PDF
+generation, the official GS Form renderer, RAP-C1, and WebSocket.
+
+**Verification (Word layout fidelity):** no backend/domain files changed, so the
+backend suite was not re-run. Frontend: 143 assertions across the 7 verify
+scripts (`verify-cdw5-report` now 57) + `npx tsc --noEmit` + scoped `eslint` +
+`npm run build` — all clean. (Earlier CDW-5 totals are historical snapshots.)
+
+**NO NEW DATABASE MIGRATION** — layout is rendering policy, not persisted
+content.

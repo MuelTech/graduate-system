@@ -7,13 +7,15 @@
  * in every mode:
  *
  *   1. .cdwReportWorkspace — the neutral work surface the document floats on.
- *   2. .cdwReportCanvas    — the centered, A4-inspired white document surface.
+ *   2. .cdwReportCanvas    — the centered US-Letter-size white document surface.
  *   3. .cdwReportBody      — the typography of the document content itself.
  *
- * This is intentionally NOT a paper/print form: there is no page geometry, no
- * fixed page height, no page-break/pagination, and no print CSS. Exact
- * institutional rendering (GS Form No. 22, headers, signature tables, PDF/print)
- * is deferred to the later Official Defense Forms / Document Processing phase.
+ * Geometry mirrors the institutional Word reference: US Letter (8.5in wide)
+ * with ~1in side margins, Arial, black text, and Word-style hanging list
+ * indentation. This is intentionally NOT a print form: there is no fixed page
+ * HEIGHT, no page-break/pagination, and no print CSS. Exact institutional
+ * rendering (GS Form No. 22, headers, signature tables, PDF/print) is deferred
+ * to the later Official Defense Forms / Document Processing phase.
  */
 
 /* 1. Work surface -------------------------------------------------------- */
@@ -30,20 +32,32 @@
   }
 }
 
-/* 2. Document canvas ----------------------------------------------------- */
+/* 2. Document canvas (US Letter horizontal geometry) --------------------- */
 
 .cdwReportCanvas {
-  width: 100%;
-  /* A4-inspired document proportion (~800px), not a literal A4 page box. */
-  max-width: 800px;
+  /* Letter page width; never wider than the available workspace. */
+  width: 8.5in;
+  max-width: 100%;
   margin: 0 auto;
   background-color: #ffffff;
   color: #000000;
   border: 1px solid var(--earist-border-gray);
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
-  /* Generous academic margins; responsively reduced on narrow screens. */
-  padding: clamp(1.75rem, 4vw, 3rem) clamp(1.375rem, 5vw, 3.75rem);
+  /* ~1in Letter margins on desktop; reduced responsively for narrow viewports. */
+  padding: 1in;
+}
+
+@media (max-width: 960px) {
+  .cdwReportCanvas {
+    padding: 0.6in;
+  }
+}
+
+@media (max-width: 640px) {
+  .cdwReportCanvas {
+    padding: 1.25rem;
+  }
 }
 
 /* Visible focus state for the authoring surface (keyboard accessibility). */
@@ -55,12 +69,12 @@
 /* 3. Document typography ------------------------------------------------- */
 
 .cdwReportBody {
-  /* Institutional academic document defaults: Arial, black, 12 pt, 1.5 spacing.
+  /* Institutional academic document defaults: Arial, black, 12 pt, single spacing.
    * The surrounding workspace/dashboard keeps its own EARIST typography. */
   font-family: Arial, Helvetica, sans-serif;
   color: #000000;
   font-size: 12pt;
-  line-height: 1.5;
+  line-height: 1;
   /* One indentation step per canonical indentLevel (presentation only). */
   --cdw-indent-step: 1.5em;
 }
@@ -73,8 +87,11 @@
   margin-bottom: 0;
 }
 
+/* Word-like paragraph rhythm: minimal paragraph-after spacing. Line spacing
+ * (line-height) owns the internal leading — the previous web-style `0.8em 0`
+ * rhythm is intentionally gone. */
 .cdwReportBody p {
-  margin: 0.8em 0;
+  margin: 0 0 0.2em;
 }
 
 .cdwReportBody h1,
@@ -87,54 +104,71 @@
 .cdwReportBody h1 {
   font-size: 14pt;
   font-weight: 700;
-  margin: 1.6em 0 0.6em;
+  margin: 1.2em 0 0.5em;
 }
 
 .cdwReportBody h2 {
   font-size: 13pt;
   font-weight: 700;
-  margin: 1.4em 0 0.5em;
+  margin: 1.1em 0 0.4em;
 }
 
 .cdwReportBody h3 {
   font-size: 12pt;
   font-weight: 700;
-  margin: 1.2em 0 0.4em;
+  margin: 1em 0 0.35em;
 }
 
-/* Lists: academic document structure, not a compressed web menu. */
+/* Lists: Word-style hanging-indent geometry. The list's padding sets the TEXT
+ * start; the marker hangs to its left and wrapped continuation lines align to
+ * the text start. First level text start ≈ 0.5in. No inserted spaces/tabs. */
 .cdwReportBody ul,
 .cdwReportBody ol {
-  margin: 0.6em 0;
-  padding-left: 1.9rem;
+  margin: 0.2em 0;
+  list-style-position: outside;
 }
 
 .cdwReportBody ul {
-  list-style: disc;
+  list-style-type: disc;
+  padding-left: 0.5in;
 }
 
 .cdwReportBody ol {
-  list-style: decimal;
+  list-style-type: decimal;
+  padding-left: 0.5in;
 }
 
 .cdwReportBody li {
-  margin: 0.3em 0;
+  margin: 0;
 }
 
-/* Nested lists indent distinctly so sub-items read as a sub-level. */
-.cdwReportBody li > :is(ul, ol) {
-  margin: 0.3em 0;
+/* Nested lists keep a controlled rhythm. */
+.cdwReportBody ul :is(ul, ol),
+.cdwReportBody ol :is(ul, ol) {
+  margin: 0.2em 0;
+}
+
+/* Deepen nested items deliberately: ordered-in-ordered reaches ≈1.25in
+ * (0.5in + 0.75in), matching the Word reference for 1.1 / 1.2 / 1.3. */
+.cdwReportBody ol ol,
+.cdwReportBody ol ul {
+  padding-left: 0.75in;
+}
+
+.cdwReportBody ul ul,
+.cdwReportBody ul ol {
+  padding-left: 0.5in;
 }
 
 .cdwReportBody ul ul {
-  list-style: circle;
+  list-style-type: circle;
 }
 
 .cdwReportBody ul ul ul {
-  list-style: square;
+  list-style-type: square;
 }
 
-/* A list item's own paragraph must not double the paragraph rhythm. */
+/* A list item's own paragraph must not add extra paragraph-after spacing. */
 .cdwReportBody li > p {
   margin: 0;
 }
@@ -165,7 +199,8 @@
 
 /* 3c. Controlled paragraph font size + line spacing ------------------------
  * Both the editor (ProseMirror renderHTML) and the read-only renderer emit the
- * same data attributes. When absent, the document defaults (12 pt / 1.5) apply. */
+ * same data attributes. When absent, the document defaults (12 pt / single
+ * spacing) apply. */
 .cdwReportBody p[data-font-size-pt="11"] {
   font-size: 11pt;
 }
@@ -192,9 +227,19 @@
   line-height: 3;
 }
 
+/* Narrow viewports: fluid document, reduced indentation — never force
+ * horizontal overflow to preserve literal Letter geometry. */
 @media (max-width: 640px) {
   .cdwReportBody {
     --cdw-indent-step: 1em;
+  }
+  .cdwReportBody ul,
+  .cdwReportBody ol {
+    padding-left: 1.5rem;
+  }
+  .cdwReportBody ul :is(ul, ol),
+  .cdwReportBody ol :is(ul, ol) {
+    padding-left: 1rem;
   }
 }
 
