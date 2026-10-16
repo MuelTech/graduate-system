@@ -106,6 +106,14 @@ export class RapReportService {
     tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
     input: RapCreationInput,
   ) {
+    // CDW-5: if the attempt already owns a report (for example a Rapporteur
+    // authoring DRAFT created during the defense), reuse it instead of creating a
+    // duplicate. Freeze/signing/status promotion remain RAP-C1 concerns.
+    const existing = await tx.rapReport.findUnique({
+      where: { scheduleId: input.scheduleId },
+    });
+    if (existing) return existing;
+
     const participants = await tx.panelAssignment.findMany({
       where: { scheduleId: input.scheduleId },
       select: { userId: true, role: true },

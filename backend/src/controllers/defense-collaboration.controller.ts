@@ -129,6 +129,7 @@ export class DefenseCollaborationController {
         req.params.scheduleId as string,
         userId,
         req.body?.body,
+        req.body?.expectedBodyVersion ?? null,
       );
       res.status(200).json(result);
     } catch (error) {

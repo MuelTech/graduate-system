@@ -641,6 +641,7 @@ describe("2026-10-04 Title deferred RAP convergence", () => {
     mockTitlePrerequisitesReady();
     prismaMock.__tx.rapReport.findUnique
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "rap-1", status: "FOR_SIGNATURE" });
 
     const first = await svc.ensureRapAfterTitlePrerequisites("sched-1");
@@ -729,6 +730,23 @@ describe("CP7 RAP signing lifecycle", () => {
       }),
     ).rejects.toThrow(/No required RAP signatories exist/i);
     expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5: reuses an existing authored report instead of creating a duplicate", async () => {
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+      id: "rap-existing",
+      status: "DRAFT",
+    });
+    const result = await svc.createRapAfterConclusion(prismaMock.__tx, {
+      scheduleId: "sched-1",
+      thesisId: "thesis-1",
+      defenseType: "PROPOSAL_DEFENSE",
+      decisionsAndRecommendations: "notes",
+      generatedById: "user-r",
+    });
+    expect(result).toMatchObject({ id: "rap-existing" });
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
   });
 
   it("Test 25: last required signature FINALIZES RAP with server finalizedAt", async () => {

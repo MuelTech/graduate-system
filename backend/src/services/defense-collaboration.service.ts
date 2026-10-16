@@ -120,7 +120,11 @@ export interface ReportReadModel {
   scheduleId: string;
   defenseType: string;
   sessionStatus: string;
+  reportId: string | null;
   studentName: string;
+  studentNumber: string | null;
+  program: string | null;
+  defenseDate: string | null;
   reportDate: string | null;
   venue: string | null;
   reportStatus: string;
@@ -267,6 +271,7 @@ export class DefenseCollaborationService {
             student: {
               include: {
                 user: { select: { firstName: true, lastName: true } },
+                program: { select: { programName: true } },
               },
             },
           },
@@ -679,7 +684,13 @@ export class DefenseCollaborationService {
       scheduleId,
       defenseType: String(schedule.defenseType),
       sessionStatus: String(schedule.sessionStatus),
+      reportId: rap?.id ?? null,
       studentName,
+      studentNumber: student?.studentNumber ?? null,
+      program: student?.program?.programName ?? null,
+      defenseDate: schedule.defenseDate
+        ? new Date(schedule.defenseDate).toISOString()
+        : null,
       reportDate: rap?.reportDate ? rap.reportDate.toISOString() : null,
       venue: rap?.venue ?? null,
       reportStatus,
@@ -703,7 +714,8 @@ export class DefenseCollaborationService {
   /**
    * Single shared rule for report-body write eligibility, used by BOTH the read
    * model (`canEditBody`) and the write paths: assigned Rapporteur, session in a
-   * writable status, report exists and is DRAFT, and not frozen.
+   * writable status, and either no report exists yet (CDW-5 authoring draft is
+   * created on first save) or the report is an unfrozen DRAFT.
    */
   private computeCanEditBody(
     schedule: { sessionStatus: unknown },
@@ -713,9 +725,8 @@ export class DefenseCollaborationService {
     return (
       String(role) === RAPPORTEUR_ROLE &&
       isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
-      Boolean(rap) &&
-      String(rap?.status) === "DRAFT" &&
-      !rap?.frozenAt
+      (rap === null ||
+        (String(rap.status) === "DRAFT" && !rap.frozenAt))
     );
   }
 
@@ -723,42 +734,108 @@ export class DefenseCollaborationService {
     scheduleId: string,
     userId: string,
     body: unknown,
+    expectedBodyVersion?: number | null,
   ): Promise<{ saved: true; bodyVersion: number }> {
     const { schedule, rap } = await this.loadSchedule(scheduleId);
     const assignment = await this.resolveAssignment(scheduleId, userId);
     if (String(assignment.role) !== RAPPORTEUR_ROLE) {
       throw new AppError("Only the assigned Rapporteur may edit the committee report.", 403);
     }
-    const status = String(schedule.sessionStatus);
-    this.assertSessionOpen(status);
-    if (!rap) {
-      throw new AppError("The committee report has not been created for this attempt yet.", 404);
-    }
-    if (rap.frozenAt || String(rap.status) !== "DRAFT") {
-      throw new AppError("The committee report is frozen and can no longer be edited.", 409);
-    }
+    this.assertSessionOpen(String(schedule.sessionStatus));
 
     const validation = validateReportDocument(body);
     if (!validation.ok) throw new AppError(validation.error, 400);
     const canonical = canonicalizeReportDocument(body);
+    const now = new Date();
 
-    try {
-      const updated = await prisma.rapReport.update({
-        where: { id: rap.id, status: "DRAFT", frozenAt: null },
-        data: {
-          bodyDocument: canonical as never,
-          bodyVersion: { increment: 1 },
-          bodyUpdatedAt: new Date(),
-        },
-        select: { bodyVersion: true },
-      });
-      return { saved: true, bodyVersion: updated.bodyVersion };
-    } catch (error) {
-      if ((error as { code?: string })?.code === "P2025") {
-        throw new AppError("Report state changed. Refresh and try again.", 409);
+    // Existing report: must be an unfrozen DRAFT (otherwise immutable / closed).
+    if (rap) {
+      if (rap.frozenAt || String(rap.status) !== "DRAFT") {
+        throw new AppError("The committee report is frozen and can no longer be edited.", 409);
       }
-      throw error;
+      return this.applyReportDraftUpdate(
+        rap.id,
+        canonical,
+        now,
+        expectedBodyVersion,
+        rap.bodyVersion ?? 0,
+      );
     }
+
+    // CDW-5: the assigned Rapporteur's first save creates the authoring DRAFT for
+    // the exact attempt. Deliberately NO signature slots and no status transition
+    // beyond DRAFT — freeze + signing belong to RAP-C1.
+    try {
+      const created = await prisma.rapReport.create({
+        data: {
+          scheduleId,
+          thesisId: schedule.thesisId,
+          defenseType: schedule.defenseType,
+          venue: schedule.venueOrLink ?? null,
+          status: "DRAFT",
+          bodyDocument: canonical as never,
+          bodyVersion: 1,
+          bodyUpdatedAt: now,
+        },
+        select: { id: true, bodyVersion: true },
+      });
+      return { saved: true, bodyVersion: created.bodyVersion };
+    } catch (error) {
+      // Concurrent first save: the unique (scheduleId) row already exists. Reuse
+      // it and apply the same versioned write instead of losing the draft.
+      if ((error as { code?: string })?.code !== "P2002") throw error;
+      const existing = await prisma.rapReport.findUnique({
+        where: { scheduleId },
+        select: { id: true, status: true, frozenAt: true, bodyVersion: true },
+      });
+      if (!existing) throw error;
+      if (existing.frozenAt || String(existing.status) !== "DRAFT") {
+        throw new AppError("The committee report is frozen and can no longer be edited.", 409);
+      }
+      return this.applyReportDraftUpdate(
+        existing.id,
+        canonical,
+        now,
+        expectedBodyVersion,
+        existing.bodyVersion ?? 0,
+      );
+    }
+  }
+
+  /**
+   * Versioned DRAFT write. When `expectedBodyVersion` is supplied the update is a
+   * CAS: a stale client can never silently overwrite a newer server draft (409).
+   */
+  private async applyReportDraftUpdate(
+    rapId: string,
+    canonical: CanonicalReportDocument,
+    now: Date,
+    expectedBodyVersion: number | null | undefined,
+    currentBodyVersion: number,
+  ): Promise<{ saved: true; bodyVersion: number }> {
+    const where: Record<string, unknown> = { id: rapId, status: "DRAFT", frozenAt: null };
+    if (expectedBodyVersion !== null && expectedBodyVersion !== undefined) {
+      where.bodyVersion = expectedBodyVersion;
+    }
+    const updated = await prisma.rapReport.updateMany({
+      where: where as never,
+      data: {
+        bodyDocument: canonical as never,
+        bodyVersion: { increment: 1 },
+        bodyUpdatedAt: now,
+      },
+    });
+    if (updated.count === 0) {
+      throw new AppError("Report changed. Refresh and review the latest version.", 409);
+    }
+    const refreshed = await prisma.rapReport.findUnique({
+      where: { id: rapId },
+      select: { bodyVersion: true },
+    });
+    return {
+      saved: true,
+      bodyVersion: refreshed?.bodyVersion ?? currentBodyVersion + 1,
+    };
   }
 
   async freezeReportForSignatures(

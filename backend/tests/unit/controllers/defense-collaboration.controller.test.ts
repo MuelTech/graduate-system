@@ -108,7 +108,26 @@ describe("DefenseCollaborationController (CDW-1)", () => {
       makeReq({ body: { body: { type: "doc", content: [] } } }),
       res as never,
     );
-    expect(saveReportDraft).toHaveBeenCalledWith("sched-1", "u-1", { type: "doc", content: [] });
+    expect(saveReportDraft).toHaveBeenCalledWith(
+      "sched-1",
+      "u-1",
+      { type: "doc", content: [] },
+      null,
+    );
+  });
+
+  it("CDW-5: forwards expectedBodyVersion for stale-draft safety", async () => {
+    saveReportDraft.mockResolvedValue({ saved: true, bodyVersion: 3 });
+    await controller.saveCommitteeReportDraft(
+      makeReq({ body: { body: { type: "doc", content: [] }, expectedBodyVersion: 2 } }),
+      res as never,
+    );
+    expect(saveReportDraft).toHaveBeenCalledWith(
+      "sched-1",
+      "u-1",
+      { type: "doc", content: [] },
+      2,
+    );
   });
 
   it("freezes the report for signatures", async () => {

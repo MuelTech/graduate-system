@@ -9,7 +9,7 @@ const prismaMock = vi.hoisted(() => ({
   adviserCertification: { findFirst: vi.fn() },
   defenseAnnotation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   defenseAnnotationComment: { findUnique: vi.fn(), create: vi.fn() },
-  rapReport: { updateMany: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
+  rapReport: { updateMany: vi.fn(), update: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
 }));
 
 const { ensureSummary } = vi.hoisted(() => ({ ensureSummary: vi.fn() }));
@@ -361,14 +361,104 @@ describe("DefenseCollaborationService (CDW-1)", () => {
   it("saves a Rapporteur draft and returns the persisted body version", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [rapRow({ bodyVersion: 2 })] }));
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    prismaMock.rapReport.update.mockResolvedValue({ bodyVersion: 7 });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.rapReport.findUnique.mockResolvedValue({ bodyVersion: 7 });
     await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toEqual({
       saved: true,
       bodyVersion: 7,
     });
-    expect(prismaMock.rapReport.update).toHaveBeenCalledWith(
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ bodyVersion: { increment: 1 } }) }),
     );
+  });
+
+  it("CDW-5: creates an editable DRAFT report when none exists (assigned Rapporteur)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.rapReport.create.mockResolvedValue({ id: "rap-1", bodyVersion: 1 });
+    await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toEqual({
+      saved: true,
+      bodyVersion: 1,
+    });
+    expect(prismaMock.rapReport.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scheduleId: "sched-1",
+          status: "DRAFT",
+          bodyVersion: 1,
+        }),
+      }),
+    );
+  });
+
+  it("CDW-5: concurrent first-save converges via unique(scheduleId) (P2002 → update)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.rapReport.create.mockRejectedValue({ code: "P2002" });
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      id: "rap-1",
+      status: "DRAFT",
+      frozenAt: null,
+      bodyVersion: 1,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toMatchObject({
+      saved: true,
+    });
+  });
+
+  it("CDW-5: stale expectedBodyVersion returns 409 and never silently overwrites", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [rapRow({ bodyVersion: 5 })] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY, 4),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ bodyVersion: 4 }) }),
+    );
+  });
+
+  it("CDW-5: save only touches RapReport (no verdict/evaluation mutation)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [rapRow({ bodyVersion: 1 })] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.rapReport.findUnique.mockResolvedValue({ bodyVersion: 2 });
+    await svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY);
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("CDW-5: read model exposes compact system context for the Rapporteur editor", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
+    expect(model.studentName).toBe("Ana Cruz");
+    expect(model.studentNumber).toBe("2020-001");
+    expect(model.program).toBe("MSIT");
+    expect(model.defenseDate).toBe("2026-10-20T00:00:00.000Z");
+    expect(model.body).toEqual(VALID_BODY);
+    expect(model.canEditBody).toBe(true);
+  });
+
+  it("CDW-5: an editable empty DRAFT is offered to the assigned Rapporteur before any save", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
+    const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
+    expect(model.canEditBody).toBe(true);
+    expect(model.reportId).toBeNull();
+    expect(model.hasCollaborativeBody).toBe(false);
+    expect(model.reportStatus).toBe("NOT_CREATED");
+  });
+
+  it("CDW-5: read-only roles never get an editable empty report", async () => {
+    for (const role of ["CHAIRMAN", "PANELIST", "ADVISER", "FACILITATOR"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
+      prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow(role));
+      const model = await svc.getReportReadModel("sched-1", `u-${role}`);
+      expect(model.canEditBody).toBe(false);
+    }
   });
 
   it("rejects a draft edit when the report is not DRAFT (frozen)", async () => {
