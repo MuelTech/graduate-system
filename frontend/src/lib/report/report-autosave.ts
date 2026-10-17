@@ -21,6 +21,13 @@ export type ReportAutosaveStatus =
   | "conflict"
   | "offline";
 
+/**
+ * `active` accepts user edits. `draining` rejects new edits and finishes any
+ * already-dirty work (including the newest edit made while a request was in
+ * flight). `disposed` means all queued durability work has settled.
+ */
+export type ReportAutosaveLifecycle = "active" | "draining" | "disposed";
+
 export interface ReportAutosaveState {
   status: ReportAutosaveStatus;
   bodyVersion: number;
@@ -84,8 +91,10 @@ export class ReportAutosaveController {
   private inFlight = false;
   private conflict = false;
   private online = true;
-  private disposed = false;
+  private lifecycle: ReportAutosaveLifecycle = "active";
   private hasPersistedSave: boolean;
+  private disposePromise: Promise<void> | null = null;
+  private resolveDispose: (() => void) | null = null;
 
   private unsavedSince: number | null = null;
   private idleTimer: unknown = null;
@@ -131,12 +140,16 @@ export class ReportAutosaveController {
     return this.savedVersion;
   }
 
+  getLifecycleState(): ReportAutosaveLifecycle {
+    return this.lifecycle;
+  }
+
   hasUnsavedChanges(): boolean {
     return this.dirty || this.inFlight;
   }
 
   update(body: ReportDocument): void {
-    if (this.disposed) return;
+    if (this.lifecycle !== "active") return;
 
     const normalized = normalizeReportDocument(body);
     this.latestBody = normalized;
@@ -185,7 +198,7 @@ export class ReportAutosaveController {
    * by blur/visibility handlers. It never starts a competing request.
    */
   flushNow(): boolean {
-    if (this.disposed || this.conflict) return false;
+    if (this.lifecycle !== "active" || this.conflict) return false;
     if (this.inFlight) return false;
     if (!this.dirty) return true;
 
@@ -195,8 +208,10 @@ export class ReportAutosaveController {
   }
 
   setOnline(online: boolean): void {
-    if (this.disposed || this.online === online) return;
+    if (this.lifecycle === "disposed" || this.online === online) return;
     this.online = online;
+
+    if (this.lifecycle !== "active") return;
 
     if (!online) {
       this.clearTimers();
@@ -215,7 +230,7 @@ export class ReportAutosaveController {
    * could be silently overwritten.
    */
   syncServerVersion(version: number): void {
-    if (this.disposed || this.inFlight || this.conflict) return;
+    if (this.lifecycle !== "active" || this.inFlight || this.conflict) return;
     if (this.dirty) return;
     const next = normalizeVersion(version);
     if (next !== this.savedVersion) {
@@ -229,7 +244,7 @@ export class ReportAutosaveController {
    * the authoritative saved body/version. No automatic merge is attempted.
    */
   reloadFromServer(body: ReportDocument, bodyVersion: number): void {
-    if (this.disposed) return;
+    if (this.lifecycle !== "active") return;
     this.clearTimers();
     this.latestBody = normalizeReportDocument(body);
     this.latestKey = JSON.stringify(this.latestBody);
@@ -245,9 +260,32 @@ export class ReportAutosaveController {
     this.setStatus(this.savedVersion > 0 ? "saved" : "clean");
   }
 
-  dispose(): void {
-    this.disposed = true;
+  /**
+   * Request disposal/unmount cleanup. New edits are rejected immediately, but
+   * already-dirty work — including the newest edit made while a request was in
+   * flight — is drained through the same serialized pipeline. The returned
+   * promise resolves only after that durability work settles.
+   */
+  dispose(): Promise<void> {
+    if (this.lifecycle === "disposed") return Promise.resolve();
+    if (this.disposePromise) return this.disposePromise;
+
+    this.lifecycle = "draining";
     this.clearTimers();
+
+    this.disposePromise = new Promise<void>((resolve) => {
+      this.resolveDispose = resolve;
+    });
+
+    if (!this.inFlight) {
+      if (this.dirty && this.online && !this.conflict) {
+        void this.requestSave();
+      } else {
+        this.finishDispose();
+      }
+    }
+
+    return this.disposePromise;
   }
 
   private scheduleIdleSave(): void {
@@ -282,17 +320,18 @@ export class ReportAutosaveController {
   }
 
   private async requestSave(): Promise<void> {
-    if (
-      this.disposed ||
-      this.inFlight ||
-      this.conflict ||
-      !this.dirty
-    ) {
+    if (this.lifecycle === "disposed") return;
+
+    if (this.inFlight || this.conflict || !this.dirty) {
+      if (this.lifecycle === "draining" && !this.inFlight) {
+        this.finishDispose();
+      }
       return;
     }
 
     if (!this.online) {
       this.setStatus("offline");
+      if (this.lifecycle === "draining") this.finishDispose();
       return;
     }
 
@@ -311,8 +350,6 @@ export class ReportAutosaveController {
         expectedBodyVersion,
       });
 
-      if (this.disposed) return;
-
       this.inFlight = false;
       this.savedVersion = normalizeVersion(result.bodyVersion);
       this.savedKey = snapshotKey;
@@ -324,10 +361,12 @@ export class ReportAutosaveController {
         this.dirty = true;
         if (!this.online) {
           this.setStatus("offline");
+          if (this.lifecycle === "draining") this.finishDispose();
           return;
         }
         // The newest local text arrived while this request was in flight. Save it
-        // immediately with the bodyVersion the server just returned.
+        // immediately with the bodyVersion the server just returned. This also
+        // applies while draining for unmount/tab change.
         void this.requestSave();
         return;
       }
@@ -335,9 +374,8 @@ export class ReportAutosaveController {
       this.dirty = false;
       this.unsavedSince = null;
       this.setStatus("saved");
+      if (this.lifecycle === "draining") this.finishDispose();
     } catch (error) {
-      if (this.disposed) return;
-
       this.inFlight = false;
       this.dirty = true;
       this.unsavedSince = this.now();
@@ -347,6 +385,9 @@ export class ReportAutosaveController {
         this.conflict = true;
         this.error = "Save conflict — refresh/reconcile required.";
         this.setStatus("conflict");
+        // A conflict is never auto-retried. During unmount there is no explicit
+        // reconciliation surface left, so drain ends with the conflict preserved.
+        if (this.lifecycle === "draining") this.finishDispose();
         return;
       }
 
@@ -355,12 +396,26 @@ export class ReportAutosaveController {
           ? error.message
           : "Save failed. Your changes are still in this browser.";
       this.setStatus(this.online ? "error" : "offline");
+      // Ordinary failures are not retried in a loop; unmount drains end here.
+      if (this.lifecycle === "draining") this.finishDispose();
     }
+  }
+
+  private finishDispose(): void {
+    if (this.lifecycle !== "draining" || this.inFlight) return;
+
+    this.lifecycle = "disposed";
+    this.clearTimers();
+    const resolve = this.resolveDispose;
+    this.resolveDispose = null;
+    resolve?.();
   }
 
   private setStatus(status: ReportAutosaveStatus): void {
     this.status = status;
-    this.emit();
+    if (this.lifecycle === "active") {
+      this.emit();
+    }
   }
 
   private emit(): void {

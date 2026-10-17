@@ -13,6 +13,61 @@ autosave) and CDW-LIVE-1C (final acceptance) are not started. CDW-9 is not start
 
 ---
 
+## 0. FIX-1 — unmount / in-flight durability race
+
+**Reason.** Independent review identified a lifecycle race in the original CDW-LIVE-1A
+autosave controller.
+
+**Original race.**
+
+1. Autosave for body A started.
+2. The Rapporteur edited newer body B while A was in flight.
+3. The panel unmounted and cleanup called `flushNow()` then `dispose()`.
+4. `flushNow()` could not start a request because A was in flight.
+5. `dispose()` immediately marked the controller disposed.
+6. A completed; the disposed guard returned before processing dirty body B.
+7. Body B was stranded.
+
+**Fix / lifecycle strategy.** The controller now has three lifecycle states instead of a
+single disposed flag:
+
+```text
+active  -> accepts edits/timers
+draining -> rejects new edits, waits for in-flight work, then saves the newest dirty body
+disposed -> all queued durability work has settled
+```
+
+`dispose()` now returns a promise and starts draining rather than discarding in-flight
+state. Cleanup calls `void controller.dispose()` only; it no longer calls
+`flushNow()` first. During draining:
+
+- `update()` / `flushNow()` are rejected;
+- an existing in-flight request is allowed to complete;
+- its success records the server-returned `bodyVersion`, then immediately saves the newest
+  dirty local body through the same serialized pipeline;
+- only after no request is in flight and no persistable dirty work remains does the
+  controller enter `disposed` and resolve the disposal promise;
+- a CAS conflict or ordinary failure ends the drain without retry, never falsely marks the
+  draft saved, and never overwrites server content.
+
+The unmount flush is therefore a durability drain, not a second parallel request. Hard
+browser unload/reload delivery is still **not** claimed as guaranteed.
+
+**Regression tests added (actual controller behavior):**
+
+- Test A — dirty edit during in-flight save + disposal drains B after A with A's returned
+  `bodyVersion`.
+- Test B — multiple edits while draining persist only the latest body C.
+- Test C — concurrency counter never exceeds one request throughout the drain.
+- Test D — conflict on the in-flight save while draining: no retry, no overwrite, conflict
+  state preserved.
+- Test D2 — conflict on the queued drain save: no further retry.
+- Test E — clean disposal creates no request.
+- Pending-dirty disposal flushes once when nothing is in flight.
+- Late edits after disposal are ignored.
+
+---
+
 ## 1. Implemented behavior
 
 ### 1.1 Rapporteur report autosave
@@ -33,8 +88,10 @@ the former manual-only mutation.
 - Edits made during an in-flight request remain dirty; after success the newest body is
   saved immediately using the server-returned `bodyVersion`.
 - Manual **Save now** (renamed from Save Draft) flushes through the same pipeline.
-- Flush also runs on window blur, tab visibility hidden, unmount/tab switch, and restored
-  connectivity.
+- Flush also runs on window blur, tab visibility hidden, and restored connectivity.
+- Unmount/tab switch enters the draining lifecycle described in §0: new edits stop, an
+  in-flight request is awaited, and the newest dirty body is saved with the returned
+  `bodyVersion` before disposal settles.
 - `beforeunload` warning is shown only while unsaved/in-flight work exists. Browser unload
   delivery is not claimed as guaranteed.
 - No localStorage / IndexedDB persistence was added.
@@ -203,8 +260,8 @@ Frontend:
 
 | Check | Result |
 |---|---|
-| All 13 verification scripts | **268 assertions, 0 failed** |
-| New `verify-cdw-live-1a-report.mjs` | **33 passed, 0 failed** |
+| All 13 verification scripts | **277 assertions, 0 failed** |
+| New `verify-cdw-live-1a-report.mjs` | **42 passed, 0 failed** (33 original + 9 FIX-1) |
 | CDW-8B / CDW-8C regression scripts | **22 / 24 passed, 0 failed** |
 | `npx tsc --noEmit` | **clean** |
 | Scoped `npx eslint` | **clean** |

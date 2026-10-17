@@ -377,6 +377,294 @@ test("syncServerVersion adopts a newer version only while the editor is clean", 
   );
 });
 
+// ---------------------------------------------------------------------------
+// FIX-1 — unmount / in-flight durability drain
+// ---------------------------------------------------------------------------
+
+function trackedSave(handlers) {
+  const calls = [];
+  const concurrency = { current: 0, max: 0 };
+
+  const save = async (input) => {
+    calls.push(input);
+    concurrency.current += 1;
+    concurrency.max = Math.max(concurrency.max, concurrency.current);
+    try {
+      const handler = handlers[calls.length - 1];
+      if (handler) return await handler(input);
+      return { bodyVersion: input.expectedBodyVersion + 1 };
+    } finally {
+      concurrency.current -= 1;
+    }
+  };
+
+  return { save, calls, concurrency };
+}
+
+test("FIX-1 Test A — disposal drains the newest edit after the in-flight save", async () => {
+  const clock = new FakeClock();
+  const first = deferred();
+  const second = deferred();
+  const { save, calls, concurrency } = trackedSave([
+    () => first.promise,
+    () => second.promise,
+  ]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("report A"));
+  controller.flushNow();
+  await flush();
+  assert.equal(calls.length, 1);
+  assert.equal(controller.getLifecycleState(), "active");
+
+  controller.update(doc("report B"));
+  const disposal = controller.dispose();
+
+  assert.equal(controller.getLifecycleState(), "draining");
+  assert.equal(calls.length, 1, "disposal must not start a parallel request");
+  assert.equal(controller.hasUnsavedChanges(), true);
+
+  first.resolve({ bodyVersion: 2 });
+  await flush();
+
+  assert.equal(calls.length, 2, "newest dirty body starts after the first save");
+  assert.equal(calls[1].body.content[0].content[0].text, "report B");
+  assert.equal(calls[1].expectedBodyVersion, 2);
+  assert.equal(controller.getLifecycleState(), "draining");
+
+  second.resolve({ bodyVersion: 3 });
+  await disposal;
+
+  assert.equal(controller.getLifecycleState(), "disposed");
+  assert.equal(calls.length, 2);
+  assert.equal(concurrency.max, 1, "never more than one report save in flight");
+});
+
+test("FIX-1 Test B — multiple edits while draining persist only the latest body", async () => {
+  const clock = new FakeClock();
+  const first = deferred();
+  const { save, calls } = trackedSave([() => first.promise]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 4,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("A"));
+  controller.flushNow();
+  await flush();
+
+  controller.update(doc("B"));
+  controller.update(doc("C"));
+  const disposal = controller.dispose();
+
+  first.resolve({ bodyVersion: 5 });
+  await flush();
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].body.content[0].content[0].text, "C");
+  assert.equal(calls[1].expectedBodyVersion, 5);
+
+  await disposal;
+  assert.equal(controller.getLifecycleState(), "disposed");
+  assert.equal(calls.length, 2);
+});
+
+test("FIX-1 Test C — the drain lifecycle never exceeds one concurrent request", async () => {
+  const clock = new FakeClock();
+  const pending = [deferred(), deferred(), deferred()];
+  const { save, calls, concurrency } = trackedSave(
+    pending.map((entry) => () => entry.promise),
+  );
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("A"));
+  controller.flushNow();
+  await flush();
+  controller.update(doc("B"));
+  const disposal = controller.dispose();
+  await flush();
+  assert.equal(concurrency.max, 1);
+
+  pending[0].resolve({ bodyVersion: 2 });
+  await flush();
+  assert.equal(calls.length, 2);
+  assert.equal(concurrency.max, 1);
+
+  pending[1].resolve({ bodyVersion: 3 });
+  await disposal;
+
+  assert.equal(concurrency.max, 1);
+  assert.equal(calls.length, 2);
+  assert.equal(concurrency.current, 0);
+});
+
+test("FIX-1 Test D — a conflict while draining never overwrites or auto-retries", async () => {
+  const clock = new FakeClock();
+  const first = deferred();
+  const { save, calls } = trackedSave([() => first.promise]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 2,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("A"));
+  controller.flushNow();
+  await flush();
+  controller.update(doc("B"));
+  const disposal = controller.dispose();
+
+  first.reject(new ReportAutosaveConflictError("Server draft changed."));
+  await disposal;
+
+  assert.equal(calls.length, 1, "no conflicting retry is attempted");
+  assert.equal(controller.getState().status, "conflict");
+  assert.equal(controller.hasUnsavedChanges(), true);
+  assert.equal(controller.getLifecycleState(), "disposed");
+
+  clock.advance(60_000);
+  await flush();
+  assert.equal(calls.length, 1);
+});
+
+test("FIX-1 Test D2 — a conflict on the queued drain save stops after that attempt", async () => {
+  const clock = new FakeClock();
+  const first = deferred();
+  const second = deferred();
+  const { save, calls } = trackedSave([
+    () => first.promise,
+    () => second.promise,
+  ]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 3,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("A"));
+  controller.flushNow();
+  await flush();
+  controller.update(doc("B"));
+  const disposal = controller.dispose();
+
+  first.resolve({ bodyVersion: 4 });
+  await flush();
+  assert.equal(calls.length, 2);
+
+  second.reject(new ReportAutosaveConflictError("Server draft changed."));
+  await disposal;
+
+  assert.equal(calls.length, 2, "queued conflict is not retried");
+  assert.equal(controller.getState().status, "conflict");
+  assert.equal(controller.getLifecycleState(), "disposed");
+});
+
+test("FIX-1 Test E — clean disposal creates no save request", async () => {
+  const clock = new FakeClock();
+  const { save, calls } = trackedSave([]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("saved"),
+    initialBodyVersion: 7,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  await controller.dispose();
+
+  assert.equal(calls.length, 0);
+  assert.equal(clock.timers.size, 0);
+  assert.equal(controller.getLifecycleState(), "disposed");
+  assert.equal(controller.getState().hasUnsavedChanges, false);
+});
+
+test("FIX-1 — disposal flushes pending dirty work when nothing is in flight", async () => {
+  const clock = new FakeClock();
+  const { save, calls } = trackedSave([]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("pending"));
+  const disposal = controller.dispose();
+  await disposal;
+
+  assert.equal(calls.length, 1, "unmount flushes a pending debounce");
+  assert.equal(calls[0].body.content[0].content[0].text, "pending");
+  assert.equal(calls[0].expectedBodyVersion, 1);
+  assert.equal(controller.getLifecycleState(), "disposed");
+  assert.equal(clock.timers.size, 0);
+});
+
+test("FIX-1 — late edits after a disposal request are ignored", async () => {
+  const clock = new FakeClock();
+  const { save, calls } = trackedSave([]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  await controller.dispose();
+  controller.update(doc("late edit"));
+  assert.equal(controller.flushNow(), false);
+
+  clock.advance(60_000);
+  await flush();
+
+  assert.equal(calls.length, 0);
+  assert.equal(controller.getLifecycleState(), "disposed");
+});
+
 test("reverting an unsaved new report never claims Saved", async () => {
   const clock = new FakeClock();
   const states = [];
@@ -654,6 +942,15 @@ test("a clean editor adopts a newer authoritative body instead of overwriting it
   const panel = read(PANEL);
   assert.equal(panel.includes("serverVersion > state.bodyVersion"), true);
   assert.equal(panel.includes("reloadFromServer"), true);
+});
+
+test("FIX-1 — unmount drains through dispose instead of racing flush then dispose", () => {
+  const panel = read(PANEL);
+  assert.equal(panel.includes("void controller.dispose()"), true);
+  assert.doesNotMatch(
+    panel,
+    /controller\.flushNow\(\);\s*\n\s*controller\.dispose\(\)/,
+  );
 });
 
 test("read-only viewers receive an ephemeral live preview with no edit controls", () => {

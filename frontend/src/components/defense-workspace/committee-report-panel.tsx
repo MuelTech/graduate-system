@@ -361,9 +361,10 @@ function ReportAuthoringPanel({
       window.removeEventListener("blur", flush);
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      // Switching workspace tabs/unmounting must not strand a pending debounce.
-      controller.flushNow();
-      controller.dispose();
+      // Unmounting must drain, not abandon, the newest dirty body. `dispose()`
+      // rejects new edits, waits for any in-flight request, then saves the newest
+      // local body with the server-returned bodyVersion before settling.
+      void controller.dispose();
       if (controllerRef.current === controller) {
         controllerRef.current = null;
       }
