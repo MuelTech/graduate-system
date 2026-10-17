@@ -1,5 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from "express";
+
+import {
+  JwtConfigurationError,
+  verifyAccessToken,
+} from "../utils/jwt";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -17,21 +21,16 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
     return;
   }
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    console.error('CRITICAL ERROR: JWT_SECRET environment variable is not defined!');
-    res.status(500).json({ error: 'Internal Server Error configuration' });
-    return;
-  }
-
   try {
-    const decoded = jwt.verify(token, secret) as {
-      userId: string;
-      role: string;
-    };
-    req.user = decoded;
+    req.user = verifyAccessToken(token);
     next();
   } catch (err) {
+    if (err instanceof JwtConfigurationError) {
+      console.error('CRITICAL ERROR: JWT_SECRET environment variable is not defined!');
+      res.status(500).json({ error: 'Internal Server Error configuration' });
+      return;
+    }
+
     res.status(403).json({ error: 'Invalid or expired authentication token.' });
   }
 };
