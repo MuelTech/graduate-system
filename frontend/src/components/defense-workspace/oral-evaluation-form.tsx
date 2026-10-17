@@ -12,15 +12,27 @@
  * are never reinterpreted as institutional ratings.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, FileSignature, Save, Eye } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileSignature,
+  Save,
+  Eye,
+  WifiOff,
+} from "lucide-react";
 
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
+import {
+  EvaluationAutosaveController,
+  type EvaluationAutosaveState,
+  type EvaluationDraftSnapshot,
+} from "@/lib/evaluation/evaluation-autosave";
 import type { OralEvaluation } from "@/types/defense-workspace";
 
 import {
@@ -139,6 +151,65 @@ function LegacyEvaluationNotice({ evaluation }: { evaluation: OralEvaluation }) 
   );
 }
 
+function hasMeaningfulServerDraft(evaluation?: OralEvaluation): boolean {
+  if (!evaluation) return false;
+  const hasCriterion = Object.values(evaluation.criteria ?? {}).some(
+    (value) => value !== null && value !== undefined,
+  );
+  return hasCriterion || Boolean(evaluation.recommendations?.trim());
+}
+
+function EvaluationSaveStatus({
+  state,
+  hasServerDraft,
+}: {
+  state: EvaluationAutosaveState;
+  hasServerDraft: boolean;
+}) {
+  const label =
+    state.status === "saving"
+      ? "Saving…"
+      : state.status === "dirty"
+        ? "Unsaved changes"
+        : state.status === "offline"
+          ? "Offline — changes not saved"
+          : state.status === "error"
+            ? state.error
+              ? `Save failed — ${state.error}`
+              : "Save failed"
+            : state.status === "clean" && !hasServerDraft
+              ? "Not saved yet"
+              : "Saved";
+
+  if (state.status === "error") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-red-600">
+        <AlertCircle className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  if (state.status === "offline") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-amber-700">
+        <WifiOff className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  if (state.status === "saved" && !state.hasUnsavedChanges) {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-emerald-700">
+        <CheckCircle2 className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-[13px] text-(--earist-body-text)">{label}</span>
+  );
+}
+
 function MatrixEvaluationEditor({
   scheduleId,
   evaluation,
@@ -157,9 +228,16 @@ function MatrixEvaluationEditor({
   const [showReview, setShowReview] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<EvaluationAutosaveState>(() => ({
+    status: hasMeaningfulServerDraft(evaluation) ? "saved" : "clean",
+    hasUnsavedChanges: false,
+    error: null,
+    savedAt: null,
+  }));
+  const controllerRef = useRef<EvaluationAutosaveController | null>(null);
 
   const locked = evaluation?.isLocked === true;
-
+  const hasServerDraft = hasMeaningfulServerDraft(evaluation);
   const selectedValues = (criteria: readonly { key: string }[]): number[] =>
     criteria
       .map((criterion) => values[criterion.key])
@@ -184,42 +262,132 @@ function MatrixEvaluationEditor({
   const groupIPreview = previewAverage(INSTITUTIONAL_GROUP_I);
   const groupIIPreview = previewAverage(INSTITUTIONAL_GROUP_II);
 
-  const buildCriteriaPayload = (): Record<string, number | null> => {
+  const buildCriteriaPayload = (
+    source: Record<string, string> = values,
+  ): Record<string, number | null> => {
     const criteria: Record<string, number | null> = {};
     for (const criterion of ALL_CRITERIA) {
-      const raw = values[criterion.key];
+      const raw = source[criterion.key];
       criteria[criterion.key] = raw === undefined || raw === "" ? null : Number(raw);
     }
     return criteria;
   };
 
-  const saveDraft = useMutation({
-    mutationFn: async () =>
-      apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/draft`, {
-        method: "PUT",
-        body: JSON.stringify({
-          criteria: buildCriteriaPayload(),
-          recommendations,
-        }),
-      }),
-    onSuccess: async () => {
-      setMessage("Draft saved");
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
-    },
-    onError: (e: Error) => setError(e.message),
+  const buildSnapshot = (
+    nextValues: Record<string, string>,
+    nextRecommendations: string,
+  ): EvaluationDraftSnapshot => ({
+    criteria: buildCriteriaPayload(nextValues),
+    recommendations: nextRecommendations,
   });
 
+  const initialSnapshotRef = useRef<EvaluationDraftSnapshot>(
+    buildSnapshot(values, recommendations),
+  );
+  const initialPersistedRef = useRef<boolean>(hasServerDraft);
+
+  useEffect(() => {
+    if (locked) return;
+
+    const controller = new EvaluationAutosaveController({
+      save: async (snapshot) => {
+        try {
+          await apiClientRequest(
+            `/thesis/defense/${scheduleId}/evaluation/draft`,
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                criteria: snapshot.criteria,
+                recommendations: snapshot.recommendations,
+              }),
+            },
+          );
+          void queryClient.invalidateQueries({
+            queryKey: evalQueryKey(scheduleId),
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.statusCode === 409) {
+            // The evaluation may have been finalized or changed elsewhere.
+            // Server state wins; do not retry over the conflict.
+            void queryClient.invalidateQueries({
+              queryKey: evalQueryKey(scheduleId),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ["defenseWorkspace", scheduleId],
+            });
+          }
+          throw error;
+        }
+      },
+      initialSnapshot: initialSnapshotRef.current,
+      initialPersisted: initialPersistedRef.current,
+      debounceMs: 2000,
+      maxWaitMs: 10000,
+      onStateChange: setSaveState,
+    });
+
+    controllerRef.current = controller;
+
+    if (typeof navigator !== "undefined") {
+      controller.setOnline(navigator.onLine);
+    }
+
+    const onOnline = () => controller.setOnline(true);
+    const onOffline = () => controller.setOnline(false);
+    const flush = () => controller.flushNow();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") controller.flushNow();
+    };
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!controller.hasUnsavedChanges()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("blur", flush);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("blur", flush);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      // Drain, never abandon, the newest private draft on unmount/tab change.
+      void controller.dispose();
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
+    };
+  }, [locked, queryClient, scheduleId]);
+
   const finalize = useMutation({
-    mutationFn: async () =>
-      apiClientRequest(`/thesis/defense/${scheduleId}/evaluation/finalize`, {
-        method: "POST",
-        body: JSON.stringify({
-          signatureData: signature,
-          criteria: buildCriteriaPayload(),
-          recommendations,
-        }),
-      }),
+    mutationFn: async () => {
+      const controller = controllerRef.current;
+      if (controller) {
+        const settled = await controller.flushAndWait();
+        if (!settled) {
+          throw new Error(
+            "The latest evaluation draft could not be saved. Review the save status and try again.",
+          );
+        }
+      }
+
+      return apiClientRequest(
+        `/thesis/defense/${scheduleId}/evaluation/finalize`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            signatureData: signature,
+            criteria: buildCriteriaPayload(),
+            recommendations,
+          }),
+        },
+      );
+    },
     onSuccess: async () => {
       setMessage("Evaluation finalized and locked");
       setError(null);
@@ -235,6 +403,8 @@ function MatrixEvaluationEditor({
       setError((e.message || "Failed to finalize") + extra);
     },
   });
+
+  const inputsDisabled = locked || finalize.isPending;
 
   return (
     <section className="flex min-h-0 flex-col rounded-lg border border-(--earist-border-gray)">
@@ -267,10 +437,14 @@ function MatrixEvaluationEditor({
 
         <InstitutionalEvaluationMatrix
           values={values}
-          disabled={locked}
+          disabled={inputsDisabled}
           onChange={(key, value) => {
             setMessage(null);
-            setValues((prev) => ({ ...prev, [key]: value }));
+            const nextValues = { ...values, [key]: value };
+            setValues(nextValues);
+            controllerRef.current?.update(
+              buildSnapshot(nextValues, recommendations),
+            );
           }}
         />
 
@@ -314,12 +488,15 @@ function MatrixEvaluationEditor({
             Recommendations
           </span>
           <Textarea
-            disabled={locked}
+            disabled={inputsDisabled}
             rows={3}
             value={recommendations}
             onChange={(e) => {
               setMessage(null);
               setRecommendations(e.target.value);
+              controllerRef.current?.update(
+                buildSnapshot(values, e.target.value),
+              );
             }}
           />
         </label>
@@ -362,7 +539,7 @@ function MatrixEvaluationEditor({
                 Incomplete — all nine criteria are required before finalization.
               </p>
             )}
-            <ESignaturePad value={signature} onChange={setSignature} disabled={locked} />
+            <ESignaturePad value={signature} onChange={setSignature} disabled={inputsDisabled} />
             <div className="mt-2 flex gap-2">
               <Button
                 type="button"
@@ -376,7 +553,12 @@ function MatrixEvaluationEditor({
                 <FileSignature className="mr-2 h-4 w-4" />
                 Confirm Finalize
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setShowReview(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={finalize.isPending}
+                onClick={() => setShowReview(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -386,20 +568,26 @@ function MatrixEvaluationEditor({
 
       {/* Sticky actions stay reachable while the criteria list scrolls. */}
       {!locked && (
-        <footer className="sticky bottom-0 flex shrink-0 flex-wrap gap-2 border-t border-(--earist-border-gray) bg-white/95 px-3 py-2 backdrop-blur motion-reduce:backdrop-blur-none">
+        <footer className="sticky bottom-0 flex shrink-0 flex-wrap items-center gap-2 border-t border-(--earist-border-gray) bg-white/95 px-3 py-2 backdrop-blur motion-reduce:backdrop-blur-none">
           <Button
             type="button"
             variant="outline"
-            disabled={saveDraft.isPending}
-            onClick={() => saveDraft.mutate()}
+            disabled={inputsDisabled || saveState.status === "saving"}
+            onClick={() => controllerRef.current?.flushNow()}
           >
             <Save className="mr-2 h-4 w-4" />
-            {saveDraft.isPending ? "Saving…" : "Save Draft"}
+            {saveState.status === "saving" ? "Saving…" : "Save now"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => setShowReview(true)}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={inputsDisabled}
+            onClick={() => setShowReview(true)}
+          >
             <Eye className="mr-2 h-4 w-4" />
             {"Review & Finalize"}
           </Button>
+          <EvaluationSaveStatus state={saveState} hasServerDraft={hasServerDraft} />
         </footer>
       )}
     </section>

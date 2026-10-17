@@ -97,9 +97,9 @@ test("evaluation form presents NO Overall formula and NO Rating input", () => {
   assert.doesNotMatch(f, /Rating \(optional\)/);
 });
 
-test("evaluation form keeps Save Draft + Review & Finalize with sticky actions", () => {
+test("evaluation form keeps manual Save now + Review & Finalize with sticky actions", () => {
   const f = read(FORM);
-  assert.match(f, /Save Draft/);
+  assert.match(f, /Save now/);
   assert.match(f, /Review & Finalize/);
   assert.match(f, /sticky bottom-0/);
 });

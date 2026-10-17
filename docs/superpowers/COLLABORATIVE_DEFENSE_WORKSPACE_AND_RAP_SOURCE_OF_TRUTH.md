@@ -613,7 +613,7 @@ REST/database state remains authoritative. Polling/refetch is sufficient for thi
 
 ### 9.7 CDW-LIVE-1 — live report review and autosave boundary
 
-**CONFIRMED_PROJECT_DESIGN — NOT YET IMPLEMENTED**
+**CONFIRMED_PROJECT_DESIGN — CDW-LIVE-1A ACCEPTED; CDW-LIVE-1B IMPLEMENTED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1C NOT STARTED**
 
 Detailed design:
 

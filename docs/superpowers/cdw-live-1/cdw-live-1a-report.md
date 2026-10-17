@@ -2,14 +2,22 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `19f25384adda80503f7a70fa784e68953db8899c`
-- **Status:** **IMPLEMENTED — PENDING INDEPENDENT REVIEW**
+- **Accepted implementation HEAD:** `11ca4890e734f20a399e862ad0f73ca23a23ff92` (CDW-LIVE-1A + FIX-1)
+- **Status:** **ACCEPTED**
 - **Date:** 2026-10-18
 - **Scope:** CDW-LIVE-1A only (Rapporteur report autosave + ephemeral read-only live preview)
 - **Migration:** NONE. No Prisma schema or migration change.
 - **Authority:** `docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md`; CDW-8 remains ACCEPTED / CLOSED.
 
-This report does **not** declare CDW-LIVE-1 accepted/closed. CDW-LIVE-1B (evaluation
-autosave) and CDW-LIVE-1C (final acceptance) are not started. CDW-9 is not started.
+**Acceptance note.** Independent review accepted CDW-LIVE-1A at
+`11ca4890e734f20a399e862ad0f73ca23a23ff92`; FIX-1 is included in that acceptance. No
+remaining CDW-LIVE-1A blocker was identified. Manual multi-user browser QA was never
+falsely claimed — it remains **NOT EXECUTED** and user-owned. Full cross-user acceptance
+remains part of CDW-LIVE-1C.
+
+This report does **not** declare the whole CDW-LIVE-1 initiative closed. CDW-LIVE-1B
+(private evaluation draft autosave) proceeds as a separate package; CDW-LIVE-1C (final
+acceptance) and CDW-9 are not started by this document.
 
 ---
 
@@ -312,7 +320,8 @@ cleanup; canonical nine-event isolation; single socket owner; polling fallback.
 
 ## 6. Recommendation
 
-**CDW-LIVE-1A READY FOR INDEPENDENT REVIEW.**
+**CDW-LIVE-1A ACCEPTED / CLOSED at `11ca4890e734f20a399e862ad0f73ca23a23ff92`.**
 
-No known acceptance blockers. Manual browser multi-user QA remains not executed and
-user-owned; CDW-LIVE-1B must not begin until this package is independently reviewed.
+FIX-1 durability draining is included. Manual browser multi-user QA remains **NOT
+EXECUTED** and user-owned; it is not an acceptance blocker for 1A and full cross-user
+acceptance remains CDW-LIVE-1C.
