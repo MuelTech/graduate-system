@@ -499,7 +499,6 @@ export class DefenseWorkspaceService {
       select: {
         sessionStatus: true,
         rapporteurNotesFinalizedAt: true,
-        defenseType: true,
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
@@ -520,13 +519,10 @@ export class DefenseWorkspaceService {
       );
     }
 
-    // 2026-10-04 Title correction: the Chairman may record the formal result
-    // before the Rapporteur finalizes, so Title notes stay editable after
-    // conclusion until they are finalized.
-    const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
-    const blockedStatuses = isTitle
-      ? ["CANCELLED"]
-      : ["CONCLUDED", "CANCELLED"];
+    // CDW-7: a CONCLUDED attempt is historical and immutable at EVERY stage.
+    // The former Title-only post-conclusion exception existed for the superseded
+    // "conclude Title, then finalize notes/RAP" flow and is no longer canonical.
+    const blockedStatuses = ["CONCLUDED", "CANCELLED"];
     const status = String(schedule.sessionStatus);
     if (blockedStatuses.includes(status)) {
       throw new AppError(

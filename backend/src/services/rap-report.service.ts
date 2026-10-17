@@ -331,6 +331,7 @@ export class RapReportService {
               frozenAt: true,
               frozenContentHash: true,
               contentVersion: true,
+              schedule: { select: { sessionStatus: true } },
             },
           },
         },
@@ -347,6 +348,26 @@ export class RapReportService {
       }
 
       const rap = slot.rapReport;
+      // CDW-7: a CONCLUDED attempt is historical and read-only. This applies to
+      // BOTH modern frozen RAPs and legacy RAPs without a frozen snapshot.
+      // Missing attempt state fails closed — never guess.
+      const sessionStatus = String(rap?.schedule?.sessionStatus ?? "");
+      if (!rap?.schedule) {
+        throw new AppError(
+          "The defense attempt for this signature could not be verified.",
+          409,
+        );
+      }
+      if (sessionStatus === "CONCLUDED") {
+        throw new AppError(
+          "This defense attempt is concluded and is read-only.",
+          409,
+        );
+      }
+      if (sessionStatus === "CANCELLED") {
+        throw new AppError("This defense session was cancelled.", 409);
+      }
+
       const frozenHash = rap?.frozenContentHash ?? null;
       if (frozenHash) {
         const status = String(rap?.status ?? "");

@@ -463,24 +463,13 @@ describe("CP7 Rapporteur notes finalization", () => {
     expect(prismaMock.defenseConclusion.create).not.toHaveBeenCalled();
   });
 
-  it("Title finalize after conclusion persists finalized notes and generates the deferred RAP once", async () => {
-    const concludedTitle = {
+  it("CDW-7: Title finalization after conclusion is rejected and creates no deferred RAP", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
       sessionStatus: "CONCLUDED",
       rapporteurNotesFinalizedAt: null,
       rapporteurNotesFinalizedById: null,
-    };
-    let scheduleReads = 0;
-    prismaMock.defenseSchedule.findUnique.mockImplementation(async () => {
-      scheduleReads += 1;
-      return scheduleReads === 1
-        ? concludedTitle
-        : {
-            sessionStatus: "CONCLUDED",
-            rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
-            rapporteurNotesFinalizedById: "user-r",
-          };
     });
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pr",
@@ -488,50 +477,13 @@ describe("CP7 Rapporteur notes finalization", () => {
       userId: "user-r",
       role: "RAPPORTEUR",
     });
-    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
 
-    // Deferred RAP generation transaction (Title conclusion already exists).
-    prismaMock.__tx.rapReport.findUnique.mockResolvedValue(null);
-    prismaMock.__tx.defenseConclusion.findUnique.mockResolvedValue({
-      id: "c-1",
-      thesisId: "thesis-1",
-      outcome: "PASSED",
-      selectedTitleId: "t1",
-      selectedTitle: { titleText: "Title One" },
-    });
-    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "TITLE_DEFENSE",
-      venueOrLink: "Room 101",
-      rapporteurNotes: "Final minutes",
-      rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
-      rapporteurNotesFinalizedById: "user-r",
-    });
-    prismaMock.__tx.panelAssignment.findFirst.mockResolvedValue({
-      id: "pr",
-      scheduleId: "sched-1",
-      userId: "user-r",
-      role: "RAPPORTEUR",
-    });
-    prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
-      { userId: "user-c", role: "CHAIRMAN" },
-      { userId: "user-p", role: "PANELIST" },
-    ]);
-    prismaMock.__tx.rapReport.create.mockResolvedValue({
-      id: "rap-1",
-      status: "FOR_SIGNATURE",
-      generatedAt: new Date(),
-    });
-    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 2 });
-
-    const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
-    expect(result.finalized).toBe(true);
-    expect(prismaMock.__tx.rapReport.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.__tx.rapReport.create.mock.calls[0][0].data).toMatchObject({
-      scheduleId: "sched-1",
-      defenseType: "TITLE_DEFENSE",
-      status: "FOR_SIGNATURE",
-      generatedById: "user-r",
-    });
+    await expect(
+      svc.finalizeDefenseNotes("sched-1", "user-r"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseSchedule.updateMany).not.toHaveBeenCalled();
+    // The superseded deferred Title RAP creation must never run after conclusion.
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
   });
 
   it("pre-defense SCHEDULED Title notes cannot be finalized as completed defense minutes", async () => {
@@ -800,6 +752,7 @@ describe("CP7 RAP signing lifecycle", () => {
         frozenAt: null,
         frozenContentHash: null,
         contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
       },
     });
     // Post-commit recompute reads committed state on root prisma.
@@ -833,6 +786,14 @@ describe("CP7 RAP signing lifecycle", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
+      },
     });
     prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },

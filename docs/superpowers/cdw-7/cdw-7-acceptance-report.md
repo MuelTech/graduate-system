@@ -93,11 +93,14 @@ substitute. Both `/conclusion` and `/conclude` resolve to the same controller ha
 
 ## 8. Concluded state
 
-After conclusion the attempt is read-only: no scoring/evaluation mutation, no
-annotation/comment creation, no report edit/freeze, no new signature, no second verdict.
-Reads remain available (exact manuscript, historical comments, finalized report, verdict
-as permitted). Evaluator privacy is preserved (`cp7-fix2-conclusion-privacy`,
-`defense-collaboration.service` freeze/concluded write guards).
+After conclusion the attempt is historical and immutable **for every stage and every
+current/legacy write path**: no scoring/evaluation mutation, no annotation/comment
+creation, no report edit/freeze, no RAP signature (modern frozen **and** legacy RAPs), no
+Rapporteur note editing or note finalization, no post-conclusion RAP creation, and no
+second verdict. Reads remain available (exact manuscript, historical comments, finalized
+report, verdict as permitted). Evaluator privacy is preserved
+(`cp7-fix2-conclusion-privacy`, `defense-collaboration.service` freeze/concluded write
+guards).
 
 ## 9. Re-defense / history
 
@@ -198,3 +201,40 @@ Socket.IO/WebSockets, live cursors/presence/typing, CRDT, automatic PDF/text/sem
 diff, AI revision-compliance judgement, official GS Form rendering/PDF/print, Dean
 signature workflow, new verdict values, score-derived verdicts, major UI redesign, CDW-8,
 CDW-9. No database migration.
+
+## 16. Final correction — concluded-attempt immutability (all stages, all legacy paths)
+
+Independent review found four remaining post-conclusion mutation paths inherited from the
+superseded "conclude Title first, finalize notes/RAP later" flow. **CONCLUDED now means
+immutable for every stage and every current/legacy write path.**
+
+Closed:
+
+1. **Title Rapporteur note editing after conclusion.** `saveRapporteurNotes` no longer has
+   a Title-only exception: `CONCLUDED`/`CANCELLED` are rejected for TITLE, PROPOSAL, and
+   FINAL, and the conditional update never runs. Both note routes
+   (`PUT /workspace/rapporteur-notes` and legacy `PUT /notes`) share this method.
+2. **Title note finalization after conclusion.** `finalizeDefenseNotes` rejects
+   `CONCLUDED`/`CANCELLED` for every stage before any mutation; Title legacy finalization
+   is bounded to `IN_PROGRESS`/`AWAITING_CONCLUSION` (never `SCHEDULED`/`CONCLUDED`).
+3. **Deferred post-conclusion Title RAP creation.** The
+   `ensureRapAfterTitlePrerequisites` call was removed from the active finalization path.
+   Formal conclusion already requires a FINALIZED RAP, so note finalization never creates
+   or converges a RAP after conclusion. The compatibility helper may remain for historical
+   read/admin tooling but is unreachable from this mutation path; old records are neither
+   deleted nor backfilled.
+4. **Legacy RAP signing after conclusion.** `signRapSlot` now resolves the owning
+   `DefenseSchedule.sessionStatus` through the RAP relation and rejects `CONCLUDED`
+   (and `CANCELLED`) for modern frozen **and** legacy RAPs before any update. A missing
+   attempt relation fails closed. Modern frozen signing still requires
+   `FOR_SIGNATURE`/`PARTIALLY_SIGNED` and still binds `signedContentHash` +
+   `signedContentVersion`; own-slot authorization, the CAS, and the finalization recompute
+   are unchanged.
+
+Legacy compatibility is now **read-only**: historical notes, reports, provenance, and
+signatures remain readable; none of the above writes are permitted after conclusion.
+
+Verification: new `backend/tests/unit/services/cdw7-immutability.test.ts` (8 tests) plus
+the updated workspace/CP7/acceptance fixtures; focused set **190 passed**; full backend
+**140 files / 1573 passed / 5 skipped**; frontend verification unchanged at **189
+assertions, 0 fail**. No schema change, no migration.

@@ -414,24 +414,34 @@ describe("DefenseWorkspaceService (CP6)", () => {
     expect(ws.capabilities.evaluationOpen).toBe(false);
   });
 
-  it("2026-10-04: Title Rapporteur may save notes after conclusion until finalized", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "CONCLUDED",
-        rapporteurNotesFinalizedAt: null,
-      }),
-    );
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-rap",
-      scheduleId: "sched-1",
-      userId: "u-rap",
-      role: "RAPPORTEUR",
-    });
-    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
-    await expect(
-      svc.saveRapporteurNotes("sched-1", "u-rap", "post-conclusion notes"),
-    ).resolves.toEqual({ saved: true });
+  it("CDW-7: CONCLUDED attempts are immutable — Rapporteur notes cannot be saved at any stage", async () => {
+    for (const defenseType of [
+      "TITLE_DEFENSE",
+      "PROPOSAL_DEFENSE",
+      "FINAL_DEFENSE",
+    ]) {
+      vi.clearAllMocks();
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({
+          defenseType,
+          sessionStatus: "CONCLUDED",
+          rapporteurNotesFinalizedAt: null,
+        }),
+      );
+      prismaMock.panelAssignment.findFirst.mockResolvedValue({
+        id: "pa-rap",
+        scheduleId: "sched-1",
+        userId: "u-rap",
+        role: "RAPPORTEUR",
+      });
+      prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        svc.saveRapporteurNotes("sched-1", "u-rap", "post-conclusion notes"),
+        defenseType,
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.defenseSchedule.updateMany, defenseType).not.toHaveBeenCalled();
+    }
   });
 
   it("CDW-4: assigned Chairman starts a SCHEDULED defense for EVERY stage (atomic)", async () => {

@@ -2,14 +2,14 @@
  * CP7 — Rapporteur defense-notes finalization.
  * Irreversible content lock that feeds the RAP. Never records academic outcome.
  *
- * 2026-10-04 Title correction: the Chairman may record the Title result before the
- * Rapporteur finalizes. When that happens, the official Title RAP is generated here,
- * once, as soon as the finalized minutes exist.
+ * CDW-7: a CONCLUDED attempt is historical and immutable. Legacy note
+ * finalization is bounded to active pre-conclusion states; it never runs after
+ * the formal verdict and never creates a RAP after conclusion. The former
+ * deferred Title RAP path is retired.
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
-import { RapReportService } from "./rap-report.service";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -38,11 +38,13 @@ export class RapporteurFinalizationService {
   }
 
   /**
-   * Finalize defense notes (irreversible).
+   * Finalize legacy defense notes (irreversible).
+   *
+   * CDW-7: CONCLUDED/CANCELLED attempts reject finalization at EVERY stage, and
+   * no RAP is created/converged after conclusion.
    *
    * Proposal/Final: all evaluators FINALIZED + session AWAITING_CONCLUSION + notes non-empty.
-   * Title: session SCHEDULED/IN_PROGRESS/CONCLUDED + notes non-empty. A Title result may
-   * be recorded before the notes are finalized, so the deferred RAP is generated here.
+   * Title: session IN_PROGRESS/AWAITING_CONCLUSION + notes non-empty (legacy compatibility).
    */
   async finalizeDefenseNotes(
     scheduleId: string,
@@ -54,6 +56,18 @@ export class RapporteurFinalizationService {
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
     await this.resolveRapporteur(scheduleId, userId);
+
+    // CDW-7: concluded/cancelled attempts are immutable for every stage.
+    const currentStatus = String(schedule.sessionStatus);
+    if (currentStatus === "CONCLUDED") {
+      throw new AppError(
+        "This defense attempt is concluded and is read-only.",
+        409,
+      );
+    }
+    if (currentStatus === "CANCELLED") {
+      throw new AppError("This defense session was cancelled.", 409);
+    }
 
     if (schedule.rapporteurNotesFinalizedAt) {
       throw new AppError("Defense notes are already finalized.", 409);
@@ -72,10 +86,11 @@ export class RapporteurFinalizationService {
 
     if (isTitle) {
       const status = String(schedule.sessionStatus);
-      const finalizableStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION", "CONCLUDED"];
+      // Bounded to active pre-conclusion states; never SCHEDULED/CONCLUDED.
+      const finalizableStatuses = ["IN_PROGRESS", "AWAITING_CONCLUSION"];
       if (!finalizableStatuses.includes(status)) {
         throw new AppError(
-          "Title defense notes may be finalized only after the defense has started (in progress) or after the formal result is recorded.",
+          "Title defense notes may be finalized only while the defense is in progress or awaiting conclusion.",
           409,
         );
       }
@@ -122,7 +137,6 @@ export class RapporteurFinalizationService {
                   in: [
                     "IN_PROGRESS",
                     "AWAITING_CONCLUSION",
-                    "CONCLUDED",
                   ] as never[],
                 },
               }
@@ -145,12 +159,9 @@ export class RapporteurFinalizationService {
       }
     });
 
-    // 2026-10-04: deferred Title RAP — converge on exactly one RAP once both the
-    // formal conclusion and the finalized minutes exist. Runs after commit so it
-    // observes the committed state of a near-simultaneous Chairman action.
-    if (isTitle) {
-      await new RapReportService().ensureRapAfterTitlePrerequisites(scheduleId);
-    }
+    // CDW-7: the former deferred Title RAP creation is retired. Formal
+    // conclusion requires an already-FINALIZED RAP, so note finalization must
+    // never create/mutate a RAP after conclusion.
 
     const updated = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
@@ -169,13 +180,21 @@ export class RapporteurFinalizationService {
     };
   }
 
-  /** Draft notes remain editable only before finalization. */
+  /** Draft notes remain editable only before finalization and before conclusion. */
   async assertNotesEditable(scheduleId: string): Promise<void> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       select: { rapporteurNotesFinalizedAt: true, sessionStatus: true },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
+    // CDW-7: concluded/cancelled attempts are immutable at every stage.
+    const status = String(schedule.sessionStatus);
+    if (status === "CONCLUDED" || status === "CANCELLED") {
+      throw new AppError(
+        "Defense notes are closed for this session.",
+        409,
+      );
+    }
     if (schedule.rapporteurNotesFinalizedAt) {
       throw new AppError(
         "Defense notes are finalized and can no longer be edited.",

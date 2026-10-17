@@ -311,6 +311,14 @@ describe("CP7-FIX1 Issue 6: RAP recompute concurrency", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
+      },
     });
     prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },

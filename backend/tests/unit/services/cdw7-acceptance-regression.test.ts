@@ -208,6 +208,7 @@ describe("CDW-7 acceptance — legacy signing route binds the frozen RAP snapsho
         frozenAt: new Date("2026-10-10T00:00:00Z"),
         frozenContentHash: "frozen-hash-1",
         contentVersion: 3,
+        schedule: { sessionStatus: "IN_PROGRESS" },
       },
       ...overrides,
     };
@@ -269,6 +270,7 @@ describe("CDW-7 acceptance — legacy signing route binds the frozen RAP snapsho
           frozenAt: null,
           frozenContentHash: null,
           contentVersion: 0,
+          schedule: { sessionStatus: "IN_PROGRESS" },
         },
       }),
     );
