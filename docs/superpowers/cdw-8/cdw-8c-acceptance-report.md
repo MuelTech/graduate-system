@@ -1,12 +1,12 @@
 # CDW-8C — Acceptance / Regression / Multi-user QA
 
-**Branch:** `refactor/collaborative-defense-workspace`  
-**Starting SHA:** `a9a179446284ea928faca8991de34deadc856e1b`  
-**Ending SHA:** the commit that adds this acceptance report (see `git log -1`)  
-**Date:** 2026-10-17  
-**Scope:** prove that the accepted CDW-8 realtime layer accelerates synchronization without weakening the accepted CDW-1 through CDW-7 REST/database workflow.  
-**Migration:** NONE. No Prisma schema or migration change.  
-**Production code:** NONE changed in CDW-8C. This package adds acceptance tests and this report only.
+- **Branch:** `refactor/collaborative-defense-workspace`
+- **Starting SHA:** `a9a179446284ea928faca8991de34deadc856e1b`
+- **Ending SHA:** the commit that adds this acceptance report (see `git log -1`)
+- **Date:** 2026-10-17
+- **Scope:** prove that the accepted CDW-8 realtime layer accelerates synchronization without weakening the accepted CDW-1 through CDW-7 REST/database workflow.
+- **Migration:** NONE. No Prisma schema or migration change.
+- **Production code:** NONE changed in CDW-8C. This package adds acceptance tests and this report only.
 
 ---
 
