@@ -805,6 +805,8 @@ Historical attempts do not join real-time collaboration rooms.
 
 Realtime is an enhancement to a correct persisted workflow, not the source of truth.
 
+**CDW-8 technical integration design:** `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md`. That document may define transport/bootstrap/event/query details but does not override the academic/domain rules in this Source of Truth.
+
 Canonical architecture:
 
     Client command
@@ -833,6 +835,7 @@ Realtime may be active for SCHEDULED, IN_PROGRESS, and AWAITING_CONCLUSION while
 
 Candidate events:
 
+- defense.started
 - annotation.created
 - annotation.comment.created
 - report.draft.updated

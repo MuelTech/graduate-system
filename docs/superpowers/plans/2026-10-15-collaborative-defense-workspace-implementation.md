@@ -48,7 +48,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | RAP-C1 | ACCEPTED | freeze/sign/finalize RAP before Chairman verdict |
 | CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
-| CDW-8 | NOT STARTED | realtime synchronization remains future work |
+| CDW-8 | DESIGN DOCUMENTED / IMPLEMENTATION NOT STARTED | detailed Socket.IO integration design added under `docs/superpowers/cdw-8/`; production realtime code remains untouched |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Current accepted branch HEAD through CDW-7:
@@ -892,7 +892,13 @@ Do not begin Socket.IO until this phase is accepted.
 
 ## 12. Phase CDW-8 — Socket.IO realtime synchronization
 
-**Status as of 2026-10-17:** NOT STARTED. This documentation synchronization does not expand or implement CDW-8.
+**Status as of 2026-10-17:** DESIGN DOCUMENTED / IMPLEMENTATION NOT STARTED.
+
+Detailed technical design:
+
+    docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md
+
+The technical design fixes the server bootstrap, JWT/room authorization, post-commit event contracts, React Query invalidation map, reconnect behavior, polling fallback, test matrix, and deployment assumptions. It supplements this plan without changing domain authority.
 
 ### Goal
 
@@ -908,6 +914,7 @@ After commit, emit small events to:
 
 Suggested events:
 
+- defense.started
 - annotation.created
 - annotation.comment.created
 - report.draft.updated
