@@ -159,6 +159,67 @@ describe("CDW-6 defense history rules — resolution + deterministic ordering", 
     expect(items.map((i) => i.scheduleId)).toEqual(["prop-1"]);
   });
 
+  it("keeps ONLY the immediately previous same-stage re-defense as SAME_STAGE_REDEFENSE", () => {
+    const current = attempt({
+      scheduleId: "prop-3",
+      defenseType: "PROPOSAL_DEFENSE",
+      defenseDate: "2026-11-01",
+      outcome: null,
+      concludedAt: null,
+    });
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-07-01", concludedAt: "2026-07-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-09-01", concludedAt: "2026-09-05T00:00:00.000Z" }),
+    ]);
+    expect(items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["prop-2", "SAME_STAGE_REDEFENSE"],
+      ["prop-1", "OLDER_HISTORY"],
+    ]);
+    expect(items.filter((i) => i.relationship === "SAME_STAGE_REDEFENSE")).toHaveLength(1);
+  });
+
+  it("three same-stage re-defenses keep only the newest as SAME_STAGE_REDEFENSE", () => {
+    const current = attempt({
+      scheduleId: "prop-4",
+      defenseType: "PROPOSAL_DEFENSE",
+      defenseDate: "2027-01-01",
+      outcome: null,
+      concludedAt: null,
+    });
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-05-01", concludedAt: "2026-05-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-07-01", concludedAt: "2026-07-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-3", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-09-01", concludedAt: "2026-09-05T00:00:00.000Z" }),
+    ]);
+    expect(items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["prop-3", "SAME_STAGE_REDEFENSE"],
+      ["prop-2", "OLDER_HISTORY"],
+      ["prop-1", "OLDER_HISTORY"],
+    ]);
+  });
+
+  it("normalized history has at most one primary same-stage and one primary previous-stage item", () => {
+    const current = attempt({
+      scheduleId: "final-2",
+      defenseType: "FINAL_DEFENSE",
+      defenseDate: "2027-01-01",
+      outcome: null,
+      concludedAt: null,
+    });
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-05-01", concludedAt: "2026-05-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-06-01", concludedAt: "2026-06-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-3", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-08-01", concludedAt: "2026-08-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-4", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-09-01", concludedAt: "2026-09-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "final-1", defenseType: "FINAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-10-01", concludedAt: "2026-10-05T00:00:00.000Z" }),
+    ]);
+    expect(items.filter((i) => i.relationship === "SAME_STAGE_REDEFENSE")).toHaveLength(1);
+    expect(items.filter((i) => i.relationship === "PREVIOUS_STAGE")).toHaveLength(1);
+    expect(items.find((i) => i.scheduleId === "final-1")?.relationship).toBe("SAME_STAGE_REDEFENSE");
+    expect(items.find((i) => i.scheduleId === "prop-4")?.relationship).toBe("PREVIOUS_STAGE");
+    expect(items.find((i) => i.scheduleId === "prop-3")?.relationship).toBe("OLDER_HISTORY");
+  });
+
   it("keeps ONLY the latest PASSED immediately-previous-stage attempt as PREVIOUS_STAGE", () => {
     const items = resolveHistoryScheduleIds(current, [
       attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-07-01", concludedAt: "2026-07-05T00:00:00.000Z" }),
@@ -349,6 +410,42 @@ describe("CDW-6 defense history rules — historical bound-manuscript access", (
       }),
     ];
     // Reclassified from SAME_STAGE_REDEFENSE to OLDER_HISTORY — still readable.
+    expect(
+      canReadHistoricalBoundManuscript({
+        documentId: "doc-prop-1",
+        documentStage: "PROPOSAL",
+        documentDocType: "PROPOSAL_CHAPTERS",
+        schedules,
+        userId: "new-panelist",
+      }),
+    ).toBe(true);
+  });
+
+  it("a demoted older same-stage re-defense manuscript remains readable", () => {
+    const schedules: Schedule[] = [
+      schedule({
+        id: "prop-1",
+        manuscriptDocumentId: "doc-prop-1",
+        defenseDate: "2026-07-01",
+        conclusion: { outcome: "REDEFENSE_REQUIRED" },
+        panelAssignments: [{ userId: "old-panelist" }],
+      }),
+      schedule({
+        id: "prop-2",
+        manuscriptDocumentId: "doc-prop-2",
+        defenseDate: "2026-09-01",
+        conclusion: { outcome: "REDEFENSE_REQUIRED" },
+        panelAssignments: [{ userId: "old-panelist" }],
+      }),
+      schedule({
+        id: "prop-3",
+        manuscriptDocumentId: "doc-prop-3",
+        defenseDate: "2026-11-01",
+        panelAssignments: [{ userId: "new-panelist" }],
+      }),
+    ];
+    // The older re-defense is demoted to OLDER_HISTORY in the read model, but
+    // its exact bound manuscript stays readable through current assignment.
     expect(
       canReadHistoricalBoundManuscript({
         documentId: "doc-prop-1",

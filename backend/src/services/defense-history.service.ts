@@ -20,10 +20,9 @@ import { AppError } from "../utils/AppError";
 import {
   DEFENSE_TYPE_TO_DOCUMENT_STAGE,
   MANUSCRIPT_DOC_TYPES_BY_STAGE,
-  classifyHistoryRelationship,
-  isPriorAttempt,
   resolveHistoryScheduleIds,
   type DefenseHistoryRelationship,
+  type ResolvedHistoryItem,
 } from "./defense-history.rules";
 import {
   DefenseCollaborationService,
@@ -254,6 +253,40 @@ export class DefenseHistoryService {
     const current = await this.loadCurrentSchedule(scheduleId);
     await this.assertAssignedToCurrent(scheduleId, userId);
 
+    const { ordered, byId } = await this.resolveHistoryForCurrent(current);
+    const commentCounts = await this.loadCommentCounts(ordered.map((item) => item.scheduleId));
+
+    const items: DefenseHistoryItemDto[] = [];
+    for (const resolved of ordered) {
+      const row = byId.get(resolved.scheduleId);
+      if (!row) continue;
+      items.push({
+        ...this.toBaseItem(row, resolved.relationship),
+        annotationCount: row._count?.annotations ?? 0,
+        commentCount: commentCounts.get(row.id) ?? 0,
+      });
+    }
+
+    return {
+      scheduleId: current.id,
+      defenseType: String(current.defenseType),
+      items,
+    };
+  }
+
+  /**
+   * The SINGLE authoritative history resolution for a current schedule. Both the
+   * list and the detail endpoint use this same set, so a schedule can never be
+   * classified differently by the two endpoints. It also enforces the primary
+   * normalization (at most one same-stage re-defense / one previous stage).
+   */
+  private async resolveHistoryForCurrent(current: {
+    id: string;
+    thesisId: string;
+    defenseType: unknown;
+    defenseDate: Date;
+    createdAt: Date;
+  }): Promise<{ ordered: ResolvedHistoryItem[]; byId: Map<string, ScheduleRow> }> {
     const candidates = (await prisma.defenseSchedule.findMany({
       where: { thesisId: current.thesisId },
       select: SCHEDULE_SELECT,
@@ -276,24 +309,9 @@ export class DefenseHistoryService {
       })),
     );
 
-    const byId = new Map(candidates.map((row) => [row.id, row]));
-    const commentCounts = await this.loadCommentCounts(ordered.map((item) => item.scheduleId));
-
-    const items: DefenseHistoryItemDto[] = [];
-    for (const resolved of ordered) {
-      const row = byId.get(resolved.scheduleId);
-      if (!row) continue;
-      items.push({
-        ...this.toBaseItem(row, resolved.relationship),
-        annotationCount: row._count?.annotations ?? 0,
-        commentCount: commentCounts.get(row.id) ?? 0,
-      });
-    }
-
     return {
-      scheduleId: current.id,
-      defenseType: String(current.defenseType),
-      items,
+      ordered,
+      byId: new Map(candidates.map((row) => [row.id, row])),
     };
   }
 
@@ -330,8 +348,12 @@ export class DefenseHistoryService {
       throw new AppError("Historical defense session not found.", 404);
     }
 
-    const relationship = this.resolveRelationship(current as unknown as ScheduleRow, historical);
-    if (!relationship) {
+    // ONE authoritative resolution: the same normalized set the list returns.
+    // The detail NEVER re-derives a relationship from just two attempts, which
+    // would ignore a newer primary elsewhere in the history.
+    const { ordered } = await this.resolveHistoryForCurrent(current);
+    const resolved = ordered.find((item) => item.scheduleId === historicalScheduleId);
+    if (!resolved) {
       throw new AppError(
         "This defense attempt is not relevant historical context for the current session.",
         403,
@@ -349,7 +371,7 @@ export class DefenseHistoryService {
     );
 
     return {
-      ...this.toBaseItem(historical, relationship),
+      ...this.toBaseItem(historical, resolved.relationship),
       annotationCount: historical._count?.annotations ?? 0,
       commentCount,
       manuscript,
@@ -381,28 +403,6 @@ export class DefenseHistoryService {
     if (!assignment) {
       throw new AppError("You are not assigned to this defense session.", 403);
     }
-  }
-
-  private resolveRelationship(
-    current: ScheduleRow,
-    historical: ScheduleRow,
-  ): DefenseHistoryRelationship | null {
-    const historicalAttempt = {
-      scheduleId: historical.id,
-      defenseType: String(historical.defenseType),
-      outcome: historical.conclusion?.outcome ? String(historical.conclusion.outcome) : null,
-      defenseDate: historical.defenseDate,
-      createdAt: historical.createdAt,
-    };
-    const currentAttempt = {
-      scheduleId: current.id,
-      defenseType: String(current.defenseType),
-      defenseDate: current.defenseDate,
-      createdAt: current.createdAt,
-    };
-    if (!historicalAttempt.outcome) return null;
-    if (!isPriorAttempt(historicalAttempt, currentAttempt)) return null;
-    return classifyHistoryRelationship(historicalAttempt, currentAttempt);
   }
 
   private resolveBoundManuscript(row: ScheduleRow): DefenseHistoryManuscriptDto | null {

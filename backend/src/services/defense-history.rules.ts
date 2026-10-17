@@ -136,13 +136,35 @@ export interface ResolvedHistoryItem {
   relationship: DefenseHistoryRelationship;
 }
 
+interface HistoryOrderingFields {
+  scheduleId: string;
+  concludedAt: number;
+  defenseDate: number;
+  createdAt: number;
+}
+
+/**
+ * The ONE deterministic recency ordering used for primary-attempt selection and
+ * for older-history sorting: concludedAt → defenseDate → createdAt → id.
+ */
+function compareHistoryRecency(a: HistoryOrderingFields, b: HistoryOrderingFields): number {
+  if (b.concludedAt !== a.concludedAt) return b.concludedAt - a.concludedAt;
+  if (b.defenseDate !== a.defenseDate) return b.defenseDate - a.defenseDate;
+  if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
+  return a.scheduleId.localeCompare(b.scheduleId);
+}
+
 /**
  * Resolve the relevant prior attempts for the CURRENT schedule.
  *
- * Ordering (deterministic):
- *   1. Same-stage re-defense attempt (most recently concluded first);
- *   2. Latest PASSED immediately preceding academic stage;
- *   3. Remaining older concluded attempts (most recently concluded first).
+ * Ordering (deterministic), with at most ONE primary in each category:
+ *   1. The latest same-stage `REDEFENSE_REQUIRED` re-defense attempt;
+ *   2. The latest PASSED immediately preceding academic-stage attempt;
+ *   3. All remaining valid prior concluded attempts as older history
+ *      (most recently concluded first).
+ *
+ * Older same-stage re-defenses and older PASSED previous-stage attempts are
+ * demoted to `OLDER_HISTORY`; they remain available, never reclassified away.
  *
  * Excludes the current schedule itself, attempts without an authoritative
  * conclusion, and attempts that cannot be proven prior.
@@ -169,18 +191,21 @@ export function resolveHistoryScheduleIds(
     });
   }
 
-  // Only ONE primary previous-stage item exists: the latest valid PASSED attempt
-  // of the immediately preceding academic stage. Any older PASSED attempt from
-  // that same stage becomes secondary older history (never a second "Previous
-  // Stage" principal).
+  // At most ONE primary same-stage re-defense: the immediately previous
+  // re-defense attempt. Older re-defenses stay available as secondary history.
+  const sameStage = items
+    .filter((item) => item.relationship === "SAME_STAGE_REDEFENSE")
+    .sort(compareHistoryRecency);
+  for (const older of sameStage.slice(1)) {
+    older.relationship = "OLDER_HISTORY";
+  }
+
+  // At most ONE primary previous-stage item: the latest valid PASSED attempt of
+  // the immediately preceding academic stage. Any older PASSED attempt from that
+  // same stage becomes secondary older history.
   const previousStage = items
     .filter((item) => item.relationship === "PREVIOUS_STAGE")
-    .sort((a, b) => {
-      if (b.concludedAt !== a.concludedAt) return b.concludedAt - a.concludedAt;
-      if (b.defenseDate !== a.defenseDate) return b.defenseDate - a.defenseDate;
-      if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
-      return a.scheduleId.localeCompare(b.scheduleId);
-    });
+    .sort(compareHistoryRecency);
   for (const older of previousStage.slice(1)) {
     older.relationship = "OLDER_HISTORY";
   }
@@ -189,10 +214,7 @@ export function resolveHistoryScheduleIds(
   items.sort((a, b) => {
     const rank = RELATIONSHIP_RANK[a.relationship] - RELATIONSHIP_RANK[b.relationship];
     if (rank !== 0) return rank;
-    if (b.concludedAt !== a.concludedAt) return b.concludedAt - a.concludedAt;
-    if (b.defenseDate !== a.defenseDate) return b.defenseDate - a.defenseDate;
-    if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
-    return a.scheduleId.localeCompare(b.scheduleId);
+    return compareHistoryRecency(a, b);
   });
 
   return items.map(({ scheduleId, defenseType, relationship }) => ({

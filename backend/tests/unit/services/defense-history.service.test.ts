@@ -281,6 +281,9 @@ describe("CDW-6 correction — historical report provenance (legacy Rapporteur n
       role: "PANELIST",
     });
     prismaMock.defenseAnnotation.findMany.mockResolvedValue([]);
+    // Default normalized candidate set; individual tests override with the row
+    // they are exercising (detail now resolves against the full set).
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([currentRow(), concludedRow()]);
   });
 
   function withNotes(overrides: Record<string, unknown> = {}) {
@@ -325,6 +328,10 @@ describe("CDW-6 correction — historical report provenance (legacy Rapporteur n
           : withNotes({ id: where.id, rapporteurNotesFinalizedAt: null }),
       ),
     );
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([
+      currentRow(),
+      withNotes({ id: "sched-prop-1", rapporteurNotesFinalizedAt: null }),
+    ]);
 
     const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
     expect(detail.report?.source).toBe("LEGACY_RAPPORTEUR_NOTES");
@@ -469,6 +476,8 @@ describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
     prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
       Promise.resolve(where.id === CURRENT_ID ? currentRow() : concludedRow({ id: where.id })),
     );
+    // Detail resolves against the full authoritative history set.
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([currentRow(), concludedRow()]);
   });
 
   it("returns the exact historical manuscript + FINALIZED RAP + original-role annotations", async () => {
@@ -613,5 +622,111 @@ describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
 
     const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
     expect(detail.report).toBeNull();
+  });
+});
+
+describe("CDW-6 final correction — list/detail relationship parity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    annotationsStub.listAttemptAnnotationsForHistory.mockClear();
+    annotationsStub.listAttemptAnnotationsForHistory.mockResolvedValue([]);
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-new",
+      scheduleId: CURRENT_ID,
+      userId: "new-panelist",
+      role: "PANELIST",
+    });
+    prismaMock.defenseAnnotation.findMany.mockResolvedValue([]);
+  });
+
+  it("detail uses the normalized set: an older PASSED Proposal is OLDER_HISTORY, not PREVIOUS_STAGE", async () => {
+    const finalCurrent = currentRow({
+      id: "sched-final-1",
+      defenseType: "FINAL_DEFENSE",
+      defenseDate: new Date("2026-11-01T00:00:00Z"),
+    });
+    const prop1 = concludedRow({
+      id: "sched-prop-1",
+      defenseDate: new Date("2026-07-01T00:00:00Z"),
+      conclusion: { outcome: "PASSED", concludedAt: new Date("2026-07-05T00:00:00Z") },
+    });
+    const prop2 = concludedRow({
+      id: "sched-prop-2",
+      defenseDate: new Date("2026-09-01T00:00:00Z"),
+      conclusion: { outcome: "PASSED", concludedAt: new Date("2026-09-05T00:00:00Z") },
+    });
+
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === finalCurrent.id) return Promise.resolve(finalCurrent);
+      return Promise.resolve([prop1, prop2].find((row) => row.id === where.id) ?? null);
+    });
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([finalCurrent, prop1, prop2]);
+
+    const svc = makeService();
+    const list = await svc.getHistory(finalCurrent.id, "new-panelist");
+    expect(list.items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["sched-prop-2", "PREVIOUS_STAGE"],
+      ["sched-prop-1", "OLDER_HISTORY"],
+    ]);
+
+    const olderDetail = await svc.getHistoryDetail(finalCurrent.id, "sched-prop-1", "new-panelist");
+    expect(olderDetail.relationship).toBe("OLDER_HISTORY");
+
+    const previousDetail = await svc.getHistoryDetail(finalCurrent.id, "sched-prop-2", "new-panelist");
+    expect(previousDetail.relationship).toBe("PREVIOUS_STAGE");
+  });
+
+  it("detail uses the normalized set: an older same-stage re-defense is OLDER_HISTORY", async () => {
+    const attempt3 = currentRow({
+      id: "sched-prop-3",
+      defenseType: "PROPOSAL_DEFENSE",
+      defenseDate: new Date("2026-11-01T00:00:00Z"),
+    });
+    const attempt1 = concludedRow({
+      id: "sched-prop-1",
+      defenseDate: new Date("2026-07-01T00:00:00Z"),
+      conclusion: { outcome: "REDEFENSE_REQUIRED", concludedAt: new Date("2026-07-05T00:00:00Z") },
+    });
+    const attempt2 = concludedRow({
+      id: "sched-prop-2",
+      defenseDate: new Date("2026-09-01T00:00:00Z"),
+      conclusion: { outcome: "REDEFENSE_REQUIRED", concludedAt: new Date("2026-09-05T00:00:00Z") },
+    });
+
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) => {
+      if (where.id === attempt3.id) return Promise.resolve(attempt3);
+      return Promise.resolve([attempt1, attempt2].find((row) => row.id === where.id) ?? null);
+    });
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([attempt3, attempt1, attempt2]);
+
+    const svc = makeService();
+    const list = await svc.getHistory(attempt3.id, "new-panelist");
+    expect(list.items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["sched-prop-2", "SAME_STAGE_REDEFENSE"],
+      ["sched-prop-1", "OLDER_HISTORY"],
+    ]);
+
+    const primary = await svc.getHistoryDetail(attempt3.id, "sched-prop-2", "new-panelist");
+    expect(primary.relationship).toBe("SAME_STAGE_REDEFENSE");
+
+    const older = await svc.getHistoryDetail(attempt3.id, "sched-prop-1", "new-panelist");
+    expect(older.relationship).toBe("OLDER_HISTORY");
+  });
+
+  it("detail rejects a non-concluded schedule that is not in the normalized history set", async () => {
+    const current = currentRow();
+    const unconcluded = concludedRow({
+      id: "sched-prop-draft",
+      conclusion: null,
+    });
+
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(where.id === current.id ? current : unconcluded),
+    );
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([current, unconcluded]);
+
+    await expect(
+      makeService().getHistoryDetail(CURRENT_ID, "sched-prop-draft", "new-panelist"),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 });

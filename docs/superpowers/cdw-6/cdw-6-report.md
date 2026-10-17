@@ -51,6 +51,12 @@ newest concluded first, then defense date, then createdAt, then schedule id. Can
 that are not concluded, cannot be proven prior, are the current attempt, or are a
 later/future stage are excluded. "Unprovable ordering" fails closed.
 
+Normalization yields **at most ONE primary in each category**: the latest same-stage
+`REDEFENSE_REQUIRED` attempt and the latest PASSED immediately-preceding-stage attempt.
+Every other valid prior concluded attempt is `OLDER_HISTORY`. The history list and the
+detail endpoint both consume this same authoritative resolved set, so a schedule can never
+be classified differently by the two endpoints.
+
 ## 3. Attempt binding (manuscript / RAP / annotations)
 
 `DefenseHistoryService` (`backend/src/services/defense-history.service.ts`) resolves a
@@ -173,12 +179,12 @@ Oral Examination Summary behavior is unchanged.
 ## 10. Verification
 
 Backend: `npx prisma validate`, `npx prisma generate`, `npm run build`, `npx vitest run`
-→ **139 files / 1542 passed / 5 skipped**.
+→ **139 files / 1549 passed / 5 skipped**.
 
 Frontend: `verify-pdf-anchors` (10), `verify-viewer-core` (13), `verify-cdw2-contracts`
 (11), `verify-cdw3-collaboration` (24), `verify-cdw4-workspace` (9), `verify-cdw4-matrix`
-(19), `verify-cdw5-report` (57), `verify-rap-c1` (13), **`verify-cdw6-history` (19)** →
-**175 assertions, 0 fail**; plus `npx tsc --noEmit`, scoped `npx eslint`, `npm run build`
+(19), `verify-cdw5-report` (57), `verify-rap-c1` (13), **`verify-cdw6-history` (20)** →
+**176 assertions, 0 fail**; plus `npx tsc --noEmit`, scoped `npx eslint`, `npm run build`
 — all clean.
 
 Focused new tests: `defense-history.rules.test.ts`, `defense-history.service.test.ts`,
@@ -224,10 +230,22 @@ explanation — no edit, freeze, sign, insert, or conversion controls.
 
 `SAME_STAGE_REDEFENSE` is now returned **only** when the prior same-stage attempt's
 verdict is `REDEFENSE_REQUIRED`. A same-stage `PASSED` (or legacy
-`FAILED`/`REVISION_REQUIRED`/other) attempt is `OLDER_HISTORY`. This does not narrow
+`FAILED`/`REVISION_REQUIRED`/other) attempt is `OLDER_HISTORY`. Only the **latest** valid
+`REDEFENSE_REQUIRED` same-stage attempt remains the primary `SAME_STAGE_REDEFENSE`; older
+re-defense attempts are demoted to `OLDER_HISTORY` (still available). This does not narrow
 historical manuscript access: such a manuscript remains readable as older history
 (verified by `defense-history.rules.test.ts` and `cdw6-document-auth.test.ts`), while
 future/unrelated attempts stay denied.
+
+### Single authoritative list/detail resolution
+
+`DefenseHistoryService` resolves the complete normalized history set once
+(`resolveHistoryForCurrent` → `resolveHistoryScheduleIds`). The list endpoint returns that
+set; the detail endpoint finds the requested `historicalScheduleId` **inside the same set**
+and uses its relationship, rejecting a schedule that is not present. Detail never calls
+`classifyHistoryRelationship` pairwise, which would ignore a newer primary elsewhere and
+could report `PREVIOUS_STAGE`/`SAME_STAGE_REDEFENSE` for a schedule the list places in
+older history.
 
 ### Previous-stage precision
 
@@ -239,10 +257,10 @@ PASSED previous stage → older history, newest first).
 ### Correction verification
 
 Backend: focused CDW-6 suites (rules, service, document auth, annotation read, routes,
-workspace) → 117 passed; full suite → **139 files / 1542 passed / 5 skipped**;
+workspace) → 124 passed; full suite → **139 files / 1549 passed / 5 skipped**;
 `prisma validate`, `prisma generate`, `npm run build` clean.
 
-Frontend: `verify-cdw6-history` grew to **19** assertions (legacy provenance, honest
+Frontend: `verify-cdw6-history` grew to **20** assertions (legacy provenance, honest
 legacy labelling, no edit/freeze/sign controls, server-authoritative relationships, one
-primary Previous Stage); full verify set → **175 assertions, 0 fail**; `tsc --noEmit`,
-scoped `eslint`, `npm run build` clean.
+primary Previous Same-Stage section, one primary Previous Stage section); full verify set
+→ **176 assertions, 0 fail**; `tsc --noEmit`, scoped `eslint`, `npm run build` clean.

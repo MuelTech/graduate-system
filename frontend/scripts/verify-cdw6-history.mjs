@@ -224,6 +224,16 @@ test("only the server-classified Previous Stage group is rendered as primary", (
   assert.doesNotMatch(panel, /previousStage\.(slice|filter|concat)/);
 });
 
+test("only the server-classified same-stage primary is rendered as a re-defense", () => {
+  const panel = read(PANEL);
+  // One Previous Same-Stage Attempt section, driven by the resolver's single primary.
+  assert.match(panel, /HISTORY_RELATIONSHIP_LABELS\.SAME_STAGE_REDEFENSE/);
+  assert.match(panel, /grouped\.sameStage/);
+  // No client-side re-grouping/reclassification of same-stage attempts.
+  assert.doesNotMatch(panel, /sameStage\.(slice|filter|concat)/);
+  assert.doesNotMatch(panel, /REDEFENSE_REQUIRED.*SAME_STAGE_REDEFENSE/s);
+});
+
 test("unavailable historical data renders honest states (never a latest-document substitute)", () => {
   assert.match(read(HELPERS), /Historical manuscript unavailable/);
   assert.match(read(HELPERS), /Historical report unavailable/);
