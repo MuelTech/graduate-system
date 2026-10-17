@@ -38,18 +38,30 @@ export interface DefenseHistoryManuscriptDto {
   uploadedAt: string | null;
 }
 
-export interface DefenseHistoryRapDto {
-  id: string;
-  status: string;
+/** Provenance of the historical Committee Report shown in history. */
+export type DefenseHistoryReportSource =
+  | "STRUCTURED_RAP"
+  | "LEGACY_RAP_TEXT"
+  | "LEGACY_RAPPORTEUR_NOTES";
+
+export interface DefenseHistoryReportDto {
+  /** Where this historical report content actually comes from. */
+  source: DefenseHistoryReportSource;
+  /** RapReport id when the content is a RapReport; null for schedule notes. */
+  rapId: string | null;
+  /** RapReport status ("FINALIZED") when applicable; null for schedule notes. */
+  status: string | null;
+  /** RAP finalizedAt, or the legacy notes' finalization timestamp. */
   finalizedAt: string | null;
-  /** Canonical CDW-5 structured report body, when the report has one. */
+  /** Explicit legacy-finalization timestamp (null when never recorded). */
+  rapporteurNotesFinalizedAt: string | null;
+  /** Canonical CDW-5 structured body — STRUCTURED_RAP only. */
   bodyDocument: unknown | null;
-  /** Legacy raw committee text, rendered honestly as legacy content. */
-  decisionsAndRecommendations: string | null;
-  /** True when a CDW-5 structured body exists (never fabricated for legacy). */
-  isStructured: boolean;
+  /** Legacy text (RAP decisions/recommendations or Rapporteur notes). */
+  text: string | null;
   contentVersion: number | null;
-  signatureProgress: { required: number; signed: number };
+  /** Null for legacy Rapporteur notes: no signature lifecycle is fabricated. */
+  signatureProgress: { required: number; signed: number } | null;
 }
 
 export interface DefenseHistoryCommitteeDto {
@@ -71,7 +83,10 @@ export interface DefenseHistoryItemDto {
   concludedAt: string | null;
   /** The EXACT manuscript bound to this historical attempt; null if unbound. */
   manuscript: DefenseHistoryManuscriptDto | null;
-  rapAvailable: boolean;
+  /** Any usable historical report content exists (modern RAP or legacy notes). */
+  reportAvailable: boolean;
+  /** Provenance of that content; null when no historical report exists. */
+  reportSource: DefenseHistoryReportSource | null;
   annotationCount: number;
   commentCount: number;
   committee: DefenseHistoryCommitteeDto[];
@@ -84,7 +99,7 @@ export interface DefenseHistoryDto {
 }
 
 export interface DefenseHistoryAttemptDetailDto extends DefenseHistoryItemDto {
-  rap: DefenseHistoryRapDto | null;
+  report: DefenseHistoryReportDto | null;
   annotations: AnnotationDto[];
 }
 
@@ -134,6 +149,16 @@ function personName(user: { firstName?: string | null; lastName?: string | null 
   return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
 }
 
+/** A string counts as report content only when it has non-whitespace text. */
+function meaningfulText(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+/** A structured canonical report body is a plain object (never an array/null). */
+function isStructuredBody(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 type ScheduleRow = {
   id: string;
   thesisId: string;
@@ -144,6 +169,8 @@ type ScheduleRow = {
   venueOrLink: string | null;
   createdAt: Date;
   manuscriptDocumentId: string | null;
+  rapporteurNotes: string | null;
+  rapporteurNotesFinalizedAt: Date | null;
   conclusion: { outcome: unknown; concludedAt: Date } | null;
   manuscriptDocument: {
     id: string;
@@ -179,6 +206,8 @@ const SCHEDULE_SELECT = {
   venueOrLink: true,
   createdAt: true,
   manuscriptDocumentId: true,
+  rapporteurNotes: true,
+  rapporteurNotesFinalizedAt: true,
   conclusion: { select: { outcome: true, concludedAt: true } },
   manuscriptDocument: {
     select: {
@@ -324,7 +353,7 @@ export class DefenseHistoryService {
       annotationCount: historical._count?.annotations ?? 0,
       commentCount,
       manuscript,
-      rap: this.toRapDto(historical),
+      report: this.resolveHistoricalReport(historical),
       annotations,
     };
   }
@@ -398,31 +427,80 @@ export class DefenseHistoryService {
     };
   }
 
-  private toRapDto(row: ScheduleRow): DefenseHistoryRapDto | null {
+  /**
+   * CDW-6 correction — resolve the historical report honestly, with explicit
+   * provenance. Precedence:
+   *  1. FINALIZED RapReport with a structured body → STRUCTURED_RAP;
+   *  2. FINALIZED RapReport with legacy text        → LEGACY_RAP_TEXT;
+   *  3. no usable FINALIZED RapReport + meaningful schedule notes
+   *                                                 → LEGACY_RAPPORTEUR_NOTES;
+   *  4. otherwise                                    → null.
+   *
+   * A DRAFT/pending modern RapReport is NEVER surfaced as official history. A
+   * RapReport row and structured JSON are never fabricated for legacy attempts,
+   * and legacy notes carry no signature progress.
+   */
+  private resolveHistoricalReport(row: ScheduleRow): DefenseHistoryReportDto | null {
     const rap = row.rapReports[0] ?? null;
-    if (!rap) return null;
-    // Only the authoritative FINALIZED RAP is official history. Draft/pending
-    // content is never surfaced as if it were the committee record.
-    if (String(rap.status) !== "FINALIZED") return null;
+    const notesFinalizedAt = iso(row.rapporteurNotesFinalizedAt);
 
-    const signatures = rap.signatures ?? [];
-    const requiredSlots = signatures.filter((s) => s.required !== false);
-    const signed = requiredSlots.filter((s) => s.isSigned === true).length;
-    const bodyDocument =
-      rap.bodyDocument !== null && typeof rap.bodyDocument === "object"
-        ? rap.bodyDocument
-        : null;
+    if (rap && String(rap.status) === "FINALIZED") {
+      const signatures = rap.signatures ?? [];
+      const requiredSlots = signatures.filter((s) => s.required !== false);
+      const signatureProgress = {
+        required: requiredSlots.length,
+        signed: requiredSlots.filter((s) => s.isSigned === true).length,
+      };
+      const bodyDocument = isStructuredBody(rap.bodyDocument) ? rap.bodyDocument : null;
 
-    return {
-      id: rap.id,
-      status: String(rap.status),
-      finalizedAt: iso(rap.finalizedAt),
-      bodyDocument,
-      decisionsAndRecommendations: rap.decisionsAndRecommendations ?? null,
-      isStructured: bodyDocument !== null,
-      contentVersion: rap.contentVersion ?? null,
-      signatureProgress: { required: requiredSlots.length, signed },
-    };
+      if (bodyDocument !== null) {
+        return {
+          source: "STRUCTURED_RAP",
+          rapId: rap.id,
+          status: "FINALIZED",
+          finalizedAt: iso(rap.finalizedAt),
+          rapporteurNotesFinalizedAt: notesFinalizedAt,
+          bodyDocument,
+          text: null,
+          contentVersion: rap.contentVersion ?? null,
+          signatureProgress,
+        };
+      }
+
+      const legacyText = meaningfulText(rap.decisionsAndRecommendations);
+      if (legacyText) {
+        return {
+          source: "LEGACY_RAP_TEXT",
+          rapId: rap.id,
+          status: "FINALIZED",
+          finalizedAt: iso(rap.finalizedAt),
+          rapporteurNotesFinalizedAt: notesFinalizedAt,
+          bodyDocument: null,
+          text: legacyText,
+          contentVersion: rap.contentVersion ?? null,
+          signatureProgress,
+        };
+      }
+      // FINALIZED but empty → fall through to schedule notes below.
+    }
+
+    const notes = meaningfulText(row.rapporteurNotes);
+    if (notes) {
+      return {
+        source: "LEGACY_RAPPORTEUR_NOTES",
+        rapId: null,
+        // Not a modern signed/finalized RAP: provenance is the legacy notes.
+        status: null,
+        finalizedAt: notesFinalizedAt,
+        rapporteurNotesFinalizedAt: notesFinalizedAt,
+        bodyDocument: null,
+        text: notes,
+        contentVersion: null,
+        signatureProgress: null,
+      };
+    }
+
+    return null;
   }
 
   private toBaseItem(
@@ -430,6 +508,7 @@ export class DefenseHistoryService {
     relationship: DefenseHistoryRelationship,
   ): DefenseHistoryItemDto {
     const stage = DEFENSE_TYPE_TO_DOCUMENT_STAGE[String(row.defenseType)];
+    const report = this.resolveHistoricalReport(row);
     return {
       scheduleId: row.id,
       defenseType: String(row.defenseType),
@@ -442,7 +521,8 @@ export class DefenseHistoryService {
       verdict: row.conclusion?.outcome ? String(row.conclusion.outcome) : null,
       concludedAt: iso(row.conclusion?.concludedAt ?? null),
       manuscript: this.resolveBoundManuscript(row),
-      rapAvailable: String(row.rapReports[0]?.status ?? "") === "FINALIZED",
+      reportAvailable: report !== null,
+      reportSource: report?.source ?? null,
       annotationCount: row._count?.annotations ?? 0,
       commentCount: 0,
       committee: (row.panelAssignments ?? []).map((assignment) => ({

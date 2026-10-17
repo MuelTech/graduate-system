@@ -21,16 +21,24 @@ export interface DefenseHistoryManuscript {
   uploadedAt: string | null;
 }
 
-export interface DefenseHistoryRap {
-  id: string;
-  status: string;
+export type DefenseHistoryReportSource =
+  | "STRUCTURED_RAP"
+  | "LEGACY_RAP_TEXT"
+  | "LEGACY_RAPPORTEUR_NOTES";
+
+export interface DefenseHistoryReport {
+  source: DefenseHistoryReportSource;
+  rapId: string | null;
+  status: string | null;
   finalizedAt: string | null;
+  rapporteurNotesFinalizedAt: string | null;
   /** Canonical CDW-5 structured body when present (validated before rendering). */
   bodyDocument: unknown | null;
-  decisionsAndRecommendations: string | null;
-  isStructured: boolean;
+  /** Legacy text (RAP decisions/recommendations or Rapporteur notes). */
+  text: string | null;
   contentVersion: number | null;
-  signatureProgress: { required: number; signed: number };
+  /** Null for legacy Rapporteur notes: no signature lifecycle is claimed. */
+  signatureProgress: { required: number; signed: number } | null;
 }
 
 export interface DefenseHistoryCommitteeMember {
@@ -51,7 +59,10 @@ export interface DefenseHistoryItem {
   verdict: string | null;
   concludedAt: string | null;
   manuscript: DefenseHistoryManuscript | null;
-  rapAvailable: boolean;
+  /** Any usable historical report exists (modern RAP or legacy Rapporteur content). */
+  reportAvailable: boolean;
+  /** Provenance of that content; null when no historical report exists. */
+  reportSource: DefenseHistoryReportSource | null;
   annotationCount: number;
   commentCount: number;
   committee: DefenseHistoryCommitteeMember[];
@@ -64,7 +75,7 @@ export interface DefenseHistory {
 }
 
 export interface DefenseHistoryAttemptDetail extends DefenseHistoryItem {
-  rap: DefenseHistoryRap | null;
+  report: DefenseHistoryReport | null;
   /** Raw annotation read model — parsed defensively before rendering. */
   annotations: unknown;
 }

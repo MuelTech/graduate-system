@@ -7,10 +7,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {
+  HISTORY_RELATIONSHIP_LABELS,
   assignAttemptNumbers,
   defenseTypeLabel,
   groupHistoryItems,
   historyVerdictLabel,
+  reportAvailabilityLabel,
 } from "../src/lib/defense-history/history-view.ts";
 
 const root = process.cwd();
@@ -143,13 +145,88 @@ test("structured historical RAP reuses the safe read-only renderer; legacy text 
   const panel = read(PANEL);
   assert.match(panel, /ReportDocumentView/);
   assert.match(panel, /normalizeReportDocument/);
-  assert.match(panel, /Legacy historical report/);
-  assert.match(panel, /Finalized RAP unavailable/);
+  assert.match(panel, /Legacy historical Committee Report/);
+  assert.match(panel, /Historical report unavailable/);
+  // Structured rendering is gated on explicit provenance, not on nullability.
+  assert.match(panel, /report\.source === "STRUCTURED_RAP"/);
+});
+
+test("legacy Rapporteur notes enable historical report viewing with honest provenance", () => {
+  const panel = read(PANEL);
+  const helpers = read(HELPERS);
+  // Provenance is an explicit typed value, never inferred in the UI.
+  assert.match(panel, /LEGACY_RAPPORTEUR_NOTES/);
+  assert.match(panel, /Legacy Rapporteur Notes/);
+  assert.match(helpers, /Legacy Rapporteur Notes available/);
+  // The legacy note presentation is visibly explained and read-only.
+  assert.match(panel, /This record predates the current in-system Committee Report workflow/);
+  assert.match(panel, /not a modern signed or finalized RAP/);
+  // Legacy notes carry no fabricated signature lifecycle.
+  assert.match(panel, /report\.signatureProgress/);
+  assert.match(panel, /No finalization timestamp recorded/);
+  // Report viewing is gated on availability, so legacy content still opens.
+  assert.match(panel, /disabled=\{!item\.reportAvailable\}/);
+});
+
+test("report availability distinguishes modern RAP from legacy Rapporteur content", () => {
+  assert.equal(
+    reportAvailabilityLabel({ reportAvailable: true, reportSource: "STRUCTURED_RAP" }),
+    "Finalized Committee Report available",
+  );
+  assert.equal(
+    reportAvailabilityLabel({ reportAvailable: true, reportSource: "LEGACY_RAP_TEXT" }),
+    "Legacy Committee Report available",
+  );
+  assert.equal(
+    reportAvailabilityLabel({ reportAvailable: true, reportSource: "LEGACY_RAPPORTEUR_NOTES" }),
+    "Legacy Rapporteur Notes available",
+  );
+  assert.equal(
+    reportAvailabilityLabel({ reportAvailable: false, reportSource: null }),
+    "Historical report unavailable",
+  );
+});
+
+test("historical reports have no edit / freeze / sign / insert controls", () => {
+  const panel = read(PANEL);
+  for (const forbidden of [
+    "Freeze for Signatures",
+    "E-Sign",
+    "Insert into Report",
+    "onInsertIntoReport",
+    "Save Draft",
+    "useMutation",
+  ]) {
+    assert.doesNotMatch(panel, new RegExp(forbidden));
+  }
+});
+
+test("relationship classification is server-authoritative (no client re-derivation)", () => {
+  const panel = read(PANEL);
+  assert.match(panel, /HISTORY_RELATIONSHIP_LABELS\[item\.relationship\]/);
+  // The UI never promotes a PASSED same-stage result to a re-defense label.
+  assert.doesNotMatch(panel, /PASSED[\s\S]{0,120}SAME_STAGE_REDEFENSE/);
+  assert.equal(
+    HISTORY_RELATIONSHIP_LABELS.SAME_STAGE_REDEFENSE,
+    "Previous Same-Stage Attempt",
+  );
+  assert.equal(HISTORY_RELATIONSHIP_LABELS.OLDER_HISTORY, "Older History");
+  assert.equal(historyVerdictLabel("PASSED"), "Passed");
+  assert.equal(historyVerdictLabel("REDEFENSE_REQUIRED"), "Re-defense Required");
+});
+
+test("only the server-classified Previous Stage group is rendered as primary", () => {
+  const panel = read(PANEL);
+  // Exactly one Previous Stage section, driven by the resolver's single primary.
+  assert.match(panel, /HISTORY_RELATIONSHIP_LABELS\.PREVIOUS_STAGE/);
+  assert.match(panel, /grouped\.previousStage/);
+  // No client-side re-grouping into a second "previous stage" bucket.
+  assert.doesNotMatch(panel, /previousStage\.(slice|filter|concat)/);
 });
 
 test("unavailable historical data renders honest states (never a latest-document substitute)", () => {
   assert.match(read(HELPERS), /Historical manuscript unavailable/);
-  assert.match(read(HELPERS), /Finalized RAP unavailable/);
+  assert.match(read(HELPERS), /Historical report unavailable/);
   assert.match(read(HELPERS), /No historical annotations recorded/);
   const panel = read(PANEL);
   assert.match(panel, /Historical manuscript unavailable/);

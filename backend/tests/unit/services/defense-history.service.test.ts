@@ -135,7 +135,7 @@ describe("CDW-6 DefenseHistoryService — current schedule history resolution", 
     expect(history.items[0].manuscript?.id).toBe("doc-prop-1");
     expect(history.items[0].annotationCount).toBe(2);
     expect(history.items[0].commentCount).toBe(3);
-    expect(history.items[0].rapAvailable).toBe(true);
+    expect(history.items[0].reportAvailable).toBe(true);
     expect(history.items[0].committee.map((c) => c.role)).toEqual(["PANELIST", "RAPPORTEUR"]);
   });
 
@@ -230,7 +230,7 @@ describe("CDW-6 DefenseHistoryService — current schedule history resolution", 
 
     const history = await makeService().getHistory(CURRENT_ID, "new-panelist");
     expect(history.items[0].manuscript).toBeNull();
-    expect(history.items[0].rapAvailable).toBe(true);
+    expect(history.items[0].reportAvailable).toBe(true);
   });
 
   it("E: authorization is the CURRENT assignment — a replacement Panelist sees history", async () => {
@@ -267,6 +267,196 @@ describe("CDW-6 DefenseHistoryService — current schedule history resolution", 
   });
 });
 
+describe("CDW-6 correction — historical report provenance (legacy Rapporteur notes)", () => {
+  const NOTES = "Revise Chapter 3 and clarify the sampling discussion.";
+  const NOTES_FINALIZED = new Date("2026-07-04T00:00:00Z");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    annotationsStub.listAttemptAnnotationsForHistory.mockClear();
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-new",
+      scheduleId: CURRENT_ID,
+      userId: "new-panelist",
+      role: "PANELIST",
+    });
+    prismaMock.defenseAnnotation.findMany.mockResolvedValue([]);
+  });
+
+  function withNotes(overrides: Record<string, unknown> = {}) {
+    return concludedRow({
+      rapReports: [],
+      rapporteurNotes: NOTES,
+      rapporteurNotesFinalizedAt: NOTES_FINALIZED,
+      ...overrides,
+    });
+  }
+
+  it("A: a concluded attempt with only finalized Rapporteur notes exposes legacy report availability", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(currentRow());
+    prismaMock.defenseSchedule.findMany.mockResolvedValue([currentRow(), withNotes()]);
+
+    const history = await makeService().getHistory(CURRENT_ID, "new-panelist");
+    expect(history.items[0].reportAvailable).toBe(true);
+    expect(history.items[0].reportSource).toBe("LEGACY_RAPPORTEUR_NOTES");
+  });
+
+  it("B/C/D/E: detail returns the exact notes, legacy provenance, no fabricated body or signatures", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(where.id === CURRENT_ID ? currentRow() : withNotes({ id: where.id })),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report?.source).toBe("LEGACY_RAPPORTEUR_NOTES");
+    expect(detail.report?.text).toBe(NOTES);
+    expect(detail.report?.bodyDocument).toBeNull();
+    expect(detail.report?.signatureProgress).toBeNull();
+    expect(detail.report?.rapId).toBeNull();
+    expect(detail.report?.status).toBeNull();
+    expect(detail.report?.rapporteurNotesFinalizedAt).toBe(NOTES_FINALIZED.toISOString());
+    expect(detail.report?.finalizedAt).toBe(NOTES_FINALIZED.toISOString());
+  });
+
+  it("F: notes without a finalization timestamp are shown as historical notes, not a finalized RAP", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === CURRENT_ID
+          ? currentRow()
+          : withNotes({ id: where.id, rapporteurNotesFinalizedAt: null }),
+      ),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report?.source).toBe("LEGACY_RAPPORTEUR_NOTES");
+    expect(detail.report?.finalizedAt).toBeNull();
+    expect(detail.report?.rapporteurNotesFinalizedAt).toBeNull();
+    // No modern finalized/signature claim is made.
+    expect(detail.report?.status).toBeNull();
+    expect(detail.report?.signatureProgress).toBeNull();
+  });
+
+  it("G: a FINALIZED structured RAP is preferred over legacy notes", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === CURRENT_ID
+          ? currentRow()
+          : concludedRow({
+              id: where.id,
+              rapporteurNotes: NOTES,
+              rapporteurNotesFinalizedAt: NOTES_FINALIZED,
+              rapReports: [
+                {
+                  id: "rap-structured",
+                  status: "FINALIZED",
+                  finalizedAt: new Date("2026-07-04T00:00:00Z"),
+                  bodyDocument: { type: "doc", content: [] },
+                  decisionsAndRecommendations: null,
+                  contentVersion: 2,
+                  signatures: [{ required: true, isSigned: true }],
+                },
+              ],
+            }),
+      ),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report?.source).toBe("STRUCTURED_RAP");
+    expect(detail.report?.rapId).toBe("rap-structured");
+    expect(detail.report?.bodyDocument).toEqual({ type: "doc", content: [] });
+    expect(detail.report?.text).toBeNull();
+    expect(detail.report?.signatureProgress).toEqual({ required: 1, signed: 1 });
+  });
+
+  it("H: a FINALIZED legacy RAP text is preferred over schedule Rapporteur notes", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === CURRENT_ID
+          ? currentRow()
+          : concludedRow({
+              id: where.id,
+              rapporteurNotes: NOTES,
+              rapporteurNotesFinalizedAt: NOTES_FINALIZED,
+              rapReports: [
+                {
+                  id: "rap-legacy-text",
+                  status: "FINALIZED",
+                  finalizedAt: new Date("2026-07-04T00:00:00Z"),
+                  bodyDocument: null,
+                  decisionsAndRecommendations: "Legacy RAP committee record.",
+                  contentVersion: 0,
+                  signatures: [],
+                },
+              ],
+            }),
+      ),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report?.source).toBe("LEGACY_RAP_TEXT");
+    expect(detail.report?.text).toBe("Legacy RAP committee record.");
+    expect(detail.report?.bodyDocument).toBeNull();
+    expect(detail.report?.rapId).toBe("rap-legacy-text");
+  });
+
+  it("I: a DRAFT modern RAP never masquerades as official history (legacy notes fallback only)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === CURRENT_ID
+          ? currentRow()
+          : concludedRow({
+              id: where.id,
+              rapporteurNotes: NOTES,
+              rapporteurNotesFinalizedAt: NOTES_FINALIZED,
+              rapReports: [
+                {
+                  id: "rap-draft",
+                  status: "DRAFT",
+                  finalizedAt: null,
+                  bodyDocument: { type: "doc", content: [] },
+                  decisionsAndRecommendations: "draft body",
+                  contentVersion: 0,
+                  signatures: [],
+                },
+              ],
+            }),
+      ),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report?.source).toBe("LEGACY_RAPPORTEUR_NOTES");
+    expect(detail.report?.rapId).toBeNull();
+    expect(detail.report?.bodyDocument).toBeNull();
+  });
+
+  it("I2: a DRAFT modern RAP with no legacy notes yields no historical report", async () => {
+    prismaMock.defenseSchedule.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve(
+        where.id === CURRENT_ID
+          ? currentRow()
+          : concludedRow({
+              id: where.id,
+              rapporteurNotes: null,
+              rapporteurNotesFinalizedAt: null,
+              rapReports: [
+                {
+                  id: "rap-draft",
+                  status: "DRAFT",
+                  finalizedAt: null,
+                  bodyDocument: { type: "doc", content: [] },
+                  decisionsAndRecommendations: "draft body",
+                  contentVersion: 0,
+                  signatures: [],
+                },
+              ],
+            }),
+      ),
+    );
+
+    const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
+    expect(detail.report).toBeNull();
+  });
+});
+
 describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -285,10 +475,10 @@ describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
     const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
 
     expect(detail.manuscript?.id).toBe("doc-prop-1");
-    expect(detail.rap?.status).toBe("FINALIZED");
-    expect(detail.rap?.isStructured).toBe(true);
-    expect(detail.rap?.contentVersion).toBe(3);
-    expect(detail.rap?.signatureProgress).toEqual({ required: 2, signed: 1 });
+    expect(detail.report?.status).toBe("FINALIZED");
+    expect(detail.report?.source).toBe("STRUCTURED_RAP");
+    expect(detail.report?.contentVersion).toBe(3);
+    expect(detail.report?.signatureProgress).toEqual({ required: 2, signed: 1 });
     expect(detail.annotations).toHaveLength(1);
     // F: the historical author's role is preserved (never remapped to the
     // caller's current CHAIRMAN role).
@@ -394,9 +584,9 @@ describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
     );
 
     const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
-    expect(detail.rap?.isStructured).toBe(false);
-    expect(detail.rap?.bodyDocument).toBeNull();
-    expect(detail.rap?.decisionsAndRecommendations).toBe("Legacy committee notes.");
+    expect(detail.report?.source).toBe("LEGACY_RAP_TEXT");
+    expect(detail.report?.bodyDocument).toBeNull();
+    expect(detail.report?.text).toBe("Legacy committee notes.");
   });
 
   it("a non-FINALIZED historical RAP is not surfaced as official history", async () => {
@@ -422,6 +612,6 @@ describe("CDW-6 DefenseHistoryService — attempt detail (read-only)", () => {
     );
 
     const detail = await makeService().getHistoryDetail(CURRENT_ID, "sched-prop-1", "new-panelist");
-    expect(detail.rap).toBeNull();
+    expect(detail.report).toBeNull();
   });
 });

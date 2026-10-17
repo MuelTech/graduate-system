@@ -34,12 +34,17 @@ schedule binding.
 (`defenseStageRank`, `isPriorAttempt`, `classifyHistoryRelationship`,
 `resolveHistoryScheduleIds`, `canReadHistoricalBoundManuscript`).
 
-- **SAME_STAGE_REDEFENSE** — a strictly earlier attempt of the same defense type
-  (re-defense). The immediately preceding same-stage attempt is prioritized.
+- **SAME_STAGE_REDEFENSE** — a strictly earlier attempt of the same defense type **whose
+  verdict was `REDEFENSE_REQUIRED`** (that verdict is what actually creates a re-defense).
+  The immediately preceding such attempt is prioritized.
 - **PREVIOUS_STAGE** — the immediately preceding academic stage
   (`TITLE → PROPOSAL → FINAL`) **and** that attempt was formally `PASSED` (normal
-  progression). A non-PASSED adjacent attempt is downgraded to older history.
-- **OLDER_HISTORY** — any other prior concluded same-thesis attempt (secondary context).
+  progression). A non-PASSED adjacent attempt is downgraded to older history. **Only the
+  latest PASSED attempt of that stage is primary**; older PASSED attempts of the same
+  stage become `OLDER_HISTORY`.
+- **OLDER_HISTORY** — any other prior concluded same-thesis attempt (secondary context):
+  e.g. a same-stage `PASSED`/legacy `FAILED`/`REVISION_REQUIRED` attempt, or an older
+  PASSED previous-stage attempt.
 
 Ordering is deterministic: relationship rank (same-stage → previous-stage → older), then
 newest concluded first, then defense date, then createdAt, then schedule id. Candidates
@@ -62,10 +67,20 @@ also calls), scoped by BOTH `scheduleId` and the exact `thesisDocumentId`. Histo
 authors keep their **original** role (e.g. `PANELIST` in Attempt 1 is never remapped to
 the caller's current `CHAIRMAN`).
 
-RAP history exposes the exact **FINALIZED** `RapReport` only: `status`, `finalizedAt`,
-`bodyDocument` (structured CDW-5 body), `decisionsAndRecommendations` (legacy text),
-`isStructured`, `contentVersion`, and signature **progress** counts. A non-FINALIZED
-report is not surfaced as official history, and raw `signatureData` is never returned.
+Historical report history uses an explicit provenance model (`reportSource` +
+`reportAvailable` on the list, `report` on the detail) with this precedence:
+
+1. **`STRUCTURED_RAP`** — FINALIZED `RapReport` with a structured `bodyDocument`;
+2. **`LEGACY_RAP_TEXT`** — FINALIZED `RapReport` with legacy
+   `decisionsAndRecommendations` text and no structured body;
+3. **`LEGACY_RAPPORTEUR_NOTES`** — no usable FINALIZED RapReport, but the concluded
+   historical schedule has meaningful `rapporteurNotes` (with
+   `rapporteurNotesFinalizedAt` when recorded);
+4. otherwise no report.
+
+A DRAFT/pending modern `RapReport` is never surfaced as official history. No RapReport
+row, structured `bodyDocument`, or signature progress is fabricated for legacy notes
+(`signatureProgress` is `null`), and raw `signatureData` is never returned.
 
 ## 4. Authorization
 
@@ -94,10 +109,11 @@ viewer loads through the existing authenticated document proxy.
 
 Exposed per historical attempt: schedule id, defense type, stage, relationship, date/time/
 venue, session status, formal verdict, concludedAt, exact bound manuscript metadata,
-finalized-RAP availability, annotation/comment counts, and the committee roster with
-roles. Detail adds: the historical manuscript (read-only), historical annotations/
-comments/replies with original authors/roles/timestamps, the FINALIZED RAP (structured or
-legacy), and RAP signer **status** progress.
+historical-report availability **with provenance** (`reportAvailable` + `reportSource`),
+annotation/comment counts, and the committee roster with roles. Detail adds: the
+historical manuscript (read-only), historical annotations/comments/replies with original
+authors/roles/timestamps, the historical report (structured RAP, legacy RAP text, or
+legacy Rapporteur notes), and — only for actual RAP records — signer **status** progress.
 
 Hidden (never returned): prior individual evaluator criterion values / group averages /
 overall / rating / official snapshots, raw signature evidence (`signatureData`), storage
@@ -125,8 +141,10 @@ writable attempt state, so historical reads confer no historical write authority
   Annotations**, **Compare with Current** (disabled when unavailable).
 - **Historical viewer:** reuses `CollaborativeManuscriptViewer` with **no**
   `onTextSelection` (no creation) and no composer; a visible read-only banner.
-- **RAP:** structured bodies reuse `ReportDocumentCanvas` + `ReportDocumentView`
-  (`normalizeReportDocument`); legacy text is labelled "Legacy historical report".
+- **Report:** structured bodies reuse `ReportDocumentCanvas` + `ReportDocumentView`
+  (`normalizeReportDocument`); legacy RAP text and legacy Rapporteur notes are labelled
+  honestly ("Legacy historical Committee Report" / "Legacy Rapporteur Notes") with a short
+  explanation and no edit/freeze/sign/insert controls.
 - **Compare:** manual desktop side-by-side — historical (read-only) beside the current
   attempt through `CollaborationViewerPane`. No diff engine, no compliance verdict.
 - **Isolation:** React Query keys include the current schedule AND the historical
@@ -138,10 +156,13 @@ writable attempt state, so historical reads confer no historical write authority
 ## 8. Legacy / incomplete history
 
 Historical rows may lack a binding, RAP, or annotations from before CDW existed. The read
-model renders honest states: "Historical manuscript unavailable", "Finalized RAP
-unavailable", "No historical annotations recorded", "Legacy historical report". It never
-substitutes the current document, invents annotations, fabricates a structured body, or
-reuses current committee metadata as historical metadata.
+model renders honest states: "Historical manuscript unavailable", "Historical report
+unavailable", "No historical annotations recorded", "Legacy historical Committee Report",
+and "Legacy Rapporteur Notes". It never substitutes the current document, invents
+annotations, fabricates a structured body or a RapReport row, or reuses current committee
+metadata as historical metadata. Legacy Rapporteur notes are shown because the attempt is
+already formally concluded; when no finalization timestamp exists they are still labelled
+as historical notes, never as a signed/finalized modern RAP.
 
 ## 9. Privacy
 
@@ -152,12 +173,12 @@ Oral Examination Summary behavior is unchanged.
 ## 10. Verification
 
 Backend: `npx prisma validate`, `npx prisma generate`, `npm run build`, `npx vitest run`
-→ **139 files / 1528 passed / 5 skipped**.
+→ **139 files / 1542 passed / 5 skipped**.
 
 Frontend: `verify-pdf-anchors` (10), `verify-viewer-core` (13), `verify-cdw2-contracts`
 (11), `verify-cdw3-collaboration` (24), `verify-cdw4-workspace` (9), `verify-cdw4-matrix`
-(19), `verify-cdw5-report` (57), `verify-rap-c1` (13), **`verify-cdw6-history` (13)** →
-**169 assertions, 0 fail**; plus `npx tsc --noEmit`, scoped `npx eslint`, `npm run build`
+(19), `verify-cdw5-report` (57), `verify-rap-c1` (13), **`verify-cdw6-history` (19)** →
+**175 assertions, 0 fail**; plus `npx tsc --noEmit`, scoped `npx eslint`, `npm run build`
 — all clean.
 
 Focused new tests: `defense-history.rules.test.ts`, `defense-history.service.test.ts`,
@@ -172,3 +193,56 @@ automatic "recommendation addressed" status, historical annotations carried into
 current manuscript, reuse of old evaluation/RAP/signature rows, official GS Form
 rendering/PDF/print, Socket.IO realtime, and CDW-7 acceptance work are **not**
 implemented.
+
+## 12. CDW-6 correction — legacy reports and relationship precision
+
+Focused correction on top of the accepted CDW-6 package. **No database migration.**
+
+### Legacy Rapporteur report compatibility
+
+Older concluded attempts may hold legitimate historical Rapporteur content in
+`DefenseSchedule.rapporteurNotes` / `rapporteurNotesFinalizedAt` with **no** modern
+`RapReport`. The historical report read model now carries explicit provenance
+(`DefenseHistoryReportSource`):
+
+- `STRUCTURED_RAP` — FINALIZED RapReport with `bodyDocument`;
+- `LEGACY_RAP_TEXT` — FINALIZED RapReport with `decisionsAndRecommendations` text and
+  no structured body;
+- `LEGACY_RAPPORTEUR_NOTES` — no usable FINALIZED RapReport, but meaningful schedule
+  notes (`rapporteurNotesFinalizedAt` exposed when recorded).
+
+Precedence is structured RAP → finalized legacy RAP text → schedule notes. A DRAFT/pending
+RapReport is never surfaced as official history. No RapReport row, structured JSON, or
+signature progress is fabricated for legacy notes (`signatureProgress` is `null`); the
+notes are shown because the attempt is already formally concluded, and are never labelled
+a signed/finalized modern RAP. The history list exposes `reportAvailable` plus
+`reportSource` (replacing the misleading `rapAvailable`), and the frontend renders
+"Legacy Rapporteur Notes" / "Legacy historical Committee Report" read-only with an
+explanation — no edit, freeze, sign, insert, or conversion controls.
+
+### Same-stage classification
+
+`SAME_STAGE_REDEFENSE` is now returned **only** when the prior same-stage attempt's
+verdict is `REDEFENSE_REQUIRED`. A same-stage `PASSED` (or legacy
+`FAILED`/`REVISION_REQUIRED`/other) attempt is `OLDER_HISTORY`. This does not narrow
+historical manuscript access: such a manuscript remains readable as older history
+(verified by `defense-history.rules.test.ts` and `cdw6-document-auth.test.ts`), while
+future/unrelated attempts stay denied.
+
+### Previous-stage precision
+
+Only the **latest** valid PASSED attempt of the immediately preceding academic stage stays
+`PREVIOUS_STAGE`; any older PASSED attempt of that same stage is demoted to
+`OLDER_HISTORY`. Ordering remains deterministic (latest same-stage re-defense → latest
+PASSED previous stage → older history, newest first).
+
+### Correction verification
+
+Backend: focused CDW-6 suites (rules, service, document auth, annotation read, routes,
+workspace) → 117 passed; full suite → **139 files / 1542 passed / 5 skipped**;
+`prisma validate`, `prisma generate`, `npm run build` clean.
+
+Frontend: `verify-cdw6-history` grew to **19** assertions (legacy provenance, honest
+legacy labelling, no edit/freeze/sign controls, server-authoritative relationships, one
+primary Previous Stage); full verify set → **175 assertions, 0 fail**; `tsc --noEmit`,
+scoped `eslint`, `npm run build` clean.

@@ -98,8 +98,20 @@ export function manuscriptAvailabilityLabel(item: DefenseHistoryItem): string {
   return item.manuscript ? item.manuscript.displayName : "Historical manuscript unavailable";
 }
 
-export function rapAvailabilityLabel(item: DefenseHistoryItem): string {
-  return item.rapAvailable ? "Finalized Committee Report available" : "Finalized RAP unavailable";
+export function reportAvailabilityLabel(item: DefenseHistoryItem): string {
+  if (!item.reportAvailable || !item.reportSource) {
+    return "Historical report unavailable";
+  }
+  switch (item.reportSource) {
+    case "STRUCTURED_RAP":
+      return "Finalized Committee Report available";
+    case "LEGACY_RAP_TEXT":
+      return "Legacy Committee Report available";
+    case "LEGACY_RAPPORTEUR_NOTES":
+      return "Legacy Rapporteur Notes available";
+    default:
+      return "Historical report available";
+  }
 }
 
 export function annotationsAvailabilityLabel(item: DefenseHistoryItem): string {

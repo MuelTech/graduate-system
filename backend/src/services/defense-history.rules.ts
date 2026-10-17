@@ -111,7 +111,14 @@ export function classifyHistoryRelationship(
   const currentRank = defenseStageRank(current.defenseType);
   if (historicalRank === null || currentRank === null) return null;
   if (historicalRank > currentRank) return null;
-  if (historicalRank === currentRank) return "SAME_STAGE_REDEFENSE";
+  if (historicalRank === currentRank) {
+    // A same-stage re-defense exists ONLY because the prior attempt ended
+    // REDEFENSE_REQUIRED. A PASSED (or legacy FAILED / REVISION_REQUIRED) attempt
+    // at the same stage is secondary older history, not a re-defense.
+    return String(historical.outcome ?? "") === "REDEFENSE_REQUIRED"
+      ? "SAME_STAGE_REDEFENSE"
+      : "OLDER_HISTORY";
+  }
   if (currentRank - historicalRank === 1) {
     // The immediately preceding academic stage is prior-stage context only when
     // that attempt was formally PASSED (normal progression). Otherwise it is
@@ -162,6 +169,23 @@ export function resolveHistoryScheduleIds(
     });
   }
 
+  // Only ONE primary previous-stage item exists: the latest valid PASSED attempt
+  // of the immediately preceding academic stage. Any older PASSED attempt from
+  // that same stage becomes secondary older history (never a second "Previous
+  // Stage" principal).
+  const previousStage = items
+    .filter((item) => item.relationship === "PREVIOUS_STAGE")
+    .sort((a, b) => {
+      if (b.concludedAt !== a.concludedAt) return b.concludedAt - a.concludedAt;
+      if (b.defenseDate !== a.defenseDate) return b.defenseDate - a.defenseDate;
+      if (b.createdAt !== a.createdAt) return b.createdAt - a.createdAt;
+      return a.scheduleId.localeCompare(b.scheduleId);
+    });
+  for (const older of previousStage.slice(1)) {
+    older.relationship = "OLDER_HISTORY";
+  }
+
+  // Re-sort after demotion so older-history items keep newest-first ordering.
   items.sort((a, b) => {
     const rank = RELATIONSHIP_RANK[a.relationship] - RELATIONSHIP_RANK[b.relationship];
     if (rank !== 0) return rank;

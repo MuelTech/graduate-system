@@ -43,17 +43,17 @@ import {
   groupHistoryItems,
   historyVerdictLabel,
   manuscriptAvailabilityLabel,
-  rapAvailabilityLabel,
+  reportAvailabilityLabel,
 } from "@/lib/defense-history/history-view";
 import { useDefenseHistory, useDefenseHistoryAttempt } from "@/hooks/use-defense-history";
-import type { DefenseHistoryItem } from "@/types/defense-history";
+import type { DefenseHistoryItem, DefenseHistoryReport } from "@/types/defense-history";
 
 import { AnnotationThread } from "./annotation-thread";
 import { CollaborativeManuscriptViewer } from "./collaborative-manuscript-viewer";
 import { ReportDocumentCanvas, ReportDocumentView } from "./report-document-view";
 import { CollaborationViewerPane } from "./student-document-collaboration";
 
-type DetailMode = "manuscript" | "rap" | "annotations" | "compare";
+type DetailMode = "manuscript" | "report" | "annotations" | "compare";
 
 /** Student Document toolbar control: "Defense History". */
 export function DefenseHistoryControl({
@@ -268,7 +268,7 @@ function HistoryCard({
       </p>
       <ul className="mt-1 space-y-0.5 text-[11px] text-(--earist-body-text)">
         <li>{manuscriptAvailabilityLabel(item)}</li>
-        <li>{rapAvailabilityLabel(item)}</li>
+        <li>{reportAvailabilityLabel(item)}</li>
         <li>{annotationsAvailabilityLabel(item)}</li>
       </ul>
     </button>
@@ -321,7 +321,7 @@ function HistoryAttemptDetail({
     return parseCollaborationAnnotations(detail, detail.manuscript.id).annotations;
   }, [detail]);
 
-  const [mode, setMode] = useState<DetailMode>(item.manuscript ? "manuscript" : item.rapAvailable ? "rap" : "annotations");
+  const [mode, setMode] = useState<DetailMode>(item.manuscript ? "manuscript" : item.reportAvailable ? "report" : "annotations");
   const [focusedAnnotationId, setFocusedAnnotationId] = useState<string | null>(null);
 
   const stageLabel = defenseTypeLabel(item.defenseType);
@@ -354,9 +354,9 @@ function HistoryAttemptDetail({
             View Previous Manuscript
           </ModeButton>
           <ModeButton
-            active={mode === "rap"}
-            disabled={!item.rapAvailable}
-            onClick={() => setMode("rap")}
+            active={mode === "report"}
+            disabled={!item.reportAvailable}
+            onClick={() => setMode("report")}
             icon={<ScrollText className="h-3.5 w-3.5" />}
           >
             View Previous RAP
@@ -393,7 +393,7 @@ function HistoryAttemptDetail({
         {detail && mode === "manuscript" && (
           <HistoricalManuscriptPane item={item} annotations={annotations} focusedAnnotationId={focusedAnnotationId} onAnnotationSelect={setFocusedAnnotationId} />
         )}
-        {detail && mode === "rap" && <HistoricalRapPane rap={detail.rap} />}
+        {detail && mode === "report" && <HistoricalReportPane report={detail.report} />}
         {detail && mode === "annotations" && (
           <HistoricalAnnotationsPane annotations={annotations} item={item} />
         )}
@@ -446,40 +446,62 @@ function HistoricalManuscriptPane({
   );
 }
 
-function HistoricalRapPane({
-  rap,
+function HistoricalReportPane({
+  report,
 }: {
-  rap: { bodyDocument: unknown; decisionsAndRecommendations: string | null; isStructured: boolean; finalizedAt: string | null; signatureProgress: { required: number; signed: number } } | null;
+  report: DefenseHistoryReport | null;
 }) {
-  if (!rap) {
+  if (!report) {
     return (
       <p className="text-sm text-(--earist-body-text)">
-        Finalized RAP unavailable. Draft or pending report content is not shown as official
+        Historical report unavailable. Draft or pending report content is not shown as official
         history.
       </p>
     );
   }
+
+  const isStructured = report.source === "STRUCTURED_RAP";
+  const isLegacyNotes = report.source === "LEGACY_RAPPORTEUR_NOTES";
+  const provenanceLabel = isStructured
+    ? "Finalized Committee Report"
+    : isLegacyNotes
+      ? "Legacy Rapporteur Notes"
+      : "Legacy historical Committee Report";
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-(--earist-body-text)">
-        <Badge variant="secondary">Finalized RAP</Badge>
-        <span>{formatHistoryDate(rap.finalizedAt)}</span>
-        <span>
-          {rap.signatureProgress.signed} of {rap.signatureProgress.required} signatures
-        </span>
+        <Badge variant="secondary">{provenanceLabel}</Badge>
+        {report.finalizedAt && <span>{formatHistoryDate(report.finalizedAt)}</span>}
+        {report.signatureProgress && (
+          <span>
+            {report.signatureProgress.signed} of {report.signatureProgress.required} signatures
+          </span>
+        )}
+        {isLegacyNotes && !report.rapporteurNotesFinalizedAt && (
+          <span>
+            No finalization timestamp recorded — shown as historical notes because the attempt is
+            concluded.
+          </span>
+        )}
       </div>
-      {rap.isStructured ? (
+
+      {!isStructured && (
+        <p className="mb-2 rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-[13px] text-(--earist-body-text)">
+          {isLegacyNotes
+            ? "This record predates the current in-system Committee Report workflow and is shown as originally stored. It is not a modern signed or finalized RAP."
+            : "Legacy historical Committee Report — recorded before the in-system rich-text Committee Report. It is shown as originally stored and was not authored with the current editor."}
+        </p>
+      )}
+
+      {isStructured ? (
         <ReportDocumentCanvas className="min-h-0 flex-1">
-          <ReportDocumentView doc={normalizeReportDocument(rap.bodyDocument)} />
+          <ReportDocumentView doc={normalizeReportDocument(report.bodyDocument)} />
         </ReportDocumentCanvas>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">
-          <p className="mb-2 rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-[13px] text-(--earist-body-text)">
-            Legacy historical report — recorded before the in-system rich-text Committee Report.
-            It is shown as originally stored and was not authored with the current editor.
-          </p>
           <pre className="whitespace-pre-wrap rounded bg-(--earist-surface-gray) p-3 text-sm">
-            {rap.decisionsAndRecommendations || "No committee report text recorded."}
+            {report.text || "No committee report text recorded."}
           </pre>
         </div>
       )}

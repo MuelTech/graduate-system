@@ -69,6 +69,26 @@ describe("CDW-6 defense history rules — relationship classification", () => {
     ).toBe("PREVIOUS_STAGE");
   });
 
+  it("treats a same-stage PASSED attempt as older history, NOT a re-defense", () => {
+    expect(
+      classifyHistoryRelationship(
+        attempt({ scheduleId: "h", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED" }),
+        attempt({ scheduleId: "c", defenseType: "PROPOSAL_DEFENSE", defenseDate: "2026-11-01" }),
+      ),
+    ).toBe("OLDER_HISTORY");
+  });
+
+  it("treats legacy same-stage outcomes as older history, NOT a re-defense", () => {
+    for (const outcome of ["FAILED", "REVISION_REQUIRED", "REVISION"]) {
+      expect(
+        classifyHistoryRelationship(
+          attempt({ scheduleId: "h", defenseType: "PROPOSAL_DEFENSE", outcome }),
+          attempt({ scheduleId: "c", defenseType: "PROPOSAL_DEFENSE", defenseDate: "2026-11-01" }),
+        ),
+      ).toBe("OLDER_HISTORY");
+    }
+  });
+
   it("does not promote a non-PASSED adjacent attempt to previous-stage context", () => {
     expect(
       classifyHistoryRelationship(
@@ -137,6 +157,37 @@ describe("CDW-6 defense history rules — resolution + deterministic ordering", 
       attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", defenseDate: "2026-07-01" }),
     ]);
     expect(items.map((i) => i.scheduleId)).toEqual(["prop-1"]);
+  });
+
+  it("keeps ONLY the latest PASSED immediately-previous-stage attempt as PREVIOUS_STAGE", () => {
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-07-01", concludedAt: "2026-07-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-09-01", concludedAt: "2026-09-05T00:00:00.000Z" }),
+    ]);
+    expect(items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["prop-2", "PREVIOUS_STAGE"],
+      ["prop-1", "OLDER_HISTORY"],
+    ]);
+    expect(items.filter((i) => i.relationship === "PREVIOUS_STAGE")).toHaveLength(1);
+  });
+
+  it("keeps only the latest PASSED previous-stage attempt when an earlier re-defense exists", () => {
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-07-01", concludedAt: "2026-07-05T00:00:00.000Z" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "PASSED", defenseDate: "2026-09-01", concludedAt: "2026-09-05T00:00:00.000Z" }),
+    ]);
+    expect(items.map((i) => [i.scheduleId, i.relationship])).toEqual([
+      ["prop-2", "PREVIOUS_STAGE"],
+      ["prop-1", "OLDER_HISTORY"],
+    ]);
+  });
+
+  it("has no PREVIOUS_STAGE item when no prior Proposal passed", () => {
+    const items = resolveHistoryScheduleIds(current, [
+      attempt({ scheduleId: "prop-1", defenseType: "PROPOSAL_DEFENSE", outcome: "REDEFENSE_REQUIRED", defenseDate: "2026-07-01" }),
+      attempt({ scheduleId: "prop-2", defenseType: "PROPOSAL_DEFENSE", outcome: "FAILED", defenseDate: "2026-09-01" }),
+    ]);
+    expect(items.some((i) => i.relationship === "PREVIOUS_STAGE")).toBe(false);
   });
 
   it("is deterministic when concluded timestamps tie (falls back to defense date)", () => {
@@ -279,6 +330,34 @@ describe("CDW-6 defense history rules — historical bound-manuscript access", (
     expect(
       canReadHistoricalBoundManuscript({ documentId: "doc-prop-1", documentStage: "PROPOSAL", documentDocType: "PROPOSAL_CHAPTERS", schedules, userId: "title-only" }),
     ).toBe(false);
+  });
+
+  it("a prior PASSED same-stage attempt's manuscript remains readable (older-history parity)", () => {
+    const schedules: Schedule[] = [
+      schedule({
+        id: "prop-1",
+        manuscriptDocumentId: "doc-prop-1",
+        defenseDate: "2026-07-01",
+        conclusion: { outcome: "PASSED" },
+        panelAssignments: [{ userId: "old-panelist" }],
+      }),
+      schedule({
+        id: "prop-2",
+        manuscriptDocumentId: "doc-prop-2",
+        defenseDate: "2026-09-15",
+        panelAssignments: [{ userId: "new-panelist" }],
+      }),
+    ];
+    // Reclassified from SAME_STAGE_REDEFENSE to OLDER_HISTORY — still readable.
+    expect(
+      canReadHistoricalBoundManuscript({
+        documentId: "doc-prop-1",
+        documentStage: "PROPOSAL",
+        documentDocType: "PROPOSAL_CHAPTERS",
+        schedules,
+        userId: "new-panelist",
+      }),
+    ).toBe(true);
   });
 
   it("still grants a historical attempt's own committee access to its own binding", () => {
