@@ -10,7 +10,7 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B IMPLEMENTED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1C and CDW-9 not started
+**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B ACCEPTED; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1 overall PENDING FINAL INDEPENDENT ACCEPTANCE; CDW-9 NOT STARTED
 
 ---
 
@@ -50,7 +50,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
 | CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
-| CDW-LIVE-1 | CDW-LIVE-1A ACCEPTED; 1B IMPLEMENTED — PENDING REVIEW; 1C NOT STARTED | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave before hardening |
+| CDW-LIVE-1 | 1A ACCEPTED; 1B ACCEPTED; 1C VERIFIED — PENDING INDEPENDENT REVIEW; overall PENDING FINAL ACCEPTANCE | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave before hardening |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -1029,7 +1029,7 @@ Do not join socket rooms for CONCLUDED historical viewing.
 
 ## 12A. Pre-CDW-9 Enhancement — CDW-LIVE-1 Live Rapporteur Preview + Draft Autosave
 
-**Status as of 2026-10-18:** CDW-LIVE-1A ACCEPTED at `11ca4890e734f20a399e862ad0f73ca23a23ff92` (FIX-1 included); CDW-LIVE-1B IMPLEMENTED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1C NOT STARTED; CDW-9 NOT STARTED.
+**Status as of 2026-10-18:** CDW-LIVE-1A ACCEPTED at `11ca4890e734f20a399e862ad0f73ca23a23ff92` (FIX-1 included); CDW-LIVE-1B ACCEPTED at `f10f074b1b2c7ea065ce9ee874439f63951f57f2`; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; overall CDW-LIVE-1 PENDING FINAL INDEPENDENT ACCEPTANCE; CDW-9 NOT STARTED.
 
 Detailed design:
 
@@ -1086,8 +1086,8 @@ The nine CDW-8 canonical persisted-domain events remain unchanged.
 ```text
 CDW-8 ACCEPTED / CLOSED
   -> CDW-LIVE-1A ACCEPTED (11ca489, FIX-1 included)
-  -> CDW-LIVE-1B IMPLEMENTED — PENDING INDEPENDENT REVIEW
-  -> CDW-LIVE-1C acceptance (not started)
+  -> CDW-LIVE-1B ACCEPTED (f10f074)
+  -> CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW
   -> CDW-9
 ```
 

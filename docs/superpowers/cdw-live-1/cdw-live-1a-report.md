@@ -16,8 +16,9 @@ falsely claimed — it remains **NOT EXECUTED** and user-owned. Full cross-user 
 remains part of CDW-LIVE-1C.
 
 This report does **not** declare the whole CDW-LIVE-1 initiative closed. CDW-LIVE-1B
-(private evaluation draft autosave) proceeds as a separate package; CDW-LIVE-1C (final
-acceptance) and CDW-9 are not started by this document.
+(private evaluation draft autosave) was subsequently accepted at
+`f10f074b1b2c7ea065ce9ee874439f63951f57f2`; CDW-LIVE-1C (final validation) and CDW-9 are
+separate packages.
 
 ---
 

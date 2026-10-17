@@ -2,14 +2,20 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `11ca4890e734f20a399e862ad0f73ca23a23ff92`
-- **Status:** **IMPLEMENTED — PENDING INDEPENDENT REVIEW**
+- **Accepted implementation HEAD:** `f10f074b1b2c7ea065ce9ee874439f63951f57f2`
+- **Status:** **ACCEPTED**
 - **Date:** 2026-10-18
 - **Scope:** CDW-LIVE-1B only (private evaluator DRAFT autosave)
 - **Migration:** NONE. No Prisma schema or migration change.
 - **Backend changes:** NONE. The existing evaluation draft endpoint remains authoritative.
 
-This report does not mark the whole CDW-LIVE-1 initiative closed. CDW-LIVE-1A is
-ACCEPTED; CDW-LIVE-1C and CDW-9 are not started.
+**Acceptance note.** Independent review accepted CDW-LIVE-1B at
+`f10f074b1b2c7ea065ce9ee874439f63951f57f2`. No remaining CDW-LIVE-1B blocker was
+identified. Manual multi-user browser QA was never falsely claimed; full cross-user
+acceptance remains CDW-LIVE-1C.
+
+This report does not mark the whole CDW-LIVE-1 initiative closed. CDW-LIVE-1A and 1B are
+accepted; CDW-LIVE-1C verification and CDW-9 are separate packages.
 
 ---
 
@@ -228,4 +234,7 @@ manual browser PASS is claimed. Full multi-user acceptance remains CDW-LIVE-1C.
 - No report-authority regression; CDW-LIVE-1A/FIX-1 report behavior remains intact.
 - CDW-LIVE-1C and CDW-9 not started.
 
-**Recommendation: CDW-LIVE-1B READY FOR INDEPENDENT REVIEW.**
+**Recommendation: CDW-LIVE-1B ACCEPTED at `f10f074b1b2c7ea065ce9ee874439f63951f57f2`.**
+
+No known acceptance blockers. Manual browser multi-user QA remains **NOT EXECUTED** and
+user-owned; full cross-user acceptance is part of CDW-LIVE-1C.

@@ -8,7 +8,7 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation-plan authority:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
-**Status:** CONFIRMED DESIGN — CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B IMPLEMENTED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1C NOT STARTED
+**Status:** CONFIRMED DESIGN — CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B ACCEPTED; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; overall CDW-LIVE-1 PENDING FINAL INDEPENDENT ACCEPTANCE
 
 **Date:** 2026-10-17
 
