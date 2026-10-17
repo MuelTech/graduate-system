@@ -198,6 +198,117 @@ describe("DefenseRealtimePublisher", () => {
     expect(deliver).not.toHaveBeenCalled();
   });
 
+  it("strips a comprehensive set of private academic fields", async () => {
+    const { publisher, deliver } = makePublisher();
+
+    await publisher.publish("annotation.comment.created", {
+      scheduleId: "sched-1",
+      thesisDocumentId: "doc-1",
+      annotationId: "ann-1",
+      commentId: "comment-1",
+      criteria: { timelinessRelevance: 1.0 },
+      criterionValues: [1.0, 1.25, 1.5],
+      grades: { groupI: 1.1 },
+      groupAverage: 1.1,
+      overallAverage: 1.2,
+      rating: "E",
+      recommendations: "private recommendation marker",
+      signatureData: "data:image/png;base64,private-signature-marker",
+      rapSignatureData: "data:image/png;base64,private-rap-signature-marker",
+      bodyDocument: { type: "doc" },
+      body: "private comment body marker",
+      comments: [{ body: "private thread marker" }],
+      thread: [{ body: "private thread marker" }],
+      documentBytes: "private-document-bytes-marker",
+      storagePath: "/private/storage/path.pdf",
+      fileUrl: "https://private.example/file.pdf",
+      outcome: "PASSED",
+      verdict: "PASSED",
+      finalRemarks: "private remarks marker",
+      studentDocument: "private student document marker",
+      officialSnapshot: { criteria: true },
+    } as never);
+
+    const delivered = deliver.mock.calls[0][0] as {
+      event: Record<string, unknown>;
+    };
+    const serialized = JSON.stringify(delivered.event);
+
+    expect(Object.keys(delivered.event).sort()).toEqual([
+      "annotationId",
+      "commentId",
+      "eventId",
+      "occurredAt",
+      "scheduleId",
+      "thesisDocumentId",
+    ]);
+    for (const marker of [
+      "private recommendation marker",
+      "private-signature-marker",
+      "private-rap-signature-marker",
+      "private comment body marker",
+      "private thread marker",
+      "private-document-bytes-marker",
+      "/private/storage/path.pdf",
+      "https://private.example/file.pdf",
+      "private remarks marker",
+      "private student document marker",
+      "PASSED",
+    ]) {
+      expect(serialized).not.toContain(marker);
+    }
+    for (const key of [
+      "criteria",
+      "criterionValues",
+      "grades",
+      "groupAverage",
+      "overallAverage",
+      "rating",
+      "recommendations",
+      "signatureData",
+      "rapSignatureData",
+      "bodyDocument",
+      "body",
+      "comments",
+      "thread",
+      "documentBytes",
+      "storagePath",
+      "fileUrl",
+      "outcome",
+      "verdict",
+      "finalRemarks",
+      "studentDocument",
+      "officialSnapshot",
+    ]) {
+      expect(delivered.event).not.toHaveProperty(key);
+    }
+  });
+
+  it("never carries the verdict or outcome in defense.concluded", async () => {
+    const { publisher, deliver } = makePublisher();
+
+    await publisher.publish("defense.concluded", {
+      scheduleId: "sched-1",
+      sessionStatus: "CONCLUDED",
+      outcome: "PASSED",
+      verdict: "PASSED",
+      finalRemarks: "private verdict remarks",
+    } as never);
+
+    const delivered = deliver.mock.calls[0][0] as {
+      event: Record<string, unknown>;
+    };
+    expect(Object.keys(delivered.event).sort()).toEqual([
+      "eventId",
+      "occurredAt",
+      "scheduleId",
+      "sessionStatus",
+    ]);
+    expect(JSON.stringify(delivered.event)).not.toMatch(
+      /PASSED|outcome|verdict|finalRemarks/i,
+    );
+  });
+
   it("has a singleton that is safe before server initialization", async () => {
     await expect(
       defenseRealtimePublisher.publish("evaluation.finalized", {

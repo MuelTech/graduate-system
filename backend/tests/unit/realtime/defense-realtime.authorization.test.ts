@@ -147,6 +147,25 @@ describe("resolveDefenseDeliveryAuthorization", () => {
     ).resolves.toEqual({ deliver: false, authorizedUserIds: new Set() });
   });
 
+  it.each<DefenseRealtimeEventName>([
+    "defense.started",
+    "annotation.created",
+    "annotation.comment.created",
+    "report.draft.updated",
+    "evaluation.finalized",
+    "report.ready_for_signature",
+    "rap.signature.recorded",
+    "rap.finalized",
+    "defense.concluded",
+  ])("drops %s for a CANCELLED attempt (acceptance matrix)", async (eventName) => {
+    const store = makeStore({ getSessionStatus: vi.fn(async () => "CANCELLED") });
+
+    await expect(
+      resolveDefenseDeliveryAuthorization(store, "sched-1", eventName, ["u-1"]),
+    ).resolves.toEqual({ deliver: false, authorizedUserIds: new Set() });
+    expect(store.listAssignedUserIds).not.toHaveBeenCalled();
+  });
+
   it("fails closed for a missing schedule", async () => {
     const store = makeStore({ getSessionStatus: vi.fn(async () => null) });
 

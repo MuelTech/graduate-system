@@ -124,6 +124,31 @@ describe("defense:join handler", () => {
     expect(socket.join).not.toHaveBeenCalledWith("thesis:all");
   });
 
+  it("uses the authenticated socket identity, not join payload identity", async () => {
+    const store = makeStore();
+    const handler = createDefenseJoinHandler({ store, logger: makeLogger() });
+    const socket = makeSocket("u-1");
+    socket.data.role = "PANELIST";
+    const ack = makeAck();
+
+    await handler(
+      socket as never,
+      {
+        scheduleId: "sched-1",
+        userId: "attacker",
+        role: "ADMIN",
+      } as never,
+      ack,
+    );
+
+    expect(store.hasPanelAssignment).toHaveBeenCalledWith("sched-1", "u-1");
+    expect(store.hasPanelAssignment).not.toHaveBeenCalledWith(
+      "sched-1",
+      "attacker",
+    );
+    expect(ack).toHaveBeenCalledWith({ ok: true, room: "defense:sched-1" });
+  });
+
   it("denies an unassigned user with a safe code", async () => {
     const handler = createDefenseJoinHandler({
       store: makeStore({ hasPanelAssignment: vi.fn(async () => false) }),
@@ -475,5 +500,36 @@ describe("defense realtime delivery", () => {
 
     expect(anonymous.leave).toHaveBeenCalledWith("defense:sched-1");
     expect(emissions[0].recipients).toEqual(["u-1"]);
+  });
+
+  it("delivers duplicate events as repeated harmless invalidations only", async () => {
+    const socketA = makeSocket("u-1");
+    const { io, emissions } = makeDeliveryIo([socketA]);
+    const store = makeStore({
+      listAssignedUserIds: vi.fn(async () => new Set(["u-1"])),
+    });
+    const deliver = createDefenseRealtimeDelivery({
+      io: io as never,
+      store,
+      logger: makeLogger(),
+    });
+    const event = makeEvent("annotation.created");
+
+    await expect(
+      deliver({ room: "defense:sched-1", eventName: "annotation.created", event }),
+    ).resolves.toBe(true);
+    await expect(
+      deliver({ room: "defense:sched-1", eventName: "annotation.created", event }),
+    ).resolves.toBe(true);
+
+    expect(emissions).toHaveLength(2);
+    expect(emissions[0].payload).toBe(event);
+    expect(emissions[1].payload).toBe(event);
+    // The authorization port is read-only; delivery cannot mutate defense data.
+    expect(Object.keys(store).sort()).toEqual([
+      "getSessionStatus",
+      "hasPanelAssignment",
+      "listAssignedUserIds",
+    ]);
   });
 });
