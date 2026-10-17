@@ -2,7 +2,9 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting SHA:** `a9a179446284ea928faca8991de34deadc856e1b`
-- **Ending SHA:** the commit that adds this acceptance report (see `git log -1`)
+- **Accepted CDW-8 production implementation HEAD:** `a9a179446284ea928faca8991de34deadc856e1b`
+- **CDW-8C acceptance/test commit:** `180c492a3e0312384da855e7cedb31fd13b2ae4d`
+- **CDW-8C package final HEAD (tests + acceptance documentation):** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`
 - **Date:** 2026-10-17
 - **Scope:** prove that the accepted CDW-8 realtime layer accelerates synchronization without weakening the accepted CDW-1 through CDW-7 REST/database workflow.
 - **Migration:** NONE. No Prisma schema or migration change.
@@ -19,7 +21,7 @@
 | **MANUAL MULTI-USER (browser)** | **NOT EXECUTED — ENVIRONMENT LIMITATION** |
 | **SCRIPTED REAL TWO-USER INTEGRATION** | **PASS** (ad hoc, not committed) |
 
-CDW-8 is **READY TO CLOSE** on automated, source-review, and scripted two-user integration evidence. Manual browser multi-user QA remains **user-owned and not executed**; it is not reported as passed.
+CDW-8 is **ACCEPTED / CLOSED** following automated acceptance, source review, scripted two-user integration evidence, and independent remote-source review. Manual browser multi-user QA remains **user-owned and not executed**; it is not reported as passed and was not treated as a discovered blocker.
 
 ---
 
@@ -300,6 +302,6 @@ Manual browser QA remains user-owned. No scenario is marked PASS without executi
 
 ## 19. Final recommendation
 
-**CDW-8 READY TO CLOSE.**
+**CDW-8 ACCEPTED / CLOSED.**
 
-Automated, source-review, and scripted real two-user integration evidence pass with no acceptance-blocking defect. Manual browser multi-user QA remains **NOT EXECUTED** and is explicitly user-owned; it is the only outstanding verification item and is not a discovered blocker.
+Automated, source-review, scripted real two-user integration evidence, and independent remote-source review found no acceptance-blocking defect. Manual browser multi-user QA remains **NOT EXECUTED** and is explicitly user-owned; it is the only outstanding verification item and is not a discovered blocker.

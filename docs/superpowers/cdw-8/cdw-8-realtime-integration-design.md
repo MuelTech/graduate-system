@@ -5,9 +5,12 @@
 **Branch:** `refactor/collaborative-defense-workspace`  
 **Documentation baseline HEAD:** `744e1ffbee1fa66d1039915b2b2c4d0789b8cbfc`  
 **Accepted persisted-workflow baseline:** CDW-0 through CDW-7 at `3d8b7b294af10947e8dc88de825a413521d3a005`  
+**Accepted CDW-8 production implementation HEAD:** `a9a179446284ea928faca8991de34deadc856e1b`  
+**CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
+**Acceptance report:** `docs/superpowers/cdw-8/cdw-8c-acceptance-report.md`  
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md` §13  
 **Implementation-plan authority:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md` §12  
-**Status:** PROPOSED IMPLEMENTATION DESIGN — documentation only; CDW-8 production code is NOT started  
+**Status:** ACCEPTED / CLOSED — CDW-8A, CDW-8B, and CDW-8C completed; manual browser multi-user QA remains explicitly NOT EXECUTED  
 **Date:** 2026-10-17
 
 ---
@@ -35,9 +38,9 @@ Socket.IO is therefore a delivery accelerator for invalidation signals. It must 
 
 ---
 
-## 1. Current implementation baseline
+## 1. Pre-implementation baseline (historical)
 
-The accepted branch already provides the complete persisted workflow without realtime.
+The facts in this section describe the accepted persisted workflow at the CDW-8 design baseline, before realtime implementation. They are retained as implementation history and must not be read as the current branch state.
 
 ### 1.1 Backend facts
 
@@ -959,9 +962,9 @@ CDW-8 must not:
 
 ---
 
-## 21. Implementation package sequence
+## 21. Implementation package sequence (completed)
 
-CDW-8 must be implemented in three bounded packages. This sequencing is part of the implementation design and is intended to keep transport/security, domain event wiring, and final acceptance independently reviewable.
+CDW-8 was implemented in three bounded packages. This sequencing is retained as implementation history and kept transport/security, domain event wiring, and final acceptance independently reviewable.
 
 ### 21.1 CDW-8A — Backend Realtime Foundation
 
@@ -991,7 +994,7 @@ Explicitly out of scope for CDW-8A:
 - no schema/migration;
 - no polling changes.
 
-**Exit gate:** CDW-8A must be independently reviewed and accepted before CDW-8B starts.
+**Exit gate:** satisfied — CDW-8A was independently reviewed and accepted before CDW-8B started.
 
 ### 21.2 CDW-8B — Domain Events + Frontend Synchronization
 
@@ -1029,7 +1032,7 @@ Explicitly out of scope for CDW-8B:
 - no schema/migration;
 - no CDW-9 hardening.
 
-**Exit gate:** CDW-8B must be independently reviewed and accepted before CDW-8C starts.
+**Exit gate:** satisfied — CDW-8B was independently reviewed and accepted before CDW-8C started.
 
 ### 21.3 CDW-8C — Acceptance / Regression / Multi-user QA
 
@@ -1050,7 +1053,7 @@ Scope:
 
 CDW-8C should be verification-first. Production changes are allowed only for small acceptance-blocking defects discovered during the pass; any larger redesign requires a new review before implementation.
 
-**Exit gate:** CDW-8 is accepted/closed only after CDW-8C is accepted. Do not begin CDW-9 before that point.
+**Exit gate:** satisfied — CDW-8C was accepted and CDW-8 is closed. CDW-9 remains a separate, not-yet-started hardening package.
 
 ### 21.4 Hard sequencing rule
 
@@ -1087,4 +1090,4 @@ CDW-8 is implementation-complete only when:
 - required manual multi-user scenarios are actually executed or explicitly reported as not executed;
 - no schema migration, academic policy change, or out-of-scope realtime feature is introduced.
 
-Until those conditions are proven, CDW-8 remains under implementation and CDW-9 must not begin.
+These conditions were accepted as satisfied by CDW-8C. Manual browser multi-user QA was explicitly reported as NOT EXECUTED due to the available environment, while automated/source review and a scripted real two-user exercise passed. CDW-8 is ACCEPTED / CLOSED; CDW-9 remains NOT STARTED.

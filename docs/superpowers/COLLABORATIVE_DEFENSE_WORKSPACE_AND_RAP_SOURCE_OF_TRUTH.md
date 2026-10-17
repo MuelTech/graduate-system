@@ -6,9 +6,10 @@
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
 **Historical design baseline branch:** refactor/unified-defense-lifecycle  
 **Implementation branch:** refactor/collaborative-defense-workspace  
-**Accepted implementation HEAD (CDW-0 through CDW-7):** `3d8b7b294af10947e8dc88de825a413521d3a005`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-7 unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.1  
+**Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
+**CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-8 unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.2  
 **Last updated:** 2026-10-17
 
 ---
@@ -29,7 +30,7 @@ Where older project documentation or current code conflicts with this document o
 - RAP freezing, review, signatures, and pre-conclusion finalization;
 - conclusion readiness as exposed in the Defense Workspace;
 - historical defense records and revision traceability across attempts and stages;
-- the future real-time synchronization layer.
+- the real-time synchronization layer.
 
 The previously planned standalone WF-C1c package is absorbed into this design. Its core academic invariant remains mandatory: required evaluator records and the required RAP/signatures must be complete before the assigned Chairman records the formal verdict.
 
@@ -38,10 +39,10 @@ This Source of Truth remains the functional/domain authority. The dated implemen
 ### 0.1 Status vocabulary used in this document
 
 - CONFIRMED_PROJECT_DESIGN — agreed project behavior and implementation target.
-- IMPLEMENTED_FOUNDATION — behavior implemented and accepted in `refactor/collaborative-defense-workspace` through CDW-7.
+- IMPLEMENTED_FOUNDATION — behavior implemented and accepted in `refactor/collaborative-defense-workspace` through CDW-8.
 - HISTORICAL_BASELINE — observed pre-CDW behavior retained only to explain migration/refactor history; it is not the current implementation.
 - OPEN_QUESTION — requires explicit institutional/client confirmation before authority is expanded.
-- DEFERRED — intentionally outside the accepted CDW-0 through CDW-7 foundation.
+- DEFERRED — intentionally outside the accepted CDW-0 through CDW-8 foundation.
 
 ---
 
@@ -805,7 +806,10 @@ Historical attempts do not join real-time collaboration rooms.
 
 Realtime is an enhancement to a correct persisted workflow, not the source of truth.
 
-**CDW-8 technical integration design:** `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md`. That document may define transport/bootstrap/event/query details but does not override the academic/domain rules in this Source of Truth.
+**CDW-8 technical integration design:** `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md`.  
+**CDW-8 acceptance report:** `docs/superpowers/cdw-8/cdw-8c-acceptance-report.md`.
+
+CDW-8 is implemented and accepted at production implementation HEAD `a9a179446284ea928faca8991de34deadc856e1b`, with the CDW-8C acceptance package finalized at `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`. These technical documents supplement this Source of Truth and do not override its academic/domain rules.
 
 Canonical architecture:
 
@@ -814,7 +818,7 @@ Canonical architecture:
       -> authorization
       -> database transaction/commit
       -> emit realtime event
-      -> other authorized clients invalidate/refetch or apply safe cache update
+      -> other authorized clients invalidate/refetch authoritative REST state
 
 Rules:
 
@@ -825,7 +829,7 @@ Rules:
 - reconnect always triggers authoritative refetch;
 - event payloads should prefer identifiers/version metadata over large duplicated records.
 
-Suggested room:
+Implemented room:
 
     defense:<scheduleId>
 
@@ -833,7 +837,7 @@ Room membership requires authentication plus current schedule-assignment authori
 
 Realtime may be active for SCHEDULED, IN_PROGRESS, and AWAITING_CONCLUSION while collaboration/signatures are still active. CONCLUDED historical reopening does not require room membership.
 
-Candidate events:
+Implemented canonical events:
 
 - defense.started
 - annotation.created
@@ -861,9 +865,9 @@ The following facts describe the implementation baseline that motivated CDW-0 th
 - RAP creation still followed post-conclusion legacy paths;
 - the pending-signature page used a placeholder report preview.
 
-### 14.2 IMPLEMENTED_FOUNDATION — CDW-0 through CDW-7 accepted
+### 14.2 IMPLEMENTED_FOUNDATION — CDW-0 through CDW-8 accepted
 
-At accepted HEAD `3d8b7b294af10947e8dc88de825a413521d3a005`, the collaborative foundation now includes:
+At accepted production implementation HEAD `a9a179446284ea928faca8991de34deadc856e1b` (with CDW-8C acceptance package HEAD `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`), the collaborative foundation now includes:
 
 - an EARIST-controlled PDF.js-based Defense Workspace viewer with application-controlled navigation, text selection/highlight anchors, comments, and exact attempt/document binding;
 - persisted `DefenseAnnotation` and `DefenseAnnotationComment` collaboration data with backend authorization;
@@ -875,15 +879,16 @@ At accepted HEAD `3d8b7b294af10947e8dc88de825a413521d3a005`, the collaborative f
 - Chairman-only `PASSED` / `REDEFENSE_REQUIRED` conclusion, with no score-derived verdict;
 - concluded-attempt immutability across current and legacy mutation paths;
 - attempt-based Defense History with exact historical manuscript binding, historical RAP/legacy-note provenance, read-only annotations/comments, replacement-committee read access, and manual Compare with Current;
-- React Query refetch/polling as the accepted synchronization foundation before realtime.
+- Socket.IO realtime attached to the existing backend HTTP server with shared JWT identity, exact current `PanelAssignment` room authorization, stale-member eviction, and the nine canonical privacy-safe post-commit events;
+- one Defense Workspace-level Socket.IO client that only invalidates/refetches existing React Query state; REST/database state remains authoritative and the existing polling intervals remain the correctness fallback.
 
 The original uploaded manuscript remains immutable. Highlights/comments are separate persisted overlays. The Rapporteur editor is intentionally document-like, not a full office-suite/page-layout editor, and exact Microsoft Word line breaking is not a correctness target.
 
 ### 14.3 Deferred / separate future work
 
-The following are **not missing CDW-1 through CDW-7 requirements** and must remain separate from the accepted foundation:
+The following are **not missing CDW-1 through CDW-8 requirements** and must remain separate from the accepted foundation:
 
-- CDW-8 Socket.IO realtime synchronization;
+- CDW-9 hardening / production-readiness work;
 - exact institutional **official-form rendering** for Committee Report/RAP, Individual Evaluation, and Oral Examination Summary, including authoritative pagination/geometry, PDF/print/download output, signature placement, and template versioning;
 - automatic PDF/text/semantic manuscript diff;
 - AI determination of revision/recommendation compliance;
@@ -977,7 +982,7 @@ The collaborative Defense Workspace is not considered complete unless all of the
 - same-stage re-defense history is preserved and viewable;
 - previous-stage history supports manual revision verification after PASSED;
 - changing current committee membership does not rewrite historical committee records;
-- REST/DB workflow remains correct before Socket.IO is introduced.
+- REST/DB workflow remains correct when Socket.IO is unavailable; the accepted polling fallback continues to provide convergence.
 
 ---
 

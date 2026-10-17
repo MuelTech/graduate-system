@@ -6,10 +6,11 @@
 **Historical documentation branch:** refactor/unified-defense-lifecycle  
 **Historical baseline implementation HEAD:** e33d2291fea04a36da34ac73713c3865997876a3  
 **Implementation branch:** refactor/collaborative-defense-workspace  
-**Accepted implementation HEAD through CDW-7:** `3d8b7b294af10947e8dc88de825a413521d3a005`  
+**Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
+**CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-7 implemented and accepted; CDW-8/CDW-9 not started
+**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-9 not started
 
 ---
 
@@ -35,7 +36,7 @@ The first objective is correctness and a testable foundation. Realtime is added 
 
 ### 0.1 Current implementation status — 2026-10-17
 
-This plan is intentionally retained as an implementation-history document. The pre-CDW baseline sections below explain why the packages existed; they do **not** describe the current branch after CDW-0 through CDW-7.
+This plan is intentionally retained as an implementation-history document. The pre-CDW baseline sections below explain why the packages existed; they do **not** describe the current branch after CDW-0 through CDW-8.
 
 | Package | Current status | Accepted outcome |
 |---|---|---|
@@ -48,12 +49,22 @@ This plan is intentionally retained as an implementation-history document. The p
 | RAP-C1 | ACCEPTED | freeze/sign/finalize RAP before Chairman verdict |
 | CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
-| CDW-8 | DESIGN DOCUMENTED / IMPLEMENTATION NOT STARTED | detailed Socket.IO integration design added under `docs/superpowers/cdw-8/`; production realtime code remains untouched |
+| CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
-Current accepted branch HEAD through CDW-7:
+Accepted CDW-8 production implementation HEAD:
 
-    3d8b7b294af10947e8dc88de825a413521d3a005
+    a9a179446284ea928faca8991de34deadc856e1b
+
+CDW-8C acceptance package HEAD:
+
+    f6011c1eaa73706cce0fb950ceea2a64dad80fc7
+
+Acceptance report:
+
+    docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
+
+Manual browser multi-user QA remains explicitly NOT EXECUTED; it was not treated as a discovered acceptance blocker.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -892,17 +903,29 @@ Do not begin Socket.IO until this phase is accepted.
 
 ## 12. Phase CDW-8 — Socket.IO realtime synchronization
 
-**Status as of 2026-10-17:** DESIGN DOCUMENTED / IMPLEMENTATION NOT STARTED.
+**Status as of 2026-10-17:** ACCEPTED / CLOSED.
+
+Accepted production implementation HEAD:
+
+    a9a179446284ea928faca8991de34deadc856e1b
+
+CDW-8C acceptance package HEAD:
+
+    f6011c1eaa73706cce0fb950ceea2a64dad80fc7
 
 Detailed technical design:
 
     docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md
 
+Acceptance report:
+
+    docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
+
 The technical design fixes the server bootstrap, JWT/room authorization, post-commit event contracts, React Query invalidation map, reconnect behavior, polling fallback, test matrix, and deployment assumptions. It supplements this plan without changing domain authority.
 
-### Implementation package sequence
+### Completed implementation package sequence
 
-Implement CDW-8 in three bounded packages:
+CDW-8 was implemented in three bounded packages:
 
 1. **CDW-8A — Backend Realtime Foundation**
    - Socket.IO backend/bootstrap;
@@ -932,11 +955,11 @@ Implement CDW-8 in three bounded packages:
    - multi-user browser QA;
    - full backend/frontend regression.
 
-Hard gates:
+Hard gates were satisfied:
 
-- do not start CDW-8B until CDW-8A is independently reviewed and accepted;
-- do not start CDW-8C until CDW-8B is independently reviewed and accepted;
-- do not start CDW-9 until CDW-8C and CDW-8 overall are accepted.
+- CDW-8A was independently reviewed and accepted before CDW-8B;
+- CDW-8B was independently reviewed and accepted before CDW-8C;
+- CDW-8C was accepted and CDW-8 was closed before CDW-9 became eligible to begin. CDW-9 remains NOT STARTED.
 
 The detailed scope and exit criteria for each package are authoritative in `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md` §21.
 
