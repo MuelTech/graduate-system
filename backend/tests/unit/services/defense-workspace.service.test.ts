@@ -462,6 +462,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
       await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
         started: true,
         sessionStatus: "IN_PROGRESS",
+        transitioned: true,
       });
       const where = prismaMock.defenseSchedule.updateMany.mock.calls[0][0].where;
       expect(where).toMatchObject({ id: "sched-1", sessionStatus: "SCHEDULED" });
@@ -483,8 +484,32 @@ describe("DefenseWorkspaceService (CP6)", () => {
     await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
       started: true,
       sessionStatus: "IN_PROGRESS",
+      transitioned: false,
     });
     expect(prismaMock.defenseSchedule.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("CDW-8B: a lost start race reports no local transition", async () => {
+    prismaMock.defenseSchedule.findUnique
+      .mockResolvedValueOnce({
+        defenseType: "PROPOSAL_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+      })
+      .mockResolvedValueOnce({ sessionStatus: "IN_PROGRESS" });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-chair",
+      role: "CHAIRMAN",
+    });
+    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
+      started: true,
+      sessionStatus: "IN_PROGRESS",
+      transitioned: false,
+    });
   });
 
   it("CDW-4: only the assigned Chairman may start; other roles are rejected", async () => {

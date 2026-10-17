@@ -12,6 +12,10 @@ import {
 } from "./defense-realtime.authorization";
 import { createPrismaDefenseRealtimeStore } from "./defense-realtime.store";
 import {
+  getDefenseRealtimeServer,
+  setDefenseRealtimeServer,
+} from "./defense-realtime.registry";
+import {
   DEFENSE_JOIN_EVENT,
   DEFENSE_LEAVE_EVENT,
   defenseRoomName,
@@ -259,8 +263,6 @@ export function createDefenseRealtimeDelivery(
   };
 }
 
-let activeServer: DefenseRealtimeServer | null = null;
-
 /**
  * Attach exactly one Socket.IO server to the caller's existing HTTP server.
  * This function never opens a second port or starts its own listener.
@@ -269,7 +271,7 @@ export function initializeDefenseRealtime(
   httpServer: HttpServer,
   options: DefenseRealtimeServerOptions = {},
 ): DefenseRealtimeServer {
-  if (activeServer) {
+  if (getDefenseRealtimeServer()) {
     throw new Error("Defense realtime is already initialized");
   }
 
@@ -333,7 +335,7 @@ export function initializeDefenseRealtime(
     },
   };
 
-  activeServer = server;
+  setDefenseRealtimeServer(server);
   return server;
 }
 
@@ -341,20 +343,18 @@ export function initializeDefenseRealtime(
  * The publisher resolves this at publish time, so it stays a safe no-op before
  * bootstrap and during shutdown.
  */
-export function getDefenseRealtimeServer(): DefenseRealtimeServer | null {
-  return activeServer;
-}
+export { getDefenseRealtimeServer };
 
 /**
  * Graceful/test shutdown. The singleton is cleared before closing so a
  * subsequent initialization is possible.
  */
 export async function shutdownDefenseRealtime(): Promise<void> {
-  const server = activeServer;
+  const server = getDefenseRealtimeServer();
   if (!server) {
     return;
   }
 
-  activeServer = null;
+  setDefenseRealtimeServer(null);
   await server.shutdown();
 }

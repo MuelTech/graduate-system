@@ -14,6 +14,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClientRequest } from "@/lib/api.client";
+import { useDefenseRealtime } from "@/hooks/use-defense-realtime";
 import { StudentDocumentCollaboration } from "@/components/defense-workspace/student-document-collaboration";
 import { ReportComposerProvider } from "@/components/defense-workspace/report-composer-context";
 import { WorkspaceShell } from "@/components/defense-workspace/workspace-shell";
@@ -36,6 +37,13 @@ export default function DefenseWorkspacePage() {
         ? 20000
         : false;
     },
+  });
+
+  const primaryDoc = data?.documents[0];
+  useDefenseRealtime({
+    scheduleId,
+    sessionStatus: data?.schedule.sessionStatus,
+    documentId: primaryDoc?.id ?? null,
   });
 
   if (isLoading) {
@@ -63,7 +71,6 @@ export default function DefenseWorkspacePage() {
     );
   }
 
-  const primaryDoc = data.documents[0];
   const isFinal = data.schedule.defenseType === "FINAL_DEFENSE";
   const documentLabel = isFinal
     ? "Current Final Manuscript"

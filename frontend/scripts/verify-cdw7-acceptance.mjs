@@ -30,14 +30,19 @@ const HISTORY = "src/components/defense-workspace/defense-history-panel.tsx";
 const HISTORY_HOOKS = "src/hooks/use-defense-history.ts";
 const PAGE = "src/app/(portal)/panelist/defense-workspace/[scheduleId]/page.tsx";
 
-test("the complete workspace shell exists without any realtime dependency", () => {
+test("the complete workspace shell exists and realtime is owned only by the page hook", () => {
   for (const file of [SHELL, RAIL, VERDICT, REPORT, RAP_PANEL, PROVIDER, HISTORY, PAGE]) {
     assert.equal(existsSync(resolve(root, file)), true, `${file} should exist`);
   }
-  const combined = [SHELL, RAIL, VERDICT, REPORT, RAP_PANEL, PROVIDER, HISTORY, PAGE]
+  const leaves = [SHELL, RAIL, VERDICT, REPORT, RAP_PANEL, PROVIDER, HISTORY]
     .map(read)
     .join("\n");
-  assert.doesNotMatch(combined, /socket\.io|Socket\.IO|WebSocket|new WebSocket/i);
+  assert.doesNotMatch(leaves, /socket\.io|Socket\.IO|WebSocket|new WebSocket/i);
+  assert.match(read(PAGE), /useDefenseRealtime/);
+  assert.match(
+    read("src/lib/realtime/defense-socket.ts"),
+    /socket\.io-client/,
+  );
 });
 
 test("Current Manuscript remains the default surface", () => {

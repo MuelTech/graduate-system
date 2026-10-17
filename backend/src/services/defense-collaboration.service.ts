@@ -698,7 +698,7 @@ export class DefenseCollaborationService {
     scheduleId: string,
     userId: string,
     input: { annotationId?: unknown; body?: unknown; parentCommentId?: unknown },
-  ): Promise<AnnotationCommentDto> {
+  ): Promise<{ comment: AnnotationCommentDto; thesisDocumentId: string }> {
     const annotationId =
       typeof input.annotationId === "string" ? input.annotationId : "";
     if (!annotationId) throw new AppError("An annotation is required.", 400);
@@ -732,7 +732,7 @@ export class DefenseCollaborationService {
 
       const annotation = await tx.defenseAnnotation.findUnique({
         where: { id: annotationId },
-        select: { id: true, scheduleId: true },
+        select: { id: true, scheduleId: true, thesisDocumentId: true },
       });
       if (!annotation) throw new AppError("Annotation not found.", 404);
       if (annotation.scheduleId !== scheduleId) {
@@ -759,7 +759,10 @@ export class DefenseCollaborationService {
           author: { include: { user: { select: { firstName: true, lastName: true } } } },
         },
       });
-      return toCommentDto(created as CommentRow);
+      return {
+        comment: toCommentDto(created as CommentRow),
+        thesisDocumentId: annotation.thesisDocumentId,
+      };
     });
   }
 
@@ -989,7 +992,7 @@ export class DefenseCollaborationService {
     userId: string,
     body: unknown,
     expectedBodyVersion?: number | null,
-  ): Promise<{ saved: true; bodyVersion: number }> {
+  ): Promise<{ saved: true; bodyVersion: number; reportId: string }> {
     const { schedule, rap } = await this.loadSchedule(scheduleId);
     const assignment = await this.resolveAssignment(scheduleId, userId);
     if (String(assignment.role) !== RAPPORTEUR_ROLE) {
@@ -1033,7 +1036,7 @@ export class DefenseCollaborationService {
         },
         select: { id: true, bodyVersion: true },
       });
-      return { saved: true, bodyVersion: created.bodyVersion };
+      return { saved: true, bodyVersion: created.bodyVersion, reportId: created.id };
     } catch (error) {
       // Concurrent first save: the unique (scheduleId) row already exists. Reuse
       // it and apply the same versioned write instead of losing the draft.
@@ -1066,7 +1069,7 @@ export class DefenseCollaborationService {
     now: Date,
     expectedBodyVersion: number | null | undefined,
     currentBodyVersion: number,
-  ): Promise<{ saved: true; bodyVersion: number }> {
+  ): Promise<{ saved: true; bodyVersion: number; reportId: string }> {
     const where: Record<string, unknown> = { id: rapId, status: "DRAFT", frozenAt: null };
     if (expectedBodyVersion !== null && expectedBodyVersion !== undefined) {
       where.bodyVersion = expectedBodyVersion;
@@ -1089,6 +1092,7 @@ export class DefenseCollaborationService {
     return {
       saved: true,
       bodyVersion: refreshed?.bodyVersion ?? currentBodyVersion + 1,
+      reportId: rapId,
     };
   }
 
@@ -1098,6 +1102,7 @@ export class DefenseCollaborationService {
   ): Promise<{
     frozen: true;
     alreadyFrozen: boolean;
+    reportId: string;
     contentVersion: number;
     contentHash: string;
     status: string;
@@ -1124,6 +1129,7 @@ export class DefenseCollaborationService {
         return {
           frozen: true,
           alreadyFrozen: true,
+          reportId: rap.id,
           contentVersion: rap.contentVersion ?? 0,
           contentHash: rap.frozenContentHash,
           status: String(rap.status),
@@ -1196,6 +1202,7 @@ export class DefenseCollaborationService {
           return {
             frozen: true,
             alreadyFrozen: true,
+            reportId: rap.id,
             contentVersion: current.contentVersion ?? 0,
             contentHash: current.frozenContentHash,
             status: String(current.status),
@@ -1235,6 +1242,7 @@ export class DefenseCollaborationService {
       return {
         frozen: true,
         alreadyFrozen: false,
+        reportId: rap.id,
         contentVersion,
         contentHash,
         status: "FOR_SIGNATURE",
@@ -1256,8 +1264,10 @@ export class DefenseCollaborationService {
   ): Promise<{
     signed: true;
     status: string;
+    reportId: string;
     contentVersion: number;
     contentHash: string;
+    finalizedNow: boolean;
     signatureProgress: { required: number; signed: number };
   }> {
     const evidence = normalizeSignatureEvidence(signatureData);
@@ -1331,8 +1341,10 @@ export class DefenseCollaborationService {
     return {
       signed: true,
       status,
+      reportId: result.rapId,
       contentVersion: result.contentVersion,
       contentHash: result.contentHash,
+      finalizedNow: status === "FINALIZED",
       signatureProgress: { required: requiredSlots.length, signed: signedSlots.length },
     };
   }

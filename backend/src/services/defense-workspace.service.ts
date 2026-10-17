@@ -438,7 +438,11 @@ export class DefenseWorkspaceService {
   async startDefense(
     scheduleId: string,
     userId: string,
-  ): Promise<{ started: true; sessionStatus: string }> {
+  ): Promise<{
+    started: true;
+    sessionStatus: string;
+    transitioned: boolean;
+  }> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       select: {
@@ -462,7 +466,7 @@ export class DefenseWorkspaceService {
 
     const status = String(schedule.sessionStatus);
     if (status === "IN_PROGRESS" || status === "AWAITING_CONCLUSION") {
-      return { started: true, sessionStatus: status };
+      return { started: true, sessionStatus: status, transitioned: false };
     }
     if (status !== "SCHEDULED") {
       throw new AppError(
@@ -483,9 +487,10 @@ export class DefenseWorkspaceService {
       return {
         started: true,
         sessionStatus: String(refreshed?.sessionStatus ?? "IN_PROGRESS"),
+        transitioned: false,
       };
     }
-    return { started: true, sessionStatus: "IN_PROGRESS" };
+    return { started: true, sessionStatus: "IN_PROGRESS", transitioned: true };
   }
 
   /** CP6/CP7: only the session Rapporteur may write draft notes; locked after finalization. */

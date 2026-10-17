@@ -216,7 +216,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
 
   it("allows the Rapporteur to comment (read + reply) but not annotate", async () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    prismaMock.defenseAnnotation.findUnique.mockResolvedValue({ id: "ann-1", scheduleId: "sched-1" });
+    prismaMock.defenseAnnotation.findUnique.mockResolvedValue({ id: "ann-1", scheduleId: "sched-1", thesisDocumentId: "doc-1" });
     prismaMock.defenseAnnotationComment.create.mockResolvedValue({
       id: "c-1",
       annotationId: "ann-1",
@@ -228,7 +228,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     });
     await expect(
       svc.createComment("sched-1", "u-RAPPORTEUR", { annotationId: "ann-1", body: "note" }),
-    ).resolves.toMatchObject({ id: "c-1" });
+    ).resolves.toMatchObject({ comment: { id: "c-1" }, thesisDocumentId: "doc-1" });
     await expect(
       svc.createAnnotation("sched-1", "u-RAPPORTEUR", { thesisDocumentId: "doc-1", anchor: VALID_ANCHOR }),
     ).rejects.toMatchObject({ statusCode: 403 });
@@ -380,6 +380,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toEqual({
       saved: true,
       bodyVersion: 7,
+      reportId: "rap-1",
     });
     expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ bodyVersion: { increment: 1 } }) }),
@@ -393,6 +394,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     await expect(svc.saveReportDraft("sched-1", "u-RAPPORTEUR", VALID_BODY)).resolves.toEqual({
       saved: true,
       bodyVersion: 1,
+      reportId: "rap-1",
     });
     expect(prismaMock.rapReport.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -516,7 +518,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
-    expect(result).toMatchObject({ frozen: true, alreadyFrozen: false, status: "FOR_SIGNATURE", contentVersion: 1 });
+    expect(result).toMatchObject({ frozen: true, alreadyFrozen: false, status: "FOR_SIGNATURE", contentVersion: 1, reportId: "rap-1" });
     expect(result.contentHash).toMatch(/^[a-f0-9]{64}$/);
     expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -558,7 +560,7 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
 
     const result = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
-    expect(result).toMatchObject({ frozen: true, alreadyFrozen: true, contentHash: "a".repeat(64) });
+    expect(result).toMatchObject({ frozen: true, alreadyFrozen: true, contentHash: "a".repeat(64), reportId: "rap-1" });
     expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
   });
 
@@ -1183,7 +1185,7 @@ describe("DefenseCollaborationService — CDW-3 freeze/write serialization", () 
     // Case A: comment acquires the lock first on a writable DRAFT.
     await expect(
       svc.createComment("sched-1", "u-PANELIST", { annotationId: "ann-1", body: "pre-freeze" }),
-    ).resolves.toMatchObject({ id: "c-9" });
+    ).resolves.toMatchObject({ comment: { id: "c-9" } });
     expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
 
     // The comment is valid pre-freeze history; freeze then proceeds.

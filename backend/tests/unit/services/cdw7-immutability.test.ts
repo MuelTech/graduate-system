@@ -206,4 +206,53 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
     expect(data.signedContentHash).toBe("frozen-hash-1");
     expect(data.signedContentVersion).toBe(3);
   });
+
+  it("CDW-8B: returns authoritative schedule/report/version metadata for publication", async () => {
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        rapReport: {
+          ...slot().rapReport,
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
+        },
+      }),
+    );
+
+    const result = await svc.signRapSlot(
+      "sig-1",
+      "u-panel",
+      "data:image/png;base64,AAAA",
+    );
+
+    expect(result).toMatchObject({
+      rapId: "rap-1",
+      scheduleId: "sched-1",
+      contentVersion: 3,
+      status: "PARTIALLY_SIGNED",
+      finalizedNow: false,
+    });
+  });
+
+  it("CDW-8B: reports finalizedNow only when this signature finalizes the RAP", async () => {
+    vi.spyOn(RapReportService.prototype, "recomputeRapStatus").mockResolvedValue(
+      "FINALIZED",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        rapReport: {
+          ...slot().rapReport,
+          status: "PARTIALLY_SIGNED",
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
+        },
+      }),
+    );
+
+    const result = await svc.signRapSlot(
+      "sig-1",
+      "u-panel",
+      "data:image/png;base64,AAAA",
+    );
+
+    expect(result.finalizedNow).toBe(true);
+    expect(result.status).toBe("FINALIZED");
+  });
 });

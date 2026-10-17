@@ -1,9 +1,7 @@
 import crypto from "crypto";
 
-import {
-  getDefenseRealtimeServer,
-  type DefenseRealtimeDeliveryInput,
-} from "./defense-realtime.server";
+import { getDefenseRealtimeServer } from "./defense-realtime.registry";
+import type { DefenseRealtimeDeliveryInput } from "./defense-realtime.server";
 import {
   DEFENSE_REALTIME_EVENT_METADATA_KEYS,
   defenseRoomName,

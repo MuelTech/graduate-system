@@ -267,7 +267,13 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
   it("lets a required Chairman sign their own slot bound to the frozen version/hash", async () => {
     signerSlot("CHAIRMAN");
     const result = await svc.signReportForSignatures("sched-1", "u-CHAIRMAN", EVIDENCE);
-    expect(result).toMatchObject({ signed: true, status: "PARTIALLY_SIGNED", contentVersion: 2 });
+    expect(result).toMatchObject({
+      signed: true,
+      status: "PARTIALLY_SIGNED",
+      contentVersion: 2,
+      reportId: "rap-1",
+      finalizedNow: false,
+    });
     expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ userId: "u-CHAIRMAN" }),
@@ -349,6 +355,8 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     ]);
     const result = await svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE);
     expect(result.status).toBe("FINALIZED");
+    expect(result.reportId).toBe("rap-1");
+    expect(result.finalizedNow).toBe(true);
     expect(result.signatureProgress).toEqual({ required: 3, signed: 3 });
   });
 });

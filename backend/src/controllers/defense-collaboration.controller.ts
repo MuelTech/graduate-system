@@ -9,6 +9,10 @@ import { Response } from "express";
 
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { DefenseCollaborationService } from "../services/defense-collaboration.service";
+import {
+  publishDefenseRealtimeEvent,
+  publishDefenseRealtimeSequence,
+} from "../realtime/defense-realtime.publish";
 import { AppError } from "../utils/AppError";
 
 export class DefenseCollaborationController {
@@ -73,6 +77,11 @@ export class DefenseCollaborationController {
           initialComment: req.body?.initialComment,
         },
       );
+      publishDefenseRealtimeEvent("annotation.created", {
+        scheduleId: req.params.scheduleId as string,
+        thesisDocumentId: annotation.thesisDocumentId,
+        annotationId: annotation.id,
+      });
       res.status(200).json({ annotation });
     } catch (error) {
       this.sendError(res, error);
@@ -86,7 +95,7 @@ export class DefenseCollaborationController {
     const userId = this.requireUser(req, res);
     if (!userId) return;
     try {
-      const comment = await this.collaboration.createComment(
+      const result = await this.collaboration.createComment(
         req.params.scheduleId as string,
         userId,
         {
@@ -95,7 +104,13 @@ export class DefenseCollaborationController {
           parentCommentId: req.body?.parentCommentId ?? null,
         },
       );
-      res.status(200).json({ comment });
+      publishDefenseRealtimeEvent("annotation.comment.created", {
+        scheduleId: req.params.scheduleId as string,
+        thesisDocumentId: result.thesisDocumentId,
+        annotationId: req.params.annotationId as string,
+        commentId: result.comment.id,
+      });
+      res.status(200).json({ comment: result.comment });
     } catch (error) {
       this.sendError(res, error);
     }
@@ -131,6 +146,11 @@ export class DefenseCollaborationController {
         req.body?.body,
         req.body?.expectedBodyVersion ?? null,
       );
+      publishDefenseRealtimeEvent("report.draft.updated", {
+        scheduleId: req.params.scheduleId as string,
+        reportId: result.reportId,
+        bodyVersion: result.bodyVersion,
+      });
       res.status(200).json(result);
     } catch (error) {
       this.sendError(res, error);
@@ -148,6 +168,13 @@ export class DefenseCollaborationController {
         req.params.scheduleId as string,
         userId,
       );
+      if (!result.alreadyFrozen) {
+        publishDefenseRealtimeEvent("report.ready_for_signature", {
+          scheduleId: req.params.scheduleId as string,
+          reportId: result.reportId,
+          contentVersion: result.contentVersion,
+        });
+      }
       res.status(200).json(result);
     } catch (error) {
       this.sendError(res, error);
@@ -166,6 +193,22 @@ export class DefenseCollaborationController {
         userId,
         req.body?.signatureData,
       );
+      const signaturePayload = {
+        scheduleId: req.params.scheduleId as string,
+        reportId: result.reportId,
+        contentVersion: result.contentVersion,
+      };
+      publishDefenseRealtimeSequence([
+        { eventName: "rap.signature.recorded", payload: signaturePayload },
+        ...(result.finalizedNow
+          ? [
+              {
+                eventName: "rap.finalized" as const,
+                payload: signaturePayload,
+              },
+            ]
+          : []),
+      ]);
       res.status(200).json(result);
     } catch (error) {
       this.sendError(res, error);

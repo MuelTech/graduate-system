@@ -318,7 +318,7 @@ export class RapReportService {
       );
     }
 
-    const rapId = await prisma.$transaction(async (tx) => {
+    const transactionResult = await prisma.$transaction(async (tx) => {
       const slot = await tx.rapReportSignature.findUnique({
         where: { id: sigId },
         select: {
@@ -331,7 +331,7 @@ export class RapReportService {
               frozenAt: true,
               frozenContentHash: true,
               contentVersion: true,
-              schedule: { select: { sessionStatus: true } },
+              schedule: { select: { id: true, sessionStatus: true } },
             },
           },
         },
@@ -407,12 +407,26 @@ export class RapReportService {
         throw new AppError("Signature already recorded.", 409);
       }
 
-      return slot.rapId;
+      return {
+        rapId: slot.rapId,
+        scheduleId: rap?.schedule?.id ?? null,
+        contentVersion: rap?.contentVersion ?? 0,
+        previousStatus: String(rap?.status ?? ""),
+      };
     });
 
     // CP7-FIX1: committed-state recompute (never downgrades FINALIZED).
-    const status = await this.recomputeRapStatus(rapId);
-    return { signatureId: sigId, rapId, status };
+    const status = await this.recomputeRapStatus(transactionResult.rapId);
+    return {
+      signatureId: sigId,
+      rapId: transactionResult.rapId,
+      scheduleId: transactionResult.scheduleId,
+      contentVersion: transactionResult.contentVersion,
+      status,
+      finalizedNow:
+        transactionResult.previousStatus !== "FINALIZED" &&
+        status === "FINALIZED",
+    };
   }
 
   /**
