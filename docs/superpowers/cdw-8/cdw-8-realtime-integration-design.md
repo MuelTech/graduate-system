@@ -959,7 +959,116 @@ CDW-8 must not:
 
 ---
 
-## 21. Definition of done
+## 21. Implementation package sequence
+
+CDW-8 must be implemented in three bounded packages. This sequencing is part of the implementation design and is intended to keep transport/security, domain event wiring, and final acceptance independently reviewable.
+
+### 21.1 CDW-8A — Backend Realtime Foundation
+
+**Goal:** establish the Socket.IO transport and authorization foundation without changing frontend runtime behavior.
+
+Scope:
+
+- add backend `socket.io` dependency;
+- convert the existing Express startup to a shared Node HTTP server;
+- attach one Socket.IO server to that HTTP server;
+- reuse/extract the existing JWT verification semantics for socket authentication;
+- implement `defense:<scheduleId>` room authorization from the caller's current exact `PanelAssignment`;
+- permit room membership only for SCHEDULED / IN_PROGRESS / AWAITING_CONCLUSION;
+- deny CONCLUDED / CANCELLED / unassigned users;
+- implement reconnect-time reauthorization rules;
+- implement stale-membership revalidation/eviction before defense event delivery;
+- add privacy-safe realtime event types/contracts;
+- add a best-effort realtime publisher abstraction that can safely no-op when realtime is unavailable;
+- add focused backend transport/auth/room tests.
+
+Explicitly out of scope for CDW-8A:
+
+- no `socket.io-client`;
+- no React Query event handling;
+- no production domain-event emit wiring yet;
+- no UI changes;
+- no schema/migration;
+- no polling changes.
+
+**Exit gate:** CDW-8A must be independently reviewed and accepted before CDW-8B starts.
+
+### 21.2 CDW-8B — Domain Events + Frontend Synchronization
+
+**Goal:** connect the accepted backend foundation to real persisted workflow transitions and update active Defense Workspace clients through authoritative refetch.
+
+Scope:
+
+- wire the canonical post-commit events:
+  - `defense.started`
+  - `annotation.created`
+  - `annotation.comment.created`
+  - `report.draft.updated`
+  - `evaluation.finalized`
+  - `report.ready_for_signature`
+  - `rap.signature.recorded`
+  - `rap.finalized`
+  - `defense.concluded`;
+- emit only after successful authoritative persistence/transaction completion;
+- preserve REST success if realtime publication fails;
+- add frontend `socket.io-client`;
+- implement one workspace-level realtime connection owner;
+- implement join/leave/reconnect cleanup;
+- implement the documented React Query event-to-invalidation map;
+- refetch authoritative state after reconnect;
+- keep existing 15/20-second polling as fallback/convergence;
+- verify CONCLUDED/CANCELLED workspaces do not join/rejoin;
+- add focused backend event-publication and frontend event-mapping tests.
+
+Explicitly out of scope for CDW-8B:
+
+- no socket-based academic writes;
+- no client-side authoritative academic cache;
+- no polling removal;
+- no presence/cursor/typing features;
+- no schema/migration;
+- no CDW-9 hardening.
+
+**Exit gate:** CDW-8B must be independently reviewed and accepted before CDW-8C starts.
+
+### 21.3 CDW-8C — Acceptance / Regression / Multi-user QA
+
+**Goal:** prove the realtime layer accelerates synchronization without weakening the already accepted REST/database workflow.
+
+Scope:
+
+- full unauthorized-room and state-exclusion regression;
+- replacement/removed-assignment reauthorization;
+- event-payload privacy regression;
+- duplicate/stale/out-of-order event safety;
+- reconnect convergence;
+- socket unavailable -> REST/polling workflow still functions;
+- multi-user browser QA across annotation/comment, Start Defense, evaluation completion, report save/freeze, signatures, RAP finalization, and conclusion;
+- verify concluded attempts are read-only and do not join rooms;
+- run full backend/frontend regression expected by the repository;
+- document exact manual-QA execution status and any remaining deployment caveats.
+
+CDW-8C should be verification-first. Production changes are allowed only for small acceptance-blocking defects discovered during the pass; any larger redesign requires a new review before implementation.
+
+**Exit gate:** CDW-8 is accepted/closed only after CDW-8C is accepted. Do not begin CDW-9 before that point.
+
+### 21.4 Hard sequencing rule
+
+```
+CDW-8A
+  -> independent remote-source review / acceptance
+  -> CDW-8B
+  -> independent remote-source review / acceptance
+  -> CDW-8C
+  -> final CDW-8 acceptance
+  -> only then CDW-9
+```
+
+Do not collapse all three packages into one implementation prompt unless the project owner explicitly changes this sequencing decision.
+
+---
+
+## 22. Definition of done
 
 CDW-8 is implementation-complete only when:
 

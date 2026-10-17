@@ -900,6 +900,46 @@ Detailed technical design:
 
 The technical design fixes the server bootstrap, JWT/room authorization, post-commit event contracts, React Query invalidation map, reconnect behavior, polling fallback, test matrix, and deployment assumptions. It supplements this plan without changing domain authority.
 
+### Implementation package sequence
+
+Implement CDW-8 in three bounded packages:
+
+1. **CDW-8A — Backend Realtime Foundation**
+   - Socket.IO backend/bootstrap;
+   - shared HTTP server;
+   - JWT handshake authentication;
+   - `defense:<scheduleId>` room authorization;
+   - reconnect/reauthorization;
+   - realtime publisher + event contracts;
+   - focused backend transport/auth tests;
+   - **no frontend realtime integration yet**.
+
+2. **CDW-8B — Domain Events + Frontend Synchronization**
+   - wire canonical post-commit defense events;
+   - add `socket.io-client`;
+   - one workspace-level socket lifecycle;
+   - React Query invalidation/refetch mapping;
+   - reconnect convergence;
+   - retain polling fallback;
+   - **no academic workflow redesign**.
+
+3. **CDW-8C — Acceptance / Regression / Multi-user QA**
+   - unauthorized/state-exclusion regression;
+   - replacement-member reauthorization;
+   - payload privacy;
+   - duplicate/stale/out-of-order safety;
+   - socket-unavailable REST/polling fallback;
+   - multi-user browser QA;
+   - full backend/frontend regression.
+
+Hard gates:
+
+- do not start CDW-8B until CDW-8A is independently reviewed and accepted;
+- do not start CDW-8C until CDW-8B is independently reviewed and accepted;
+- do not start CDW-9 until CDW-8C and CDW-8 overall are accepted.
+
+The detailed scope and exit criteria for each package are authoritative in `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md` §21.
+
 ### Goal
 
 Improve latency/coordination without changing domain authority.
