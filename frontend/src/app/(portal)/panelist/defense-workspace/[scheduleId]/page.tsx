@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClientRequest } from "@/lib/api.client";
 import { useDefenseRealtime } from "@/hooks/use-defense-realtime";
+import { DefenseRealtimeProvider } from "@/components/defense-workspace/defense-realtime-context";
 import { StudentDocumentCollaboration } from "@/components/defense-workspace/student-document-collaboration";
 import { ReportComposerProvider } from "@/components/defense-workspace/report-composer-context";
 import { WorkspaceShell } from "@/components/defense-workspace/workspace-shell";
@@ -40,7 +41,7 @@ export default function DefenseWorkspacePage() {
   });
 
   const primaryDoc = data?.documents[0];
-  useDefenseRealtime({
+  const realtime = useDefenseRealtime({
     scheduleId,
     sessionStatus: data?.schedule.sessionStatus,
     documentId: primaryDoc?.id ?? null,
@@ -77,21 +78,29 @@ export default function DefenseWorkspacePage() {
     : primaryDoc?.displayName || "Student document";
 
   return primaryDoc ? (
-    <StudentDocumentCollaboration
-      scheduleId={scheduleId}
-      documentId={primaryDoc.id}
-      documentLabel={documentLabel}
-      role={data.myAssignment.role}
-      sessionStatus={data.schedule.sessionStatus}
-      rapStatus={data.rapStatus}
+    <DefenseRealtimeProvider
+      value={realtime}
+    >
+      <StudentDocumentCollaboration
+        scheduleId={scheduleId}
+        documentId={primaryDoc.id}
+        documentLabel={documentLabel}
+        role={data.myAssignment.role}
+        sessionStatus={data.schedule.sessionStatus}
+        rapStatus={data.rapStatus}
+      >
+        <ReportComposerProvider>
+          <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument />
+        </ReportComposerProvider>
+      </StudentDocumentCollaboration>
+    </DefenseRealtimeProvider>
+  ) : (
+    <DefenseRealtimeProvider
+      value={realtime}
     >
       <ReportComposerProvider>
-        <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument />
+        <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument={false} />
       </ReportComposerProvider>
-    </StudentDocumentCollaboration>
-  ) : (
-    <ReportComposerProvider>
-      <WorkspaceShell workspace={data} scheduleId={scheduleId} hasDocument={false} />
-    </ReportComposerProvider>
+    </DefenseRealtimeProvider>
   );
 }

@@ -10,6 +10,13 @@ import {
   resolveDefenseDeliveryAuthorization,
   type DefenseRealtimeAuthorizationStore,
 } from "./defense-realtime.authorization";
+import type { DefenseReportPreviewStore } from "./defense-report-preview.authorization";
+import {
+  createDefenseReportPreviewDelivery,
+  createDefenseReportPreviewHandler,
+} from "./defense-report-preview.server";
+import { DEFENSE_REPORT_PREVIEW_EVENT } from "./defense-report-preview.rules";
+import { createPrismaDefenseReportPreviewStore } from "./defense-report-preview.store";
 import { createPrismaDefenseRealtimeStore } from "./defense-realtime.store";
 import {
   getDefenseRealtimeServer,
@@ -68,6 +75,7 @@ export interface DefenseRealtimeDeliveryDeps {
 
 export interface DefenseRealtimeServerOptions extends DefenseSocketAuthOptions {
   store?: DefenseRealtimeAuthorizationStore;
+  reportPreviewStore?: DefenseReportPreviewStore;
   logger?: DefenseRealtimeLogger;
   corsOrigin?: string | string[];
 }
@@ -279,6 +287,8 @@ export function initializeDefenseRealtime(
   const store =
     options.store ??
     createPrismaDefenseRealtimeStore();
+  const reportPreviewStore =
+    options.reportPreviewStore ?? createPrismaDefenseReportPreviewStore();
 
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -297,6 +307,18 @@ export function initializeDefenseRealtime(
   });
   const joinHandler = createDefenseJoinHandler({ store, logger });
   const leaveHandler = createDefenseLeaveHandler({ logger });
+  const reportPreviewDeliver = createDefenseReportPreviewDelivery({
+    io: io as unknown as Parameters<
+      typeof createDefenseReportPreviewDelivery
+    >[0]["io"],
+    store: reportPreviewStore,
+    logger,
+  });
+  const reportPreviewHandler = createDefenseReportPreviewHandler({
+    store: reportPreviewStore,
+    deliver: reportPreviewDeliver,
+    logger,
+  });
 
   io.use(
     createDefenseSocketAuthMiddleware({
@@ -321,6 +343,22 @@ export function initializeDefenseRealtime(
       (ack?: (result: DefenseLeaveAck) => void) => {
         void leaveHandler(
           socket as unknown as DefenseRealtimeJoinSocket,
+          ack,
+        );
+      },
+    );
+
+    // CDW-LIVE-1A: ephemeral, transport-only report preview. Deliberately not
+    // part of the canonical nine-event publisher and never persisted.
+    socket.on(
+      DEFENSE_REPORT_PREVIEW_EVENT,
+      (
+        payload: unknown,
+        ack?: (result: { ok: true } | { ok: false; code: string }) => void,
+      ) => {
+        void reportPreviewHandler(
+          socket as unknown as Parameters<typeof reportPreviewHandler>[0],
+          payload,
           ack,
         );
       },

@@ -17,21 +17,36 @@
  * rendering is deferred to a later Official Defense Forms phase.
  */
 
-import { useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Eye, FileText, PencilLine, Save } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  FileText,
+  PencilLine,
+  Save,
+  WifiOff,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { apiClientRequest } from "@/lib/api.client";
+import { ApiError, apiClientRequest } from "@/lib/api.client";
+import {
+  ReportAutosaveConflictError,
+  ReportAutosaveController,
+  type ReportAutosaveState,
+} from "@/lib/report/report-autosave";
 import {
   emptyReportDocument,
   isReportDocumentEmpty,
   normalizeReportDocument,
   type ReportDocument,
 } from "@/lib/report/report-document";
+import { shouldDisplayLiveReportPreview } from "@/lib/realtime/report-preview";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
+import { useReportRealtime } from "./defense-realtime-context";
 import { ReportDocumentCanvas, ReportDocumentView } from "./report-document-view";
 import { RapSignaturePanel, type RapFreezeCheck, type RapSignerStatus } from "./rap-signature-panel";
 import { RichTextReportEditor } from "./rich-text-report-editor";
@@ -166,65 +181,256 @@ export function CommitteeReportPanel({
   }
 
   return data.canEditBody ? (
-    <ReportAuthoringPanel scheduleId={scheduleId} report={data} />
+    <ReportAuthoringPanel
+      scheduleId={scheduleId}
+      report={data}
+      reloadReport={async () => {
+        const result = await refetch();
+        return result.data ?? null;
+      }}
+    />
   ) : (
     <ReportReadOnly report={data} role={workspace.myAssignment.role} />
+  );
+}
+
+function initialSaveState(report: CommitteeReportReadModel): ReportAutosaveState {
+  const hasSavedBody = Boolean(report.reportId) || report.hasCollaborativeBody;
+  return {
+    status: hasSavedBody ? "saved" : "clean",
+    bodyVersion: report.bodyVersion ?? 0,
+    hasUnsavedChanges: false,
+    error: null,
+    savedAt: null,
+  };
+}
+
+function SaveStateIndicator({
+  state,
+  hasSavedReport,
+}: {
+  state: ReportAutosaveState;
+  hasSavedReport: boolean;
+}) {
+  const label =
+    state.status === "saving"
+      ? "Saving…"
+      : state.status === "dirty"
+        ? "Unsaved changes"
+        : state.status === "offline"
+          ? "Offline — changes not saved"
+          : state.status === "conflict"
+            ? "Save conflict — refresh/reconcile required"
+            : state.status === "error"
+              ? state.error
+                ? `Save failed — ${state.error}`
+                : "Save failed"
+              : state.status === "clean" && !hasSavedReport
+                ? "Not saved yet"
+                : "Saved";
+
+  if (state.status === "conflict" || state.status === "error") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-red-600">
+        <AlertCircle className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  if (state.status === "offline") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-amber-700">
+        <WifiOff className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  if (state.status === "saved" && !state.hasUnsavedChanges) {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-emerald-700">
+        <CheckCircle2 className="h-4 w-4" /> {label}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-[13px] text-(--earist-body-text)">{label}</span>
   );
 }
 
 function ReportAuthoringPanel({
   scheduleId,
   report,
+  reloadReport,
 }: {
   scheduleId: string;
   report: CommitteeReportReadModel;
+  reloadReport: () => Promise<CommitteeReportReadModel | null>;
 }) {
   const queryClient = useQueryClient();
+  const { sendReportPreview } = useReportRealtime();
+
+  const initialBodyRef = useRef<ReportDocument>(
+    report.body ? normalizeReportDocument(report.body) : emptyReportDocument(),
+  );
+  const initialVersionRef = useRef<number>(report.bodyVersion ?? 0);
 
   const [body, setBody] = useState<ReportDocument>(() =>
     report.body ? normalizeReportDocument(report.body) : emptyReportDocument(),
   );
-  const [dirty, setDirty] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<ReportAutosaveState>(() =>
+    initialSaveState(report),
+  );
   const [previewing, setPreviewing] = useState(false);
-  const savedVersionRef = useRef<number>(report.bodyVersion ?? 0);
+  const [editorKey, setEditorKey] = useState(0);
+  const [reloading, setReloading] = useState(false);
+  const controllerRef = useRef<ReportAutosaveController | null>(null);
 
   const legacyText =
     report.legacyContent.decisionsAndRecommendations ??
     report.legacyContent.rapporteurNotes;
   const showLegacyNotice = !report.hasCollaborativeBody && Boolean(legacyText);
 
-  const saveDraft = useMutation({
-    mutationFn: async () =>
-      apiClientRequest(`/thesis/defense/${scheduleId}/collaboration/report`, {
-        method: "PUT",
-        body: JSON.stringify({
-          body: normalizeReportDocument(body),
-          expectedBodyVersion: savedVersionRef.current,
-        }),
-      }),
-    onSuccess: async (result) => {
-      const version = (result as { bodyVersion?: number })?.bodyVersion;
-      if (typeof version === "number") savedVersionRef.current = version;
-      setDirty(false);
-      setMessage("Saved");
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: ["committeeReport", scheduleId] });
-    },
-    onError: (e: Error) => {
-      setError(e.message || "Save failed");
-      setMessage(null);
-    },
-  });
+  useEffect(() => {
+    const controller = new ReportAutosaveController({
+      initialBody: initialBodyRef.current,
+      initialBodyVersion: initialVersionRef.current,
+      debounceMs: 2000,
+      maxWaitMs: 10000,
+      onStateChange: setSaveState,
+      save: async ({ body: nextBody, expectedBodyVersion }) => {
+        try {
+          const result = (await apiClientRequest(
+            `/thesis/defense/${scheduleId}/collaboration/report`,
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                body: nextBody,
+                expectedBodyVersion,
+              }),
+            },
+          )) as { bodyVersion?: unknown };
 
-  const saveStatus = saveDraft.isPending
-    ? "Saving…"
-    : error
-      ? "Save failed"
-      : dirty
-        ? "Unsaved changes"
-        : message ?? "Saved";
+          const bodyVersion =
+            typeof result.bodyVersion === "number"
+              ? result.bodyVersion
+              : expectedBodyVersion + 1;
+
+          // The authoritative refetch remains the rendered source of truth.
+          void queryClient.invalidateQueries({
+            queryKey: ["committeeReport", scheduleId],
+          });
+
+          return { bodyVersion };
+        } catch (error) {
+          if (error instanceof ApiError && error.statusCode === 409) {
+            throw new ReportAutosaveConflictError(error.message);
+          }
+          throw error;
+        }
+      },
+    });
+
+    controllerRef.current = controller;
+
+    if (typeof navigator !== "undefined") {
+      controller.setOnline(navigator.onLine);
+    }
+
+    const onOnline = () => controller.setOnline(true);
+    const onOffline = () => controller.setOnline(false);
+    const flush = () => controller.flushNow();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") controller.flushNow();
+    };
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!controller.hasUnsavedChanges()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("blur", flush);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("blur", flush);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      // Switching workspace tabs/unmounting must not strand a pending debounce.
+      controller.flushNow();
+      controller.dispose();
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
+    };
+  }, [queryClient, scheduleId]);
+
+  useEffect(() => {
+    const controller = controllerRef.current;
+    if (!controller) return;
+
+    const state = controller.getState();
+    const serverVersion = report.bodyVersion ?? 0;
+
+    if (
+      !state.hasUnsavedChanges &&
+      state.status !== "conflict" &&
+      serverVersion > state.bodyVersion
+    ) {
+      // No local work can be lost: adopt the newer authoritative saved draft so
+      // an older clean editor can never silently overwrite it on its next edit.
+      const nextBody = report.body
+        ? normalizeReportDocument(report.body)
+        : emptyReportDocument();
+      setBody(nextBody);
+      setEditorKey((key) => key + 1);
+      controller.reloadFromServer(nextBody, serverVersion);
+      return;
+    }
+
+    controller.syncServerVersion(serverVersion);
+  }, [report.body, report.bodyVersion]);
+
+  const handleBodyChange = (doc: ReportDocument) => {
+    const normalized = normalizeReportDocument(doc);
+    setBody(normalized);
+    controllerRef.current?.update(normalized);
+
+    sendReportPreview({
+      baseBodyVersion:
+        controllerRef.current?.getServerVersion() ?? report.bodyVersion ?? 0,
+      body: normalized,
+    });
+  };
+
+  const handleReloadSaved = async () => {
+    setReloading(true);
+    try {
+      const latest = await reloadReport();
+      if (!latest) return;
+
+      const nextBody = latest.body
+        ? normalizeReportDocument(latest.body)
+        : emptyReportDocument();
+
+      setBody(nextBody);
+      setEditorKey((key) => key + 1);
+      controllerRef.current?.reloadFromServer(
+        nextBody,
+        latest.bodyVersion ?? 0,
+      );
+    } finally {
+      setReloading(false);
+    }
+  };
+
+  const conflict = saveState.status === "conflict";
+  const dirty = saveState.hasUnsavedChanges;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 p-4">
@@ -257,17 +463,14 @@ function ReportAuthoringPanel({
       {previewing ? (
         <ReportPreview
           doc={body}
-          unsaved={dirty}
+          unsaved={saveState.hasUnsavedChanges}
           onBack={() => setPreviewing(false)}
         />
       ) : (
         <RichTextReportEditor
+          key={editorKey}
           initialDocument={body}
-          onChange={(doc) => {
-            setBody(normalizeReportDocument(doc));
-            setDirty(true);
-            setMessage(null);
-          }}
+          onChange={handleBodyChange}
         />
       )}
 
@@ -280,11 +483,11 @@ function ReportAuthoringPanel({
           <>
             <Button
               type="button"
-              disabled={saveDraft.isPending}
-              onClick={() => saveDraft.mutate()}
+              disabled={saveState.status === "saving" || conflict}
+              onClick={() => controllerRef.current?.flushNow()}
             >
               <Save className="mr-2 h-4 w-4" />
-              {saveDraft.isPending ? "Saving…" : "Save Draft"}
+              {saveState.status === "saving" ? "Saving…" : "Save now"}
             </Button>
             <Button
               type="button"
@@ -293,19 +496,20 @@ function ReportAuthoringPanel({
             >
               <Eye className="mr-2 h-4 w-4" /> Preview Report
             </Button>
-            <span className="flex items-center gap-1.5 text-[13px] text-(--earist-body-text)">
-              {error ? (
-                <>
-                  <AlertCircle className="h-4 w-4 text-red-600" /> {saveStatus}
-                </>
-              ) : !dirty && message ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {saveStatus}
-                </>
-              ) : (
-                saveStatus
-              )}
-            </span>
+            {conflict && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={reloading}
+                onClick={() => void handleReloadSaved()}
+              >
+                {reloading ? "Reloading…" : "Reload saved version"}
+              </Button>
+            )}
+            <SaveStateIndicator
+              state={saveState}
+              hasSavedReport={Boolean(report.reportId) || report.hasCollaborativeBody}
+            />
           </>
         )}
       </footer>
@@ -379,10 +583,21 @@ function ReportReadOnly({
   report: CommitteeReportReadModel;
   role: string;
 }) {
+  const { liveReportPreview } = useReportRealtime();
   const hasBody = report.hasCollaborativeBody && report.body;
   const legacyText =
     report.legacyContent.decisionsAndRecommendations ??
     report.legacyContent.rapporteurNotes;
+  const livePreview =
+    liveReportPreview &&
+    shouldDisplayLiveReportPreview({
+      preview: liveReportPreview,
+      scheduleId: report.scheduleId,
+      reportStatus: report.reportStatus,
+      authoritativeBodyVersion: report.bodyVersion ?? 0,
+    })
+      ? liveReportPreview
+      : null;
 
   return (
     <div className="h-full overflow-auto p-4">
@@ -392,6 +607,9 @@ function ReportReadOnly({
             <FileText className="h-5 w-5" /> Committee Report
           </h2>
           <StatusBadge status={report.reportStatus} />
+          {livePreview && (
+            <Badge className="bg-amber-100 text-amber-800">Live preview — unsaved</Badge>
+          )}
         </div>
 
         <ReportContextBlock report={report} />
@@ -410,7 +628,19 @@ function ReportReadOnly({
           />
         )}
 
-        {hasBody ? (
+        {livePreview ? (
+          <section className="space-y-2">
+            <p className="text-[13px] text-amber-800">
+              Live preview — unsaved. This is the Rapporteur&apos;s current wording,
+              not yet the saved Committee Report draft.
+            </p>
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-amber-300">
+              <ReportDocumentCanvas>
+                <ReportDocumentView doc={livePreview.body} />
+              </ReportDocumentCanvas>
+            </div>
+          </section>
+        ) : hasBody ? (
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">
             <ReportDocumentCanvas>
               <ReportDocumentView doc={report.body} />

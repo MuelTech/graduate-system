@@ -31,6 +31,11 @@ import {
   validateReportDocument,
 } from "./report-body.rules";
 import {
+  FROZEN_REPORT_STATUSES,
+  isCollaborationWritableStatus,
+  isReportBodyEditable,
+} from "./report-edit-authority.rules";
+import {
   type RapSnapshotCommitteeMember,
   buildRapSigningSnapshot,
   hashRapSnapshot,
@@ -50,8 +55,6 @@ const ANNOTATION_WRITE_ROLES = ["CHAIRMAN", "PANELIST"];
 const COMMENT_WRITE_ROLES = ["CHAIRMAN", "PANELIST", "RAPPORTEUR"];
 const RAPPORTEUR_ROLE = "RAPPORTEUR";
 const CHAIRMAN_ROLE = "CHAIRMAN";
-const COLLAB_WRITABLE_STATUSES = ["SCHEDULED", "IN_PROGRESS", "AWAITING_CONCLUSION"];
-const FROZEN_RAP_STATUSES = ["FOR_SIGNATURE", "PARTIALLY_SIGNED", "ALL_SIGNED", "DISTRIBUTED", "FINALIZED"];
 const MAX_COMMENT_LENGTH = 5000;
 const SIGNATURE_EVIDENCE_PREFIX = "data:image/";
 
@@ -85,10 +88,8 @@ const STAGE_DOC_BINDING: Record<string, { stage: string; docTypes: string[] }> =
   FINAL_DEFENSE: { stage: "FINAL", docTypes: ["FINAL_MANUSCRIPT"] },
 };
 
-/** Single source of truth for whether collaboration writes are open. */
-function isCollaborationWritableStatus(status: string): boolean {
-  return COLLAB_WRITABLE_STATUSES.includes(status);
-}
+/** Single source of truth for whether collaboration writes are open lives in
+ * `report-edit-authority.rules.ts` and is shared with the live-preview transport. */
 
 /**
  * CDW-3: validate an optional initial comment supplied with a new annotation.
@@ -578,7 +579,7 @@ export class DefenseCollaborationService {
     rap: { status: unknown; frozenAt: Date | null } | null,
   ): void {
     this.assertSessionOpen(schedule.sessionStatus);
-    if (rap && (rap.frozenAt || FROZEN_RAP_STATUSES.includes(String(rap.status)))) {
+    if (rap && (rap.frozenAt || (FROZEN_REPORT_STATUSES as readonly string[]).includes(String(rap.status)))) {
       throw new AppError(
         "The committee report is frozen for signatures; collaboration is read-only.",
         409,
@@ -829,12 +830,12 @@ export class DefenseCollaborationService {
     rap: { status: unknown; frozenAt: Date | null } | null,
     role: unknown,
   ): boolean {
-    return (
-      String(role) === RAPPORTEUR_ROLE &&
-      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
-      (rap === null ||
-        (String(rap.status) === "DRAFT" && !rap.frozenAt))
-    );
+    return isReportBodyEditable({
+      sessionStatus: String(schedule.sessionStatus),
+      role: role === null || role === undefined ? null : String(role),
+      rapStatus: rap ? String(rap.status) : null,
+      rapFrozenAt: rap?.frozenAt ?? null,
+    });
   }
 
   private evaluatorRoleSet(defenseType: unknown): Set<string> {
