@@ -18,6 +18,7 @@ import {
 import { DEFENSE_REPORT_PREVIEW_EVENT } from "./defense-report-preview.rules";
 import { createPrismaDefenseReportPreviewStore } from "./defense-report-preview.store";
 import { createPrismaDefenseRealtimeStore } from "./defense-realtime.store";
+import { parseCorsOrigins } from "../utils/cors-origins";
 import {
   getDefenseRealtimeServer,
   setDefenseRealtimeServer,
@@ -294,8 +295,7 @@ export function initializeDefenseRealtime(
     cors: {
       origin:
         options.corsOrigin ??
-        process.env.FRONTEND_URL ??
-        "http://localhost:3000",
+        parseCorsOrigins(process.env.FRONTEND_URL),
       credentials: true,
     },
   });

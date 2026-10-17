@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import masterRouter from "./routes";
+import { parseCorsOrigins } from "./utils/cors-origins";
 
 /**
  * Builds the Express application without starting a network listener. The
@@ -14,7 +15,7 @@ export function createApp() {
   // Middleware
   app.use(
     cors({
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: parseCorsOrigins(process.env.FRONTEND_URL),
       credentials: true,
       exposedHeaders: ["Content-Disposition", "Content-Type"],
     }),
