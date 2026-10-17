@@ -110,7 +110,12 @@ export class PanelistDashboardRepository {
         userId,
         isSigned: false,
         required: { not: false },
-        rapReport: { status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] } },
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          // CDW-7: a concluded/cancelled attempt is historical and read-only;
+          // its leftover partial slots must not appear as actionable work.
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       include: {
         rapReport: {
@@ -161,7 +166,11 @@ export class PanelistDashboardRepository {
       where: {
         userId,
         isSigned: true,
-        rapReport: { status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] } },
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          // CDW-7: historical attempts do not belong in "waiting on others".
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       include: {
         rapReport: {

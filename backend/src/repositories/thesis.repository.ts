@@ -1134,6 +1134,13 @@ export class ThesisRepository {
       where: {
         userId,
         isSigned: false,
+        // CDW-7: the legacy signature inbox is an ACTION queue. Historical
+        // (concluded/cancelled) attempts are read-only and must not appear here,
+        // and only canonical signable RAP states are actionable.
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       select: {
         id: true,

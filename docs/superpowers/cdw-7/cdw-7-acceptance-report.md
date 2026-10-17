@@ -170,7 +170,7 @@ Focused acceptance set (new + dashboard + workspace + conclusion + privacy + RAP
 collaboration + routes + history + signer policy): **294 passed**.
 
 Full backend: `npx prisma validate` (valid), `npx prisma generate`, `npm run build`
-(exit 0), `npx vitest run` → **140 files / 1565 passed / 5 skipped / 0 failed**.
+(exit 0), `npx vitest run` → **142 files / 1579 passed / 5 skipped / 0 failed**.
 
 ## 13. Frontend verification
 
@@ -236,5 +236,31 @@ signatures remain readable; none of the above writes are permitted after conclus
 
 Verification: new `backend/tests/unit/services/cdw7-immutability.test.ts` (8 tests) plus
 the updated workspace/CP7/acceptance fixtures; focused set **190 passed**; full backend
-**140 files / 1573 passed / 5 skipped**; frontend verification unchanged at **189
+**142 files / 1579 passed / 5 skipped**; frontend verification unchanged at **189
 assertions, 0 fail**. No schema change, no migration.
+
+## 17. Final read-model cleanup — historical RAP signature work is hidden
+
+A remaining read-model inconsistency surfaced after the immutability correction: a
+CONCLUDED/CANCELLED attempt's leftover RAP signature rows could still be presented as
+actionable work even though the backend correctly rejected the mutation with 409.
+
+Closed at the repository (query) level — the backend read model is authoritative:
+
+- `PanelistDashboardRepository.getPendingRapSlots` now requires a signable RAP
+  (`FOR_SIGNATURE`/`PARTIALLY_SIGNED`) **and** excludes `CONCLUDED`/`CANCELLED`
+  schedules, so historical attempts never produce a "Review & Sign" dashboard task.
+- `PanelistDashboardRepository.getSignedRapSlots` applies the same schedule exclusion, so
+  historical signed slots no longer appear as "Waiting for other signatures".
+- `ThesisRepository.getPendingRapReports` (legacy `GET /defense/rap-reports/pending`, used
+  by `/panelist/signatures`) is now bounded to own, unsigned, signable RAP states on
+  non-concluded/non-cancelled attempts.
+
+Active `AWAITING_CONCLUSION`/`IN_PROGRESS` signing remains unchanged. Own-slot scoping and
+the no-`signatureData` select are preserved. Historical records remain stored and readable;
+this is a read-model filter only (no mutation, deletion, or backfill) — **no schema change,
+no migration**. No frontend production change was required.
+
+Verification: focused read-model/acceptance set **100 passed**; full backend
+**142 files / 1579 passed / 5 skipped / 0 failed**; frontend **189 assertions, 0 fail**;
+`tsc --noEmit` and `npm run build` clean.
