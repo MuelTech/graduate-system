@@ -224,7 +224,8 @@ official PDF renderer. **No database migration.**
   picker.
 - **Default size:** 12 pt (the previous 16px body equals 12 pt). A stored
   paragraph may set 11 pt.
-- **Default line spacing:** 1.5. Both defaults apply when a paragraph carries no
+- **Default line spacing:** 1.5 at this pass (later changed to single/1.0 — see
+  "Word Layout Fidelity" below). Both defaults apply when a paragraph carries no
   explicit attribute, so pre-existing content renders unchanged.
 
 **Controlled font size and line spacing**

@@ -33,6 +33,7 @@ import {
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 import { ReportDocumentCanvas, ReportDocumentView } from "./report-document-view";
+import { RapSignaturePanel, type RapFreezeCheck, type RapSignerStatus } from "./rap-signature-panel";
 import { RichTextReportEditor } from "./rich-text-report-editor";
 
 export interface CommitteeReportReadModel {
@@ -61,6 +62,13 @@ export interface CommitteeReportReadModel {
     frozenContentHash: string | null;
   };
   canEditBody: boolean;
+  // RAP-C1 freeze / signature lifecycle.
+  canFreeze: boolean;
+  freezeReadiness: { ready: boolean; checks: RapFreezeCheck[] };
+  signatures: RapSignerStatus[];
+  signatureProgress: { required: number; signed: number };
+  mySignature: RapSignerStatus | null;
+  canSign: boolean;
 }
 
 const DEFENSE_LABELS: Record<string, string> = {
@@ -68,6 +76,15 @@ const DEFENSE_LABELS: Record<string, string> = {
   PROPOSAL_DEFENSE: "Proposal Defense",
   FINAL_DEFENSE: "Final Defense",
 };
+
+/** RapStatus values that mean the Committee Report is frozen / signing has begun. */
+const REPORT_FROZEN_STATUSES = [
+  "FOR_SIGNATURE",
+  "PARTIALLY_SIGNED",
+  "ALL_SIGNED",
+  "DISTRIBUTED",
+  "FINALIZED",
+];
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -225,6 +242,18 @@ function ReportAuthoringPanel({
 
       {showLegacyNotice && <LegacyAuthoringNotice legacyText={legacyText as string} />}
 
+      <RapSignaturePanel
+        scheduleId={scheduleId}
+        reportStatus={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus}
+        contentVersion={report.contentVersion}
+        canFreeze={report.canFreeze}
+        freezeReadiness={report.freezeReadiness}
+        signatures={report.signatures}
+        signatureProgress={report.signatureProgress}
+        canSign={report.canSign}
+        mySignature={report.mySignature}
+      />
+
       {previewing ? (
         <ReportPreview
           doc={body}
@@ -366,6 +395,20 @@ function ReportReadOnly({
         </div>
 
         <ReportContextBlock report={report} />
+
+        {REPORT_FROZEN_STATUSES.includes(report.reportStatus) && (
+          <RapSignaturePanel
+            scheduleId={report.scheduleId}
+            reportStatus={report.reportStatus}
+            contentVersion={report.contentVersion}
+            canFreeze={false}
+            freezeReadiness={report.freezeReadiness}
+            signatures={report.signatures}
+            signatureProgress={report.signatureProgress}
+            canSign={report.canSign}
+            mySignature={report.mySignature}
+          />
+        )}
 
         {hasBody ? (
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-(--earist-border-gray)">

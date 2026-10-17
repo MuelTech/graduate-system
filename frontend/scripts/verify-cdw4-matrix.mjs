@@ -120,7 +120,7 @@ test("role rail removes the generic Readiness + live Summary and adds the tracke
   assert.match(rail, /canStartDefense/);
   assert.match(rail, /evaluationOpen/);
   assert.match(rail, /RAPPORTEUR/);
-  assert.match(rail, /Report authoring arrives in a later package/);
+  assert.match(rail, /Freeze for Signatures/);
 });
 
 test("evaluation completion tracker exposes status only", () => {

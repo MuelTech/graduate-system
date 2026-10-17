@@ -24,6 +24,7 @@ import { apiClientRequest } from "@/lib/api.client";
 import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 import { ChairmanConclusionPanel } from "./chairman-conclusion-panel";
+import { ChairmanVerdictPanel } from "./chairman-verdict-panel";
 import { DefenseRoster } from "./defense-roster";
 import { EvaluationCompletionTracker } from "./evaluation-completion-tracker";
 import { OralEvaluationForm } from "./oral-evaluation-form";
@@ -157,7 +158,8 @@ export function RoleRail({
               Report status: {workspace.rapStatus ?? "Not created yet"}
             </p>
             <p className="mt-1 text-[14px] text-(--earist-body-text)">
-              Report authoring arrives in a later package.
+              Author the report in the Committee Report tab, then Freeze for Signatures when
+              the committee is ready. Required signatures are collected there.
             </p>
           </section>
         )}
@@ -184,6 +186,9 @@ export function RoleRail({
             evaluatorAssignments={progress.evaluatorAssignments}
           />
         )}
+
+        {/* RAP-C1: Chairman formal verdict readiness + action (until concluded). */}
+        {isChairman && <ChairmanVerdictPanel scheduleId={scheduleId} />}
 
         {/* Concluded attempts: read-only recorded result (no early verdict UI). */}
         <ChairmanConclusionPanel workspace={workspace} />

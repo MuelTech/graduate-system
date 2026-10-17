@@ -65,9 +65,9 @@ test("role rail is role-aware: evaluation only for evaluators; Start Defense onl
   assert.match(rail, /OralEvaluationForm/);
   assert.match(rail, /canStartDefense/);
   assert.match(rail, /evaluationOpen/);
-  // Rapporteur report status without a rich-text editor; Adviser/Facilitator info only.
+  // Rapporteur report status; Adviser/Facilitator info only.
   assert.match(rail, /RAPPORTEUR/);
-  assert.match(rail, /Report authoring arrives in a later package/);
+  assert.match(rail, /Freeze for Signatures/);
 });
 
 test("Committee Report tab gates authoring on canEditBody (CDW-5 authoring surface)", () => {
@@ -85,9 +85,10 @@ test("page composes the shell and provides the exact attempt document to collabo
   assert.doesNotMatch(page, /documents\/latest|latestDocument/i);
 });
 
-test("no realtime or RAP signing UI in the workspace files (CDW-5 boundary)", () => {
+test("the workspace adds RAP-C1 freeze/signing without any realtime layer", () => {
   const combined = read(SHELL) + read(ROLE_RAIL) + read(REPORT);
   assert.doesNotMatch(combined, /socket\.io|Socket\.IO/i);
-  // Freeze/signature lifecycle belongs to RAP-C1, not CDW-5.
-  assert.doesNotMatch(combined, /FOR_SIGNATURE|PARTIALLY_SIGNED|signRapSlot/);
+  // RAP-C1: the Committee Report freeze + required-signature lifecycle now lives
+  // in the workspace files (previously deferred from CDW-5).
+  assert.match(combined, /FOR_SIGNATURE/);
 });
