@@ -5,10 +5,11 @@
  * comment threads, the Rapporteur Committee Report body, report freeze/hash, and
  * a read-only conclusion-readiness model.
  *
- * This is NOT the collaborative UI (CDW-2/CDW-3/CDW-5). It intentionally does
- * NOT change the RAP-creation sequence or the Chairman conclusion lifecycle:
- * report draft/freeze operate on an EXISTING RapReport row in DRAFT state.
- * Creating the report during the defense belongs to RAP-C1.
+ * This is NOT the collaborative UI (CDW-2/CDW-3/CDW-5). It owns the Rapporteur
+ * report read model, draft, and freeze, the RAP-C1 signing lifecycle, and the
+ * read-only conclusion-readiness facts. The in-system report is the official RAP
+ * source: it must be authored, frozen, and fully signed (FINALIZED) BEFORE the
+ * Chairman may record the verdict; the conclusion path never creates a RAP.
  *
  * Security model (fail closed):
  *  - authority comes from the caller's PanelAssignment for the exact schedule,

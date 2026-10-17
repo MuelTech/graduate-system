@@ -94,6 +94,8 @@ function readySchedule(overrides: Partial<Record<string, unknown>> = {}) {
     rapporteurNotesFinalized: true,
     oralSummaryExists: false,
     thesisTitleIds: ["t1", "t2", "t3"],
+    // RAP-C1: a new conclusion requires an in-system FINALIZED Committee Report.
+    rapReportStatus: "FINALIZED",
     ...overrides,
   };
 }

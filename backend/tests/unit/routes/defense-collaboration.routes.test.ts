@@ -31,6 +31,7 @@ const COLLAB_ROUTES: Array<[string, string]> = [
   ["/defense/:scheduleId/collaboration/report", "get"],
   ["/defense/:scheduleId/collaboration/report", "put"],
   ["/defense/:scheduleId/collaboration/report/freeze", "post"],
+  ["/defense/:scheduleId/collaboration/report/sign", "post"],
   ["/defense/:scheduleId/collaboration/conclusion-readiness", "get"],
 ];
 
@@ -41,5 +42,19 @@ describe("CDW-1 collaborative defense routes", () => {
     // authenticateJWT + requireRole + controller handler
     expect(route?.stack.length).toBe(3);
     expect(route?.stack[0]?.handle).toBe(authenticateJWT);
+  });
+});
+
+describe("RAP-C1: every conclusion endpoint converges on the same secure authority", () => {
+  it("POST /conclusion and POST /conclude share the identical controller handler", () => {
+    const canonical = findRoute(layers, "/defense/:scheduleId/conclusion", "post");
+    const legacyAlias = findRoute(layers, "/defense/:scheduleId/conclude", "post");
+    expect(canonical).toBeDefined();
+    expect(legacyAlias).toBeDefined();
+    // Both routes are authenticated + role-guarded and resolve to the SAME
+    // conclusion authority — there is no unguarded bypass route.
+    expect(canonical?.stack[0]?.handle).toBe(authenticateJWT);
+    expect(legacyAlias?.stack[0]?.handle).toBe(authenticateJWT);
+    expect(canonical?.stack[2]?.handle).toBe(legacyAlias?.stack[2]?.handle);
   });
 });

@@ -1,7 +1,13 @@
 /**
- * CP7 — RAP lifecycle after formal conclusion.
- * Signature slots come from the stage-aware RAP signatory policy (§15.3).
- * Own-signature CAS; last required signer finalizes the RAP server-side.
+ * CP7 — RAP helpers.
+ *
+ * NOTE (RAP-C1): `createRapAfterConclusion` and `ensureRapAfterTitlePrerequisites`
+ * are LEGACY COMPATIBILITY HELPERS ONLY. They are NOT reachable from the current
+ * formal-conclusion path: a new conclusion requires an in-system Committee Report
+ * that has already been authored, frozen, fully signed, and FINALIZED, and the
+ * conclusion transaction never creates a RAP. Signature slots come from the
+ * stage-aware RAP signatory policy (§15.3). Own-signature CAS; the last required
+ * signer finalizes the RAP server-side.
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
@@ -98,21 +104,23 @@ export function buildRapContent(input: RapContentInput): string {
 
 export class RapReportService {
   /**
-   * Create the official RAP exactly once after formal conclusion.
-   * generatedBy = Rapporteur who finalized notes (not the Chairman).
-   * Initial status FOR_SIGNATURE — no Admin "Generate & Distribute" required.
+   * LEGACY COMPATIBILITY HELPER — do NOT call from the current formal-conclusion
+   * path. New conclusions require an in-system Committee Report that has already
+   * been authored, frozen, fully signed, and FINALIZED BEFORE the verdict; that
+   * path never creates a RAP. This helper remains only for older
+   * admin/compatibility flows and historical convergence.
    */
   async createRapAfterConclusion(
     tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
     input: RapCreationInput,
   ) {
-    // CDW-5 transitional guard. A new canonical attempt must NOT become CONCLUDED
-    // while its Committee Report is still a DRAFT or awaiting required signatures.
-    // The full canonical sequence (draft → freeze → signatures → FINALIZED →
-    // conclusion) is RAP-C1; until then this legacy post-conclusion creation path
-    // FAILS CLOSED when a non-finalized report already exists. Because this runs
-    // inside the formal-conclusion transaction, throwing aborts the whole
-    // conclusion (DefenseConclusion, schedule CONCLUDED, and the thesis mirror).
+    // LEGACY compatibility guard. The canonical RAP lifecycle is now: Rapporteur
+    // authors in-system → Save Draft → freeze → required signatures → FINALIZED →
+    // Chairman verdict. `createRapAfterConclusion` is no longer reachable from the
+    // formal-conclusion path (which requires an existing FINALIZED report). If it
+    // is ever invoked (older admin/compatibility flow), it converges on an existing
+    // FINALIZED report and otherwise FAILS CLOSED so a non-finalized report can
+    // never be silently bypassed.
     const existing = await tx.rapReport.findUnique({
       where: { scheduleId: input.scheduleId },
     });

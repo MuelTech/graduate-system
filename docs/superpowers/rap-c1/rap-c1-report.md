@@ -80,20 +80,37 @@ FINALIZED` (the existing `RapStatus` enum is reused; no new values).
 
 ## Conclusion readiness (Chairman)
 
-The repository conclusion transaction requires the attempt's Committee Report to be
-**FINALIZED** before any authoritative write when a report exists (all stages). For
-attempts that never authored a collaborative report, the legacy path is unchanged
-(Proposal/Final require finalized Rapporteur notes; the RAP is created at
-conclusion). A collaborative attempt is instead gated by the RAP lifecycle — its
-in-system report replaces the legacy notes artifact — and it never creates a second
-RAP. `validateConclusionPreconditions` gained an optional `rapReportStatus` gate:
-a report present but not `FINALIZED` blocks with 409; `null` preserves the legacy
-Notes requirement. Only PASSED / REDEFENSE_REQUIRED are accepted; scores never
-select the verdict; the frozen report/hash is never mutated by the conclusion.
+The official RAP must be authored in-system, and the formal verdict requires that
+in-system Committee Report to be **FINALIZED** first — at **every** stage
+(Title / Proposal / Final). The repository conclusion transaction is the final
+authority and enforces this BEFORE any authoritative write (DefenseConclusion,
+ThesisRecord, session CONCLUDED):
+
+```
+NO RAP            → 409
+DRAFT             → 409
+FOR_SIGNATURE     → 409
+PARTIALLY_SIGNED  → 409
+ALL_SIGNED        → 409 (the canonical lifecycle auto-transitions to FINALIZED)
+DISTRIBUTED       → 409
+FINALIZED         → eligible, subject to the remaining prerequisites
+```
+
+There is **no legacy bypass**: a missing in-system `RapReport`, or any
+non-`FINALIZED` status, blocks a NEW conclusion; legacy Rapporteur notes never
+substitute for the RAP, and the conclusion path never creates or mutates a RAP.
+`validateConclusionPreconditions` treats a `null`/`undefined` `rapReportStatus` as
+fail-closed. Only PASSED / REDEFENSE_REQUIRED are accepted; scores never select the
+verdict; the frozen report/hash/version/signatures are never mutated by the
+conclusion.
+
+Already-CONCLUDED historical attempts (including legacy ones with no in-system RAP)
+remain readable and unchanged — this rule only gates recording a NEW conclusion.
 
 `GET /thesis/defense/:scheduleId/collaboration/conclusion-readiness` returns the
 authoritative facts the Chairman UI renders (evaluations, Summary, report frozen,
-signatures x of y, RAP finalized, blockers).
+signatures x of y, RAP finalized, blockers) and agrees with the transaction and the
+service validation.
 
 ## Collaboration lock after freeze
 

@@ -465,7 +465,8 @@ router.put(
   thesisController.saveRapporteurWorkspaceNotes,
 );
 // CP7 formal conclusion — session CHAIRMAN assignment is authoritative (not account role).
-// Score completion never concludes; RAP is created only here.
+// Score completion never concludes. RAP-C1: an in-system FINALIZED Committee Report
+// (authored → frozen → fully signed) MUST already exist; this path never creates a RAP.
 router.post(
   "/defense/:scheduleId/conclusion",
   authenticateJWT,
