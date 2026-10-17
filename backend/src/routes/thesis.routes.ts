@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
 import { DefenseCollaborationController } from "../controllers/defense-collaboration.controller";
+import { DefenseHistoryController } from "../controllers/defense-history.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
 import { secureUpload } from "../middlewares/upload.middleware";
 
 const router = Router();
 const thesisController = new ThesisController();
 const defenseCollaborationController = new DefenseCollaborationController();
+const defenseHistoryController = new DefenseHistoryController();
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -549,6 +551,24 @@ router.get(
   authenticateJWT,
   requireRole(["PANELIST"]),
   defenseCollaborationController.getConclusionReadiness,
+);
+
+// CDW-6: Defense History and revision traceability — READ-ONLY prior-attempt
+// context for the CURRENT schedule. The first :scheduleId is the current
+// workspace schedule whose assignment grants historical-review authority; the
+// historical schedule is a read-only target. There are deliberately NO history
+// write routes: a historical attempt is immutable.
+router.get(
+  "/defense/:scheduleId/history",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseHistoryController.getDefenseHistory,
+);
+router.get(
+  "/defense/:scheduleId/history/:historicalScheduleId",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseHistoryController.getDefenseHistoryAttempt,
 );
 
 // CP7: Official Criteria (ADMIN or owning evaluator)

@@ -3,6 +3,7 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { storageService } from "../storage";
 import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
+import { canReadHistoricalBoundManuscript } from "./defense-history.rules";
 
 interface ModelConfig {
     prismaModel: string;
@@ -77,10 +78,13 @@ export function canPanelistAccessThesisDocument(
         reviewedDocumentId?: string | null;
       }> | null;
       defenseSchedules?: Array<{
+        id?: string;
         defenseType?: string;
         /** CDW-2: the exact document bound to this attempt, when set. */
         manuscriptDocumentId?: string | null;
-        /** Formal attempt outcome (DefenseConclusion) — drives the Final exception. */
+        defenseDate?: Date | string | null;
+        createdAt?: Date | string | null;
+        /** Formal attempt outcome (DefenseConclusion) — drives the history context. */
         conclusion?: { outcome?: string } | null;
         panelAssignments?: Array<{ userId: string }>;
       }> | null;
@@ -114,19 +118,29 @@ export function canPanelistAccessThesisDocument(
     }
   }
 
-  // CDW-2 narrow exception: an assigned FINAL_DEFENSE participant may additionally
-  // reach ONLY the exact manuscript bound to the formally PASSED Proposal attempt
-  // for the same thesis. Evaluated BEFORE the bound-attempt default so the binding
-  // does not hide the prior-Proposal context from the current Final committee.
+  // CDW-6 generalized historical context: a CURRENT committee member may read
+  // the EXACT manuscript bound to a relevant concluded prior attempt of the same
+  // thesis (same-stage re-defense, passed previous stage, or older history). This
+  // replaces the former narrow Final→Proposal exception and is the ONE shared
+  // rule; it verifies the exact attempt binding, the document stage/type, and the
+  // caller's CURRENT assignment (never the historical assignment).
   if (
     documentId &&
-    effectiveStage === "PROPOSAL" &&
-    passedProposalBoundIds.has(documentId) &&
-    schedules.some(
-      (ds) =>
-        ds.defenseType === "FINAL_DEFENSE" &&
-        ds.panelAssignments?.some((pa) => pa.userId === userId),
-    )
+    canReadHistoricalBoundManuscript({
+      documentId,
+      documentStage: effectiveStage,
+      documentDocType: record.docType ?? null,
+      schedules: schedules.map((ds) => ({
+        id: String(ds.id ?? ""),
+        defenseType: String(ds.defenseType ?? ""),
+        manuscriptDocumentId: ds.manuscriptDocumentId ?? null,
+        defenseDate: ds.defenseDate ?? null,
+        createdAt: ds.createdAt ?? null,
+        conclusion: ds.conclusion ?? null,
+        panelAssignments: ds.panelAssignments ?? [],
+      })),
+      userId,
+    })
   ) {
     return true;
   }

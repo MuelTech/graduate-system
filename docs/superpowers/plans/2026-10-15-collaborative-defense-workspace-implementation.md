@@ -758,6 +758,15 @@ At minimum:
 
 ## 10. Phase CDW-6 — Defense History and revision traceability
 
+**Status: IMPLEMENTED (2026-10-17) — READY FOR USER REVIEW.** Delivered as the
+attempt-based, read-only Defense History read model
+(`backend/src/services/defense-history.rules.ts` + `defense-history.service.ts`, routes
+`GET /thesis/defense/:scheduleId/history[/:historicalScheduleId]`), the generalized
+historical bound-manuscript document rule, and the frontend `defense-history-panel.tsx`
+(which replaced the CP8 `ProposalHistoryPanel` / "Proposal Context" tab). No database
+migration. Manual visual/runtime QA remains user-owned. See
+`docs/superpowers/cdw-6/cdw-6-report.md`.
+
 ### Goal
 
 Make prior defense evidence usable during a later defense without reopening history.

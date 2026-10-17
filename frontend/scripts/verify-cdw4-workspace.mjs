@@ -31,11 +31,14 @@ test("the Defense Workspace route is sidebar-free focus mode; other routes keep 
   assert.match(layout, /navItems/);
 });
 
-test("center exposes Committee Report + Student Document; Final adds Proposal Context", () => {
+test("center exposes Committee Report + Student Document and the CDW-6 Defense History control", () => {
   const shell = read(SHELL);
   assert.match(shell, /Committee Report/);
   assert.match(shell, /Student Document/);
-  assert.match(shell, /Proposal Context/);
+  // CDW-6 generalized the CP8 Proposal Context tab into the attempt-based
+  // Defense History panel; the competing tab is gone.
+  assert.doesNotMatch(shell, /Proposal Context/);
+  assert.match(shell, /DefenseHistoryControl/);
   // Reuses the accepted collaboration panes (no duplicated annotation querying).
   assert.match(shell, /CollaborationViewerPane/);
   assert.match(shell, /CollaborationRailPane/);

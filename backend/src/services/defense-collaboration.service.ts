@@ -597,8 +597,25 @@ export class DefenseCollaborationService {
     const { schedule } = await this.loadSchedule(scheduleId);
     await this.resolveAssignment(scheduleId, userId);
     await this.resolveReadableDocument(schedule, thesisDocumentId);
+    return this.listAttemptAnnotationsForHistory(scheduleId, thesisDocumentId);
+  }
 
-    const rows = await prisma.defenseAnnotation.findMany({
+  /**
+   * CDW-6: read-only annotation/comment read for an EXACT attempt + document.
+   *
+   * There is NO authorization here by design: `listAnnotations` runs its own
+   * live-read proof before calling this, and `DefenseHistoryService` proves
+   * current-assignment historical authority before calling it. Keeping the read
+   * shape in one place means the current workspace and historical history can
+   * never diverge. Never a write path; always scoped by BOTH scheduleId and the
+   * exact thesisDocumentId, so annotations never mix across attempts/documents.
+   */
+  async listAttemptAnnotationsForHistory(
+    scheduleId: string,
+    thesisDocumentId: string,
+    db: DbClient = prisma,
+  ): Promise<AnnotationDto[]> {
+    const rows = await db.defenseAnnotation.findMany({
       where: { scheduleId, thesisDocumentId },
       orderBy: { createdAt: "asc" },
       include: {

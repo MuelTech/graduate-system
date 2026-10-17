@@ -80,25 +80,6 @@ export interface DefenseWorkspaceDto {
   };
   formalResult: string | null;
   rapStatus: string | null;
-  /**
-   * CP8: prior Proposal context for Final Defense only.
-   * Absent/null for Title and Proposal workspaces.
-   */
-  proposalHistory: {
-    manuscript: {
-      id: string;
-      docType: string;
-      defenseStage: string | null;
-      uploadedAt: string | null;
-      displayName: string;
-    } | null;
-    rap: {
-      id: string;
-      status: "FINALIZED";
-      finalizedAt: string | null;
-      decisionsAndRecommendations: string | null;
-    } | null;
-  } | null;
 }
 
 function wallDate(v: Date | null | undefined): string | null {
@@ -237,8 +218,6 @@ export class DefenseWorkspaceService {
       uploadedAt: string | null;
       displayName: string;
     }> = [];
-    /** CP8: prior Proposal context — only for FINAL_DEFENSE. */
-    let proposalHistory: DefenseWorkspaceDto["proposalHistory"] = null;
 
     const attemptDocDisplayName =
       defenseType === "PROPOSAL_DEFENSE"
@@ -290,28 +269,10 @@ export class DefenseWorkspaceService {
       }
     }
 
-    if (defenseType === "FINAL_DEFENSE") {
-      // CDW-2 correction: the authoritative prior Proposal context is the exact
-      // manuscript BOUND to the formally PASSED Proposal attempt, resolved as ONE
-      // historical unit together with that same attempt's FINALIZED RAP. Today's
-      // current AdviserCertification is NOT the authority (it can drift).
-      const passedProposal = await this.loadPassedProposalAttempt(thesisId);
-
-      proposalHistory = {
-        manuscript: passedProposal?.manuscript
-          ? {
-              id: passedProposal.manuscript.id,
-              docType: passedProposal.manuscript.docType,
-              defenseStage: passedProposal.manuscript.defenseStage,
-              uploadedAt: passedProposal.manuscript.uploadedAt
-                ? new Date(passedProposal.manuscript.uploadedAt).toISOString()
-                : null,
-              displayName: "Previous Proposal Manuscript",
-            }
-          : null,
-        rap: passedProposal?.rap ?? null,
-      };
-    }
+    // CDW-6: prior-Proposal context is no longer duplicated on the workspace read
+    // model. It is served by the generalized, attempt-based Defense History read
+    // model (GET /defense/:scheduleId/history), so there is ONE history system,
+    // resolved from the exact prior attempts (never today's certification).
 
     const evaluationByPanel = new Map(
       schedule.oralExamScores.map((s) => [s.panelId, s.status as string]),
@@ -460,99 +421,9 @@ export class DefenseWorkspaceService {
         ? String(schedule.conclusion.outcome)
         : null,
       rapStatus: schedule.rapReports?.[0]?.status ?? null,
-      proposalHistory,
     };
   }
 
-  /**
-   * CDW-2 correction: resolve the authoritative PRIOR PROPOSAL attempt as ONE
-   * historical unit for Final Defense Proposal Context:
-   *
-   *   same thesis
-   *   → formally PASSED PROPOSAL_DEFENSE DefenseConclusion (latest by concludedAt)
-   *   → that exact Proposal DefenseSchedule
-   *   → exact schedule.manuscriptDocumentId manuscript
-   *   → that same schedule's FINALIZED RAP
-   *
-   * REVISION_REQUIRED / FAILED / REDEFENSE_REQUIRED attempts are not PASSED and
-   * are therefore never selected. A legacy PASSED attempt with no binding yields
-   * manuscript = null (reconciliation) — no fallback to today's current/latest
-   * document or certification. The RAP is preserved when separately provable.
-   */
-  private async loadPassedProposalAttempt(thesisId: string): Promise<{
-    scheduleId: string;
-    manuscript: {
-      id: string;
-      docType: string;
-      defenseStage: string | null;
-      uploadedAt: Date | null;
-    } | null;
-    rap: {
-      id: string;
-      status: "FINALIZED";
-      finalizedAt: string | null;
-      decisionsAndRecommendations: string | null;
-    } | null;
-  } | null> {
-    const conclusion = await prisma.defenseConclusion.findFirst({
-      where: {
-        thesisId,
-        outcome: "PASSED",
-        schedule: { defenseType: "PROPOSAL_DEFENSE" },
-      },
-      orderBy: { concludedAt: "desc" },
-      select: {
-        scheduleId: true,
-        schedule: {
-          select: {
-            manuscriptDocumentId: true,
-            manuscriptDocument: {
-              select: {
-                id: true,
-                docType: true,
-                defenseStage: true,
-                uploadedAt: true,
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!conclusion?.scheduleId) return null;
-
-    const boundId = conclusion.schedule?.manuscriptDocumentId ?? null;
-    const boundDoc = conclusion.schedule?.manuscriptDocument ?? null;
-    // The bound document is authoritative ONLY when it is the exact bound id.
-    const manuscript =
-      boundDoc && boundId && boundDoc.id === boundId ? boundDoc : null;
-
-    const rap = await prisma.rapReport.findFirst({
-      where: {
-        scheduleId: conclusion.scheduleId,
-        defenseType: "PROPOSAL_DEFENSE",
-        status: "FINALIZED",
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        finalizedAt: true,
-        decisionsAndRecommendations: true,
-      },
-    });
-
-    return {
-      scheduleId: conclusion.scheduleId,
-      manuscript,
-      rap: rap
-        ? {
-            id: rap.id,
-            status: "FINALIZED" as const,
-            finalizedAt: rap.finalizedAt ? rap.finalizedAt.toISOString() : null,
-            decisionsAndRecommendations: rap.decisionsAndRecommendations ?? null,
-          }
-        : null,
-    };
-  }
 
   /**
    * CDW-4: the assigned Chairman explicitly starts the defense for ANY stage

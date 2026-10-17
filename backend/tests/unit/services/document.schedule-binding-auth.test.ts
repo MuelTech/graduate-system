@@ -80,16 +80,22 @@ describe("canPanelistAccessThesisDocument — CDW-2 schedule binding", () => {
   });
 });
 
-describe("canPanelistAccessThesisDocument — Final → exact passed Proposal attempt", () => {
+describe("canPanelistAccessThesisDocument — Final → prior Proposal attempt", () => {
   const passedProposal = {
+    id: "sched-prop-1",
     defenseType: "PROPOSAL_DEFENSE",
     manuscriptDocumentId: "doc-A",
+    defenseDate: "2026-07-01",
+    createdAt: "2026-06-01T00:00:00.000Z",
     conclusion: { outcome: "PASSED" },
     panelAssignments: [{ userId: "u-prop" }],
   };
   const finalSchedule = {
+    id: "sched-final-1",
     defenseType: "FINAL_DEFENSE",
     manuscriptDocumentId: "doc-F",
+    defenseDate: "2026-10-01",
+    createdAt: "2026-09-01T00:00:00.000Z",
     conclusion: null,
     panelAssignments: [{ userId: "u-final" }],
   };
@@ -120,36 +126,45 @@ describe("canPanelistAccessThesisDocument — Final → exact passed Proposal at
     expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
   });
 
-  it("denies a manuscript bound to a REDEFENSE_REQUIRED Proposal attempt", () => {
+  it("CDW-6: a prior REDEFENSE_REQUIRED Proposal attempt is readable older history", () => {
     const rec = record({
       id: "doc-X",
       thesis: thesisWith([
         {
+          id: "sched-prop-1",
           defenseType: "PROPOSAL_DEFENSE",
           manuscriptDocumentId: "doc-X",
+          defenseDate: "2026-07-01",
+          createdAt: "2026-06-01T00:00:00.000Z",
           conclusion: { outcome: "REDEFENSE_REQUIRED" },
           panelAssignments: [{ userId: "u-prop" }],
         },
         finalSchedule,
       ]),
     });
-    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
+    // CDW-6 generalizes the former passed-Proposal-only exception: an earlier
+    // concluded Proposal attempt (same thesis, prior, read-only) is secondary
+    // historical context for a later stage's current committee.
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(true);
   });
 
-  it("denies a manuscript bound to a FAILED Proposal attempt", () => {
+  it("CDW-6: a prior FAILED Proposal attempt is readable older history", () => {
     const rec = record({
       id: "doc-X",
       thesis: thesisWith([
         {
+          id: "sched-prop-1",
           defenseType: "PROPOSAL_DEFENSE",
           manuscriptDocumentId: "doc-X",
+          defenseDate: "2026-07-01",
+          createdAt: "2026-06-01T00:00:00.000Z",
           conclusion: { outcome: "FAILED" },
           panelAssignments: [{ userId: "u-prop" }],
         },
         finalSchedule,
       ]),
     });
-    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(false);
+    expect(canPanelistAccessThesisDocument(rec, "u-final")).toBe(true);
   });
 
   it("denies an unrelated panelist the passed Proposal bound manuscript", () => {

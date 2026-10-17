@@ -36,12 +36,11 @@ import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 import { CompactWorkspaceHeader } from "./compact-workspace-header";
 import { CommitteeReportPanel } from "./committee-report-panel";
-import { CollaborativeManuscriptViewer } from "./collaborative-manuscript-viewer";
-import { ProposalHistoryPanel } from "./proposal-history-panel";
+import { DefenseHistoryControl } from "./defense-history-panel";
 import { RoleRail } from "./role-rail";
 import { CollaborationRailPane, CollaborationViewerPane } from "./student-document-collaboration";
 
-type CenterTab = "report" | "doc" | "proposal";
+type CenterTab = "report" | "doc";
 
 export function WorkspaceShell({
   workspace,
@@ -57,10 +56,6 @@ export function WorkspaceShell({
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [leftDrawer, setLeftDrawer] = useState(false);
   const [rightDrawer, setRightDrawer] = useState(false);
-
-  const proposalManuscript = workspace.proposalHistory?.manuscript ?? null;
-  const proposalRap = workspace.proposalHistory?.rap ?? null;
-  const showProposalContext = Boolean(proposalManuscript);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-(--earist-surface-gray)">
@@ -129,38 +124,27 @@ export function WorkspaceShell({
             >
               Student Document
             </TabButton>
-            {showProposalContext && (
-              <TabButton
-                active={tab === "proposal"}
-                onClick={() => setTab("proposal")}
-                icon={<FileText className="h-4 w-4" />}
-              >
-                Proposal Context
-              </TabButton>
-            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            {tab === "proposal" && proposalManuscript ? (
-              <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-3">
-                <div className="min-h-[22rem] flex-1">
-                  <CollaborativeManuscriptViewer
-                    documentId={proposalManuscript.id}
-                    documentLabel="Previous Proposal Manuscript"
-                    annotations={[]}
-                  />
-                </div>
-                <ProposalHistoryPanel manuscript={proposalManuscript} rap={proposalRap} />
-              </div>
-            ) : tab === "report" ? (
+            {tab === "report" ? (
               <CommitteeReportPanel workspace={workspace} scheduleId={scheduleId} />
             ) : hasDocument ? (
               <div className="flex h-full min-h-0 flex-col p-3">
+                <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-(--earist-secondary)">
+                    Current Manuscript
+                  </span>
+                  <DefenseHistoryControl scheduleId={scheduleId} hasCurrentDocument />
+                </div>
                 <CollaborationViewerPane className="h-full" />
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center p-8 text-center text-sm text-(--earist-body-text)">
-                No stage document is available for this defense yet.
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+                <p className="text-sm text-(--earist-body-text)">
+                  No stage document is available for this defense yet.
+                </p>
+                <DefenseHistoryControl scheduleId={scheduleId} hasCurrentDocument={false} />
               </div>
             )}
           </div>
