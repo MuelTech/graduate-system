@@ -40,6 +40,11 @@ export class PanelistDashboardRepository {
           include: {
             conclusion: { select: { id: true } },
             oralExamSummary: { select: { id: true } },
+            rapReports: {
+              select: { status: true },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
             thesis: {
               include: {
                 student: {
@@ -85,6 +90,9 @@ export class PanelistDashboardRepository {
         rapporteurNotesFinalized: Boolean(
           row.schedule?.rapporteurNotesFinalizedAt,
         ),
+        rapStatus: row.schedule?.rapReports?.[0]?.status
+          ? String(row.schedule.rapReports[0].status)
+          : null,
         oralSummaryReady: Boolean(row.schedule?.oralExamSummary),
         studentName: student
           ? `${student.user.firstName} ${student.user.lastName}`.trim()
@@ -107,6 +115,7 @@ export class PanelistDashboardRepository {
       include: {
         rapReport: {
           select: {
+            scheduleId: true,
             defenseType: true,
             generatedAt: true,
             thesis: {
@@ -129,6 +138,7 @@ export class PanelistDashboardRepository {
       return {
         id: row.id,
         rapId: row.rapId,
+        scheduleId: String(row.rapReport?.scheduleId ?? ""),
         roleAtDefense: row.roleAtDefense ?? null,
         defenseType: String(row.rapReport?.defenseType ?? ""),
         generatedDate: toWallDate(row.rapReport?.generatedAt),

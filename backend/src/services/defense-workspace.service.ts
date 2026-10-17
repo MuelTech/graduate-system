@@ -350,18 +350,20 @@ export class DefenseWorkspaceService {
       isEvaluator &&
       !schedule.conclusion &&
       sessionStatusValue === "IN_PROGRESS";
-    // WF-C1b: the Chairman may record the formal result only once the session is
-    // awaiting conclusion, every required evaluator has finalized, and the Oral
-    // Examination Summary exists. Title no longer needs Rapporteur notes/RAP yet
-    // (RAP-before-conclusion is deferred to WF-C1c); Proposal/Final keep the
-    // accepted Rapporteur-notes requirement.
+    // RAP-C1: the Chairman may record the formal result only once the session is
+    // awaiting conclusion, every required evaluator has finalized, the Oral
+    // Examination Summary exists, AND the in-system Committee Report is FINALIZED
+    // (frozen + fully signed) for EVERY stage. This capability mirrors the
+    // authoritative conclusion gate; legacy Rapporteur notes never substitute.
+    const rapFinalized =
+      String(schedule.rapReports?.[0]?.status ?? "") === "FINALIZED";
     const canRecordFormalResult =
       isChairman &&
       !schedule.conclusion &&
       sessionStatusValue === "AWAITING_CONCLUSION" &&
       evaluationsComplete &&
       summaryReady &&
-      (isTitleDefense ? true : Boolean(notesFinalizedAt));
+      rapFinalized;
 
     return {
       schedule: {

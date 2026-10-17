@@ -376,6 +376,8 @@ describe("DefenseWorkspaceService (CP6)", () => {
         rapporteurNotesFinalizedAt: null,
         oralExamScores: [{ panelId: "pa-eval", status: "FINALIZED" }],
         oralExamSummary: { id: "sum-1", overallAverage: 80, finalRating: null },
+        // CDW-7/RAP-C1: the in-system Committee Report must be FINALIZED.
+        rapReports: [{ status: "FINALIZED" }],
       }),
     );
     prismaMock.panelAssignment.findFirst.mockResolvedValue({

@@ -35,6 +35,7 @@ function assignment(
     venueOrLink: "Room 101",
     conclusionPresent: false,
     rapporteurNotesFinalized: false,
+    rapStatus: null,
     oralSummaryReady: false,
     studentName: "Ana Student",
     studentNumber: "2026-1",
@@ -49,6 +50,7 @@ function rapSlot(
   return {
     id: "sig-1",
     rapId: "rap-1",
+    scheduleId: "sched-1",
     roleAtDefense: "PANELIST",
     defenseType: "PROPOSAL_DEFENSE",
     generatedDate: "2026-10-05",
@@ -253,6 +255,7 @@ describe("panelist-dashboard rules", () => {
           sessionStatus: "AWAITING_CONCLUSION",
           evaluationStatus: "FINALIZED",
           oralSummaryReady: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -320,6 +323,7 @@ describe("panelist-dashboard rules", () => {
           sessionStatus: "AWAITING_CONCLUSION",
           rapporteurNotesFinalized: true,
           oralSummaryReady: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -370,7 +374,7 @@ describe("panelist-dashboard rules", () => {
     });
     expect(eligible.needsAttention[0]).toMatchObject({
       category: "RAPPORTEUR_FINALIZE",
-      actionLabel: "Open Minutes",
+      actionLabel: "Open Committee Report",
       priority: 1,
     });
 
@@ -379,7 +383,7 @@ describe("panelist-dashboard rules", () => {
         assignment({
           role: "RAPPORTEUR",
           sessionStatus: "IN_PROGRESS",
-          rapporteurNotesFinalized: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -399,7 +403,7 @@ describe("panelist-dashboard rules", () => {
       category: "RAP_SIGNATURE",
       actionLabel: "Review & Sign",
       priority: 2,
-      href: "/panelist/signatures",
+      href: "/panelist/defense-workspace/sched-1",
     });
     expect(view.kpis.pendingTasks).toBe(1);
   });

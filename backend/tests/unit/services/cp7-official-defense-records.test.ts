@@ -793,7 +793,14 @@ describe("CP7 RAP signing lifecycle", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
-      isSigned: true,
+      // The slot being signed is still unsigned; the pre-commit read proves it.
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+      },
     });
     // Post-commit recompute reads committed state on root prisma.
     prismaMock.rapReportSignature.findMany.mockResolvedValue([

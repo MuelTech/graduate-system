@@ -294,6 +294,13 @@ export class RapReportService {
   /**
    * CP7-FIX1: own-slot CAS only. Aggregate recompute runs AFTER commit so
    * concurrent final signers both commit first, then recompute converges.
+   *
+   * CDW-7 correction: when the RAP carries a frozen collaborative snapshot
+   * (`frozenContentHash`), this legacy-compatible route enforces the SAME
+   * RAP-C1 invariants as the workspace signing flow: the report must be open for
+   * signatures, and the signature is bound to the exact frozen content
+   * version/hash. A genuinely legacy RAP (no frozen snapshot) keeps the previous
+   * compatibility behavior.
    */
   async signRapSlot(
     sigId: string,
@@ -312,40 +319,73 @@ export class RapReportService {
     }
 
     const rapId = await prisma.$transaction(async (tx) => {
+      const slot = await tx.rapReportSignature.findUnique({
+        where: { id: sigId },
+        select: {
+          rapId: true,
+          userId: true,
+          isSigned: true,
+          rapReport: {
+            select: {
+              status: true,
+              frozenAt: true,
+              frozenContentHash: true,
+              contentVersion: true,
+            },
+          },
+        },
+      });
+      if (!slot) throw new AppError("Signature request not found.", 404);
+      if (slot.userId !== userId) {
+        throw new AppError(
+          "You may only sign your own RAP signature slot.",
+          403,
+        );
+      }
+      if (slot.isSigned === true) {
+        throw new AppError("Signature already recorded.", 409);
+      }
+
+      const rap = slot.rapReport;
+      const frozenHash = rap?.frozenContentHash ?? null;
+      if (frozenHash) {
+        const status = String(rap?.status ?? "");
+        if (status !== "FOR_SIGNATURE" && status !== "PARTIALLY_SIGNED") {
+          throw new AppError(
+            "The Committee Report is not open for signatures.",
+            409,
+          );
+        }
+      }
+
+      const data: {
+        isSigned: boolean;
+        signatureData: string;
+        signedAt: Date;
+        signedContentHash?: string;
+        signedContentVersion?: number | null;
+      } = {
+        isSigned: true,
+        signatureData: trimmed,
+        signedAt: new Date(),
+      };
+      if (frozenHash) {
+        data.signedContentHash = frozenHash;
+        data.signedContentVersion = rap?.contentVersion ?? null;
+      }
+
       const updated = await tx.rapReportSignature.updateMany({
         where: {
           id: sigId,
           userId,
           OR: [{ isSigned: false }, { isSigned: null }],
         },
-        data: {
-          isSigned: true,
-          signatureData: trimmed,
-          signedAt: new Date(),
-        },
+        data,
       });
       if (updated.count === 0) {
-        const existing = await tx.rapReportSignature.findUnique({
-          where: { id: sigId },
-          select: { userId: true, isSigned: true },
-        });
-        if (!existing) {
-          throw new AppError("Signature request not found.", 404);
-        }
-        if (existing.userId !== userId) {
-          throw new AppError(
-            "You may only sign your own RAP signature slot.",
-            403,
-          );
-        }
         throw new AppError("Signature already recorded.", 409);
       }
 
-      const slot = await tx.rapReportSignature.findUnique({
-        where: { id: sigId },
-        select: { rapId: true },
-      });
-      if (!slot) throw new AppError("Signature request not found.", 404);
       return slot.rapId;
     });
 

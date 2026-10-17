@@ -161,7 +161,13 @@ export interface DashboardAssignmentInput {
   defenseTime: string | null;
   venueOrLink: string | null;
   conclusionPresent: boolean;
+  /**
+   * @deprecated Legacy CP7 Rapporteur-notes finalization. It NEVER gates a new
+   * formal conclusion (RAP-C1); `rapStatus` is the authoritative lifecycle field.
+   */
   rapporteurNotesFinalized: boolean;
+  /** Attempt's Committee Report status (null = no in-system report yet). */
+  rapStatus: string | null;
   oralSummaryReady: boolean;
   studentName: string;
   studentNumber: string | null;
@@ -171,6 +177,8 @@ export interface DashboardAssignmentInput {
 export interface DashboardRapSlotInput {
   id: string;
   rapId: string;
+  /** Exact attempt whose frozen report the slot belongs to. */
+  scheduleId: string;
   roleAtDefense: string | null;
   defenseType: string;
   generatedDate: string | null;
@@ -304,17 +312,16 @@ function isSessionActive(status: string): boolean {
 }
 
 function chairmanBlockedReason(a: DashboardAssignmentInput): string {
-  const isTitle = a.defenseType === TITLE_DEFENSE;
   if (a.sessionStatus !== "AWAITING_CONCLUSION") {
     return "Waiting for evaluator evaluations to complete";
   }
   if (!a.oralSummaryReady) {
     return "Waiting for the Oral Examination Summary to be generated";
   }
-  // Title does not require Rapporteur minutes before the formal result yet
-  // (RAP-before-conclusion is deferred to WF-C1c).
-  if (!isTitle && !a.rapporteurNotesFinalized) {
-    return "Waiting for Rapporteur minutes to be finalized";
+  // RAP-C1: every stage requires the in-system Committee Report to be frozen,
+  // fully signed, and FINALIZED before the Chairman may record the verdict.
+  if (a.rapStatus !== "FINALIZED") {
+    return "Waiting for the Committee Report to be frozen and fully signed";
   }
   return "Waiting for conclusion prerequisites";
 }
@@ -324,7 +331,6 @@ function tasksForAssignment(
   nowMs: number,
 ): RankedTask[] {
   const tasks: RankedTask[] = [];
-  const isTitle = a.defenseType === TITLE_DEFENSE;
   const sessionOpen = !NON_UPCOMING_SESSION_STATUSES.has(a.sessionStatus);
   const sessionActive = isSessionActive(a.sessionStatus);
   const sessionMs = parseWallClockMs(a.defenseDate, a.defenseTime);
@@ -359,16 +365,16 @@ function tasksForAssignment(
   }
 
   // 2. Chairman formal conclusion once all authoritative prerequisites hold.
-  // WF-C1b: every stage concludes only from AWAITING_CONCLUSION with the Oral
-  // Summary ready (which implies all evaluators finalized). Proposal/Final also
-  // require finalized Rapporteur minutes; Title does not yet (WF-C1c).
+  // RAP-C1: every stage concludes only from AWAITING_CONCLUSION with all
+  // evaluators finalized, the Oral Summary ready, and the in-system Committee
+  // Report FINALIZED (frozen + fully signed). Legacy notes never gate this.
   const canConclude =
     a.role === "CHAIRMAN" &&
     !a.conclusionPresent &&
     sessionOpen &&
     a.sessionStatus === "AWAITING_CONCLUSION" &&
     a.oralSummaryReady &&
-    (isTitle || a.rapporteurNotesFinalized);
+    a.rapStatus === "FINALIZED";
   if (canConclude) {
     tasks.push({
       id: `conclusion:${a.scheduleId}`,
@@ -387,25 +393,28 @@ function tasksForAssignment(
     });
   }
 
-  // 3. Rapporteur defense minutes finalization (only once the session permits it).
+  // 3. Rapporteur Committee Report authoring (CDW-5/RAP-C1). The legacy CP7
+  // minutes finalization is no longer the actionable path: the Rapporteur
+  // authors the in-system report and freezes it for signatures. Once frozen,
+  // their own pending signature is surfaced through the RAP_SIGNATURE task.
   const rapporteurEligible =
     a.role === "RAPPORTEUR" &&
-    !a.rapporteurNotesFinalized &&
+    !a.conclusionPresent &&
     (a.sessionStatus === "IN_PROGRESS" ||
-      a.sessionStatus === "AWAITING_CONCLUSION" ||
-      a.sessionStatus === "CONCLUDED");
+      a.sessionStatus === "AWAITING_CONCLUSION") &&
+    (a.rapStatus === null || a.rapStatus === "DRAFT");
   if (rapporteurEligible) {
     tasks.push({
       id: `rapporteur:${a.scheduleId}`,
       category: "RAPPORTEUR_FINALIZE",
-      title: `Finalize ${defenseTypeLabel(a.defenseType)} minutes`,
+      title: `Author / freeze ${defenseTypeLabel(a.defenseType)} Committee Report`,
       studentName: a.studentName,
       scheduleId: a.scheduleId,
       stage: stageLabel(a.defenseType),
       responsibility: "Rapporteur",
-      statusText: "Notes not yet finalized",
+      statusText: "Committee Report not finalized",
       date: a.defenseDate,
-      actionLabel: "Open Minutes",
+      actionLabel: "Open Committee Report",
       href: workspaceHref(a.scheduleId),
       priority: sessionActive ? 1 : 2,
       _sortMs: sortMs,
@@ -531,13 +540,15 @@ export function buildPanelistDashboard(
       category: "RAP_SIGNATURE",
       title: `Sign ${defenseTypeLabel(s.defenseType)} RAP`,
       studentName: s.studentName,
-      scheduleId: null,
+      scheduleId: s.scheduleId,
       stage: stageLabel(s.defenseType),
       responsibility: roleLabel(s.roleAtDefense),
       statusText: "Awaiting your signature",
       date: s.generatedDate,
       actionLabel: "Review & Sign",
-      href: "/panelist/signatures",
+      // RAP-C1: signing happens inside the exact Defense Workspace so the
+      // signer reviews the frozen report; this is not a blind signature page.
+      href: workspaceHref(s.scheduleId),
       priority: 2,
       _sortMs: wallDateMs(s.generatedDate),
     });
@@ -659,7 +670,7 @@ export function buildPanelistDashboard(
     const canConclude =
       a.sessionStatus === "AWAITING_CONCLUSION" &&
       a.oralSummaryReady &&
-      (a.defenseType === TITLE_DEFENSE || a.rapporteurNotesFinalized);
+      a.rapStatus === "FINALIZED";
     if (canConclude) continue;
     rankedWaiting.push({
       id: `chairman-prereq:${a.scheduleId}`,
