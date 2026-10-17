@@ -8,8 +8,9 @@
 **Implementation branch:** refactor/collaborative-defense-workspace  
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-8 unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.2  
+**Planned pre-CDW-9 enhancement:** `docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-8; CDW-LIVE-1 design confirmed but not implemented unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.3  
 **Last updated:** 2026-10-17
 
 ---
@@ -400,6 +401,7 @@ Rules:
 
 - official scoring is available only while the defense is IN_PROGRESS;
 - drafts may be saved repeatedly;
+- **CDW-LIVE-1 target:** while DRAFT and editable, criteria/recommendations autosave privately through the evaluator's existing REST draft path using debounced/serialized saves; autosave must not expose another evaluator's private draft;
 - finalization requires complete required criteria and valid e-signature evidence;
 - finalization is server-authoritative and locks the record;
 - no other committee member may edit an evaluator's record;
@@ -516,11 +518,13 @@ Target authoring experience:
 - undo/redo;
 - safe copy/paste;
 - save draft;
+- **CDW-LIVE-1 target:** debounced server autosave with clear Unsaved / Saving / Saved / Offline state;
+- **CDW-LIVE-1 target:** authorized committee viewers may see an ephemeral near-realtime read-only live preview of the Rapporteur's current unsaved body while the report remains editable;
 - no requirement to reproduce full word-processing/page-layout capabilities.
 
-The system is not a full Microsoft Word/Google Docs clone. Page-layout editing, arbitrary floating objects, live multi-author editing of the report body, and other office-suite features are outside the initial scope.
+The system is not a full Microsoft Word/Google Docs clone. Page-layout editing, arbitrary floating objects, live multi-author editing of the report body, and other office-suite features are outside the scope.
 
-The report body remains exclusively Rapporteur-controlled while DRAFT. Chairman/Panelists may view it but do not edit it.
+The report body remains exclusively Rapporteur-controlled while DRAFT. CDW-LIVE-1 does not change that authority: Panelists/Chairman remain read-only even when they receive a live preview. The live preview is ephemeral display state only; the saved REST/database DRAFT remains authoritative. Chairman/Panelists may view it but do not edit it.
 
 The Rapporteur authoring surface must **not** imitate the full page geometry of the institutional paper form. The editor is content-focused. It may show a compact, non-editable defense context such as student name, defense type, program, and date so the Rapporteur always knows which attempt is being documented, but it should not make the Rapporteur retype or manually maintain the institutional metadata.
 
@@ -604,6 +608,33 @@ The live workspace may show:
 The live progress UI must **not** expose raw signatureData, base64 signature images, or another signer's private evidence payload. Signature evidence is rendered only where authorized in the exact frozen/final institutional document and official records.
 
 REST/database state remains authoritative. Polling/refetch is sufficient for this foundation; Socket.IO/WebSocket realtime remains a later optimization and must not be required for signing correctness.
+
+---
+
+### 9.7 CDW-LIVE-1 — live report review and autosave boundary
+
+**CONFIRMED_PROJECT_DESIGN — NOT YET IMPLEMENTED**
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
+
+The assigned Rapporteur remains the only report-body editor.
+
+While the report is DRAFT and editable:
+
+- the Rapporteur's local edits may be streamed as an **ephemeral read-only live preview** to currently authorized committee viewers;
+- the preview may carry the normalized report body, but it is not persisted by Socket.IO and must not be inserted into the authoritative React Query report cache;
+- the preview must be visibly distinguishable from the last server-confirmed saved draft;
+- the Rapporteur's actual DRAFT is autosaved through the existing authorized REST/database write path;
+- the existing body-version/CAS rule remains authoritative for save conflicts;
+- a persisted save continues to emit `report.draft.updated`, after which viewers refetch REST state and the saved version supersedes the temporary preview.
+
+This feature is **single-writer / multi-viewer**. Panelists, Chairman, Adviser, Facilitator, or other viewers do not gain report edit authority.
+
+Freeze/sign/finalize boundaries are unchanged. Once the report is frozen or the attempt is concluded/cancelled, live preview and autosave editing stop immediately.
+
+Generic live cursors, presence, typing indicators, and multi-author report editing remain deferred.
 
 ---
 
@@ -822,12 +853,13 @@ Canonical architecture:
 
 Rules:
 
-- REST/business services remain authoritative for writes;
+- REST/business services remain authoritative for academic writes;
 - database state remains authoritative;
 - Socket.IO must never become a second business-rule implementation;
-- events are emitted only after successful persistence;
+- persisted domain events are emitted only after successful persistence;
 - reconnect always triggers authoritative refetch;
-- event payloads should prefer identifiers/version metadata over large duplicated records.
+- the nine accepted CDW-8 persisted-domain events prefer identifiers/version metadata over duplicated records;
+- **CDW-LIVE-1 may add one transport-only `report:preview` message carrying authorized report body content for ephemeral display. It is not a persisted domain event, is not replayed, is not logged as report text, and never becomes the authoritative saved DRAFT without the normal REST save path.**
 
 Implemented room:
 
@@ -837,7 +869,7 @@ Room membership requires authentication plus current schedule-assignment authori
 
 Realtime may be active for SCHEDULED, IN_PROGRESS, and AWAITING_CONCLUSION while collaboration/signatures are still active. CONCLUDED historical reopening does not require room membership.
 
-Implemented canonical events:
+Implemented canonical persisted-domain events:
 
 - defense.started
 - annotation.created
@@ -849,7 +881,9 @@ Implemented canonical events:
 - rap.finalized
 - defense.concluded
 
-Presence indicators, live cursors, typing indicators, CRDT/Yjs document editing, and simultaneous manuscript editing are DEFERRED.
+The CDW-LIVE-1 design does **not** add a tenth persisted-domain event. Its proposed `report:preview` is an ephemeral socket transport message for a single Rapporteur writer and authorized read-only viewers.
+
+Presence indicators, live cursors, generic typing indicators, CRDT/Yjs document editing, simultaneous manuscript editing, and multi-author report editing remain DEFERRED.
 
 ---
 
@@ -888,6 +922,7 @@ The original uploaded manuscript remains immutable. Highlights/comments are sepa
 
 The following are **not missing CDW-1 through CDW-8 requirements** and must remain separate from the accepted foundation:
 
+- CDW-LIVE-1 live Rapporteur preview + report/evaluation autosave remains a separate planned pre-CDW-9 enhancement until accepted;
 - CDW-9 hardening / production-readiness work;
 - exact institutional **official-form rendering** for Committee Report/RAP, Individual Evaluation, and Oral Examination Summary, including authoritative pagination/geometry, PDF/print/download output, signature placement, and template versioning;
 - automatic PDF/text/semantic manuscript diff;
@@ -968,6 +1003,8 @@ The collaborative Defense Workspace is not considered complete unless all of the
 - Rapporteur can author a free-form rich-text report body;
 - the Defense Workspace uses an EARIST-native collaborative PDF viewer rather than browser-native PDF chrome as the primary review UI;
 - Panelists can see the report draft read-only;
+- once CDW-LIVE-1 is implemented, authorized report viewers can follow the Rapporteur's unsaved wording as a clearly labeled ephemeral live preview without gaining edit authority;
+- once CDW-LIVE-1 is implemented, report and own-evaluation DRAFT changes autosave to the authoritative REST/database draft while irreversible actions remain explicit;
 - the report can be frozen only after required evaluations and Summary readiness;
 - all signers review the same frozen RAP snapshot;
 - Rapporteur signs their own required RAP slot separately;

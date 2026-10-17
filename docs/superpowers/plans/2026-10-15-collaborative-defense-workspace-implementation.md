@@ -10,7 +10,7 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-9 not started
+**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 design documented / implementation not started; CDW-9 not started
 
 ---
 
@@ -50,6 +50,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
 | CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
+| CDW-LIVE-1 | DESIGN DOCUMENTED / NOT STARTED | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave before hardening |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -1026,6 +1027,75 @@ Do not join socket rooms for CONCLUDED historical viewing.
 
 ---
 
+## 12A. Pre-CDW-9 Enhancement — CDW-LIVE-1 Live Rapporteur Preview + Draft Autosave
+
+**Status as of 2026-10-17:** DESIGN DOCUMENTED / IMPLEMENTATION NOT STARTED.
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
+
+### Why this is separate from CDW-8
+
+CDW-8 is already ACCEPTED / CLOSED and remains the baseline for persisted realtime synchronization. CDW-LIVE-1 is a newly identified UX/durability enhancement and must not rewrite CDW-8 acceptance history.
+
+### Goal
+
+Improve live committee review and protect high-value draft work without changing academic authority.
+
+### Rapporteur report target
+
+- assigned Rapporteur remains the only report editor;
+- Chairman/Panelists and other authorized committee viewers remain read-only;
+- report body autosaves through the existing authenticated REST/database draft path;
+- bodyVersion/CAS remains authoritative;
+- explicit Save Draft may remain as a Save now/flush action;
+- Socket.IO may carry a throttled ephemeral `report:preview` body snapshot to authorized active viewers;
+- the preview is local/ephemeral viewer state, not authoritative React Query state;
+- persisted `report.draft.updated` still causes REST refetch and supersedes the preview;
+- freeze/signature/finalization/conclusion remain explicit manual transitions.
+
+### Individual evaluation target
+
+- an evaluator's own criteria/recommendations autosave privately through the existing REST DRAFT endpoint;
+- draft saves are serialized/debounced;
+- no live score or recommendation broadcast;
+- no signature autosave;
+- Review & Finalize remains explicit, signed, irreversible, and continues to emit only readiness/status synchronization.
+
+### Realtime/security boundary
+
+The nine CDW-8 canonical persisted-domain events remain unchanged.
+
+`report:preview` is a transport-only message, not a tenth persisted-domain event. It may be accepted only from the exact current assigned Rapporteur while the report remains editable and may be delivered only to currently authorized report viewers in the exact active defense room.
+
+### Explicitly out of scope
+
+- Panelist/Chairman report editing;
+- multi-author report editing;
+- live cursors/presence;
+- generic typing indicators;
+- CRDT/Yjs/OT;
+- evaluator draft broadcasting;
+- local persistent offline draft storage;
+- new academic workflow state;
+- CDW-9 hardening work.
+
+### Entry/exit sequencing
+
+```text
+CDW-8 ACCEPTED / CLOSED
+  -> CDW-LIVE-1 implementation
+  -> focused + full regression
+  -> multi-user manual QA where available
+  -> independent acceptance
+  -> CDW-9
+```
+
+Do not begin CDW-9 until CDW-LIVE-1 is either accepted/closed or explicitly cancelled by the project owner.
+
+---
+
 ## 13. Phase CDW-9 — Hardening and production readiness
 
 Focus:
@@ -1062,6 +1132,7 @@ Every package prompt must include:
 
 Agents must not:
 
+- reopen or rewrite CDW-8 acceptance history when implementing CDW-LIVE-1;
 - implement Socket.IO before CDW-8;
 - auto-decide verdict from scores;
 - make Rapporteur an evaluator;
@@ -1071,7 +1142,9 @@ Agents must not:
 - reintroduce permanent selected-title authority;
 - mutate old attempts;
 - auto-carry annotations into revised manuscripts;
-- expose live individual evaluator scores to other Panelists;
+- expose live individual evaluator scores/draft recommendations to other Panelists;
+- give Panelists/Chairman edit authority over the Rapporteur report;
+- treat an ephemeral report preview as the authoritative saved report;
 - allow report edits after freeze;
 - include formal outcome in a RAP that must be signed before conclusion;
 - use frontend-only checks as academic authorization.

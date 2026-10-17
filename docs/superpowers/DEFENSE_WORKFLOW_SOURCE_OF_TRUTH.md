@@ -10,7 +10,7 @@
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.11-draft  
+**Version:** 1.12-draft  
 **Last Updated:** 2026-10-17  
 
 ---
@@ -77,6 +77,7 @@ Canonical extension documents:
 
 - docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md
 - docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
+- docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
 The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report freezing before signatures, workspace-based RAP signing, defense-history/revision traceability, and the implemented Socket.IO synchronization layer.
 
@@ -90,6 +91,7 @@ Important sequencing clarification:
 - new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
 - concluded attempts reopen as immutable historical view-only records and do not require an active realtime room;
 - the CDW-0 through CDW-8 collaborative/realtime foundation is implemented and accepted on `refactor/collaborative-defense-workspace`; accepted production implementation HEAD is `a9a179446284ea928faca8991de34deadc856e1b`, with CDW-8C acceptance package HEAD `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`; manual browser multi-user QA remains explicitly NOT EXECUTED and is not represented as passed;
+- before CDW-9 hardening, the confirmed CDW-LIVE-1 design may add Rapporteur-only report autosave plus an authorized read-only live report preview for committee viewers, and private evaluator-DRAFT autosave; this does not grant report edit authority to Panelists/Chairman and does not broadcast live evaluator scores;
 - exact institutional form rendering/export (including official Committee Report/RAP, Individual Evaluation, and Oral Examination Summary PDF/print/download layout, pagination, and signature placement) remains separate future document-processing work and does not change the canonical stored records or defense sequence;
 - the authoritative RAP is authored inside GS-IS; external Word/DOCX/PDF authoring/upload is not a parallel canonical RAP source under the current design.
 
