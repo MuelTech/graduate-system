@@ -537,6 +537,12 @@ router.post(
   requireRole(["PANELIST"]),
   defenseCollaborationController.freezeCommitteeReport,
 );
+router.post(
+  "/defense/:scheduleId/collaboration/report/sign",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.signCommitteeReport,
+);
 router.get(
   "/defense/:scheduleId/collaboration/conclusion-readiness",
   authenticateJWT,

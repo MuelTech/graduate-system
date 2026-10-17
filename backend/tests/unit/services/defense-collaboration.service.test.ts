@@ -10,6 +10,13 @@ const prismaMock = vi.hoisted(() => ({
   defenseAnnotation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   defenseAnnotationComment: { findUnique: vi.fn(), create: vi.fn() },
   rapReport: { updateMany: vi.fn(), update: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
+  rapReportSignature: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    createMany: vi.fn(),
+    updateMany: vi.fn(),
+    create: vi.fn(),
+  },
 }));
 
 const { ensureSummary } = vi.hoisted(() => ({ ensureSummary: vi.fn() }));
@@ -63,7 +70,14 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
         program: { programName: "MSIT" },
       },
     },
-    panelAssignments: [] as unknown[],
+    // RAP-C1: default attempt roster so freeze can derive required signers.
+    panelAssignments: [
+      { id: "pa-CHAIRMAN", scheduleId: "sched-1", userId: "u-CHAIRMAN", role: "CHAIRMAN", user: { firstName: "C", lastName: "H" } },
+      { id: "pa-PANELIST", scheduleId: "sched-1", userId: "u-PANELIST", role: "PANELIST", user: { firstName: "P", lastName: "N" } },
+      { id: "pa-RAPPORTEUR", scheduleId: "sched-1", userId: "u-RAPPORTEUR", role: "RAPPORTEUR", user: { firstName: "R", lastName: "P" } },
+    ] as unknown[],
+    oralExamScores: [] as unknown[],
+    oralExamSummary: null as unknown,
     rapReports: [] as unknown[],
     ...overrides,
   };

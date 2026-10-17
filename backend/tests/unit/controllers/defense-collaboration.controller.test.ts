@@ -6,6 +6,7 @@ const createComment = vi.fn();
 const getReportReadModel = vi.fn();
 const saveReportDraft = vi.fn();
 const freezeReportForSignatures = vi.fn();
+const signReportForSignatures = vi.fn();
 const getConclusionReadiness = vi.fn();
 
 vi.mock("../../../src/services/defense-collaboration.service", () => ({
@@ -16,6 +17,7 @@ vi.mock("../../../src/services/defense-collaboration.service", () => ({
     getReportReadModel = getReportReadModel;
     saveReportDraft = saveReportDraft;
     freezeReportForSignatures = freezeReportForSignatures;
+    signReportForSignatures = signReportForSignatures;
     getConclusionReadiness = getConclusionReadiness;
   },
 }));
@@ -134,6 +136,20 @@ describe("DefenseCollaborationController (CDW-1)", () => {
     freezeReportForSignatures.mockResolvedValue({ frozen: true, alreadyFrozen: false });
     await controller.freezeCommitteeReport(makeReq(), res as never);
     expect(freezeReportForSignatures).toHaveBeenCalledWith("sched-1", "u-1");
+  });
+
+  it("signs the frozen RAP with the caller's evidence", async () => {
+    signReportForSignatures.mockResolvedValue({ signed: true, status: "PARTIALLY_SIGNED" });
+    await controller.signCommitteeReport(
+      makeReq({ body: { signatureData: "data:image/png;base64,AAAA" } }),
+      res as never,
+    );
+    expect(signReportForSignatures).toHaveBeenCalledWith(
+      "sched-1",
+      "u-1",
+      "data:image/png;base64,AAAA",
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it("returns conclusion readiness", async () => {

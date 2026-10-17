@@ -28,6 +28,12 @@ export interface ConclusionPreconditions {
   rapporteurNotesFinalized: boolean;
   oralSummaryExists: boolean;
   outcomeProvided: boolean;
+  /**
+   * RAP-C1: the attempt's Committee Report status (null/undefined = no
+   * collaborative report exists). When a report exists, RAP-FINALIZED replaces
+   * the legacy Rapporteur-notes requirement as the pre-conclusion gate.
+   */
+  rapReportStatus?: string | null;
 }
 
 export interface ConclusionPreconditionResult {
@@ -99,9 +105,19 @@ export function validateConclusionPreconditions(
     return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  // Proposal/Final additionally require finalized Rapporteur notes. Title does
-  // not yet — RAP-before-conclusion is deferred to WF-C1c.
-  if (!isTitle && !input.rapporteurNotesFinalized) {
+  // RAP-C1: an attempt that owns a collaborative Committee Report MUST have its
+  // RAP FINALIZED (frozen + all required signatures complete) before the Chairman
+  // may record the formal verdict. When no collaborative report exists, the legacy
+  // Proposal/Final Rapporteur-notes requirement applies unchanged.
+  const rapStatus = input.rapReportStatus ?? null;
+  if (rapStatus !== null) {
+    if (rapStatus !== "FINALIZED") {
+      errors.push(
+        "The Committee Report must be finalized (frozen and fully signed) before the formal academic result can be recorded.",
+      );
+      statusCode = 409;
+    }
+  } else if (!isTitle && !input.rapporteurNotesFinalized) {
     errors.push(
       "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
     );

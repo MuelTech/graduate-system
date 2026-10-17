@@ -154,6 +154,24 @@ export class DefenseCollaborationController {
     }
   };
 
+  signCommitteeReport = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    const userId = this.requireUser(req, res);
+    if (!userId) return;
+    try {
+      const result = await this.collaboration.signReportForSignatures(
+        req.params.scheduleId as string,
+        userId,
+        req.body?.signatureData,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
   getConclusionReadiness = async (
     req: AuthenticatedRequest,
     res: Response,

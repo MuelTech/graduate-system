@@ -244,3 +244,65 @@ describe("CP7 outcome safety", () => {
     expect(isSessionChairmanRole("ADMIN")).toBe(false);
   });
 });
+
+describe("RAP-C1 conclusion gating (collaborative Committee Report must be FINALIZED)", () => {
+  const withReport = (status: string) => ({ ...baseInput, rapReportStatus: status });
+
+  it("blocks conclusion while the RAP is DRAFT / FOR_SIGNATURE / PARTIALLY_SIGNED", () => {
+    for (const status of ["DRAFT", "FOR_SIGNATURE", "PARTIALLY_SIGNED"]) {
+      const result = validateConclusionPreconditions(withReport(status), "PASSED");
+      expect(result.ok).toBe(false);
+      expect(result.statusCode).toBe(409);
+      expect(result.errors.join(" ")).toMatch(/finalized/i);
+    }
+  });
+
+  it("allows conclusion once the RAP is FINALIZED (Title)", () => {
+    const result = validateConclusionPreconditions(
+      { ...withReport("FINALIZED"), defenseType: "TITLE_DEFENSE", rapporteurNotesFinalized: false },
+      "PASSED",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("PASSED");
+  });
+
+  it("a FINALIZED report replaces the legacy notes requirement for Proposal/Final", () => {
+    const result = validateConclusionPreconditions(
+      { ...withReport("FINALIZED"), rapporteurNotesFinalized: false },
+      "REDEFENSE_REQUIRED",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("REDEFENSE_REQUIRED");
+  });
+
+  it("FINAL stage is gated the same way", () => {
+    const draft = validateConclusionPreconditions(
+      { ...withReport("DRAFT"), defenseType: "FINAL_DEFENSE" },
+      "PASSED",
+    );
+    expect(draft.ok).toBe(false);
+    const final = validateConclusionPreconditions(
+      { ...withReport("FINALIZED"), defenseType: "FINAL_DEFENSE" },
+      "PASSED",
+    );
+    expect(final.ok).toBe(true);
+  });
+
+  it("no collaborative report (null) preserves the legacy notes requirement", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, rapReportStatus: null, rapporteurNotesFinalized: false },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/Rapporteur/i);
+  });
+
+  it("a non-Chairman is still rejected before any RAP gating", () => {
+    const result = validateConclusionPreconditions(
+      { ...withReport("FINALIZED"), isSessionChairman: false, sessionRole: "PANELIST" },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
+  });
+});

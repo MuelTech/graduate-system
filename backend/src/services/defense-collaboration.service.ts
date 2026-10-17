@@ -34,6 +34,10 @@ import {
   buildRapSigningSnapshot,
   hashRapSnapshot,
 } from "./rap-snapshot.rules";
+import {
+  resolveRapSignatureRequirements,
+} from "./rap-signature.policy";
+import { RapReportService } from "./rap-report.service";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { OfficialDefenseRecordService } from "./official-defense-record.service";
 import {
@@ -48,6 +52,23 @@ const CHAIRMAN_ROLE = "CHAIRMAN";
 const COLLAB_WRITABLE_STATUSES = ["SCHEDULED", "IN_PROGRESS", "AWAITING_CONCLUSION"];
 const FROZEN_RAP_STATUSES = ["FOR_SIGNATURE", "PARTIALLY_SIGNED", "ALL_SIGNED", "DISTRIBUTED", "FINALIZED"];
 const MAX_COMMENT_LENGTH = 5000;
+const SIGNATURE_EVIDENCE_PREFIX = "data:image/";
+
+/**
+ * RAP-C1 signature evidence guard. Reuses the existing project e-signature
+ * convention (image data URL) without inventing a new raw-signature model.
+ */
+function normalizeSignatureEvidence(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new AppError("Signature evidence is required.", 400);
+  }
+  const trimmed = value.trim();
+  if (!trimmed) throw new AppError("Signature evidence is required.", 400);
+  if (!trimmed.startsWith(SIGNATURE_EVIDENCE_PREFIX)) {
+    throw new AppError("Signature must be image evidence (data:image/...).", 400);
+  }
+  return trimmed;
+}
 
 /**
  * A Prisma transaction client (also satisfied by the shared client). Key
@@ -142,6 +163,40 @@ export interface ReportReadModel {
     frozenContentHash: string | null;
   };
   canEditBody: boolean;
+  /** RAP-C1: assigned Rapporteur may freeze a content-complete DRAFT. */
+  canFreeze: boolean;
+  /** RAP-C1: human-readable freeze preconditions (authoritative server facts). */
+  freezeReadiness: {
+    ready: boolean;
+    checks: FreezeReadinessCheck[];
+  };
+  /** RAP-C1: required signer roster + status (never raw signature evidence). */
+  signatures: ReportSignerDto[];
+  signatureProgress: ReportSignatureProgress;
+  /** RAP-C1: the caller's own required slot, or null when not a signer. */
+  mySignature: ReportSignerDto | null;
+  /** RAP-C1: the caller may sign the exact frozen artifact now. */
+  canSign: boolean;
+}
+
+export interface FreezeReadinessCheck {
+  key: string;
+  label: string;
+  ok: boolean;
+}
+
+export interface ReportSignerDto {
+  userId: string;
+  name: string;
+  roleAtDefense: string;
+  required: boolean;
+  isSigned: boolean;
+  signedAt: string | null;
+}
+
+export interface ReportSignatureProgress {
+  required: number;
+  signed: number;
 }
 
 export interface ConclusionReadiness {
@@ -256,6 +311,7 @@ function toAnnotationDto(row: AnnotationRow, comments: CommentRow[]): Annotation
 
 export class DefenseCollaborationService {
   private officialRecords = new OfficialDefenseRecordService();
+  private rapService = new RapReportService();
 
   /**
    * Load a schedule and its (single) RAP report. Throws 404 when missing.
@@ -265,7 +321,28 @@ export class DefenseCollaborationService {
     const schedule = await db.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
-        rapReports: { orderBy: { createdAt: "desc" }, take: 1 },
+        rapReports: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: {
+            signatures: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                userId: true,
+                roleAtDefense: true,
+                required: true,
+                isSigned: true,
+                signedAt: true,
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+        panelAssignments: {
+          include: { user: { select: { firstName: true, lastName: true } } },
+        },
+        oralExamScores: { select: { panelId: true, status: true } },
+        oralExamSummary: { select: { id: true } },
         thesis: {
           include: {
             student: {
@@ -680,6 +757,9 @@ export class DefenseCollaborationService {
       ? `${student.user?.firstName ?? ""} ${student.user?.lastName ?? ""}`.trim()
       : "";
 
+    const freezeReadiness = this.computeFreezeReadiness(schedule, rap, assignment.role);
+    const signatureState = this.buildSignatureState(schedule, rap, userId);
+
     return {
       scheduleId,
       defenseType: String(schedule.defenseType),
@@ -708,6 +788,12 @@ export class DefenseCollaborationService {
         frozenContentHash: rap?.frozenContentHash ?? null,
       },
       canEditBody: this.computeCanEditBody(schedule, rap, assignment.role),
+      canFreeze: freezeReadiness.ready,
+      freezeReadiness,
+      signatures: signatureState.signatures,
+      signatureProgress: signatureState.signatureProgress,
+      mySignature: signatureState.mySignature,
+      canSign: signatureState.canSign,
     };
   }
 
@@ -728,6 +814,156 @@ export class DefenseCollaborationService {
       (rap === null ||
         (String(rap.status) === "DRAFT" && !rap.frozenAt))
     );
+  }
+
+  private evaluatorRoleSet(defenseType: unknown): Set<string> {
+    return new Set(
+      new DefenseCommitteePolicy().getEvaluatorRoles(defenseType as never).map(String),
+    );
+  }
+
+  /** Per-evaluator finalization facts for the freeze checklist (no peer score values). */
+  private evaluatorProgress(schedule: {
+    defenseType: unknown;
+    panelAssignments: Array<{
+      id: string;
+      role: unknown;
+      userId: string;
+      user?: { firstName: string | null; lastName: string | null } | null;
+    }>;
+    oralExamScores: Array<{ panelId: string; status: unknown }>;
+  }) {
+    const roles = this.evaluatorRoleSet(schedule.defenseType);
+    const scores = schedule.oralExamScores ?? [];
+    const assignments = schedule.panelAssignments ?? [];
+    const finalizedPanelIds = new Set(
+      scores.filter((s) => String(s.status) === "FINALIZED").map((s) => s.panelId),
+    );
+    const evaluators = assignments
+      .filter((p) => roles.has(String(p.role)))
+      .map((p) => ({
+        id: p.id,
+        role: String(p.role),
+        name: `${p.user?.firstName ?? ""} ${p.user?.lastName ?? ""}`.trim(),
+        finalized: finalizedPanelIds.has(p.id),
+      }));
+    const finalized = evaluators.filter((e) => e.finalized).length;
+    return {
+      evaluators,
+      evaluatorAssignments: evaluators.length,
+      finalizedEvaluations: finalized,
+      allFinalized: evaluators.length > 0 && finalized >= evaluators.length,
+    };
+  }
+
+  /**
+   * RAP-C1 freeze preconditions, computed from authoritative server facts. The
+   * caller is only eligible when they are the assigned Rapporteur on a writable
+   * attempt with an unfrozen DRAFT report.
+   */
+  private computeFreezeReadiness(
+    schedule: {
+      defenseType: unknown;
+      sessionStatus: unknown;
+      panelAssignments: Array<{
+        id: string;
+        role: unknown;
+        userId: string;
+        user?: { firstName: string | null; lastName: string | null } | null;
+      }>;
+      oralExamScores: Array<{ panelId: string; status: unknown }>;
+      oralExamSummary: { id: string } | null;
+    },
+    rap: { status: unknown; frozenAt: Date | null; bodyDocument: unknown } | null,
+    role: unknown,
+  ): { ready: boolean; checks: FreezeReadinessCheck[] } {
+    const checks: FreezeReadinessCheck[] = [];
+    const body = rap?.bodyDocument ?? null;
+    checks.push({
+      key: "content",
+      label: "Committee Report contains content",
+      ok: body !== null && hasMeaningfulReportContent(body),
+    });
+
+    const progress = this.evaluatorProgress(schedule);
+    if (progress.evaluators.length === 0) {
+      checks.push({
+        key: "evaluation:none",
+        label: "Required evaluator assignments exist",
+        ok: false,
+      });
+    }
+    for (const evaluator of progress.evaluators) {
+      const label = `${evaluator.role === "CHAIRMAN" ? "Chairman" : "Panelist"}${
+        evaluator.name ? ` ${evaluator.name}` : ""
+      } evaluation finalized`;
+      checks.push({ key: `evaluation:${evaluator.id}`, label, ok: evaluator.finalized });
+    }
+    checks.push({
+      key: "summary",
+      label: "Oral Examination Summary is ready",
+      ok: Boolean(schedule.oralExamSummary),
+    });
+
+    const eligible =
+      String(role) === RAPPORTEUR_ROLE &&
+      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
+      rap !== null &&
+      String(rap.status) === "DRAFT" &&
+      !rap.frozenAt;
+
+    return { ready: eligible && checks.every((c) => c.ok), checks };
+  }
+
+  /**
+   * RAP-C1 signature roster + caller state. Exposes ONLY status metadata — never
+   * raw signatureData / images.
+   */
+  private buildSignatureState(
+    schedule: { sessionStatus: unknown },
+    rap: {
+      status: unknown;
+      frozenAt: Date | null;
+      frozenContentHash: string | null;
+      signatures?: Array<{
+        userId: string;
+        roleAtDefense: string | null;
+        required: boolean | null;
+        isSigned: boolean | null;
+        signedAt: Date | null;
+        user?: { firstName: string | null; lastName: string | null } | null;
+      }>;
+    } | null,
+    userId: string,
+  ) {
+    const rows = rap?.signatures ?? [];
+    const signatures: ReportSignerDto[] = rows.map((s) => ({
+      userId: s.userId,
+      name: `${s.user?.firstName ?? ""} ${s.user?.lastName ?? ""}`.trim(),
+      roleAtDefense: String(s.roleAtDefense ?? ""),
+      required: s.required !== false,
+      isSigned: s.isSigned === true,
+      signedAt: s.signedAt ? s.signedAt.toISOString() : null,
+    }));
+    const requiredSlots = signatures.filter((s) => s.required);
+    const signedSlots = requiredSlots.filter((s) => s.isSigned);
+    const mySignature = signatures.find((s) => s.userId === userId) ?? null;
+    const signableStatus =
+      String(rap?.status) === "FOR_SIGNATURE" || String(rap?.status) === "PARTIALLY_SIGNED";
+    const canSign =
+      Boolean(rap?.frozenAt) &&
+      Boolean(rap?.frozenContentHash) &&
+      signableStatus &&
+      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
+      mySignature !== null &&
+      mySignature.required &&
+      !mySignature.isSigned;
+    return {
+      signatures,
+      signatureProgress: { required: requiredSlots.length, signed: signedSlots.length },
+      mySignature,
+      canSign,
+    };
   }
 
   async saveReportDraft(
@@ -841,7 +1077,14 @@ export class DefenseCollaborationService {
   async freezeReportForSignatures(
     scheduleId: string,
     userId: string,
-  ): Promise<{ frozen: true; alreadyFrozen: boolean; contentVersion: number; contentHash: string; status: string }> {
+  ): Promise<{
+    frozen: true;
+    alreadyFrozen: boolean;
+    contentVersion: number;
+    contentHash: string;
+    status: string;
+    requiredSigners?: number;
+  }> {
     // Freeze participates in the SAME per-attempt lock as collaboration writes:
     // it re-reads the RAP under the lock before deciding, so a write that wins
     // the lock first commits as pre-freeze history, and a write that arrives
@@ -942,14 +1185,138 @@ export class DefenseCollaborationService {
         }
         throw new AppError("Report state changed. Refresh and try again.", 409);
       }
+
+      // RAP-C1: derive the exact required signer roster from the attempt's exact
+      // PanelAssignments using the stage-aware policy. Facilitator and Dean are
+      // excluded by policy; nothing is fabricated. createMany + skipDuplicates is
+      // idempotent/race-safe and never duplicates a signer slot.
+      const requirements = resolveRapSignatureRequirements(
+        freezeContext.committee.map((member) => ({
+          userId: member.userId,
+          role: member.role,
+        })),
+        freezeContext.defenseType,
+      );
+      if (requirements.length === 0) {
+        throw new AppError(
+          "No required RAP signatories exist for this defense session.",
+          409,
+        );
+      }
+      await tx.rapReportSignature.createMany({
+        data: requirements.map((req) => ({
+          rapId: rap.id,
+          userId: req.userId,
+          roleAtDefense: req.roleAtDefense,
+          required: req.required,
+          isSigned: false,
+        })),
+        skipDuplicates: true,
+      });
+
       return {
         frozen: true,
         alreadyFrozen: false,
         contentVersion,
         contentHash,
         status: "FOR_SIGNATURE",
+        requiredSigners: requirements.length,
       };
     });
+  }
+
+  /**
+   * RAP-C1 signing. A required signer signs ONLY their own slot for the exact
+   * frozen content version/hash, inside the same per-attempt lock used by freeze
+   * and collaboration writes. The final required signature finalizes the RAP via
+   * a monotonic, race-safe recompute. Another signer's slot can never be signed.
+   */
+  async signReportForSignatures(
+    scheduleId: string,
+    userId: string,
+    signatureData: unknown,
+  ): Promise<{
+    signed: true;
+    status: string;
+    contentVersion: number;
+    contentHash: string;
+    signatureProgress: { required: number; signed: number };
+  }> {
+    const evidence = normalizeSignatureEvidence(signatureData);
+
+    const result = await this.withAttemptLock(scheduleId, async (tx) => {
+      const { schedule, rap } = await this.loadSchedule(scheduleId, tx);
+      await this.resolveAssignment(scheduleId, userId, tx);
+
+      if (!rap) {
+        throw new AppError(
+          "The committee report has not been created for this attempt yet.",
+          409,
+        );
+      }
+      if (!rap.frozenAt || !rap.frozenContentHash) {
+        throw new AppError("The committee report is not frozen for signatures.", 409);
+      }
+      const status = String(rap.status);
+      if (status === "FINALIZED") {
+        throw new AppError("The RAP is already finalized.", 409);
+      }
+      if (status !== "FOR_SIGNATURE" && status !== "PARTIALLY_SIGNED") {
+        throw new AppError("The RAP is not open for signatures.", 409);
+      }
+      this.assertSessionOpen(String(schedule.sessionStatus));
+
+      const slot = await tx.rapReportSignature.findFirst({
+        where: { rapId: rap.id, userId },
+        select: { id: true, required: true, isSigned: true },
+      });
+      if (!slot || slot.required === false) {
+        throw new AppError("You are not a required signer for this RAP.", 403);
+      }
+      if (slot.isSigned === true) {
+        throw new AppError("You have already signed this RAP.", 409);
+      }
+
+      const updated = await tx.rapReportSignature.updateMany({
+        where: {
+          id: slot.id,
+          userId,
+          OR: [{ isSigned: false }, { isSigned: null }],
+        },
+        data: {
+          isSigned: true,
+          signatureData: evidence,
+          signedAt: new Date(),
+          // Bind the signature to the EXACT frozen artifact it reviewed.
+          signedContentHash: rap.frozenContentHash,
+          signedContentVersion: rap.contentVersion ?? 0,
+        },
+      });
+      if (updated.count === 0) {
+        throw new AppError("You have already signed this RAP.", 409);
+      }
+      return {
+        rapId: rap.id,
+        contentVersion: rap.contentVersion ?? 0,
+        contentHash: rap.frozenContentHash,
+      };
+    });
+
+    // Monotonic aggregate recompute (finalizes once all required slots are signed).
+    const status = await this.rapService.recomputeRapStatus(result.rapId);
+    const slots = await prisma.rapReportSignature.findMany({
+      where: { rapId: result.rapId },
+      select: { required: true, isSigned: true },
+    });
+    const requiredSlots = slots.filter((s) => s.required !== false);
+    const signedSlots = requiredSlots.filter((s) => s.isSigned === true);
+    return {
+      signed: true,
+      status,
+      contentVersion: result.contentVersion,
+      contentHash: result.contentHash,
+      signatureProgress: { required: requiredSlots.length, signed: signedSlots.length },
+    };
   }
 
   // ---- Conclusion readiness (read-only facts) ----------------------------
