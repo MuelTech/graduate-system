@@ -2,7 +2,10 @@
 
 **Branch:** `refactor/collaborative-defense-workspace`
 **Starting SHA:** `fd6de521e0996588e80986df8102a326b2d52198`
-**Ending SHA:** the CDW-7 acceptance commit immediately following the starting SHA
+**Initial acceptance commit:** `1627646687fe56d270833a9db644689ae639a82e`
+**Concluded-attempt immutability correction:** `dca3be6d288a99533b11acd8bd0d29039881b642`
+**Final read-model cleanup / accepted CDW-7 HEAD:** `3d8b7b294af10947e8dc88de825a413521d3a005`
+**Status:** **ACCEPTED / CLOSED** after independent remote-source review. Manual browser QA remains **NOT EXECUTED** as documented in §14.
 **Scope:** prove the assembled Collaborative Defense Workspace + RAP workflow works as one
 coherent, persisted workflow **without** Socket.IO. Primarily verification/regression; only
 the smallest acceptance-blocking production corrections were made.

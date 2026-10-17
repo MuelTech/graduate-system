@@ -4,11 +4,12 @@
 **System:** EARIST Graduate School Information System (GS-IS)  
 **Scope:** Collaborative Defense Workspace, evaluator experience, manuscript annotations, Rapporteur Committee Report / RAP, signatures, conclusion readiness, and defense-history review  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Active design branch:** refactor/unified-defense-lifecycle  
-**Intended implementation branch:** refactor/collaborative-defense-workspace  
-**Document status:** CONFIRMED_PROJECT_DESIGN unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or CURRENT_IMPLEMENTATION_FACT  
-**Version:** 1.0-draft  
-**Last updated:** 2026-10-15
+**Historical design baseline branch:** refactor/unified-defense-lifecycle  
+**Implementation branch:** refactor/collaborative-defense-workspace  
+**Accepted implementation HEAD (CDW-0 through CDW-7):** `3d8b7b294af10947e8dc88de825a413521d3a005`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-7 unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.1  
+**Last updated:** 2026-10-17
 
 ---
 
@@ -32,14 +33,15 @@ Where older project documentation or current code conflicts with this document o
 
 The previously planned standalone WF-C1c package is absorbed into this design. Its core academic invariant remains mandatory: required evaluator records and the required RAP/signatures must be complete before the assigned Chairman records the formal verdict.
 
-No separate specification document is required at this time. This Source of Truth defines the functional and UX behavior; the dated implementation plan defines how it will be built.
+This Source of Truth remains the functional/domain authority. The dated implementation plan records package sequencing and implementation history. Later phase-specific technical notes may supplement implementation details, but they must not redefine the academic workflow or duplicate domain authority.
 
 ### 0.1 Status vocabulary used in this document
 
 - CONFIRMED_PROJECT_DESIGN — agreed project behavior and implementation target.
-- CURRENT_IMPLEMENTATION_FACT — observed behavior in refactor/unified-defense-lifecycle at the documentation baseline.
+- IMPLEMENTED_FOUNDATION — behavior implemented and accepted in `refactor/collaborative-defense-workspace` through CDW-7.
+- HISTORICAL_BASELINE — observed pre-CDW behavior retained only to explain migration/refactor history; it is not the current implementation.
 - OPEN_QUESTION — requires explicit institutional/client confirmation before authority is expanded.
-- DEFERRED — intentionally outside the first implementation.
+- DEFERRED — intentionally outside the accepted CDW-0 through CDW-7 foundation.
 
 ---
 
@@ -844,30 +846,48 @@ Presence indicators, live cursors, typing indicators, CRDT/Yjs document editing,
 
 ---
 
-## 14. Technology direction
+## 14. Technology direction and current implementation boundary
 
-CURRENT_IMPLEMENTATION_FACT:
+### 14.1 HISTORICAL_BASELINE — pre-CDW state on 2026-10-15
 
-- the current Defense Workspace embeds the student PDF in an iframe;
-- the shared DocumentViewer also renders PDFs through an iframe;
-- the repository already uses pdfjs-dist for native PDF text extraction on the backend;
-- there is no persisted defense-annotation model;
-- the current Rapporteur UI is a notes textarea;
-- current RAP creation is named/implemented as post-conclusion behavior;
-- the current pending-signature page contains a placeholder report preview rather than the actual report body.
+The following facts describe the implementation baseline that motivated CDW-0 through CDW-7. They are retained for migration/refactor history and **must not be read as the current branch state**:
 
-Target direction:
+- the Defense Workspace embedded the student PDF in an iframe;
+- there was no persisted defense-annotation model;
+- the Rapporteur UI was a notes textarea;
+- RAP creation still followed post-conclusion legacy paths;
+- the pending-signature page used a placeholder report preview.
 
-- use a PDF.js-based browser rendering/text layer for the collaborative workspace so text selection and annotation overlays are under application control;
-- evaluate a maintained open-source React PDF highlighting/annotation library through a bounded proof of concept before committing to it;
-- replace the browser-native/iframe PDF chrome inside the Defense Workspace with an **EARIST-native collaborative viewer surface**;
-- provide application-controlled document actions needed by the defense workflow, such as page navigation, page indicator, zoom, fit-width, highlight/comment interaction, and exact comment-to-anchor navigation;
-- keep the original uploaded PDF immutable; highlights/comments are rendered as a separate application overlay and persisted separately;
-- keep EARIST visual design, comments, authorization, persistence, and report workflow under project control;
-- use React Query/refetch/polling for the foundation;
-- add Socket.IO only after the persisted UI/API workflow passes acceptance testing.
+### 14.2 IMPLEMENTED_FOUNDATION — CDW-0 through CDW-7 accepted
 
-Do not build a full office-suite/page-layout editor, and do not make the student's submitted manuscript directly editable. The Rapporteur may still use the separately defined free-form rich-text Committee Report composer.
+At accepted HEAD `3d8b7b294af10947e8dc88de825a413521d3a005`, the collaborative foundation now includes:
+
+- an EARIST-controlled PDF.js-based Defense Workspace viewer with application-controlled navigation, text selection/highlight anchors, comments, and exact attempt/document binding;
+- persisted `DefenseAnnotation` and `DefenseAnnotationComment` collaboration data with backend authorization;
+- an immersive role-aware workspace for Chairman, Panelists, Rapporteur, Facilitator, and stage-aware Adviser participation;
+- official numerical evaluation only for Chairman + Panelists and only while `IN_PROGRESS`, with evaluator privacy and finalized-record immutability;
+- a Rapporteur-owned **free-form rich-text Committee Report / RAP authored inside GS-IS**;
+- deliberate "Insert into Report" copying from stored comments without live binding to the source comment;
+- RAP freeze/version/hash, stage-aware signer slots, exact frozen-content signature binding, and `FINALIZED` RAP before formal verdict;
+- Chairman-only `PASSED` / `REDEFENSE_REQUIRED` conclusion, with no score-derived verdict;
+- concluded-attempt immutability across current and legacy mutation paths;
+- attempt-based Defense History with exact historical manuscript binding, historical RAP/legacy-note provenance, read-only annotations/comments, replacement-committee read access, and manual Compare with Current;
+- React Query refetch/polling as the accepted synchronization foundation before realtime.
+
+The original uploaded manuscript remains immutable. Highlights/comments are separate persisted overlays. The Rapporteur editor is intentionally document-like, not a full office-suite/page-layout editor, and exact Microsoft Word line breaking is not a correctness target.
+
+### 14.3 Deferred / separate future work
+
+The following are **not missing CDW-1 through CDW-7 requirements** and must remain separate from the accepted foundation:
+
+- CDW-8 Socket.IO realtime synchronization;
+- exact institutional **official-form rendering** for Committee Report/RAP, Individual Evaluation, and Oral Examination Summary, including authoritative pagination/geometry, PDF/print/download output, signature placement, and template versioning;
+- automatic PDF/text/semantic manuscript diff;
+- AI determination of revision/recommendation compliance;
+- Dean digital approval/signature unless separately confirmed;
+- presence indicators, live cursors, typing indicators, CRDT/Yjs, and simultaneous manuscript editing.
+
+The canonical RAP source remains the in-system report record. External Word/DOCX/PDF authoring or upload is **not** a parallel authoritative RAP source unless a future project decision explicitly changes that rule.
 
 ---
 

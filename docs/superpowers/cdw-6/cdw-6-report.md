@@ -1,6 +1,8 @@
 # CDW-6 — Defense History and revision traceability
 
 **Branch:** `refactor/collaborative-defense-workspace`
+**Status:** **ACCEPTED / CLOSED**
+**Final accepted HEAD:** `fd6de521e0996588e80986df8102a326b2d52198`
 **Scope:** generalize the CP8 "Final → prior Proposal" context into an attempt-based,
 server-authoritative Defense History that a later defense may READ without reopening,
 copying, or mutating any historical attempt.

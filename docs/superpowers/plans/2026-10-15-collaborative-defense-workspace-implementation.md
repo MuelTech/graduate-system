@@ -1,13 +1,15 @@
 # Collaborative Defense Workspace and RAP — Implementation Plan
 
 **Date:** 2026-10-15  
+**Last synchronized:** 2026-10-17  
 **Repository:** MuelTech/graduate-system  
-**Documentation branch:** refactor/unified-defense-lifecycle  
-**Baseline implementation HEAD:** e33d2291fea04a36da34ac73713c3865997876a3  
-**Recommended implementation branch:** refactor/collaborative-defense-workspace  
+**Historical documentation branch:** refactor/unified-defense-lifecycle  
+**Historical baseline implementation HEAD:** e33d2291fea04a36da34ac73713c3865997876a3  
+**Implementation branch:** refactor/collaborative-defense-workspace  
+**Accepted implementation HEAD through CDW-7:** `3d8b7b294af10947e8dc88de825a413521d3a005`  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** Approved project direction; execute package-by-package after documentation review
+**Plan status:** CDW-0 through CDW-7 implemented and accepted; CDW-8/CDW-9 not started
 
 ---
 
@@ -31,9 +33,35 @@ The implementation must be phased because this feature crosses:
 
 The first objective is correctness and a testable foundation. Realtime is added only after the persisted REST/UI workflow is accepted.
 
+### 0.1 Current implementation status — 2026-10-17
+
+This plan is intentionally retained as an implementation-history document. The pre-CDW baseline sections below explain why the packages existed; they do **not** describe the current branch after CDW-0 through CDW-7.
+
+| Package | Current status | Accepted outcome |
+|---|---|---|
+| CDW-0 | ACCEPTED | PDF/annotation feasibility + scoring/schema audits completed |
+| CDW-1 | ACCEPTED | collaborative persistence, REST authorization, report freeze/signature data foundation |
+| CDW-2 | ACCEPTED | exact attempt-bound Student Document viewer |
+| CDW-3 | ACCEPTED | persisted annotations/comments + polling foundation |
+| CDW-4 | ACCEPTED | immersive role-aware workspace + evaluator lifecycle/privacy |
+| CDW-5 | ACCEPTED | in-system free-form rich-text Rapporteur Committee Report authoring |
+| RAP-C1 | ACCEPTED | freeze/sign/finalize RAP before Chairman verdict |
+| CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
+| CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
+| CDW-8 | NOT STARTED | realtime synchronization remains future work |
+| CDW-9 | NOT STARTED | production hardening remains future work |
+
+Current accepted branch HEAD through CDW-7:
+
+    3d8b7b294af10947e8dc88de825a413521d3a005
+
+The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
+
 ---
 
-## 1. Baseline facts at e33d229
+## 1. Historical baseline facts at e33d229 (pre-CDW implementation)
+
+> **Historical baseline only.** The facts in this section were true at the planning baseline and are retained to explain the migration/refactor path. Where they conflict with the accepted CDW-0 through CDW-7 implementation, the accepted implementation and canonical Source of Truth control.
 
 The following are current implementation facts and must be treated as migration inputs, not target behavior.
 
@@ -864,6 +892,8 @@ Do not begin Socket.IO until this phase is accepted.
 
 ## 12. Phase CDW-8 — Socket.IO realtime synchronization
 
+**Status as of 2026-10-17:** NOT STARTED. This documentation synchronization does not expand or implement CDW-8.
+
 ### Goal
 
 Improve latency/coordination without changing domain authority.
@@ -1036,7 +1066,7 @@ After the core initiative is stable, separately consider:
 - automatic textual/semantic manuscript diff;
 - AI-assisted revision checklist;
 - presence indicators;
-- richer report export/print templates;
+- official institutional form rendering/export/print/download for Committee Report/RAP, Individual Evaluation, and Oral Examination Summary, including exact pagination/geometry, signature placement, and template versioning;
 - explicit frozen-RAP correction/version withdrawal workflow;
 - expanded Adviser collaboration rights if confirmed;
 - Dean digital approval/signature if confirmed.

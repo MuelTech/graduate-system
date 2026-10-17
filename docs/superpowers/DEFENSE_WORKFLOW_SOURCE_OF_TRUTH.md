@@ -5,10 +5,12 @@
 **Campus Context:** Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST), Manila Campus  
 **Scope:** Graduate Student Thesis / Dissertation workflow  
 **Integration Branch:** `refactor/defense-workflow`  
-**Active Correction Branch:** `refactor/unified-defense-lifecycle`  
+**Historical Correction Branch:** `refactor/unified-defense-lifecycle`  
+**Collaborative Defense Implementation Branch:** `refactor/collaborative-defense-workspace`  
+**Accepted Collaborative HEAD through CDW-7:** `3d8b7b294af10947e8dc88de825a413521d3a005`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.9-draft  
-**Last Updated:** 2026-10-15  
+**Version:** 1.10-draft  
+**Last Updated:** 2026-10-17  
 
 ---
 
@@ -48,7 +50,7 @@ Where older sections of this SOT or the 2026-09-25 Student Thesis Journey docume
 12. Proposal/Final Adviser Certification remains an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
 13. Research Variables remains temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
 14. Student defense pages must distinguish application review, scheduling, live defense, formal result, re-defense, and completion rather than collapsing them into a generic WAITING message.
-15. The current Defense Lobby remains a prototype. The approved role-aware collaborative Defense Workspace, manuscript annotation model, Rapporteur report UX, RAP signing UX, defense history, and deferred realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
+15. The legacy Defense Lobby remains a prototype/compatibility surface. The implemented role-aware Collaborative Defense Workspace is the current committee workflow foundation for exact-manuscript review, annotations/comments, evaluation, Rapporteur report authoring, RAP freeze/signing, conclusion readiness, and defense history. Its canonical behavior and deferred realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
 
 ### 0.1 2026-10-15 Title Proposal / title-authority correction
 
@@ -85,7 +87,10 @@ Important sequencing clarification:
 - all required stage-aware RAP signatures must complete and the RAP must be FINALIZED before the Chairman records PASSED or REDEFENSE_REQUIRED;
 - the later DefenseConclusion remains a separate formal record and must not mutate the already frozen/signed RAP;
 - new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
-- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room.
+- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room;
+- the persisted CDW-0 through CDW-7 foundation is implemented and accepted on `refactor/collaborative-defense-workspace` at `3d8b7b294af10947e8dc88de825a413521d3a005`;
+- exact institutional form rendering/export (including official Committee Report/RAP, Individual Evaluation, and Oral Examination Summary PDF/print/download layout, pagination, and signature placement) remains separate future document-processing work and does not change the canonical stored records or defense sequence;
+- the authoritative RAP is authored inside GS-IS; external Word/DOCX/PDF authoring/upload is not a parallel canonical RAP source under the current design.
 
 Where older sections describe post-conclusion RAP creation, Formal Outcome as required RAP content, Proposal/Final RAP after formal conclusion, or Panelist RAP signing as an undefined future UX, this 2026-10-15 extension supersedes that wording for new collaborative attempts.
 
