@@ -12,12 +12,17 @@ export function ESignaturePad({
   value,
   onChange,
   disabled,
+  allowTyped = true,
 }: {
   value: string;
   onChange: (signatureData: string) => void;
   disabled?: boolean;
+  /** Evaluation signing is draw-only; other flows retain Type support. */
+  allowTyped?: boolean;
 }) {
-  const [mode, setMode] = useState<"type" | "draw">("type");
+  const [mode, setMode] = useState<"type" | "draw">(
+    allowTyped ? "type" : "draw",
+  );
   const [typed, setTyped] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -153,42 +158,52 @@ export function ESignaturePad({
   };
 
   const isValid =
-    mode === "type"
+    allowTyped && mode === "type"
       ? Boolean(typed.trim()) && isDataUrl(value)
       : hasDrawn && isDataUrl(value);
 
   return (
     <div className="space-y-2 rounded border border-(--earist-border-gray) p-3">
       <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === "type" ? "default" : "outline"}
-          disabled={disabled}
-          onClick={() => switchMode("type")}
-        >
-          Type
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === "draw" ? "default" : "outline"}
-          disabled={disabled}
-          onClick={() => switchMode("draw")}
-        >
-          Draw
-        </Button>
+        {allowTyped && (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "type" ? "default" : "outline"}
+              disabled={disabled}
+              onClick={() => switchMode("type")}
+            >
+              Type
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "draw" ? "default" : "outline"}
+              disabled={disabled}
+              onClick={() => switchMode("draw")}
+            >
+              Draw
+            </Button>
+          </>
+        )}
         <Button
           type="button"
           size="sm"
           variant="ghost"
+          className={allowTyped ? undefined : "ml-auto"}
           disabled={disabled}
           onClick={clear}
         >
           Clear
         </Button>
       </div>
-      {mode === "type" ? (
+      {!allowTyped && (
+        <p className="text-[13px] font-medium text-(--earist-secondary)">
+          Draw your signature
+        </p>
+      )}
+      {allowTyped && mode === "type" ? (
         <input
           value={typed}
           disabled={disabled}
@@ -212,7 +227,7 @@ export function ESignaturePad({
       <div className="text-xs text-(--earist-body-text)">
         {isValid ? (
           <p>Signature ready for evaluation finalize.</p>
-        ) : mode === "type" && typed.trim() ? (
+        ) : allowTyped && mode === "type" && typed.trim() ? (
           <p>Type cleared or invalid — enter your name.</p>
         ) : (
           <p>Signature required before finalize.</p>

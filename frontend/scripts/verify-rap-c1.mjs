@@ -116,7 +116,7 @@ test("the Chairman verdict is gated by RAP finalization readiness", () => {
   assert.match(v, /readyForConclusion/);
   assert.match(v, /reportFinalized/);
   assert.match(v, /allSignaturesSigned/);
-  assert.match(v, /Unavailable until the Committee Report is finalized/);
+  assert.doesNotMatch(v, /Unavailable until the Committee Report is finalized/);
   assert.match(v, /Record Formal Verdict/);
   // Only the two canonical new verdicts are offered.
   assert.match(v, /value="PASSED"/);

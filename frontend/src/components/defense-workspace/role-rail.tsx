@@ -15,7 +15,7 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Info, PanelLeftClose, PlayCircle } from "lucide-react";
+import { Info, ChevronDown, PanelLeftClose, PlayCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,10 @@ export function RoleRail({
         {/* Evaluator (Chairman/Panelist): My Evaluation. */}
         {isEvaluator &&
           (workspace.capabilities.evaluationOpen ? (
-            <OralEvaluationForm scheduleId={scheduleId} />
+            <OralEvaluationForm
+              scheduleId={scheduleId}
+              evaluatorName={workspace.myAssignment.name}
+            />
           ) : (
             <section className="rounded-lg border border-(--earist-border-gray) p-3">
               <div className="mb-1 flex items-center justify-between gap-2">
@@ -195,8 +198,12 @@ export function RoleRail({
 
         {/* Committee roster — compact, expandable. */}
         <details className="group">
-          <summary className="cursor-pointer list-none rounded-lg border border-(--earist-border-gray) px-3 py-2 text-[15px] font-semibold text-(--earist-primary)">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-[15px] font-semibold text-(--earist-primary)">
             Committee roster
+            <ChevronDown
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+            />
           </summary>
           <div className="mt-2">
             <DefenseRoster roster={workspace.roster} />

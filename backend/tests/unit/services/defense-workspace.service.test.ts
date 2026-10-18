@@ -145,6 +145,11 @@ describe("DefenseWorkspaceService (CP6)", () => {
     expect(ws.documents.map((d) => d.id)).toEqual(["doc-a"]);
   });
 
+  it("exposes the caller's printed name from the exact assignment roster", async () => {
+    const ws = await svc.getWorkspace("sched-1", "u-eval");
+    expect(ws.myAssignment.name).toBe("Eva Evaluator");
+  });
+
   it("Test 6: missing certification binding returns 409 (no latest fallback)", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({

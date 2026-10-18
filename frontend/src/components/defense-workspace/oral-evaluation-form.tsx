@@ -55,7 +55,13 @@ function initialMatrixValues(evaluation?: OralEvaluation): Record<string, string
   return next;
 }
 
-export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
+export function OralEvaluationForm({
+  scheduleId,
+  evaluatorName,
+}: {
+  scheduleId: string;
+  evaluatorName: string;
+}) {
   const { data: evaluation, isLoading } = useQuery({
     queryKey: evalQueryKey(scheduleId),
     queryFn: async () =>
@@ -78,6 +84,7 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
       key={scheduleId}
       scheduleId={scheduleId}
       evaluation={evaluation}
+      evaluatorName={evaluatorName}
     />
   );
 }
@@ -85,14 +92,22 @@ export function OralEvaluationForm({ scheduleId }: { scheduleId: string }) {
 function EvaluationEditor({
   scheduleId,
   evaluation,
+  evaluatorName,
 }: {
   scheduleId: string;
   evaluation?: OralEvaluation;
+  evaluatorName: string;
 }) {
   if (evaluation && evaluation.scoringVersion === "LEGACY_POINTS_V1") {
     return <LegacyEvaluationNotice evaluation={evaluation} />;
   }
-  return <MatrixEvaluationEditor scheduleId={scheduleId} evaluation={evaluation} />;
+  return (
+    <MatrixEvaluationEditor
+      scheduleId={scheduleId}
+      evaluation={evaluation}
+      evaluatorName={evaluatorName}
+    />
+  );
 }
 
 /** Legacy 10/15-point rows are read-only in the new workspace. */
@@ -203,9 +218,11 @@ function EvaluationSaveStatus({
 function MatrixEvaluationEditor({
   scheduleId,
   evaluation,
+  evaluatorName,
 }: {
   scheduleId: string;
   evaluation?: OralEvaluation;
+  evaluatorName: string;
 }) {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -545,6 +562,7 @@ function MatrixEvaluationEditor({
           groupIIAverage={groupIIAverageValue}
           recommendations={recommendations}
           allCriteriaComplete={allCriteriaComplete}
+          printedName={evaluatorName}
           finalizePending={finalize.isPending}
           finalizeError={error}
           onConfirmFinalize={(signatureData) => finalize.mutate(signatureData)}

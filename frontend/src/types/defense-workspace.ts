@@ -32,6 +32,7 @@ export interface DefenseWorkspace {
   myAssignment: {
     panelAssignmentId: string;
     role: WorkspaceRole;
+    name: string;
   };
   capabilities: {
     canEvaluate: boolean;

@@ -130,7 +130,8 @@ test("finalized evaluation renders a compact locked state", () => {
 test("Chairman and Panelist share the same evaluator form and modal flow", () => {
   const rail = read(RAIL);
 
-  assert.match(rail, /<OralEvaluationForm scheduleId=\{scheduleId\} \/>/);
+  assert.match(rail, /<OralEvaluationForm/);
+  assert.match(rail, /evaluatorName=\{workspace\.myAssignment\.name\}/);
   assert.doesNotMatch(rail, /isChairman[\s\S]{0,120}OralEvaluationForm/);
 });
 

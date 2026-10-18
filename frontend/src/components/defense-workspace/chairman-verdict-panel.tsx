@@ -69,35 +69,37 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
 
   if (!data || !data.isChairman || data.concluded) return null;
 
-  const checks = [
-    { label: "Required evaluations finalized", ok: data.allEvaluationsFinalized },
-    { label: "Oral Examination Summary ready", ok: data.oralSummaryExists },
-    { label: "Committee Report frozen", ok: data.reportFrozen },
+  const evaluationComplete = data.allEvaluationsFinalized;
+  const reportPending = data.requiredSignatures <= 0;
+  const reportComplete = !reportPending && data.allSignaturesSigned;
+  const readinessRows = [
     {
-      label: `Required signatures: ${data.signedSignatures} of ${data.requiredSignatures}`,
-      ok: data.allSignaturesSigned,
+      label: "Evaluation Signatures",
+      value: `${data.finalizedEvaluations} of ${data.evaluatorAssignments} completed`,
+      ok: evaluationComplete,
     },
-    { label: "RAP finalized", ok: data.reportFinalized },
+    {
+      label: "Committee Report Signatures",
+      value: reportPending
+        ? "Pending"
+        : `${data.signedSignatures} of ${data.requiredSignatures} completed`,
+      ok: reportComplete,
+    },
   ];
 
   return (
     <section className="rounded-lg border border-(--earist-border-gray) p-3">
       <p className="mb-1 text-base font-semibold text-(--earist-primary)">Formal Verdict</p>
-      {!data.readyForConclusion && (
-        <p className="mb-2 text-[14px] text-(--earist-body-text)">
-          Unavailable until the Committee Report is finalized.
-        </p>
-      )}
       <ul className="space-y-1 text-[13px]">
-        {checks.map((check) => (
-          <li key={check.label} className="flex items-center gap-2">
-            {check.ok ? (
+        {readinessRows.map((row) => (
+          <li key={row.label} className="flex items-center gap-2">
+            {row.ok ? (
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
             ) : (
               <span className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-(--earist-border-gray)" />
             )}
-            <span className={check.ok ? "text-(--earist-body-text)" : "text-amber-700"}>
-              {check.label}
+            <span className={row.ok ? "text-(--earist-body-text)" : "text-amber-700"}>
+              {row.label} — {row.value}
             </span>
           </li>
         ))}

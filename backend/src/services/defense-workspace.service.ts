@@ -37,6 +37,8 @@ export interface DefenseWorkspaceDto {
   myAssignment: {
     panelAssignmentId: string;
     role: WorkspaceRole;
+    /** Authoritative printed name for the exact authenticated assignment. */
+    name: string;
   };
   capabilities: {
     /** Caller's role is a numerical evaluator (Chairman/Panelist) for this stage. */
@@ -198,6 +200,12 @@ export class DefenseWorkspaceService {
     // CP6: assignment auth BEFORE role-safe DTO assembly.
     const myAssignment = await this.resolveOwnAssignment(scheduleId, userId);
     const role = String(myAssignment.role) as WorkspaceRole;
+    const myRosterAssignment = schedule.panelAssignments.find(
+      (assignment) => assignment.id === myAssignment.id,
+    );
+    const myPrintedName = myRosterAssignment
+      ? `${myRosterAssignment.user.firstName} ${myRosterAssignment.user.lastName}`.trim()
+      : "";
     const defenseType = String(schedule.defenseType);
     const isEvaluator = isEvaluatorRole(role, defenseType);
     const canEditRapporteurNotes = role === "RAPPORTEUR";
@@ -385,6 +393,7 @@ export class DefenseWorkspaceService {
       myAssignment: {
         panelAssignmentId: myAssignment.id,
         role,
+        name: myPrintedName,
       },
       capabilities: {
         canEvaluate: isEvaluator,
