@@ -37,10 +37,12 @@ test("institutional Summary values render at exactly two decimals", () => {
   assert.match(admin, /formatInstitutionalValue\(r\.averageValue\)/);
 });
 
-test("internal overall average is distinguished from a formal Rating", () => {
+test("institutional Summary hides the internal aggregate and deferred Rating", () => {
   const admin = read(ADMIN);
 
-  assert.match(admin, /"Internal Average"/);
+  assert.doesNotMatch(admin, /Internal Average/);
+  assert.match(admin, /!isInstitutionalSummary && \(/);
+  // Legacy records may still show the historical fields.
   assert.match(admin, /data\.oralExamSummary\.finalRating \?\? "Not assigned"/);
   assert.doesNotMatch(admin, /finalRating\s*\?\?\s*"(Excellent|Satisfactory|Fail)"/);
 });

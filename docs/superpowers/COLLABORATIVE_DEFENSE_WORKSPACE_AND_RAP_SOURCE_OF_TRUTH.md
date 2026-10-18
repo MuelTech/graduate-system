@@ -13,7 +13,7 @@
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
 **FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
 **Current pre-CDW-9 UX design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-4; FIX-4 independently source-reviewed PASS at `3b24c496` and manually observed to generate the institutional Summary in Admin, without claiming full lifecycle acceptance; FIX-5 Committee Report signing + Defense Records UX alignment is CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-5 implementation/review/targeted QA; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-4; FIX-4 independently source-reviewed PASS at `3b24c496` and manually observed to generate the institutional Summary in Admin, without claiming full lifecycle acceptance; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-5 review/targeted QA; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
 **Version:** 1.8  
 **Last updated:** 2026-10-18

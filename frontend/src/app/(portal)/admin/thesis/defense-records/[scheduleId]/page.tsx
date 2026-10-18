@@ -536,9 +536,9 @@ export default function AdminDefenseRecordDetailPage() {
                       <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
                         <th className="px-3 py-2">Evaluator</th>
                         <th className="px-3 py-2">Role</th>
-                        <th className="px-3 py-2">Status</th>
-                        <th className="px-3 py-2">Overall</th>
-                        <th className="px-3 py-2">Criteria</th>
+                        <th className="px-3 py-2">Evaluation Status</th>
+                        <th className="px-3 py-2">Signature Status</th>
+                        <th className="px-3 py-2">Signed At</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -564,11 +564,23 @@ export default function AdminDefenseRecordDetailPage() {
                               {evaluatorStatusLabel(e.status)}
                             </Badge>
                           </td>
-                          <td className="px-3 py-2 tabular-nums">
-                            {e.overallValue ?? "—"}
-                          </td>
                           <td className="px-3 py-2">
-                            {e.hasOfficialCriteria ? "Available" : "Not available"}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-medium",
+                                e.hasOfficialCriteria
+                                  ? "text-(--earist-success)"
+                                  : "text-(--earist-warning)",
+                              )}
+                            >
+                              {e.hasOfficialCriteria ? "Signed" : "Not signed"}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {e.hasOfficialCriteria
+                              ? formatSignedAt(e.signedAt)
+                              : "—"}
                           </td>
                         </tr>
                       ))}
@@ -596,26 +608,18 @@ export default function AdminDefenseRecordDetailPage() {
                 </p>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <MetaItem
-                      label={
-                        isInstitutionalSummary
-                          ? "Internal Average"
-                          : "Overall Average"
-                      }
-                    >
-                      <span className="tabular-nums">
-                        {isInstitutionalSummary
-                          ? formatInstitutionalValue(
-                              data.oralExamSummary.overallAverage,
-                            )
-                          : (data.oralExamSummary.overallAverage ?? "—")}
-                      </span>
-                    </MetaItem>
-                    <MetaItem label="Final Rating">
-                      {data.oralExamSummary.finalRating ?? "Not assigned"}
-                    </MetaItem>
-                  </div>
+                  {!isInstitutionalSummary && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <MetaItem label="Overall Average">
+                        <span className="tabular-nums">
+                          {data.oralExamSummary.overallAverage ?? "—"}
+                        </span>
+                      </MetaItem>
+                      <MetaItem label="Final Rating">
+                        {data.oralExamSummary.finalRating ?? "Not assigned"}
+                      </MetaItem>
+                    </div>
+                  )}
                   {data.oralExamSummary.rows.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px] text-left text-xs">
@@ -678,12 +682,12 @@ export default function AdminDefenseRecordDetailPage() {
           </Card>
       </>
 
-      {/* RAP / Committee Report */}
+      {/* Committee Report */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              RAP / Committee Report
+              Committee Report
             </CardTitle>
             <DownloadPrintButton />
           </div>
@@ -691,7 +695,7 @@ export default function AdminDefenseRecordDetailPage() {
         <CardContent className="space-y-3 text-sm">
           {!data.rapReport ? (
             <p className="text-(--earist-body-text)">
-              Not generated yet — the RAP is created after the formal conclusion.
+              The Committee Report has not been prepared yet.
             </p>
           ) : (
             <>

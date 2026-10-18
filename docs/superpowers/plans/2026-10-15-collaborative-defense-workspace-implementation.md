@@ -14,7 +14,7 @@
 **Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `3b24c496`; project-owner manual inspection confirmed generated institutional Summary rows are visible and also exposed downstream signing/Admin presentation issues; FIX-5 Committee Report signing + Defense Records UX alignment is CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-5; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `3b24c496`; project-owner manual inspection confirmed generated institutional Summary rows are visible and also exposed downstream signing/Admin presentation issues; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance remains blocked on FIX-5 review/targeted QA; CDW-9 NOT STARTED
 
 ---
 
@@ -60,8 +60,8 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
 | CDW-LIVE-1 MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Oral Examination Summary generated from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
-| CDW-LIVE-1 MANUAL-QA FIX-5 | CONFIRMED DESIGN / NOT IMPLEMENTED | Committee Report own-signature modal UX + faculty signer-list simplification + Admin Defense Records table/terminology/Summary presentation alignment |
-| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-5 | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 implementation/review/targeted QA |
+| CDW-LIVE-1 MANUAL-QA FIX-5 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | Committee Report own-signature modal UX + faculty signer-list simplification + Admin Defense Records table/terminology/Summary presentation alignment |
+| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-5 REVIEW / TARGETED QA | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 review/targeted QA |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -76,7 +76,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 owns that UX alignment before the final end-to-end multi-user acceptance.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 now implements that UX alignment and awaits independent review before the final end-to-end multi-user acceptance.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1280,17 +1280,21 @@ The Admin Defense Records surface may read/display canonical Summary data. Exist
 
 ### Gate
 
-FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is now part of the current implementation baseline. Full pre-CDW-9 acceptance remains blocked by the separate FIX-5 UX package discovered during manual inspection.
+FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is now part of the current implementation baseline. Full pre-CDW-9 acceptance now remains blocked by independent review and targeted QA of the implemented FIX-5 UX package.
 
 ---
 
 ## 12.6 Pre-CDW-9 MANUAL-QA FIX-5 — Committee Report Signing + Defense Records UX Alignment
 
-**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW.
 
 Detailed design:
 
     docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md
+
+Implementation report:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md
 
 ### Goal
 
@@ -1335,7 +1339,7 @@ FIX-5 does not change:
 
 ### Gate
 
-FIX-5 must be implemented, independently source-reviewed, and targeted-manual-QA checked before the final end-to-end multi-user live-defense acceptance resumes.
+FIX-5 must be independently source-reviewed and targeted-manual-QA checked before the final end-to-end multi-user live-defense acceptance resumes.
 
 ---
 

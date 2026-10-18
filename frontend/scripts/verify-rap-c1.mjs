@@ -22,13 +22,23 @@ const code = (relative) =>
 
 const PANEL = "src/components/defense-workspace/committee-report-panel.tsx";
 const RAP_PANEL = "src/components/defense-workspace/rap-signature-panel.tsx";
+const RAP_DIALOG =
+  "src/components/defense-workspace/committee-report-signature-dialog.tsx";
 const VERDICT = "src/components/defense-workspace/chairman-verdict-panel.tsx";
 const RAIL = "src/components/defense-workspace/role-rail.tsx";
 const COLLAB = "src/lib/pdf-annotation/collaboration-client.ts";
 const SIGNATURE_PAD = "src/components/defense-workspace/e-signature-pad.tsx";
 
 test("RAP-C1 components exist", () => {
-  for (const file of [RAP_PANEL, VERDICT, PANEL, RAIL, COLLAB, SIGNATURE_PAD]) {
+  for (const file of [
+    RAP_PANEL,
+    RAP_DIALOG,
+    VERDICT,
+    PANEL,
+    RAIL,
+    COLLAB,
+    SIGNATURE_PAD,
+  ]) {
     assert.equal(exists(file), true, `${file} should exist`);
   }
 });
@@ -72,21 +82,26 @@ test("freeze and sign call the collaboration report endpoints", () => {
   assert.match(rap, /method:\s*"POST"/);
 });
 
-test("signing is own-slot gated, uses the e-signature pad, and binds image evidence", () => {
+test("signing is own-slot gated and uses the focused draw-only dialog", () => {
   const rap = read(RAP_PANEL);
+  const dialog = read(RAP_DIALOG);
   assert.match(rap, /canSign/);
-  assert.match(rap, /ESignaturePad/);
-  assert.match(rap, /data:image\//);
-  assert.match(rap, /Confirm Signature/);
+  assert.match(rap, /CommitteeReportSignatureDialog/);
+  assert.match(dialog, /ESignaturePad/);
+  assert.match(dialog, /allowTyped=\{false\}/);
+  assert.match(dialog, /data:image\/png;base64/);
+  assert.match(dialog, /Confirm Signature/);
 });
 
-test("signature progress + roster are visible without exposing raw evidence", () => {
+test("aggregate signature progress remains visible without a cross-signer roster", () => {
   const rap = code(RAP_PANEL);
-  assert.match(rap, /Required signatures:/);
-  assert.match(rap, /of\s*\{?signatureProgress\.required/);
-  assert.match(rap, /Pending/);
-  assert.match(rap, /Signed/);
-  // The roster never reads/renders a signer's raw signature evidence.
+  assert.match(rap, /required\s+signatures completed/);
+  assert.match(rap, /signatureProgress\.signed/);
+  assert.match(rap, /signatureProgress\.required/);
+  assert.match(rap, /You signed this report/);
+  assert.doesNotMatch(rap, /signatures\.map/);
+  assert.doesNotMatch(rap, /signer\.name|signer\.signedAt/);
+  // No raw signature evidence is exposed by the faculty surface.
   assert.doesNotMatch(rap, /signer\.signatureData|mySignature\.signatureData/);
   assert.doesNotMatch(rap, /<img[^>]*signature/i);
   assert.doesNotMatch(rap, /base64/);

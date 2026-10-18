@@ -3,7 +3,7 @@
 **Repository:** MuelTech/graduate-system  
 **Branch:** `refactor/collaborative-defense-workspace`  
 **Implementation HEAD reconciled:** `3b24c496cd8700aaa0fc287eb55e61eeb12dfaac`  
-**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION IMPLEMENTED / SOURCE REVIEW PASS; FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX CONFIRMED DESIGN / NOT IMPLEMENTED; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-5
+**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION IMPLEMENTED / SOURCE REVIEW PASS; FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX IMPLEMENTED — PENDING INDEPENDENT REVIEW; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-5 REVIEW / TARGETED QA
 
 **CDW-9:** NOT STARTED
 
@@ -27,8 +27,8 @@ It does not replace the canonical Source of Truth. It records which bounded fixe
 | MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature, concise Formal Verdict readiness, roster chevron |
 | MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` wording + redundant printed-name UI/plumbing removed |
 | MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Summary numeric computation verified in source; project-owner manual inspection showed generated Group A/Group B/Average rows in Admin; full lifecycle not yet accepted |
-| MANUAL-QA FIX-5 | CONFIRMED DESIGN / NOT IMPLEMENTED | own-signature Committee Report modal UX + faculty signer-list simplification + Admin Evaluation/Summary/Committee Report presentation alignment |
-| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-5 | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 implementation/review/targeted QA |
+| MANUAL-QA FIX-5 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | own-signature Committee Report modal UX + faculty signer-list simplification + Admin Evaluation/Summary/Committee Report presentation alignment |
+| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-5 REVIEW / TARGETED QA | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 review/targeted QA |
 | CDW-9 | NOT STARTED | hardening must wait for the final manual acceptance gate |
 
 ---
@@ -162,8 +162,8 @@ CDW-LIVE-1 core ACCEPTED / CLOSED
   -> FIX-2 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-3 + FIX-3A BOUNDED UX ACCEPTED
   -> FIX-4 ORAL EXAMINATION SUMMARY COMPUTATION  [IMPLEMENTED / SOURCE REVIEW PASS]
-  -> FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX  [CONFIRMED DESIGN / NOT IMPLEMENTED]
-  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-5]
+  -> FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX  [IMPLEMENTED — PENDING INDEPENDENT REVIEW]
+  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-5 REVIEW / TARGETED QA]
   -> CDW-9  [NOT STARTED]
 ```
 

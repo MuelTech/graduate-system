@@ -80,6 +80,7 @@ export interface CommitteeReportReadModel {
   // RAP-C1 freeze / signature lifecycle.
   canFreeze: boolean;
   freezeReadiness: { ready: boolean; checks: RapFreezeCheck[] };
+  /** Read-model signer rows remain available for authority/current-user derivation. */
   signatures: RapSignerStatus[];
   signatureProgress: { required: number; signed: number };
   mySignature: RapSignerStatus | null;
@@ -455,7 +456,6 @@ function ReportAuthoringPanel({
         contentVersion={report.contentVersion}
         canFreeze={report.canFreeze}
         freezeReadiness={report.freezeReadiness}
-        signatures={report.signatures}
         signatureProgress={report.signatureProgress}
         canSign={report.canSign}
         mySignature={report.mySignature}
@@ -635,7 +635,6 @@ function ReportReadOnly({
             contentVersion={report.contentVersion}
             canFreeze={false}
             freezeReadiness={report.freezeReadiness}
-            signatures={report.signatures}
             signatureProgress={report.signatureProgress}
             canSign={report.canSign}
             mySignature={report.mySignature}

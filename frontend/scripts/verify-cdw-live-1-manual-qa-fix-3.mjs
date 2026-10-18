@@ -71,8 +71,9 @@ test("shared signature pad still supports Type for unrelated flows", () => {
 
   assert.match(signature, /\{allowTyped && \(/);
   assert.match(signature, />\s*Type\s*</);
-  assert.match(rap, /<ESignaturePad/);
-  assert.doesNotMatch(rap, /allowTyped=\{false\}/);
+  // FIX-5 moved Committee Report signing into its own focused dialog.
+  assert.match(rap, /CommitteeReportSignatureDialog/);
+  assert.doesNotMatch(rap, /<ESignaturePad/);
 });
 
 test("evaluation Draw still emits PNG evidence and Clear remains", () => {

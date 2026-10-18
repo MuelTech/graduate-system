@@ -6,10 +6,10 @@
  * Rapporteur (pre-freeze): an explicit readiness checklist and a NON-casual
  * two-step "Freeze for Signatures" confirmation that states what freezing locks.
  *
- * Once frozen: version + signature progress + the required signer roster (name,
- * role, Pending/Signed, timestamp) and, for a required unsigned signer, a Sign
- * action that e-signs the EXACT frozen artifact. Raw signature images are never
- * displayed and are never sent to this component.
+ * Once frozen: aggregate signature progress plus only the current user's own
+ * signing state/action. The full cross-signer audit belongs to Admin Defense
+ * Records, not the faculty workspace. Raw signature images are never displayed
+ * and are never sent to this component.
  *
  * The report must be authored in-system; there is no Word/DOCX upload path.
  */
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiClientRequest } from "@/lib/api.client";
 
-import { ESignaturePad } from "./e-signature-pad";
+import { CommitteeReportSignatureDialog } from "./committee-report-signature-dialog";
 
 export interface RapFreezeCheck {
   key: string;
@@ -39,14 +39,6 @@ export interface RapSignerStatus {
   signedAt: string | null;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  CHAIRMAN: "Chairman",
-  PANELIST: "Panelist",
-  RAPPORTEUR: "Rapporteur",
-  ADVISER: "Adviser",
-  FACILITATOR: "Facilitator",
-};
-
 const FROZEN_STATUSES = [
   "FOR_SIGNATURE",
   "PARTIALLY_SIGNED",
@@ -55,17 +47,12 @@ const FROZEN_STATUSES = [
   "FINALIZED",
 ];
 
-function roleLabel(role: string): string {
-  return ROLE_LABELS[role] ?? role;
-}
-
 export function RapSignaturePanel({
   scheduleId,
   reportStatus,
   contentVersion,
   canFreeze,
   freezeReadiness,
-  signatures,
   signatureProgress,
   canSign,
   mySignature,
@@ -75,7 +62,6 @@ export function RapSignaturePanel({
   contentVersion: number;
   canFreeze: boolean;
   freezeReadiness: { ready: boolean; checks: RapFreezeCheck[] };
-  signatures: RapSignerStatus[];
   signatureProgress: { required: number; signed: number };
   canSign: boolean;
   mySignature: RapSignerStatus | null;
@@ -83,8 +69,7 @@ export function RapSignaturePanel({
   const queryClient = useQueryClient();
   const [confirmingFreeze, setConfirmingFreeze] = useState(false);
   const [freezeError, setFreezeError] = useState<string | null>(null);
-  const [signing, setSigning] = useState(false);
-  const [signature, setSignature] = useState("");
+  const [signDialogOpen, setSignDialogOpen] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
 
   const frozen = FROZEN_STATUSES.includes(reportStatus);
@@ -110,14 +95,13 @@ export function RapSignaturePanel({
   });
 
   const sign = useMutation({
-    mutationFn: () =>
+    mutationFn: (signatureData: string) =>
       apiClientRequest(`/thesis/defense/${scheduleId}/collaboration/report/sign`, {
         method: "POST",
-        body: JSON.stringify({ signatureData: signature }),
+        body: JSON.stringify({ signatureData }),
       }),
     onSuccess: async () => {
-      setSigning(false);
-      setSignature("");
+      setSignDialogOpen(false);
       setSignError(null);
       await invalidate();
     },
@@ -201,88 +185,69 @@ export function RapSignaturePanel({
   }
 
   return (
-    <section className="shrink-0 rounded-lg border border-(--earist-border-gray) p-3">
-      <div className="mb-1 flex flex-wrap items-center gap-2">
-        <p className="text-[15px] font-semibold text-(--earist-primary)">
-          Frozen Report — Version {contentVersion || 1}
-        </p>
-        {finalized ? (
-          <Badge className="bg-emerald-100 text-emerald-800">RAP finalized</Badge>
-        ) : (
-          <Badge className="bg-amber-100 text-amber-800">Awaiting signatures</Badge>
-        )}
-      </div>
-      <p className="text-[13px] text-(--earist-body-text)">
-        Required signatures: {signatureProgress.signed} of {signatureProgress.required} complete.
-      </p>
-
-      <ul className="mt-2 space-y-1 text-[13px]">
-        {signatures.map((signer) => (
-          <li key={signer.userId} className="flex items-center justify-between gap-2">
-            <span className="text-(--earist-body-text)">
-              {signer.name || "—"}{" "}
-              <span className="opacity-70">({roleLabel(signer.roleAtDefense)})</span>
-            </span>
-            {signer.isSigned ? (
-              <span className="flex items-center gap-1 text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Signed
-                {signer.signedAt ? ` ${new Date(signer.signedAt).toLocaleString()}` : ""}
-              </span>
-            ) : (
-              <span className="text-amber-700">Pending</span>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {canSign && !signing && (
-        <Button type="button" className="mt-3" onClick={() => setSigning(true)}>
-          <PenLine className="mr-2 h-4 w-4" /> Sign / E-Sign
-        </Button>
-      )}
-      {!canSign && mySignature?.isSigned && (
-        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-emerald-700">
-          <CheckCircle2 className="h-4 w-4" /> You signed this report
-          {mySignature.signedAt ? ` on ${new Date(mySignature.signedAt).toLocaleString()}` : ""}.
-        </p>
-      )}
-      {!canSign && !mySignature && !finalized && (
-        <p className="mt-2 text-[13px] text-(--earist-body-text)">
-          Only the required committee signers can sign this report.
-        </p>
-      )}
-
-      {signing && (
-        <div className="mt-3 space-y-2">
-          <ESignaturePad value={signature} onChange={setSignature} disabled={sign.isPending} />
-          {signError && (
-            <p className="flex items-center gap-1.5 text-[13px] text-red-700">
-              <AlertCircle className="h-4 w-4" /> {signError}
-            </p>
+    <>
+      <section className="shrink-0 rounded-lg border border-(--earist-border-gray) p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[15px] font-semibold text-(--earist-primary)">
+            Committee Report
+          </p>
+          {finalized ? (
+            <Badge className="bg-emerald-100 text-emerald-800">
+              Committee Report finalized
+            </Badge>
+          ) : (
+            <Badge className="bg-amber-100 text-amber-800">Awaiting signatures</Badge>
           )}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              disabled={!signature.startsWith("data:image/") || sign.isPending}
-              onClick={() => sign.mutate()}
-            >
-              {sign.isPending ? "Signing…" : "Confirm Signature"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={sign.isPending}
-              onClick={() => {
-                setSigning(false);
-                setSignature("");
-                setSignError(null);
-              }}
-            >
-              Cancel
+        </div>
+        <p className="mt-1 text-[13px] text-(--earist-body-text)">
+          {signatureProgress.signed} of {signatureProgress.required} required
+          signatures completed
+        </p>
+        <p className="text-[12px] text-(--earist-body-text)">
+          Frozen version {contentVersion || 1}
+        </p>
+
+        {canSign && (
+          <div className="mt-3 space-y-2">
+            <p className="text-[13px] text-(--earist-body-text)">
+              Your signature is required for this frozen report.
+            </p>
+            <Button type="button" onClick={() => setSignDialogOpen(true)}>
+              <PenLine className="mr-2 h-4 w-4" /> Review & Sign
             </Button>
           </div>
-        </div>
+        )}
+
+        {mySignature?.isSigned && (
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" /> You signed this report
+            {mySignature.signedAt
+              ? ` on ${new Date(mySignature.signedAt).toLocaleString()}`
+              : ""}
+            .
+          </p>
+        )}
+
+        {signError && !signDialogOpen && (
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-red-700">
+            <AlertCircle className="h-4 w-4" /> {signError}
+          </p>
+        )}
+      </section>
+
+      {signDialogOpen && (
+        <CommitteeReportSignatureDialog
+          open={signDialogOpen}
+          onOpenChange={(open) => {
+            setSignDialogOpen(open);
+            setSignError(null);
+          }}
+          contentVersion={contentVersion}
+          signPending={sign.isPending}
+          signError={signError}
+          onConfirm={(signatureData) => sign.mutate(signatureData)}
+        />
       )}
-    </section>
+    </>
   );
 }

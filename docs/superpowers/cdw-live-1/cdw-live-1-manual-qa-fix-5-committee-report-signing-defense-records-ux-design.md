@@ -8,7 +8,9 @@
 **Collaborative workspace authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **UI/UX reference:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
-**Status:** CONFIRMED DESIGN — NOT IMPLEMENTED  
+**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW
+
+**Implementation report:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md`
 **Date:** 2026-10-18  
 **Expected schema change:** NONE  
 **Expected migration:** NONE  
@@ -619,7 +621,7 @@ FIX-4 ORAL SUMMARY
   [IMPLEMENTED / SOURCE REVIEW PASS]
       ->
 FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX
-  [CONFIRMED DESIGN / NOT IMPLEMENTED]
+  [IMPLEMENTED — PENDING INDEPENDENT REVIEW]
       ->
 FIX-5 independent source review
       ->

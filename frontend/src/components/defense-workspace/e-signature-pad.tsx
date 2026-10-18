@@ -4,21 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
- * CP6-FIX3: evaluation e-signature input with stable Draw gesture refs.
- * Type and Draw emit real PNG data-URL evidence.
- * Does not call RAP signature endpoints.
+ * CP6-FIX3: shared e-signature input with stable Draw gesture refs.
+ * Type and Draw emit real PNG data-URL evidence. Default helper copy preserves
+ * Evaluation signing; report signing may pass neutral copy and allowTyped=false.
+ * Does not call any signature endpoint.
  */
 export function ESignaturePad({
   value,
   onChange,
   disabled,
   allowTyped = true,
+  readyText = "Signature ready for evaluation finalize.",
+  requiredText = "Signature required before finalize.",
 }: {
   value: string;
   onChange: (signatureData: string) => void;
   disabled?: boolean;
   /** Evaluation signing is draw-only; other flows retain Type support. */
   allowTyped?: boolean;
+  /** Optional caller-specific helper copy; defaults preserve Evaluation signing. */
+  readyText?: string;
+  requiredText?: string;
 }) {
   const [mode, setMode] = useState<"type" | "draw">(
     allowTyped ? "type" : "draw",
@@ -226,11 +232,11 @@ export function ESignaturePad({
       )}
       <div className="text-xs text-(--earist-body-text)">
         {isValid ? (
-          <p>Signature ready for evaluation finalize.</p>
+          <p>{readyText}</p>
         ) : allowTyped && mode === "type" && typed.trim() ? (
           <p>Type cleared or invalid — enter your name.</p>
         ) : (
-          <p>Signature required before finalize.</p>
+          <p>{requiredText}</p>
         )}
         {isValid && isDataUrl(value) && (
           <img
