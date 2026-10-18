@@ -4,7 +4,7 @@
 - **Repository:** MuelTech/graduate-system
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `c7893737d9bb0ea10963ea3fb84c743596519e46`
-- **Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION APPLIED — READY FOR RE-REVIEW
+- **Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION APPLIED + MANUAL-REVIEW UI SIMPLIFICATION — READY FOR REVIEW
 - **Date:** 2026-10-19
 - **Migration:** NONE
 - **Schema change:** NONE
@@ -124,34 +124,32 @@ The evaluator/Summary readiness checklist was removed from the authoring experie
 - `Ready for Signatures`
 - `Awaiting Signatures`
 - `<signed> of <required> signatures completed`
-- `Your signature is required. Review the finalized report before signing.`
-- `Review & Sign`
+- `Your signature is required.`
+- `Sign Committee Report`
 - `Signed`
 - `You signed this Committee Report on <date/time>.`
 - `Committee Report Complete`
 
 No full cross-signer roster or signature timestamps are shown to ordinary faculty.
 
-### Review & Sign dialog
+### Sign Committee Report dialog
 
-Step 1:
-
-- `Review and Sign Committee Report`
-- `Please review the finalized Committee Report before signing. Your signature will be recorded for this report and cannot be changed after confirmation.`
-- `Nothing is signed until you confirm your signature in the next step.`
-- `Cancel`
-- `Continue to Sign`
-
-Step 2:
-
-- `Add Your Signature`
-- `Draw your signature below, then confirm to sign the Committee Report.`
+- `Sign Committee Report`
+- `Draw your signature below. Once confirmed, your signature cannot be changed.`
 - draw-only shared signature pad
-- `Back`
+- `Cancel`
 - `Confirm Signature`
 - `Signing…`
 
+The dialog opens directly to the signature pad. There is no separate review/step state.
 Internal version/snapshot/hash identifiers are not rendered.
+
+> **Post-manual-review UI correction — 2026-10-19:** the original FIX-6 implementation
+> used a two-step review/sign dialog. Project-owner manual review found the review step
+> redundant because the finalized Committee Report is already visible before signing.
+> The current copy above reflects the accepted single-step flow. The earlier two-step
+> implementation remains part of the historical implementation record and is not
+> rewritten as if it never existed.
 
 ### Formal Verdict
 
@@ -311,7 +309,66 @@ drain/POST ordering and duplicate-finalize guard.
 
 ---
 
-## 9. Manual QA
+## 9. Manual Review UI Correction — Single-Step Committee Report Signing
+
+### Manual-review finding
+
+The finalized Committee Report is already visible in the workspace before the user
+clicks the signing action. The implemented two-step dialog nevertheless repeated a
+review/instruction step that presented no additional report content:
+
+```text
+Review & Sign
+  -> Review and Sign Committee Report
+  -> Continue to Sign
+  -> Add Your Signature
+  -> Confirm Signature
+```
+
+That conflicted with the canonical UI rule: **Do not explain what the UI already
+demonstrates.**
+
+### Correction
+
+- Finalized-report action is now **Sign Committee Report**.
+- The dialog opens directly to the signature pad.
+- Removed:
+  - the review/sign step state;
+  - `Review and Sign Committee Report`;
+  - `Continue to Sign`;
+  - the “Nothing is signed until…” instructional step;
+  - `Add Your Signature`;
+  - the Back action that existed only for the two-step flow.
+- Current dialog copy:
+  - title: **Sign Committee Report**
+  - description: **Draw your signature below. Once confirmed, your signature cannot be changed.**
+  - actions: **Cancel**, **Confirm Signature**
+  - pending: **Signing…**
+  - success remains **Signed**, with the existing own timestamp.
+- Draw-only `ESignaturePad`, duplicate-confirm guard, error handling, and the existing
+  signing endpoint remain unchanged.
+- Rapporteur finalization still does **not** auto-sign the Rapporteur. Finalization and
+  signing remain separate explicit actions.
+
+### Correction verification
+
+| Check | Result |
+|---|---|
+| Focused verifier set: FIX-5, FIX-6, RAP-C1 | **3 scripts / 44 passed / 0 failed** |
+| Focused single-step dialog assertions | PASS |
+| Frontend `npx tsc --noEmit` | **clean** |
+| Scoped ESLint on changed components | **clean** |
+| `git diff --check` | **clean** (line-ending notices only) |
+| Frontend production build | Not run — bounded component copy/flow change; no API/type wiring or routing changes |
+| Backend tests/build | Not run — no backend production-code change |
+| Prisma tooling | Not run — no schema/migration change |
+
+No backend authority, signer roster, evaluation workflow, Summary arithmetic, verdict
+gate, realtime event, schema, or document-processing behavior was changed.
+
+---
+
+## 10. Manual QA
 
 **NOT EXECUTED — PROJECT-OWNER OWNED.**
 

@@ -38,12 +38,13 @@ test("faculty signing panel does not render other signer timestamps or names", (
   assert.doesNotMatch(panel, /Another signer/);
 });
 
-test("unsigned required signer sees Review & Sign", () => {
+test("unsigned required signer sees Sign Committee Report", () => {
   const panel = read(PANEL);
 
-  assert.match(panel, /Review & Sign/);
-  assert.match(panel, /Your signature is required\. Review the finalized report before signing\./);
+  assert.match(panel, /Sign Committee Report/);
+  assert.match(panel, /Your signature is required\./);
   assert.match(panel, /\{canSign && \(/);
+  assert.doesNotMatch(panel, /Review & Sign/);
 });
 
 test("non-required viewer gets no signing control", () => {
@@ -69,17 +70,20 @@ test("finalized faculty copy uses Committee Report terminology, not RAP finalize
   assert.doesNotMatch(panel, /RAP finalized/);
 });
 
-test("Review & Sign opens a focused two-step dialog component", () => {
+test("Sign Committee Report opens a focused single-step dialog component", () => {
   assert.equal(existsSync(resolve(root, DIALOG)), true);
   const dialog = read(DIALOG);
   const panel = read(PANEL);
 
   assert.match(panel, /CommitteeReportSignatureDialog/);
-  assert.match(dialog, /Review and Sign Committee Report/);
-  assert.match(dialog, /Add Your Signature/);
-  assert.match(dialog, /Continue to Sign/);
+  assert.match(dialog, /Sign Committee Report/);
+  assert.match(dialog, /Draw your signature below\. Once confirmed, your signature cannot be changed\./);
+  assert.match(dialog, /Cancel/);
   assert.match(dialog, /Confirm Signature/);
   assert.match(dialog, /DialogContent/);
+  assert.doesNotMatch(dialog, /Review and Sign Committee Report/);
+  assert.doesNotMatch(dialog, /Continue to Sign/);
+  assert.doesNotMatch(dialog, /Add Your Signature/);
 });
 
 test("Committee Report signing is draw-only and uses shared ESignaturePad", () => {
@@ -102,15 +106,15 @@ test("shared signature pad helper copy is parameterizable for report signing", (
   assert.match(dialog, /Draw your signature before confirming\./);
 });
 
-test("opening, cancelling, and backing out never sign; confirm is guarded", () => {
+test("opening and cancelling never sign; confirm is guarded", () => {
   const dialog = read(DIALOG);
   const panel = read(PANEL);
 
   assert.match(dialog, /confirmingRef/);
   assert.match(dialog, /if \(confirmingRef\.current/);
   assert.match(dialog, /onClick=\{close\}/);
-  assert.match(dialog, /setStep\("review"\)/);
   assert.match(dialog, /setSignature\(""\)/);
+  assert.doesNotMatch(dialog, /setStep|step ===/);
   assert.match(panel, /onConfirm=\{/);
   assert.match(panel, /setSignDialogOpen\(false\)/);
   assert.doesNotMatch(panel, /onClick=\{\(\) => sign\.mutate\(\)\}/);

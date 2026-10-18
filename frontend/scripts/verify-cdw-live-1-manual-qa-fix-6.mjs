@@ -91,28 +91,37 @@ test("finalized report states use approved faculty language", () => {
   assert.match(panel, /Awaiting Signatures/);
   assert.match(panel, /Committee Report Complete/);
   assert.match(panel, /signatures completed/);
-  assert.match(panel, /Your signature is required\. Review the finalized report before signing\./);
-  assert.match(panel, /Review & Sign/);
+  assert.match(panel, /Your signature is required\./);
+  assert.match(panel, /Sign Committee Report/);
   assert.match(panel, /Signed/);
   assert.match(panel, /You signed this Committee Report on/);
+  assert.doesNotMatch(panel, /Review & Sign/);
 });
 
-test("Review & Sign dialog uses the approved Step 1 and Step 2 copy", () => {
+test("Committee Report signing opens directly to the single signature step", () => {
   const dialog = code(SIGNATURE_DIALOG);
+  const panel = code(SIGNATURE_PANEL);
 
-  assert.match(dialog, /Review and Sign Committee Report/);
+  assert.match(panel, /Sign Committee Report/);
+  assert.match(dialog, /Sign Committee Report/);
   assert.match(
     dialog,
-    /Please review the finalized Committee Report before signing\.\s+Your\s+signature will be recorded for this report and cannot be changed\s+after confirmation\./,
+    /Draw your signature below\. Once confirmed, your signature cannot be changed\./,
   );
-  assert.match(dialog, /Nothing is signed until you confirm your signature in the next step\./);
-  assert.match(dialog, /Continue to Sign/);
-  assert.match(dialog, /Add Your Signature/);
-  assert.match(dialog, /Draw your signature below, then confirm to sign the Committee Report\./);
+  assert.match(dialog, /Cancel/);
   assert.match(dialog, /Confirm Signature/);
   assert.match(dialog, /Signing…/);
   assert.match(dialog, /allowTyped=\{false\}/);
   assert.match(dialog, /ESignaturePad/);
+  assert.match(dialog, /confirmingRef/);
+  assert.match(dialog, /onConfirm\(signature\)/);
+
+  assert.doesNotMatch(dialog, /type Step|const \[step|setStep|step ===/);
+  assert.doesNotMatch(dialog, /Review and Sign Committee Report/);
+  assert.doesNotMatch(dialog, /Continue to Sign/);
+  assert.doesNotMatch(dialog, /Nothing is signed until you confirm/);
+  assert.doesNotMatch(dialog, /Add Your Signature/);
+  assert.doesNotMatch(dialog, />\s*Back\s*</);
 });
 
 test("the dialog never displays an internal report version", () => {

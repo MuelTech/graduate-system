@@ -404,17 +404,17 @@ For an authenticated committee member viewing a frozen Committee Report:
 - keep the report body readable in the workspace;
 - do **not** render the complete required-signer roster, other signers' names, or other signers' exact timestamps as a large inline block;
 - aggregate progress such as `4 of 6 required signatures completed` may remain visible because it communicates readiness without turning the faculty workspace into an audit registry;
-- a required signer sees only their own actionable state: **Review & Sign** while unsigned, then **You signed this report** with their own timestamp after signing;
+- a required signer sees only their own actionable state: **Sign Committee Report** while unsigned, then **You signed this Committee Report** with their own timestamp after signing;
 - a committee viewer who is not a required signer sees no signing control;
 - once the report is fully signed/finalized, faculty-facing copy uses **Committee Report finalized** rather than unexplained `RAP finalized`.
 
-The signing interaction follows the accepted individual-evaluation finalization pattern:
+The finalized Committee Report is already visible in the workspace before the signing action. The signing interaction therefore opens directly to a single signature step:
 
-1. open a centered modal from **Review & Sign**;
-2. first step confirms the exact frozen Committee Report/version being signed and the irreversible nature of the signature;
-3. second step collects a **draw-only** e-signature using the shared signature pad with typed signing disabled;
+1. open a centered modal from **Sign Committee Report**;
+2. the modal opens directly to the signature pad and states the irreversible consequence;
+3. collect a **draw-only** e-signature using the shared signature pad with typed signing disabled;
 4. **Confirm Signature** invokes the existing authorized Committee Report signature endpoint;
-5. opening, backing out of, or cancelling the modal never signs anything.
+5. opening or cancelling the modal never signs anything.
 
 The full signer-level operational audit remains appropriate in **Admin Defense Records**, where the Committee Report section shows:
 
@@ -898,9 +898,7 @@ Faculty-facing copy must use plain task language. Canonical wording for this flo
 - **Finalize Report**
 - **Ready for Signatures**
 - **Awaiting Signatures**
-- **Review & Sign**
-- **Review and Sign Committee Report**
-- **Add Your Signature**
+- **Sign Committee Report**
 - **Confirm Signature**
 - **Signed**
 - **Committee Report Complete**

@@ -221,10 +221,10 @@ export function RapSignaturePanel({
         {canSign && (
           <div className="mt-3 space-y-2">
             <p className="text-[13px] text-(--earist-body-text)">
-              Your signature is required. Review the finalized report before signing.
+              Your signature is required.
             </p>
             <Button type="button" onClick={() => setSignDialogOpen(true)}>
-              <PenLine className="mr-2 h-4 w-4" /> Review & Sign
+              <PenLine className="mr-2 h-4 w-4" /> Sign Committee Report
             </Button>
           </div>
         )}

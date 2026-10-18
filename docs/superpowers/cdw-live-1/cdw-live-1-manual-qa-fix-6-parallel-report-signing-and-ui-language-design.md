@@ -8,8 +8,8 @@
 **Collaborative workspace authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **UI/UX authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
-**Status:** DESIGN APPROVED / NOT YET IMPLEMENTED  
-**Date:** 2026-10-19  
+**Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION + MANUAL-REVIEW UI SIMPLIFICATION APPLIED — READY FOR REVIEW
+**Date:** 2026-10-19
 **Expected schema change:** NONE  
 **Expected migration:** NONE  
 **Expected document-processing work:** NONE  
@@ -252,11 +252,11 @@ Progress:
 
 Current-user helper:
 
-**Your signature is required. Review the finalized report before signing.**
+**Your signature is required.**
 
 Action:
 
-**Review & Sign**
+**Sign Committee Report**
 
 Do not show raw content version.
 
@@ -294,50 +294,25 @@ The Admin Defense Records surface may continue to expose the full signer audit w
 
 ---
 
-## 6. Review & Sign dialog — exact approved copy
+## 6. Sign Committee Report dialog — exact approved copy
 
-### Step 1
-
-Dialog title:
-
-**Review and Sign Committee Report**
-
-Description:
-
-**Please review the finalized Committee Report before signing. Your signature will be recorded for this report and cannot be changed after confirmation.**
-
-Supporting text:
-
-**Nothing is signed until you confirm your signature in the next step.**
-
-Actions:
-
-- **Cancel**
-- **Continue to Sign**
-
-Do not show:
-
-- frozen report/version;
-- V1;
-- version 1;
-- contentVersion;
-- snapshot/hash.
-
-### Step 2
+The finalized Committee Report is already visible in the workspace before the signing
+action. The dialog therefore opens directly to the signature pad; there is no separate
+review step.
 
 Dialog title:
 
-**Add Your Signature**
+**Sign Committee Report**
 
 Description:
 
-**Draw your signature below, then confirm to sign the Committee Report.**
+**Draw your signature below. Once confirmed, your signature cannot be changed.**
 
 Signature pad remains draw-only for this flow.
 
 Actions:
 
-- **Back**
+- **Cancel**
 - **Confirm Signature**
 
 Pending action:
@@ -347,6 +322,21 @@ Pending action:
 Success state outside the modal:
 
 **Signed**
+
+Do not show:
+
+- a separate review step or Continue action;
+- frozen report/version;
+- V1;
+- version 1;
+- contentVersion;
+- snapshot/hash.
+
+> **Post-manual-review simplification — 2026-10-19:** the original FIX-6 two-step
+> review/sign dialog was implemented and source-reviewed. Project-owner manual review
+> found the first step redundant because the finalized report is already visible on the
+> page. The current canonical flow is the single-step signature dialog above. Historical
+> implementation evidence remains in the earlier commits and report history.
 
 ---
 
@@ -392,9 +382,7 @@ Preferred ordinary faculty-facing terms:
 - Finalized Committee Report
 - Ready for Signatures
 - Awaiting Signatures
-- Review & Sign
-- Review and Sign Committee Report
-- Add Your Signature
+- Sign Committee Report
 - Confirm Signature
 - Signed
 - Committee Report Complete
@@ -502,7 +490,7 @@ At minimum prove:
 15. confirmation says **Finalize Committee Report?** and **Finalize Report**;
 16. faculty signing UI contains no **Freeze for Signatures** / **Confirm Freeze**;
 17. faculty signing UI contains no visible V1 / version 1 / Frozen version / contentVersion;
-18. signing dialog uses the exact approved Step 1/Step 2 language or an explicitly project-owner-approved equivalent;
+18. signing dialog opens directly to the single signature pad and uses the exact approved copy; there is no separate review/step state;
 19. legacy secondary signing page uses Committee Report terminology;
 20. existing signer roster policy is unchanged;
 21. no schema/migration;
@@ -523,7 +511,7 @@ Required evidence:
 4. Verify **Finalize Committee Report** is available despite unfinished evaluation(s).
 5. Finalize the report.
 6. Verify report becomes read-only and signature actions become available.
-7. As a required Chairman/Panelist whose evaluation is still DRAFT, open the same defense and **Review & Sign** the Committee Report.
+7. As a required Chairman/Panelist whose evaluation is still DRAFT, open the same defense and choose **Sign Committee Report**.
 8. Verify signing succeeds.
 9. Verify that evaluator can still return to and finalize their own evaluation afterward.
 10. Verify Chairman Formal Verdict remains unavailable while any evaluation remains incomplete.

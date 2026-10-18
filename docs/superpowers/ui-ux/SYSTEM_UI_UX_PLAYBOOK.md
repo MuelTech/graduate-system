@@ -225,9 +225,7 @@ For the Committee Report flow specifically, approved visible action language is:
 - **Finalize Report**
 - **Ready for Signatures**
 - **Awaiting Signatures**
-- **Review & Sign**
-- **Review and Sign Committee Report**
-- **Add Your Signature**
+- **Sign Committee Report**
 - **Confirm Signature**
 - **Signed**
 - **Committee Report Complete**
@@ -1575,7 +1573,7 @@ This is the **eighth** explicitly accepted UI/UX reference. The Panelist Dashboa
 - **Evaluation Results registry:** use **Evaluator | Role | Evaluation Status | Signature Status | Signed At**. Do not show the institutional V2 `Overall` null column or a generic `Criteria = Available` column in this summary table. Removing those columns is presentation cleanup only; it does not delete criteria, score snapshots, or future official Individual Evaluation output.
 - **Institutional Oral Examination Summary:** for `INSTITUTIONAL_MATRIX_V2`, the visible Admin Summary is the confirmed examiner table **Examiner | Role | Group A | Group B | Average**, formatted to two decimals. Do not expose `Internal Average` or `Final Rating = Not assigned` as fields of the current institutional Summary presentation. The persisted aggregate may remain for compatibility and `finalRating` remains nullable/deferred.
 - **Committee Report Admin audit:** Admin retains the full operational signer table **Signer | Role | Signature Status | Signed At** plus aggregate required-signature progress. This is the correct place for cross-signer identity/timestamp transparency.
-- **Committee-facing signing privacy/clarity:** ordinary Chairman/Panelist/Rapporteur/Adviser workspace viewers do not need the complete signer audit roster inline. Show aggregate progress plus only the current user's own required signing action/status. Signing opens a centered two-step review/sign modal and uses draw-only e-signature, consistent with the accepted individual-evaluation signing direction.
+- **Committee-facing signing privacy/clarity:** ordinary Chairman/Panelist/Rapporteur/Adviser workspace viewers do not need the complete signer audit roster inline. Show aggregate progress plus only the current user's own required signing action/status. Because the finalized Committee Report is already visible on the page, **Sign Committee Report** opens directly to a centered single-step signature modal and uses draw-only e-signature. Do not add a separate review/instruction step that repeats content the UI already shows.
 - **Stale lifecycle copy:** never state that the Committee Report is created after formal conclusion. The canonical flow freezes/signs/finalizes the Committee Report before the Chairman formal verdict.
 
 - **Pattern type:** Admin **official defense-record detail** with clear list → record wayfinding and section ownership. Current hierarchy: shared **Breadcrumb (`Defense Records / <Student Name>`) → PageHeader → Defense Overview + structured Defense Committee → Evaluation Results → Oral Examination Summary → Committee Report**. Do not add a duplicate bottom-level document inventory merely to repeat actions already owned by these sections.

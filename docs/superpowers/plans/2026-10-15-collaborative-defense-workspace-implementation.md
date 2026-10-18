@@ -1218,7 +1218,7 @@ Required corrected workflow:
 2. Evaluation work and Committee Report work may proceed in parallel.
 3. Chairman and required Panelists may continue drafting their own evaluations.
 4. Rapporteur authors the Committee Report and may **Finalize Committee Report** as soon as the report content is ready; report finalization does not wait for evaluator finalization or the Oral Examination Summary.
-5. Once the Committee Report is finalized, required stage-aware signers may **Review & Sign** immediately, including Chairman/Panelists whose evaluations are still DRAFT.
+5. Once the Committee Report is finalized, required stage-aware signers may choose **Sign Committee Report** immediately, including Chairman/Panelists whose evaluations are still DRAFT.
 6. Evaluators independently finalize/e-sign their own evaluations when ready.
 7. Once every required evaluator is FINALIZED, the Oral Examination Summary generates from authoritative finalized values.
 8. Chairman's Formal Verdict surface reflects authoritative progress without serializing the two workstreams.
@@ -1314,7 +1314,7 @@ Committee workspace:
 - full cross-signer roster/timestamps are no longer rendered to ordinary committee viewers;
 - aggregate required-signature progress remains;
 - each signer sees only their own signing action/status;
-- signing uses a centered two-step **Review & Sign -> Draw Signature -> Confirm Signature** modal;
+- signing uses a centered single-step **Sign Committee Report -> Draw Signature -> Confirm Signature** modal because the finalized report is already visible on the page;
 - Committee Report signing is draw-only;
 - backend signer policy, frozen-report binding, endpoint authority, realtime invalidation, and conclusion gates remain unchanged.
 
