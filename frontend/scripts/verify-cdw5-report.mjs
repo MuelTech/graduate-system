@@ -852,9 +852,10 @@ test("the Insert bridge follows the editor mount lifecycle (registered in the ed
   assert.doesNotMatch(p, /registerInsert/);
 });
 
-test("unsaved status reflects the local dirty flag only", () => {
+test("unsaved status is owned by the local autosave state", () => {
   const p = read(PANEL);
-  assert.match(p, /dirty \? "Draft \(unsaved\)" : "Draft"/);
+  assert.match(p, /SaveStateIndicator/);
+  assert.match(p, /hasUnsavedChanges/);
   assert.doesNotMatch(p, /hasCollaborativeBody \|\| dirty/);
 });
 

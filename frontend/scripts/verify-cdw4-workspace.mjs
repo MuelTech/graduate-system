@@ -70,7 +70,7 @@ test("role rail is role-aware: evaluation only for evaluators; Start Defense onl
   assert.match(rail, /evaluationOpen/);
   // Rapporteur report status; Adviser/Facilitator info only.
   assert.match(rail, /RAPPORTEUR/);
-  assert.match(rail, /Freeze for Signatures/);
+  assert.match(rail, /Finalize\s+Committee Report/);
 });
 
 test("Committee Report tab gates authoring on canEditBody (CDW-5 authoring surface)", () => {

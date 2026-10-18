@@ -339,7 +339,7 @@ export class RapReportService {
       if (!slot) throw new AppError("Signature request not found.", 404);
       if (slot.userId !== userId) {
         throw new AppError(
-          "You may only sign your own RAP signature slot.",
+          "You may only sign your own Committee Report signature slot.",
           403,
         );
       }

@@ -359,7 +359,7 @@ function HistoryAttemptDetail({
             onClick={() => setMode("report")}
             icon={<ScrollText className="h-3.5 w-3.5" />}
           >
-            View Previous RAP
+            View Previous Committee Report
           </ModeButton>
           <ModeButton
             active={mode === "annotations"}
@@ -489,7 +489,7 @@ function HistoricalReportPane({
       {!isStructured && (
         <p className="mb-2 rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) px-3 py-1.5 text-[13px] text-(--earist-body-text)">
           {isLegacyNotes
-            ? "This record predates the current in-system Committee Report workflow and is shown as originally stored. It is not a modern signed or finalized RAP."
+            ? "This record predates the current in-system Committee Report workflow and is shown as originally stored. It is not a modern signed or finalized Committee Report."
             : "Legacy historical Committee Report — recorded before the in-system rich-text Committee Report. It is shown as originally stored and was not authored with the current editor."}
         </p>
       )}

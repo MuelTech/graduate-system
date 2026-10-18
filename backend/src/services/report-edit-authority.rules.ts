@@ -12,6 +12,17 @@ export const REPORT_WRITABLE_SESSION_STATUSES = [
   "AWAITING_CONCLUSION",
 ] as const;
 
+/**
+ * FIX-6: the Committee Report may be finalized for signatures only after the
+ * defense has started and before the attempt is concluded/cancelled. SCHEDULED
+ * remains pre-defense collaboration/authoring time and cannot create signing
+ * obligations.
+ */
+export const REPORT_FINALIZATION_SESSION_STATUSES = [
+  "IN_PROGRESS",
+  "AWAITING_CONCLUSION",
+] as const;
+
 export const FROZEN_REPORT_STATUSES = [
   "FOR_SIGNATURE",
   "PARTIALLY_SIGNED",
@@ -22,6 +33,11 @@ export const FROZEN_REPORT_STATUSES = [
 
 export function isCollaborationWritableStatus(status: string): boolean {
   return (REPORT_WRITABLE_SESSION_STATUSES as readonly string[]).includes(status);
+}
+
+/** FIX-6: report finalization/signing requires an active pre-conclusion session. */
+export function isReportFinalizationStatus(status: string): boolean {
+  return (REPORT_FINALIZATION_SESSION_STATUSES as readonly string[]).includes(status);
 }
 
 export interface ReportBodyEditAuthorityInput {

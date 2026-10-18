@@ -83,7 +83,7 @@ test("the panel exposes the required per-attempt actions", () => {
   const panel = read(PANEL);
   for (const label of [
     "View Previous Manuscript",
-    "View Previous RAP",
+    "View Previous Committee Report",
     "View Historical Annotations",
     "Compare with Current",
   ]) {
@@ -160,7 +160,7 @@ test("legacy Rapporteur notes enable historical report viewing with honest prove
   assert.match(helpers, /Legacy Rapporteur Notes available/);
   // The legacy note presentation is visibly explained and read-only.
   assert.match(panel, /This record predates the current in-system Committee Report workflow/);
-  assert.match(panel, /not a modern signed or finalized RAP/);
+  assert.match(panel, /not a modern signed or finalized Committee Report/);
   // Legacy notes carry no fabricated signature lifecycle.
   assert.match(panel, /report\.signatureProgress/);
   assert.match(panel, /No finalization timestamp recorded/);

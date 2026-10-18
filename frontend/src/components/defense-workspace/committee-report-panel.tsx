@@ -48,7 +48,7 @@ import type { DefenseWorkspace } from "@/types/defense-workspace";
 
 import { useReportRealtime } from "./defense-realtime-context";
 import { ReportDocumentCanvas, ReportDocumentView } from "./report-document-view";
-import { RapSignaturePanel, type RapFreezeCheck, type RapSignerStatus } from "./rap-signature-panel";
+import { RapSignaturePanel, type RapSignerStatus } from "./rap-signature-panel";
 import { RichTextReportEditor } from "./rich-text-report-editor";
 
 export interface CommitteeReportReadModel {
@@ -64,7 +64,6 @@ export interface CommitteeReportReadModel {
   venue: string | null;
   reportStatus: string;
   bodyVersion: number;
-  contentVersion: number;
   body: ReportDocument | null;
   hasCollaborativeBody: boolean;
   legacyContent: {
@@ -73,13 +72,10 @@ export interface CommitteeReportReadModel {
   };
   freeze: {
     frozenAt: string | null;
-    frozenById: string | null;
-    frozenContentHash: string | null;
   };
   canEditBody: boolean;
-  // RAP-C1 freeze / signature lifecycle.
+  // Committee Report finalization / signature lifecycle.
   canFreeze: boolean;
-  freezeReadiness: { ready: boolean; checks: RapFreezeCheck[] };
   /** Read-model signer rows remain available for authority/current-user derivation. */
   signatures: RapSignerStatus[];
   signatureProgress: { required: number; signed: number };
@@ -93,7 +89,7 @@ const DEFENSE_LABELS: Record<string, string> = {
   FINAL_DEFENSE: "Final Defense",
 };
 
-/** RapStatus values that mean the Committee Report is frozen / signing has begun. */
+/** RapStatus values that mean the Committee Report has been finalized for signing. */
 const REPORT_FROZEN_STATUSES = [
   "FOR_SIGNATURE",
   "PARTIALLY_SIGNED",
@@ -101,6 +97,16 @@ const REPORT_FROZEN_STATUSES = [
   "DISTRIBUTED",
   "FINALIZED",
 ];
+
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  NOT_CREATED: "Not started",
+  DRAFT: "Draft",
+  FOR_SIGNATURE: "Ready for Signatures",
+  PARTIALLY_SIGNED: "Awaiting Signatures",
+  ALL_SIGNED: "Committee Report Complete",
+  DISTRIBUTED: "Committee Report Complete",
+  FINALIZED: "Committee Report Complete",
+};
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -130,9 +136,8 @@ function ReportContextBlock({ report }: { report: CommitteeReportReadModel }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label =
-    status === "NOT_CREATED" ? "Not started" : status.replace(/_/g, " ").toLowerCase();
-  return <Badge variant="outline" className="capitalize">{label}</Badge>;
+  const label = REPORT_STATUS_LABELS[status] ?? "Draft";
+  return <Badge variant="outline">{label}</Badge>;
 }
 
 export function CommitteeReportPanel({
@@ -432,7 +437,6 @@ function ReportAuthoringPanel({
   };
 
   const conflict = saveState.status === "conflict";
-  const dirty = saveState.hasUnsavedChanges;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 p-4">
@@ -441,9 +445,6 @@ function ReportAuthoringPanel({
           <FileText className="h-5 w-5" /> Committee Report
         </h2>
         <StatusBadge status={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus} />
-        <span className="text-[13px] text-(--earist-body-text)">
-          {dirty ? "Draft (unsaved)" : "Draft"}
-        </span>
       </div>
 
       <ReportContextBlock report={report} />
@@ -453,9 +454,7 @@ function ReportAuthoringPanel({
       <RapSignaturePanel
         scheduleId={scheduleId}
         reportStatus={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus}
-        contentVersion={report.contentVersion}
-        canFreeze={report.canFreeze}
-        freezeReadiness={report.freezeReadiness}
+        canFinalize={report.canFreeze}
         signatureProgress={report.signatureProgress}
         canSign={report.canSign}
         mySignature={report.mySignature}
@@ -632,9 +631,7 @@ function ReportReadOnly({
           <RapSignaturePanel
             scheduleId={report.scheduleId}
             reportStatus={report.reportStatus}
-            contentVersion={report.contentVersion}
-            canFreeze={false}
-            freezeReadiness={report.freezeReadiness}
+            canFinalize={false}
             signatureProgress={report.signatureProgress}
             canSign={report.canSign}
             mySignature={report.mySignature}
@@ -680,7 +677,7 @@ function ReportReadOnly({
 
         {report.freeze.frozenAt && (
           <p className="text-[13px] text-(--earist-body-text)">
-            This report was frozen for signatures on{" "}
+            This Committee Report was finalized for signatures on{" "}
             {new Date(report.freeze.frozenAt).toLocaleString()}.
           </p>
         )}

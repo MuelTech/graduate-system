@@ -209,9 +209,35 @@ describe("RAP-C1 freeze (DefenseCollaborationService)", () => {
     await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({ statusCode: 409 });
   });
 
-  it("fails closed when a required evaluator is not finalized (Summary unavailable)", async () => {
+  it("finalizes while evaluations remain DRAFT and the Summary is absent", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        rapReports: [draftRap()],
+        oralExamScores: [
+          { panelId: "pa-CHAIRMAN", status: "DRAFT" },
+          { panelId: "pa-PANELIST", status: "DRAFT" },
+        ],
+        oralExamSummary: null,
+      }),
+    );
     ensureSummary.mockRejectedValue(new AppError("Not all required evaluations are finalized.", 409));
-    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({ statusCode: 409 });
+
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).resolves.toMatchObject({
+      frozen: true,
+      status: "FOR_SIGNATURE",
+    });
+    expect(ensureSummary).not.toHaveBeenCalled();
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.createMany).toHaveBeenCalled();
+  });
+
+  it("rejects finalization before the defense has started (SCHEDULED)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "SCHEDULED", rapReports: [draftRap()] }),
+    );
+    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({
+      statusCode: 409,
+    });
     expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
   });
 
@@ -292,6 +318,34 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     await expect(svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE)).resolves.toMatchObject({ signed: true });
     signerSlot("RAPPORTEUR");
     await expect(svc.signReportForSignatures("sched-1", "u-RAPPORTEUR", EVIDENCE)).resolves.toMatchObject({ signed: true });
+  });
+
+  it("lets a Chairman sign while their own evaluation is still DRAFT and no Summary exists", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        rapReports: [frozenRap()],
+        oralExamScores: [
+          { panelId: "pa-CHAIRMAN", status: "DRAFT" },
+          { panelId: "pa-PANELIST", status: "DRAFT" },
+        ],
+        oralExamSummary: null,
+      }),
+    );
+    signerSlot("CHAIRMAN");
+    await expect(svc.signReportForSignatures("sched-1", "u-CHAIRMAN", EVIDENCE)).resolves.toMatchObject({
+      signed: true,
+    });
+  });
+
+  it("rejects Committee Report signing before the defense has started (SCHEDULED)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "SCHEDULED", rapReports: [frozenRap()] }),
+    );
+    signerSlot("CHAIRMAN");
+    await expect(svc.signReportForSignatures("sched-1", "u-CHAIRMAN", EVIDENCE)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
   });
 
   it("lets the Adviser sign on Proposal/Final", async () => {
@@ -389,39 +443,34 @@ describe("RAP-C1 report read model (no raw signature leakage)", () => {
     expect(JSON.stringify(model)).not.toContain("base64");
   });
 
-  it("reports freeze readiness with per-evaluator checks", async () => {
+  it("reports finalization eligibility from report content only, not evaluations or Summary", async () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("RAPPORTEUR"));
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({
         rapReports: [draftRap()],
         oralExamScores: [
-          { panelId: "pa-CHAIRMAN", status: "FINALIZED" },
+          { panelId: "pa-CHAIRMAN", status: "DRAFT" },
           { panelId: "pa-PANELIST", status: "DRAFT" },
         ],
-      }),
-    );
-    const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
-    expect(model.canFreeze).toBe(false);
-    const panelist = model.freezeReadiness.checks.find((c) => c.key === "evaluation:pa-PANELIST");
-    expect(panelist?.ok).toBe(false);
-    const chairman = model.freezeReadiness.checks.find((c) => c.key === "evaluation:pa-CHAIRMAN");
-    expect(chairman?.ok).toBe(true);
-    expect(model.freezeReadiness.checks.find((c) => c.key === "summary")?.ok).toBe(true);
-  });
-
-  it("canFreeze is true only when all readiness checks pass for the assigned Rapporteur", async () => {
-    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("RAPPORTEUR"));
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({
-        rapReports: [draftRap()],
-        oralExamScores: [
-          { panelId: "pa-CHAIRMAN", status: "FINALIZED" },
-          { panelId: "pa-PANELIST", status: "FINALIZED" },
-        ],
+        oralExamSummary: null,
       }),
     );
     const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
     expect(model.canFreeze).toBe(true);
     expect(model.freezeReadiness.ready).toBe(true);
+    expect(model.freezeReadiness.checks).toEqual([
+      { key: "content", label: "Committee Report contains content", ok: true },
+    ]);
+    expect(model.freezeReadiness.checks.some((c) => c.key.startsWith("evaluation:"))).toBe(false);
+    expect(model.freezeReadiness.checks.some((c) => c.key === "summary")).toBe(false);
+  });
+
+  it("does not offer finalization while the session is still SCHEDULED", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("RAPPORTEUR"));
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "SCHEDULED", rapReports: [draftRap()] }),
+    );
+    const model = await svc.getReportReadModel("sched-1", "u-RAPPORTEUR");
+    expect(model.canFreeze).toBe(false);
   });
 });

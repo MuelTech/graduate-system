@@ -34,6 +34,7 @@ import {
   FROZEN_REPORT_STATUSES,
   isCollaborationWritableStatus,
   isReportBodyEditable,
+  isReportFinalizationStatus,
 } from "./report-edit-authority.rules";
 import {
   type RapSnapshotCommitteeMember,
@@ -45,7 +46,6 @@ import {
 } from "./rap-signature.policy";
 import { RapReportService } from "./rap-report.service";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
-import { OfficialDefenseRecordService } from "./official-defense-record.service";
 import {
   selectCertifiedFinalManuscript,
   selectCertifiedProposalManuscript,
@@ -312,7 +312,6 @@ function toAnnotationDto(row: AnnotationRow, comments: CommentRow[]): Annotation
 }
 
 export class DefenseCollaborationService {
-  private officialRecords = new OfficialDefenseRecordService();
   private rapService = new RapReportService();
 
   /**
@@ -574,6 +573,20 @@ export class DefenseCollaborationService {
     }
   }
 
+  /**
+   * FIX-6: Committee Report finalization/signing is independent of evaluation
+   * completion, but it still belongs to the active defense lifecycle. SCHEDULED
+   * is pre-defense review/authoring only.
+   */
+  private assertReportFinalizationOpen(sessionStatus: unknown): void {
+    if (!isReportFinalizationStatus(String(sessionStatus))) {
+      throw new AppError(
+        "Committee Report finalization and signing are not open for this defense session.",
+        409,
+      );
+    }
+  }
+
   private assertCollaborationWritable(
     schedule: { sessionStatus: unknown },
     rap: { status: unknown; frozenAt: Date | null } | null,
@@ -581,7 +594,7 @@ export class DefenseCollaborationService {
     this.assertSessionOpen(schedule.sessionStatus);
     if (rap && (rap.frozenAt || (FROZEN_REPORT_STATUSES as readonly string[]).includes(String(rap.status)))) {
       throw new AppError(
-        "The committee report is frozen for signatures; collaboration is read-only.",
+        "The Committee Report is finalized for signatures; collaboration is read-only.",
         409,
       );
     }
@@ -838,98 +851,28 @@ export class DefenseCollaborationService {
     });
   }
 
-  private evaluatorRoleSet(defenseType: unknown): Set<string> {
-    return new Set(
-      new DefenseCommitteePolicy().getEvaluatorRoles(defenseType as never).map(String),
-    );
-  }
-
-  /** Per-evaluator finalization facts for the freeze checklist (no peer score values). */
-  private evaluatorProgress(schedule: {
-    defenseType: unknown;
-    panelAssignments: Array<{
-      id: string;
-      role: unknown;
-      userId: string;
-      user?: { firstName: string | null; lastName: string | null } | null;
-    }>;
-    oralExamScores: Array<{ panelId: string; status: unknown }>;
-  }) {
-    const roles = this.evaluatorRoleSet(schedule.defenseType);
-    const scores = schedule.oralExamScores ?? [];
-    const assignments = schedule.panelAssignments ?? [];
-    const finalizedPanelIds = new Set(
-      scores.filter((s) => String(s.status) === "FINALIZED").map((s) => s.panelId),
-    );
-    const evaluators = assignments
-      .filter((p) => roles.has(String(p.role)))
-      .map((p) => ({
-        id: p.id,
-        role: String(p.role),
-        name: `${p.user?.firstName ?? ""} ${p.user?.lastName ?? ""}`.trim(),
-        finalized: finalizedPanelIds.has(p.id),
-      }));
-    const finalized = evaluators.filter((e) => e.finalized).length;
-    return {
-      evaluators,
-      evaluatorAssignments: evaluators.length,
-      finalizedEvaluations: finalized,
-      allFinalized: evaluators.length > 0 && finalized >= evaluators.length,
-    };
-  }
-
   /**
-   * RAP-C1 freeze preconditions, computed from authoritative server facts. The
-   * caller is only eligible when they are the assigned Rapporteur on a writable
-   * attempt with an unfrozen DRAFT report.
+   * FIX-6 finalization preconditions. Report content and exact Rapporteur
+   * authority are the only readiness facts; evaluator/Summary completion is
+   * intentionally NOT part of this decision.
    */
   private computeFreezeReadiness(
-    schedule: {
-      defenseType: unknown;
-      sessionStatus: unknown;
-      panelAssignments: Array<{
-        id: string;
-        role: unknown;
-        userId: string;
-        user?: { firstName: string | null; lastName: string | null } | null;
-      }>;
-      oralExamScores: Array<{ panelId: string; status: unknown }>;
-      oralExamSummary: { id: string } | null;
-    },
+    schedule: { sessionStatus: unknown },
     rap: { status: unknown; frozenAt: Date | null; bodyDocument: unknown } | null,
     role: unknown,
   ): { ready: boolean; checks: FreezeReadinessCheck[] } {
-    const checks: FreezeReadinessCheck[] = [];
     const body = rap?.bodyDocument ?? null;
-    checks.push({
-      key: "content",
-      label: "Committee Report contains content",
-      ok: body !== null && hasMeaningfulReportContent(body),
-    });
-
-    const progress = this.evaluatorProgress(schedule);
-    if (progress.evaluators.length === 0) {
-      checks.push({
-        key: "evaluation:none",
-        label: "Required evaluator assignments exist",
-        ok: false,
-      });
-    }
-    for (const evaluator of progress.evaluators) {
-      const label = `${evaluator.role === "CHAIRMAN" ? "Chairman" : "Panelist"}${
-        evaluator.name ? ` ${evaluator.name}` : ""
-      } evaluation finalized`;
-      checks.push({ key: `evaluation:${evaluator.id}`, label, ok: evaluator.finalized });
-    }
-    checks.push({
-      key: "summary",
-      label: "Oral Examination Summary is ready",
-      ok: Boolean(schedule.oralExamSummary),
-    });
+    const checks: FreezeReadinessCheck[] = [
+      {
+        key: "content",
+        label: "Committee Report contains content",
+        ok: body !== null && hasMeaningfulReportContent(body),
+      },
+    ];
 
     const eligible =
       String(role) === RAPPORTEUR_ROLE &&
-      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
+      isReportFinalizationStatus(String(schedule.sessionStatus)) &&
       rap !== null &&
       String(rap.status) === "DRAFT" &&
       !rap.frozenAt;
@@ -976,7 +919,7 @@ export class DefenseCollaborationService {
       Boolean(rap?.frozenAt) &&
       Boolean(rap?.frozenContentHash) &&
       signableStatus &&
-      isCollaborationWritableStatus(String(schedule.sessionStatus)) &&
+      isReportFinalizationStatus(String(schedule.sessionStatus)) &&
       mySignature !== null &&
       mySignature.required &&
       !mySignature.isSigned;
@@ -1009,7 +952,7 @@ export class DefenseCollaborationService {
     // Existing report: must be an unfrozen DRAFT (otherwise immutable / closed).
     if (rap) {
       if (rap.frozenAt || String(rap.status) !== "DRAFT") {
-        throw new AppError("The committee report is frozen and can no longer be edited.", 409);
+        throw new AppError("The Committee Report is finalized and can no longer be edited.", 409);
       }
       return this.applyReportDraftUpdate(
         rap.id,
@@ -1048,7 +991,7 @@ export class DefenseCollaborationService {
       });
       if (!existing) throw error;
       if (existing.frozenAt || String(existing.status) !== "DRAFT") {
-        throw new AppError("The committee report is frozen and can no longer be edited.", 409);
+        throw new AppError("The Committee Report is finalized and can no longer be edited.", 409);
       }
       return this.applyReportDraftUpdate(
         existing.id,
@@ -1117,10 +1060,9 @@ export class DefenseCollaborationService {
       const { schedule, rap } = await this.loadSchedule(scheduleId, tx);
       const assignment = await this.resolveAssignment(scheduleId, userId, tx);
       if (String(assignment.role) !== RAPPORTEUR_ROLE) {
-        throw new AppError("Only the assigned Rapporteur may freeze the committee report.", 403);
+        throw new AppError("Only the assigned Rapporteur may finalize the Committee Report.", 403);
       }
-      const status = String(schedule.sessionStatus);
-      this.assertSessionOpen(status);
+      this.assertReportFinalizationOpen(schedule.sessionStatus);
       if (!rap) {
         throw new AppError("The committee report has not been created for this attempt yet.", 404);
       }
@@ -1137,29 +1079,22 @@ export class DefenseCollaborationService {
         };
       }
       if (String(rap.status) !== "DRAFT") {
-        throw new AppError("Only a draft committee report can be frozen.", 409);
+        throw new AppError("Only a draft Committee Report can be finalized.", 409);
       }
       if (!rap.bodyDocument) {
-        throw new AppError("The committee report has no content to freeze.", 409);
+        throw new AppError("The Committee Report has no content to finalize.", 409);
       }
       const validation = validateReportDocument(rap.bodyDocument);
       if (!validation.ok) {
-        throw new AppError("The stored report body is invalid and cannot be frozen.", 409);
+        throw new AppError("The stored report body is invalid and cannot be finalized.", 409);
       }
       if (!hasMeaningfulReportContent(rap.bodyDocument)) {
-        throw new AppError("The committee report has no meaningful content to freeze.", 409);
+        throw new AppError("The Committee Report has no meaningful content to finalize.", 409);
       }
 
-      // Canonical prerequisite (COLLABORATIVE SOT §10.2 / §11): all required
-      // evaluator records FINALIZED and the Oral Examination Summary available.
-      // Reuses the official-record service, which safely ensures the Summary from
-      // finalized records and throws a 409 when evaluations are incomplete. This
-      // never fabricates scores and never derives a verdict. Runs after
-      // authorization so an unauthorized caller cannot trigger the side effect,
-      // and on the SAME transaction client that holds the DefenseSchedule lock so
-      // no second connection can deadlock on the parent row.
-      await this.officialRecords.ensureOralExamSummary(scheduleId, tx);
-
+      // FIX-6: Committee Report finalization is intentionally independent of
+      // evaluator completion and Oral Examination Summary generation. The two
+      // workstreams converge only at the Chairman's formal-verdict gate.
       const freezeContext = await this.loadFreezeContext(scheduleId, assignment.userId, tx);
       const contentVersion = (rap.contentVersion ?? 0) + 1;
       const now = new Date();
@@ -1225,7 +1160,7 @@ export class DefenseCollaborationService {
       );
       if (requirements.length === 0) {
         throw new AppError(
-          "No required RAP signatories exist for this defense session.",
+          "No required Committee Report signatories exist for this defense session.",
           409,
         );
       }
@@ -1279,31 +1214,31 @@ export class DefenseCollaborationService {
 
       if (!rap) {
         throw new AppError(
-          "The committee report has not been created for this attempt yet.",
+          "The Committee Report has not been created for this attempt yet.",
           409,
         );
       }
       if (!rap.frozenAt || !rap.frozenContentHash) {
-        throw new AppError("The committee report is not frozen for signatures.", 409);
+        throw new AppError("The Committee Report is not finalized for signatures.", 409);
       }
       const status = String(rap.status);
       if (status === "FINALIZED") {
-        throw new AppError("The RAP is already finalized.", 409);
+        throw new AppError("The Committee Report is already complete.", 409);
       }
       if (status !== "FOR_SIGNATURE" && status !== "PARTIALLY_SIGNED") {
-        throw new AppError("The RAP is not open for signatures.", 409);
+        throw new AppError("The Committee Report is not open for signatures.", 409);
       }
-      this.assertSessionOpen(String(schedule.sessionStatus));
+      this.assertReportFinalizationOpen(schedule.sessionStatus);
 
       const slot = await tx.rapReportSignature.findFirst({
         where: { rapId: rap.id, userId },
         select: { id: true, required: true, isSigned: true },
       });
       if (!slot || slot.required === false) {
-        throw new AppError("You are not a required signer for this RAP.", 403);
+        throw new AppError("You are not a required signer for this Committee Report.", 403);
       }
       if (slot.isSigned === true) {
-        throw new AppError("You have already signed this RAP.", 409);
+        throw new AppError("You have already signed this Committee Report.", 409);
       }
 
       const updated = await tx.rapReportSignature.updateMany({
@@ -1322,7 +1257,7 @@ export class DefenseCollaborationService {
         },
       });
       if (updated.count === 0) {
-        throw new AppError("You have already signed this RAP.", 409);
+        throw new AppError("You have already signed this Committee Report.", 409);
       }
       return {
         rapId: rap.id,

@@ -781,41 +781,31 @@ describe("DefenseCollaborationService — CDW-1 corrections", () => {
     await expect(svc.listAnnotations("sched-1", "u-PANELIST", "doc-1")).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  // ---- Fix 3: freeze readiness (evaluator + Summary) ----
+  // ---- FIX-6: report finalization is independent of evaluation/Summary ----
 
-  it("rejects freeze when required evaluations are incomplete (Summary cannot be ensured)", async () => {
-    setStage("TITLE_DEFENSE");
-    prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    ensureSummary.mockRejectedValue(
-      new AppError(
-        "All required evaluator evaluations must be finalized before the Oral Examination Summary can be generated.",
-        409,
-      ),
+  it("finalizes a DRAFT Committee Report while evaluations remain DRAFT and no Summary exists", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({
+        rapReports: [rapRow({ status: "DRAFT", bodyDocument: VALID_BODY })],
+        oralExamScores: [
+          { panelId: "pa-CHAIRMAN", status: "DRAFT" },
+          { panelId: "pa-PANELIST", status: "DRAFT" },
+        ],
+        oralExamSummary: null,
+      }),
     );
-    await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).rejects.toMatchObject({
-      statusCode: 409,
-    });
-    expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
-  });
-
-  it("freezes when all required evaluations are finalized and the Summary is available", async () => {
-    setStage("TITLE_DEFENSE");
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
-    ensureSummary.mockResolvedValue({
-      created: true,
-      summaryId: "sum-1",
-      evaluatorCount: 2,
-      overallAverage: 0,
-      finalRating: null,
-    });
     prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+    ensureSummary.mockRejectedValue(
+      new AppError("A required evaluator is not finalized.", 409),
+    );
+
     await expect(svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR")).resolves.toMatchObject({
       frozen: true,
       status: "FOR_SIGNATURE",
     });
-    // CDW-3 correction: Summary generation runs on the SAME transaction client
-    // that owns the DefenseSchedule lock (tx === the shared mock here).
-    expect(ensureSummary).toHaveBeenCalledWith("sched-1", prismaMock);
+    expect(ensureSummary).not.toHaveBeenCalled();
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalled();
   });
 
   // ---- Fix 4: meaningful content ----
@@ -1138,14 +1128,14 @@ describe("DefenseCollaborationService — CDW-3 freeze/write serialization", () 
     expectAttemptLockAcquired();
   });
 
-  it("generates the Oral Examination Summary on the SAME transaction client as the freeze", async () => {
+  it("does not run Oral Examination Summary generation during report finalization", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY })] }),
     );
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("RAPPORTEUR"));
     await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
-    // The active tx (the shared mock here) is handed to the Summary service.
-    expect(ensureSummary).toHaveBeenCalledWith("sched-1", prismaMock);
+    // FIX-6: evaluation/Summary work is independent of report finalization.
+    expect(ensureSummary).not.toHaveBeenCalled();
     expect(prismaMock.rapReport.updateMany).toHaveBeenCalled();
   });
 

@@ -1,18 +1,18 @@
 "use client";
 
 /**
- * FIX-5 — focused two-step Committee Report signature dialog.
+ * FIX-5 / FIX-6 — focused two-step Committee Report signature dialog.
  *
- * Step 1 confirms the exact frozen report/version being signed. Step 2 collects
- * the signer's drawn signature. Only Confirm Signature invokes the existing
- * Committee Report signing endpoint through the parent; opening, cancelling,
- * closing, or backing out never signs anything.
+ * Step 1 confirms review of the finalized Committee Report. Step 2 collects the
+ * signer's drawn signature. Internal report version/hash identifiers stay
+ * server-side. Only Confirm Signature invokes the existing Committee Report
+ * signing endpoint through the parent; opening, cancelling, closing, or backing
+ * out never signs anything.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { FileSignature } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,14 +30,12 @@ type Step = "review" | "sign";
 export function CommitteeReportSignatureDialog({
   open,
   onOpenChange,
-  contentVersion,
   signPending,
   signError,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contentVersion: number;
   signPending: boolean;
   signError: string | null;
   onConfirm: (signatureData: string) => void;
@@ -81,25 +79,17 @@ export function CommitteeReportSignatureDialog({
         {step === "review" ? (
           <>
             <DialogHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <DialogTitle>Review Committee Report Signature</DialogTitle>
-                <Badge variant="outline">Step 1 of 2</Badge>
-              </div>
+              <DialogTitle>Review and Sign Committee Report</DialogTitle>
               <DialogDescription>
-                This signature applies to the exact frozen Committee Report
-                currently displayed
-                {contentVersion > 0 ? ` (version ${contentVersion})` : ""}.
+                Please review the finalized Committee Report before signing. Your
+                signature will be recorded for this report and cannot be changed
+                after confirmation.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 text-[14px] text-(--earist-body)">
-              <p>
-                Signing confirms that you reviewed this frozen report. It does not
-                edit the report, and it cannot be undone through this flow.
-              </p>
               <p className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                Nothing is signed until you explicitly confirm your drawn
-                signature in the next step.
+                Nothing is signed until you confirm your signature in the next step.
               </p>
             </div>
 
@@ -120,13 +110,9 @@ export function CommitteeReportSignatureDialog({
         ) : (
           <>
             <DialogHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <DialogTitle>Sign Committee Report</DialogTitle>
-                <Badge variant="outline">Step 2 of 2</Badge>
-              </div>
+              <DialogTitle>Add Your Signature</DialogTitle>
               <DialogDescription>
-                Draw your signature to sign the frozen Committee Report. This action
-                cannot be undone.
+                Draw your signature below, then confirm to sign the Committee Report.
               </DialogDescription>
             </DialogHeader>
 

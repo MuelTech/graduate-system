@@ -74,14 +74,14 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
   const reportComplete = !reportPending && data.allSignaturesSigned;
   const readinessRows = [
     {
-      label: "Evaluation Signatures",
-      value: `${data.finalizedEvaluations} of ${data.evaluatorAssignments} completed`,
+      label: "Evaluations",
+      value: `${data.finalizedEvaluations} of ${data.evaluatorAssignments} finalized`,
       ok: evaluationComplete,
     },
     {
       label: "Committee Report Signatures",
       value: reportPending
-        ? "Waiting for report"
+        ? "Waiting for finalized report"
         : `${data.signedSignatures} of ${data.requiredSignatures} completed`,
       ok: reportComplete,
     },

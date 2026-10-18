@@ -82,7 +82,7 @@ export default function PanelistSignaturesPage() {
           E-Signatures
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Review and sign your pending RAP Report signature slots. Signing is
+          Review and sign your pending Committee Report signatures. Signing is
           limited to your own assigned slot.
         </p>
       </div>
@@ -111,7 +111,7 @@ export default function PanelistSignaturesPage() {
             ) : pendingDocs.length === 0 ? (
               <div className="rounded-lg border border-dashed border-(--earist-border-gray) p-8 text-center text-(--earist-body-text)">
                 <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                <p className="text-sm">No pending RAP signatures.</p>
+                <p className="text-sm">No pending Committee Report signatures.</p>
               </div>
             ) : (
               pendingDocs.map((rap: PendingDoc) => (
@@ -165,7 +165,7 @@ export default function PanelistSignaturesPage() {
                     <div className="text-center">
                       <FileText className="mx-auto mb-2 h-10 w-10 text-(--earist-body-text)/40" />
                       <p className="text-sm text-(--earist-body-text)">
-                        RAP Report
+                        Committee Report
                       </p>
                       <p className="text-xs text-(--earist-body-text) capitalize">
                         {selectedDocument.rapReport.defenseType.replace(
@@ -210,7 +210,7 @@ export default function PanelistSignaturesPage() {
                           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                           <span>
                             By confirming, you are securely attaching your
-                            timestamped e-signature to this official RAP record.
+                            timestamped e-signature to this official Committee Report.
                             Double-signing is blocked.
                           </span>
                         </p>
@@ -251,7 +251,7 @@ export default function PanelistSignaturesPage() {
           </h3>
           <p className="text-sm">
             {signedDocs.length === 0
-              ? "No signed RAP slots loaded in this view yet."
+              ? "No signed Committee Report slots loaded in this view yet."
               : `${signedDocs.length} signed slot(s).`}
           </p>
         </div>

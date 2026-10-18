@@ -34,11 +34,11 @@ function event(name, extra = {}) {
   return { ...base, eventName: name, ...extra };
 }
 
-test("Committee Report Signatures still exists with Waiting for report", () => {
+test("Committee Report Signatures still exists with Waiting for finalized report", () => {
   const verdict = read(VERDICT);
 
   assert.match(verdict, /Committee Report Signatures/);
-  assert.match(verdict, /"Waiting for report"/);
+  assert.match(verdict, /"Waiting for finalized report"/);
 });
 
 test("old Pending readiness copy and 0 of 0 are absent", () => {

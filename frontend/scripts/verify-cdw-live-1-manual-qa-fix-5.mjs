@@ -42,7 +42,7 @@ test("unsigned required signer sees Review & Sign", () => {
   const panel = read(PANEL);
 
   assert.match(panel, /Review & Sign/);
-  assert.match(panel, /Your signature is required for this frozen report/);
+  assert.match(panel, /Your signature is required\. Review the finalized report before signing\./);
   assert.match(panel, /\{canSign && \(/);
 });
 
@@ -57,7 +57,7 @@ test("non-required viewer gets no signing control", () => {
 test("already-signed current user sees only their own signed state/timestamp", () => {
   const panel = read(PANEL);
 
-  assert.match(panel, /You signed this report/);
+  assert.match(panel, /You signed this Committee Report/);
   assert.match(panel, /mySignature\.signedAt/);
   assert.doesNotMatch(panel, /signatures\.map/);
 });
@@ -65,7 +65,7 @@ test("already-signed current user sees only their own signed state/timestamp", (
 test("finalized faculty copy uses Committee Report terminology, not RAP finalized", () => {
   const panel = read(PANEL);
 
-  assert.match(panel, /Committee Report finalized/);
+  assert.match(panel, /Committee Report Complete/);
   assert.doesNotMatch(panel, /RAP finalized/);
 });
 
@@ -75,10 +75,8 @@ test("Review & Sign opens a focused two-step dialog component", () => {
   const panel = read(PANEL);
 
   assert.match(panel, /CommitteeReportSignatureDialog/);
-  assert.match(dialog, /Step 1 of 2/);
-  assert.match(dialog, /Step 2 of 2/);
-  assert.match(dialog, /Review Committee Report Signature/);
-  assert.match(dialog, /Sign Committee Report/);
+  assert.match(dialog, /Review and Sign Committee Report/);
+  assert.match(dialog, /Add Your Signature/);
   assert.match(dialog, /Continue to Sign/);
   assert.match(dialog, /Confirm Signature/);
   assert.match(dialog, /DialogContent/);
@@ -127,13 +125,15 @@ test("existing Committee Report sign endpoint and invalidation remain", () => {
   assert.match(panel, /conclusionReadiness/);
 });
 
-test("pre-freeze readiness and freeze confirmation remain intact", () => {
+test("pre-finalization action and confirmation use Committee Report language", () => {
   const panel = read(PANEL);
 
-  assert.match(panel, /Committee Report readiness/);
-  assert.match(panel, /Freeze for Signatures/);
-  assert.match(panel, /Confirm Freeze/);
-  assert.match(panel, /freezeReadiness\.checks/);
+  assert.match(panel, /Finalize Committee Report/);
+  assert.match(panel, /Finalize Committee Report\?/);
+  assert.match(panel, /Finalize Report/);
+  assert.doesNotMatch(panel, /Freeze for Signatures/);
+  assert.doesNotMatch(panel, /Confirm Freeze/);
+  assert.doesNotMatch(panel, /freezeReadiness\.checks/);
 });
 
 test("Admin Evaluation Results uses operational columns and removes Overall/Criteria", () => {

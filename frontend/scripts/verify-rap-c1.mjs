@@ -43,11 +43,10 @@ test("RAP-C1 components exist", () => {
   }
 });
 
-test("the report read model mirrors the RAP-C1 freeze/signature contract", () => {
+test("the report read model mirrors the Committee Report finalization/signature contract", () => {
   const p = read(PANEL);
   for (const field of [
     "canFreeze",
-    "freezeReadiness",
     "signatures",
     "signatureProgress",
     "mySignature",
@@ -57,22 +56,24 @@ test("the report read model mirrors the RAP-C1 freeze/signature contract", () =>
   }
 });
 
-test("the assigned Rapporteur gets the Committee Report readiness checklist", () => {
+test("the assigned Rapporteur gets the Committee Report finalization action", () => {
   const rap = read(RAP_PANEL);
-  assert.match(rap, /Committee Report readiness/);
-  assert.match(rap, /freezeReadiness\.checks/);
-  // Freeze is capability-gated, never an unconditional button.
-  assert.match(rap, /canFreeze/);
+  assert.match(rap, /Finalize Committee Report/);
+  assert.doesNotMatch(rap, /Committee Report readiness/);
+  assert.doesNotMatch(rap, /freezeReadiness\.checks/);
+  // Finalization is capability-gated, never an unconditional button.
+  assert.match(rap, /canFinalize/);
 });
 
-test("freeze is a non-casual, explicit two-step confirmation", () => {
+test("finalization is a non-casual, explicit confirmation", () => {
   const rap = read(RAP_PANEL);
-  assert.match(rap, /confirmingFreeze/);
-  assert.match(rap, /Freeze this report for signatures\?/);
-  assert.match(rap, /becomes read-only/i);
-  assert.match(rap, /comments become read-only/i);
-  assert.match(rap, /sign this exact frozen version/i);
-  assert.match(rap, /Freeze for Signatures/);
+  assert.match(rap, /confirmingFinalize/);
+  assert.match(rap, /Finalize Committee Report\?/);
+  assert.match(rap, /Once finalized, the report can no longer be edited\./);
+  assert.match(rap, /Required\s+committee\s+members can review and sign it immediately\./);
+  assert.match(rap, /Finalize Report/);
+  assert.doesNotMatch(rap, /Freeze for Signatures/);
+  assert.doesNotMatch(rap, /Confirm Freeze/);
 });
 
 test("freeze and sign call the collaboration report endpoints", () => {
@@ -95,10 +96,10 @@ test("signing is own-slot gated and uses the focused draw-only dialog", () => {
 
 test("aggregate signature progress remains visible without a cross-signer roster", () => {
   const rap = code(RAP_PANEL);
-  assert.match(rap, /required\s+signatures completed/);
+  assert.match(rap, /signatures completed/);
   assert.match(rap, /signatureProgress\.signed/);
   assert.match(rap, /signatureProgress\.required/);
-  assert.match(rap, /You signed this report/);
+  assert.match(rap, /You signed this Committee Report/);
   assert.doesNotMatch(rap, /signatures\.map/);
   assert.doesNotMatch(rap, /signer\.name|signer\.signedAt/);
   // No raw signature evidence is exposed by the faculty surface.
@@ -131,6 +132,7 @@ test("the Chairman verdict is gated by RAP finalization readiness", () => {
   assert.match(v, /readyForConclusion/);
   assert.match(v, /reportFinalized/);
   assert.match(v, /allSignaturesSigned/);
+  assert.match(v, /Waiting for finalized report/);
   assert.doesNotMatch(v, /Unavailable until the Committee Report is finalized/);
   assert.match(v, /Record Formal Verdict/);
   // Only the two canonical new verdicts are offered.

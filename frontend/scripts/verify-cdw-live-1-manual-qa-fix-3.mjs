@@ -107,7 +107,7 @@ test("Formal Verdict exposes only the two faculty-facing readiness rows", () => 
   const verdict = read(VERDICT);
   const ui = verdict.replace(/\/\*[\s\S]*?\*\//g, "");
 
-  assert.match(ui, /Evaluation Signatures/);
+  assert.match(ui, /label: "Evaluations"/);
   assert.match(ui, /Committee Report Signatures/);
   assert.doesNotMatch(ui, /Oral Examination Summary ready/);
   assert.doesNotMatch(ui, /Committee Report frozen/);
@@ -120,16 +120,16 @@ test("evaluation signature progress maps to finalized/assigned counts", () => {
 
   assert.match(
     verdict,
-    /\$\{data\.finalizedEvaluations\} of \$\{data\.evaluatorAssignments\} completed/,
+    /\$\{data\.finalizedEvaluations\} of \$\{data\.evaluatorAssignments\} finalized/,
   );
   assert.match(verdict, /data\.allEvaluationsFinalized/);
 });
 
-test("report signature progress maps to signed/required or Waiting for report", () => {
+test("report signature progress maps to signed/required or Waiting for finalized report", () => {
   const verdict = read(VERDICT);
 
   assert.match(verdict, /requiredSignatures <= 0/);
-  assert.match(verdict, /"Waiting for report"/);
+  assert.match(verdict, /"Waiting for finalized report"/);
   assert.doesNotMatch(verdict, /"Pending"/);
   assert.match(
     verdict,

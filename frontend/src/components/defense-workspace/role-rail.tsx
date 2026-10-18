@@ -154,12 +154,10 @@ export function RoleRail({
             <p className="mb-1 text-base font-semibold text-(--earist-primary)">
               Committee Report
             </p>
-            <p className="text-[14px] text-(--earist-body-text)">
-              Report status: {workspace.rapStatus ?? "Not created yet"}
-            </p>
             <p className="mt-1 text-[14px] text-(--earist-body-text)">
-              Author the report in the Committee Report tab, then Freeze for Signatures when
-              the committee is ready. Required signatures are collected there.
+              Author the report in the Committee Report tab, then choose Finalize
+              Committee Report when its content is ready. Required signatures are
+              collected there.
             </p>
           </section>
         )}
