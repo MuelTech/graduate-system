@@ -425,7 +425,8 @@ test("evaluation autosave cannot finalize, sign, or call an academic endpoint", 
   const flushIndex = form.indexOf("flushAndWait");
   const finalizeIndex = form.indexOf("evaluation/finalize");
   assert.ok(flushIndex >= 0 && finalizeIndex > flushIndex);
-  assert.match(form, /signatureData: signature/);
+  assert.match(form, /mutationFn: async \(signatureData: string\)/);
+  assert.match(form, /signatureData,/);
   assert.match(form, /if \(!settled\)/);
 });
 

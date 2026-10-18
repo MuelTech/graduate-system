@@ -18,8 +18,6 @@ import {
   AlertCircle,
   CheckCircle2,
   FileSignature,
-  Save,
-  Eye,
   WifiOff,
 } from "lucide-react";
 
@@ -27,7 +25,6 @@ import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
 import {
   EvaluationAutosaveController,
   type EvaluationAutosaveState,
@@ -35,10 +32,10 @@ import {
 } from "@/lib/evaluation/evaluation-autosave";
 import type { OralEvaluation } from "@/types/defense-workspace";
 
+import { EvaluationFinalizationDialog } from "./evaluation-finalization-dialog";
 import {
   INSTITUTIONAL_GROUP_I,
   INSTITUTIONAL_GROUP_II,
-  INSTITUTIONAL_RATING_LEVELS,
   InstitutionalEvaluationMatrix,
   InstitutionalLegend,
 } from "./institutional-evaluation-matrix";
@@ -47,13 +44,6 @@ const ALL_CRITERIA = [...INSTITUTIONAL_GROUP_I, ...INSTITUTIONAL_GROUP_II];
 
 function evalQueryKey(scheduleId: string) {
   return ["oralEvaluation", scheduleId] as const;
-}
-
-function levelLabel(raw: string): string {
-  const value = Number(raw);
-  const level = INSTITUTIONAL_RATING_LEVELS.find((l) => l.value === value);
-  if (!level) return raw;
-  return `${level.value.toFixed(2)} ${level.code}`;
 }
 
 function initialMatrixValues(evaluation?: OralEvaluation): Record<string, string> {
@@ -224,8 +214,7 @@ function MatrixEvaluationEditor({
   const [recommendations, setRecommendations] = useState(
     evaluation?.recommendations ?? "",
   );
-  const [signature, setSignature] = useState("");
-  const [showReview, setShowReview] = useState(false);
+  const [showFinalization, setShowFinalization] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<EvaluationAutosaveState>(() => ({
@@ -261,6 +250,8 @@ function MatrixEvaluationEditor({
   // labelled incomplete local preview.
   const groupIPreview = previewAverage(INSTITUTIONAL_GROUP_I);
   const groupIIPreview = previewAverage(INSTITUTIONAL_GROUP_II);
+  const groupIAverageValue = evaluation?.groupIValue ?? groupIPreview;
+  const groupIIAverageValue = evaluation?.groupIIValue ?? groupIIPreview;
 
   const buildCriteriaPayload = (
     source: Record<string, string> = values,
@@ -365,7 +356,11 @@ function MatrixEvaluationEditor({
   }, [locked, queryClient, scheduleId]);
 
   const finalize = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (signatureData: string) => {
+      if (!signatureData.startsWith("data:image/png;base64,")) {
+        throw new Error("An e-signature is required before finalizing.");
+      }
+
       const controller = controllerRef.current;
       if (controller) {
         const settled = await controller.flushAndWait();
@@ -381,7 +376,7 @@ function MatrixEvaluationEditor({
         {
           method: "POST",
           body: JSON.stringify({
-            signatureData: signature,
+            signatureData,
             criteria: buildCriteriaPayload(),
             recommendations,
           }),
@@ -391,7 +386,7 @@ function MatrixEvaluationEditor({
     onSuccess: async () => {
       setMessage("Evaluation finalized and locked");
       setError(null);
-      setShowReview(false);
+      setShowFinalization(false);
       await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
     },
@@ -407,8 +402,8 @@ function MatrixEvaluationEditor({
   const inputsDisabled = locked || finalize.isPending;
 
   return (
-    <section className="flex min-h-0 flex-col rounded-lg border border-(--earist-border-gray)">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
+    <section className="rounded-lg border border-(--earist-border-gray)">
+      <header className="flex items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
         <span className="text-base font-semibold text-(--earist-primary)">
           My Evaluation
         </span>
@@ -423,7 +418,7 @@ function MatrixEvaluationEditor({
         </Badge>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-4 p-3">
+      <div className="space-y-4 p-3">
         {message && (
           <p className="flex items-center gap-2 text-[14px] text-emerald-700">
             <CheckCircle2 className="h-4 w-4" /> {message}
@@ -502,93 +497,58 @@ function MatrixEvaluationEditor({
         </label>
 
         {locked && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[14px] text-emerald-900">
-            <p className="font-semibold">This evaluation is locked.</p>
-            <p>
-              Signed:{" "}
-              {evaluation?.signedAt
-                ? new Date(evaluation.signedAt).toLocaleString()
-                : "—"}
-            </p>
-            <p>
-              Finalized:{" "}
-              {evaluation?.finalizedAt
-                ? new Date(evaluation.finalizedAt).toLocaleString()
-                : "—"}
-            </p>
-          </div>
-        )}
-
-        {showReview && !locked && (
-          <div className="rounded-lg border border-(--earist-border-gray) p-3 text-[14px]">
-            <p className="mb-2 font-semibold text-(--earist-primary)">
-              Review Evaluation (irreversible after finalize)
-            </p>
-            <ul className="mb-2 list-disc space-y-1 pl-5 text-(--earist-body-text)">
-              {ALL_CRITERIA.map((criterion) => (
-                <li key={criterion.key}>
-                  {criterion.label}: {values[criterion.key] ? levelLabel(values[criterion.key]) : "—"}
-                </li>
-              ))}
-              <li>Group I Average: {groupIPreview != null ? groupIPreview.toFixed(2) : "—"}</li>
-              <li>Group II Average: {groupIIPreview != null ? groupIIPreview.toFixed(2) : "—"}</li>
-              <li>Recommendations: {recommendations || "—"}</li>
-            </ul>
-            {!allCriteriaComplete && (
-              <p className="mb-2 font-medium text-amber-700">
-                Incomplete — all nine criteria are required before finalization.
+          <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-900">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Evaluation finalized</p>
+              <p>
+                Signed{" "}
+                {evaluation?.signedAt || evaluation?.finalizedAt
+                  ? new Date(
+                      (evaluation?.signedAt ?? evaluation?.finalizedAt) as string,
+                    ).toLocaleString()
+                  : "—"}
               </p>
-            )}
-            <ESignaturePad value={signature} onChange={setSignature} disabled={inputsDisabled} />
-            <div className="mt-2 flex gap-2">
-              <Button
-                type="button"
-                disabled={
-                  finalize.isPending ||
-                  !signature.startsWith("data:image/png;base64,") ||
-                  !allCriteriaComplete
-                }
-                onClick={() => finalize.mutate()}
-              >
-                <FileSignature className="mr-2 h-4 w-4" />
-                Confirm Finalize
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={finalize.isPending}
-                onClick={() => setShowReview(false)}
-              >
-                Cancel
-              </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Sticky actions stay reachable while the criteria list scrolls. */}
       {!locked && (
-        <footer className="sticky bottom-0 flex shrink-0 flex-wrap items-center gap-2 border-t border-(--earist-border-gray) bg-white/95 px-3 py-2 backdrop-blur motion-reduce:backdrop-blur-none">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={inputsDisabled || saveState.status === "saving"}
-            onClick={() => controllerRef.current?.flushNow()}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {saveState.status === "saving" ? "Saving…" : "Save now"}
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-(--earist-border-gray) px-3 py-2">
           <Button
             type="button"
             variant="secondary"
             disabled={inputsDisabled}
-            onClick={() => setShowReview(true)}
+            onClick={() => {
+              setMessage(null);
+              setError(null);
+              setShowFinalization(true);
+            }}
           >
-            <Eye className="mr-2 h-4 w-4" />
-            {"Review & Finalize"}
+            <FileSignature className="mr-2 h-4 w-4" />
+            Review &amp; Finalize
           </Button>
           <EvaluationSaveStatus state={saveState} hasServerDraft={hasServerDraft} />
-        </footer>
+        </div>
+      )}
+
+      {showFinalization && (
+        <EvaluationFinalizationDialog
+          open={showFinalization}
+          onOpenChange={(next) => {
+            setShowFinalization(next);
+            if (!next) setError(null);
+          }}
+          values={values}
+          groupIAverage={groupIAverageValue}
+          groupIIAverage={groupIIAverageValue}
+          recommendations={recommendations}
+          allCriteriaComplete={allCriteriaComplete}
+          finalizePending={finalize.isPending}
+          finalizeError={error}
+          onConfirmFinalize={(signatureData) => finalize.mutate(signatureData)}
+        />
       )}
     </section>
   );

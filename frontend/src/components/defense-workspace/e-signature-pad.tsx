@@ -77,13 +77,19 @@ export function ESignaturePad({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#111827";
 
     const pos = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
+      // Canvas coordinates are intrinsic; the CSS surface is larger in the modal.
+      const scaleX = r.width === 0 ? 1 : canvas.width / r.width;
+      const scaleY = r.height === 0 ? 1 : canvas.height / r.height;
+      return {
+        x: (e.clientX - r.left) * scaleX,
+        y: (e.clientY - r.top) * scaleY,
+      };
     };
 
     const finishStroke = () => {
@@ -188,14 +194,17 @@ export function ESignaturePad({
           disabled={disabled}
           onChange={(e) => emitTypedSignature(e.target.value)}
           placeholder="Type your full name as e-signature"
+          aria-label="Type your full name as e-signature"
+          autoComplete="name"
           className="w-full rounded border border-(--earist-border-gray) px-2 py-2 text-sm"
         />
       ) : (
         <canvas
           ref={canvasRef}
-          width={360}
-          height={120}
-          className={`w-full rounded border bg-white ${
+          width={720}
+          height={240}
+          aria-label="Draw your signature"
+          className={`h-auto w-full touch-none rounded border bg-white ${
             disabled ? "opacity-60" : "border-(--earist-border-gray)"
           }`}
         />

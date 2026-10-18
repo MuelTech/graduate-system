@@ -97,11 +97,12 @@ test("evaluation form presents NO Overall formula and NO Rating input", () => {
   assert.doesNotMatch(f, /Rating \(optional\)/);
 });
 
-test("evaluation form keeps manual Save now + Review & Finalize with sticky actions", () => {
+test("evaluation form keeps Review & Finalize in normal-flow actions", () => {
   const f = read(FORM);
-  assert.match(f, /Save now/);
-  assert.match(f, /Review & Finalize/);
-  assert.match(f, /sticky bottom-0/);
+  assert.doesNotMatch(f, /Save now/);
+  assert.match(f, /Review &amp; Finalize/);
+  assert.doesNotMatch(f, /sticky bottom-0/);
+  assert.match(f, /<EvaluationFinalizationDialog/);
 });
 
 test("legacy V1 rows are read-only with an explicit compatibility notice", () => {

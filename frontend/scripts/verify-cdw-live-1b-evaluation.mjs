@@ -528,16 +528,17 @@ test("M — finalized evaluations are locked and do not start autosave", () => {
   assert.match(form, /disabled=\{inputsDisabled\}/);
 });
 
-test("N — autosave payload contains criteria/recommendations only, never signatures", () => {
+test("N - autosave payload contains criteria/recommendations only, never signatures", () => {
   const form = read(FORM);
   assert.match(
     form,
     /body: JSON\.stringify\(\{\s*criteria: snapshot\.criteria,\s*recommendations: snapshot\.recommendations,\s*\}\)/s,
   );
   const autosaveSection = form.slice(
-    form.indexOf("evaluation/draft"),
-    form.indexOf("evaluation/finalize"),
+    form.indexOf("save: async (snapshot)"),
+    form.indexOf("initialSnapshot:"),
   );
+  assert.ok(autosaveSection.length > 0);
   assert.doesNotMatch(autosaveSection, /signature/i);
   assert.doesNotMatch(autosaveSection, /panelId|clientPanelId/);
   assert.doesNotMatch(autosaveSection, /localStorage|sessionStorage|indexedDB/i);
@@ -590,11 +591,12 @@ test("Q4 — finalization drains autosave before calling the finalize endpoint",
   assert.match(form, /if \(!settled\)/);
 });
 
-test("the evaluation form no longer owns a competing Save Draft mutation", () => {
+test("the evaluation form has no competing Save Draft mutation or manual Save now", () => {
   const form = read(FORM);
   assert.doesNotMatch(form, /saveDraft\s*=\s*useMutation/);
+  assert.doesNotMatch(form, /Save now/);
   assert.match(form, /EvaluationAutosaveController/);
-  assert.match(form, /Save now/);
+  assert.match(form, /Review &amp; Finalize/);
 });
 
 test("accepted CDW-LIVE-1A report autosave and realtime ownership remain intact", () => {
