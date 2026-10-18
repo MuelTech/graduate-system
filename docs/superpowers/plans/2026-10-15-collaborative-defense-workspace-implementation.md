@@ -9,12 +9,12 @@
 **Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current branch baseline before FIX-6 implementation:** `ac76d58f0bfac72a6774f25151881ddaa08ae6d2`  
-**Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md  
-**Next acceptance gate:** FIX-6 implementation + targeted parallel-workflow retest, then resume final end-to-end multi-user live-defense manual acceptance  
+**Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
+**Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md  
+**Next implementation package:** CDW-9 — Hardening and production readiness  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-5 are implemented/accepted at their recorded bounded gates; project-owner end-to-end manual execution confirmed the current flow is mechanically functional but exposed a real-world sequencing mismatch: Committee Report finalization/signing must be independent of evaluator finalization until the Chairman verdict gate; FIX-6 parallel report-signing + UI-language correction is DESIGN APPROVED / NOT YET IMPLEMENTED; final end-to-end acceptance is REOPENED pending FIX-6 implementation + targeted retest; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented
 
 ---
 
@@ -61,9 +61,9 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
 | CDW-LIVE-1 MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Oral Examination Summary generated from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
 | CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
-| CDW-LIVE-1 MANUAL-QA FIX-6 | DESIGN APPROVED / NOT IMPLEMENTED | evaluation finalization and Committee Report finalization/signing become parallel pre-verdict workstreams; exact faculty-facing copy is locked by design |
-| Final multi-user live-defense manual acceptance | REOPENED / BLOCKED ON FIX-6 | project owner exercised the complete current path successfully, then identified the sequencing mismatch; rerun the affected path after FIX-6 before closing acceptance |
-| CDW-9 | NOT STARTED | production hardening remains future work |
+| CDW-LIVE-1 MANUAL-QA FIX-6 | FINAL ACCEPTED / CLOSED | parallel evaluation/report workstreams, autosave-safe finalization, single-step signing, and concise faculty UI independently source-reviewed and accepted |
+| Additional pre-CDW-9 multi-user replay | WAIVED / NOT REQUIRED | project owner explicitly waived another full replay after FIX-6 because targeted regressions + independent source review sufficiently cover the changed sequence; this is not recorded as a manual-QA PASS |
+| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned package; not yet implemented at this docs-only reconciliation |
 
 Accepted CDW-8 production implementation HEAD:
 
@@ -1108,12 +1108,12 @@ CDW-8 ACCEPTED / CLOSED
   -> MANUAL-QA FIX-3A ACCEPTED FOR BOUNDED UX SCOPE (fd999e80)
   -> MANUAL-QA FIX-4 IMPLEMENTED / SOURCE REVIEW PASS
   -> MANUAL-QA FIX-5 BOUNDED UX ACCEPTED
-  -> MANUAL-QA FIX-6 DESIGN APPROVED / IMPLEMENTATION REQUIRED
-  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE
-  -> CDW-9
+  -> MANUAL-QA FIX-6 FINAL ACCEPTED / CLOSED
+  -> ADDITIONAL FULL MULTI-USER REPLAY WAIVED / NOT REQUIRED
+  -> CDW-9 NEXT / AUTHORIZED
 ```
 
-Do not begin CDW-9 until the final end-to-end multi-user live-defense manual acceptance is completed or the project owner explicitly changes that gate.
+The project owner has explicitly changed and closed the pre-CDW-9 gate: no additional full multi-user replay is required before CDW-9. This waiver is not a manual-QA PASS claim; it is a risk-based acceptance decision grounded in targeted regressions and independent source review.
 
 ---
 
@@ -1204,13 +1204,13 @@ No CDW-9 work.
 
 ### Gate
 
-The bounded FIX-3/FIX-3A UX scope is closed. Full authenticated multi-user live-defense workflow acceptance remains pending and is the final pre-CDW-9 gate.
+At the FIX-3/FIX-3A checkpoint, full authenticated multi-user replay remained the planned final pre-CDW-9 gate. That historical gate was later superseded by the FIX-6 acceptance decision recorded in the 2026-10-19 pre-CDW-9 reconciliation.
 
 ---
 
 ## 12.4 Final end-to-end multi-user live-defense manual acceptance
 
-**Status:** REOPENED / BLOCKED ON FIX-6 — the project owner completed the current end-to-end defense flow successfully with no mechanical/runtime issue, then identified a sequencing rule that does not match actual defense practice. Acceptance resumes after FIX-6 implementation and targeted retest.
+**Status:** CLOSED BY PROJECT-OWNER ACCEPTANCE DECISION — the earlier end-to-end run exposed the FIX-6 sequencing mismatch; FIX-6 is now implemented and independently source-reviewed. An additional full replay was explicitly waived based on targeted regression evidence + independent source review. This is not recorded as a manual-QA PASS.
 
 Required corrected workflow:
 
@@ -1227,9 +1227,9 @@ Required corrected workflow:
 11. Attempt becomes CONCLUDED and read-only.
 12. Reopen the concluded workspace and verify immutable historical state.
 
-This gate should use independent authenticated role sessions where practical. Sequential role switching remains acceptable when simultaneous client capacity is limited, but true simultaneous realtime observation must be recorded truthfully as executed or not executed.
+The workflow above remains the canonical behavior. A second full role-separated browser replay is no longer required as a pre-CDW-9 prerequisite. If future hardening or product QA exposes a concrete defect, create a bounded correction instead of weakening the workflow gate.
 
-If the corrected workflow reveals another concrete defect, create a new bounded manual-QA fix package. Otherwise, close the pre-CDW-9 acceptance gate without inventing unrelated code work.
+Acceptance provenance must remain truthful: the waived replay is **NOT EXECUTED / NOT REQUIRED**, not PASS.
 
 ## 12.5 Pre-CDW-9 MANUAL-QA FIX-4 — Oral Examination Summary Computation
 
@@ -1285,7 +1285,7 @@ The Admin Defense Records surface may read/display canonical Summary data. Exist
 
 ### Gate
 
-FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is now part of the current implementation baseline. FIX-5 independent review and targeted manual QA are now complete; the remaining pre-CDW-9 gate is the final role-separated multi-user live-defense acceptance.
+FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is part of the accepted implementation baseline. Later FIX-5/FIX-6 corrections are also closed; the 2026-10-19 reconciliation supersedes the earlier requirement for another full role-separated replay before CDW-9.
 
 ---
 
@@ -1353,13 +1353,13 @@ FIX-5 did not change:
 
 ### Gate
 
-FIX-5 remains accepted for its bounded UX scope. Post-acceptance project-owner testing identified the separate FIX-6 workflow correction. The next gate is **FIX-6 implementation + targeted retest**, followed by resumption of the final end-to-end multi-user live-defense manual acceptance.
+FIX-5 remains accepted for its bounded UX scope. Its serialized report-finalization assumption was superseded by FIX-6. FIX-6 is now FINAL ACCEPTED / CLOSED; the project owner waived an additional full replay, so CDW-9 is the next authorized package.
 
 ---
 
 ## 12.7 Pre-CDW-9 MANUAL-QA FIX-6 — Parallel Committee Report Signing + Faculty UI Language
 
-**Status:** DESIGN APPROVED / NOT YET IMPLEMENTED.
+**Status:** FINAL ACCEPTED / CLOSED — IMPLEMENTED + INDEPENDENT SOURCE REVIEW PASS + TARGETED REGRESSION EVIDENCE ACCEPTED.
 
 Detailed design:
 
@@ -1394,18 +1394,17 @@ FIX-6 also makes exact user-facing copy part of the design. Coding agents must i
 - no evaluation arithmetic change;
 - no verdict-authority change;
 - no document/PDF rendering;
-- CDW-9 remains not started.
+- CDW-9 is authorized next and remains unimplemented by FIX-6.
 
 ### Gate
 
-Implement FIX-6, independently review the remote diff/source, then project-owner targeted manual QA must verify at minimum:
+FIX-6 implementation and independent source review are complete. Targeted regressions cover the changed parallel sequence, strict Chairman convergence gate, autosave-before-finalize ordering, signer authority, and approved faculty language.
 
-1. Rapporteur can finalize the Committee Report while at least one required evaluator remains DRAFT.
-2. Required signer can sign that finalized report while their own evaluation remains DRAFT.
-3. Chairman still cannot record a verdict until every required evaluation and report-signing requirement is complete.
-4. Faculty UI shows the approved plain-language labels and does not expose V1/freeze/snapshot/version jargon.
+The project owner explicitly waived an additional full multi-user manual replay before CDW-9 because the remaining risk is sufficiently covered by targeted automated evidence + independent source review. This waiver is recorded as **NOT EXECUTED / NOT REQUIRED**, not as manual-QA PASS.
 
-Only after this targeted retest should the final end-to-end acceptance gate be closed.
+Accepted product-code baseline before the docs-only reconciliation: `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`.
+
+**Next authorized package: CDW-9 — Hardening and production readiness.**
 
 ---
 

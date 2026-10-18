@@ -8,12 +8,12 @@
 **Collaborative workspace authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **UI/UX authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
-**Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION + MANUAL-REVIEW UI SIMPLIFICATION APPLIED — READY FOR REVIEW
+**Status:** FINAL ACCEPTED / CLOSED — IMPLEMENTED + SOURCE REVIEW PASS + TARGETED REGRESSION EVIDENCE ACCEPTED + MANUAL-REVIEW UI SIMPLIFICATION ACCEPTED
 **Date:** 2026-10-19
 **Expected schema change:** NONE  
 **Expected migration:** NONE  
 **Expected document-processing work:** NONE  
-**CDW-9:** NOT STARTED
+**CDW-9:** NEXT / AUTHORIZED; NOT YET IMPLEMENTED
 
 ---
 
@@ -564,3 +564,27 @@ CDW-9
 ```
 
 Do not begin CDW-9 as part of FIX-6.
+
+
+---
+
+## 15. Acceptance closure and pre-CDW-9 gate
+
+FIX-6 is closed as the accepted workflow/UX authority for the parallel pre-verdict workstreams.
+
+The project owner explicitly waived an additional full role-separated manual replay before CDW-9. The basis is the combination of:
+
+- targeted regression coverage for the changed Evaluation / Committee Report sequence;
+- independent review of the actual remote implementation and authority boundaries;
+- focused regression coverage for autosave-before-finalize ordering and stale-version protection;
+- low residual risk of the final UI-only simplifications.
+
+This decision does not convert unexecuted browser QA into a PASS. It closes the pre-CDW-9 acceptance prerequisite under the project's risk-based verification policy.
+
+The Chairman Formal Verdict remains the strict convergence point and no score-derived verdict behavior is introduced.
+
+Accepted product-code baseline before the docs-only reconciliation:
+
+`3e5ed6847db737e6395d531c04ee5f3b9b5c9812`
+
+Next authorized package: **CDW-9 — Hardening and production readiness**.

@@ -4,12 +4,12 @@
 - **Repository:** MuelTech/graduate-system
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `c7893737d9bb0ea10963ea3fb84c743596519e46`
-- **Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION APPLIED + MANUAL-REVIEW UI SIMPLIFICATION — READY FOR REVIEW
+- **Status:** FINAL ACCEPTED / CLOSED — IMPLEMENTED + SOURCE REVIEW PASS + TARGETED REGRESSION EVIDENCE ACCEPTED + MANUAL-REVIEW UI SIMPLIFICATION ACCEPTED
 - **Date:** 2026-10-19
 - **Migration:** NONE
 - **Schema change:** NONE
 - **Document-processing work:** NONE
-- **CDW-9:** NOT STARTED
+- **CDW-9:** NEXT / AUTHORIZED; NOT YET IMPLEMENTED
 
 ---
 
@@ -426,3 +426,27 @@ project-owner QA is still required for the revised parallel workflow, including:
 
 Final end-to-end multi-user acceptance is not claimed by this package. CDW-9 remains
 not started.
+
+
+---
+
+## 11. Acceptance closure — 2026-10-19
+
+FIX-6 is **FINAL ACCEPTED / CLOSED** for the pre-CDW-9 gate.
+
+Acceptance provenance is intentionally separated:
+
+- implementation and correction source/diff were independently reviewed against the actual remote branch;
+- the parallel Evaluation / Committee Report sequence is protected by focused backend/frontend regression coverage;
+- the autosave-before-finalize race correction is protected by focused autosave/drain and stale-version regressions;
+- the later single-step signature and redundant-control cleanup are presentation-bounded changes with focused verifier, TypeScript, scoped-lint, and diff-check evidence;
+- coding-agent automated/build evidence remains agent-local unless a hosted workflow is explicitly recorded;
+- the project owner explicitly **waived an additional full multi-user manual replay** before CDW-9 because the changed sequence is sufficiently covered by targeted automated regression plus independent source review and the remaining UI cleanup is low risk.
+
+This waiver is **not** recorded as a manual-QA pass. It means no additional manual replay is required as a prerequisite to CDW-9.
+
+The strict Chairman Formal Verdict convergence gate remains unchanged and authoritative.
+
+**Accepted product-code baseline before the docs-only pre-CDW-9 reconciliation:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`.
+
+Next authorized package: **CDW-9 — Hardening and production readiness**.

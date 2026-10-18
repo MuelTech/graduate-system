@@ -7,6 +7,8 @@
 
 **CDW-9:** NOT STARTED
 
+> **Historical-record note — superseded 2026-10-19:** this file preserves the gate state as it existed on 2026-10-18. The current pre-CDW-9 decision is recorded in `docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md`. FIX-6 is now FINAL ACCEPTED / CLOSED, and the project owner explicitly waived an additional full multi-user replay before CDW-9 based on targeted regression evidence + independent source review. The waiver is NOT a manual-QA PASS claim.
+
 ---
 
 ## 1. Purpose

@@ -9,13 +9,13 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current branch baseline before FIX-6 implementation:** `ac76d58f0bfac72a6774f25151881ddaa08ae6d2`  
-**Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
+**Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
+**Latest pre-CDW-9 acceptance reconciliation:** `docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md`  
 **FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
-**Current pre-CDW-9 workflow/UX correction:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-5; project-owner end-to-end manual execution confirmed the current implementation is mechanically functional, then exposed a real-world sequencing mismatch in Committee Report finalization/signing; FIX-6 is DESIGN APPROVED / NOT YET IMPLEMENTED and supersedes the old rule that required finalized evaluations/Summary before Committee Report finalization; final end-to-end acceptance is REOPENED pending FIX-6 implementation + targeted retest; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**Accepted pre-CDW-9 workflow/UX correction:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED / ACCEPTED through FIX-6; parallel Evaluation / Committee Report sequencing, autosave-safe finalization, single-step Committee Report signing, and concise faculty UI are accepted; the project owner waived an additional full multi-user replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
-**Version:** 1.9  
+**Version:** 1.10  
 **Last updated:** 2026-10-19
 
 ---
@@ -781,7 +781,7 @@ REST/database state remains authoritative. Polling/refetch and the accepted real
 
 ### 9.7 CDW-LIVE-1 — live report review and autosave boundary
 
-**IMPLEMENTED / ACCEPTED CORE — CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; bounded manual-QA refinements implemented through FIX-3A; final end-to-end multi-user live-defense manual acceptance remains the pre-CDW-9 gate.**
+**IMPLEMENTED / ACCEPTED — CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; bounded manual-QA refinements are accepted through FIX-6. The project owner waived an additional full pre-CDW-9 multi-user replay based on targeted regression evidence + independent source review; CDW-9 is the next authorized package.**
 
 Detailed design:
 
