@@ -117,6 +117,8 @@ and automatic idempotent Oral Examination Summary generation remain unchanged.
 
 The evaluator/Summary readiness checklist was removed from the authoring experience.
 
+> **Post-review copy refinement — 2026-10-19:** the implemented sentence `Evaluations can be completed separately before the Chairman records the formal verdict.` is no longer approved as faculty-facing confirmation copy. It is domain-correct but redundant because the UI already demonstrates the parallel workstreams. The canonical FIX-6 design now omits it. This documentation update does not claim that the existing rendered sentence at the current implementation HEAD has already been removed; remove it when this surface is next refined or in a bounded copy cleanup.
+
 ### Finalized report
 
 - `Ready for Signatures`

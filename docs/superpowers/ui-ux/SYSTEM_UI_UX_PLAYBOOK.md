@@ -234,6 +234,60 @@ For the Committee Report flow specifically, approved visible action language is:
 
 Avoid ordinary faculty-facing wording such as **Freeze for Signatures**, **Confirm Freeze**, **Frozen version 1**, **V1**, **frozen snapshot**, and unexplained **RAP Report** terminology.
 
+## 8.2.2 Do not explain what the UI already demonstrates
+
+User-facing copy should be concise, task-centered, and consequence-aware. The interface should communicate most workflow behavior through its structure, labels, statuses, progress, role-specific controls, and enabled/disabled actions rather than through paragraphs that narrate how the system works.
+
+**Core rule:** **Do not explain what the UI already demonstrates.**
+
+Keep explanatory copy when the user needs it to:
+
+- understand an irreversible or high-impact consequence;
+- understand why an action is blocked;
+- recover from an error or conflict;
+- distinguish genuinely ambiguous choices;
+- understand an institutional rule that cannot be inferred from the interface.
+
+Remove or avoid copy that merely:
+
+- narrates the sequence of another role's work;
+- explains internal permissions that the available controls already enforce;
+- repeats a status/progress condition already visible nearby;
+- describes backend/system mechanics;
+- tells a competent user what an obvious control does;
+- adds "what happens next" prose when the next state/action is already self-evident.
+
+Prefer:
+
+```text
+clear label
++ visible state
++ available action
++ concise consequence when needed
+```
+
+over:
+
+```text
+paragraphs explaining the workflow around the current task
+```
+
+Example — Committee Report finalization:
+
+**Keep**
+
+> Once finalized, the report can no longer be edited. Required committee members can review and sign it immediately.
+
+This explains the direct irreversible consequence of the action.
+
+**Do not add**
+
+> Evaluations can be completed separately before the Chairman records the formal verdict.
+
+That sentence is domain-correct but unnecessary in the Rapporteur confirmation UI. The parallel workflow is already communicated by independent Evaluation/Committee Report states and by the Chairman's Formal Verdict readiness surface.
+
+This principle applies system-wide. Existing screens do not need a mass rewrite solely because this rule was documented; apply it when a surface is next implemented/refined, or when a specific copy issue materially harms clarity.
+
 ## 8.3 Role-specific architecture is valid
 
 Admin, Applicant, Student, and Panelist do not need identical navigation.
@@ -662,7 +716,7 @@ Destructive styling is reserved for actions with destructive or strongly negativ
 
 Use AlertDialog or equivalent deliberate confirmation for irreversible/high-impact actions.
 
-Confirmation copy should state the consequence, not merely “Are you sure?”
+Confirmation copy should state the consequence, not merely “Are you sure?”. Keep it limited to consequences the user needs for the current decision; do not narrate unrelated workflow branches.
 
 ## 16.3 Pending state
 
@@ -691,7 +745,8 @@ Do not use a toast for information the user must read before proceeding.
 Dialogs must:
 
 - have a clear title;
-- explain consequence/context;
+- explain only the consequence/context necessary for the current decision;
+- avoid redundant workflow narration when states/actions already communicate it;
 - keep primary/secondary actions predictable;
 - support keyboard focus;
 - restore focus correctly when closed.

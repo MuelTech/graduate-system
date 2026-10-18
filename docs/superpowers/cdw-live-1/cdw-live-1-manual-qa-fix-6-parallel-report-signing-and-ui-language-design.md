@@ -206,9 +206,7 @@ Body:
 
 **Once finalized, the report can no longer be edited. Required committee members can review and sign it immediately.**
 
-Optional secondary sentence when space allows:
-
-**Evaluations can be completed separately before the Chairman records the formal verdict.**
+Do **not** add a secondary sentence explaining that evaluations may be completed separately. That workflow rule remains canonical, but it is unnecessary in this confirmation because the interface already communicates the independent workstreams and the Chairman's verdict gate.
 
 Actions:
 
@@ -222,6 +220,14 @@ Pending action:
 Error copy should describe the recoverable failure in plain language, for example:
 
 **The Committee Report could not be finalized. Please try again.**
+
+Copy rationale:
+
+- explain the direct irreversible consequence: the report becomes non-editable;
+- explain the immediate user-relevant next capability: required members can sign;
+- do not narrate the separate Evaluation workflow in the confirmation.
+
+This follows the system-wide UI rule in `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`: **Do not explain what the UI already demonstrates.**
 
 Do not use:
 

@@ -196,8 +196,9 @@ Schema changes are therefore expected for the collaborative feature. They must b
 4. Implement one bounded package at a time.
 5. After each package:
    - inspect the actual remote diff;
-   - run focused tests;
-   - run required backend/frontend verification;
+   - run focused tests and directly affected regressions first;
+   - use the risk-based verification rules in `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`;
+   - broaden to full suites/builds only when the changed surface or acceptance gate justifies it;
    - manually review affected UI where relevant;
    - do not begin the next package until the current package is accepted.
 6. Do not implement later Socket.IO work early.
@@ -1431,6 +1432,12 @@ Performance should be measured before adding speculative caching.
 
 ## 14. Package guardrails for coding agents
 
+Every package prompt must follow the cross-cutting engineering policy in:
+
+`docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`
+
+Do not make full-repository regression the default for every bounded change. Verification depth must match change risk.
+
 Every package prompt must include:
 
 - exact starting branch/HEAD;
@@ -1439,7 +1446,7 @@ Every package prompt must include:
 - authoritative Source of Truth sections;
 - forbidden out-of-scope behavior;
 - required focused tests;
-- full verification requirements;
+- risk-based verification requirements and any explicit reason a broad/full suite is required;
 - expected report format.
 
 Agents must not:

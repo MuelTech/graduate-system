@@ -351,12 +351,13 @@ Recommended workflow:
    ```
 2. Create a bounded feature/fix branch from the current `main`.
 3. Implement and test only the intended scope.
-4. If dependencies change, use `npm install` / `npm uninstall` and commit the resulting `package.json` and `package-lock.json` changes.
-5. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
-6. Build/validate the affected application before pushing.
-7. Push the feature/fix branch.
-8. Open a Pull Request with **base: `main`**.
-9. Address review findings on the feature/fix branch before merge.
+4. Use risk-based verification: focused tests and directly affected regressions first; broaden to full suites/builds only when the changed surface or acceptance gate justifies it. See `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`.
+5. If dependencies change, use `npm install` / `npm uninstall` and commit the resulting `package.json` and `package-lock.json` changes.
+6. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
+7. Build/validate the affected application when the change scope requires build-level confidence.
+8. Push the feature/fix branch.
+9. Open a Pull Request with **base: `main`**.
+10. Address review findings on the feature/fix branch before merge.
 
 ### Pull Request Checklist
 
@@ -364,8 +365,9 @@ Before requesting merge:
 
 - [ ] Pull Request targets `main` unless a different integration target was explicitly agreed.
 - [ ] Changes are limited to the intended feature/fix.
-- [ ] Frontend changes pass the relevant lint/build checks.
-- [ ] Backend changes compile successfully.
+- [ ] Verification depth matches the change risk; focused checks cover the changed behavior and directly affected regressions.
+- [ ] Frontend changes pass the relevant type/lint/build checks for the affected scope.
+- [ ] Backend changes pass the relevant focused tests/type/build checks for the affected scope.
 - [ ] Dependency changes include the intended `package.json` and `package-lock.json` updates.
 - [ ] Prisma schema validates when Prisma is affected.
 - [ ] Every Prisma schema change includes its generated migration file.
