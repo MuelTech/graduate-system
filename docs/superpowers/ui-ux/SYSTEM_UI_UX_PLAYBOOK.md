@@ -192,6 +192,48 @@ Before renaming:
 
 Do not replace precise academic terminology merely because a shorter phrase looks better.
 
+## 8.2.1 User-facing copy must describe the task, not the implementation
+
+Visible product language must be understandable to the actor performing the work. Internal engineering/domain-storage terminology may remain in code, APIs, database models, tests, events, and audit metadata without being copied literally into ordinary UI.
+
+Rules:
+
+- prefer the user's task/action over the implementation mechanism;
+- do not expose raw enum names, route names, model names, version counters, hashes, snapshot terminology, or lifecycle verbs merely because they exist in source;
+- when an approved design specifies exact user-facing labels or confirmation copy, that copy is normative for the implementation package;
+- coding agents must not invent alternate visible labels, helper text, status copy, or confirmation wording when the bounded design already specifies them;
+- if implementation discovers that approved copy is inaccurate, stop/report the conflict instead of silently rewriting the UI;
+- technical metadata may be exposed in a clearly administrative/audit/debug context only when it serves a real operational need;
+- irreversible-action confirmation text should explain the user consequence in plain language.
+
+Canonical example from the Defense Workspace:
+
+| Internal / implementation concept | Faculty-facing language |
+|---|---|
+| freeze report / `/freeze` endpoint | **Finalize Committee Report** |
+| frozen report | **Finalized Committee Report** |
+| `FOR_SIGNATURE` | **Ready for Signatures** |
+| `PARTIALLY_SIGNED` | **Awaiting Signatures** |
+| `contentVersion = 1`, V1, frozen version 1 | hidden from ordinary faculty UI |
+| snapshot/hash binding | hidden integrity metadata |
+| `RapReport` / `RapSignature` model names | **Committee Report** / **Committee Report Signature** |
+| readiness service/checklist internals | concise **Requirements for Verdict** / task progress |
+
+For the Committee Report flow specifically, approved visible action language is:
+
+- **Finalize Committee Report**
+- **Finalize Report**
+- **Ready for Signatures**
+- **Awaiting Signatures**
+- **Review & Sign**
+- **Review and Sign Committee Report**
+- **Add Your Signature**
+- **Confirm Signature**
+- **Signed**
+- **Committee Report Complete**
+
+Avoid ordinary faculty-facing wording such as **Freeze for Signatures**, **Confirm Freeze**, **Frozen version 1**, **V1**, **frozen snapshot**, and unexplained **RAP Report** terminology.
+
 ## 8.3 Role-specific architecture is valid
 
 Admin, Applicant, Student, and Panelist do not need identical navigation.

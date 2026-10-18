@@ -10,8 +10,8 @@
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.12-draft  
-**Last Updated:** 2026-10-17  
+**Version:** 1.13-draft  
+**Last Updated:** 2026-10-19  
 
 ---
 
@@ -79,15 +79,16 @@ Canonical extension documents:
 - docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
 - docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
-The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report freezing before signatures, workspace-based RAP signing, defense-history/revision traceability, and the implemented Socket.IO synchronization layer.
+The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report finalization before signatures, workspace-based Committee Report signing, defense-history/revision traceability, and the implemented Socket.IO synchronization layer.
 
 Important sequencing clarification:
 
-- the Rapporteur may draft the Committee Report during the live defense;
-- all required evaluator records must be finalized and the Oral Examination Summary ready before the report is frozen for signatures;
-- the frozen Committee Report/RAP is verdict-independent and must not require Formal Outcome content;
-- all required stage-aware RAP signatures must complete and the RAP must be FINALIZED before the Chairman records PASSED or REDEFENSE_REQUIRED;
-- the later DefenseConclusion remains a separate formal record and must not mutate the already frozen/signed RAP;
+- the Rapporteur may draft and finalize the Committee Report during the live defense without waiting for every evaluator to finalize;
+- once the Rapporteur finalizes the Committee Report, required stage-aware signers may review and sign it immediately, including Chairman/Panelists whose own evaluations are still DRAFT;
+- evaluator finalization/Oral Examination Summary generation and Committee Report finalization/signing are parallel pre-verdict workstreams rather than a forced sequence;
+- the finalized Committee Report is verdict-independent and must not require Formal Outcome content;
+- the Chairman may record PASSED or REDEFENSE_REQUIRED only after every required evaluator record is FINALIZED/e-signed, the Oral Examination Summary is ready, the Committee Report is finalized, and every required Committee Report signature is complete;
+- the later DefenseConclusion remains a separate formal record and must not mutate the already finalized/signed Committee Report;
 - new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
 - concluded attempts reopen as immutable historical view-only records and do not require an active realtime room;
 - the CDW-0 through CDW-8 collaborative/realtime foundation is implemented and accepted on `refactor/collaborative-defense-workspace`; accepted production implementation HEAD is `a9a179446284ea928faca8991de34deadc856e1b`, with CDW-8C acceptance package HEAD `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`; manual browser multi-user QA remains explicitly NOT EXECUTED and is not represented as passed;
@@ -1248,18 +1249,24 @@ E-SIGNED + FINALIZED
 LOCKED OFFICIAL RECORD
 ```
 
-For the defense session:
+For the defense session, evaluation work and Committee Report work may proceed in parallel:
 
 ```text
-REQUIRED EVALUATIONS IN PROGRESS
-      ↓
-ALL REQUIRED EVALUATIONS FINALIZED
-      ↓
-SUMMARY_READY
-      ↓
-RAP / COMMITTEE REPORT SIGNATURES COMPLETE
-      ↓
-AWAITING_FORMAL_CONCLUSION
+                    ┌─ REQUIRED EVALUATIONS IN PROGRESS
+DEFENSE IN PROGRESS ┤       ↓
+                    │  ALL REQUIRED EVALUATIONS FINALIZED
+                    │       ↓
+                    │  SUMMARY_READY
+                    │
+                    └─ COMMITTEE REPORT DRAFT
+                            ↓
+                       REPORT FINALIZED
+                            ↓
+                       REQUIRED SIGNATURES COMPLETE
+
+SUMMARY_READY + FINALIZED/SIGNED COMMITTEE REPORT
+                    ↓
+          AWAITING_FORMAL_CONCLUSION
 ```
 
 Title remains unique because its deliberation also determines/records the Title decision, but it is no longer exempt from the shared evaluator completion/signing lifecycle.

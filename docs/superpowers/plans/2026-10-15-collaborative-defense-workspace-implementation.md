@@ -9,12 +9,12 @@
 **Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
+**Current branch baseline before FIX-6 implementation:** `ac76d58f0bfac72a6774f25151881ddaa08ae6d2`  
 **Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md  
-**Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
+**Next acceptance gate:** FIX-6 implementation + targeted parallel-workflow retest, then resume final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `3b24c496`; project-owner manual inspection confirmed generated institutional Summary rows are visible and also exposed downstream signing/Admin presentation issues; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS / PROJECT-OWNER TARGETED MANUAL QA PASS and accepted for its bounded UX scope at `13a4c38a`; final end-to-end multi-user live-defense manual acceptance is READY / NEXT GATE; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-5 are implemented/accepted at their recorded bounded gates; project-owner end-to-end manual execution confirmed the current flow is mechanically functional but exposed a real-world sequencing mismatch: Committee Report finalization/signing must be independent of evaluator finalization until the Chairman verdict gate; FIX-6 parallel report-signing + UI-language correction is DESIGN APPROVED / NOT YET IMPLEMENTED; final end-to-end acceptance is REOPENED pending FIX-6 implementation + targeted retest; CDW-9 NOT STARTED
 
 ---
 
@@ -60,8 +60,9 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
 | CDW-LIVE-1 MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Oral Examination Summary generated from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
-| CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment |
-| Final multi-user live-defense manual acceptance | READY / NEXT GATE | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow; must still be exercised separately across authenticated roles |
+| CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
+| CDW-LIVE-1 MANUAL-QA FIX-6 | DESIGN APPROVED / NOT IMPLEMENTED | evaluation finalization and Committee Report finalization/signing become parallel pre-verdict workstreams; exact faculty-facing copy is locked by design |
+| Final multi-user live-defense manual acceptance | REOPENED / BLOCKED ON FIX-6 | project owner exercised the complete current path successfully, then identified the sequencing mismatch; rerun the affected path after FIX-6 before closing acceptance |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -76,7 +77,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 implements that UX alignment at `13a4c38a`, independently passed source review, and subsequently passed project-owner targeted manual QA for the corrected flow. FIX-5 is accepted for its bounded UX scope; the complete role-separated end-to-end acceptance remains separate and is now the next gate.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 implements that UX alignment at `13a4c38a`, independently passed source review, and subsequently passed project-owner targeted manual QA for the corrected flow. The project owner then exercised the complete current defense path successfully and confirmed the implementation is mechanically working, but identified a real-world workflow mismatch: the Rapporteur and required Committee Report signers must not be forced to wait for every evaluation/Summary before report finalization/signing. FIX-6 documents that correction and the associated faculty-facing language cleanup. FIX-5 remains accepted for its bounded UX scope, but its serialized report-finalization assumption is superseded by FIX-6.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1104,6 +1105,9 @@ CDW-8 ACCEPTED / CLOSED
   -> MANUAL-QA FIX-2 IMPLEMENTED / SOURCE REVIEW PASS (dc1745f)
   -> MANUAL-QA FIX-3 IMPLEMENTED / SOURCE REVIEW PASS (700f014)
   -> MANUAL-QA FIX-3A ACCEPTED FOR BOUNDED UX SCOPE (fd999e80)
+  -> MANUAL-QA FIX-4 IMPLEMENTED / SOURCE REVIEW PASS
+  -> MANUAL-QA FIX-5 BOUNDED UX ACCEPTED
+  -> MANUAL-QA FIX-6 DESIGN APPROVED / IMPLEMENTATION REQUIRED
   -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE
   -> CDW-9
 ```
@@ -1205,26 +1209,26 @@ The bounded FIX-3/FIX-3A UX scope is closed. Full authenticated multi-user live-
 
 ## 12.4 Final end-to-end multi-user live-defense manual acceptance
 
-**Status:** PENDING / BLOCKED ON FIX-4 REVIEW AND TARGETED QA — user-owned manual acceptance resumes after the implemented Oral Examination Summary computation is independently reviewed and targeted Summary QA is complete.
+**Status:** REOPENED / BLOCKED ON FIX-6 — the project owner completed the current end-to-end defense flow successfully with no mechanical/runtime issue, then identified a sequencing rule that does not match actual defense practice. Acceptance resumes after FIX-6 implementation and targeted retest.
 
-Required final workflow:
+Required corrected workflow:
 
 1. Chairman starts the defense.
-2. Chairman and required Panelists complete/finalize their own evaluations.
-3. Chairman's **Evaluation Signatures** progress updates from authoritative state.
-4. Rapporteur authors and prepares the Committee Report for signatures.
-5. Required stage-aware Committee Report signers sign the same frozen report.
-6. Chairman's **Committee Report Signatures** progress updates near-realtime, with polling/refetch fallback.
-7. Formal Result controls remain unavailable while any authoritative conclusion gate is incomplete.
-8. Once every required gate passes, Chairman records PASSED or REDEFENSE_REQUIRED.
-9. Attempt becomes CONCLUDED and read-only.
-10. Reopen the concluded workspace and verify immutable historical state.
+2. Evaluation work and Committee Report work may proceed in parallel.
+3. Chairman and required Panelists may continue drafting their own evaluations.
+4. Rapporteur authors the Committee Report and may **Finalize Committee Report** as soon as the report content is ready; report finalization does not wait for evaluator finalization or the Oral Examination Summary.
+5. Once the Committee Report is finalized, required stage-aware signers may **Review & Sign** immediately, including Chairman/Panelists whose evaluations are still DRAFT.
+6. Evaluators independently finalize/e-sign their own evaluations when ready.
+7. Once every required evaluator is FINALIZED, the Oral Examination Summary generates from authoritative finalized values.
+8. Chairman's Formal Verdict surface reflects authoritative progress without serializing the two workstreams.
+9. Formal Result controls remain unavailable until every authoritative conclusion gate passes: all required evaluations finalized/e-signed, Summary ready, Committee Report finalized, all required report signatures complete, report finalized/completed, and no existing conclusion.
+10. Chairman records PASSED or REDEFENSE_REQUIRED.
+11. Attempt becomes CONCLUDED and read-only.
+12. Reopen the concluded workspace and verify immutable historical state.
 
-This gate must use independent authenticated role sessions where practical. It must not be marked PASS from source verifiers alone.
+This gate should use independent authenticated role sessions where practical. Sequential role switching remains acceptable when simultaneous client capacity is limited, but true simultaneous realtime observation must be recorded truthfully as executed or not executed.
 
-If this final workflow reveals a concrete defect, create a new bounded manual-QA fix package. Otherwise, close the pre-CDW-9 acceptance gate without inventing additional code work.
-
----
+If the corrected workflow reveals another concrete defect, create a new bounded manual-QA fix package. Otherwise, close the pre-CDW-9 acceptance gate without inventing unrelated code work.
 
 ## 12.5 Pre-CDW-9 MANUAL-QA FIX-4 — Oral Examination Summary Computation
 
@@ -1348,7 +1352,59 @@ FIX-5 did not change:
 
 ### Gate
 
-FIX-5 is accepted for its bounded UX scope. The next gate is the **final end-to-end multi-user live-defense manual acceptance**. That final gate must still be exercised separately and must not be inferred from FIX-5 targeted QA.
+FIX-5 remains accepted for its bounded UX scope. Post-acceptance project-owner testing identified the separate FIX-6 workflow correction. The next gate is **FIX-6 implementation + targeted retest**, followed by resumption of the final end-to-end multi-user live-defense manual acceptance.
+
+---
+
+## 12.7 Pre-CDW-9 MANUAL-QA FIX-6 — Parallel Committee Report Signing + Faculty UI Language
+
+**Status:** DESIGN APPROVED / NOT YET IMPLEMENTED.
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md
+
+### Why this package exists
+
+Project-owner end-to-end testing confirmed the current code path works, but the implemented sequence is too strict for a real defense session. Panelists may be reviewing/signing the Committee Report while their own scores are still being completed. The system must support that parallel work without weakening the Chairman's final verdict gate.
+
+### Confirmed rule
+
+- Rapporteur may finalize the Committee Report when its content is ready.
+- Report finalization does not require all evaluator records to be FINALIZED.
+- Report finalization does not require the Oral Examination Summary to exist.
+- Required Committee Report signers may sign immediately after report finalization.
+- A Chairman/Panelist may sign the Committee Report while their own evaluation is still DRAFT.
+- Evaluation finalization remains own-record only and independent.
+- Chairman verdict remains blocked until all required evaluations, Summary, finalized Committee Report, and required report signatures are complete.
+
+### UX language authority
+
+FIX-6 also makes exact user-facing copy part of the design. Coding agents must implement the approved strings/meaning and must not surface internal engineering terminology such as `freeze`, `contentVersion`, `V1`, snapshot/hash identifiers, or unexplained `RAP` labels to ordinary faculty users.
+
+### Expected impact
+
+- bounded backend readiness/finalization rule update;
+- bounded faculty Committee Report UI update;
+- focused tests/verifiers;
+- docs reconciliation;
+- no schema/migration expected;
+- no signer-role change;
+- no evaluation arithmetic change;
+- no verdict-authority change;
+- no document/PDF rendering;
+- CDW-9 remains not started.
+
+### Gate
+
+Implement FIX-6, independently review the remote diff/source, then project-owner targeted manual QA must verify at minimum:
+
+1. Rapporteur can finalize the Committee Report while at least one required evaluator remains DRAFT.
+2. Required signer can sign that finalized report while their own evaluation remains DRAFT.
+3. Chairman still cannot record a verdict until every required evaluation and report-signing requirement is complete.
+4. Faculty UI shows the approved plain-language labels and does not expose V1/freeze/snapshot/version jargon.
+
+Only after this targeted retest should the final end-to-end acceptance gate be closed.
 
 ---
 

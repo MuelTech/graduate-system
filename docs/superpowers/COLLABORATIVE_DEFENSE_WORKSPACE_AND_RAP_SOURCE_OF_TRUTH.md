@@ -9,14 +9,14 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `13a4c38acbc72dc13902539da398127f674384e5`  
+**Current branch baseline before FIX-6 implementation:** `ac76d58f0bfac72a6774f25151881ddaa08ae6d2`  
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
 **FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
-**Current pre-CDW-9 UX design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-5; FIX-4 independently source-reviewed PASS at `3b24c496`; FIX-5 implementation at `13a4c38a` independently source-reviewed PASS and project-owner targeted manual QA PASS for the bounded signing/Admin UX flow; this does **not** claim that the complete role-separated live-defense lifecycle has passed end to end; final end-to-end multi-user live-defense manual acceptance is the NEXT GATE; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**Current pre-CDW-9 workflow/UX correction:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-5; project-owner end-to-end manual execution confirmed the current implementation is mechanically functional, then exposed a real-world sequencing mismatch in Committee Report finalization/signing; FIX-6 is DESIGN APPROVED / NOT YET IMPLEMENTED and supersedes the old rule that required finalized evaluations/Summary before Committee Report finalization; final end-to-end acceptance is REOPENED pending FIX-6 implementation + targeted retest; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
-**Version:** 1.8  
-**Last updated:** 2026-10-18
+**Version:** 1.9  
+**Last updated:** 2026-10-19
 
 ---
 
@@ -96,8 +96,9 @@ The implementation must preserve these boundaries:
    - Other committee members may view the report while it is being prepared, but they do not directly edit its authoritative text.
    - The Rapporteur may use shared annotations/comments as source material, but inclusion in the official report is deliberate.
 
-5. **RAP signatures**
-   - Required signers review the same frozen report snapshot.
+5. **Committee Report signatures**
+   - Required signers review the same finalized, immutable report content.
+   - Report-signing eligibility is independent of whether that signer's own evaluation is still DRAFT or already FINALIZED.
    - No signer may sign a report that can still be silently edited.
 
 6. **Formal conclusion**
@@ -153,13 +154,28 @@ Allowed:
 - the Rapporteur sees shared manuscript comments while drafting;
 - the Rapporteur may deliberately add a shared annotation/comment as a source for an official report item.
 
-The report remains DRAFT during this phase.
+The report may remain DRAFT while the Rapporteur is still authoring it, but it is not required to stay DRAFT until evaluator scoring is complete. Once the Rapporteur is satisfied with the report content, the Rapporteur may finalize the Committee Report for signatures during IN_PROGRESS. Required signers may then sign that finalized report immediately, even when one or more evaluator records are still DRAFT. Evaluation finalization and Committee Report signing are intentionally parallel workstreams.
 
 ### 3.3 AWAITING_CONCLUSION — Finalization Mode
 
-When all required evaluator assignments are finalized and the Oral Examination Summary is ready, the attempt enters the formal finalization phase.
+AWAITING_CONCLUSION is a convergence gate, not a forced serial workflow.
 
-For the current institutional matrix, the Summary must be generated from the finalized evaluator rows using the confirmed FIX-4 computation:
+During the live defense, these two workstreams may progress independently:
+
+1. **Evaluation workstream**
+   - Chairman and assigned evaluator Panelists complete their own evaluations;
+   - each evaluator e-signs/finalizes their own record when ready;
+   - once all required evaluator records are FINALIZED, the Oral Examination Summary is generated automatically/idempotently from those finalized records.
+
+2. **Committee Report workstream**
+   - Rapporteur authors the Committee Report;
+   - once the report content is complete, the Rapporteur chooses **Finalize Committee Report**;
+   - finalizing the report makes that report content read-only and creates/reconciles the stage-aware required Committee Report signature slots;
+   - required signers may review and sign immediately;
+   - a Chairman/Panelist does **not** need to finalize their own evaluation before signing the finalized Committee Report;
+   - when all required report signature slots are signed, the Committee Report reaches its completed/finalized signing state.
+
+For the current institutional matrix, the Oral Examination Summary remains generated from finalized evaluator rows using the confirmed FIX-4 computation:
 
 - Summary Group A = finalized evaluator Group I Average;
 - Summary Group B = finalized evaluator Group II Average;
@@ -171,22 +187,18 @@ For the current institutional matrix, the Summary must be generated from the fin
 The detailed computation authority is:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`.
 
-The Rapporteur completes the Committee Report and chooses Finalize for Signatures.
+The Chairman's Formal Verdict remains the strict convergence gate. PASSED or REDEFENSE_REQUIRED may be recorded only when all authoritative pre-conclusion requirements are satisfied:
 
-That action:
+- every required evaluator record is FINALIZED/e-signed;
+- the Oral Examination Summary exists for the current schedule;
+- the Committee Report exists and has been finalized for signing;
+- every required Committee Report signature is complete;
+- the Committee Report has reached its finalized/completed signing state;
+- no prior DefenseConclusion exists.
 
-- validates all required evaluator records are finalized;
-- validates the Oral Examination Summary exists or can be safely generated from finalized evaluator records;
-- freezes the report content;
-- creates or reconciles the stage-aware required RAP signature slots;
-- changes the report to FOR_SIGNATURE;
-- locks the report body and the attempt's collaboration layer against new academic comments that could diverge from the frozen report.
+Scores never auto-decide the verdict.
 
-Required members then review the same frozen report and sign their own slots.
-
-When all required signature slots are signed, the RAP becomes FINALIZED.
-
-Only then may the Chairman record PASSED or REDEFENSE_REQUIRED.
+Internal implementation may retain `freeze`, frozen snapshot/hash, `FOR_SIGNATURE`, `RapReport`, and related legacy names. Those are integrity/lifecycle implementation concepts, not required faculty-facing wording.
 
 ### 3.4 CONCLUDED — Historical View-Only Mode
 
@@ -285,12 +297,15 @@ The evaluator rail must not show a redundant manual **Save now** control when ev
 
 For Rapporteur:
 
-- Report status and DRAFT/frozen state;
-- save-draft controls while editable;
+- Committee Report status using plain faculty-facing terms such as Draft, Ready for Signatures, Awaiting Signatures, and Complete;
+- save/autosave state while editable;
 - Preview Report / read-only report review;
-- later freeze-for-signatures action when RAP-C1 is enabled;
-- source-comment count or report-item summary;
+- one explicit **Finalize Committee Report** action once the Rapporteur is satisfied with the report content;
+- report finalization must not be blocked merely because evaluator records or the Oral Examination Summary are still incomplete;
+- source-comment count or report-item summary where useful;
 - signature-progress summary once the report enters the signing lifecycle.
+
+Do not expose internal lifecycle wording such as **Freeze for Signatures**, **Confirm Freeze**, **Frozen version 1**, raw content-version numbers, snapshot/hash terminology, or unexplained RAP labels to ordinary faculty users.
 
 Exact institutional-form preview, PDF generation, print CSS, and download/print rendering are deferred to a later unified Official Defense Forms / Document Processing phase.
 
@@ -353,7 +368,7 @@ The Chairman's Formal Verdict card is a faculty-facing readiness surface, not a 
 
 Before the formal result controls become available, show only two concise readiness rows:
 
-- **Evaluation Signatures** — `<finalized evaluators> of <required evaluators> completed`;
+- **Evaluations** — `<finalized evaluators> of <required evaluators> finalized`;
 - **Committee Report Signatures** — `<signed required report slots> of <required report slots> completed`.
 
 If Committee Report signature slots do not yet exist, do not show misleading `0 of 0`. Show **Committee Report Signatures — Waiting for report** until the report has reached the state where required signer slots are known.
@@ -364,7 +379,7 @@ Do not expose these internal technical readiness terms as separate Chairman chec
 - Committee Report frozen;
 - RAP finalized.
 
-Those backend requirements remain mandatory and server-authoritative. They are simply summarized into the two faculty-facing readiness rows rather than presented as implementation terminology.
+Those backend requirements remain mandatory and server-authoritative. They are simply summarized into faculty-facing progress rather than presented as implementation terminology. The Committee Report row must not imply that report signing waits for evaluation completion; the two workstreams are independent until the final verdict gate.
 
 When every authoritative conclusion gate is satisfied, expose the Formal Result selector and **Record Formal Verdict** action. Scores still never auto-decide the verdict.
 
@@ -744,22 +759,24 @@ The assigned Rapporteur remains the authoritative Prepared by identity. If the i
 
 ### 9.6 Signature-progress visibility for the Rapporteur
 
-Once a report has been frozen and signature slots exist, the Rapporteur must be able to see progress for the exact frozen version.
+Once the Committee Report has been finalized and signature slots exist, the Rapporteur must be able to see concise signing progress.
 
-The live workspace may show:
+Faculty-facing workspace UI may show:
 
-- required signer name;
-- functional role;
-- Pending / Signed state;
-- signed timestamp when available;
-- aggregate progress such as 4 of 6 signed;
-- frozen content version/hash identifier when useful for audit/debug presentation.
+- aggregate progress such as `4 of 6 signatures completed`;
+- the current authenticated user's own required/signed state and own signed timestamp when applicable;
+- a simple lifecycle label such as **Ready for Signatures**, **Awaiting Signatures**, or **Complete**.
 
-The live progress UI must **not** expose raw signatureData, base64 signature images, or another signer's private evidence payload. Signature evidence is rendered only where authorized in the exact frozen/final institutional document and official records.
+Ordinary faculty-facing UI must not expose:
 
-REST/database state remains authoritative. Polling/refetch is sufficient for this foundation; Socket.IO/WebSocket realtime remains a later optimization and must not be required for signing correctness.
+- raw `contentVersion` / **V1** / **version 1** labels;
+- frozen snapshot/hash identifiers;
+- raw `signatureData` or base64 evidence;
+- a full cross-signer audit roster/timestamp table.
 
----
+Version/hash metadata remains valid internal integrity data and may be shown only in an explicitly administrative/audit/debug surface when there is a real operational need.
+
+REST/database state remains authoritative. Polling/refetch and the accepted realtime invalidation behavior remain sufficient for signing correctness.
 
 ### 9.7 CDW-LIVE-1 — live report review and autosave boundary
 
@@ -782,7 +799,7 @@ While the report is DRAFT and editable:
 
 This feature is **single-writer / multi-viewer**. Panelists, Chairman, Adviser, Facilitator, or other viewers do not gain report edit authority.
 
-Freeze/sign/finalize boundaries are unchanged. Once the report is frozen or the attempt is concluded/cancelled, live preview and autosave editing stop immediately.
+Report finalization remains the irreversible authoring boundary. Once the Committee Report is finalized for signatures, or the attempt is concluded/cancelled, live preview and autosave editing stop immediately. This boundary is independent of evaluator finalization.
 
 Generic live cursors, presence, typing indicators, and multi-author report editing remain deferred.
 
@@ -809,27 +826,34 @@ The current implementation's Formal Outcome line is transitional behavior and mu
 
 The later Chairman verdict belongs to DefenseConclusion and the official defense-record package. The system must not mutate a frozen/signed RAP after the verdict merely to insert that outcome.
 
-### 10.2 Freeze for signatures
+### 10.2 Finalize Committee Report for signatures
 
-Rapporteur Finalize for Signatures requires:
+The faculty-facing action is **Finalize Committee Report**.
 
-- the report is still DRAFT;
+Rapporteur finalization requires:
+
+- the report is still DRAFT/editable;
 - the user is the assigned Rapporteur;
-- all required evaluator assignments are FINALIZED;
-- the Oral Examination Summary exists or can be safely generated from those finalized records;
-- required report content is present.
+- required report content is present;
+- the latest Rapporteur draft has been persisted successfully.
 
-Freeze must produce an immutable report snapshot/version.
+Rapporteur finalization does **not** require:
 
-Recommended integrity metadata:
+- every evaluator record to be FINALIZED;
+- the Oral Examination Summary to exist;
+- the current Rapporteur/Chairman/Panelists to have completed their own evaluation first.
 
-- frozenAt;
-- frozenById;
+Finalization must produce an immutable report snapshot/version for integrity and signature binding. Internal implementation may continue to call this operation `freeze`.
+
+Recommended integrity metadata remains:
+
+- frozen/finalized timestamp;
+- actor id;
 - content version;
-- frozen snapshot JSON/text;
+- immutable snapshot JSON/text;
 - stable content hash.
 
-Each RAP signature should be attributable to that same frozen version/hash.
+Each Committee Report signature must remain attributable to that same immutable report version/hash. These integrity identifiers are internal by default and must not be rendered as `V1`, `Frozen version 1`, or similar faculty-facing copy.
 
 ### 10.3 Required RAP signers
 
@@ -854,21 +878,44 @@ Dean approval/signature remains a separate institutional question and is not aut
 
 ### 10.4 Signing UX
 
-RAP signing belongs inside the active Defense Workspace.
+Committee Report signing belongs inside the active Defense Workspace.
 
 A required signer must:
 
-1. open/review the actual frozen Committee Report;
-2. see that the content is locked;
+1. open/review the finalized Committee Report;
+2. see that the report can no longer be edited;
 3. provide their own e-signature;
 4. confirm;
-5. receive a signed/locked state.
+5. receive a signed state.
 
-Every signer signs the same immutable report version/hash. The Rapporteur may monitor signer completion from the workspace but must not receive raw signature payloads from other signers.
+A required signer may sign the finalized Committee Report even when that signer's own individual evaluation is still DRAFT.
 
-There is no valid new-attempt state where the defense is CONCLUDED while a required RAP signature remains pending.
+Every signer still signs the same immutable report version/hash internally. The Rapporteur may monitor aggregate signer completion from the workspace but must not receive raw signature payloads from other signers.
 
-The existing /panelist/signatures page may remain as a secondary task inbox/history surface, but it must not be the primary blind post-defense signing flow. A pending task should open the exact Defense Workspace/report.
+Faculty-facing copy must use plain task language. Canonical wording for this flow:
+
+- **Finalize Committee Report**
+- **Finalize Report**
+- **Ready for Signatures**
+- **Awaiting Signatures**
+- **Review & Sign**
+- **Review and Sign Committee Report**
+- **Add Your Signature**
+- **Confirm Signature**
+- **Signed**
+- **Committee Report Complete**
+
+Do not show ordinary faculty users:
+
+- Freeze for Signatures;
+- Confirm Freeze;
+- frozen snapshot;
+- Frozen version / V1 / version number;
+- RAP Report / RAP finalized where **Committee Report** is the intended product term.
+
+There is no valid new-attempt state where the defense is CONCLUDED while a required Committee Report signature remains pending.
+
+The existing `/panelist/signatures` page may remain as a secondary task inbox/history surface, but it must not be the primary blind post-defense signing flow. A pending task should open the exact Defense Workspace/report.
 
 ### 10.5 No silent reopening
 
@@ -881,6 +928,8 @@ A future explicit correction/version-invalidation workflow may be designed if EA
 ## 11. Centralized conclusion readiness
 
 The backend must provide one authoritative conclusion-readiness decision.
+
+Conclusion readiness is where the two parallel workstreams converge. It must not be reused as a prerequisite that blocks Rapporteur report finalization or Committee Report signing.
 
 Chairman conclusion is allowed only when all are true:
 
@@ -1155,9 +1204,10 @@ The collaborative Defense Workspace is not considered complete unless all of the
 - Panelists can see the report draft read-only;
 - once CDW-LIVE-1 is implemented, authorized report viewers can follow the Rapporteur's unsaved wording as a clearly labeled ephemeral live preview without gaining edit authority;
 - once CDW-LIVE-1 is implemented, report and own-evaluation DRAFT changes autosave to the authoritative REST/database draft while irreversible actions remain explicit;
-- the report can be frozen only after required evaluations and Summary readiness;
-- all signers review the same frozen RAP snapshot;
-- Rapporteur signs their own required RAP slot separately;
+- the Rapporteur can finalize the Committee Report once the report content is ready without waiting for evaluator finalization or Summary readiness;
+- required Committee Report signers can sign the finalized report even when their own evaluation remains DRAFT;
+- all signers review the same immutable finalized Committee Report content;
+- Rapporteur signs their own required Committee Report slot separately;
 - missing any required RAP signature blocks Chairman conclusion;
 - Facilitator does not become a required RAP signer;
 - Title has no Adviser RAP slot;

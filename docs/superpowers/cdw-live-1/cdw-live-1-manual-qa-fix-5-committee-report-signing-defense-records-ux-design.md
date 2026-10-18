@@ -20,6 +20,24 @@
 
 ---
 
+## Post-acceptance supersession note — 2026-10-19
+
+FIX-5 remains accepted for its bounded signing/Admin presentation scope and its historical acceptance evidence is unchanged.
+
+Later project-owner end-to-end testing identified a separate real-world workflow correction. The following FIX-5 assumptions/copy are superseded prospectively by FIX-6:
+
+- Committee Report finalization must **not** wait for every evaluator to finalize or for the Oral Examination Summary;
+- required Committee Report signers may sign after report finalization even when their own evaluation remains DRAFT;
+- faculty-facing **Freeze for Signatures / Confirm Freeze / frozen version / version number** wording must be replaced with the plain-language copy defined by FIX-6.
+
+Authority:
+
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`
+
+All other FIX-5 accepted boundaries remain intact unless FIX-6 explicitly says otherwise.
+
+---
+
 ## 0. Why FIX-5 exists
 
 Project-owner manual inspection after FIX-4 confirmed that the institutional Oral Examination Summary is being generated and displayed in Admin, but also exposed a set of connected presentation problems that should be resolved before the final multi-user live-defense acceptance.
