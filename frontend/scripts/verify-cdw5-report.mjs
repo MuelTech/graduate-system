@@ -802,8 +802,9 @@ test("the report panel gates authoring on canEditBody and offers read-only other
   assert.match(p, /canEditBody/);
   assert.match(p, /RichTextReportEditor/);
   assert.match(p, /ReportDocumentView/);
-  // Save Draft + Preview Report for the author.
-  assert.match(p, /Save Draft/);
+  // Authoritative autosave + Preview Report for the author.
+  assert.match(p, /ReportAutosaveController/);
+  assert.doesNotMatch(p, /Save now/);
   assert.match(p, /Preview Report/);
   // Empty state for read-only viewers.
   assert.match(p, /has not started the Committee Report/);

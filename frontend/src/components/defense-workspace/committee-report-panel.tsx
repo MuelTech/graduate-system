@@ -4,9 +4,9 @@
  * CDW-5 — Committee Report tab.
  *
  * Assigned Rapporteur (canEditBody): a free-form rich-text authoring surface with
- * a compact, NON-editable system context, a formatting toolbar, Save Draft, and a
- * clean read-only Preview Report. There are no mandatory sections — the body is
- * whatever the Rapporteur authors. No evaluator controls.
+ * a compact, NON-editable system context, a formatting toolbar, authoritative
+ * autosave, and a clean read-only Preview Report. There are no mandatory sections —
+ * the body is whatever the Rapporteur authors. No evaluator controls.
  *
  * Chairman/Panelist/etc.: the same report body rendered READ-ONLY (semantic
  * elements, no editable DOM), or the legacy plain-text report, or a clear empty
@@ -25,7 +25,6 @@ import {
   Eye,
   FileText,
   PencilLine,
-  Save,
   WifiOff,
 } from "lucide-react";
 
@@ -515,14 +514,6 @@ function ReportAuthoringPanel({
           </Button>
         ) : (
           <>
-            <Button
-              type="button"
-              disabled={saveState.status === "saving" || conflict}
-              onClick={() => controllerRef.current?.flushNow()}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saveState.status === "saving" ? "Saving…" : "Save now"}
-            </Button>
             <Button
               type="button"
               variant="outline"

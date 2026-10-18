@@ -684,6 +684,7 @@ Target authoring experience:
 - safe copy/paste;
 - save draft;
 - **CDW-LIVE-1 target:** debounced server autosave with clear Unsaved / Saving / Saved / Offline state;
+- no redundant manual **Save now** control while report autosave is active; keep visible save-state feedback and conflict/offline recovery;
 - **CDW-LIVE-1 target:** authorized committee viewers may see an ephemeral near-realtime read-only live preview of the Rapporteur's current unsaved body while the report remains editable;
 - no requirement to reproduce full word-processing/page-layout capabilities.
 

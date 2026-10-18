@@ -109,15 +109,14 @@ and automatic idempotent Oral Examination Summary generation remain unchanged.
 - `Finalize Committee Report`
 - `Finalize Committee Report?`
 - `Once finalized, the report can no longer be edited. Required committee members can review and sign it immediately.`
-- `Evaluations can be completed separately before the Chairman records the formal verdict.`
 - `Cancel`
 - `Finalize Report`
 - `Finalizing…`
 - `The Committee Report could not be finalized. Please try again.`
 
-The evaluator/Summary readiness checklist was removed from the authoring experience.
+The evaluator/Summary readiness checklist was removed from the authoring experience. Report authoring uses automatic persistence; no redundant `Save now` control is rendered.
 
-> **Post-review copy refinement — 2026-10-19:** the implemented sentence `Evaluations can be completed separately before the Chairman records the formal verdict.` is no longer approved as faculty-facing confirmation copy. It is domain-correct but redundant because the UI already demonstrates the parallel workstreams. The canonical FIX-6 design now omits it. This documentation update does not claim that the existing rendered sentence at the current implementation HEAD has already been removed; remove it when this surface is next refined or in a bounded copy cleanup.
+> **Post-review copy refinement — 2026-10-19:** the earlier build also rendered `Evaluations can be completed separately before the Chairman records the formal verdict.` in the finalization confirmation. It is domain-correct but redundant because the UI already demonstrates the parallel workstreams. It has now been removed from the actual UI; no replacement sequencing prose was added.
 
 ### Finalized report
 
@@ -368,7 +367,51 @@ gate, realtime event, schema, or document-processing behavior was changed.
 
 ---
 
-## 10. Manual QA
+## 10. UI Cleanup Correction — Redundant Save Control and Finalization Prose
+
+### Source-review finding
+
+Two remaining redundancies were confirmed:
+
+1. The Rapporteur report footer still exposed **Save now**, even though the report
+   already has serialized autosave, max-wait persistence, visible save states, offline
+   handling, CAS conflict recovery, unmount draining, and `flushAndWait()` before
+   finalization.
+2. The finalization confirmation still rendered:
+   **Evaluations can be completed separately before the Chairman records the formal verdict.**
+   That sentence is domain-correct but violates the canonical rule **Do not explain what
+   the UI already demonstrates.**
+
+### Correction
+
+- Removed the Rapporteur-facing **Save now** button.
+- Kept `ReportAutosaveController`, editor-change updates, debounce/max-wait autosave,
+  save-state feedback, offline/error/conflict states, **Reload saved version**,
+  **Preview Report**, unmount draining, and blur/visibility flush handlers.
+- Kept `flushAndWait()` before finalization and the `expectedBodyVersion` guard.
+- Removed the redundant finalization sentence. No replacement sequencing paragraph was
+  added.
+- The accepted single-step **Sign Committee Report** dialog is unchanged.
+
+### Cleanup verification
+
+| Check | Result |
+|---|---|
+| Focused verifier set: FIX-6, report autosave, CDW-5 report | **3 scripts / 120 passed / 0 failed** |
+| Focused FIX-6 verifier | **15 passed / 0 failed** |
+| Frontend `npx tsc --noEmit` | **clean** |
+| Scoped ESLint on changed components | **clean** |
+| `git diff --check` | **clean** (line-ending notices only) |
+| Frontend production build | Not run — bounded UI cleanup; no API/type wiring or routing change |
+| Backend tests/build | Not run — no backend production-code change |
+| Prisma tooling | Not run — no schema/migration change |
+
+Historical implementation evidence remains in earlier commits and sections of this
+report; the removed controls are not rewritten as if they never existed.
+
+---
+
+## 11. Manual QA
 
 **NOT EXECUTED — PROJECT-OWNER OWNED.**
 

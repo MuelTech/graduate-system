@@ -1062,7 +1062,7 @@ Improve live committee review and protect high-value draft work without changing
 - Chairman/Panelists and other authorized committee viewers remain read-only;
 - report body autosaves through the existing authenticated REST/database draft path;
 - bodyVersion/CAS remains authoritative;
-- explicit Save Draft may remain as a Save now/flush action;
+- no manual **Save now** control; autosave is authoritative for routine drafting, while blur/visibility/unmount/finalization use the existing serialized flush/drain pipeline;
 - Socket.IO may carry a throttled ephemeral `report:preview` body snapshot to authorized active viewers;
 - the preview is local/ephemeral viewer state, not authoritative React Query state;
 - persisted `report.draft.updated` still causes REST refetch and supersedes the preview;

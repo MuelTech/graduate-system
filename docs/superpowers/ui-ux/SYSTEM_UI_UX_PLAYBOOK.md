@@ -286,6 +286,8 @@ That sentence is domain-correct but unnecessary in the Rapporteur confirmation U
 
 This principle applies system-wide. Existing screens do not need a mass rewrite solely because this rule was documented; apply it when a surface is next implemented/refined, or when a specific copy issue materially harms clarity.
 
+**Autosave vs manual Save — reusable rule:** Do not expose a manual **Save** action when routine persistence is already reliably handled by autosave, unless manual Save serves a distinct user need. Keep visible save-state feedback and the recovery actions required for offline, error, or conflict handling.
+
 ## 8.3 Role-specific architecture is valid
 
 Admin, Applicant, Student, and Panelist do not need identical navigation.

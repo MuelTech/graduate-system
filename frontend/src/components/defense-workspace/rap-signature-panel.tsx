@@ -166,10 +166,6 @@ export function RapSignaturePanel({
               Once finalized, the report can no longer be edited. Required committee
               members can review and sign it immediately.
             </p>
-            <p className="text-[13px] text-amber-900">
-              Evaluations can be completed separately before the Chairman records the
-              formal verdict.
-            </p>
             {finalizeError && (
               <p className="flex items-center gap-1.5 text-[13px] text-red-700">
                 <AlertCircle className="h-4 w-4" /> {finalizeError}

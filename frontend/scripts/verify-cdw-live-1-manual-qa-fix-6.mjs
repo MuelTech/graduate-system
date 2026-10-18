@@ -53,7 +53,7 @@ test("Rapporteur uses the approved report-finalization action and confirmation c
     panel,
     /Once finalized, the report can no longer be edited\.\s+Required committee\s+members can review and sign it immediately\./,
   );
-  assert.match(
+  assert.doesNotMatch(
     panel,
     /Evaluations can be completed separately before the Chairman records the\s+formal verdict\./,
   );
@@ -61,6 +61,19 @@ test("Rapporteur uses the approved report-finalization action and confirmation c
   assert.match(panel, /Finalizing…/);
   assert.match(panel, /The Committee Report could not be finalized\. Please try again\./);
   assert.match(panel, /Cancel/);
+});
+
+test("Committee Report authoring uses autosave without a redundant Save now control", () => {
+  const report = code(REPORT_PANEL);
+
+  assert.doesNotMatch(report, /Save now/);
+  assert.match(report, /ReportAutosaveController/);
+  assert.match(report, /onStateChange: setSaveState/);
+  assert.match(report, /SaveStateIndicator/);
+  assert.match(report, /Reload saved version/);
+  assert.match(report, /Preview Report/);
+  assert.match(report, /flushAndWait/);
+  assert.match(report, /expectedBodyVersion: controller\.getServerVersion\(\)/);
 });
 
 test("faculty UI no longer exposes freeze/version/snapshot implementation jargon", () => {
