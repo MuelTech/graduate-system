@@ -76,9 +76,10 @@ test("finalization is a non-casual, explicit confirmation", () => {
   assert.doesNotMatch(rap, /Confirm Freeze/);
 });
 
-test("freeze and sign call the collaboration report endpoints", () => {
+test("report finalization and signing call the collaboration report endpoints", () => {
+  const panel = read(PANEL);
   const rap = read(RAP_PANEL);
-  assert.match(rap, /collaboration\/report\/freeze/);
+  assert.match(panel, /collaboration\/report\/freeze/);
   assert.match(rap, /collaboration\/report\/sign/);
   assert.match(rap, /method:\s*"POST"/);
 });

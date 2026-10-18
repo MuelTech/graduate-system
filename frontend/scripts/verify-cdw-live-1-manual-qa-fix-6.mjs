@@ -157,6 +157,29 @@ test("secondary E-Signatures page uses Committee Report terminology", () => {
   assert.doesNotMatch(page, /official RAP record/i);
 });
 
+test("Finalize Report drains report autosave before posting the finalization request", () => {
+  const report = code(REPORT_PANEL);
+  const panel = code(SIGNATURE_PANEL);
+
+  assert.match(report, /flushAndWait/);
+  assert.match(report, /onFinalize/);
+  assert.match(report, /expectedBodyVersion: controller\.getServerVersion\(\)/);
+  assert.match(
+    report,
+    /The latest Committee Report changes could not be saved\. Resolve the save issue and try again\./,
+  );
+
+  const flushIndex = report.indexOf("flushAndWait");
+  const freezeIndex = report.indexOf("collaboration/report/freeze");
+  assert.ok(flushIndex >= 0, "the parent must drain the autosave controller");
+  assert.ok(freezeIndex > flushIndex, "finalization must be posted only after the drain");
+  assert.doesNotMatch(panel, /collaboration\/report\/freeze/);
+  assert.match(panel, /onFinalize/);
+  assert.match(panel, /finalizingRef/);
+  assert.match(panel, /onClick=\{requestFinalize\}/);
+  assert.match(panel, /setFinalizeError\(error\.message/);
+});
+
 test("Committee Report finalization no longer ensures the Oral Examination Summary", () => {
   const service = code(COLLABORATION_SERVICE);
   const freezeStart = service.indexOf("async freezeReportForSignatures");

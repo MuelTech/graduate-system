@@ -95,6 +95,10 @@ export class ReportAutosaveController {
   private hasPersistedSave: boolean;
   private disposePromise: Promise<void> | null = null;
   private resolveDispose: (() => void) | null = null;
+  private drainWaiters: Array<{
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  }> = [];
 
   private unsavedSince: number | null = null;
   private idleTimer: unknown = null;
@@ -207,6 +211,44 @@ export class ReportAutosaveController {
     return true;
   }
 
+  /**
+   * FIX-6 source-review correction: await the serialized autosave pipeline until
+   * every dirty/in-flight body has been persisted. This is the durability gate
+   * used before the irreversible Committee Report finalization request.
+   *
+   * It never changes lifecycle to `draining`, never starts a competing save, and
+   * never retries a failed save automatically. On any failure the caller must not
+   * finalize; the editor remains active for correction/retry.
+   */
+  async flushAndWait(): Promise<void> {
+    if (this.lifecycle !== "active") {
+      throw new Error("The Committee Report is no longer editable.");
+    }
+    if (this.conflict) {
+      throw new ReportAutosaveConflictError(
+        "The saved Committee Report changed. Reload the saved version before finalizing.",
+      );
+    }
+    if (!this.hasUnsavedChanges()) return;
+    if (!this.online) {
+      this.setStatus("offline");
+      throw new Error(
+        "The latest Committee Report changes could not be saved while offline.",
+      );
+    }
+
+    this.clearTimers();
+    const drained = new Promise<void>((resolve, reject) => {
+      this.drainWaiters.push({ resolve, reject });
+    });
+
+    if (!this.inFlight) {
+      void this.requestSave();
+    }
+
+    return drained;
+  }
+
   setOnline(online: boolean): void {
     if (this.lifecycle === "disposed" || this.online === online) return;
     this.online = online;
@@ -245,6 +287,9 @@ export class ReportAutosaveController {
    */
   reloadFromServer(body: ReportDocument, bodyVersion: number): void {
     if (this.lifecycle !== "active") return;
+    this.rejectDrainWaiters(
+      new Error("The report was reloaded before finalization completed."),
+    );
     this.clearTimers();
     this.latestBody = normalizeReportDocument(body);
     this.latestKey = JSON.stringify(this.latestBody);
@@ -270,6 +315,9 @@ export class ReportAutosaveController {
     if (this.lifecycle === "disposed") return Promise.resolve();
     if (this.disposePromise) return this.disposePromise;
 
+    this.rejectDrainWaiters(
+      new Error("Report finalization was interrupted because the editor closed."),
+    );
     this.lifecycle = "draining";
     this.clearTimers();
 
@@ -323,6 +371,9 @@ export class ReportAutosaveController {
     if (this.lifecycle === "disposed") return;
 
     if (this.inFlight || this.conflict || !this.dirty) {
+      if (!this.inFlight && !this.dirty && !this.conflict) {
+        this.resolveDrainWaiters();
+      }
       if (this.lifecycle === "draining" && !this.inFlight) {
         this.finishDispose();
       }
@@ -331,6 +382,11 @@ export class ReportAutosaveController {
 
     if (!this.online) {
       this.setStatus("offline");
+      this.rejectDrainWaiters(
+        new Error(
+          "The latest Committee Report changes could not be saved while offline.",
+        ),
+      );
       if (this.lifecycle === "draining") this.finishDispose();
       return;
     }
@@ -361,12 +417,18 @@ export class ReportAutosaveController {
         this.dirty = true;
         if (!this.online) {
           this.setStatus("offline");
+          this.rejectDrainWaiters(
+            new Error(
+              "The latest Committee Report changes could not be saved while offline.",
+            ),
+          );
           if (this.lifecycle === "draining") this.finishDispose();
           return;
         }
         // The newest local text arrived while this request was in flight. Save it
         // immediately with the bodyVersion the server just returned. This also
-        // applies while draining for unmount/tab change.
+        // applies while draining for unmount/tab change. Drain waiters stay pending
+        // until this follow-up save also settles.
         void this.requestSave();
         return;
       }
@@ -374,6 +436,7 @@ export class ReportAutosaveController {
       this.dirty = false;
       this.unsavedSince = null;
       this.setStatus("saved");
+      this.resolveDrainWaiters();
       if (this.lifecycle === "draining") this.finishDispose();
     } catch (error) {
       this.inFlight = false;
@@ -385,6 +448,7 @@ export class ReportAutosaveController {
         this.conflict = true;
         this.error = "Save conflict — refresh/reconcile required.";
         this.setStatus("conflict");
+        this.rejectDrainWaiters(error);
         // A conflict is never auto-retried. During unmount there is no explicit
         // reconciliation surface left, so drain ends with the conflict preserved.
         if (this.lifecycle === "draining") this.finishDispose();
@@ -396,9 +460,20 @@ export class ReportAutosaveController {
           ? error.message
           : "Save failed. Your changes are still in this browser.";
       this.setStatus(this.online ? "error" : "offline");
+      this.rejectDrainWaiters(error);
       // Ordinary failures are not retried in a loop; unmount drains end here.
       if (this.lifecycle === "draining") this.finishDispose();
     }
+  }
+
+  private resolveDrainWaiters(): void {
+    const waiters = this.drainWaiters.splice(0);
+    for (const waiter of waiters) waiter.resolve();
+  }
+
+  private rejectDrainWaiters(error: unknown): void {
+    const waiters = this.drainWaiters.splice(0);
+    for (const waiter of waiters) waiter.reject(error);
   }
 
   private finishDispose(): void {

@@ -16,7 +16,7 @@
  * component.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Lock, PenLine } from "lucide-react";
 
@@ -50,6 +50,7 @@ export function RapSignaturePanel({
   scheduleId,
   reportStatus,
   canFinalize,
+  onFinalize,
   signatureProgress,
   canSign,
   mySignature,
@@ -57,6 +58,11 @@ export function RapSignaturePanel({
   scheduleId: string;
   reportStatus: string;
   canFinalize: boolean;
+  /**
+   * Parent-owned finalization path. The parent must drain the newest report
+   * autosave before this callback sends the irreversible finalization request.
+   */
+  onFinalize?: () => Promise<unknown>;
   signatureProgress: { required: number; signed: number };
   canSign: boolean;
   mySignature: RapSignerStatus | null;
@@ -66,6 +72,7 @@ export function RapSignaturePanel({
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [signDialogOpen, setSignDialogOpen] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const finalizingRef = useRef(false);
 
   const frozen = FROZEN_STATUSES.includes(reportStatus);
   const complete =
@@ -83,17 +90,27 @@ export function RapSignaturePanel({
   };
 
   const finalize = useMutation({
-    mutationFn: () =>
-      apiClientRequest(`/thesis/defense/${scheduleId}/collaboration/report/freeze`, {
-        method: "POST",
-      }),
+    mutationFn: async () => {
+      if (!onFinalize) throw new Error(FINALIZATION_ERROR);
+      return onFinalize();
+    },
     onSuccess: async () => {
       setConfirmingFinalize(false);
       setFinalizeError(null);
       await invalidate();
     },
-    onError: () => setFinalizeError(FINALIZATION_ERROR),
+    onError: (error: Error) =>
+      setFinalizeError(error.message || FINALIZATION_ERROR),
+    onSettled: () => {
+      finalizingRef.current = false;
+    },
   });
+
+  const requestFinalize = () => {
+    if (finalizingRef.current || finalize.isPending) return;
+    finalizingRef.current = true;
+    finalize.mutate();
+  };
 
   const sign = useMutation({
     mutationFn: (signatureData: string) =>
@@ -159,7 +176,7 @@ export function RapSignaturePanel({
               </p>
             )}
             <div className="flex gap-2">
-              <Button type="button" disabled={finalize.isPending} onClick={() => finalize.mutate()}>
+              <Button type="button" disabled={finalize.isPending} onClick={requestFinalize}>
                 {finalize.isPending ? "Finalizing…" : "Finalize Report"}
               </Button>
               <Button

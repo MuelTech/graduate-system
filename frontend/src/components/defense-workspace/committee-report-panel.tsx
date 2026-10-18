@@ -436,6 +436,39 @@ function ReportAuthoringPanel({
     }
   };
 
+  const handleFinalizeReport = async () => {
+    const controller = controllerRef.current;
+    if (!controller) {
+      throw new Error("The Committee Report is not ready to finalize.");
+    }
+
+    try {
+      // FIX-6 source-review correction: never finalize the older persisted body.
+      // The autosave controller owns the newest editor text and must reach a
+      // stable saved state before the irreversible finalization request.
+      await controller.flushAndWait();
+    } catch (error) {
+      if (error instanceof ReportAutosaveConflictError) {
+        throw new Error(
+          "The saved Committee Report changed. Reload the saved version and try again.",
+        );
+      }
+      throw new Error(
+        "The latest Committee Report changes could not be saved. Resolve the save issue and try again.",
+      );
+    }
+
+    return apiClientRequest(
+      `/thesis/defense/${scheduleId}/collaboration/report/freeze`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expectedBodyVersion: controller.getServerVersion(),
+        }),
+      },
+    );
+  };
+
   const conflict = saveState.status === "conflict";
 
   return (
@@ -455,6 +488,7 @@ function ReportAuthoringPanel({
         scheduleId={scheduleId}
         reportStatus={report.reportStatus === "NOT_CREATED" ? "DRAFT" : report.reportStatus}
         canFinalize={report.canFreeze}
+        onFinalize={handleFinalizeReport}
         signatureProgress={report.signatureProgress}
         canSign={report.canSign}
         mySignature={report.mySignature}

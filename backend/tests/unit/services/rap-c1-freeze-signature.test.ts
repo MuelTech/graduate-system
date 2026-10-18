@@ -260,6 +260,25 @@ describe("RAP-C1 freeze (DefenseCollaborationService)", () => {
       vi.useRealTimers();
     }
   });
+
+  it("accepts finalization with the exact persisted bodyVersion", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [draftRap({ bodyVersion: 5 })] }),
+    );
+    await expect(
+      svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR", 5),
+    ).resolves.toMatchObject({ frozen: true, status: "FOR_SIGNATURE" });
+  });
+
+  it("rejects finalization when the editor's expected bodyVersion is stale", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [draftRap({ bodyVersion: 5 })] }),
+    );
+    await expect(
+      svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR", 4),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.rapReport.updateMany).not.toHaveBeenCalled();
+  });
 });
 
 describe("RAP-C1 signing (DefenseCollaborationService)", () => {

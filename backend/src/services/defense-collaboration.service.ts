@@ -1043,6 +1043,7 @@ export class DefenseCollaborationService {
   async freezeReportForSignatures(
     scheduleId: string,
     userId: string,
+    expectedBodyVersion?: number | null,
   ): Promise<{
     frozen: true;
     alreadyFrozen: boolean;
@@ -1080,6 +1081,23 @@ export class DefenseCollaborationService {
       }
       if (String(rap.status) !== "DRAFT") {
         throw new AppError("Only a draft Committee Report can be finalized.", 409);
+      }
+      // FIX-6 source-review correction: defense-in-depth against a stale tab/client
+      // finalizing a body version the editor did not just persist. The frontend
+      // still drains its own autosave first; this is not a substitute for that.
+      if (expectedBodyVersion !== null && expectedBodyVersion !== undefined) {
+        if (
+          !Number.isSafeInteger(expectedBodyVersion) ||
+          expectedBodyVersion < 0
+        ) {
+          throw new AppError("expectedBodyVersion must be a non-negative integer.", 400);
+        }
+        if (expectedBodyVersion !== (rap.bodyVersion ?? 0)) {
+          throw new AppError(
+            "Report changed. Refresh and review the latest version.",
+            409,
+          );
+        }
       }
       if (!rap.bodyDocument) {
         throw new AppError("The Committee Report has no content to finalize.", 409);

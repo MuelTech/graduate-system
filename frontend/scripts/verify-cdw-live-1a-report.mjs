@@ -231,6 +231,182 @@ test("Save now flushes immediately through the same pipeline", async () => {
   assert.equal(lastState(states).status, "saved");
 });
 
+// ---------------------------------------------------------------------------
+// FIX-6 source-review correction — awaitable drain before report finalization
+// ---------------------------------------------------------------------------
+
+test("flushAndWait persists a DIRTY body before resolving", async () => {
+  const clock = new FakeClock();
+  const pending = deferred();
+  const calls = [];
+  const controller = new ReportAutosaveController({
+    save: async (input) => {
+      calls.push(input);
+      return pending.promise;
+    },
+    initialBody: doc("saved"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("newest final wording"));
+  assert.equal(controller.getState().hasUnsavedChanges, true);
+
+  let finalized = false;
+  const finalizeAfterDrain = controller.flushAndWait().then(() => {
+    finalized = true;
+  });
+  await flush();
+
+  assert.equal(calls.length, 1, "dirty body starts one save");
+  assert.equal(calls[0].body.content[0].content[0].text, "newest final wording");
+  assert.equal(calls[0].expectedBodyVersion, 1);
+  assert.equal(finalized, false, "finalization must wait for persistence");
+
+  pending.resolve({ bodyVersion: 2 });
+  await finalizeAfterDrain;
+
+  assert.equal(finalized, true);
+  assert.equal(controller.getState().status, "saved");
+  assert.equal(controller.getState().hasUnsavedChanges, false);
+});
+
+test("flushAndWait waits for an in-flight save and the newest dirty edit behind it", async () => {
+  const clock = new FakeClock();
+  const first = deferred();
+  const second = deferred();
+  const { save, calls, concurrency } = trackedSave([
+    () => first.promise,
+    () => second.promise,
+  ]);
+  const controller = new ReportAutosaveController({
+    save,
+    initialBody: doc("initial"),
+    initialBodyVersion: 1,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("body A"));
+  controller.flushNow();
+  await flush();
+  assert.equal(calls.length, 1);
+
+  controller.update(doc("body B newest"));
+  let finalized = false;
+  const finalizeAfterDrain = controller.flushAndWait().then(() => {
+    finalized = true;
+  });
+  await flush();
+
+  assert.equal(calls.length, 1, "no competing save starts while one is in flight");
+  first.resolve({ bodyVersion: 2 });
+  await flush();
+
+  assert.equal(calls.length, 2, "newest edit is saved after the in-flight save");
+  assert.equal(calls[1].body.content[0].content[0].text, "body B newest");
+  assert.equal(calls[1].expectedBodyVersion, 2);
+  assert.equal(finalized, false);
+  assert.equal(concurrency.max, 1, "the drain never exceeds one save in flight");
+
+  second.resolve({ bodyVersion: 3 });
+  await finalizeAfterDrain;
+
+  assert.equal(finalized, true);
+  assert.equal(controller.getState().bodyVersion, 3);
+  assert.equal(controller.getState().hasUnsavedChanges, false);
+});
+
+test("flushAndWait rejects on save failure and leaves the report editable", async () => {
+  const clock = new FakeClock();
+  const calls = [];
+  const controller = new ReportAutosaveController({
+    save: async (input) => {
+      calls.push(input);
+      throw new Error("Network request failed.");
+    },
+    initialBody: doc("initial"),
+    initialBodyVersion: 2,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("unsaved final wording"));
+  await assert.rejects(controller.flushAndWait(), /Network request failed/);
+
+  assert.equal(calls.length, 1);
+  assert.equal(controller.getState().status, "error");
+  assert.equal(controller.getState().hasUnsavedChanges, true);
+  assert.equal(controller.getLifecycleState(), "active", "draft remains editable");
+});
+
+test("flushAndWait rejects on CAS conflict and preserves conflict state", async () => {
+  const clock = new FakeClock();
+  let saveCalls = 0;
+  const controller = new ReportAutosaveController({
+    save: async () => {
+      saveCalls += 1;
+      throw new ReportAutosaveConflictError("Server draft changed.");
+    },
+    initialBody: doc("initial"),
+    initialBodyVersion: 3,
+    debounceMs: 2000,
+    maxWaitMs: 10000,
+    now: () => clock.now,
+    setTimer: clock.setTimer,
+    clearTimer: clock.clearTimer,
+  });
+
+  controller.update(doc("conflicting final wording"));
+  await assert.rejects(
+    controller.flushAndWait(),
+    (error) => error instanceof ReportAutosaveConflictError,
+  );
+
+  assert.equal(controller.getState().status, "conflict");
+  assert.equal(controller.getState().hasUnsavedChanges, true);
+  assert.equal(controller.getLifecycleState(), "active");
+
+  await assert.rejects(
+    controller.flushAndWait(),
+    (error) => error instanceof ReportAutosaveConflictError,
+  );
+  assert.equal(saveCalls, 1, "a conflict is never automatically retried");
+});
+
+test("flushAndWait rejects immediately when offline with unsaved changes", async () => {
+  const clock = new FakeClock();
+  const { controller, calls } = makeController({ clock });
+
+  controller.setOnline(false);
+  controller.update(doc("offline final wording"));
+
+  await assert.rejects(controller.flushAndWait(), /offline/i);
+  assert.equal(calls.length, 0, "finalization must not try to save or freeze offline");
+  assert.equal(controller.getState().status, "offline");
+  assert.equal(controller.getState().hasUnsavedChanges, true);
+});
+
+test("flushAndWait resolves without a save when the report is already clean", async () => {
+  const { controller, calls } = makeController();
+
+  await controller.flushAndWait();
+
+  assert.equal(calls.length, 0);
+  assert.equal(controller.getState().hasUnsavedChanges, false);
+  assert.equal(controller.getLifecycleState(), "active");
+});
+
 test("never reports Saved before the server confirms persistence", async () => {
   const pending = deferred();
   const clock = new FakeClock();

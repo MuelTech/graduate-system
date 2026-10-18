@@ -195,7 +195,7 @@ describe("DefenseCollaborationController (CDW-1)", () => {
       contentVersion: 2,
     });
     await controller.freezeCommitteeReport(makeReq(), res as never);
-    expect(freezeReportForSignatures).toHaveBeenCalledWith("sched-1", "u-1");
+    expect(freezeReportForSignatures).toHaveBeenCalledWith("sched-1", "u-1", null);
     expect(publishDefenseRealtimeEvent).toHaveBeenCalledWith(
       "report.ready_for_signature",
       {
@@ -204,6 +204,29 @@ describe("DefenseCollaborationController (CDW-1)", () => {
         contentVersion: 2,
       },
     );
+  });
+
+  it("forwards the editor's persisted bodyVersion to finalization", async () => {
+    freezeReportForSignatures.mockResolvedValue({
+      frozen: true,
+      alreadyFrozen: false,
+      reportId: "rap-1",
+      contentVersion: 2,
+    });
+    await controller.freezeCommitteeReport(
+      makeReq({ body: { expectedBodyVersion: 4 } }),
+      res as never,
+    );
+    expect(freezeReportForSignatures).toHaveBeenCalledWith("sched-1", "u-1", 4);
+  });
+
+  it("rejects a malformed expectedBodyVersion without calling the service", async () => {
+    await controller.freezeCommitteeReport(
+      makeReq({ body: { expectedBodyVersion: "4" } }),
+      res as never,
+    );
+    expect(freezeReportForSignatures).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it("does not emit a freeze event for an idempotent alreadyFrozen response", async () => {

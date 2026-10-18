@@ -164,9 +164,23 @@ export class DefenseCollaborationController {
     const userId = this.requireUser(req, res);
     if (!userId) return;
     try {
+      const rawExpectedBodyVersion = req.body?.expectedBodyVersion;
+      if (
+        rawExpectedBodyVersion !== undefined &&
+        rawExpectedBodyVersion !== null &&
+        (typeof rawExpectedBodyVersion !== "number" ||
+          !Number.isSafeInteger(rawExpectedBodyVersion) ||
+          rawExpectedBodyVersion < 0)
+      ) {
+        throw new AppError(
+          "expectedBodyVersion must be a non-negative integer.",
+          400,
+        );
+      }
       const result = await this.collaboration.freezeReportForSignatures(
         req.params.scheduleId as string,
         userId,
+        rawExpectedBodyVersion ?? null,
       );
       if (!result.alreadyFrozen) {
         publishDefenseRealtimeEvent("report.ready_for_signature", {

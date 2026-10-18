@@ -4,7 +4,7 @@
 - **Repository:** MuelTech/graduate-system
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `c7893737d9bb0ea10963ea3fb84c743596519e46`
-- **Status:** IMPLEMENTED — READY FOR INDEPENDENT REVIEW
+- **Status:** IMPLEMENTED + SOURCE-REVIEW CORRECTION APPLIED — READY FOR RE-REVIEW
 - **Date:** 2026-10-19
 - **Migration:** NONE
 - **Schema change:** NONE
@@ -202,6 +202,13 @@ Verification:
 - updated existing Committee Report/signing/history verifiers whose accepted copy or
   revision-history assertions were superseded by FIX-6
 
+Correction additions:
+
+- `frontend/src/lib/report/report-autosave.ts`
+- `backend/src/controllers/defense-collaboration.controller.ts`
+- `backend/tests/unit/controllers/defense-collaboration.controller.test.ts`
+- focused autosave regressions in `frontend/scripts/verify-cdw-live-1a-report.mjs`
+
 Documentation:
 
 - this report
@@ -240,7 +247,69 @@ REST/database remains authoritative. Clients continue to invalidate/refetch.
 
 ---
 
-## 8. Manual QA
+## 8. Independent Source Review Correction — Autosave Finalization Drain
+
+### Source-review finding
+
+The initial FIX-6 implementation removed the evaluator/Summary prerequisite, but
+`RapSignaturePanel` still posted `/collaboration/report/freeze` directly while
+`ReportAuthoringPanel` owned the `ReportAutosaveController` and the newest editor body.
+
+That left a real race:
+
+1. the Rapporteur types newer wording;
+2. autosave is still debounced or in flight;
+3. the Rapporteur confirms **Finalize Report**;
+4. finalization could freeze the older persisted body;
+5. the pending newer save would then fail after the report became immutable.
+
+The backend `bodyVersion` CAS could not protect browser-local unsaved text.
+
+### Correction
+
+- `ReportAutosaveController` now exposes `flushAndWait()`.
+- The drain is awaitable and serialized through the existing save pipeline.
+- It covers:
+  - dirty local body;
+  - an already in-flight save;
+  - newer edits made behind an in-flight save;
+  - clean/already-saved state;
+  - save failure;
+  - CAS conflict;
+  - offline unsaved state.
+- It never changes lifecycle to `draining`, never starts a competing save, and never
+  automatically retries a failed save.
+- `ReportAuthoringPanel` now owns the finalization POST and performs:
+  `flushAndWait()` → verify success → `POST /collaboration/report/freeze`.
+- `RapSignaturePanel` requests finalization through an `onFinalize` callback and no
+  longer posts the finalization endpoint independently.
+- Save failure or conflict blocks finalization and leaves the report editable. The
+  existing conflict/reload state remains available.
+- A `finalizingRef` guard prevents duplicate finalization mutation execution.
+- The finalization request includes the persisted `expectedBodyVersion`; the backend
+  transaction rejects a stale version with `409` as defense-in-depth against another
+  tab/client saving first. The frontend drain remains the primary protection.
+
+### Correction verification
+
+| Check | Result |
+|---|---|
+| Focused frontend verifier set (8 scripts) | **199 passed / 0 failed** |
+| Focused backend set (4 files) | **149 passed / 0 failed** |
+| Frontend `npx tsc --noEmit` | **clean** |
+| Scoped frontend ESLint on correction files | **clean** |
+| Frontend production build | **pass** |
+| Backend build (`tsc`) | **pass** |
+| `git diff --check` | **clean** |
+
+The six new autosave-drain regressions cover dirty save-before-finalize, in-flight plus
+newer edit, save failure, conflict (including no automatic retry), offline unsaved, and
+clean/already-saved behavior. The FIX-6 verifier additionally checks the parent-owned
+drain/POST ordering and duplicate-finalize guard.
+
+---
+
+## 9. Manual QA
 
 **NOT EXECUTED — PROJECT-OWNER OWNED.**
 
