@@ -8,24 +8,22 @@
  */
 import { io, type Socket } from "socket.io-client";
 
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
+
 import {
   parseDefenseJoinAck,
   type DefenseJoinAck,
 } from "./defense-realtime-events";
-import { normalizeDefenseRealtimeBaseUrl } from "./defense-socket-url";
 
 export const DEFENSE_JOIN_EVENT = "defense:join";
 export const DEFENSE_LEAVE_EVENT = "defense:leave";
 export const DEFENSE_JOIN_TIMEOUT_MS = 5000;
 
 export function createDefenseSocket(accessToken: string): Socket {
-  return io(
-    normalizeDefenseRealtimeBaseUrl(process.env.NEXT_PUBLIC_BACKEND_API_URL),
-    {
-      auth: { token: accessToken },
-      autoConnect: false,
-    },
-  );
+  return io(getClientBackendBaseUrl(), {
+    auth: { token: accessToken },
+    autoConnect: false,
+  });
 }
 
 export async function joinDefenseRoom(

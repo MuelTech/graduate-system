@@ -1,20 +1,19 @@
 /**
- * CDW-8B — backend origin normalization for the Socket.IO client.
+ * CDW-8B / DEV-NET-1 — backend origin normalization for the Socket.IO client.
  *
- * The REST client appends `/api` itself, so the realtime URL must be the bare
- * backend origin. Trailing slashes and an accidentally supplied trailing `/api`
- * are removed; `/api` is never appended.
+ * REST and Socket.IO share the same pure normalization rules. The live socket
+ * client resolves through the shared client backend-origin module; this helper
+ * remains for compatibility and focused normalization tests.
  */
-export const DEFAULT_DEFENSE_BACKEND_URL = "http://localhost:5000";
+import {
+  DEV_BACKEND_FALLBACK,
+  normalizeBackendBaseUrl,
+} from "../backend-origin.shared.ts";
+
+export const DEFAULT_DEFENSE_BACKEND_URL = DEV_BACKEND_FALLBACK;
 
 export function normalizeDefenseRealtimeBaseUrl(
   raw: string | null | undefined,
 ): string {
-  const trimmed = (raw ?? "").trim();
-  const base = trimmed.length > 0 ? trimmed : DEFAULT_DEFENSE_BACKEND_URL;
-
-  return base
-    .replace(/\/+$/, "")
-    .replace(/\/api$/i, "")
-    .replace(/\/+$/, "");
+  return normalizeBackendBaseUrl(raw) || DEFAULT_DEFENSE_BACKEND_URL;
 }

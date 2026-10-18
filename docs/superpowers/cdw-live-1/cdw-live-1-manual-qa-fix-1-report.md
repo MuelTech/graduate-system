@@ -98,6 +98,13 @@ The repository LAN support from `14860c6` is correct and was preserved:
 shared REST/Socket.IO HTTP server. No second socket server or WebSocket-only shortcut was
 introduced.
 
+> **DEV-NET-1 update (2026-10-19):** the fixed-LAN-IP frontend instructions above are
+> historical. Development now resolves browser REST/Socket.IO from
+> `window.location.hostname` when no explicit client override is configured.
+> `NEXT_PUBLIC_BACKEND_API_URL` is an explicit override, and `ALLOWED_DEV_ORIGINS` is an
+> environment-driven Next.js dev-resource/HMR setting. See the root `README.md`
+> "Development networking / backend origin" section.
+
 ### Diagnostics improvement
 
 Development-only `connect_error` logging now includes safe metadata:

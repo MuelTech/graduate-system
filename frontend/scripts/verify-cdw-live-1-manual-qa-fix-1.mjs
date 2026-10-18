@@ -166,29 +166,30 @@ test("viewer remains read-only: no authoring controls in the read-only branch", 
   assert.doesNotMatch(readonly, /Save now/);
 });
 
-test("LAN realtime URL normalization strips /api and trailing slashes", () => {
+test("realtime URL normalization strips /api and trailing slashes", () => {
   assert.equal(
-    normalizeDefenseRealtimeBaseUrl("http://192.168.1.101:5000"),
-    "http://192.168.1.101:5000",
+    normalizeDefenseRealtimeBaseUrl("http://203.0.113.10:5000"),
+    "http://203.0.113.10:5000",
   );
   assert.equal(
-    normalizeDefenseRealtimeBaseUrl("http://192.168.1.101:5000/api"),
-    "http://192.168.1.101:5000",
+    normalizeDefenseRealtimeBaseUrl("http://203.0.113.10:5000/api"),
+    "http://203.0.113.10:5000",
   );
   assert.equal(
-    normalizeDefenseRealtimeBaseUrl("http://192.168.1.101:5000/api/"),
-    "http://192.168.1.101:5000",
+    normalizeDefenseRealtimeBaseUrl("http://203.0.113.10:5000/api/"),
+    "http://203.0.113.10:5000",
   );
 });
 
-test("LAN setup documents both frontend and backend origins", () => {
+test("DEV-NET-1 documents runtime origin resolution and env-driven dev origins", () => {
   const nextConfig = read(NEXT_CONFIG);
   const frontendEnv = read(FRONTEND_ENV);
   const backendEnv = read(BACKEND_ENV);
 
-  assert.match(nextConfig, /allowedDevOrigins:\s*\["192\.168\.1\.101"\]/);
-  assert.match(frontendEnv, /NEXT_PUBLIC_BACKEND_API_URL="http:\/\/192\.168\.1\.101:5000"/);
-  assert.match(backendEnv, /FRONTEND_URL=.*192\.168\.1\.101:3000/);
+  assert.match(nextConfig, /ALLOWED_DEV_ORIGINS/);
+  assert.doesNotMatch(nextConfig, /192\.168\./);
+  assert.match(frontendEnv, /BACKEND_API_URL="http:\/\/localhost:5000"/);
+  assert.match(backendEnv, /FRONTEND_URL="http:\/\/localhost:3000/);
 });
 
 test("transport diagnostics expose only safe target/transport metadata", () => {
@@ -196,7 +197,7 @@ test("transport diagnostics expose only safe target/transport metadata", () => {
   const start = hook.indexOf("transport unavailable");
   const block = hook.slice(start, start + 700);
 
-  assert.match(block, /target: normalizeDefenseRealtimeBaseUrl/);
+  assert.match(block, /target: getClientBackendBaseUrl/);
   assert.match(block, /transport: engine\?\.transport\?\.name/);
   assert.match(block, /reason: error\?\.message/);
   assert.doesNotMatch(block, /accessToken|token:|auth:|report body|signature/i);

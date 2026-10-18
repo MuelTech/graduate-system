@@ -11,13 +11,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 import { annotationsQueryKey } from "@/lib/pdf-annotation/collaboration-client";
 import {
   createDefenseSocket,
   joinDefenseRoom,
   leaveDefenseRoom,
 } from "@/lib/realtime/defense-socket";
-import { normalizeDefenseRealtimeBaseUrl } from "@/lib/realtime/defense-socket-url";
 import {
   DEFENSE_REALTIME_EVENT_NAMES,
   convergenceQueryTargets,
@@ -254,9 +254,7 @@ export function useDefenseRealtime({
         console.warn(
           "[defense-realtime] transport unavailable; REST polling remains active",
           {
-            target: normalizeDefenseRealtimeBaseUrl(
-              process.env.NEXT_PUBLIC_BACKEND_API_URL,
-            ),
+            target: getClientBackendBaseUrl(),
             transport: engine?.transport?.name ?? "unknown",
             reason: error?.message,
           },

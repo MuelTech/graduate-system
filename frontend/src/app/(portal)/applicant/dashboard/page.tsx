@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { getServerBackendBaseUrl } from "@/lib/backend-origin.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,7 @@ export default async function ApplicantDashboard() {
     return <div>Please log in to view your dashboard.</div>;
   }
   // 2. Fetch the real data from our new secure backend API
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+  const apiUrl = getServerBackendBaseUrl();
   const res = await fetch(`${apiUrl}/api/applicant/profile`, {
     headers: {
       Authorization: `Bearer ${session.user.accessToken}`,

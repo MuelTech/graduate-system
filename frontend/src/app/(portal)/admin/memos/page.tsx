@@ -20,6 +20,7 @@ import {
   Search,
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 
 interface Memo {
   id: string;
@@ -67,7 +68,7 @@ export default function AdminMemosPage() {
     mutationFn: async () => {
       const session = await getSession();
       const token = session?.user?.accessToken;
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+      const apiUrl = getClientBackendBaseUrl();
 
       const formData = new FormData();
       formData.append("title", title);

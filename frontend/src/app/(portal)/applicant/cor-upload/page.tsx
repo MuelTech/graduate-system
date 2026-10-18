@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { apiClientRequest } from "@/lib/api.client";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -111,8 +112,7 @@ export default function ApplicantCORUploadPage() {
 
     try {
       const token = session?.user?.accessToken;
-      const apiUrl =
-        process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+      const apiUrl = getClientBackendBaseUrl();
 
       const res = await fetch(`${apiUrl}/api/cor/upload`, {
         method: "POST",

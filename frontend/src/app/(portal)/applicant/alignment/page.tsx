@@ -11,6 +11,7 @@ import {
   Printer,
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 import { Button } from "@/components/ui/button";
 import { getSession } from "next-auth/react";
 import { useState } from "react";
@@ -38,8 +39,7 @@ export default function ApplicantAlignmentPage() {
       const session = await getSession();
       const token = session?.user?.accessToken;
 
-      const apiUrl =
-        process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+      const apiUrl = getClientBackendBaseUrl();
       const response = await fetch(`${apiUrl}/api/waivers/me/download`, {
         method: "GET",
         headers: {

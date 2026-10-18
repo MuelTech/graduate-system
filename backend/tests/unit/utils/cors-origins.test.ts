@@ -12,9 +12,9 @@ describe("parseCorsOrigins", () => {
   it("supports comma-separated dev origins", () => {
     expect(
       parseCorsOrigins(
-        "http://localhost:3000, http://192.168.1.101:3000",
+        "http://localhost:3000, http://203.0.113.10:3000",
       ),
-    ).toEqual(["http://localhost:3000", "http://192.168.1.101:3000"]);
+    ).toEqual(["http://localhost:3000", "http://203.0.113.10:3000"]);
   });
 
   it("drops empty entries and falls back when unset", () => {

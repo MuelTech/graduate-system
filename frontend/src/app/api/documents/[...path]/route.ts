@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { getServerBackendBaseUrl } from "@/lib/backend-origin.server";
 
 const ALLOWED_MODEL_TYPES = [
   "cor-upload",
@@ -39,7 +40,7 @@ export async function GET(
     return Response.json({ error: "Unknown document type" }, { status: 400 });
   }
 
-  const backendUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
+  const backendUrl = getServerBackendBaseUrl();
   const targetUrl = `${backendUrl}/api/documents/${modelType}/${id}/${file}`;
 
   try {

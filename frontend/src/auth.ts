@@ -3,6 +3,8 @@ import type { Session, User } from "next-auth";
 import type { JWT } from "@auth/core/jwt";
 import Credentials from "next-auth/providers/credentials";
 
+import { getServerBackendBaseUrl } from "@/lib/backend-origin.server";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -26,7 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               ? { role, studentNumber: credentials?.studentNumber, password }
               : { role, email: credentials?.email, password };
 
-        const apiUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
+        const apiUrl = getServerBackendBaseUrl();
         const res = await fetch(`${apiUrl}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
