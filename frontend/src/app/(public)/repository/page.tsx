@@ -20,8 +20,8 @@ export default function RepositoryPage() {
       <section className="bg-white py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <RepositoryBrowser
-            title="Published Research"
-            description="Published metadata only. Full-text manuscript availability is not yet enabled."
+            title="Published Research Catalog"
+            description="Explore approved graduate theses, dissertations, and research manuscripts. Institutional sign-in required for full-text downloads."
           />
         </div>
       </section>
