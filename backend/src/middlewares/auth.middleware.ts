@@ -36,6 +36,35 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   }
 };
 
+/**
+ * Optional authentication: decodes JWT if present in Authorization header,
+ * but proceeds unauthenticated without error if absent or invalid.
+ */
+export const optionalAuthenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return next();
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, secret) as {
+      userId: string;
+      role: string;
+    };
+    req.user = decoded;
+  } catch (err) {
+    // Soft ignore for optional auth
+  }
+  next();
+};
+
 // Optional helper to restrict routes based on role
 export const requireRole = (allowedRoles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {

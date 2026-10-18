@@ -24,6 +24,11 @@ export interface RepositoryArtifactPolicyDto {
   policyResolved: false;
 }
 
+export interface CallerContext {
+  userId?: string;
+  role?: string;
+}
+
 export interface RepositoryPublicationDto {
   id: string;
   title: string;
@@ -32,6 +37,12 @@ export interface RepositoryPublicationDto {
   abstract: string | null;
   keywords: string[];
   publishedAt: string | null;
+  hasManuscript: boolean;
+  hasRespondentData: boolean;
+  downloadUrl?: string | null;
+  respondentDataUrl?: string | null;
+  canDownloadManuscript: boolean;
+  canDownloadRespondentData: boolean;
   artifact: RepositoryArtifactPolicyDto;
 }
 
@@ -83,8 +94,22 @@ function displayName(
   return name.length > 0 ? name : null;
 }
 
-function toPublicDto(row: PublishedEntryRow): RepositoryPublicationDto {
+function toPublicDto(
+  row: PublishedEntryRow,
+  caller?: CallerContext,
+): RepositoryPublicationDto {
   const student = row.thesis?.student ?? null;
+  const isOwner = Boolean(caller?.userId && student?.userId && caller.userId === student.userId);
+  const isAdmin = caller?.role === "ADMIN";
+  const isAuthenticated = Boolean(caller?.userId);
+
+  // DL-10 & Data Privacy Act Rules:
+  // 1. Unauthenticated users: Titles & abstracts only. No downloads. Raw paths stripped from payload.
+  // 2. Authenticated members (students, panelists, admins): Can stream published manuscript.
+  // 3. Raw respondent datasets: Strictly restricted to Admin and original researcher.
+  const canDownloadManuscript = isAuthenticated && Boolean(row.fullPaperPath);
+  const canDownloadRespondentData = (isAdmin || isOwner) && Boolean(row.respondentDataPath);
+
   return {
     id: row.id,
     title: row.title,
@@ -93,6 +118,16 @@ function toPublicDto(row: PublishedEntryRow): RepositoryPublicationDto {
     abstract: row.abstract ?? null,
     keywords: normalizeKeywords(row.keywords),
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+    hasManuscript: Boolean(row.fullPaperPath),
+    hasRespondentData: Boolean(row.respondentDataPath),
+    downloadUrl: canDownloadManuscript
+      ? `/api/documents/elibrary-manuscript/${row.id}/file`
+      : null,
+    respondentDataUrl: canDownloadRespondentData
+      ? `/api/documents/elibrary-respondent-data/${row.id}/file`
+      : null,
+    canDownloadManuscript,
+    canDownloadRespondentData,
     artifact: { ...ARTIFACT_POLICY },
   };
 }
@@ -132,21 +167,25 @@ export class RepositoryPublicationService {
       new RepositoryPublicationRepository(),
   ) {}
 
-  /** Public list. No caller identity is involved. */
+  /** Public list. Projects safe metadata, stripping download links for unauthenticated guests. */
   async listPublished(
     searchQuery?: string,
+    caller?: CallerContext,
   ): Promise<RepositoryPublicationDto[]> {
     const rows = await this.repo.searchPublished(searchQuery);
-    return rows.map(toPublicDto);
+    return rows.map((r) => toPublicDto(r, caller));
   }
 
   /** Public detail. Private/unknown ids both surface as 404. */
-  async getPublished(id: string): Promise<RepositoryPublicationDto> {
+  async getPublished(
+    id: string,
+    caller?: CallerContext,
+  ): Promise<RepositoryPublicationDto> {
     const row = await this.repo.findPublishedById(id);
     if (!row) {
       throw new AppError("Publication not found.", 404);
     }
-    return toPublicDto(row);
+    return toPublicDto(row, caller);
   }
 
   /** ADMIN publication queue. */

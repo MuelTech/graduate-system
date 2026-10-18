@@ -14,15 +14,18 @@ import prisma from "../config/database";
  * publication state.
  */
 
-/** Row shape for the public projection (no student number, no paths). */
+/** Row shape for the public projection (paths are projected to the service layer for role sanitization). */
 export interface PublishedEntryRow {
   id: string;
   title: string;
   abstract: string | null;
   keywords: string | null;
   publishedAt: Date | null;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
   thesis: {
     student: {
+      userId?: string;
       user: { firstName: string; lastName: string } | null;
       program: { programName: string } | null;
     } | null;
@@ -70,10 +73,13 @@ const PUBLISHED_SELECT = {
   abstract: true,
   keywords: true,
   publishedAt: true,
+  fullPaperPath: true,
+  respondentDataPath: true,
   thesis: {
     select: {
       student: {
         select: {
+          userId: true,
           user: { select: { firstName: true, lastName: true } },
           program: { select: { programName: true } },
         },
