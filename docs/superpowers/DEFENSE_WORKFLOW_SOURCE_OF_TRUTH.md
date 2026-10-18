@@ -1422,6 +1422,51 @@ For the individual evaluation, **signature over printed name** means the evaluat
 
 The Oral Examination Summary must be generated from finalized evaluator records; Admin/Chairman should not manually re-key the same grades.
 
+### Confirmed Oral Examination Summary computation — 2026-10-18
+
+The current EARIST Oral Examination Summary Sheet has one examiner row with **Rating for Group A**, **Rating for Group B**, and **Average**.
+
+For the current institutional matrix workflow, the canonical computation is:
+
+```text
+Individual evaluator
+
+Group I Average
+= arithmetic mean of all finalized Group I criterion ratings
+→ round to 2 decimal places
+
+Group II Average
+= arithmetic mean of all finalized Group II criterion ratings
+→ round to 2 decimal places
+```
+
+The Summary maps those finalized evaluator values directly:
+
+```text
+Summary Group A = evaluator finalized Group I Average
+Summary Group B = evaluator finalized Group II Average
+
+Summary row Average
+= (Summary Group A + Summary Group B) / 2
+→ round to 2 decimal places
+```
+
+Rounding is to the nearest hundredth, not truncation. Example:
+
+```text
+(1.20 + 1.25) / 2
+= 1.225
+→ 1.23
+```
+
+The Summary contains one row for each required numerical evaluator for that defense attempt: the assigned Chairman and assigned evaluator Panelists. Adviser, Rapporteur, and Facilitator are not added as numerical evaluator rows under the current evaluator policy.
+
+Once all required evaluator records are FINALIZED, the backend may generate the Summary automatically and idempotently from those locked values. **Rating and Remarks are deferred for now and must not block Summary generation, Committee Report signing, or later defense progression.** They may remain null until EARIST confirms their separate institutional semantics.
+
+If the current persistence model requires a single aggregate `overallAverage`, it may be derived as the arithmetic mean of the finalized per-evaluator Summary row averages and rounded to 2 decimal places. This aggregate is an internal compatibility/read-model value only; the supplied Summary Sheet does not establish it as an additional visible field, and it must never auto-decide the formal verdict.
+
+This confirmed numeric rule supersedes older implementation comments that blocked the institutional Summary because an Overall/Rating formula was not confirmed. The unresolved part is now only Rating/Remarks, which are explicitly deferred.
+
 Admin must have a read-only **Defense Records** surface where authorized staff can inspect a defense session and access official outputs:
 
 - finalized individual Oral Examination Criteria per evaluator;

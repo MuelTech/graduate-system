@@ -14,7 +14,7 @@
 **Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted by the project owner for their bounded visible UI/UX scope at `fd999e80`; final end-to-end multi-user live-defense manual acceptance remains pending; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-4 implementation; CDW-9 NOT STARTED
 
 ---
 
@@ -59,7 +59,8 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / SUPERSEDED BY FIX-3 | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
 | CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
-| Final multi-user live-defense manual acceptance | PENDING | Chairman + Panelist + Rapporteur evaluation/report/signature/verdict flow across authenticated clients |
+| CDW-LIVE-1 MANUAL-QA FIX-4 | CONFIRMED DESIGN / NOT IMPLEMENTED | generate institutional Oral Examination Summary from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
+| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-4 | Chairman + Panelist + Rapporteur evaluation/report/signature/verdict flow across authenticated clients after Summary computation is unblocked |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -74,7 +75,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are now implemented, independently source-reviewed, and accepted by the project owner for their visible UI/UX scope. The remaining pre-CDW-9 gate is the full end-to-end multi-user live-defense manual workflow acceptance; it is not a known code defect.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejects the new matrix because older code treated Overall/Rating as unconfirmed. EARIST has now confirmed the bounded numeric Summary rule; FIX-4 owns that correction before the final end-to-end multi-user acceptance.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1203,7 +1204,7 @@ The bounded FIX-3/FIX-3A UX scope is closed. Full authenticated multi-user live-
 
 ## 12.4 Final end-to-end multi-user live-defense manual acceptance
 
-**Status:** PENDING — user-owned manual acceptance; no known source blocker at the current HEAD.
+**Status:** PENDING / BLOCKED ON FIX-4 — user-owned manual acceptance resumes after the confirmed Oral Examination Summary computation is implemented and independently reviewed.
 
 Required final workflow:
 
@@ -1221,6 +1222,60 @@ Required final workflow:
 This gate must use independent authenticated role sessions where practical. It must not be marked PASS from source verifiers alone.
 
 If this final workflow reveals a concrete defect, create a new bounded manual-QA fix package. Otherwise, close the pre-CDW-9 acceptance gate without inventing additional code work.
+
+---
+
+## 12.5 Pre-CDW-9 MANUAL-QA FIX-4 — Oral Examination Summary Computation
+
+**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md
+
+### Goal
+
+Remove the current institutional Summary-generation blocker without inventing Rating/Remarks semantics and without starting official document processing.
+
+### Confirmed computation
+
+For every finalized required evaluator:
+
+- Group A = finalized Group I Average;
+- Group B = finalized Group II Average;
+- Summary row Average = `(Group A + Group B) / 2`;
+- Group I Average, Group II Average, and Summary row Average are rounded to **2 decimal places**;
+- example: `(1.20 + 1.25) / 2 = 1.225 -> 1.23`;
+- Rating = deferred/null;
+- Remarks = deferred/null.
+
+Required numerical evaluator rows remain Chairman + assigned evaluator Panelists only.
+
+When all required evaluators are FINALIZED, Summary generation must be automatic/idempotent and must no longer reject merely because Rating/Remarks are unresolved.
+
+### Internal aggregate compatibility
+
+If the existing `OralExamSummary.overallAverage` persistence field must remain populated, derive it from the arithmetic mean of the finalized per-evaluator Summary row averages and round it to 2 decimal places. Treat it as an internal compatibility/read-model aggregate, not a new confirmed visible field on the supplied Summary Sheet and never as automatic verdict authority.
+
+### Explicit non-goals
+
+FIX-4 does **not** implement:
+
+- exact Oral Examination Summary Sheet PDF/template rendering;
+- exact Individual Evaluation PDF/template rendering;
+- Committee Report/RAP PDF rendering;
+- institutional headers/logos/form codes/page geometry;
+- signature-image placement;
+- Download / Print enablement;
+- template revision/versioning;
+- Rating or Remarks policy;
+- automatic verdict.
+
+The Admin Defense Records surface may read/display canonical Summary data. Existing Download / Print placeholders remain deferred to the future Official Defense Forms / Document Processing phase.
+
+### Gate
+
+FIX-4 must be implemented and independently reviewed before the final end-to-end multi-user live-defense manual acceptance resumes.
 
 ---
 

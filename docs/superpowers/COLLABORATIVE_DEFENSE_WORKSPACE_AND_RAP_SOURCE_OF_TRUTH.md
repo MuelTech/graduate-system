@@ -11,8 +11,9 @@
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted by the project owner for their bounded visible UI/UX scope; full end-to-end multi-user live-defense manual acceptance remains pending; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.6  
+**Current pre-CDW-9 computation design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted for their bounded visible UI/UX scope; FIX-4 Oral Examination Summary computation CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-4 implementation and then remains user-owned; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.7  
 **Last updated:** 2026-10-18
 
 ---
@@ -155,6 +156,18 @@ The report remains DRAFT during this phase.
 ### 3.3 AWAITING_CONCLUSION — Finalization Mode
 
 When all required evaluator assignments are finalized and the Oral Examination Summary is ready, the attempt enters the formal finalization phase.
+
+For the current institutional matrix, the Summary must be generated from the finalized evaluator rows using the confirmed FIX-4 computation:
+
+- Summary Group A = finalized evaluator Group I Average;
+- Summary Group B = finalized evaluator Group II Average;
+- per-evaluator Summary Average = `(Group A + Group B) / 2`;
+- Group I, Group II, and Summary Average are rounded to **2 decimal places**;
+- Rating and Remarks remain deferred/null and do not block Summary generation or workflow progression;
+- the Summary generator must be idempotent/race-safe when the last required evaluator finalizes.
+
+The detailed computation authority is:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`.
 
 The Rapporteur completes the Committee Report and chooses Finalize for Signatures.
 

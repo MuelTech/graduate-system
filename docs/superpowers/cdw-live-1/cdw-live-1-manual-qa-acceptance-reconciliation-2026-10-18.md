@@ -3,7 +3,7 @@
 **Repository:** MuelTech/graduate-system  
 **Branch:** `refactor/collaborative-defense-workspace`  
 **Implementation HEAD reconciled:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
-**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FINAL END-TO-END MULTI-USER ACCEPTANCE PENDING  
+**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION CONFIRMED / NOT IMPLEMENTED; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-4  
 **CDW-9:** NOT STARTED
 
 ---
@@ -25,7 +25,8 @@ It does not replace the canonical Source of Truth. It records which bounded fixe
 | MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / SUPERSEDED BY FIX-3 | evaluator sidebar overlap fixed; Save now removed; centered Review -> Sign finalization dialog |
 | MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature, concise Formal Verdict readiness, roster chevron |
 | MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` wording + redundant printed-name UI/plumbing removed |
-| Final end-to-end multi-user live-defense acceptance | PENDING | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow |
+| MANUAL-QA FIX-4 | CONFIRMED DESIGN / NOT IMPLEMENTED | institutional Summary numeric computation confirmed; Rating/Remarks deferred; document rendering out of scope |
+| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-4 | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after Summary blocker is removed |
 | CDW-9 | NOT STARTED | hardening must wait for the final manual acceptance gate |
 
 ---
@@ -69,7 +70,29 @@ The remaining manual acceptance must exercise, where practical, independent auth
 
 ---
 
-## 5. Final pre-CDW-9 manual acceptance scenario
+## 5. Confirmed FIX-4 prerequisite before final manual acceptance
+
+The current institutional matrix already derives each evaluator's Group I and Group II averages. EARIST has now confirmed the remaining Summary arithmetic:
+
+```text
+Summary Group A = finalized evaluator Group I Average
+Summary Group B = finalized evaluator Group II Average
+Summary Average = (Group A + Group B) / 2
+```
+
+All derived averages are rounded to **2 decimal places**. Example: `1.225 -> 1.23`.
+
+Rating and Remarks remain deferred/null and must not block Summary generation or defense progression. Official PDF/print/download document processing remains a separate future phase.
+
+FIX-4 must implement this rule before the final multi-user workflow can be meaningfully accepted.
+
+Detailed authority:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md
+
+---
+
+## 6. Final pre-CDW-9 manual acceptance scenario
 
 Canonical final acceptance flow:
 
@@ -103,7 +126,7 @@ Acceptance must confirm:
 
 ---
 
-## 6. Gate
+## 7. Gate
 
 Current state:
 
@@ -112,8 +135,9 @@ CDW-LIVE-1 core ACCEPTED / CLOSED
   -> FIX-1 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-2 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-3 + FIX-3A BOUNDED UX ACCEPTED
-  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [PENDING]
+  -> FIX-4 ORAL EXAMINATION SUMMARY COMPUTATION  [CONFIRMED DESIGN / NOT IMPLEMENTED]
+  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-4]
   -> CDW-9  [NOT STARTED]
 ```
 
-Do not start CDW-9 until the final manual acceptance is completed or the project owner explicitly changes the gate.
+Do not start CDW-9 until FIX-4 is implemented/reviewed and the final manual acceptance is completed, unless the project owner explicitly changes that gate.
