@@ -2,7 +2,8 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `14860c61151240b9aec62d563b6e5a6ededa0217`
-- **Status:** **IMPLEMENTED — PENDING INDEPENDENT REVIEW**
+- **Status:** **IMPLEMENTED — INDEPENDENT SOURCE REVIEW COMPLETED; MANUAL QA CONTINUES**
+- **Ending HEAD:** `9e6d00c0b7253cc55c7812008b54f4bb99dda4d9`
 - **Date:** 2026-10-18
 - **Scope:** manual-QA fix only (live-preview convergence + LAN realtime diagnosis)
 - **Migration:** **NONE**
@@ -162,7 +163,17 @@ environment. Automated convergence tests and host-level LAN transport probes wer
 they are not represented as a manual two-user PASS.
 
 LAN transport probes (health, Engine.IO handshake, CORS, transport negotiation) were
-executed from the host and passed. Phone/browser-level verification remains user-owned.
+executed from the host and passed.
+
+**Post-implementation user retest — 2026-10-18:** after restarting the development
+servers and retesting from a phone over the LAN, the user reported that the realtime
+behavior appeared to be working correctly. This closes the immediate LAN transport
+symptom for manual QA, without converting unexecuted automated-agent browser scenarios
+into a claimed PASS.
+
+A separate Chairman/Panelist evaluation-finalization UI/UX issue was then identified
+during manual QA. That issue is tracked as **CDW-LIVE-1 MANUAL-QA FIX-2** and must be
+resolved before CDW-9.
 
 ---
 

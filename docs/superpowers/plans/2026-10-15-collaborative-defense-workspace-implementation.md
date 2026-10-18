@@ -1,16 +1,19 @@
 # Collaborative Defense Workspace and RAP — Implementation Plan
 
 **Date:** 2026-10-15  
-**Last synchronized:** 2026-10-17  
+**Last synchronized:** 2026-10-18  
 **Repository:** MuelTech/graduate-system  
 **Historical documentation branch:** refactor/unified-defense-lifecycle  
 **Historical baseline implementation HEAD:** e33d2291fea04a36da34ac73713c3865997876a3  
 **Implementation branch:** refactor/collaborative-defense-workspace  
 **Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
+**Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
+**Current manual-QA implementation HEAD:** `9e6d00c0b7253cc55c7812008b54f4bb99dda4d9`  
+**Next bounded design:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 implemented and accepted; CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B ACCEPTED; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; CDW-LIVE-1 overall PENDING FINAL INDEPENDENT ACCEPTANCE; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED at `9e6d00c` with subsequent LAN phone retest reported working after restart; MANUAL-QA FIX-2 Evaluation Finalization UX CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
 
 ---
 
@@ -34,7 +37,7 @@ The implementation must be phased because this feature crosses:
 
 The first objective is correctness and a testable foundation. Realtime is added only after the persisted REST/UI workflow is accepted.
 
-### 0.1 Current implementation status — 2026-10-17
+### 0.1 Current implementation status — 2026-10-18
 
 This plan is intentionally retained as an implementation-history document. The pre-CDW baseline sections below explain why the packages existed; they do **not** describe the current branch after CDW-0 through CDW-8.
 
@@ -50,7 +53,9 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-6 | ACCEPTED | attempt-based Defense History + manual prior/current comparison |
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
 | CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
-| CDW-LIVE-1 | 1A ACCEPTED; 1B ACCEPTED; 1C VERIFIED — PENDING INDEPENDENT REVIEW; overall PENDING FINAL ACCEPTANCE | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave before hardening |
+| CDW-LIVE-1 core | ACCEPTED / CLOSED | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave |
+| CDW-LIVE-1 MANUAL-QA FIX-1 | IMPLEMENTED; source-reviewed; LAN phone retest reported working after restart | preview/save convergence + stable live-preview status + LAN realtime diagnostics |
+| CDW-LIVE-1 MANUAL-QA FIX-2 | CONFIRMED DESIGN / NOT IMPLEMENTED | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -65,7 +70,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Manual browser multi-user QA remains explicitly NOT EXECUTED; it was not treated as a discovered acceptance blocker.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented; after restart, the user reported the phone/LAN realtime retest appeared to work correctly. Evaluation-finalization UI/UX still requires MANUAL-QA FIX-2 before CDW-9 starts.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1087,11 +1092,62 @@ The nine CDW-8 canonical persisted-domain events remain unchanged.
 CDW-8 ACCEPTED / CLOSED
   -> CDW-LIVE-1A ACCEPTED (11ca489, FIX-1 included)
   -> CDW-LIVE-1B ACCEPTED (f10f074)
-  -> CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW
+  -> CDW-LIVE-1C ACCEPTED (0b061498)
+  -> CDW-LIVE-1 core ACCEPTED / CLOSED
+  -> MANUAL-QA FIX-1 IMPLEMENTED (9e6d00c)
+  -> MANUAL-QA FIX-2 Evaluation Finalization UX
   -> CDW-9
 ```
 
-Do not begin CDW-9 until CDW-LIVE-1 is either accepted/closed or explicitly cancelled by the project owner.
+Do not begin CDW-9 until MANUAL-QA FIX-2 is implemented, independently reviewed, and manually accepted by the project owner.
+
+---
+
+## 12.2 Pre-CDW-9 MANUAL-QA FIX-2 — Evaluation Finalization UX
+
+**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md
+
+### Goal
+
+Remove evaluator-side friction discovered during manual QA without changing academic authority or backend workflow semantics.
+
+### Required UX
+
+- remove the evaluator **Save now** button because criteria/recommendations already autosave privately;
+- keep explicit save-state feedback such as Saving, Saved, Offline, and Save failed;
+- keep one primary **Review & Finalize** action;
+- open a centered modal instead of expanding signature/finalization UI inside the narrow left rail;
+- Step 1 = Review Evaluation;
+- Step 1 action = Continue to Sign;
+- Step 2 = E-Signature with a comfortably sized Type/Draw signing surface;
+- Step 2 final action = **Confirm Finalize**;
+- flush/drain the newest evaluator autosave before the irreversible finalize request;
+- finalization failure must keep the evaluation editable and explain the error;
+- successful finalization locks the evaluation and replaces editable controls with a compact finalized state.
+
+### Chairman-specific guardrail
+
+The Chairman uses the same two-step modal for the Chairman's own evaluation. **Formal Verdict remains separate** and is never merged into evaluation signing/finalization.
+
+The Chairman role rail must remain a scrollable, non-overlapping stack. Evaluation Completion, Formal Verdict, and Committee Roster must not be displaced or covered by an inline signature editor.
+
+### Expected implementation posture
+
+- frontend-focused;
+- reuse existing evaluator draft and finalize endpoints;
+- no new academic workflow state;
+- no new realtime event;
+- no schema change;
+- no Prisma migration;
+- no CDW-9 work.
+
+### Gate
+
+This package must be independently reviewed and manually QA'd before CDW-9 begins.
 
 ---
 

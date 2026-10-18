@@ -8,9 +8,10 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation-plan authority:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
-**Status:** CONFIRMED DESIGN — CDW-LIVE-1A ACCEPTED (FIX-1 included); CDW-LIVE-1B ACCEPTED; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; overall CDW-LIVE-1 PENDING FINAL INDEPENDENT ACCEPTANCE
+**Manual-QA UX extension authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`  
+**Status:** CDW-LIVE-1A / 1B / 1C ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED; MANUAL-QA FIX-2 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
 
-**Date:** 2026-10-17
+**Date:** 2026-10-18
 
 ---
 
@@ -365,6 +366,59 @@ Autosave must never:
 
 The evaluator must still explicitly review, provide their own e-signature, and confirm finalization.
 
+The canonical UX is progressive disclosure:
+
+```text
+Evaluation editing
+  -> private autosave
+  -> Review & Finalize
+  -> Review Evaluation
+  -> Continue to Sign
+  -> E-Signature
+  -> Confirm Finalize
+  -> locked FINALIZED record
+```
+
+**Review & Finalize** only opens the review dialog. It is not the irreversible request.
+
+Before **Confirm Finalize**, the client must drain the newest autosave using the existing serialized evaluation autosave pipeline. If the newest draft cannot be saved, do not call the finalize endpoint.
+
+Signature evidence is collected only in the signing step and is submitted only with the explicit finalization request. Cancelling/closing the dialog must not persist signature evidence.
+
+### 7.5 Evaluator rail and modal UX
+
+Because evaluation drafts already autosave, the evaluator rail should not expose a redundant **Save now** button. It should show save state only:
+
+- Saving...
+- Saved
+- Offline — changes not saved
+- Save failed
+
+The rail keeps one primary action while editable: **Review & Finalize**.
+
+Finalization UI must be a centered modal/dialog rather than an inline expansion inside the narrow role rail.
+
+Step 1 — **Review Evaluation**:
+
+- criteria selections;
+- Group I / Group II values or averages according to confirmed semantics;
+- Recommendations;
+- actions: Cancel, Continue to Sign.
+
+Step 2 — **Sign Your Evaluation**:
+
+- supported e-signature modes such as Type and Draw;
+- a large, centered signing surface;
+- irreversible-action explanation;
+- actions: Back, Confirm Finalize.
+
+Chairman and Panelist use the same individual-evaluation finalization interaction. The Chairman's separate Formal Verdict remains outside this modal and later in the workflow.
+
+After successful finalization, the evaluation controls become read-only and the rail shows a compact finalized/locked confirmation.
+
+Detailed UI/UX design:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
+
 ---
 
 ## 8. Offline/reload behavior
@@ -434,14 +488,19 @@ The new preview transport is a bounded exception for **ephemeral display only**,
 6. Freeze report; any live preview disappears and cannot resume.
 7. Remove/replace Rapporteur if safe test data permits; old Rapporteur preview attempts are rejected.
 
-### Evaluation autosave
+### Evaluation autosave and finalization UX
 
 1. Evaluator changes criteria and recommendations.
-2. Wait for autosave.
+2. Wait for autosave and confirm the evaluator rail shows server-confirmed save state without requiring Save now.
 3. Reload and confirm the evaluator's own saved DRAFT returns.
 4. Open another evaluator account and prove the first evaluator's draft values are not visible.
-5. Finalize own evaluation explicitly with signature.
-6. Other clients receive readiness/status refresh only, not private scores.
+5. Click Review & Finalize and confirm a centered review modal opens without changing backend finalization state.
+6. Continue to Sign and verify the signature surface is large/usable and not constrained to the role rail.
+7. Use Back/Cancel and confirm no signature/finalization is persisted.
+8. Reopen, sign, and Confirm Finalize.
+9. Confirm the newest pending autosave is drained before finalization and the finalized evaluation becomes locked.
+10. For Chairman, confirm Formal Verdict remains a separate control after the Chairman's own evaluation finalization.
+11. Other clients receive readiness/status refresh only, not private scores.
 
 ---
 

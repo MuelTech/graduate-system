@@ -8,10 +8,12 @@
 **Implementation branch:** refactor/collaborative-defense-workspace  
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
-**Planned pre-CDW-9 enhancement:** `docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED FOUNDATION through CDW-8; CDW-LIVE-1 design confirmed but not implemented unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.3  
-**Last updated:** 2026-10-17
+**Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
+**Current manual-QA implementation HEAD:** `9e6d00c0b7253cc55c7812008b54f4bb99dda4d9`  
+**Current pre-CDW-9 design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-1; MANUAL-QA FIX-2 evaluation-finalization UX design CONFIRMED / NOT IMPLEMENTED; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.4  
+**Last updated:** 2026-10-18
 
 ---
 
@@ -41,6 +43,7 @@ This Source of Truth remains the functional/domain authority. The dated implemen
 
 - CONFIRMED_PROJECT_DESIGN — agreed project behavior and implementation target.
 - IMPLEMENTED_FOUNDATION — behavior implemented and accepted in `refactor/collaborative-defense-workspace` through CDW-8.
+- IMPLEMENTED_ENHANCEMENT — behavior implemented after CDW-8 under the accepted CDW-LIVE-1 and bounded manual-QA fix packages.
 - HISTORICAL_BASELINE — observed pre-CDW behavior retained only to explain migration/refactor history; it is not the current implementation.
 - OPEN_QUESTION — requires explicit institutional/client confirmation before authority is expanded.
 - DEFERRED — intentionally outside the accepted CDW-0 through CDW-8 foundation.
@@ -255,11 +258,15 @@ The main workspace has two primary tabs:
 
 For Chairman/Panelist:
 
-- My Evaluation
-- Draft/finalized state
-- criteria
-- recommendations
-- save/review/e-sign/finalize controls
+- My Evaluation;
+- Draft/finalized state;
+- criteria;
+- recommendations;
+- evaluator autosave status only (for example Saving..., Saved, Offline, Save failed);
+- one explicit **Review & Finalize** action while the evaluation is editable;
+- compact finalized/locked confirmation after successful finalization.
+
+The evaluator rail must not show a redundant manual **Save now** control when evaluation autosave is active.
 
 For Rapporteur:
 
@@ -279,6 +286,49 @@ For Adviser/Facilitator:
 The rail can be hidden so the user can focus on the manuscript. Hiding the rail is presentation state only; it never changes academic workflow state.
 
 When hidden, a compact indicator remains visible, for example Evaluation: Draft or Evaluation: Finalized.
+
+### 5.3.1 Evaluation review, signature, and finalization UX
+
+Evaluation finalization uses progressive disclosure and must not expand a signature form inline inside the narrow role rail.
+
+Canonical evaluator interaction for both Chairman and Panelist:
+
+```text
+Edit evaluation
+  -> autosave privately in background
+  -> Review & Finalize
+  -> Step 1: Review Evaluation
+  -> Continue to Sign
+  -> Step 2: E-Signature
+  -> Confirm Finalize
+  -> evaluation locked
+```
+
+Rules:
+
+- Clicking **Review & Finalize** opens a centered modal/dialog; it does not finalize anything by itself.
+- Step 1 summarizes the evaluator's current criteria, Group I / Group II values or averages according to the confirmed scoring model, and Recommendations.
+- Step 1 actions are **Cancel** and **Continue to Sign**.
+- Step 2 contains the evaluator's e-signature experience, including the currently supported signature modes such as Type and Draw.
+- The signature surface should be large enough for comfortable signing and centered within the modal rather than constrained to the left rail.
+- Step 2 actions are **Back** and **Confirm Finalize**.
+- **Confirm Finalize** is the final irreversible action and is the only point at which the existing finalize endpoint may be invoked.
+- Before the final request, the client must drain/flush the evaluator's newest pending autosave through the existing serialized autosave pipeline. If that save fails, finalization must not proceed.
+- Closing/cancelling the modal does not persist signature evidence and does not finalize the evaluation.
+- After finalization, the evaluator controls become read-only and the rail shows a compact finalized state rather than an editable signature UI.
+- The Chairman uses the same interaction for the Chairman's own individual evaluation.
+- The Chairman's separate **Formal Verdict** control remains a distinct later workflow and must not be folded into the evaluation-signature modal.
+
+Layout guardrails:
+
+- the role rail is a scrollable stack of non-overlapping cards/sections;
+- Evaluation Completion, Formal Verdict, Committee Roster, and similar Chairman-only controls remain separate from the evaluator finalization modal;
+- opening the modal must not resize or overlap the underlying rail;
+- the background workspace may remain visible but visually subdued while focus is trapped in the modal;
+- keyboard focus, Escape/cancel behavior, labels, error states, and responsive sizing must remain accessible.
+
+Detailed bounded design:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
 
 ### 5.4 Shared comments rail
 
