@@ -319,7 +319,7 @@ describe("CP7 Oral Examination Summary", () => {
     expect(result.summaryId).toBe("sum-existing");
   });
 
-  it("CDW-4 FIX: V2 institutional rows fail closed instead of fabricating a 0 overall", async () => {
+  it("FIX-4: V2 institutional rows generate the numeric Summary without a legacy Overall", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
     prismaMock.panelAssignment.findMany.mockResolvedValue([
       { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
@@ -330,14 +330,25 @@ describe("CP7 Oral Examination Summary", () => {
       { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.25, groupBAverage: 1.5, rating: null },
     ]);
     prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: any) => ({
+      id: "sum-1",
+      ...args.data,
+    }));
 
-    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
-      /overall formula|not (yet )?confirmed|cannot be generated/i,
-    );
-    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+    const result = await svc.ensureOralExamSummary("sched-1");
+    expect(result.created).toBe(true);
+    expect(result.overallAverage).toBe(1.41);
+    expect(result.finalRating).toBeNull();
+    const snapshot = prismaMock.oralExamSummary.create.mock.calls[0][0].data
+      .snapshotData;
+    expect(snapshot.overallAverage).toBe(1.41);
+    expect(snapshot.evaluators.map((r: any) => r.averageValue)).toEqual([
+      1.44, 1.38,
+    ]);
+    expect(snapshot.evaluators[0].groupIIValue).toBe(1.38);
   });
 
-  it("CDW-4 FIX: a single V2 row in a mixed session also fails closed", async () => {
+  it("FIX-4: a mixed legacy/V2 session fails closed with a clear conflict", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
     prismaMock.panelAssignment.findMany.mockResolvedValue([
       { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
@@ -345,12 +356,12 @@ describe("CP7 Oral Examination Summary", () => {
     ]);
     prismaMock.oralExamScore.findMany.mockResolvedValue([
       finalizedScore("p1", 80),
-      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null },
+      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.25, groupBAverage: 1.5 },
     ]);
     prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
 
     await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
-      /overall formula|not (yet )?confirmed/i,
+      /mixed scoring versions/i,
     );
     expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
   });

@@ -14,7 +14,7 @@
 **Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-4 implementation; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance remains blocked on independent review and targeted QA; CDW-9 NOT STARTED
 
 ---
 
@@ -59,8 +59,8 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / SUPERSEDED BY FIX-3 | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
 | CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
-| CDW-LIVE-1 MANUAL-QA FIX-4 | CONFIRMED DESIGN / NOT IMPLEMENTED | generate institutional Oral Examination Summary from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
-| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-4 | Chairman + Panelist + Rapporteur evaluation/report/signature/verdict flow across authenticated clients after Summary computation is unblocked |
+| CDW-LIVE-1 MANUAL-QA FIX-4 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | generate institutional Oral Examination Summary from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
+| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-4 REVIEW / TARGETED QA | Chairman + Panelist + Rapporteur evaluation/report/signature/verdict flow across authenticated clients after Summary computation is implemented and independently reviewed |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -75,7 +75,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejects the new matrix because older code treated Overall/Rating as unconfirmed. EARIST has now confirmed the bounded numeric Summary rule; FIX-4 owns that correction before the final end-to-end multi-user acceptance.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 now implements it and awaits independent review before the final end-to-end multi-user acceptance.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1204,7 +1204,7 @@ The bounded FIX-3/FIX-3A UX scope is closed. Full authenticated multi-user live-
 
 ## 12.4 Final end-to-end multi-user live-defense manual acceptance
 
-**Status:** PENDING / BLOCKED ON FIX-4 — user-owned manual acceptance resumes after the confirmed Oral Examination Summary computation is implemented and independently reviewed.
+**Status:** PENDING / BLOCKED ON FIX-4 REVIEW AND TARGETED QA — user-owned manual acceptance resumes after the implemented Oral Examination Summary computation is independently reviewed and targeted Summary QA is complete.
 
 Required final workflow:
 
@@ -1227,11 +1227,15 @@ If this final workflow reveals a concrete defect, create a new bounded manual-QA
 
 ## 12.5 Pre-CDW-9 MANUAL-QA FIX-4 — Oral Examination Summary Computation
 
-**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW.
 
 Detailed design:
 
     docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md
+
+Implementation report:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-report.md
 
 ### Goal
 

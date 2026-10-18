@@ -211,5 +211,6 @@ test("no schema or migration work belongs to this package", () => {
   ].join("\n");
 
   assert.doesNotMatch(combined, /prisma|schema\.prisma|migration/i);
-  assert.match(read(DESIGN), /IMPLEMENTED — PENDING INDEPENDENT REVIEW/);
+  assert.match(read(DESIGN), /INDEPENDENT SOURCE REVIEW PASS/);
+  assert.match(read(DESIGN), /BOUNDED PRODUCT REVIEW ACCEPTED/);
 });

@@ -46,6 +46,7 @@ const prismaMock = vi.hoisted(() => {
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 
 import { OralEvaluationService } from "../../../src/services/oral-evaluation.service";
+import { OfficialDefenseRecordService } from "../../../src/services/official-defense-record.service";
 
 const completeCriteria = {
   timelinessRelevance: 8,
@@ -536,7 +537,7 @@ describe("OralEvaluationService (CP5)", () => {
       });
       const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
       expect(Number(call?.data?.groupAAverage)).toBeCloseTo(1.5, 5);
-      expect(Number(call?.data?.groupBAverage)).toBeCloseTo(1.375, 5);
+      expect(Number(call?.data?.groupBAverage)).toBeCloseTo(1.38, 5);
       expect(call?.data?.overallAverage).toBeNull();
       expect(call?.data?.rating).toBeNull();
       expect(call?.data?.scoringVersion).toBe("INSTITUTIONAL_MATRIX_V2");
@@ -606,7 +607,7 @@ describe("OralEvaluationService (CP5)", () => {
       expect(created.data.status).toBe("FINALIZED");
       expect(created.data.scoringVersion).toBe("INSTITUTIONAL_MATRIX_V2");
       expect(Number(created.data.groupAAverage)).toBeCloseTo(1.5, 5);
-      expect(Number(created.data.groupBAverage)).toBeCloseTo(1.375, 5);
+      expect(Number(created.data.groupBAverage)).toBeCloseTo(1.38, 5);
       expect(created.data.overallAverage).toBeNull();
       expect(created.data.rating).toBeNull();
       expect(created.data.recommendations).toBe("Direct finalize");
@@ -662,6 +663,46 @@ describe("OralEvaluationService (CP5)", () => {
       });
       expect(prismaMock.__tx.oralExamScore.updateMany).toHaveBeenCalled();
       expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    });
+
+    it("last required finalizer triggers the idempotent Summary ensure path", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      prismaMock.panelAssignment.findMany.mockResolvedValue([
+        { id: "panel-1" },
+        { id: "panel-2" },
+        { id: "panel-3" },
+        { id: "panel-4" },
+      ]);
+      prismaMock.oralExamScore.count.mockResolvedValue(4);
+
+      const ensureSpy = vi
+        .spyOn(
+          OfficialDefenseRecordService.prototype,
+          "ensureOralExamSummary",
+        )
+        .mockResolvedValue({
+          created: true,
+          summaryId: "sum-1",
+          evaluatorCount: 4,
+          overallAverage: 1.5,
+          finalRating: null,
+        });
+
+      try {
+        await svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+        });
+        expect(ensureSpy).toHaveBeenCalledTimes(1);
+        expect(ensureSpy).toHaveBeenCalledWith("sched-1");
+      } finally {
+        ensureSpy.mockRestore();
+      }
     });
   });
 });

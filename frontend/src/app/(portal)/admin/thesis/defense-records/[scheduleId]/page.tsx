@@ -70,8 +70,12 @@ interface RecordDetail {
       functionalRole: string;
       groupIValue: number | null;
       groupIIValue: number | null;
+      /** FIX-4: canonical Summary row Average for institutional V2. */
+      averageValue?: number | null;
+      /** Legacy point total; null/absent for institutional V2. */
       overallValue: number | null;
       rating: string | null;
+      scoringVersion?: "LEGACY_POINTS_V1" | "INSTITUTIONAL_MATRIX_V2";
     }>;
     generatedAt: string | null;
   };
@@ -256,6 +260,11 @@ function DownloadPrintButton() {
   );
 }
 
+/** FIX-4: official institutional numeric values are displayed at exactly 2dp. */
+function formatInstitutionalValue(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : value.toFixed(2);
+}
+
 function DetailSkeleton() {
   return (
     <div className="space-y-6" aria-hidden="true">
@@ -400,6 +409,9 @@ export default function AdminDefenseRecordDetailPage() {
     ? data.rapReport.signatories.filter((s) => s.required !== false)
     : [];
   const signedRequiredSigners = requiredSigners.filter((s) => s.isSigned).length;
+  const isInstitutionalSummary = data.oralExamSummary.rows.some(
+    (row) => row.scoringVersion === "INSTITUTIONAL_MATRIX_V2",
+  );
 
   return (
     <div className="space-y-6">
@@ -585,9 +597,19 @@ export default function AdminDefenseRecordDetailPage() {
               ) : (
                 <>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <MetaItem label="Overall Average">
+                    <MetaItem
+                      label={
+                        isInstitutionalSummary
+                          ? "Internal Average"
+                          : "Overall Average"
+                      }
+                    >
                       <span className="tabular-nums">
-                        {data.oralExamSummary.overallAverage ?? "—"}
+                        {isInstitutionalSummary
+                          ? formatInstitutionalValue(
+                              data.oralExamSummary.overallAverage,
+                            )
+                          : (data.oralExamSummary.overallAverage ?? "—")}
                       </span>
                     </MetaItem>
                     <MetaItem label="Final Rating">
@@ -601,9 +623,15 @@ export default function AdminDefenseRecordDetailPage() {
                           <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
                             <th className="px-3 py-2">Examiner</th>
                             <th className="px-3 py-2">Role</th>
-                            <th className="px-3 py-2">Group I</th>
-                            <th className="px-3 py-2">Group II</th>
-                            <th className="px-3 py-2">Overall</th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Group A" : "Group I"}
+                            </th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Group B" : "Group II"}
+                            </th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Average" : "Overall"}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -620,13 +648,19 @@ export default function AdminDefenseRecordDetailPage() {
                                   r.functionalRole}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.groupIValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.groupIValue)
+                                  : (r.groupIValue ?? "—")}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.groupIIValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.groupIIValue)
+                                  : (r.groupIIValue ?? "—")}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.overallValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.averageValue)
+                                  : (r.overallValue ?? "—")}
                               </td>
                             </tr>
                           ))}

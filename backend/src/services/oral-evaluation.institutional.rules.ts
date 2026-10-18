@@ -2,9 +2,11 @@
  * CDW-4 FIX — Institutional Individual Evaluation matrix rules.
  *
  * The supplied EARIST Individual Evaluation form rates each criterion on a fixed
- * six-level matrix (1.00–2.50). Group I and Group II each expose an AVERAGE.
- * There is no 2.25 level and no defined Overall formula yet, so this module
- * deliberately produces NO overall value and NO derived Rating.
+ * six-level matrix (1.00–2.50). Group I and Group II each expose a two-decimal
+ * AVERAGE. There is no 2.25 level and no confirmed individual Overall/Rating
+ * formula, so this module deliberately produces NO individual overall value and
+ * NO derived Rating. FIX-4 derives the Oral Examination Summary separately from
+ * these finalized group averages.
  *
  * This is a SEPARATE model from the legacy 10/15-point rules
  * (`oral-evaluation.rules.ts`): legacy rows keep their original meaning and are
@@ -12,6 +14,7 @@
  * INSTITUTIONAL_MATRIX_V2; existing rows remain LEGACY_POINTS_V1.
  */
 
+import { meanAcademicValues } from "./academic-number.rules";
 import { GROUP_I_KEYS, GROUP_II_KEYS, type CriterionKey } from "./oral-evaluation.rules";
 
 export const LEGACY_POINTS_V1 = "LEGACY_POINTS_V1" as const;
@@ -92,8 +95,11 @@ export function validateInstitutionalCriterionValue(
  * valid matrix value; a partial draft yields null for that group (the UI may show
  * a clearly-labelled incomplete local preview instead).
  *
- * There is intentionally NO Overall value here — the institutional Overall
- * formula is not yet confirmed and must not be guessed.
+ * Complete group averages are canonicalized to exactly two decimal places using
+ * decimal arithmetic. There is intentionally NO individual Overall value here —
+ * the institutional Overall/Rating semantics remain deferred. FIX-4 derives the
+ * Oral Examination Summary from these finalized group averages, not from a
+ * second reinterpretation of the raw matrix.
  */
 export function calculateInstitutionalScores(
   criteria: InstitutionalCriteriaInput,
@@ -105,8 +111,7 @@ export function calculateInstitutionalScores(
       if (!result.ok || result.value === null) return null;
       values.push(result.value);
     }
-    if (values.length === 0) return null;
-    return values.reduce((a, b) => a + b, 0) / values.length;
+    return meanAcademicValues(values);
   };
   return {
     groupIAverage: averageOf(GROUP_I_KEYS),

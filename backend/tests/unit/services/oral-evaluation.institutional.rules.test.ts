@@ -80,8 +80,8 @@ describe("oral-evaluation.institutional.rules", () => {
     });
     // Group I: (1 + 1.25 + 1.5 + 1.75 + 2) / 5 = 1.5
     expect(complete.groupIAverage).toBe(1.5);
-    // Group II: (1 + 1.25 + 1.5 + 1.75) / 4 = 1.375
-    expect(complete.groupIIAverage).toBe(1.375);
+    // Group II: (1 + 1.25 + 1.5 + 1.75) / 4 = 1.375 -> 1.38 (nearest hundredth)
+    expect(complete.groupIIAverage).toBe(1.38);
 
     // Incomplete group → no fabricated average.
     const partial = calculateInstitutionalScores({
@@ -90,6 +90,23 @@ describe("oral-evaluation.institutional.rules", () => {
     });
     expect(partial.groupIAverage).toBeNull();
     expect(partial.groupIIAverage).toBeNull();
+  });
+
+  it("normalizes complete group averages to exactly two decimals", () => {
+    const result = calculateInstitutionalScores({
+      timelinessRelevance: 1,
+      organization: 1,
+      depthComprehensiveness: 1,
+      relevanceConclusions: 1,
+      evidenceOriginalThinking: 1,
+      presentation: 1,
+      masterySubject: 1.25,
+      communicationSkill: 1.25,
+      attitude: 1.25,
+    });
+    // Group II: (1 + 1.25 + 1.25 + 1.25) / 4 = 1.1875 -> 1.19
+    expect(result.groupIAverage).toBe(1);
+    expect(result.groupIIAverage).toBe(1.19);
   });
 
   it("never produces an Overall or a derived Rating", () => {

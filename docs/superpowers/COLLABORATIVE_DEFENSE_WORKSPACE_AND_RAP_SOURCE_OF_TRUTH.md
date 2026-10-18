@@ -12,7 +12,8 @@
 **Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
 **Current pre-CDW-9 computation design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted for their bounded visible UI/UX scope; FIX-4 Oral Examination Summary computation CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-4 implementation and then remains user-owned; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted for their bounded visible UI/UX scope; FIX-4 Oral Examination Summary computation IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance is blocked on independent review and targeted Summary QA and then remains user-owned; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+
 **Version:** 1.7  
 **Last updated:** 2026-10-18
 

@@ -137,13 +137,11 @@ test("flushAndWait remains before finalize and Back/Cancel clear signature", () 
   assert.match(dialog, /setStep\("review"\)/);
 });
 
-test("no schema/migration and FIX-3 remains pending independent review", () => {
+test("no schema/migration and FIX-3 remains accepted for its bounded scope", () => {
   const combined = [read(DIALOG), read(FORM), read(VERDICT), read(RAIL)].join(
     "\n",
   );
   assert.doesNotMatch(combined, /prisma|schema\.prisma|migration/i);
-  assert.match(
-    read(DESIGN),
-    /IMPLEMENTED [-—] PENDING INDEPENDENT REVIEW/,
-  );
+  assert.match(read(DESIGN), /INDEPENDENT SOURCE REVIEW PASS/);
+  assert.match(read(DESIGN), /BOUNDED PRODUCT REVIEW ACCEPTED/);
 });

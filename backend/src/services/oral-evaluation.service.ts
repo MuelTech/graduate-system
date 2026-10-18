@@ -244,8 +244,10 @@ export class OralEvaluationService {
 
   /**
    * CDW-4 FIX: validate + derive per scoring version. V2 uses the institutional
-   * matrix and yields group AVERAGES with NO overall (the Overall formula is not
-   * confirmed); LEGACY keeps the historical 10/15-point validation + point sums.
+   * matrix and yields two-decimal group AVERAGES with NO individual overall
+   * (individual Overall/Rating remain deferred); the Oral Examination Summary is
+   * derived separately by FIX-4 from these finalized group averages. LEGACY
+   * keeps the historical 10/15-point validation + point sums.
    */
   private validateAndDerive(
     version: ScoringVersion,

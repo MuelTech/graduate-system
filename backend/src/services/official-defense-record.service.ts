@@ -3,8 +3,10 @@
  *
  * Oral Examination Summary is generated only from FINALIZED evaluator
  * assignments. WF-C1b: Title, Proposal, and Final Defense all produce the
- * official evaluator Criteria + Oral Examination Summary.
- * Academic outcome is never written here.
+ * official evaluator Criteria + Oral Examination Summary. FIX-4 derives
+ * institutional V2 Summary rows from finalized Group I/II averages with
+ * decimal-safe two-decimal rounding; Rating/Remarks and the formal verdict
+ * remain deferred/separate. Academic outcome is never written here.
  */
 import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
@@ -18,6 +20,10 @@ import {
   LEGACY_POINTS_V1,
   type OralEvaluationScoringVersionValue,
 } from "./oral-evaluation.institutional.rules";
+import {
+  meanAcademicValues,
+  roundAcademicValue,
+} from "./academic-number.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -50,6 +56,16 @@ function toNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** FIX-4: a V2 group average must remain inside the institutional 1.00–2.50 scale. */
+function assertInstitutionalGroupAverage(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 1 || value > 2.5) {
+    throw new AppError(
+      `Cannot generate the Oral Examination Summary: a finalized evaluator has an invalid ${label} average.`,
+      409,
+    );
+  }
+}
+
 export interface SummaryEvaluatorRow {
   panelAssignmentId: string;
   userId: string;
@@ -57,6 +73,9 @@ export interface SummaryEvaluatorRow {
   functionalRole: string;
   groupIValue: number | null;
   groupIIValue: number | null;
+  /** FIX-4: canonical Summary row Average for institutional V2 rows. */
+  averageValue: number | null;
+  /** Legacy point total; null for INSTITUTIONAL_MATRIX_V2. */
   overallValue: number | null;
   rating: string | null;
   recommendations: string | null;
@@ -239,47 +258,107 @@ export class OfficialDefenseRecordService {
       };
     }
 
-    // CDW-4 FIX: the institutional Overall/Summary formula is NOT confirmed.
-    // Never fabricate an overall (e.g. a null→0 average) or derive a rating for
-    // V2 records; surface a clear domain blocker instead. Individual evaluator
-    // finalization is unaffected (this path is best-effort at finalize time).
-    const hasInstitutionalSemantics = finalizedRows.some(
-      (r) =>
-        scoringVersionOf(r) === INSTITUTIONAL_MATRIX_V2 ||
-        r.overallAverage === null ||
-        r.overallAverage === undefined,
+    // FIX-4: one attempt may not mix legacy point rows with the institutional
+    // matrix. There is no authorized cross-version conversion; fail closed.
+    const scoringVersions = new Set(
+      finalizedRows.map((r) => scoringVersionOf(r)),
     );
-    if (hasInstitutionalSemantics) {
+    if (scoringVersions.size > 1) {
       throw new AppError(
-        "The institutional Oral Examination Summary cannot be generated yet: the institutional Overall/Rating formula is not confirmed. Individual evaluations remain valid and finalized.",
+        "Cannot generate the Oral Examination Summary from mixed scoring versions. All required evaluations must use the same scoring model.",
         409,
       );
     }
+    const summaryScoringVersion =
+      [...scoringVersions][0] ?? LEGACY_POINTS_V1;
 
     const rowByPanel = new Map(finalizedRows.map((r) => [r.panelId, r]));
-    const evaluators: SummaryEvaluatorRow[] = assignments.map((a) => {
-      const row = rowByPanel.get(a.id);
-      return {
-        panelAssignmentId: a.id,
-        userId: a.userId,
-        evaluatorName: `${a.user.firstName} ${a.user.lastName}`,
-        functionalRole: String(a.role),
-        groupIValue: toNumber(row?.groupAAverage),
-        groupIIValue: toNumber(row?.groupBAverage),
-        overallValue: toNumber(row?.overallAverage),
-        rating: (row?.rating as string | null) ?? null,
-        recommendations: row?.recommendations ?? null,
-        scoringVersion: scoringVersionOf(row),
-      };
-    });
+    const evaluators: SummaryEvaluatorRow[] = [];
+    let overallAverage: number;
 
-    const overallValues = evaluators
-      .map((e) => e.overallValue)
-      .filter((v): v is number => v !== null);
-    const overallAverage =
-      overallValues.length > 0
-        ? overallValues.reduce((a, b) => a + b, 0) / overallValues.length
-        : 0;
+    if (summaryScoringVersion === INSTITUTIONAL_MATRIX_V2) {
+      const rowAverages: number[] = [];
+
+      for (const assignment of assignments) {
+        const row = rowByPanel.get(assignment.id);
+        const groupIValue = roundAcademicValue(row?.groupAAverage);
+        const groupIIValue = roundAcademicValue(row?.groupBAverage);
+
+        if (groupIValue === null || groupIIValue === null) {
+          throw new AppError(
+            "Cannot generate the institutional Oral Examination Summary: a finalized evaluator is missing a Group I or Group II average.",
+            409,
+          );
+        }
+        assertInstitutionalGroupAverage(groupIValue, "Group I");
+        assertInstitutionalGroupAverage(groupIIValue, "Group II");
+
+        const averageValue = meanAcademicValues([groupIValue, groupIIValue]);
+        if (averageValue === null) {
+          throw new AppError(
+            "Cannot generate the institutional Oral Examination Summary: an evaluator row average could not be computed safely.",
+            409,
+          );
+        }
+        rowAverages.push(averageValue);
+
+        evaluators.push({
+          panelAssignmentId: assignment.id,
+          userId: assignment.userId,
+          evaluatorName: `${assignment.user.firstName} ${assignment.user.lastName}`,
+          functionalRole: String(assignment.role),
+          groupIValue,
+          groupIIValue,
+          averageValue,
+          // V2 has no individual Overall or Rating; the Summary row Average is
+          // intentionally a separate field.
+          overallValue: null,
+          rating: null,
+          recommendations: row?.recommendations ?? null,
+          scoringVersion: INSTITUTIONAL_MATRIX_V2,
+        });
+      }
+
+      const computedOverall = meanAcademicValues(rowAverages);
+      if (computedOverall === null) {
+        throw new AppError(
+          "Cannot generate the institutional Oral Examination Summary: the internal overall average could not be computed safely.",
+          409,
+        );
+      }
+      overallAverage = computedOverall;
+    } else {
+      for (const assignment of assignments) {
+        const row = rowByPanel.get(assignment.id);
+        evaluators.push({
+          panelAssignmentId: assignment.id,
+          userId: assignment.userId,
+          evaluatorName: `${assignment.user.firstName} ${assignment.user.lastName}`,
+          functionalRole: String(assignment.role),
+          groupIValue: toNumber(row?.groupAAverage),
+          groupIIValue: toNumber(row?.groupBAverage),
+          averageValue: null,
+          overallValue: toNumber(row?.overallAverage),
+          rating: (row?.rating as string | null) ?? null,
+          recommendations: row?.recommendations ?? null,
+          scoringVersion: LEGACY_POINTS_V1,
+        });
+      }
+
+      // Legacy semantics remain unchanged, but missing historical values must
+      // never be silently converted to zero.
+      const overallValues = evaluators
+        .map((e) => e.overallValue)
+        .filter((v): v is number => v !== null);
+      if (overallValues.length !== evaluators.length) {
+        throw new AppError(
+          "Cannot generate the Oral Examination Summary: a finalized evaluator is missing an overall average.",
+          409,
+        );
+      }
+      overallAverage =
+        overallValues.reduce((a, b) => a + b, 0) / overallValues.length;
+    }
 
     const snapshot: OralExamSummarySnapshot = {
       schemaVersion: 1,

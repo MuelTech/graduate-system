@@ -3,7 +3,8 @@
 **Repository:** MuelTech/graduate-system  
 **Branch:** `refactor/collaborative-defense-workspace`  
 **Implementation HEAD reconciled:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
-**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION CONFIRMED / NOT IMPLEMENTED; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-4  
+**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION IMPLEMENTED — PENDING INDEPENDENT REVIEW; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-4 REVIEW / TARGETED QA
+
 **CDW-9:** NOT STARTED
 
 ---
@@ -25,8 +26,8 @@ It does not replace the canonical Source of Truth. It records which bounded fixe
 | MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / SUPERSEDED BY FIX-3 | evaluator sidebar overlap fixed; Save now removed; centered Review -> Sign finalization dialog |
 | MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature, concise Formal Verdict readiness, roster chevron |
 | MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` wording + redundant printed-name UI/plumbing removed |
-| MANUAL-QA FIX-4 | CONFIRMED DESIGN / NOT IMPLEMENTED | institutional Summary numeric computation confirmed; Rating/Remarks deferred; document rendering out of scope |
-| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-4 | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after Summary blocker is removed |
+| MANUAL-QA FIX-4 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | institutional Summary numeric computation implemented; Rating/Remarks deferred; document rendering out of scope |
+| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-4 REVIEW / TARGETED QA | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after Summary blocker is removed |
 | CDW-9 | NOT STARTED | hardening must wait for the final manual acceptance gate |
 
 ---
@@ -84,7 +85,7 @@ All derived averages are rounded to **2 decimal places**. Example: `1.225 -> 1.2
 
 Rating and Remarks remain deferred/null and must not block Summary generation or defense progression. Official PDF/print/download document processing remains a separate future phase.
 
-FIX-4 must implement this rule before the final multi-user workflow can be meaningfully accepted.
+FIX-4 now implements this rule. Independent review and targeted Summary QA remain required before the final multi-user workflow can be meaningfully accepted.
 
 Detailed authority:
 
@@ -135,8 +136,8 @@ CDW-LIVE-1 core ACCEPTED / CLOSED
   -> FIX-1 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-2 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-3 + FIX-3A BOUNDED UX ACCEPTED
-  -> FIX-4 ORAL EXAMINATION SUMMARY COMPUTATION  [CONFIRMED DESIGN / NOT IMPLEMENTED]
-  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-4]
+  -> FIX-4 ORAL EXAMINATION SUMMARY COMPUTATION  [IMPLEMENTED — PENDING INDEPENDENT REVIEW]
+  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-4 REVIEW / TARGETED QA]
   -> CDW-9  [NOT STARTED]
 ```
 
