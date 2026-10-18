@@ -351,15 +351,18 @@ test("authoritative saved body and freeze/conclusion states supersede preview", 
   }
 });
 
-test("the socket owner clears preview on save, freeze, finalization, and conclusion", () => {
+test("the socket owner keeps preview on save and clears it on terminal events", () => {
   const hook = read(HOOK);
+  const preview = read(REPORT_PREVIEW);
+  assert.match(hook, /reportPreviewDispositionForEvent/);
+  assert.match(preview, /"report\.draft\.updated"|default:\s*\n\s*return "keep"/);
   for (const token of [
-    '"report.draft.updated"',
     '"report.ready_for_signature"',
+    '"rap.signature.recorded"',
     '"rap.finalized"',
     '"defense.concluded"',
   ]) {
-    assert.match(hook, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(preview, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(hook, /previewAccepting = false/);
   assert.match(hook, /setLiveReportPreview\(null\)/);
@@ -478,7 +481,7 @@ test("report autosave/preview code cannot freeze, sign, or conclude", () => {
 
   assert.doesNotMatch(
     combined,
-    /\/collaboration\/report\/freeze|\/collaboration\/report\/sign|\/conclusion|\/conclude/,
+    /\/collaboration\/report\/(freeze|sign)|\/thesis\/defense\/[^"'`]*\/(conclusion|conclude)/,
   );
   assert.doesNotMatch(combined, /signatureData/);
 });
@@ -603,8 +606,10 @@ test("Scenario C — saved report version supersedes the live preview", () => {
 
 test("Scenario D — freeze invalidates preview and no terminal autosave resumes", () => {
   const hook = read(HOOK);
+  const preview = read(REPORT_PREVIEW);
   const report = read(REPORT_PANEL);
-  assert.match(hook, /"report\.ready_for_signature"/);
+  assert.match(preview, /"report\.ready_for_signature"/);
+  assert.match(hook, /reportPreviewDispositionForEvent/);
   assert.match(hook, /previewAccepting = false/);
   assert.match(report, /REPORT_FROZEN_STATUSES/);
   assert.match(report, /canEditBody/);

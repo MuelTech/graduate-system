@@ -608,9 +608,22 @@ function ReportReadOnly({
             <FileText className="h-5 w-5" /> Committee Report
           </h2>
           <StatusBadge status={report.reportStatus} />
-          {livePreview && (
-            <Badge className="bg-amber-100 text-amber-800">Live preview — unsaved</Badge>
-          )}
+          <span
+            className="inline-flex min-h-5 min-w-[6.75rem] items-center"
+            aria-live="polite"
+          >
+            {livePreview && (
+              <Badge
+                className="bg-amber-100 text-amber-800"
+                title="Live preview — the Rapporteur's current unsaved wording. The saved Committee Report replaces it when available."
+              >
+                Live — unsaved
+                <span className="sr-only">
+                  {" — Rapporteur wording, not the saved Committee Report draft."}
+                </span>
+              </Badge>
+            )}
+          </span>
         </div>
 
         <ReportContextBlock report={report} />
@@ -630,11 +643,7 @@ function ReportReadOnly({
         )}
 
         {livePreview ? (
-          <section className="space-y-2">
-            <p className="text-[13px] text-amber-800">
-              Live preview — unsaved. This is the Rapporteur&apos;s current wording,
-              not yet the saved Committee Report draft.
-            </p>
+          <section>
             <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-amber-300">
               <ReportDocumentCanvas>
                 <ReportDocumentView doc={livePreview.body} />

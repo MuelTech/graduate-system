@@ -10,6 +10,7 @@ import {
   normalizeReportDocument,
   type ReportDocument,
 } from "../report/report-document.ts";
+import type { DefenseRealtimeEventName } from "./defense-realtime-events.ts";
 
 export const REPORT_PREVIEW_EVENT = "report:preview" as const;
 
@@ -97,6 +98,28 @@ export interface LiveReportPreviewDisplayInput {
   scheduleId: string;
   reportStatus: string;
   authoritativeBodyVersion: number;
+}
+
+export type ReportPreviewEventDisposition = "keep" | "clear";
+
+/**
+ * A persisted save must NOT clear the ephemeral preview by itself. The viewer
+ * keeps the preview until the authoritative REST bodyVersion catches up; the
+ * display gate then hides it naturally. Freeze/sign/final/conclusion events do
+ * clear immediately because the report can never return to an editable DRAFT.
+ */
+export function reportPreviewDispositionForEvent(
+  eventName: DefenseRealtimeEventName,
+): ReportPreviewEventDisposition {
+  switch (eventName) {
+    case "report.ready_for_signature":
+    case "rap.signature.recorded":
+    case "rap.finalized":
+    case "defense.concluded":
+      return "clear";
+    default:
+      return "keep";
+  }
 }
 
 /**

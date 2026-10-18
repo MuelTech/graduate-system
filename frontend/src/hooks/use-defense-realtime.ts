@@ -17,6 +17,7 @@ import {
   joinDefenseRoom,
   leaveDefenseRoom,
 } from "@/lib/realtime/defense-socket";
+import { normalizeDefenseRealtimeBaseUrl } from "@/lib/realtime/defense-socket-url";
 import {
   DEFENSE_REALTIME_EVENT_NAMES,
   convergenceQueryTargets,
@@ -29,6 +30,7 @@ import {
   REPORT_PREVIEW_EVENT,
   isNewerLiveReportPreview,
   parseLiveReportPreview,
+  reportPreviewDispositionForEvent,
   type LiveReportPreview,
 } from "@/lib/realtime/report-preview";
 import { ReportPreviewThrottle } from "@/lib/report/report-preview-throttle";
@@ -131,27 +133,16 @@ export function useDefenseRealtime({
           return;
         }
 
-        // An authoritative save has landed; the refetched REST draft supersedes
-        // any ephemeral preview. Freeze/sign/final/conclusion states stop preview
-        // acceptance entirely.
-        if (
-          event.eventName === "report.draft.updated" ||
-          event.eventName === "report.ready_for_signature" ||
-          event.eventName === "rap.signature.recorded" ||
-          event.eventName === "rap.finalized"
-        ) {
+        // An authoritative save invalidates the report query but the viewer keeps
+        // the ephemeral preview until the refetched bodyVersion catches up. Only
+        // freeze/sign/final/conclusion states clear it immediately.
+        if (reportPreviewDispositionForEvent(event.eventName) === "clear") {
           setLiveReportPreview(null);
-        }
-        if (event.eventName === "report.draft.updated") {
-          // Any preview coalesced before this authoritative save is stale.
+          previewAccepting = false;
           throttleRef.current?.clear();
         }
-        if (
-          event.eventName === "report.ready_for_signature" ||
-          event.eventName === "rap.finalized" ||
-          event.eventName === "defense.concluded"
-        ) {
-          previewAccepting = false;
+        if (event.eventName === "report.draft.updated") {
+          // Any sender-side preview coalesced before this save is stale.
           throttleRef.current?.clear();
         }
 
@@ -255,9 +246,20 @@ export function useDefenseRealtime({
       }
 
       if (process.env.NODE_ENV !== "production") {
+        const engine = (
+          socket.io as unknown as {
+            engine?: { transport?: { name?: string } };
+          }
+        )?.engine;
         console.warn(
           "[defense-realtime] transport unavailable; REST polling remains active",
-          error?.message,
+          {
+            target: normalizeDefenseRealtimeBaseUrl(
+              process.env.NEXT_PUBLIC_BACKEND_API_URL,
+            ),
+            transport: engine?.transport?.name ?? "unknown",
+            reason: error?.message,
+          },
         );
       }
     };

@@ -963,16 +963,23 @@ test("read-only viewers receive an ephemeral live preview with no edit controls"
 
 test("the report socket hook wires the preview transport and clears it on terminal state", () => {
   const hook = read(HOOK);
+  const preview = read(PREVIEW);
   const context = read(CONTEXT);
 
   assert.equal(hook.includes("REPORT_PREVIEW_EVENT"), true);
   assert.equal(hook.includes("ReportPreviewThrottle"), true);
   assert.equal(hook.includes("parseLiveReportPreview"), true);
   assert.equal(hook.includes("isNewerLiveReportPreview"), true);
+  assert.equal(hook.includes("reportPreviewDispositionForEvent"), true);
   assert.equal(hook.includes("report.draft.updated"), true);
-  assert.equal(hook.includes("report.ready_for_signature"), true);
-  assert.equal(hook.includes("rap.finalized"), true);
-  assert.equal(hook.includes("defense.concluded"), true);
+  for (const terminal of [
+    "report.ready_for_signature",
+    "rap.signature.recorded",
+    "rap.finalized",
+    "defense.concluded",
+  ]) {
+    assert.equal(preview.includes(terminal), true, terminal);
+  }
   assert.equal(context.includes("sendReportPreview"), true);
   assert.equal(context.includes("liveReportPreview"), true);
 });
