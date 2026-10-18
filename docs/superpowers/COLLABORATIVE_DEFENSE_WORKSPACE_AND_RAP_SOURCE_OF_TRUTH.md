@@ -9,11 +9,11 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `3b24c496cd8700aaa0fc287eb55e61eeb12dfaac`  
+**Current manual-QA implementation HEAD:** `13a4c38acbc72dc13902539da398127f674384e5`  
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
 **FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
 **Current pre-CDW-9 UX design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-4; FIX-4 independently source-reviewed PASS at `3b24c496` and manually observed to generate the institutional Summary in Admin, without claiming full lifecycle acceptance; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-5 review/targeted QA; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-5; FIX-4 independently source-reviewed PASS at `3b24c496`; FIX-5 implementation at `13a4c38a` independently source-reviewed PASS and project-owner targeted manual QA PASS for the bounded signing/Admin UX flow; this does **not** claim that the complete role-separated live-defense lifecycle has passed end to end; final end-to-end multi-user live-defense manual acceptance is the NEXT GATE; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
 **Version:** 1.8  
 **Last updated:** 2026-10-18

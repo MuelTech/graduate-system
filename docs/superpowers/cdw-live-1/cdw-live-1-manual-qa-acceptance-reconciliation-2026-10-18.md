@@ -2,8 +2,8 @@
 
 **Repository:** MuelTech/graduate-system  
 **Branch:** `refactor/collaborative-defense-workspace`  
-**Implementation HEAD reconciled:** `3b24c496cd8700aaa0fc287eb55e61eeb12dfaac`  
-**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION IMPLEMENTED / SOURCE REVIEW PASS; FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX IMPLEMENTED — PENDING INDEPENDENT REVIEW; FINAL END-TO-END MULTI-USER ACCEPTANCE BLOCKED ON FIX-5 REVIEW / TARGETED QA
+**Implementation HEAD reconciled:** `13a4c38acbc72dc13902539da398127f674384e5`  
+**Status:** BOUNDED MANUAL-QA FIXES RECONCILED; FIX-4 SUMMARY COMPUTATION IMPLEMENTED / SOURCE REVIEW PASS; FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX IMPLEMENTED / SOURCE REVIEW PASS / PROJECT-OWNER TARGETED MANUAL QA PASS / BOUNDED UX ACCEPTED; FINAL END-TO-END MULTI-USER ACCEPTANCE READY / NEXT GATE
 
 **CDW-9:** NOT STARTED
 
@@ -27,8 +27,8 @@ It does not replace the canonical Source of Truth. It records which bounded fixe
 | MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature, concise Formal Verdict readiness, roster chevron |
 | MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` wording + redundant printed-name UI/plumbing removed |
 | MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Summary numeric computation verified in source; project-owner manual inspection showed generated Group A/Group B/Average rows in Admin; full lifecycle not yet accepted |
-| MANUAL-QA FIX-5 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | own-signature Committee Report modal UX + faculty signer-list simplification + Admin Evaluation/Summary/Committee Report presentation alignment |
-| Final end-to-end multi-user live-defense acceptance | BLOCKED ON FIX-5 REVIEW / TARGETED QA | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 review/targeted QA |
+| MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for the corrected Committee Report signing and Admin Defense Records flow |
+| Final end-to-end multi-user live-defense acceptance | READY / NEXT GATE | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow remains separate and must still be exercised |
 | CDW-9 | NOT STARTED | hardening must wait for the final manual acceptance gate |
 
 ---
@@ -94,27 +94,36 @@ Detailed authority:
 
 ---
 
-## 6. FIX-5 prerequisite discovered during manual inspection
+## 6. FIX-5 bounded acceptance after implementation
 
-The current implementation still uses a stale Committee Report signing presentation:
+Manual inspection after FIX-4 exposed a stale Committee Report signing presentation and outdated Admin Defense Records information architecture. FIX-5 corrected those issues without changing academic or workflow authority.
 
-- ordinary committee viewers receive the complete required-signer roster and other signers' timestamps inline;
-- the report signature pad expands inline rather than using the accepted centered signing dialog pattern;
-- Committee Report signing still permits the shared typed-signature mode by default;
-- faculty-facing status includes unexplained `RAP finalized` terminology.
+Implementation at `13a4c38acbc72dc13902539da398127f674384e5` now provides:
 
-The current Admin Defense Record detail also needs bounded information-architecture cleanup:
+- compact faculty Committee Report signature progress without the full cross-signer audit roster;
+- own-signature action/status only for the current faculty user;
+- centered two-step draw-only Committee Report signing;
+- Admin Evaluation Results aligned to evaluation/signature status and timestamp;
+- institutional V2 Summary limited to the confirmed Group A / Group B / Average presentation;
+- full signer-level Committee Report audit retained in Admin;
+- plain Committee Report terminology on the affected surfaces;
+- stale post-conclusion report-creation copy removed.
 
-- Evaluation Results currently exposes redundant `Overall` and `Criteria` columns instead of signature status/timestamp;
-- institutional V2 Summary displays `Internal Average` and `Final Rating`, even though FIX-4 explicitly treats the aggregate as internal compatibility data and Rating remains deferred;
-- the full Committee Report signer table is appropriate for Admin and should remain there;
-- user-facing `RAP / Committee Report` terminology and the stale message that the report is created after formal conclusion must be removed.
+Acceptance provenance is intentionally separated:
 
-FIX-5 changes presentation/interaction only. It must not change signer authority, report freeze semantics, Summary computation, conclusion gates, schema, or document processing.
+- coding-agent browser/manual QA: **NOT EXECUTED — ENVIRONMENT LIMITATION**;
+- independent remote source/diff review: **PASS**;
+- later project-owner targeted manual QA of the corrected flow: **PASS**.
+
+Therefore FIX-5 is **accepted for its bounded UX scope**. This does not claim the complete role-separated live-defense lifecycle has passed.
 
 Detailed authority:
 
     docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md
+
+Implementation report:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md
 
 ---
 
@@ -162,9 +171,9 @@ CDW-LIVE-1 core ACCEPTED / CLOSED
   -> FIX-2 IMPLEMENTED / SOURCE REVIEW PASS
   -> FIX-3 + FIX-3A BOUNDED UX ACCEPTED
   -> FIX-4 ORAL EXAMINATION SUMMARY COMPUTATION  [IMPLEMENTED / SOURCE REVIEW PASS]
-  -> FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX  [IMPLEMENTED — PENDING INDEPENDENT REVIEW]
-  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [BLOCKED ON FIX-5 REVIEW / TARGETED QA]
+  -> FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX  [BOUNDED UX ACCEPTED]
+  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE  [READY / NEXT GATE]
   -> CDW-9  [NOT STARTED]
 ```
 
-Do not start CDW-9 until FIX-5 is implemented/reviewed, targeted manual QA is completed, and the final multi-user acceptance is completed, unless the project owner explicitly changes that gate.
+Do not start CDW-9 until the final multi-user live-defense acceptance is completed, unless the project owner explicitly changes that gate.

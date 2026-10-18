@@ -14,7 +14,7 @@
 **Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `3b24c496`; project-owner manual inspection confirmed generated institutional Summary rows are visible and also exposed downstream signing/Admin presentation issues; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance remains blocked on FIX-5 review/targeted QA; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted for their bounded visible UI/UX scope at `fd999e80`; FIX-4 Oral Examination Summary computation IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `3b24c496`; project-owner manual inspection confirmed generated institutional Summary rows are visible and also exposed downstream signing/Admin presentation issues; FIX-5 Committee Report signing + Defense Records UX alignment is IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS / PROJECT-OWNER TARGETED MANUAL QA PASS and accepted for its bounded UX scope at `13a4c38a`; final end-to-end multi-user live-defense manual acceptance is READY / NEXT GATE; CDW-9 NOT STARTED
 
 ---
 
@@ -60,8 +60,8 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
 | CDW-LIVE-1 MANUAL-QA FIX-4 | IMPLEMENTED / SOURCE REVIEW PASS | institutional Oral Examination Summary generated from finalized Group I/II averages; row Average = (A+B)/2; 2-decimal rounding; Rating/Remarks deferred |
-| CDW-LIVE-1 MANUAL-QA FIX-5 | IMPLEMENTED — PENDING INDEPENDENT REVIEW | Committee Report own-signature modal UX + faculty signer-list simplification + Admin Defense Records table/terminology/Summary presentation alignment |
-| Final multi-user live-defense manual acceptance | BLOCKED ON FIX-5 REVIEW / TARGETED QA | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow after FIX-5 review/targeted QA |
+| CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment |
+| Final multi-user live-defense manual acceptance | READY / NEXT GATE | complete role-separated evaluation -> report -> signatures -> verdict -> concluded read-only workflow; must still be exercised separately across authenticated roles |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -76,7 +76,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 now implements that UX alignment and awaits independent review before the final end-to-end multi-user acceptance.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 implements that UX alignment at `13a4c38a`, independently passed source review, and subsequently passed project-owner targeted manual QA for the corrected flow. FIX-5 is accepted for its bounded UX scope; the complete role-separated end-to-end acceptance remains separate and is now the next gate.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1280,13 +1280,15 @@ The Admin Defense Records surface may read/display canonical Summary data. Exist
 
 ### Gate
 
-FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is now part of the current implementation baseline. Full pre-CDW-9 acceptance now remains blocked by independent review and targeted QA of the implemented FIX-5 UX package.
+FIX-4 implementation and independent source review are complete. Its numeric Summary behavior is now part of the current implementation baseline. FIX-5 independent review and targeted manual QA are now complete; the remaining pre-CDW-9 gate is the final role-separated multi-user live-defense acceptance.
 
 ---
 
 ## 12.6 Pre-CDW-9 MANUAL-QA FIX-5 — Committee Report Signing + Defense Records UX Alignment
 
-**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW.
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS / PROJECT-OWNER TARGETED MANUAL QA PASS — BOUNDED UX ACCEPTED.
+
+**Implementation HEAD:** `13a4c38acbc72dc13902539da398127f674384e5`
 
 Detailed design:
 
@@ -1300,30 +1302,37 @@ Implementation report:
 
 Align the stale Committee Report signing experience with the accepted evaluator-signing UX and simplify the Admin Defense Record detail so it presents only operationally useful, institutionally confirmed data.
 
-### Bounded product changes
+### Accepted bounded product result
 
 Committee workspace:
 
-- remove the full signer roster/timestamps from ordinary committee-facing report view;
-- retain aggregate required-signature progress if useful;
-- show only the current user's own signing action/status;
-- replace the inline signature pad with a centered two-step **Review & Sign -> Draw Signature -> Confirm Signature** modal;
+- full cross-signer roster/timestamps are no longer rendered to ordinary committee viewers;
+- aggregate required-signature progress remains;
+- each signer sees only their own signing action/status;
+- signing uses a centered two-step **Review & Sign -> Draw Signature -> Confirm Signature** modal;
 - Committee Report signing is draw-only;
-- keep the exact same backend signer policy, frozen-report binding, endpoint authority, and conclusion gates.
+- backend signer policy, frozen-report binding, endpoint authority, realtime invalidation, and conclusion gates remain unchanged.
 
 Admin Defense Records:
 
-- **Evaluation Results** becomes `Evaluator | Role | Evaluation Status | Signature Status | Signed At`;
-- remove redundant `Overall` and `Criteria` columns from that registry table only;
-- **Oral Examination Summary** V2 shows the examiner table `Examiner | Role | Group A | Group B | Average`;
-- do not display the internal compatibility aggregate or unassigned Final Rating as institutional Summary fields;
-- **Committee Report** retains full signer-level operational transparency: `Signer | Role | Signature Status | Signed At`;
-- replace user-facing `RAP / Committee Report` with **Committee Report**;
-- remove stale wording that says the report is created after formal conclusion.
+- **Evaluation Results** uses `Evaluator | Role | Evaluation Status | Signature Status | Signed At`;
+- redundant `Overall` and `Criteria` registry columns are removed without deleting underlying evaluation data;
+- institutional V2 **Oral Examination Summary** shows `Examiner | Role | Group A | Group B | Average`;
+- internal compatibility aggregate and deferred Final Rating are hidden from the V2 presentation;
+- **Committee Report** retains the full Admin signer audit `Signer | Role | Signature Status | Signed At`;
+- affected user-facing `RAP / Committee Report` / `RAP finalized` wording is replaced with plain Committee Report language;
+- stale wording that placed report creation after formal conclusion is removed.
 
-### Explicit non-goals
+### Acceptance provenance
 
-FIX-5 does not change:
+- agent-local automated/static/build evidence is recorded in the FIX-5 report;
+- independent remote source/diff review: **PASS**;
+- project-owner targeted manual QA of the corrected flow: **PASS**;
+- coding-agent browser/manual QA remained **NOT EXECUTED — ENVIRONMENT LIMITATION** and is not retroactively restated as agent-executed QA.
+
+### Explicit non-goals preserved
+
+FIX-5 did not change:
 
 - numerical evaluator authority;
 - Committee Report signer policy;
@@ -1339,7 +1348,7 @@ FIX-5 does not change:
 
 ### Gate
 
-FIX-5 must be independently source-reviewed and targeted-manual-QA checked before the final end-to-end multi-user live-defense acceptance resumes.
+FIX-5 is accepted for its bounded UX scope. The next gate is the **final end-to-end multi-user live-defense manual acceptance**. That final gate must still be exercised separately and must not be inferred from FIX-5 targeted QA.
 
 ---
 

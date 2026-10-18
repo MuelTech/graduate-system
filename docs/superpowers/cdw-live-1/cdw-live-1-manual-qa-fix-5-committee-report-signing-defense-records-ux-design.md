@@ -8,8 +8,9 @@
 **Collaborative workspace authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **UI/UX reference:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
-**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS / PROJECT-OWNER TARGETED MANUAL QA PASS — BOUNDED UX ACCEPTED
 
+**Implementation HEAD:** `13a4c38acbc72dc13902539da398127f674384e5`  
 **Implementation report:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md`
 **Date:** 2026-10-18  
 **Expected schema change:** NONE  
@@ -621,15 +622,21 @@ FIX-4 ORAL SUMMARY
   [IMPLEMENTED / SOURCE REVIEW PASS]
       ->
 FIX-5 COMMITTEE REPORT SIGNING + DEFENSE RECORDS UX
-  [IMPLEMENTED — PENDING INDEPENDENT REVIEW]
+  [IMPLEMENTED / SOURCE REVIEW PASS]
       ->
-FIX-5 independent source review
+FIX-5 targeted project-owner manual QA
+  [PASS]
       ->
-FIX-5 targeted manual QA
+FIX-5 bounded UX acceptance
+  [ACCEPTED]
       ->
 FINAL END-TO-END MULTI-USER LIVE-DEFENSE ACCEPTANCE
+  [READY / NEXT GATE]
       ->
 CDW-9
+  [NOT STARTED]
 ```
 
-Do not start the final acceptance or CDW-9 automatically after implementing FIX-5. Wait for explicit project-owner direction.
+The coding agent did not perform authenticated browser QA; that remains recorded in the implementation report. The later project-owner targeted QA is the manual evidence for this bounded acceptance.
+
+FIX-5 acceptance does not replace the final complete role-separated multi-user lifecycle acceptance. CDW-9 remains blocked until that final gate is completed or the project owner explicitly changes the sequence.
