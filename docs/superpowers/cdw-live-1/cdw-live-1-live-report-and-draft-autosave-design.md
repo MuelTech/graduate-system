@@ -8,8 +8,8 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation-plan authority:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
-**Manual-QA UX extension authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`  
-**Status:** CDW-LIVE-1A / 1B / 1C ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED; MANUAL-QA FIX-2 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
+**Manual-QA UX extension authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`  
+**Status:** CDW-LIVE-1A / 1B / 1C ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED; MANUAL-QA FIX-2 IMPLEMENTED / SOURCE REVIEW PASS / MANUAL PRODUCT QA FIX REQUIRED; MANUAL-QA FIX-3 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
 
 **Date:** 2026-10-18
 
@@ -407,7 +407,10 @@ Step 1 — **Review Evaluation**:
 
 Step 2 — **Sign Your Evaluation**:
 
-- supported e-signature modes such as Type and Draw;
+- individual evaluation signing is **draw-only**;
+- the evaluator does not manually type their name;
+- the printed evaluator name is system-derived from the authenticated schedule/committee assignment and is paired with the drawn signature by official-form rendering;
+- shared signature infrastructure may retain other modes for other document workflows;
 - a large, centered signing surface;
 - irreversible-action explanation;
 - actions: Back, Confirm Finalize.
@@ -416,8 +419,24 @@ Chairman and Panelist use the same individual-evaluation finalization interactio
 
 After successful finalization, the evaluation controls become read-only and the rail shows a compact finalized/locked confirmation.
 
-Detailed UI/UX design:
+Detailed UI/UX design history:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
+
+Current bounded manual-QA refinement:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
+
+### 7.6 Chairman Formal Verdict and Committee Roster presentation
+
+The backend conclusion-readiness contract remains authoritative, but the Chairman card should present only two concise faculty-facing readiness rows:
+
+- **Evaluation Signatures** — finalized required evaluations / required evaluator assignments;
+- **Committee Report Signatures** — signed required report-signature slots / required slots, or **Pending** before signer slots exist.
+
+Do not show `0 of 0` while report signature slots are not yet available.
+
+Do not present `Oral Examination Summary ready`, `Committee Report frozen`, or `RAP finalized` as separate Chairman-facing checklist entries. These remain mandatory internal conclusion gates and must not be removed from backend validation.
+
+Committee Roster stays collapsible and must have a visible chevron/expand-collapse indicator. Prefer native `details/summary` semantics with a rotating/open-state chevron.
 
 ---
 

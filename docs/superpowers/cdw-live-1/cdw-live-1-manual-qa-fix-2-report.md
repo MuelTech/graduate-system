@@ -2,7 +2,7 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `07aaf41bc67ab11c8edde836f249ad7e50a8779e`
-- **Status:** **IMPLEMENTED — PENDING INDEPENDENT REVIEW**
+- **Status:** **IMPLEMENTED — INDEPENDENT SOURCE REVIEW PASS — MANUAL PRODUCT QA FIX REQUIRED**
 - **Date:** 2026-10-18
 - **Scope:** evaluation finalization UX + Chairman role-rail layout only
 - **Migration:** **NONE**
@@ -191,4 +191,16 @@ user-owned.
 - No schema/migration change.
 - No CDW-9 work.
 
-**Recommendation: READY FOR INDEPENDENT REVIEW.**
+## 13. Independent review + manual product QA outcome
+
+Independent source review confirmed that the remote diff matches this report and remains frontend-only with no schema/migration change.
+
+Manual product review then identified three bounded faculty-facing issues that are not backend/domain failures:
+
+1. the individual evaluation should collect a **drawn signature only**; the evaluator's printed name must come from the authenticated committee assignment rather than manual name entry;
+2. the Chairman Formal Verdict card should show only concise **Evaluation Signatures** and **Committee Report Signatures** readiness, while internal Oral Summary / frozen / RAP-finalized gates remain hidden but mandatory;
+3. the collapsible Committee Roster needs a visible chevron/expand-collapse affordance.
+
+These are assigned to **CDW-LIVE-1 MANUAL-QA FIX-3**. CDW-9 remains NOT STARTED.
+
+**Recommendation: FIX REQUIRED — proceed with bounded MANUAL-QA FIX-3 before acceptance.**

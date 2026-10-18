@@ -7,7 +7,7 @@
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **CDW-LIVE-1 design:** `docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md`  
-**Status:** CONFIRMED DESIGN — IMPLEMENTED — PENDING INDEPENDENT REVIEW
+**Status:** IMPLEMENTED at `dc1745f11685ad1fd5649befa846f915aa546f35` — INDEPENDENT SOURCE REVIEW PASS — MANUAL PRODUCT QA REFINEMENT REQUIRED BY FIX-3
 
 **Date:** 2026-10-18  
 **Expected migration:** NONE  
@@ -125,8 +125,8 @@ The second modal step focuses only on the evaluator's explicit attestation.
 Show:
 
 - clear title such as **Sign Your Evaluation**;
-- supported e-signature modes, including current Type and Draw options where available;
 - a large centered signature input/canvas;
+- **Historical FIX-2 behavior:** Type and Draw were supported here. Manual product QA supersedes this for the individual evaluation: FIX-3 requires draw-only signature evidence and a system-derived printed evaluator name. Shared signature infrastructure may still support other modes outside the individual evaluation;
 - a concise irreversible-action statement;
 - enough space for comfortable pointer/touch signing.
 
@@ -252,7 +252,7 @@ The dialog must:
 - prevent accidental duplicate Confirm Finalize submissions;
 - avoid closing mid-request if that would create ambiguous user feedback.
 
-Type/Draw controls and signature canvas/input must have accessible labels/instructions.
+The signature canvas/input must have accessible labels/instructions. Historical Type/Draw wording is superseded for the individual evaluation by FIX-3 draw-only signing.
 
 ---
 
@@ -397,13 +397,14 @@ Repeat the evaluator flow, then verify:
 ```text
 CDW-LIVE-1 core ACCEPTED / CLOSED
   -> MANUAL-QA FIX-1 IMPLEMENTED
-  -> MANUAL-QA FIX-2 Evaluation Finalization UX
-  -> independent review
+  -> MANUAL-QA FIX-2 Evaluation Finalization UX (implemented)
+  -> independent source review PASS
+  -> MANUAL-QA FIX-3 Signature + Verdict + Roster UX
   -> manual Chairman + Panelist QA
   -> CDW-9
 ```
 
-CDW-9 remains **NOT STARTED** until this bounded UX fix is implemented and accepted.
+CDW-9 remains **NOT STARTED**. FIX-2 implementation exists, but manual product QA requires FIX-3 before the pre-CDW-9 gate can close.
 
 ---
 

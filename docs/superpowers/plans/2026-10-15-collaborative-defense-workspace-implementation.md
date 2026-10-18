@@ -9,11 +9,11 @@
 **Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `9e6d00c0b7253cc55c7812008b54f4bb99dda4d9`  
-**Next bounded design:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md  
+**Current manual-QA implementation HEAD:** `dc1745f11685ad1fd5649befa846f915aa546f35`  
+**Next bounded design:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED at `9e6d00c` with subsequent LAN phone retest reported working after restart; MANUAL-QA FIX-2 Evaluation Finalization UX CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED at `9e6d00c`; MANUAL-QA FIX-2 IMPLEMENTED at `dc1745f` and independently source-reviewed, but manual product QA found bounded signature/verdict/roster UX refinements; MANUAL-QA FIX-3 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
 
 ---
 
@@ -55,7 +55,8 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
 | CDW-LIVE-1 core | ACCEPTED / CLOSED | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave |
 | CDW-LIVE-1 MANUAL-QA FIX-1 | IMPLEMENTED; source-reviewed; LAN phone retest reported working after restart | preview/save convergence + stable live-preview status + LAN realtime diagnostics |
-| CDW-LIVE-1 MANUAL-QA FIX-2 | CONFIRMED DESIGN / NOT IMPLEMENTED | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
+| CDW-LIVE-1 MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / MANUAL PRODUCT QA FIX REQUIRED | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
+| CDW-LIVE-1 MANUAL-QA FIX-3 | CONFIRMED DESIGN / NOT IMPLEMENTED | draw-only individual evaluation signature + system-derived printed name + concise Formal Verdict readiness + Committee Roster collapse affordance |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -70,7 +71,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented; after restart, the user reported the phone/LAN realtime retest appeared to work correctly. Evaluation-finalization UI/UX still requires MANUAL-QA FIX-2 before CDW-9 starts.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 is implemented and independently source-reviewed, but manual product review identified three bounded refinements: draw-only individual evaluation signing with system-derived printed name, faculty-facing Formal Verdict readiness labels, and a visible Committee Roster expand/collapse affordance. These are owned by MANUAL-QA FIX-3 before CDW-9 starts.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1099,7 +1100,7 @@ CDW-8 ACCEPTED / CLOSED
   -> CDW-9
 ```
 
-Do not begin CDW-9 until MANUAL-QA FIX-2 is implemented, independently reviewed, and manually accepted by the project owner.
+Do not begin CDW-9 until MANUAL-QA FIX-3 is implemented, independently reviewed, and manually accepted by the project owner.
 
 ---
 
@@ -1123,7 +1124,7 @@ Remove evaluator-side friction discovered during manual QA without changing acad
 - open a centered modal instead of expanding signature/finalization UI inside the narrow left rail;
 - Step 1 = Review Evaluation;
 - Step 1 action = Continue to Sign;
-- Step 2 = E-Signature with a comfortably sized Type/Draw signing surface;
+- Step 2 = E-Signature with a comfortably sized signing surface; FIX-3 later narrows the individual evaluation to draw-only and system-derived printed name;
 - Step 2 final action = **Confirm Finalize**;
 - flush/drain the newest evaluator autosave before the irreversible finalize request;
 - finalization failure must keep the evaluation editable and explain the error;
@@ -1148,6 +1149,49 @@ The Chairman role rail must remain a scrollable, non-overlapping stack. Evaluati
 ### Gate
 
 This package must be independently reviewed and manually QA'd before CDW-9 begins.
+
+---
+
+## 12.3 Pre-CDW-9 MANUAL-QA FIX-3 — Evaluator Signature + Verdict + Roster UX
+
+**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+
+Detailed design:
+
+    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md
+
+### Goal
+
+Resolve the remaining faculty-facing manual-QA issues found after FIX-2 without changing backend academic authority or conclusion gates.
+
+### Required UX
+
+- individual Oral Examination evaluation uses **drawn signature only**;
+- evaluator does not type/re-enter their own name;
+- printed evaluator name is derived from the authenticated defense assignment and is reserved for official form rendering / authorized display;
+- do not remove Type capability globally from shared signature infrastructure if other document flows still use it;
+- Chairman Formal Verdict readiness shows only:
+  - **Evaluation Signatures** — completed/required evaluator count;
+  - **Committee Report Signatures** — completed/required report-signature count, or **Pending** before slots exist;
+- do not show `0 of 0` for not-yet-created report signature slots;
+- do not expose `Oral Examination Summary ready`, `Committee Report frozen`, or `RAP finalized` as separate faculty-facing checklist rows;
+- all hidden backend conclusion requirements remain mandatory;
+- Committee Roster remains collapsible and gains a visible chevron/expand-collapse affordance using native details/summary semantics where practical.
+
+### Expected implementation posture
+
+Frontend-focused. A minimal read-model addition for the authenticated evaluator's display/printed name is allowed only if the current frontend cannot derive it safely from the existing exact assignment/roster data. Do not create a second identity source.
+
+No academic workflow change.
+No evaluator-role change.
+No conclusion-rule weakening.
+No schema change.
+No Prisma migration.
+No CDW-9 work.
+
+### Gate
+
+FIX-3 must be independently reviewed and manually QA'd before CDW-9 begins.
 
 ---
 

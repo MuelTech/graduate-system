@@ -9,10 +9,10 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `9e6d00c0b7253cc55c7812008b54f4bb99dda4d9`  
-**Current pre-CDW-9 design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-1; MANUAL-QA FIX-2 evaluation-finalization UX design CONFIRMED / NOT IMPLEMENTED; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.4  
+**Current manual-QA implementation HEAD:** `dc1745f11685ad1fd5649befa846f915aa546f35`  
+**Current pre-CDW-9 design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-2; FIX-2 independent source review PASS but manual product QA requires bounded FIX-3; MANUAL-QA FIX-3 signature/verdict/roster UX CONFIRMED / NOT IMPLEMENTED; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.5  
 **Last updated:** 2026-10-18
 
 ---
@@ -309,8 +309,10 @@ Rules:
 - Clicking **Review & Finalize** opens a centered modal/dialog; it does not finalize anything by itself.
 - Step 1 summarizes the evaluator's current criteria, Group I / Group II values or averages according to the confirmed scoring model, and Recommendations.
 - Step 1 actions are **Cancel** and **Continue to Sign**.
-- Step 2 contains the evaluator's e-signature experience, including the currently supported signature modes such as Type and Draw.
-- The signature surface should be large enough for comfortable signing and centered within the modal rather than constrained to the left rail.
+- Step 2 collects the evaluator's **drawn signature only** for the individual Oral Examination evaluation.
+- The evaluator must not retype their own name as signature evidence. The printed evaluator name is system-derived from the authenticated schedule/committee assignment and is paired with the drawn signature when the official form is rendered.
+- This rule applies to the individual evaluation only; shared signature components may retain other modes for other authorized document/signature workflows.
+- The draw surface should be large enough for comfortable signing and centered within the modal rather than constrained to the left rail.
 - Step 2 actions are **Back** and **Confirm Finalize**.
 - **Confirm Finalize** is the final irreversible action and is the only point at which the existing finalize endpoint may be invoked.
 - Before the final request, the client must drain/flush the evaluator's newest pending autosave through the existing serialized autosave pipeline. If that save fails, finalization must not proceed.
@@ -329,6 +331,36 @@ Layout guardrails:
 
 Detailed bounded design:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
+
+### 5.3.2 Chairman Formal Verdict readiness UX
+
+The Chairman's Formal Verdict card is a faculty-facing readiness surface, not a diagnostic view of internal report/document lifecycle states.
+
+Before the formal result controls become available, show only two concise readiness rows:
+
+- **Evaluation Signatures** — `<finalized evaluators> of <required evaluators> completed`;
+- **Committee Report Signatures** — `<signed required report slots> of <required report slots> completed`.
+
+If Committee Report signature slots do not yet exist, do not show misleading `0 of 0`. Show **Committee Report Signatures — Pending** until the report has reached the state where required signer slots are known.
+
+Do not expose these internal technical readiness terms as separate Chairman checklist rows:
+
+- Oral Examination Summary ready;
+- Committee Report frozen;
+- RAP finalized.
+
+Those backend requirements remain mandatory and server-authoritative. They are simply summarized into the two faculty-facing readiness rows rather than presented as implementation terminology.
+
+When every authoritative conclusion gate is satisfied, expose the Formal Result selector and **Record Formal Verdict** action. Scores still never auto-decide the verdict.
+
+### 5.3.3 Committee Roster collapse affordance
+
+Committee Roster remains collapsible, but the control must visibly communicate that behavior.
+
+Use a clear expand/collapse affordance such as a chevron next to **Committee Roster**. Prefer preserving native `<details>/<summary>` semantics and rotate/change the chevron for open state rather than building unnecessary custom accordion state.
+
+Current bounded refinement authority:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
 
 ### 5.4 Shared comments rail
 

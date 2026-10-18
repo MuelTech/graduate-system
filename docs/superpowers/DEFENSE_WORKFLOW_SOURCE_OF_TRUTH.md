@@ -1418,6 +1418,8 @@ The individual evaluation form and the summary are not interchangeable, and neit
 
 A finalized individual evaluator record must be reproducible as a printable/downloadable Oral Examination Criteria output. The current supplied form supports Candidate, Course, Date, Group I criteria/average, Group II criteria/average, Recommendations, Summary of Evaluation/Rating/Remarks, and signature over printed name of Panelist.
 
+For the individual evaluation, **signature over printed name** means the evaluator supplies the handwritten/drawn signature evidence while GS-IS supplies the printed evaluator name from the authenticated defense assignment. The evaluator must not manually re-enter their own name merely to satisfy the printed-name portion of the form. The official renderer later composes the drawn signature with the authoritative assigned evaluator name. This does not redefine unrelated RAP or other document-signature experiences.
+
 The Oral Examination Summary must be generated from finalized evaluator records; Admin/Chairman should not manually re-key the same grades.
 
 Admin must have a read-only **Defense Records** surface where authorized staff can inspect a defense session and access official outputs:
