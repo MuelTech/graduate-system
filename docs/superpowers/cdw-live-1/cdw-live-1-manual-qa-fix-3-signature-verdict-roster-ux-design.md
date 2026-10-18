@@ -8,7 +8,7 @@
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **FIX-2 implementation report:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-report.md`  
-**Status:** IMPLEMENTED — PENDING INDEPENDENT REVIEW
+**Status:** IMPLEMENTED (FIX-3A) — PENDING INDEPENDENT REVIEW
 
 **Date:** 2026-10-18  
 **Expected migration:** NONE  
@@ -62,9 +62,6 @@ Sign Your Evaluation
 Draw your signature
 [ large signature canvas ]
 
-Your printed name will be supplied automatically
-from your committee assignment.
-
 [ Clear ]
 
 [ Back ]                         [ Confirm Finalize ]
@@ -75,6 +72,7 @@ Requirements:
 - no Type tab in the individual evaluation finalization dialog;
 - no typed-name input;
 - no manual printed-name field;
+- no visible printed-name explanation or label (FIX-3A);
 - retain Clear;
 - retain a large touch/pointer-friendly draw surface;
 - retain existing PNG data-URL signature evidence contract unless implementation audit proves a contract change is necessary;
@@ -82,6 +80,9 @@ Requirements:
 - Cancel/Back/close must not persist abandoned signature evidence;
 - newest evaluation DRAFT still flushes before finalize;
 - finalized evaluation remains immutable.
+
+The printed evaluator name remains system-derived for eventual official-form rendering, but it
+is intentionally not shown or re-entered in the signing modal.
 
 ### 1.3 Shared signature component boundary
 
@@ -110,7 +111,12 @@ Do not create a free-text printed-name field.
 
 Do not trust client-supplied arbitrary evaluator names for official identity.
 
-If the current finalization dialog does not have the display name, prefer passing it from the already-authorized Defense Workspace exact assignment/roster read model. A minimal read-model field may be added only if needed; do not create a second identity database source.
+If the current finalization dialog does not have the display name, do not add client-side
+identity inference merely for UI copy. FIX-3A removed the visible printed-name copy and its
+temporary `myAssignment.name` plumbing; the authoritative assignment/roster remains the
+future official-form identity source. A minimal read-model field may be added only if a
+later official rendering requirement genuinely needs it; do not create a second identity
+database source.
 
 Official form rendering is still a later document-processing concern. FIX-3 only establishes the correct identity/signature semantics now.
 
@@ -150,7 +156,7 @@ Formal Result
 [ Record Formal Verdict ]
 ```
 
-### 3.2 Pending report-signature slots
+### 3.2 Waiting-for-report signature slots
 
 Do not display:
 
@@ -163,7 +169,7 @@ before required report signature slots exist.
 Show:
 
 ```text
-Committee Report Signatures — Pending
+Committee Report Signatures — Waiting for report
 ```
 
 until the report reaches the authoritative state where required signer slots/count are known.
@@ -385,7 +391,7 @@ At minimum verify:
 
 1. while evaluations/signatures are incomplete, verify only the two concise rows appear;
 2. verify no Oral Summary / frozen / RAP-finalized technical rows;
-3. before report signature slots exist, verify **Committee Report Signatures — Pending** rather than 0 of 0;
+3. before report signature slots exist, verify **Committee Report Signatures — Waiting for report** rather than 0 of 0;
 4. once slots exist, verify correct completed/required count;
 5. verify Formal Result controls remain unavailable until server `readyForConclusion` is true;
 6. verify PASSED / Re-defense Required flow remains unchanged.

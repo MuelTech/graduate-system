@@ -81,7 +81,7 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
     {
       label: "Committee Report Signatures",
       value: reportPending
-        ? "Pending"
+        ? "Waiting for report"
         : `${data.signedSignatures} of ${data.requiredSignatures} completed`,
       ok: reportComplete,
     },

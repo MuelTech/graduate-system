@@ -83,7 +83,6 @@ export function EvaluationFinalizationDialog({
   groupIIAverage,
   recommendations,
   allCriteriaComplete,
-  printedName,
   finalizePending,
   finalizeError,
   onConfirmFinalize,
@@ -95,7 +94,6 @@ export function EvaluationFinalizationDialog({
   groupIIAverage: number | null;
   recommendations: string;
   allCriteriaComplete: boolean;
-  printedName: string;
   finalizePending: boolean;
   finalizeError: string | null;
   onConfirmFinalize: (signatureData: string) => void;
@@ -231,19 +229,6 @@ export function EvaluationFinalizationDialog({
               disabled={finalizePending}
               allowTyped={false}
             />
-
-            <div className="space-y-1 text-[13px] text-(--earist-body-text)">
-              <p>
-                Your printed name will be supplied automatically from your
-                committee assignment.
-              </p>
-              {printedName && (
-                <p className="text-[14px] text-(--earist-body)">
-                  Printed name:{" "}
-                  <span className="font-semibold">{printedName}</span>
-                </p>
-              )}
-            </div>
 
             {finalizeError && (
               <p

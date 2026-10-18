@@ -2,7 +2,7 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `2bb48e7b874924d7fefc7e6a3883877d65e3b8e1`
-- **Status:** **IMPLEMENTED — PENDING INDEPENDENT REVIEW**
+- **Status:** **IMPLEMENTED (FIX-3A) - PENDING INDEPENDENT REVIEW**
 - **Date:** 2026-10-18
 - **Scope:** FIX-3 evaluator signature, Formal Verdict copy, Committee Roster affordance
 - **Migration:** **NONE**
@@ -15,7 +15,8 @@ This package does not mark itself ACCEPTED and does not start CDW-9.
 ## 1. Individual evaluation signature — draw-only
 
 The official individual form is **Signature over Printed Name of Panelist**. The evaluator
-now supplies only a drawn signature; the printed name is supplied automatically.
+now supplies only a drawn signature; the printed name remains system-derived for eventual
+official-form rendering and is intentionally not shown or re-entered in the signing modal.
 
 Changes:
 
@@ -35,17 +36,15 @@ its default Type/Draw modes unchanged.
 
 No free-text name field was added.
 
-- The backend workspace read model now exposes `myAssignment.name`.
-- It is derived from the exact `PanelAssignment` id already authorized for the caller,
-  matched against the exact schedule roster (`schedule.panelAssignments`).
-- The frontend passes `workspace.myAssignment.name` through `RoleRail` →
-  `OralEvaluationForm` → finalization dialog.
-- The dialog shows the printed name with the instruction that it is supplied automatically
-  from the committee assignment.
-- No client-supplied printed name is accepted as identity authority.
+**FIX-3A update:** the visible printed-name copy and the temporary
+`myAssignment.name` read-model plumbing were removed because the signing modal does not
+need to display or re-enter the printed name. The authoritative assignment/roster remains
+the identity source for eventual official-form rendering.
 
-This is a minimal read-model field using the existing exact assignment/roster data; no
-second identity source, schema, or migration was added.
+- The frontend passes no evaluator-name copy into the signing dialog.
+- The dialog shows only the draw canvas, Clear, and the explicit signing action.
+- No client-supplied printed name is accepted as identity authority.
+- No schema, migration, or second identity source was added.
 
 ## 3. Formal Verdict — faculty-facing readiness
 
@@ -61,7 +60,7 @@ Formal Verdict
 Before report signature slots exist:
 
 ```text
-○ Committee Report Signatures — Pending
+○ Committee Report Signatures - Waiting for report
 ```
 
 No `0 of 0` is rendered. The technical rows were removed from the faculty UI:
@@ -110,7 +109,9 @@ Frontend production:
 
 Backend read model:
 
-- `backend/src/services/defense-workspace.service.ts` — exposes exact `myAssignment.name`.
+- `backend/src/services/defense-workspace.service.ts` — **FIX-3A removed** the temporary
+  `myAssignment.name` read-model field and related plumbing; printed identity remains
+  system-derived for eventual official-form rendering.
 
 Tests/verification:
 

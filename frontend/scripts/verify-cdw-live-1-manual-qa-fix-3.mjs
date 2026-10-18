@@ -40,21 +40,21 @@ test("Type and typed-name input are absent from evaluation finalization", () => 
   assert.doesNotMatch(dialog, /typedName|printedName\s*:\s*string.*onChange/);
 });
 
-test("printed evaluator name is authoritative assignment/roster data", () => {
+test("printed evaluator identity is not re-entered in the signing UI", () => {
   const backend = read(BACKEND_WORKSPACE);
   const type = read(WORKSPACE_TYPE);
   const rail = read(RAIL);
   const form = read(FORM);
   const dialog = read(DIALOG);
 
-  assert.match(backend, /myRosterAssignment = schedule\.panelAssignments\.find/);
-  assert.match(backend, /assignment\.id === myAssignment\.id/);
-  assert.match(backend, /myPrintedName/);
-  assert.match(backend, /name: myPrintedName/);
-  assert.match(type, /myAssignment: \{[\s\S]*?name: string/);
-  assert.match(rail, /evaluatorName=\{workspace\.myAssignment\.name\}/);
-  assert.match(form, /printedName=\{evaluatorName\}/);
-  assert.match(dialog, /Printed name:/);
+  assert.doesNotMatch(dialog, /Printed name:|supplied automatically/);
+  assert.doesNotMatch(form, /evaluatorName|printedName/);
+  assert.doesNotMatch(rail, /myAssignment\.name/);
+  assert.match(
+    type,
+    /myAssignment: \{\s*panelAssignmentId: string;\s*role: WorkspaceRole;\s*\};/,
+  );
+  assert.doesNotMatch(backend, /myPrintedName|name: myPrintedName/);
 });
 
 test("no manual printed-name field exists", () => {
@@ -124,11 +124,12 @@ test("evaluation signature progress maps to finalized/assigned counts", () => {
   assert.match(verdict, /data\.allEvaluationsFinalized/);
 });
 
-test("report signature progress maps to signed/required or Pending", () => {
+test("report signature progress maps to signed/required or Waiting for report", () => {
   const verdict = read(VERDICT);
 
   assert.match(verdict, /requiredSignatures <= 0/);
-  assert.match(verdict, /"Pending"/);
+  assert.match(verdict, /"Waiting for report"/);
+  assert.doesNotMatch(verdict, /"Pending"/);
   assert.match(
     verdict,
     /\$\{data\.signedSignatures\} of \$\{data\.requiredSignatures\} completed/,

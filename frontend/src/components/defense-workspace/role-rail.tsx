@@ -126,10 +126,7 @@ export function RoleRail({
         {/* Evaluator (Chairman/Panelist): My Evaluation. */}
         {isEvaluator &&
           (workspace.capabilities.evaluationOpen ? (
-            <OralEvaluationForm
-              scheduleId={scheduleId}
-              evaluatorName={workspace.myAssignment.name}
-            />
+            <OralEvaluationForm scheduleId={scheduleId} />
           ) : (
             <section className="rounded-lg border border-(--earist-border-gray) p-3">
               <div className="mb-1 flex items-center justify-between gap-2">
