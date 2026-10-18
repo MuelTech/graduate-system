@@ -9,10 +9,10 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `dc1745f11685ad1fd5649befa846f915aa546f35`  
-**Current pre-CDW-9 design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-2; FIX-2 independent source review PASS but manual product QA requires bounded FIX-3; MANUAL-QA FIX-3 signature/verdict/roster UX CONFIRMED / NOT IMPLEMENTED; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
-**Version:** 1.5  
+**Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
+**Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted by the project owner for their bounded visible UI/UX scope; full end-to-end multi-user live-defense manual acceptance remains pending; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE  
+**Version:** 1.6  
 **Last updated:** 2026-10-18
 
 ---
@@ -341,7 +341,7 @@ Before the formal result controls become available, show only two concise readin
 - **Evaluation Signatures** — `<finalized evaluators> of <required evaluators> completed`;
 - **Committee Report Signatures** — `<signed required report slots> of <required report slots> completed`.
 
-If Committee Report signature slots do not yet exist, do not show misleading `0 of 0`. Show **Committee Report Signatures — Pending** until the report has reached the state where required signer slots are known.
+If Committee Report signature slots do not yet exist, do not show misleading `0 of 0`. Show **Committee Report Signatures — Waiting for report** until the report has reached the state where required signer slots are known.
 
 Do not expose these internal technical readiness terms as separate Chairman checklist rows:
 
@@ -359,8 +359,11 @@ Committee Roster remains collapsible, but the control must visibly communicate t
 
 Use a clear expand/collapse affordance such as a chevron next to **Committee Roster**. Prefer preserving native `<details>/<summary>` semantics and rotate/change the chevron for open state rather than building unnecessary custom accordion state.
 
-Current bounded refinement authority:
+Bounded refinement design:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
+
+Latest acceptance reconciliation:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`.
 
 ### 5.4 Shared comments rail
 
@@ -695,7 +698,7 @@ REST/database state remains authoritative. Polling/refetch is sufficient for thi
 
 ### 9.7 CDW-LIVE-1 — live report review and autosave boundary
 
-**CONFIRMED_PROJECT_DESIGN — CDW-LIVE-1A ACCEPTED; CDW-LIVE-1B ACCEPTED; CDW-LIVE-1C VERIFIED — PENDING INDEPENDENT REVIEW; overall CDW-LIVE-1 PENDING FINAL INDEPENDENT ACCEPTANCE**
+**IMPLEMENTED / ACCEPTED CORE — CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; bounded manual-QA refinements implemented through FIX-3A; final end-to-end multi-user live-defense manual acceptance remains the pre-CDW-9 gate.**
 
 Detailed design:
 

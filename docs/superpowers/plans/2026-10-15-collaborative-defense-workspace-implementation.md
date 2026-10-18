@@ -9,11 +9,12 @@
 **Accepted production implementation HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `dc1745f11685ad1fd5649befa846f915aa546f35`  
-**Next bounded design:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md  
+**Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
+**Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md  
+**Next acceptance gate:** final end-to-end multi-user live-defense manual acceptance  
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED at `9e6d00c`; MANUAL-QA FIX-2 IMPLEMENTED at `dc1745f` and independently source-reviewed, but manual product QA found bounded signature/verdict/roster UX refinements; MANUAL-QA FIX-3 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1A, 1B, and 1C independently ACCEPTED; CDW-LIVE-1 core ACCEPTED / CLOSED; MANUAL-QA FIX-1 implemented/source-reviewed; FIX-2 implemented/source-reviewed and superseded by later bounded UX refinements; FIX-3 + FIX-3A implemented, independently source-reviewed, and accepted by the project owner for their bounded visible UI/UX scope at `fd999e80`; final end-to-end multi-user live-defense manual acceptance remains pending; CDW-9 NOT STARTED
 
 ---
 
@@ -54,9 +55,11 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-7 | ACCEPTED / CLOSED | assembled workflow acceptance/regression, concluded immutability, historical signature read-model cleanup |
 | CDW-8 | ACCEPTED / CLOSED | Socket.IO transport/auth rooms, nine post-commit invalidation events, workspace-level client synchronization, polling fallback, and CDW-8C acceptance completed |
 | CDW-LIVE-1 core | ACCEPTED / CLOSED | single-writer Rapporteur live read-only preview + report autosave + private evaluator draft autosave |
-| CDW-LIVE-1 MANUAL-QA FIX-1 | IMPLEMENTED; source-reviewed; LAN phone retest reported working after restart | preview/save convergence + stable live-preview status + LAN realtime diagnostics |
-| CDW-LIVE-1 MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / MANUAL PRODUCT QA FIX REQUIRED | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
-| CDW-LIVE-1 MANUAL-QA FIX-3 | CONFIRMED DESIGN / NOT IMPLEMENTED | draw-only individual evaluation signature + system-derived printed name + concise Formal Verdict readiness + Committee Roster collapse affordance |
+| CDW-LIVE-1 MANUAL-QA FIX-1 | IMPLEMENTED / SOURCE REVIEW PASS | preview/save convergence + stable live-preview status + LAN realtime diagnostics; user LAN retest reported working after restart |
+| CDW-LIVE-1 MANUAL-QA FIX-2 | IMPLEMENTED / SOURCE REVIEW PASS / SUPERSEDED BY FIX-3 | evaluator rail cleanup + autosave-only status + centered two-step Review -> Sign -> Confirm Finalize modal |
+| CDW-LIVE-1 MANUAL-QA FIX-3 | IMPLEMENTED / SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED | draw-only individual evaluation signature + concise Formal Verdict readiness + Committee Roster collapse affordance |
+| CDW-LIVE-1 MANUAL-QA FIX-3A | ACCEPTED FOR BOUNDED UX SCOPE | `Waiting for report` readiness wording + removal of redundant printed-name copy/plumbing |
+| Final multi-user live-defense manual acceptance | PENDING | Chairman + Panelist + Rapporteur evaluation/report/signature/verdict flow across authenticated clients |
 | CDW-9 | NOT STARTED | production hardening remains future work |
 
 Accepted CDW-8 production implementation HEAD:
@@ -71,7 +74,7 @@ Acceptance report:
 
     docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
 
-Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 is implemented and independently source-reviewed, but manual product review identified three bounded refinements: draw-only individual evaluation signing with system-derived printed name, faculty-facing Formal Verdict readiness labels, and a visible Committee Roster expand/collapse affordance. These are owned by MANUAL-QA FIX-3 before CDW-9 starts.
+Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are now implemented, independently source-reviewed, and accepted by the project owner for their visible UI/UX scope. The remaining pre-CDW-9 gate is the full end-to-end multi-user live-defense manual workflow acceptance; it is not a known code defect.
 
 The accepted foundation deliberately keeps exact institutional form rendering separate from authoring/workflow. The in-system canonical records are authoritative; future official-form rendering may consume those records for exact EARIST PDF/print/download layouts without becoming another editable source of truth.
 
@@ -1096,17 +1099,20 @@ CDW-8 ACCEPTED / CLOSED
   -> CDW-LIVE-1C ACCEPTED (0b061498)
   -> CDW-LIVE-1 core ACCEPTED / CLOSED
   -> MANUAL-QA FIX-1 IMPLEMENTED (9e6d00c)
-  -> MANUAL-QA FIX-2 Evaluation Finalization UX
+  -> MANUAL-QA FIX-2 IMPLEMENTED / SOURCE REVIEW PASS (dc1745f)
+  -> MANUAL-QA FIX-3 IMPLEMENTED / SOURCE REVIEW PASS (700f014)
+  -> MANUAL-QA FIX-3A ACCEPTED FOR BOUNDED UX SCOPE (fd999e80)
+  -> FINAL END-TO-END MULTI-USER LIVE-DEFENSE MANUAL ACCEPTANCE
   -> CDW-9
 ```
 
-Do not begin CDW-9 until MANUAL-QA FIX-3 is implemented, independently reviewed, and manually accepted by the project owner.
+Do not begin CDW-9 until the final end-to-end multi-user live-defense manual acceptance is completed or the project owner explicitly changes that gate.
 
 ---
 
 ## 12.2 Pre-CDW-9 MANUAL-QA FIX-2 — Evaluation Finalization UX
 
-**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+**Status:** IMPLEMENTED / SOURCE REVIEW PASS — superseded by the later FIX-3/FIX-3A bounded refinements.
 
 Detailed design:
 
@@ -1154,7 +1160,7 @@ This package must be independently reviewed and manually QA'd before CDW-9 begin
 
 ## 12.3 Pre-CDW-9 MANUAL-QA FIX-3 — Evaluator Signature + Verdict + Roster UX
 
-**Status:** CONFIRMED DESIGN / NOT IMPLEMENTED.
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS / BOUNDED PRODUCT REVIEW ACCEPTED, including FIX-3A refinement at `fd999e80bcf211f8506565b2955e3dce22d483c4`.
 
 Detailed design:
 
@@ -1172,7 +1178,7 @@ Resolve the remaining faculty-facing manual-QA issues found after FIX-2 without 
 - do not remove Type capability globally from shared signature infrastructure if other document flows still use it;
 - Chairman Formal Verdict readiness shows only:
   - **Evaluation Signatures** — completed/required evaluator count;
-  - **Committee Report Signatures** — completed/required report-signature count, or **Pending** before slots exist;
+  - **Committee Report Signatures** — completed/required report-signature count, or **Waiting for report** before slots exist;
 - do not show `0 of 0` for not-yet-created report signature slots;
 - do not expose `Oral Examination Summary ready`, `Committee Report frozen`, or `RAP finalized` as separate faculty-facing checklist rows;
 - all hidden backend conclusion requirements remain mandatory;
@@ -1191,7 +1197,30 @@ No CDW-9 work.
 
 ### Gate
 
-FIX-3 must be independently reviewed and manually QA'd before CDW-9 begins.
+The bounded FIX-3/FIX-3A UX scope is closed. Full authenticated multi-user live-defense workflow acceptance remains pending and is the final pre-CDW-9 gate.
+
+---
+
+## 12.4 Final end-to-end multi-user live-defense manual acceptance
+
+**Status:** PENDING — user-owned manual acceptance; no known source blocker at the current HEAD.
+
+Required final workflow:
+
+1. Chairman starts the defense.
+2. Chairman and required Panelists complete/finalize their own evaluations.
+3. Chairman's **Evaluation Signatures** progress updates from authoritative state.
+4. Rapporteur authors and prepares the Committee Report for signatures.
+5. Required stage-aware Committee Report signers sign the same frozen report.
+6. Chairman's **Committee Report Signatures** progress updates near-realtime, with polling/refetch fallback.
+7. Formal Result controls remain unavailable while any authoritative conclusion gate is incomplete.
+8. Once every required gate passes, Chairman records PASSED or REDEFENSE_REQUIRED.
+9. Attempt becomes CONCLUDED and read-only.
+10. Reopen the concluded workspace and verify immutable historical state.
+
+This gate must use independent authenticated role sessions where practical. It must not be marked PASS from source verifiers alone.
+
+If this final workflow reveals a concrete defect, create a new bounded manual-QA fix package. Otherwise, close the pre-CDW-9 acceptance gate without inventing additional code work.
 
 ---
 

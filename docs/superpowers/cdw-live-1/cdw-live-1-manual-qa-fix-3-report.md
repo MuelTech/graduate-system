@@ -2,13 +2,13 @@
 
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `2bb48e7b874924d7fefc7e6a3883877d65e3b8e1`
-- **Status:** **IMPLEMENTED (FIX-3A) - PENDING INDEPENDENT REVIEW**
+- **Status:** **IMPLEMENTED (FIX-3A) — INDEPENDENT SOURCE REVIEW PASS — BOUNDED PRODUCT REVIEW ACCEPTED**
 - **Date:** 2026-10-18
 - **Scope:** FIX-3 evaluator signature, Formal Verdict copy, Committee Roster affordance
 - **Migration:** **NONE**
 - **Academic workflow change:** **NONE**
 
-This package does not mark itself ACCEPTED and does not start CDW-9.
+At implementation time this package did not self-accept. Post-implementation independent review and project-owner product review have now accepted the bounded FIX-3/FIX-3A UI/UX scope. CDW-9 remains NOT STARTED.
 
 ---
 
@@ -149,9 +149,9 @@ Documentation:
 
 ## 8. Manual QA
 
-**NOT EXECUTED — ENVIRONMENT LIMITATION** for both Panelist and Chairman browser flows,
-and therefore for the Formal Verdict UI. No manual PASS is claimed. Automated/source
-verification and the production build passed; live-defense browser QA remains user-owned.
+The coding agent did **NOT EXECUTE** authenticated multi-user browser QA because of environment limitations; no agent manual PASS is claimed.
+
+After implementation, the project owner manually reviewed the visible FIX-3/FIX-3A result and accepted the bounded UI/UX changes. This does **not** claim that the complete Chairman + Panelist + Rapporteur end-to-end live-defense workflow has been exercised. That broader multi-user acceptance remains the final pre-CDW-9 gate.
 
 ## 9. Remaining limitations
 
@@ -163,10 +163,9 @@ verification and the production build passed; live-defense browser QA remains us
 
 ## 10. Confirmations
 
-- No backend academic authority expansion; only the exact assignment name was exposed in
-  the existing read model.
+- No backend academic authority expansion. The temporary `myAssignment.name` display plumbing introduced by FIX-3 was removed by FIX-3A because the signing modal no longer needs to display the evaluator's printed name.
 - No evaluation draft realtime event, score broadcast, or signature autosave.
 - No schema/migration change.
 - No CDW-9 work.
 
-**Recommendation: READY FOR INDEPENDENT REVIEW.**
+**Reconciled outcome: BOUNDED FIX-3/FIX-3A UX ACCEPTED. Final end-to-end multi-user live-defense manual acceptance remains pending before CDW-9.**

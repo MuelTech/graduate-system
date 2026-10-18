@@ -9,7 +9,7 @@
 **Parent functional authority:** `docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md`  
 **Implementation-plan authority:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **Manual-QA UX extension authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`  
-**Status:** CDW-LIVE-1A / 1B / 1C ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; MANUAL-QA FIX-1 IMPLEMENTED; MANUAL-QA FIX-2 IMPLEMENTED / SOURCE REVIEW PASS / MANUAL PRODUCT QA FIX REQUIRED; MANUAL-QA FIX-3 CONFIRMED DESIGN / NOT IMPLEMENTED; CDW-9 NOT STARTED
+**Status:** CDW-LIVE-1A / 1B / 1C ACCEPTED; core CDW-LIVE-1 ACCEPTED / CLOSED; manual-QA refinements implemented through FIX-3A at `fd999e80`; FIX-3/FIX-3A independently source-reviewed and accepted for their bounded visible UI/UX scope; final end-to-end multi-user live-defense manual acceptance PENDING; CDW-9 NOT STARTED
 
 **Date:** 2026-10-18
 
@@ -422,15 +422,18 @@ After successful finalization, the evaluation controls become read-only and the 
 Detailed UI/UX design history:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
 
-Current bounded manual-QA refinement:
+Bounded manual-QA refinement design:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
+
+Latest acceptance reconciliation:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`.
 
 ### 7.6 Chairman Formal Verdict and Committee Roster presentation
 
 The backend conclusion-readiness contract remains authoritative, but the Chairman card should present only two concise faculty-facing readiness rows:
 
 - **Evaluation Signatures** — finalized required evaluations / required evaluator assignments;
-- **Committee Report Signatures** — signed required report-signature slots / required slots, or **Pending** before signer slots exist.
+- **Committee Report Signatures** — signed required report-signature slots / required slots, or **Waiting for report** before signer slots exist.
 
 Do not show `0 of 0` while report signature slots are not yet available.
 

@@ -8,7 +8,7 @@
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Implementation plan:** `docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md`  
 **FIX-2 implementation report:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-report.md`  
-**Status:** IMPLEMENTED (FIX-3A) — PENDING INDEPENDENT REVIEW
+**Status:** IMPLEMENTED (FIX-3A) — INDEPENDENT SOURCE REVIEW PASS — BOUNDED PRODUCT REVIEW ACCEPTED
 
 **Date:** 2026-10-18  
 **Expected migration:** NONE  
@@ -412,13 +412,12 @@ At minimum verify:
 CDW-LIVE-1 core ACCEPTED / CLOSED
   -> MANUAL-QA FIX-1 IMPLEMENTED
   -> MANUAL-QA FIX-2 IMPLEMENTED / SOURCE REVIEW PASS
-  -> MANUAL-QA FIX-3 Signature + Verdict + Roster UX
-  -> independent review
-  -> manual Chairman + Panelist QA
+  -> MANUAL-QA FIX-3 + FIX-3A IMPLEMENTED / BOUNDED UX ACCEPTED
+  -> final end-to-end multi-user live-defense manual acceptance
   -> CDW-9
 ```
 
-CDW-9 remains **NOT STARTED** until FIX-3 is implemented and manually accepted.
+The bounded FIX-3/FIX-3A scope is accepted. CDW-9 remains **NOT STARTED** until the broader end-to-end multi-user live-defense manual acceptance is completed or the project owner explicitly changes that gate.
 
 ---
 
@@ -435,4 +434,6 @@ FIX-3 is complete only when:
 - Committee Roster clearly indicates expand/collapse;
 - FIX-2 layout/autosave/finalization protections remain intact;
 - no authority, schema, migration, realtime privacy, or CDW-9 scope changes;
-- independent review and manual QA pass.
+- independent source review passes and the bounded visible UI/UX result is accepted by the project owner.
+
+Broader multi-user workflow acceptance is tracked separately as the final pre-CDW-9 gate and is not retroactively claimed by this bounded package.
