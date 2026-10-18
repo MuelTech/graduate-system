@@ -9,12 +9,13 @@
 **Accepted production implementation HEAD (CDW-0 through CDW-8):** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
-**Current manual-QA implementation HEAD:** `fd999e80bcf211f8506565b2955e3dce22d483c4`  
+**Current manual-QA implementation HEAD:** `3b24c496cd8700aaa0fc287eb55e61eeb12dfaac`  
 **Latest bounded manual-QA acceptance record:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`  
-**Current pre-CDW-9 computation design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through CDW-LIVE-1 MANUAL-QA FIX-3A; FIX-3/FIX-3A independently source-reviewed and accepted for their bounded visible UI/UX scope; FIX-4 Oral Examination Summary computation IMPLEMENTED — PENDING INDEPENDENT REVIEW; final end-to-end multi-user live-defense manual acceptance is blocked on independent review and targeted Summary QA and then remains user-owned; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
+**Current pre-CDW-9 UX design:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`  
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED through FIX-4; FIX-4 independently source-reviewed PASS at `3b24c496` and manually observed to generate the institutional Summary in Admin, without claiming full lifecycle acceptance; FIX-5 Committee Report signing + Defense Records UX alignment is CONFIRMED DESIGN / NOT IMPLEMENTED; final end-to-end multi-user live-defense manual acceptance is blocked on FIX-5 implementation/review/targeted QA; CDW-9 NOT STARTED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
-**Version:** 1.7  
+**Version:** 1.8  
 **Last updated:** 2026-10-18
 
 ---
@@ -378,6 +379,56 @@ Bounded refinement design:
 
 Latest acceptance reconciliation:
 `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`.
+
+### 5.3.4 Committee Report signing presentation — FIX-5
+
+The canonical Committee Report signer policy and backend signature gates do not change. FIX-5 changes only how signing is presented to faculty and how completed signature evidence is summarized across user surfaces.
+
+For an authenticated committee member viewing a frozen Committee Report:
+
+- keep the report body readable in the workspace;
+- do **not** render the complete required-signer roster, other signers' names, or other signers' exact timestamps as a large inline block;
+- aggregate progress such as `4 of 6 required signatures completed` may remain visible because it communicates readiness without turning the faculty workspace into an audit registry;
+- a required signer sees only their own actionable state: **Review & Sign** while unsigned, then **You signed this report** with their own timestamp after signing;
+- a committee viewer who is not a required signer sees no signing control;
+- once the report is fully signed/finalized, faculty-facing copy uses **Committee Report finalized** rather than unexplained `RAP finalized`.
+
+The signing interaction follows the accepted individual-evaluation finalization pattern:
+
+1. open a centered modal from **Review & Sign**;
+2. first step confirms the exact frozen Committee Report/version being signed and the irreversible nature of the signature;
+3. second step collects a **draw-only** e-signature using the shared signature pad with typed signing disabled;
+4. **Confirm Signature** invokes the existing authorized Committee Report signature endpoint;
+5. opening, backing out of, or cancelling the modal never signs anything.
+
+The full signer-level operational audit remains appropriate in **Admin Defense Records**, where the Committee Report section shows:
+
+```text
+Signer | Role | Signature Status | Signed At
+```
+
+This visibility split is presentation/privacy discipline, not a new authorization model. Raw signature images remain protected evidence and are not displayed in committee progress lists or realtime events.
+
+### 5.3.5 Faculty/Admin terminology boundary — FIX-5
+
+The project uses `RapReport`, `RapSignature`, and related `RAP` names internally for persistence and historical implementation compatibility. No authoritative project document establishes an official user-facing expansion of the acronym that should be shown to faculty or Admin users.
+
+Until an exact institutional form title is separately confirmed, user-facing product copy should prefer:
+
+- **Committee Report**;
+- **Committee Report Signatures**;
+- **Committee Report finalized**.
+
+Avoid unexplained UI labels such as:
+
+- `RAP / Committee Report`;
+- `RAP finalized`;
+- `RAP is created after the formal conclusion`.
+
+The last statement is also workflow-stale: the Committee Report is authored, frozen, signed, and finalized **before** the Chairman may record the formal verdict.
+
+Detailed bounded design:
+`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`.
 
 ### 5.4 Shared comments rail
 
