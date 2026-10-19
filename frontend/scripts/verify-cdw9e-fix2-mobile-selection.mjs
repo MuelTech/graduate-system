@@ -170,20 +170,6 @@ test("FIX-5: mobile selection remains adjustable until explicit Add comment", ()
 });
 
 
-test("FIX-6: mobile Add comment action uses stable viewport-bottom positioning", () => {
-  const page = read(PAGE);
-
-  assert.match(
-    page,
-    /className="fixed bottom-\[calc\(env\(safe-area-inset-bottom\)\+1rem\)\] left-1\/2 z-40 -translate-x-1\/2 shadow-lg lg:hidden"/,
-  );
-  assert.match(page, /pendingAnchorForPage && onOpenPendingComments/);
-  assert.doesNotMatch(page, /pendingActionPosition/);
-  assert.doesNotMatch(page, /lastPendingRect/);
-  assert.doesNotMatch(page, /style=\{\{[\s\S]*?pendingActionPosition/);
-});
-
-
 test("FIX-7: mobile Add comment stays contextual with a safe gap from native toolbar", () => {
   const page = read(PAGE);
 
