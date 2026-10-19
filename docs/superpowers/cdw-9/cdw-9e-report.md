@@ -7,7 +7,8 @@
 - **Implementation commit:** `b5c751e1b777a44f2efe44b353ef6e814c7b4b3e`
 - **FIX-1 commit:** `edb6f50995241b877476d3da53df7004a5a33db7`
 - **FIX-2 commit:** `d10403fbdc0135d22fcc75cb0bf5f27697f66f05`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance FIX-2 pending owner mobile retest
+- **FIX-3 commit:** `1a119f6ca73ce46f979e57d47867943cd1721b0f`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment fix pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -192,6 +193,63 @@ comment feature.
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance FIX-2 pending
 owner mobile retest**.
+
+## 3C. FIX-3 — native mobile selection pointer-cancel correction
+
+FIX-2 automated checks passed, but actual project-owner phone QA still showed
+that native text selection appeared while the Add Comment composer did not open.
+The phone evidence confirmed that PDF rendering and the pdf.js text layer were
+working; the failure was between native selection and the pending annotation
+state.
+
+### Root cause
+
+On mobile, native long-press text selection can legitimately cancel the
+originating pointer sequence:
+
+```text
+touch pointerdown
+→ native long-press selection
+→ pointercancel
+→ selection handles appear
+→ selectionchange
+```
+
+FIX-2 cleared the touch-selection mode on `pointercancel`, so the later
+`selectionchange` was ignored before it could reach `processSelection()`.
+
+### Fix
+
+- Separate "pointer is active" from "native selection session is armed".
+- `pointercancel` no longer disarms the mobile selection session; it re-arms the
+  bounded session instead.
+- `selectionchange` remains authoritative after touch initiation and schedules
+  the same debounced `processSelection()` path.
+- A 5-second bounded session timer disarms stale touch-selection state if no
+  usable selection completes.
+- Successful anchor creation clears the debounce/session timers, disarms the
+  session, and consumes the browser selection as before.
+- Unmount clears listeners and both timers.
+- Desktop mouse selection, read-only selection/copy, collapsed highlight
+  hit-testing, and the single shared `buildAnchor()` path are unchanged.
+
+### FIX-3 verification
+
+- Focused mobile-selection verifier: **6 passed / 0 failed**, including the
+  explicit `pointerdown(touch) → pointercancel → selectionchange →
+  processSelection()` contract.
+- CDW-2 contracts + CDW-3 collaboration + mobile-selection verifiers:
+  **41 passed / 0 failed**.
+- Frontend TypeScript: **PASS**.
+- Scoped ESLint for `manuscript-page.tsx`: **PASS**.
+- Full frontend build: **NOT REQUIRED / NOT RUN**.
+- Agent real-phone QA: **NOT EXECUTED**.
+- Project-owner phone retest remains pending:
+
+  `phone → open Student Document → long-press/select manuscript text → native selection appears → Add Comment composer appears → type comment → submit → comment appears in Shared Comments`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
+fix pending owner retest**.
 
 ## 4. Responsive evidence
 
