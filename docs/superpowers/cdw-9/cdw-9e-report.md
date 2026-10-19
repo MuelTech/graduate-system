@@ -5,6 +5,7 @@
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `6f6e7760e8081fea0adab1687028322d5a2a94b1`
 - **Implementation commit:** `b5c751e1b777a44f2efe44b353ef6e814c7b4b3e`
+- **FIX-1 commit:** `edb6f50995241b877476d3da53df7004a5a33db7`
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Backend change:** NONE
@@ -112,6 +113,39 @@
 - Character count is programmatically associated but not a live region.
 - Ctrl/Cmd+Enter submission behavior is unchanged.
 - Comment list items remain buttons with `aria-pressed` and visible focus rings.
+
+## 3A. FIX-1 — mobile drawer state and placement
+
+Independent review of CDW-9E found two concrete mobile-drawer defects.
+
+### Orphaned Comments drawer state
+
+- The mobile Comments trigger is no longer rendered when `hasDocument` is false.
+- The active drawer is derived so a right drawer cannot remain active without a
+  current document.
+- If document availability changes while the right drawer is stored open, the
+  stored state is cleared so it cannot reappear later.
+- The background becomes inert/`aria-hidden` only while an actual drawer is
+  active; there is no orphaned modal state.
+
+### Left Actions drawer placement
+
+- The reusable drawer now renders its panel before the backdrop for the left
+  Actions drawer, producing `[Actions panel][backdrop]`.
+- The right Comments drawer keeps `[backdrop][Comments panel]`.
+- The same drawer implementation is retained; focus trap, initial focus, Escape,
+  backdrop close, focus restoration, dialog semantics, responsive widths, and
+  reduced-motion handling are preserved.
+
+### FIX-1 verification
+
+- CDW-9E verifier: **12 passed / 0 failed**.
+- CDW-9E + CDW-4 workspace verifiers: **20 passed / 0 failed**.
+- Frontend TypeScript: **PASS**.
+- Scoped ESLint for `workspace-shell.tsx`: **PASS**.
+- Targeted CDW-9E Manual Accessibility/Responsive QA remains **NOT EXECUTED**.
+
+CDW-9E remains **IMPLEMENTED / PENDING INDEPENDENT REVIEW**.
 
 ## 4. Responsive evidence
 
