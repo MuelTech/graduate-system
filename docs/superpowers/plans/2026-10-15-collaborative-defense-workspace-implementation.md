@@ -14,7 +14,7 @@
 **Next implementation package:** CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening (within parent phase CDW-9)<br>
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented; CDW-9 is split into bounded packages CDW-9A through CDW-9F, all PLANNED / NOT YET IMPLEMENTED, with CDW-9A next
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED; CDW-9 is split into bounded packages CDW-9A through CDW-9F; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F remain PLANNED / NOT YET IMPLEMENTED; CDW-9B is not authorized until CDW-9A review/acceptance
 
 ---
 
@@ -63,7 +63,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
 | CDW-LIVE-1 MANUAL-QA FIX-6 | FINAL ACCEPTED / CLOSED | parallel evaluation/report workstreams, autosave-safe finalization, single-step signing, and concise faculty UI independently source-reviewed and accepted |
 | Additional pre-CDW-9 multi-user replay | WAIVED / NOT REQUIRED | project owner explicitly waived another full replay after FIX-6 because targeted regressions + independent source review sufficiently cover the changed sequence; this is not recorded as a manual-QA PASS |
-| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; all are PLANNED / NOT YET IMPLEMENTED; CDW-9A is next |
+| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F are PLANNED / NOT YET IMPLEMENTED |
 
 Accepted CDW-8 production implementation HEAD:
 
@@ -1410,7 +1410,7 @@ Accepted product-code baseline before the docs-only reconciliation: `3e5ed6847db
 
 ## 13. Phase CDW-9 — Hardening and production readiness
 
-**Parent status:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED.
+**Parent status:** NEXT / AUTHORIZED — CDW-9A IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9 NOT YET COMPLETE.
 
 CDW-9 is the final planned production-hardening phase for the Collaborative
 Defense Workspace. It is not a workflow redesign, a feature-expansion phase, or
@@ -1426,7 +1426,7 @@ reference this section rather than duplicating it.
 
 | Package | Status | Bounded purpose | Starts after |
 |---|---|---|---|
-| **CDW-9A** | **PLANNED / NOT YET IMPLEMENTED** | Evaluation and Oral Examination Summary convergence hardening | Accepted pre-CDW-9 baseline + this plan |
+| **CDW-9A** | **IMPLEMENTED / PENDING INDEPENDENT REVIEW** | Evaluation and Oral Examination Summary convergence hardening | Accepted pre-CDW-9 baseline + this plan |
 | **CDW-9B** | **PLANNED / NOT YET IMPLEMENTED** | Committee Report finalization and signature concurrency hardening | CDW-9A accepted |
 | **CDW-9C** | **PLANNED / NOT YET IMPLEMENTED** | Security and audit hardening | CDW-9B accepted |
 | **CDW-9D** | **PLANNED / NOT YET IMPLEMENTED** | Measured performance and query hardening | CDW-9C accepted |
@@ -1580,7 +1580,7 @@ persisted state or exposing internal identifiers to ordinary faculty UI.
 
 ### 13.5 CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening
 
-**Status:** PLANNED / NOT YET IMPLEMENTED — NEXT AUTHORIZED PACKAGE.
+**Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW.
 
 #### Purpose
 
@@ -1663,6 +1663,31 @@ project-owner authorization.
 CDW-9A is the first CDW-9 implementation package. It may start only after the
 project owner authorizes implementation and the exact starting HEAD is verified.
 CDW-9B depends on CDW-9A being accepted.
+
+#### Implementation evidence
+
+- Implementation commit: `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4`
+  (`fix(cdw): harden evaluation summary convergence`).
+- Implementation report: `docs/superpowers/cdw-9/cdw-9a-report.md`.
+- Production hardening:
+  - finalization converts any escaping transaction-level `P2002` unique race to
+    the existing friendly `409` conflict;
+  - Summary `P2002` convergence returns the winning row's authoritative snapshot
+    evaluator count;
+  - evaluator finalization `409` now refreshes the evaluator and workspace read
+    models.
+- Schema/migration: **NONE**.
+- Focused backend tests include concurrent finalization, duplicate/stale
+  finalization, transaction-level unique-race mapping, simultaneous Summary
+  ensure convergence, P2002 winner convergence, and the preserved FIX-4/verdict/
+  Committee Report boundaries.
+- Focused frontend source-contract verifier:
+  `frontend/scripts/verify-cdw9a-evaluation-convergence.mjs`.
+- Manual browser/multi-user QA: **NOT EXECUTED**. The previously waived
+  pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**, not a PASS.
+
+CDW-9A is not accepted until independent project-owner review. CDW-9B remains
+**PLANNED / NOT YET IMPLEMENTED** and must not begin automatically.
 
 ### 13.6 CDW-9B — Committee Report Finalization and Signature Concurrency Hardening
 

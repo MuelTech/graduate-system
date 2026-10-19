@@ -13,7 +13,7 @@
 **Latest pre-CDW-9 acceptance reconciliation:** `docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md`  
 **FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
 **Accepted pre-CDW-9 workflow/UX correction:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
-**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED / ACCEPTED through FIX-6; parallel Evaluation / Committee Report sequencing, autosave-safe finalization, single-step Committee Report signing, and concise faculty UI are accepted; the project owner waived an additional full multi-user replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented; its bounded execution plan is CDW-9A through CDW-9F in the implementation plan, all PLANNED / NOT YET IMPLEMENTED, with CDW-9A next unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
+**Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED / ACCEPTED through FIX-6; parallel Evaluation / Committee Report sequencing, autosave-safe finalization, single-step Committee Report signing, and concise faculty UI are accepted; the project owner waived an additional full multi-user replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED; its bounded execution plan is CDW-9A through CDW-9F in the implementation plan; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F remain PLANNED / NOT YET IMPLEMENTED; CDW-9B is not authorized until CDW-9A review/acceptance unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
 **Version:** 1.10  
 **Last updated:** 2026-10-19
@@ -1121,7 +1121,7 @@ The original uploaded manuscript remains immutable. Highlights/comments are sepa
 The following are **not missing CDW-1 through CDW-8 requirements** and must remain separate from the accepted foundation:
 
 - CDW-LIVE-1 live Rapporteur preview + report/evaluation autosave is accepted/closed and is current behavior;
-- CDW-9 hardening / production-readiness work, executed as bounded packages CDW-9A through CDW-9F per the implementation plan; all are PLANNED / NOT YET IMPLEMENTED, with CDW-9A next;
+- CDW-9 hardening / production-readiness work, executed as bounded packages CDW-9A through CDW-9F per the implementation plan; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F remain PLANNED / NOT YET IMPLEMENTED; CDW-9B is not authorized until CDW-9A review/acceptance;
 - exact institutional **official-form rendering** for Committee Report/RAP, Individual Evaluation, and Oral Examination Summary, including authoritative pagination/geometry, PDF/print/download output, signature placement, and template versioning;
 - automatic PDF/text/semantic manuscript diff;
 - AI determination of revision/recommendation compliance;
