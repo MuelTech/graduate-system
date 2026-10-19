@@ -11,6 +11,13 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 const PAGE = "src/components/defense-workspace/manuscript-page.tsx";
+const HIGHLIGHT_LAYER =
+  "src/components/defense-workspace/manuscript-highlight-layer.tsx";
+const VIEWER_CSS = "src/components/defense-workspace/manuscript-viewer.css";
+const VIEWER = "src/components/defense-workspace/collaborative-manuscript-viewer.tsx";
+const COLLABORATION =
+  "src/components/defense-workspace/student-document-collaboration.tsx";
+const WORKSPACE = "src/components/defense-workspace/workspace-shell.tsx";
 
 test("desktop mouse selection still uses the shared anchor builder", () => {
   const source = read(PAGE);
@@ -88,4 +95,46 @@ test("collapsed highlight hit-testing remains in the mouse path", () => {
   assert.match(mouseHandler, /denormalizeRects/);
   assert.match(mouseHandler, /onAnnotationSelect\(hit\.id\)/);
   assert.match(mouseHandler, /annotations\.find/);
+});
+
+test("FIX-4: pending anchor renders a presentation-only draft highlight", () => {
+  const page = read(PAGE);
+  const layer = read(HIGHLIGHT_LAYER);
+  const css = read(VIEWER_CSS);
+
+  assert.match(page, /pendingAnchor=\{pendingAnchorForPage\}/);
+  assert.match(layer, /pendingAnchor/);
+  assert.match(layer, /mwHighlightRect--pending/);
+  assert.match(css, /\.mwHighlightRect--pending/);
+  assert.match(layer, /rectsForAnchorOnPage\(pendingAnchor, pageSize\)/);
+  assert.doesNotMatch(page, /apiClientRequest|fetch\(/);
+});
+
+test("FIX-4: contextual Add comment reuses the existing Comments drawer", () => {
+  const page = read(PAGE);
+  const collaboration = read(COLLABORATION);
+  const workspace = read(WORKSPACE);
+
+  assert.match(page, /aria-label="Add comment to selected text"/);
+  assert.match(page, /onOpenPendingComments/);
+  assert.match(page, /lg:hidden/);
+  assert.match(page, /event\.stopPropagation\(\)/);
+  assert.doesNotMatch(page, /WorkspaceDrawer|openDrawer/);
+
+  assert.match(collaboration, /onOpenPendingComments/);
+  assert.match(collaboration, /setRailView\("selected"\)/);
+  assert.match(workspace, /onRequestComments=\{\(\) => \{/);
+  assert.match(workspace, /setOpenDrawer\("right"\)/);
+  assert.match(workspace, /returnFocusTo=\{drawerReturnFocus\}/);
+});
+
+test("FIX-4: pending lifecycle clears the draft action on submit/cancel", () => {
+  const collaboration = read(COLLABORATION);
+
+  assert.match(collaboration, /if \(!canAnnotate\) return;/);
+  assert.match(collaboration, /setPendingAnchor\(anchor\)/);
+  assert.match(collaboration, /setPendingAnchor\(null\)/);
+  assert.match(collaboration, /resetCreate\(\);\s*setPendingAnchor\(null\)/);
+  assert.match(collaboration, /submitNewComment/);
+  assert.match(collaboration, /cancelNewComment/);
 });

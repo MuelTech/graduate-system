@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
+import { Button } from "@/components/ui/button";
 import { buildAnchor, denormalizeRects, type PageRect, type PdfAnchor } from "@/lib/pdf-annotation/anchors";
 import type { CollaborationAnnotation } from "@/lib/pdf-annotation/annotations";
 import { hasUsableTextLayer } from "@/lib/pdf-annotation/viewer-core";
@@ -28,7 +29,11 @@ export interface ManuscriptPageProps {
   /** Annotations already scoped to this page + exact document. */
   annotations: CollaborationAnnotation[];
   focusedAnnotationId: string | null;
+  /** Unsaved selection draft (presentation only, never persisted here). */
+  pendingAnchor?: PdfAnchor | null;
   onTextSelection?: (anchor: PdfAnchor) => void;
+  /** Open the existing Shared Comments drawer for the pending selection. */
+  onOpenPendingComments?: () => void;
   /** CDW-3: select an existing highlight's thread via pointer hit-testing. */
   onAnnotationSelect?: (annotationId: string) => void;
   onTextLayerStatus?: (hasText: boolean) => void;
@@ -42,7 +47,9 @@ export function ManuscriptPage({
   scale,
   annotations,
   focusedAnnotationId,
+  pendingAnchor = null,
   onTextSelection,
+  onOpenPendingComments,
   onAnnotationSelect,
   onTextLayerStatus,
   onBaseSize,
@@ -281,6 +288,33 @@ export function ManuscriptPage({
     [annotations, onAnnotationSelect, processSelection],
   );
 
+  const pendingAnchorForPage =
+    pendingAnchor?.pageNumber === pageNumber ? pendingAnchor : null;
+  const pendingRects =
+    pendingAnchorForPage && pageSize
+      ? denormalizeRects(pendingAnchorForPage.rects, pageSize)
+      : [];
+  const lastPendingRect = pendingRects[pendingRects.length - 1] ?? null;
+  const pendingActionPosition =
+    lastPendingRect && pageSize
+      ? {
+          left: Math.min(
+            Math.max(lastPendingRect.left + lastPendingRect.width / 2, 64),
+            Math.max(pageSize.width - 64, 64),
+          ),
+          top:
+            lastPendingRect.top - 44 >= 8
+              ? lastPendingRect.top - 44
+              : Math.min(
+                  Math.max(
+                    lastPendingRect.top + lastPendingRect.height + 8,
+                    8,
+                  ),
+                  Math.max(pageSize.height - 44, 8),
+                ),
+        }
+      : null;
+
   return (
     <div
       ref={pageRef}
@@ -311,7 +345,28 @@ export function ManuscriptPage({
           pageSize={pageSize}
           annotations={annotations}
           focusedAnnotationId={focusedAnnotationId}
+          pendingAnchor={pendingAnchorForPage}
         />
+      )}
+      {pendingActionPosition && onOpenPendingComments && (
+        <Button
+          type="button"
+          size="sm"
+          aria-label="Add comment to selected text"
+          className="absolute z-[4] -translate-x-1/2 shadow-md lg:hidden"
+          style={{
+            left: `${pendingActionPosition.left}px`,
+            top: `${pendingActionPosition.top}px`,
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenPendingComments();
+          }}
+        >
+          Add comment
+        </Button>
       )}
     </div>
   );

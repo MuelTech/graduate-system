@@ -255,7 +255,14 @@ export function StudentDocumentCollaboration({
 }
 
 /** Center pane: the exact attempt manuscript with highlight + selection support. */
-export function CollaborationViewerPane({ className }: { className?: string }) {
+export function CollaborationViewerPane({
+  className,
+  onRequestComments,
+}: {
+  className?: string;
+  /** Workspace-owned request to open the existing mobile Comments drawer. */
+  onRequestComments?: () => void;
+}) {
   const c = useCollaboration();
   return (
     <div className={"flex h-full min-h-0 min-w-0 flex-col " + (className ?? "")}>
@@ -269,7 +276,16 @@ export function CollaborationViewerPane({ className }: { className?: string }) {
           documentId={c.documentId}
           documentLabel={c.documentLabel}
           annotations={c.annotations}
+          pendingAnchor={c.pendingAnchor}
           onTextSelection={c.handleTextSelection}
+          onOpenPendingComments={
+            onRequestComments
+              ? () => {
+                  c.setRailView("selected");
+                  onRequestComments();
+                }
+              : undefined
+          }
           onAnnotationSelect={c.selectAnnotation}
           focusedAnnotationId={c.selectedAnnotationId}
         />

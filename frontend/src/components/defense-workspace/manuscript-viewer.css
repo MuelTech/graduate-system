@@ -87,3 +87,10 @@
   outline: 2px solid rgb(194 65 12 / 0.95);
   box-shadow: 0 0 0 2px rgb(249 115 22 / 0.25);
 }
+
+/* Presentation-only draft selection; never persisted until Add Comment submits. */
+.mwHighlightRect--pending {
+  background: rgb(37 99 235 / 0.18);
+  outline: 2px dashed rgb(37 99 235 / 0.8);
+  box-shadow: 0 0 0 1px rgb(37 99 235 / 0.15);
+}

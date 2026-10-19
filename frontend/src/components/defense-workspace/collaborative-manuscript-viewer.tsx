@@ -79,8 +79,12 @@ export interface CollaborativeManuscriptViewerProps {
   documentLabel?: string;
   /** Parsed collaboration annotations for this exact document (controlled). */
   annotations?: CollaborationAnnotation[];
+  /** Unsaved selection draft (presentation only, never persisted here). */
+  pendingAnchor?: PdfAnchor | null;
   /** Report a new text selection as a candidate anchor (not persisted here). */
   onTextSelection?: (anchor: PdfAnchor) => void;
+  /** Open the existing Shared Comments drawer for the pending selection. */
+  onOpenPendingComments?: () => void;
   /** Select an existing highlight's thread (CDW-3 focus contract). */
   onAnnotationSelect?: (annotationId: string) => void;
   /** Navigate to + emphasize a specific annotation. */
@@ -92,7 +96,9 @@ export function CollaborativeManuscriptViewer({
   documentId,
   documentLabel,
   annotations = [],
+  pendingAnchor = null,
   onTextSelection,
+  onOpenPendingComments,
   onAnnotationSelect,
   focusedAnnotationId = null,
   className,
@@ -314,7 +320,9 @@ export function CollaborativeManuscriptViewer({
               scale={scale}
               annotations={currentPageAnnotations}
               focusedAnnotationId={focusedAnnotationId}
+              pendingAnchor={pendingAnchor}
               onTextSelection={onTextSelection}
+              onOpenPendingComments={onOpenPendingComments}
               onAnnotationSelect={onAnnotationSelect}
               onTextLayerStatus={setTextAvailable}
               onBaseSize={handleBaseSize}

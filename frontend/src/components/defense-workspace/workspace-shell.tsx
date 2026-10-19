@@ -214,7 +214,13 @@ export function WorkspaceShell({
                   </span>
                   <DefenseHistoryControl scheduleId={scheduleId} hasCurrentDocument />
                 </div>
-                <CollaborationViewerPane className="h-full" />
+                <CollaborationViewerPane
+                  className="h-full"
+                  onRequestComments={() => {
+                    setDrawerReturnFocus(commentsTriggerRef.current);
+                    setOpenDrawer("right");
+                  }}
+                />
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
