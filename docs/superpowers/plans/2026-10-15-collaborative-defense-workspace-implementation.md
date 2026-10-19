@@ -1670,7 +1670,9 @@ CDW-9B depends on CDW-9A being accepted.
   - `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4`
     (`fix(cdw): harden evaluation summary convergence`);
   - `bc695f36016f487908af64715ed43a64b609d3ee`
-    (`fix(cdw): guard stale evaluation drafts`).
+    (`fix(cdw): guard stale evaluation drafts`);
+  - `b167f8c4c40cdac9b67fc3db590f81e9f94462de`
+    (`fix(cdw): recover stale evaluation drafts safely`).
 - Implementation report: `docs/superpowers/cdw-9/cdw-9a-report.md`.
 - Production hardening:
   - finalization converts any escaping transaction-level `P2002` unique race to
@@ -1680,14 +1682,20 @@ CDW-9B depends on CDW-9A being accepted.
   - draft saves/finalization use an optional authoritative `updatedAt` row
     version guard and CAS predicate;
   - evaluator finalization `409` now refreshes the evaluator and workspace read
-    models.
+    models;
+  - stale draft `409` enters an explicit conflict state, blocks automatic
+    persistence, preserves local work, and requires an explicit
+    **Reload latest saved evaluation** action before the authoritative snapshot
+    and row version replace the local baseline.
 - Schema/migration: **NONE**.
 - Focused backend tests include concurrent finalization, duplicate/stale
   finalization, stale DRAFT version rejection, transaction-level unique-race
   mapping, simultaneous Summary ensure convergence, P2002 winner convergence,
   and the preserved FIX-4/verdict/Committee Report boundaries.
-- Focused frontend source-contract verifier:
-  `frontend/scripts/verify-cdw9a-evaluation-convergence.mjs`.
+- Focused frontend verifiers:
+  `frontend/scripts/verify-cdw9a-evaluation-convergence.mjs` and
+  `frontend/scripts/verify-cdw9a-fix1-stale-recovery.mjs` (behavioral autosave
+  conflict/reconcile coverage plus explicit recovery UI contract).
 - Manual browser/multi-user QA: **NOT EXECUTED**. The previously waived
   pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**, not a PASS.
 

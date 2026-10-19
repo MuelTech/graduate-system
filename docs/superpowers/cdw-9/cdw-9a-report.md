@@ -7,6 +7,7 @@
 - **Implementation commits:**
   - `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4` — convergence hardening
   - `bc695f36016f487908af64715ed43a64b609d3ee` — stale evaluation draft version guard
+  - `b167f8c4c40cdac9b67fc3db590f81e9f94462de` — CDW-9A FIX-1 explicit stale-draft recovery
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Schema change:** NONE
@@ -93,17 +94,35 @@ No schema or migration change was required.
 - Legacy callers that omit the token retain the existing status/unique-constraint
   behavior.
 
-### 3.4 Stale evaluator client
+### 3.4 Stale evaluator client — explicit recovery (CDW-9A FIX-1)
 
 `frontend/src/components/defense-workspace/oral-evaluation-form.tsx`
+`frontend/src/lib/evaluation/evaluation-autosave.ts`
 
-- A finalization `409` now invalidates the evaluator's own evaluation query and
-  the authoritative Defense Workspace query.
+- Autosave and finalization `409` responses now enter an explicit conflict state
+  rather than only invalidating queries.
+- The local unsaved criteria/recommendations remain visible and are not silently
+  replaced.
+- Automatic persistence is blocked while the conflict is unresolved
+  (`markConflict()`), including debounce, flush, reconnect, and unmount-drain
+  paths. No stale request is retried automatically.
+- The evaluator sees:
+  `This evaluation was updated in another tab or session. Your unsaved changes
+  are still here. Reload the latest saved evaluation before continuing.`
+- The explicit **Reload latest saved evaluation** action:
+  - fetches the authoritative evaluator read;
+  - replaces local criteria/recommendations;
+  - adopts the authoritative row version;
+  - resets the autosave baseline through
+    `reconcileWithPersisted()`;
+  - clears the conflict state and permits normal editing.
+- If the authoritative record is already `FINALIZED`, edits stay locked and the
+  finalized state is shown. Local stale data cannot overwrite it.
+- Finalization still drains autosave through `flushAndWait()` before the
+  irreversible request. A blocked conflict makes finalization unavailable.
 - Autosave sends the current row version and updates it from the save response;
   finalization sends the drained version.
-- Local form state is not silently cleared; the backend/faculty-readable error
-  message remains visible.
-- No internal version/hash/database identifiers are added to faculty UI.
+- No internal version/hash/database identifiers are displayed in faculty UI.
 
 ---
 
@@ -176,6 +195,23 @@ Existing FIX-4 tests continue to cover:
 - autosave and finalization carry the authoritative row version;
 - autosave drain still precedes the irreversible finalize request.
 
+`frontend/scripts/verify-cdw9a-fix1-stale-recovery.mjs`
+
+- conflict blocks automatic retry and unmount-drain persistence;
+- explicit reconciliation resets the saved baseline and allows a normal save;
+- reconciliation refuses to replace a baseline while a save is in flight;
+- conflict UI preserves local work and requires explicit reload;
+- conflict enters recovery mode and disables further edits;
+- explicit reload adopts the authoritative snapshot and row version;
+- conflict recovery is not invoked automatically;
+- FINALIZED authoritative state hides the conflict and locks edits;
+- finalization still drains autosave first.
+
+`frontend/scripts/verify-cdw-live-1b-evaluation.mjs`
+
+- autosave payload now includes the authoritative row version alongside private
+  criteria/recommendations and never signatures.
+
 ---
 
 ## 6. Verification
@@ -191,6 +227,20 @@ Existing FIX-4 tests continue to cover:
 | Schema/migration change | **NONE** |
 | Hosted CI | **NOT OBSERVED / NOT CLAIMED** |
 | Manual browser/multi-user QA | **NOT EXECUTED** |
+
+### CDW-9A FIX-1 verification (frontend-only)
+
+| Check | Result |
+|---|---|
+| New stale-recovery verifier (behavioral controller + UI contract) | **9 passed / 0 failed** |
+| Existing CDW-9A verifier | **4 passed / 0 failed** |
+| CDW-LIVE-1B evaluation autosave verifier | **24 passed / 0 failed** |
+| CDW-LIVE-1C acceptance verifier | **31 passed / 0 failed** |
+| Frontend `npx tsc --noEmit` | **PASS** |
+| Scoped ESLint on changed files | **PASS** |
+| Frontend production build | **PASS** |
+| `git diff --check` | **clean** (line-ending notices only) |
+| Backend production/schema/migration change | **NONE** |
 
 Focused backend files:
 
@@ -215,6 +265,7 @@ not represented as Manual QA PASS, full replay PASS, or full E2E PASS.
   race coverage; it is not a live MariaDB contention benchmark or browser
   multi-user replay.
 - No actual simultaneous role-separated browser sessions were executed.
+- Targeted two-tab stale-draft Manual QA: **NOT EXECUTED**.
 - Summary concurrency remains dependent on the existing database unique
   constraint; no schema change was needed.
 - CDW-9A does not add audit logging, performance/index work, or accessibility
@@ -226,6 +277,7 @@ not represented as Manual QA PASS, full replay PASS, or full E2E PASS.
 
 - CDW-9B was not started.
 - CDW-9C through CDW-9F were not started.
+- Backend production: **NO CHANGE** in CDW-9A FIX-1.
 - FIX-4 computation: **NO CHANGE**.
 - Verdict authority: **NO CHANGE**.
 - Committee Report sequencing: **NO CHANGE**.
