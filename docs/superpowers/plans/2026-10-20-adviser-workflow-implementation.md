@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 AUTHORIZED / NOT STARTED
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 READY FOR AUTHORIZATION
 
 ---
 
@@ -281,6 +281,8 @@ No schema migration is expected for the basic fix. Do not add one merely to re-l
 
 Packages are intentionally bounded. The coding agent must stop after each package and report exact evidence before proceeding unless the project owner explicitly authorizes grouped execution.
 
+**Working protocol:** repository documentation/status synchronization is maintained by the project-planning ChatGPT session after independent review and acceptance. The coding agent is implementation-only by default and should not edit canonical documentation unless explicitly instructed for a package-specific reason.
+
 ### ADV-0 — Documentation / baseline lock
 
 **Status:** COMPLETE by this documentation commit.
@@ -342,7 +344,23 @@ Verification proportional to bounded backend + frontend wiring:
 
 ### ADV-2 — Adviser read model + authorization foundation
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** ACCEPTED / CLOSED
+
+Accepted implementation:
+- core ADV-2: `bea0ade4260a3a707a9f47e10dd320b83179891d` — `feat(adviser): add scoped adviser workspace read model`
+- bounded FIX-1: `6e042a3d81feff89098773a5dc81aec882fa6a8a` — `fix(adviser): detect cross-adviser duplicate active assignments`
+- independent remote source review: PASS
+- manual/browser QA: NOT REQUIRED / NOT EXECUTED (backend-only read/authorization foundation)
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- schema/migration: NONE
+
+Accepted result:
+- `GET /thesis/adviser/workspace` provides authenticated Adviser-scoped Active Advisees, Incoming Requests, and Proposal/Final Review Tasks by composing existing authorities;
+- `GET /thesis/adviser/advisees/:studentId` provides a bounded overview only for the Student's current active Adviser;
+- cross-Adviser and former/inactive Adviser detail access fail closed without Student enumeration;
+- duplicate active AdviserAssignments are detected against all active rows for candidate Students in a bounded query, including cross-Adviser conflicts;
+- no historical Title Defense wording is promoted to a current working title; `workingTitle` remains null until a separately-authorized current-title source exists;
+- raw AdviserAssignment relations, thesis documents, COR/payment evidence, evaluator records, and signature data are not exposed by this read model.
 
 Goal: add Adviser-scoped read models for My Advisees without UI consolidation yet.
 
@@ -363,6 +381,8 @@ Security focus:
 - no raw private signature data.
 
 ### ADV-3 — My Advisees main workspace
+
+**Status:** READY FOR AUTHORIZATION / NOT STARTED
 
 Goal: implement the parent Adviser workspace.
 
