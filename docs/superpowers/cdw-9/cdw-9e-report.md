@@ -6,14 +6,14 @@
 - **Starting HEAD:** `6f6e7760e8081fea0adab1687028322d5a2a94b1`
 - **Implementation commit:** `b5c751e1b777a44f2efe44b353ef6e814c7b4b3e`
 - **FIX-1 commit:** `edb6f50995241b877476d3da53df7004a5a33db7`
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
 - **Realtime protocol:** NONE
 - **Targeted CDW-9E Manual Accessibility/Responsive QA:** NOT EXECUTED
 - **Hosted CI:** NOT OBSERVED / NOT CLAIMED
-- **CDW-9F:** PLANNED / NOT YET IMPLEMENTED — NOT STARTED
+- **CDW-9F:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED
 
 ---
 
@@ -145,7 +145,7 @@ Independent review of CDW-9E found two concrete mobile-drawer defects.
 - Scoped ESLint for `workspace-shell.tsx`: **PASS**.
 - Targeted CDW-9E Manual Accessibility/Responsive QA remains **NOT EXECUTED**.
 
-CDW-9E remains **IMPLEMENTED / PENDING INDEPENDENT REVIEW**.
+CDW-9E FIX-1 remains independently reviewed; final package acceptance is recorded below.
 
 ## 4. Responsive evidence
 
@@ -207,4 +207,45 @@ WCAG conformance test was executed. No WCAG compliance is claimed.
 - No manual focus-trap, Escape, restoration, narrow-viewport, or touch-target
   verification was executed.
 - No WCAG audit or certification is claimed.
-- CDW-9E remains pending independent review and is not marked accepted here.
+- Draw-only signing remains a documented accessibility limitation and does not imply WCAG conformance.
+
+
+## 9. Independent Acceptance
+
+**Independent remote source/diff review: PASS.**
+
+Independent review of the initial CDW-9E implementation found two bounded mobile
+drawer defects. FIX-1 at `edb6f50995241b877476d3da53df7004a5a33db7`
+corrected both:
+
+- the Comments drawer can no longer orphan the workspace when no current document
+  exists;
+- the left Actions drawer now renders on the left while the right Comments drawer
+  remains on the right.
+
+The final remote source preserves the accepted focus trap, Escape behavior,
+background `inert` / `aria-hidden` isolation, focus restoration, dialog
+semantics, responsive containment, reduced-motion handling, draw-only signature
+policy, academic authority, autosave/concurrency behavior, realtime behavior, and
+backend/schema boundaries.
+
+Evidence classification remains explicit:
+
+- initial agent-local CDW-9E verifier: **9 passed / 0 failed**;
+- initial combined affected verifier suite: **155 passed / 0 failed**;
+- FIX-1 agent-local CDW-9E verifier: **12 passed / 0 failed**;
+- FIX-1 CDW-9E + CDW-4 focused verifiers: **20 passed / 0 failed**;
+- frontend TypeScript and scoped lint: **PASS** as reported;
+- project-owner local development-server/runtime sanity after FIX-1: **PASS**;
+- Targeted CDW-9E Manual Accessibility/Responsive QA: **NOT EXECUTED**;
+- hosted CI: **NOT OBSERVED / NOT CLAIMED**.
+
+The local development-server sanity check is not represented as keyboard,
+screen-reader, viewport, or WCAG QA. The draw-only signature surface remains not
+fully keyboard-equivalent and no WCAG compliance claim is made.
+
+Under the documented risk-based acceptance rule, the project owner accepts the
+package without converting unexecuted manual accessibility checks into a PASS.
+
+**CDW-9E is ACCEPTED / CLOSED. CDW-9F is NEXT / AUTHORIZED — NOT YET
+IMPLEMENTED.**
