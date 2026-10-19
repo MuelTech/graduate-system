@@ -9,6 +9,12 @@ import {
   type DefenseEvidenceStage,
 } from "../services/defense-evidence.rules";
 import { DEFENSE_REVIEW_ACTIONS } from "../services/defense-review-events";
+import { selectAuthoritativeAttemptManuscript } from "../services/defense-attempt-manuscript.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "../services/defense-audit";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -87,6 +93,13 @@ export class ThesisRepository {
         },
         oralExamScores: { select: { id: true, status: true, panelId: true } },
         oralExamSummary: { select: { id: true } },
+        // RAP-C1: the attempt's committee report lifecycle determines whether the
+        // Chairman may record the formal verdict.
+        rapReports: {
+          select: { status: true, frozenAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
     if (!schedule) return null;
@@ -115,6 +128,10 @@ export class ThesisRepository {
       sessionStatus: schedule.sessionStatus as string,
       rapporteurNotesFinalized: Boolean(schedule.rapporteurNotesFinalizedAt),
       oralSummaryExists: Boolean(schedule.oralExamSummary),
+      rapReportStatus: schedule.rapReports[0]
+        ? String(schedule.rapReports[0].status)
+        : null,
+      rapReportFrozen: Boolean(schedule.rapReports[0]?.frozenAt),
     };
   }
 
@@ -854,15 +871,16 @@ export class ThesisRepository {
     },
   ) {
     return prisma.$transaction(async (tx) => {
+      const defenseType = data.defenseType.toUpperCase() as
+        | "TITLE_DEFENSE"
+        | "PROPOSAL_DEFENSE"
+        | "FINAL_DEFENSE";
       // Hard guard: never create a second non-cancelled schedule for the same
       // thesis + defense type (rescheduling is a separate, unimplemented workflow).
       const existing = await tx.defenseSchedule.findMany({
         where: {
           thesisId,
-          defenseType: data.defenseType.toUpperCase() as
-            | "TITLE_DEFENSE"
-            | "PROPOSAL_DEFENSE"
-            | "FINAL_DEFENSE",
+          defenseType,
           sessionStatus: { not: "CANCELLED" },
         },
         select: { id: true, defenseType: true, sessionStatus: true, createdAt: true, conclusion: { select: { outcome: true } } },
@@ -875,16 +893,56 @@ export class ThesisRepository {
         throw new Error(gate.reason);
       }
 
+      // CDW-2 correction: bind the EXACT manuscript evidence for THIS attempt.
+      // Resolved server-side from the authoritative document (never client-supplied).
+      const thesisForBinding = await tx.thesisRecord.findUnique({
+        where: { id: thesisId },
+        select: {
+          thesisDocuments: {
+            select: {
+              id: true,
+              thesisId: true,
+              docType: true,
+              defenseStage: true,
+              isCurrent: true,
+              uploadedAt: true,
+            },
+          },
+          adviserCertifications: {
+            where: {
+              status: "ISSUED",
+              defenseStage: { in: ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"] },
+            },
+            select: { status: true, defenseStage: true, reviewedDocumentId: true },
+          },
+        },
+      });
+      const attemptManuscript = selectAuthoritativeAttemptManuscript(
+        thesisForBinding?.thesisDocuments ?? [],
+        thesisForBinding?.adviserCertifications ?? [],
+        defenseType,
+        thesisId,
+      );
+
+      // Each NEW defense attempt must preserve its EXACT manuscript evidence.
+      // The nullable column exists only for legacy rows: a new schedule is never
+      // created without a provable authoritative manuscript. Fail the whole
+      // transaction before any schedule/roster/status mutation.
+      if (!attemptManuscript) {
+        throw new AppError(
+          "Authoritative defense manuscript is unavailable for scheduling.",
+          409,
+        );
+      }
+
       const schedule = await tx.defenseSchedule.create({
         data: {
           thesisId,
           defenseDate: new Date(data.defenseDate),
           defenseTime: new Date(`1970-01-01T${data.defenseTime}:00.000Z`),
           venueOrLink: data.venueOrLink,
-          defenseType: data.defenseType.toUpperCase() as
-            | "TITLE_DEFENSE"
-            | "PROPOSAL_DEFENSE"
-            | "FINAL_DEFENSE",
+          defenseType,
+          manuscriptDocumentId: attemptManuscript.id,
           setById: adminId,
         },
       });
@@ -1081,6 +1139,13 @@ export class ThesisRepository {
       where: {
         userId,
         isSigned: false,
+        // CDW-7: the legacy signature inbox is an ACTION queue. Historical
+        // (concluded/cancelled) attempts are read-only and must not appear here,
+        // and only canonical signable RAP states are actionable.
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       select: {
         id: true,
@@ -1182,8 +1247,10 @@ export class ThesisRepository {
   /**
    * CP7 formal conclusion transaction (Chairman authority).
    * All authoritative checks are re-verified inside the transaction.
-   * Creates DefenseConclusion + one RAP + required evaluator signature slots.
-   * Never invents OralRating. Never defaults missing outcome to PASSED.
+   * Requires an EXISTING FINALIZED Committee Report/RAP (authored + frozen +
+   * fully signed BEFORE conclusion). Creates DefenseConclusion only; it never
+   * creates or mutates a RAP. Never invents OralRating. Never defaults missing
+   * outcome to PASSED.
    */
   async concludeDefense(
     scheduleId: string,
@@ -1195,9 +1262,11 @@ export class ThesisRepository {
       finalRemarks?: string | null;
     },
   ) {
-    const { RapReportService, buildRapContent, resolveAttemptTitleContext } =
-      await import("../services/rap-report.service");
-    const rapService = new RapReportService();
+    // Only the attempt-bound Title context helper is needed here now. The RAP is
+    // authored/finalized BEFORE conclusion, so no RAP is created in this path.
+    const { resolveAttemptTitleContext } = await import(
+      "../services/rap-report.service"
+    );
 
     const result = await prisma.$transaction(async (tx) => {
       const schedule = await tx.defenseSchedule.findUnique({
@@ -1207,6 +1276,7 @@ export class ThesisRepository {
           panelAssignments: true,
           conclusion: true,
           oralExamSummary: true,
+          rapReports: { select: { id: true, status: true, generatedAt: true } },
           thesis: {
             include: {
               thesisTitles: true,
@@ -1238,54 +1308,33 @@ export class ThesisRepository {
 
       const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
 
-      // WF-C1b: every stage may conclude only from AWAITING_CONCLUSION. Proposal/
-      // Final additionally require finalized Rapporteur notes; Title does not yet
-      // (RAP-before-conclusion is deferred to WF-C1c).
+      // WF-C1b: every stage may conclude only from AWAITING_CONCLUSION.
       if (String(schedule.sessionStatus) !== "AWAITING_CONCLUSION") {
         throw new AppError(
           "Formal conclusion requires the session to be awaiting conclusion.",
           409,
         );
       }
-      if (
-        !isTitle &&
-        (!schedule.rapporteurNotesFinalizedAt || !schedule.rapporteurNotes)
-      ) {
+
+      // RAP-C1 FIX: the official RAP is authored IN-SYSTEM and MUST already be
+      // FINALIZED before the Chairman may record the verdict. This is the
+      // authoritative, ALL-STAGE gate and runs BEFORE any authoritative write
+      // (DefenseConclusion, ThesisRecord, session CONCLUDED). There is NO legacy
+      // fallback: a missing report, or any non-FINALIZED status (DRAFT,
+      // FOR_SIGNATURE, PARTIALLY_SIGNED, ALL_SIGNED, DISTRIBUTED), blocks the
+      // conclusion. Legacy Rapporteur notes never substitute for the RAP.
+      const existingRap = (schedule.rapReports ?? [])[0] ?? null;
+      if (!existingRap) {
         throw new AppError(
-          "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+          "The Committee Report must be created, frozen, fully signed, and finalized before the defense can be formally concluded.",
           409,
         );
       }
-
-      // RAP is generated once the conclusion exists AND the official minutes are
-      // finalized. For Title the Chairman may conclude while minutes are still draft;
-      // the deferred RAP is then generated by the Rapporteur finalization flow.
-      const notesFinalized =
-        Boolean(schedule.rapporteurNotesFinalizedAt) &&
-        Boolean(schedule.rapporteurNotes);
-      const shouldCreateRap = !isTitle || notesFinalized;
-
-      let rapporteurFinalizerId: string | null = null;
-      if (shouldCreateRap) {
-        // CP7-FIX1 Issue 10: RAP generator must be the Rapporteur finalizer — no Chairman fallback.
-        rapporteurFinalizerId = schedule.rapporteurNotesFinalizedById;
-        if (!rapporteurFinalizerId) {
-          throw new AppError(
-            "Rapporteur notes finalizer identity is missing. Official RAP cannot be generated.",
-            409,
-          );
-        }
-        const rapporteurAssignment = schedule.panelAssignments.find(
-          (p) =>
-            p.userId === rapporteurFinalizerId &&
-            String(p.role) === "RAPPORTEUR",
+      if (String(existingRap.status) !== "FINALIZED") {
+        throw new AppError(
+          "The Committee Report must be finalized before the defense can be formally concluded.",
+          409,
         );
-        if (!rapporteurAssignment) {
-          throw new AppError(
-            "Rapporteur notes finalizer is not the assigned session Rapporteur. Data integrity check failed.",
-            409,
-          );
-        }
       }
 
       const outcome = options.outcome;
@@ -1335,38 +1384,8 @@ export class ThesisRepository {
         );
       }
 
-      // Attempt-bound title context only — never the thesis-global isSelected.
-      const officialTitle = attemptTitle.officialTitle;
-
-      // RAP content: finalized Rapporteur notes + FINALIZED evaluator recommendations.
-      const evaluatorRoleSet = new Set(
-        new DefenseCommitteePolicy()
-          .getEvaluatorRoles(schedule.defenseType as never)
-          .map(String),
-      );
-      const panelRecommendations = schedule.oralExamScores
-        .filter(
-          (s) =>
-            s.status === "FINALIZED" &&
-            schedule.panelAssignments.some(
-              (p) =>
-                p.id === s.panelId &&
-                evaluatorRoleSet.has(String(p.role)),
-            ),
-        )
-        .map((s) => s.recommendations)
-        .filter(Boolean)
-        .join("\n\n");
-
-      const rapContent = buildRapContent({
-        defenseType: String(schedule.defenseType),
-        officialTitle,
-        outcome,
-        rapporteurNotes: schedule.rapporteurNotes,
-        panelRecommendations,
-      });
-
-      // Formal conclusion record (sole source of academic outcome).
+      // Formal conclusion record (sole source of academic outcome). The finalized
+      // RAP already exists and is NEVER mutated by the verdict.
       const conclusion = await tx.defenseConclusion.create({
         data: {
           scheduleId,
@@ -1396,35 +1415,26 @@ export class ThesisRepository {
         data: { sessionStatus: "CONCLUDED" },
       });
 
-      // RAP created once, only when the official minutes are finalized.
-      // generatedBy = Rapporteur who finalized notes (no Chairman fallback).
-      // A Title conclusion recorded while minutes are still draft defers RAP
-      // creation to the Rapporteur finalization flow.
-      let rapReport: Awaited<
-        ReturnType<typeof rapService.createRapAfterConclusion>
-      > | null = null;
-      if (shouldCreateRap && rapporteurFinalizerId) {
-        rapReport = await rapService.createRapAfterConclusion(tx, {
+      await writeDefenseAudit(tx, {
+        actorId: chairmanUserId,
+        actionType: DEFENSE_AUDIT_ACTIONS.VERDICT_RECORDED,
+        targetTable: DEFENSE_AUDIT_TARGETS.CONCLUSION,
+        targetId: conclusion.id,
+        metadata: {
           scheduleId,
           thesisId: schedule.thesisId,
           defenseType: String(schedule.defenseType),
-          venue: schedule.venueOrLink,
-          selectedTitle: officialTitle,
-          decisionsAndRecommendations: rapContent,
-          generatedById: rapporteurFinalizerId,
-        });
-      }
+          outcome,
+        },
+      });
 
-      return { conclusion, rapReport, isTitle };
+      // No RapReport is created here: the canonical RAP lifecycle is inverted for
+      // new conclusions (draft → freeze → signatures → FINALIZED → verdict). The
+      // already-FINALIZED report is reused and never mutated.
+      return { conclusion, rapReport: existingRap, isTitle };
     });
 
-    let finalRap = result.rapReport;
-    if (result.isTitle && !finalRap) {
-      // Convergent deferred Title RAP: safe even when the formal conclusion and
-      // the Rapporteur's finalized minutes commit in near-simultaneous transactions.
-      finalRap = await rapService.ensureRapAfterTitlePrerequisites(scheduleId);
-    }
-    return { conclusion: result.conclusion, rapReport: finalRap };
+    return { conclusion: result.conclusion, rapReport: result.rapReport };
   }
 
   // CP7-FIX2: Admin RAP list — explicit select; never expose signatureData.

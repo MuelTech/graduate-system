@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
 import {
   GraduationCap,
   Eye,
@@ -89,8 +90,7 @@ export default function RegisterPage() {
     // 2. Fetch programs
     const fetchPrograms = async () => {
       try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+        const apiUrl = getClientBackendBaseUrl();
         const res = await fetch(`${apiUrl}/api/programs`);
         if (res.ok) {
           const data = await res.json();
@@ -188,8 +188,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const apiUrl =
-        process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+      const apiUrl = getClientBackendBaseUrl();
       const res = await fetch(`${apiUrl}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
+import { getServerBackendBaseUrl } from "./backend-origin.server";
+
 export const apiServerRequest = async (
   url: string,
   options: RequestInit = {},
@@ -15,7 +17,7 @@ export const apiServerRequest = async (
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const apiUrl = process.env.BACKEND_API_URL || "http://localhost:5000";
+  const apiUrl = getServerBackendBaseUrl();
   const response = await fetch(`${apiUrl}/api${url}`, {
     ...options,
     headers,

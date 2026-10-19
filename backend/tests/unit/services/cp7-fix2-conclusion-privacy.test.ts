@@ -34,6 +34,7 @@ const prismaMock = vi.hoisted(() => {
       findMany: vi.fn(),
       findMany: vi.fn(),
     },
+    auditLog: { create: vi.fn() },
   };
   return {
     defenseSchedule: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
@@ -54,6 +55,7 @@ const prismaMock = vi.hoisted(() => {
     },
     panelAssignment: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
     oralExamScore: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+    auditLog: { create: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
     __tx: tx,
   };
@@ -173,6 +175,7 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
     expect(createRapAfterConclusion).not.toHaveBeenCalled();
     expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
     expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("REAL F: non-Rapporteur finalizer → 409 and no official writes", async () => {
@@ -192,9 +195,16 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
     expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
   });
 
-  it("REAL G: valid Rapporteur finalizer becomes RAP generatedById (no Chairman fallback)", async () => {
+  it("REAL G: with an existing FINALIZED RapReport, conclusion succeeds WITHOUT creating or mutating a RAP", async () => {
     prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleFixture({ finalizerId: "rap-1" }),
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: {
+          rapReports: [
+            { id: "rap-1", status: "FINALIZED", generatedAt: new Date("2026-10-01T00:00:00Z") },
+          ],
+        },
+      }),
     );
 
     const result = await repo.concludeDefense("sched-1", "chair-1", {
@@ -210,15 +220,151 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
         selectedTitleId: "t1",
       },
     );
-    expect(createRapAfterConclusion).toHaveBeenCalledTimes(1);
-    expect(createRapAfterConclusion.mock.calls[0][1]).toMatchObject({
-      generatedById: "rap-1",
-    });
+    // No post-conclusion RAP creation and no RAP mutation.
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+    expect(ensureRapAfterTitlePrerequisites).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReport.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReport.updateMany).not.toHaveBeenCalled();
     expect(result.rapReport.id).toBe("rap-1");
-    // No Chairman fallback
-    expect(createRapAfterConclusion.mock.calls[0][1].generatedById).not.toBe(
-      "chair-1",
+    expect(prismaMock.__tx.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.__tx.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "chair-1",
+      actionType: "DEFENSE_VERDICT_RECORDED",
+      targetTable: "defense_conclusions",
+      targetId: "c-1",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toEqual({
+      scheduleId: "sched-1",
+      thesisId: "thesis-1",
+      defenseType: "TITLE_DEFENSE",
+      outcome: "PASSED",
+    });
+    expect(audit.newValue).not.toMatch(
+      /signature|criteria|recommendation|reportBody|manuscript|finalRemarks|password|token|storagePath/i,
     );
+  });
+
+  it("CDW-5 FIX: a failing RAP-lifecycle (non-finalized report) aborts the conclusion (409 propagates)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({ finalizerId: "rap-1" }),
+    );
+    // Same rejection the real RapReportService throws when the attempt already has
+    // a DRAFT report (see cp7-official-defense-records). It must propagate out of
+    // concludeDefense so the surrounding $transaction rolls back.
+    createRapAfterConclusion.mockRejectedValue(
+      new AppError(
+        "The Committee Report must complete the required RAP lifecycle before the defense can be formally concluded.",
+        409,
+      ),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("CDW-5 FINAL: TITLE with an existing DRAFT report → 409 and NO official writes", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        overrides: { rapReports: [{ id: "rap-1", status: "DRAFT" }] },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    // The guard runs BEFORE any authoritative write, so nothing partial commits.
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5 FINAL: TITLE with an existing FOR_SIGNATURE / PARTIALLY_SIGNED report → 409", async () => {
+    for (const status of ["FOR_SIGNATURE", "PARTIALLY_SIGNED"]) {
+      prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleFixture({
+          finalizerId: null,
+          notesFinalizedAt: null,
+          overrides: { rapReports: [{ id: "rap-1", status }] },
+        }),
+      );
+      await expect(
+        repo.concludeDefense("sched-1", "chair-1", {
+          outcome: "PASSED",
+          selectedTitleId: "t1",
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-5 FINAL: TITLE with an existing FINALIZED report → conclusion may proceed", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: { rapReports: [{ id: "rap-1", status: "FINALIZED" }] },
+      }),
+    );
+
+    const result = await repo.concludeDefense("sched-1", "chair-1", {
+      outcome: "PASSED",
+      selectedTitleId: "t1",
+    });
+    expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
+    expect(result.conclusion.id).toBe("c-1");
+  });
+
+  it("CDW-5 FINAL: Proposal/Final with an existing DRAFT report → 409 (guard is all-stage)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: {
+          defenseType: "PROPOSAL_DEFENSE",
+          rapReports: [{ id: "rap-1", status: "DRAFT" }],
+        },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+  });
+
+  it("RAP-C1 FIX: no existing RapReport → 409 and NO official writes / NO RAP created (Title)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: null,
+        notesFinalizedAt: null,
+        overrides: { rapReports: [] },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
   });
 });
 
@@ -241,29 +387,56 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
     prismaMock.__tx.thesisTitle.update.mockResolvedValue({});
   });
 
-  it("Title conclusion is allowed (evaluators done + Summary) while notes are still draft; deferred RAP check converges", async () => {
+  it("RAP-C1 FIX: Title cannot conclude before a FINALIZED in-system RAP exists (no deferred RAP)", async () => {
     prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
       scheduleFixture({
         finalizerId: null,
         notesFinalizedAt: null,
         sessionStatus: "AWAITING_CONCLUSION",
+        overrides: { rapReports: [] },
+      }),
+    );
+
+    await expect(
+      repo.concludeDefense("sched-1", "chair-1", {
+        outcome: "PASSED",
+        selectedTitleId: "t1",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(createRapAfterConclusion).not.toHaveBeenCalled();
+    expect(ensureRapAfterTitlePrerequisites).not.toHaveBeenCalled();
+  });
+
+  it("RAP-C1 FIX: a FINALIZED report is never mutated by the conclusion (Title, REDEFENSE_REQUIRED)", async () => {
+    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleFixture({
+        finalizerId: "rap-1",
+        overrides: {
+          rapReports: [
+            { id: "rap-1", status: "FINALIZED", generatedAt: new Date("2026-10-01T00:00:00Z") },
+          ],
+        },
       }),
     );
 
     const result = await repo.concludeDefense("sched-1", "chair-1", {
-      outcome: "PASSED",
+      outcome: "REDEFENSE_REQUIRED",
       selectedTitleId: "t1",
     });
 
     expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.__tx.defenseSchedule.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { sessionStatus: "CONCLUDED" } }),
-    );
-    // RAP must not be created inline (minutes still draft); the convergent
-    // ensure is invoked after commit and is a no-op until minutes are finalized.
-    expect(createRapAfterConclusion).not.toHaveBeenCalled();
-    expect(ensureRapAfterTitlePrerequisites).toHaveBeenCalledWith("sched-1");
-    expect(result.rapReport).toBeNull();
+    expect(prismaMock.__tx.defenseConclusion.create.mock.calls[0][0].data).toMatchObject({
+      outcome: "REDEFENSE_REQUIRED",
+    });
+    // The frozen RAP is untouched: no body/hash/version update, no signature write.
+    expect(prismaMock.__tx.rapReport.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReport.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(result.rapReport).toMatchObject({ id: "rap-1", status: "FINALIZED" });
   });
 
   it("WF-C1b: Title conclusion requires finalized evaluators + Summary in the transaction", async () => {
@@ -337,6 +510,96 @@ describe("2026-10-04 Title conclusion — Chairman independent of Rapporteur fin
 
     expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
     expect(createRapAfterConclusion).not.toHaveBeenCalled();
+  });
+});
+
+describe("RAP-C1 FIX — no-RAP fallback removed for NEW conclusions (repository, all stages)", () => {
+  const repo = new ThesisRepository();
+  const STAGES = ["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    createRapAfterConclusion.mockReset();
+    ensureRapAfterTitlePrerequisites.mockReset();
+    prismaMock.__tx.defenseConclusion.create.mockResolvedValue({ id: "c-1" });
+    prismaMock.__tx.thesisRecord.update.mockResolvedValue({});
+    prismaMock.__tx.defenseSchedule.update.mockResolvedValue({});
+  });
+
+  for (const defenseType of STAGES) {
+    it(`${defenseType}: NO RapReport → 409 with no authoritative writes and no RAP created`, async () => {
+      prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleFixture({
+          finalizerId: "rap-1",
+          overrides: { defenseType, rapReports: [] },
+        }),
+      );
+      await expect(
+        repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED", selectedTitleId: "t1" }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+      expect(createRapAfterConclusion).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+    });
+
+    for (const status of [
+      "DRAFT",
+      "FOR_SIGNATURE",
+      "PARTIALLY_SIGNED",
+      "ALL_SIGNED",
+      "DISTRIBUTED",
+    ]) {
+      it(`${defenseType}: ${status} RapReport → 409`, async () => {
+        prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+          scheduleFixture({
+            finalizerId: "rap-1",
+            overrides: { defenseType, rapReports: [{ id: "rap-1", status }] },
+          }),
+        );
+        await expect(
+          repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+        ).rejects.toMatchObject({ statusCode: 409 });
+        expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+      });
+    }
+
+    it(`${defenseType}: FINALIZED RapReport → eligible (subject to other prerequisites)`, async () => {
+      prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleFixture({
+          finalizerId: "rap-1",
+          overrides: {
+            defenseType,
+            rapReports: [
+              { id: "rap-1", status: "FINALIZED", generatedAt: new Date("2026-10-01T00:00:00Z") },
+            ],
+          },
+        }),
+      );
+      const result = await repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" });
+      expect(prismaMock.__tx.defenseConclusion.create).toHaveBeenCalledTimes(1);
+      expect(prismaMock.__tx.defenseSchedule.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { sessionStatus: "CONCLUDED" } }),
+      );
+      expect(result.rapReport).toMatchObject({ id: "rap-1", status: "FINALIZED" });
+    });
+  }
+
+  it("Proposal/Final with finalized legacy notes but NO RapReport still → 409", async () => {
+    for (const defenseType of ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
+      prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleFixture({
+          finalizerId: "rap-1",
+          notesFinalizedAt: new Date("2026-09-28T11:00:00Z"),
+          overrides: { defenseType, rapReports: [] },
+        }),
+      );
+      await expect(
+        repo.concludeDefense("sched-1", "chair-1", { outcome: "PASSED" }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.defenseConclusion.create).not.toHaveBeenCalled();
+    }
   });
 });
 
@@ -459,7 +722,7 @@ describe("CP7-FIX2 REAL 11–12: OfficialDefenseRecordService Summary authorizat
     };
   }
 
-  it("Test 11: session Chairman allowed through production getSummaryReadModel", async () => {
+  it("Test 11 (CDW-4 FIX): session Chairman (non-Admin) denied through getSummaryReadModel", async () => {
     const svc = new OfficialDefenseRecordService();
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       summarySchedule([{ role: "CHAIRMAN" }]),
@@ -467,11 +730,12 @@ describe("CP7-FIX2 REAL 11–12: OfficialDefenseRecordService Summary authorizat
     prismaMock.panelAssignment.findMany.mockResolvedValue([{ id: "p1" }]);
     prismaMock.oralExamScore.count.mockResolvedValue(4);
 
-    const result = await svc.getSummaryReadModel("sched-1", {
-      userId: "chair-1",
-      role: "PANELIST",
-    });
-    expect(result.ready).toBe(true);
+    await expect(
+      svc.getSummaryReadModel("sched-1", {
+        userId: "chair-1",
+        role: "PANELIST",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it("Test 12: ordinary Panelist denied through production getSummaryReadModel", async () => {

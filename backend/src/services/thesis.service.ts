@@ -824,6 +824,7 @@ export class ThesisService {
       schedule.sessionStatus = refreshed.sessionStatus;
       schedule.rapporteurNotesFinalized = refreshed.rapporteurNotesFinalized;
       schedule.alreadyConcluded = refreshed.alreadyConcluded;
+      schedule.rapReportStatus = refreshed.rapReportStatus;
     }
 
     const outcome = this.conclusion.assertCanConclude(
@@ -837,6 +838,7 @@ export class ThesisService {
         sessionStatus: schedule.sessionStatus,
         rapporteurNotesFinalized: schedule.rapporteurNotesFinalized,
         oralSummaryExists: schedule.oralSummaryExists,
+        rapReportStatus: schedule.rapReportStatus,
         outcomeProvided:
           options?.outcome != null && String(options.outcome).trim() !== "",
       },

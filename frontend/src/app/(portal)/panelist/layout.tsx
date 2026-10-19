@@ -65,6 +65,15 @@ export default function PanelistLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  // CDW-4: the Defense Workspace route is an immersive, sidebar-free focus mode.
+  // Only this route opts out of the normal Panelist portal chrome; every other
+  // Panelist page keeps the standard sidebar/header/navigation unchanged.
+  if (pathname.startsWith("/panelist/defense-workspace")) {
+    return (
+      <div className="min-h-screen bg-(--earist-surface-gray)">{children}</div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-(--earist-surface-gray)">
       {/* Mobile Overlay */}

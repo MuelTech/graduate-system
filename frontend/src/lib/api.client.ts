@@ -1,6 +1,8 @@
 import { getSession, signOut } from "next-auth/react";
 import type { MissingRequirement } from "@/types";
 
+import { getClientBackendBaseUrl } from "./backend-origin.client";
+
 export class ApiError extends Error {
   missing?: MissingRequirement[];
   statusCode?: number;
@@ -32,8 +34,7 @@ export const apiClientRequest = async (
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const apiUrl =
-    process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+  const apiUrl = getClientBackendBaseUrl();
   const response = await fetch(`${apiUrl}/api${url}`, {
     ...options,
     headers,

@@ -3,6 +3,7 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { storageService } from "../storage";
 import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
+import { canReadHistoricalBoundManuscript } from "./defense-history.rules";
 
 interface ModelConfig {
     prismaModel: string;
@@ -77,7 +78,14 @@ export function canPanelistAccessThesisDocument(
         reviewedDocumentId?: string | null;
       }> | null;
       defenseSchedules?: Array<{
+        id?: string;
         defenseType?: string;
+        /** CDW-2: the exact document bound to this attempt, when set. */
+        manuscriptDocumentId?: string | null;
+        defenseDate?: Date | string | null;
+        createdAt?: Date | string | null;
+        /** Formal attempt outcome (DefenseConclusion) — drives the history context. */
+        conclusion?: { outcome?: string } | null;
         panelAssignments?: Array<{ userId: string }>;
       }> | null;
     } | null;
@@ -88,15 +96,71 @@ export function canPanelistAccessThesisDocument(
     record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
   if (activeAdviserIds.includes(userId)) return true;
 
+  const schedules = record.thesis?.defenseSchedules ?? [];
+  const documentId = typeof record.id === "string" && record.id.length > 0 ? record.id : null;
   const effectiveStage = resolveThesisDocumentStage({
     docType: record.docType,
     defenseStage: record.defenseStage,
   });
+
+  // Exact documents bound to a formally PASSED Proposal attempt. This is the
+  // attempt-aware authority for the Final → prior-Proposal exception (NOT today's
+  // certification, which can drift to a later revision).
+  const passedProposalBoundIds = new Set<string>();
+  for (const ds of schedules) {
+    if (
+      ds.defenseType === "PROPOSAL_DEFENSE" &&
+      String(ds.conclusion?.outcome ?? "") === "PASSED" &&
+      typeof ds.manuscriptDocumentId === "string" &&
+      ds.manuscriptDocumentId.length > 0
+    ) {
+      passedProposalBoundIds.add(ds.manuscriptDocumentId);
+    }
+  }
+
+  // CDW-6 generalized historical context: a CURRENT committee member may read
+  // the EXACT manuscript bound to a relevant concluded prior attempt of the same
+  // thesis (same-stage re-defense, passed previous stage, or older history). This
+  // replaces the former narrow Final→Proposal exception and is the ONE shared
+  // rule; it verifies the exact attempt binding, the document stage/type, and the
+  // caller's CURRENT assignment (never the historical assignment).
+  if (
+    documentId &&
+    canReadHistoricalBoundManuscript({
+      documentId,
+      documentStage: effectiveStage,
+      documentDocType: record.docType ?? null,
+      schedules: schedules.map((ds) => ({
+        id: String(ds.id ?? ""),
+        defenseType: String(ds.defenseType ?? ""),
+        manuscriptDocumentId: ds.manuscriptDocumentId ?? null,
+        defenseDate: ds.defenseDate ?? null,
+        createdAt: ds.createdAt ?? null,
+        conclusion: ds.conclusion ?? null,
+        panelAssignments: ds.panelAssignments ?? [],
+      })),
+      userId,
+    })
+  ) {
+    return true;
+  }
+
+  // CDW-2 correction: once a document is bound to a defense attempt, only that
+  // attempt's assigned committee (plus owner/admin) may access it. This keeps a
+  // historical attempt's exact manuscript reachable by its own committee while
+  // denying unrelated schedules/users.
+  if (documentId && schedules.some((ds) => ds.manuscriptDocumentId === documentId)) {
+    return schedules.some(
+      (ds) =>
+        ds.manuscriptDocumentId === documentId &&
+        ds.panelAssignments?.some((pa) => pa.userId === userId),
+    );
+  }
+
   // Ambiguous legacy unscoped document → fail closed for Panelists.
   if (!effectiveStage) return false;
 
   const requiredType = STAGE_TO_DEFENSE_TYPE[effectiveStage];
-  const schedules = record.thesis?.defenseSchedules ?? [];
   const isPanelistStageDocType = PANELIST_STAGE_DOC_TYPES.has(
     String(record.docType ?? ""),
   );
@@ -118,6 +182,11 @@ export function canPanelistAccessThesisDocument(
         ds.panelAssignments?.some((pa) => pa.userId === userId),
     );
     if (!isFinalParticipant) return false;
+
+    // When a PASSED Proposal attempt carries an exact binding, that binding is the
+    // ONLY authority for prior-Proposal context — never fall back to today's
+    // certification (which may point at a different/later revision).
+    if (passedProposalBoundIds.size > 0) return false;
 
     const proposalCert = (record.thesis?.adviserCertifications ?? []).find(
       (c) =>
@@ -175,6 +244,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
                     defenseSchedules: {
                         include: {
                             panelAssignments: true,
+                            conclusion: { select: { outcome: true } },
                         },
                     },
                 },

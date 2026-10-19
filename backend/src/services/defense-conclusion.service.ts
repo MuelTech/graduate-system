@@ -28,6 +28,12 @@ export interface ConclusionPreconditions {
   rapporteurNotesFinalized: boolean;
   oralSummaryExists: boolean;
   outcomeProvided: boolean;
+  /**
+   * RAP-C1: the attempt's Committee Report status. For a NEW formal conclusion
+   * this is REQUIRED and must be FINALIZED; null/undefined (no in-system report)
+   * fails closed. Legacy Rapporteur notes no longer substitute for the RAP.
+   */
+  rapReportStatus?: string | null;
 }
 
 export interface ConclusionPreconditionResult {
@@ -87,8 +93,6 @@ export function validateConclusionPreconditions(
     return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  const isTitle = String(input.defenseType) === "TITLE_DEFENSE";
-
   // WF-C1b: every stage — including Title — may be formally concluded only from
   // the awaiting-conclusion phase. Title reaches that phase once all required
   // evaluators have finalized and the Oral Examination Summary is generated.
@@ -99,11 +103,21 @@ export function validateConclusionPreconditions(
     return { ok: false, errors, outcome: null, statusCode: 409 };
   }
 
-  // Proposal/Final additionally require finalized Rapporteur notes. Title does
-  // not yet — RAP-before-conclusion is deferred to WF-C1c.
-  if (!isTitle && !input.rapporteurNotesFinalized) {
+  // RAP-C1 FIX: the official RAP must be authored in-system. For EVERY new formal
+  // conclusion, at EVERY stage, an in-system Committee Report must exist, be
+  // frozen, fully signed, and FINALIZED. There is NO legacy fallback: absence of a
+  // report (null/undefined) or any non-FINALIZED status blocks the verdict. This
+  // gate affects only recording a NEW conclusion; already-concluded historical
+  // attempts remain readable and unchanged.
+  const rapStatus = input.rapReportStatus ?? null;
+  if (rapStatus === null) {
     errors.push(
-      "Rapporteur defense notes must be finalized before the formal academic result can be recorded.",
+      "The Committee Report must be created, frozen, fully signed, and finalized before the formal academic result can be recorded.",
+    );
+    statusCode = 409;
+  } else if (rapStatus !== "FINALIZED") {
+    errors.push(
+      "The Committee Report must be finalized (frozen and fully signed) before the formal academic result can be recorded.",
     );
     statusCode = 409;
   }

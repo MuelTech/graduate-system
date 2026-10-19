@@ -35,14 +35,16 @@ export interface DefenseWorkspace {
   };
   capabilities: {
     canEvaluate: boolean;
+    /** CDW-4: official scoring is open right now (IN_PROGRESS). Server-authoritative. */
+    evaluationOpen: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
-    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
-    canStartTitleDefense: boolean;
+    /** CDW-4: assigned Chairman may Start Defense for ANY stage from SCHEDULED. */
+    canStartDefense: boolean;
   };
   documents: Array<{
     id: string;
@@ -67,32 +69,8 @@ export interface DefenseWorkspace {
     evaluatorAssignments: number;
     finalizedEvaluations: number;
   };
-  oralSummary: {
-    ready: boolean;
-    overallAverage: number | null;
-    finalRating: string | null;
-  } | null;
   formalResult: string | null;
   rapStatus: string | null;
-  /**
-   * CP8: prior Proposal context for Final Defense only.
-   * Null/absent for Title and Proposal workspaces.
-   */
-  proposalHistory?: {
-    manuscript: {
-      id: string;
-      docType: string;
-      defenseStage: string | null;
-      uploadedAt: string | null;
-      displayName: string;
-    } | null;
-    rap: {
-      id: string;
-      status: "FINALIZED";
-      finalizedAt: string | null;
-      decisionsAndRecommendations: string | null;
-    } | null;
-  } | null;
 }
 
 export interface OralEvaluation {
@@ -105,9 +83,16 @@ export interface OralEvaluation {
   groupIValue: number | null;
   groupIIValue: number | null;
   overallValue: number | null;
+  /**
+   * CDW-4 FIX: which scoring semantics this record uses. LEGACY_POINTS_V1 rows are
+   * read-only in the workspace; INSTITUTIONAL_MATRIX_V2 uses the 1.00–2.50 matrix.
+   */
+  scoringVersion: "LEGACY_POINTS_V1" | "INSTITUTIONAL_MATRIX_V2";
   rating: string | null;
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-9A: server row version for cross-tab optimistic concurrency. */
+  updatedAt: string | null;
   isLocked: boolean;
 }

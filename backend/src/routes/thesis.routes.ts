@@ -1,10 +1,14 @@
 import { Router } from "express";
 import { ThesisController } from "../controllers/thesis.controller";
+import { DefenseCollaborationController } from "../controllers/defense-collaboration.controller";
+import { DefenseHistoryController } from "../controllers/defense-history.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
 import { secureUpload } from "../middlewares/upload.middleware";
 
 const router = Router();
 const thesisController = new ThesisController();
+const defenseCollaborationController = new DefenseCollaborationController();
+const defenseHistoryController = new DefenseHistoryController();
 
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
@@ -463,7 +467,8 @@ router.put(
   thesisController.saveRapporteurWorkspaceNotes,
 );
 // CP7 formal conclusion — session CHAIRMAN assignment is authoritative (not account role).
-// Score completion never concludes; RAP is created only here.
+// Score completion never concludes. RAP-C1: an in-system FINALIZED Committee Report
+// (authored → frozen → fully signed) MUST already exist; this path never creates a RAP.
 router.post(
   "/defense/:scheduleId/conclusion",
   authenticateJWT,
@@ -495,6 +500,77 @@ router.post(
   thesisController.finalizeRapporteurNotes,
 );
 
+// CDW-1: Collaborative Defense Workspace foundation — manuscript annotations,
+// comment threads, committee report body, report freeze, conclusion readiness.
+// Account-level PANELIST guard only; the exact schedule assignment + document
+// binding remain authoritative inside DefenseCollaborationService.
+router.get(
+  "/defense/:scheduleId/collaboration/annotations",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getCollaborationAnnotations,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/annotations",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.createCollaborationAnnotation,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/annotations/:annotationId/comments",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.createAnnotationComment,
+);
+router.get(
+  "/defense/:scheduleId/collaboration/report",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getCommitteeReport,
+);
+router.put(
+  "/defense/:scheduleId/collaboration/report",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.saveCommitteeReportDraft,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/report/freeze",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.freezeCommitteeReport,
+);
+router.post(
+  "/defense/:scheduleId/collaboration/report/sign",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.signCommitteeReport,
+);
+router.get(
+  "/defense/:scheduleId/collaboration/conclusion-readiness",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseCollaborationController.getConclusionReadiness,
+);
+
+// CDW-6: Defense History and revision traceability — READ-ONLY prior-attempt
+// context for the CURRENT schedule. The first :scheduleId is the current
+// workspace schedule whose assignment grants historical-review authority; the
+// historical schedule is a read-only target. There are deliberately NO history
+// write routes: a historical attempt is immutable.
+router.get(
+  "/defense/:scheduleId/history",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseHistoryController.getDefenseHistory,
+);
+router.get(
+  "/defense/:scheduleId/history/:historicalScheduleId",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  defenseHistoryController.getDefenseHistoryAttempt,
+);
+
 // CP7: Official Criteria (ADMIN or owning evaluator)
 router.get(
   "/defense/:scheduleId/records/criteria/:panelAssignmentId",
@@ -503,11 +579,12 @@ router.get(
   thesisController.getOfficialCriteria,
 );
 
-// CP7: Oral Examination Summary — ADMIN or session CHAIRMAN only (auth inside service)
+// CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
+// data. Committee accounts (incl. the session Chairman) are denied.
 router.get(
   "/defense/:scheduleId/records/summary",
   authenticateJWT,
-  requireRole(["ADMIN", "PANELIST"]),
+  requireRole(["ADMIN"]),
   thesisController.getOralExamSummary,
 );
 

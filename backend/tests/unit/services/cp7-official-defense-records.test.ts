@@ -37,6 +37,7 @@ const prismaMock = vi.hoisted(() => {
     },
     thesisRecord: { update: vi.fn() },
     thesisTitle: { update: vi.fn(), updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
   });
   const root = makeModels();
   const tx = makeModels();
@@ -318,6 +319,53 @@ describe("CP7 Oral Examination Summary", () => {
     expect(result.created).toBe(false);
     expect(result.summaryId).toBe("sum-existing");
   });
+
+  it("FIX-4: V2 institutional rows generate the numeric Summary without a legacy Overall", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+      { id: "p2", userId: "u2", role: "PANELIST", user: { id: "u2", firstName: "C", lastName: "D" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([
+      { ...finalizedScore("p1"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.5, groupBAverage: 1.375, rating: null },
+      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.25, groupBAverage: 1.5, rating: null },
+    ]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: any) => ({
+      id: "sum-1",
+      ...args.data,
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1");
+    expect(result.created).toBe(true);
+    expect(result.overallAverage).toBe(1.41);
+    expect(result.finalRating).toBeNull();
+    const snapshot = prismaMock.oralExamSummary.create.mock.calls[0][0].data
+      .snapshotData;
+    expect(snapshot.overallAverage).toBe(1.41);
+    expect(snapshot.evaluators.map((r: any) => r.averageValue)).toEqual([
+      1.44, 1.38,
+    ]);
+    expect(snapshot.evaluators[0].groupIIValue).toBe(1.38);
+  });
+
+  it("FIX-4: a mixed legacy/V2 session fails closed with a clear conflict", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+      { id: "p2", userId: "u2", role: "PANELIST", user: { id: "u2", firstName: "C", lastName: "D" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([
+      finalizedScore("p1", 80),
+      { ...finalizedScore("p2"), scoringVersion: "INSTITUTIONAL_MATRIX_V2", overallAverage: null, groupAAverage: 1.25, groupBAverage: 1.5 },
+    ]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+
+    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
+      /mixed scoring versions/i,
+    );
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("CP7 Rapporteur notes finalization", () => {
@@ -427,24 +475,13 @@ describe("CP7 Rapporteur notes finalization", () => {
     expect(prismaMock.defenseConclusion.create).not.toHaveBeenCalled();
   });
 
-  it("Title finalize after conclusion persists finalized notes and generates the deferred RAP once", async () => {
-    const concludedTitle = {
+  it("CDW-7: Title finalization after conclusion is rejected and creates no deferred RAP", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       defenseType: "TITLE_DEFENSE",
       sessionStatus: "CONCLUDED",
       rapporteurNotesFinalizedAt: null,
       rapporteurNotesFinalizedById: null,
-    };
-    let scheduleReads = 0;
-    prismaMock.defenseSchedule.findUnique.mockImplementation(async () => {
-      scheduleReads += 1;
-      return scheduleReads === 1
-        ? concludedTitle
-        : {
-            sessionStatus: "CONCLUDED",
-            rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
-            rapporteurNotesFinalizedById: "user-r",
-          };
     });
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pr",
@@ -452,50 +489,13 @@ describe("CP7 Rapporteur notes finalization", () => {
       userId: "user-r",
       role: "RAPPORTEUR",
     });
-    prismaMock.__tx.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
 
-    // Deferred RAP generation transaction (Title conclusion already exists).
-    prismaMock.__tx.rapReport.findUnique.mockResolvedValue(null);
-    prismaMock.__tx.defenseConclusion.findUnique.mockResolvedValue({
-      id: "c-1",
-      thesisId: "thesis-1",
-      outcome: "PASSED",
-      selectedTitleId: "t1",
-      selectedTitle: { titleText: "Title One" },
-    });
-    prismaMock.__tx.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "TITLE_DEFENSE",
-      venueOrLink: "Room 101",
-      rapporteurNotes: "Final minutes",
-      rapporteurNotesFinalizedAt: new Date("2026-10-04T12:00:00Z"),
-      rapporteurNotesFinalizedById: "user-r",
-    });
-    prismaMock.__tx.panelAssignment.findFirst.mockResolvedValue({
-      id: "pr",
-      scheduleId: "sched-1",
-      userId: "user-r",
-      role: "RAPPORTEUR",
-    });
-    prismaMock.__tx.panelAssignment.findMany.mockResolvedValue([
-      { userId: "user-c", role: "CHAIRMAN" },
-      { userId: "user-p", role: "PANELIST" },
-    ]);
-    prismaMock.__tx.rapReport.create.mockResolvedValue({
-      id: "rap-1",
-      status: "FOR_SIGNATURE",
-      generatedAt: new Date(),
-    });
-    prismaMock.__tx.rapReportSignature.createMany.mockResolvedValue({ count: 2 });
-
-    const result = await svc.finalizeDefenseNotes("sched-1", "user-r");
-    expect(result.finalized).toBe(true);
-    expect(prismaMock.__tx.rapReport.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.__tx.rapReport.create.mock.calls[0][0].data).toMatchObject({
-      scheduleId: "sched-1",
-      defenseType: "TITLE_DEFENSE",
-      status: "FOR_SIGNATURE",
-      generatedById: "user-r",
-    });
+    await expect(
+      svc.finalizeDefenseNotes("sched-1", "user-r"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.defenseSchedule.updateMany).not.toHaveBeenCalled();
+    // The superseded deferred Title RAP creation must never run after conclusion.
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
   });
 
   it("pre-defense SCHEDULED Title notes cannot be finalized as completed defense minutes", async () => {
@@ -605,6 +605,7 @@ describe("2026-10-04 Title deferred RAP convergence", () => {
     mockTitlePrerequisitesReady();
     prismaMock.__tx.rapReport.findUnique
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: "rap-1", status: "FOR_SIGNATURE" });
 
     const first = await svc.ensureRapAfterTitlePrerequisites("sched-1");
@@ -695,6 +696,60 @@ describe("CP7 RAP signing lifecycle", () => {
     expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
   });
 
+  it("CDW-5 FIX: an existing DRAFT report blocks formal RAP creation (409, no duplicate)", async () => {
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+      id: "rap-existing",
+      status: "DRAFT",
+    });
+    await expect(
+      svc.createRapAfterConclusion(prismaMock.__tx, {
+        scheduleId: "sched-1",
+        thesisId: "thesis-1",
+        defenseType: "PROPOSAL_DEFENSE",
+        decisionsAndRecommendations: "notes",
+        generatedById: "user-r",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+  });
+
+  it("CDW-5 FIX: an existing FOR_SIGNATURE / PARTIALLY_SIGNED report blocks formal RAP creation (409)", async () => {
+    for (const status of ["FOR_SIGNATURE", "PARTIALLY_SIGNED"]) {
+      prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+        id: "rap-existing",
+        status,
+      });
+      await expect(
+        svc.createRapAfterConclusion(prismaMock.__tx, {
+          scheduleId: "sched-1",
+          thesisId: "thesis-1",
+          defenseType: "PROPOSAL_DEFENSE",
+          decisionsAndRecommendations: "notes",
+          generatedById: "user-r",
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-5 FIX: an existing FINALIZED report is safely reused (no duplicate)", async () => {
+    prismaMock.__tx.rapReport.findUnique.mockResolvedValue({
+      id: "rap-final",
+      status: "FINALIZED",
+    });
+    const result = await svc.createRapAfterConclusion(prismaMock.__tx, {
+      scheduleId: "sched-1",
+      thesisId: "thesis-1",
+      defenseType: "PROPOSAL_DEFENSE",
+      decisionsAndRecommendations: "notes",
+      generatedById: "user-r",
+    });
+    expect(result).toMatchObject({ id: "rap-final" });
+    expect(prismaMock.__tx.rapReport.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.rapReportSignature.createMany).not.toHaveBeenCalled();
+  });
+
   it("Test 25: last required signature FINALIZES RAP with server finalizedAt", async () => {
     const tx = prismaMock.__tx;
     tx.rapReportSignature.updateMany.mockResolvedValue({ count: 1 });
@@ -702,7 +757,15 @@ describe("CP7 RAP signing lifecycle", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
-      isSigned: true,
+      // The slot being signed is still unsigned; the pre-commit read proves it.
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
+      },
     });
     // Post-commit recompute reads committed state on root prisma.
     prismaMock.rapReportSignature.findMany.mockResolvedValue([
@@ -735,6 +798,14 @@ describe("CP7 RAP signing lifecycle", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
+      },
     });
     prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },
@@ -875,5 +946,136 @@ describe("CP7 official Criteria eligibility", () => {
     await expect(svc.getOfficialCriteria("sched-1", "pr")).rejects.toThrow(
       /evaluator/i,
     );
+  });
+
+  it("CDW-4 FIX: snapshotFinalizedEvaluation records the scoring version", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findUnique.mockResolvedValue({
+      id: "p1",
+      scheduleId: "sched-1",
+      userId: "u1",
+      role: "PANELIST",
+      user: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    prismaMock.oralExamScore.findUnique.mockResolvedValue({
+      ...finalizedScore("p1"),
+      scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+      officialSnapshot: null,
+    });
+    prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
+
+    await svc.snapshotFinalizedEvaluation("sched-1", "p1");
+    const call = prismaMock.oralExamScore.updateMany.mock.calls.at(-1)?.[0];
+    expect(call?.data?.officialSnapshot?.scoringVersion).toBe(
+      "INSTITUTIONAL_MATRIX_V2",
+    );
+  });
+
+  it("CDW-4 FIX: legacy Criteria snapshot backfill defaults to LEGACY_POINTS_V1", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findUnique.mockResolvedValue({
+      id: "p1",
+      scheduleId: "sched-1",
+      userId: "u1",
+      role: "PANELIST",
+      user: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    // No scoringVersion on the row → legacy semantics.
+    prismaMock.oralExamScore.findUnique.mockResolvedValue(finalizedScore("p1", 88));
+    prismaMock.oralExamScore.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await svc.getOfficialCriteria("sched-1", "p1");
+    expect(result.officialSnapshot?.scoringVersion).toBe("LEGACY_POINTS_V1");
+  });
+});
+
+describe("CDW-3 correction: ensureOralExamSummary is transaction-client aware", () => {
+  const svc = new OfficialDefenseRecordService();
+  // The hoisted mock exposes a separate transaction client model set.
+  const tx = prismaMock.__tx as unknown as {
+    defenseSchedule: { findUnique: ReturnType<typeof vi.fn> };
+    panelAssignment: { findMany: ReturnType<typeof vi.fn> };
+    oralExamScore: { findMany: ReturnType<typeof vi.fn> };
+    oralExamSummary: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  };
+
+  const evaluatorAssignments = () => [
+    { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses the supplied transaction client for every read/write (global prisma untouched)", async () => {
+    const globalFail = () => {
+      throw new Error("global prisma must not be used when a tx client is supplied");
+    };
+    prismaMock.defenseSchedule.findUnique.mockImplementation(globalFail);
+    prismaMock.panelAssignment.findMany.mockImplementation(globalFail);
+    prismaMock.oralExamScore.findMany.mockImplementation(globalFail);
+    prismaMock.oralExamSummary.findUnique.mockImplementation(globalFail);
+    prismaMock.oralExamSummary.create.mockImplementation(globalFail);
+
+    tx.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    tx.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    tx.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1", 90)]);
+    tx.oralExamSummary.findUnique.mockResolvedValue(null);
+    tx.oralExamSummary.create.mockImplementation(async (args: { data: unknown }) => ({
+      id: "sum-1",
+      ...(args.data as object),
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1", tx as never);
+
+    expect(result.created).toBe(true);
+    expect(tx.oralExamSummary.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.oralExamSummary.create).not.toHaveBeenCalled();
+  });
+
+  it("P2002 convergence re-read uses the same supplied transaction client", async () => {
+    prismaMock.oralExamSummary.findUnique.mockImplementation(() => {
+      throw new Error("global prisma must not be used");
+    });
+    prismaMock.oralExamSummary.create.mockImplementation(() => {
+      throw new Error("global prisma must not be used");
+    });
+
+    tx.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    tx.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    tx.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1")]);
+    tx.oralExamSummary.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "sum-winner",
+        overallAverage: 80,
+        finalRating: null,
+        snapshotData: { evaluatorCount: 1 },
+      });
+    tx.oralExamSummary.create.mockRejectedValue(
+      Object.assign(new Error("Unique constraint"), { code: "P2002" }),
+    );
+
+    const result = await svc.ensureOralExamSummary("sched-1", tx as never);
+
+    expect(result.created).toBe(false);
+    expect(result.summaryId).toBe("sum-winner");
+    expect(tx.oralExamSummary.findUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("defaults to the global client when no db is supplied (existing behavior preserved)", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue(evaluatorAssignments());
+    prismaMock.oralExamScore.findMany.mockResolvedValue([finalizedScore("p1")]);
+    prismaMock.oralExamSummary.findUnique.mockResolvedValue(null);
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: { data: unknown }) => ({
+      id: "sum-global",
+      ...(args.data as object),
+    }));
+
+    const result = await svc.ensureOralExamSummary("sched-1");
+
+    expect(result.created).toBe(true);
+    expect(prismaMock.oralExamSummary.create).toHaveBeenCalledTimes(1);
   });
 });

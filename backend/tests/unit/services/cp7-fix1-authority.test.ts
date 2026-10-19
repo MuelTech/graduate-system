@@ -38,6 +38,7 @@ const prismaMock = vi.hoisted(() => {
     },
     thesisRecord: { update: vi.fn() },
     thesisTitle: { update: vi.fn(), updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
   });
   const root = makeModels();
   const tx = makeModels();
@@ -86,6 +87,7 @@ const scheduleBase = {
       { id: "t2", titleText: "Title Two", isSelected: false },
     ],
   },
+  panelAssignments: [],
 };
 
 describe("CP7-FIX1 Issue 1: legacy RAP distribute cannot mutate lifecycle", () => {
@@ -162,7 +164,7 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
     ).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  it("Test 7: assigned CHAIRMAN → 200", async () => {
+  it("Test 7 (CDW-4 FIX): assigned session Chairman (non-Admin account) → 403", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue({
       ...scheduleBase,
       panelAssignments: [{ role: "CHAIRMAN" }],
@@ -174,12 +176,26 @@ describe("CP7-FIX1 Issue 3: detailed Summary authorization", () => {
       },
       conclusion: { outcome: "PASSED" },
     });
-    const result = await svc.getSummaryReadModel("sched-1", {
-      userId: "u1",
-      role: "PANELIST",
-    });
-    expect(result.ready).toBe(true);
-    expect(result.formalOutcome).toBe("PASSED");
+    await expect(
+      svc.getSummaryReadModel("sched-1", {
+        userId: "u1",
+        role: "PANELIST",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("CDW-4 FIX: only ADMIN may read the detailed Summary (committee accounts denied)", async () => {
+    for (const role of ["PANELIST", "STUDENT"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleBase,
+        panelAssignments: [{ role: "CHAIRMAN" }],
+        oralExamSummary: null,
+        conclusion: null,
+      });
+      await expect(
+        svc.getSummaryReadModel("sched-1", { userId: "u-x", role }),
+      ).rejects.toMatchObject({ statusCode: 403 });
+    }
   });
 
   it("Test 8: STUDENT → 403", async () => {
@@ -297,6 +313,14 @@ describe("CP7-FIX1 Issue 6: RAP recompute concurrency", () => {
       id: "sig-1",
       rapId: "rap-1",
       userId: "u1",
+      isSigned: false,
+      rapReport: {
+        status: "FOR_SIGNATURE",
+        frozenAt: null,
+        frozenContentHash: null,
+        contentVersion: 0,
+        schedule: { sessionStatus: "IN_PROGRESS" },
+      },
     });
     prismaMock.rapReportSignature.findMany.mockResolvedValue([
       { required: true, isSigned: true },
@@ -349,8 +373,65 @@ describe("CP7-FIX1 Issue 6: RAP recompute concurrency", () => {
       status: "FOR_SIGNATURE",
       finalizedAt: null,
     });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
     const status = await svc.recomputeRapStatus("rap-1");
     expect(status).toBe("FOR_SIGNATURE");
+  });
+
+  it("CDW-9B: partial recompute losing to a concurrent finalizer returns FINALIZED", async () => {
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
+      { required: true, isSigned: true },
+      { required: true, isSigned: false },
+    ]);
+    prismaMock.rapReport.findUnique
+      .mockResolvedValueOnce({ status: "FOR_SIGNATURE", finalizedAt: null })
+      .mockResolvedValueOnce({ status: "FINALIZED" });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await svc.recomputeRapStatusWithTransition("rap-1");
+    expect(result).toEqual({
+      status: "FINALIZED",
+      transitionedToFinalized: false,
+    });
+  });
+
+  it("CDW-9B: finalization transition is reported exactly once", async () => {
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
+      { required: true, isSigned: true },
+      { required: true, isSigned: true },
+    ]);
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      status: "PARTIALLY_SIGNED",
+      finalizedAt: null,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await svc.recomputeRapStatusWithTransition("rap-1");
+    expect(result).toEqual({
+      status: "FINALIZED",
+      transitionedToFinalized: true,
+    });
+  });
+
+  it("CDW-9B: anomalous FINALIZED row gets finalizedAt set once conditionally", async () => {
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
+      { required: true, isSigned: true },
+    ]);
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      status: "FINALIZED",
+      finalizedAt: null,
+    });
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await svc.recomputeRapStatusWithTransition("rap-1");
+    expect(result).toEqual({
+      status: "FINALIZED",
+      transitionedToFinalized: false,
+    });
+    expect(prismaMock.rapReport.updateMany).toHaveBeenCalledWith({
+      where: { id: "rap-1", status: "FINALIZED", finalizedAt: null },
+      data: { finalizedAt: expect.any(Date) },
+    });
   });
 });
 

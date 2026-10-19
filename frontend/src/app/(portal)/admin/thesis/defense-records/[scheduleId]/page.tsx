@@ -70,8 +70,12 @@ interface RecordDetail {
       functionalRole: string;
       groupIValue: number | null;
       groupIIValue: number | null;
+      /** FIX-4: canonical Summary row Average for institutional V2. */
+      averageValue?: number | null;
+      /** Legacy point total; null/absent for institutional V2. */
       overallValue: number | null;
       rating: string | null;
+      scoringVersion?: "LEGACY_POINTS_V1" | "INSTITUTIONAL_MATRIX_V2";
     }>;
     generatedAt: string | null;
   };
@@ -256,6 +260,11 @@ function DownloadPrintButton() {
   );
 }
 
+/** FIX-4: official institutional numeric values are displayed at exactly 2dp. */
+function formatInstitutionalValue(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : value.toFixed(2);
+}
+
 function DetailSkeleton() {
   return (
     <div className="space-y-6" aria-hidden="true">
@@ -400,6 +409,9 @@ export default function AdminDefenseRecordDetailPage() {
     ? data.rapReport.signatories.filter((s) => s.required !== false)
     : [];
   const signedRequiredSigners = requiredSigners.filter((s) => s.isSigned).length;
+  const isInstitutionalSummary = data.oralExamSummary.rows.some(
+    (row) => row.scoringVersion === "INSTITUTIONAL_MATRIX_V2",
+  );
 
   return (
     <div className="space-y-6">
@@ -524,9 +536,9 @@ export default function AdminDefenseRecordDetailPage() {
                       <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
                         <th className="px-3 py-2">Evaluator</th>
                         <th className="px-3 py-2">Role</th>
-                        <th className="px-3 py-2">Status</th>
-                        <th className="px-3 py-2">Overall</th>
-                        <th className="px-3 py-2">Criteria</th>
+                        <th className="px-3 py-2">Evaluation Status</th>
+                        <th className="px-3 py-2">Signature Status</th>
+                        <th className="px-3 py-2">Signed At</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -552,11 +564,23 @@ export default function AdminDefenseRecordDetailPage() {
                               {evaluatorStatusLabel(e.status)}
                             </Badge>
                           </td>
-                          <td className="px-3 py-2 tabular-nums">
-                            {e.overallValue ?? "—"}
-                          </td>
                           <td className="px-3 py-2">
-                            {e.hasOfficialCriteria ? "Available" : "Not available"}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-medium",
+                                e.hasOfficialCriteria
+                                  ? "text-(--earist-success)"
+                                  : "text-(--earist-warning)",
+                              )}
+                            >
+                              {e.hasOfficialCriteria ? "Signed" : "Not signed"}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 tabular-nums">
+                            {e.hasOfficialCriteria
+                              ? formatSignedAt(e.signedAt)
+                              : "—"}
                           </td>
                         </tr>
                       ))}
@@ -584,16 +608,18 @@ export default function AdminDefenseRecordDetailPage() {
                 </p>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <MetaItem label="Overall Average">
-                      <span className="tabular-nums">
-                        {data.oralExamSummary.overallAverage ?? "—"}
-                      </span>
-                    </MetaItem>
-                    <MetaItem label="Final Rating">
-                      {data.oralExamSummary.finalRating ?? "Not assigned"}
-                    </MetaItem>
-                  </div>
+                  {!isInstitutionalSummary && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <MetaItem label="Overall Average">
+                        <span className="tabular-nums">
+                          {data.oralExamSummary.overallAverage ?? "—"}
+                        </span>
+                      </MetaItem>
+                      <MetaItem label="Final Rating">
+                        {data.oralExamSummary.finalRating ?? "Not assigned"}
+                      </MetaItem>
+                    </div>
+                  )}
                   {data.oralExamSummary.rows.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px] text-left text-xs">
@@ -601,9 +627,15 @@ export default function AdminDefenseRecordDetailPage() {
                           <tr className="border-b border-(--earist-border-gray) font-semibold text-(--earist-body-text)">
                             <th className="px-3 py-2">Examiner</th>
                             <th className="px-3 py-2">Role</th>
-                            <th className="px-3 py-2">Group I</th>
-                            <th className="px-3 py-2">Group II</th>
-                            <th className="px-3 py-2">Overall</th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Group A" : "Group I"}
+                            </th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Group B" : "Group II"}
+                            </th>
+                            <th className="px-3 py-2">
+                              {isInstitutionalSummary ? "Average" : "Overall"}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -620,13 +652,19 @@ export default function AdminDefenseRecordDetailPage() {
                                   r.functionalRole}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.groupIValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.groupIValue)
+                                  : (r.groupIValue ?? "—")}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.groupIIValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.groupIIValue)
+                                  : (r.groupIIValue ?? "—")}
                               </td>
                               <td className="px-3 py-2 tabular-nums">
-                                {r.overallValue ?? "—"}
+                                {isInstitutionalSummary
+                                  ? formatInstitutionalValue(r.averageValue)
+                                  : (r.overallValue ?? "—")}
                               </td>
                             </tr>
                           ))}
@@ -644,12 +682,12 @@ export default function AdminDefenseRecordDetailPage() {
           </Card>
       </>
 
-      {/* RAP / Committee Report */}
+      {/* Committee Report */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-              RAP / Committee Report
+              Committee Report
             </CardTitle>
             <DownloadPrintButton />
           </div>
@@ -657,7 +695,7 @@ export default function AdminDefenseRecordDetailPage() {
         <CardContent className="space-y-3 text-sm">
           {!data.rapReport ? (
             <p className="text-(--earist-body-text)">
-              Not generated yet — the RAP is created after the formal conclusion.
+              The Committee Report has not been prepared yet.
             </p>
           ) : (
             <>

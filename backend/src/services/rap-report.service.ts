@@ -1,10 +1,21 @@
 /**
- * CP7 — RAP lifecycle after formal conclusion.
- * Signature slots come from the stage-aware RAP signatory policy (§15.3).
- * Own-signature CAS; last required signer finalizes the RAP server-side.
+ * CP7 — RAP helpers.
+ *
+ * NOTE (RAP-C1): `createRapAfterConclusion` and `ensureRapAfterTitlePrerequisites`
+ * are LEGACY COMPATIBILITY HELPERS ONLY. They are NOT reachable from the current
+ * formal-conclusion path: a new conclusion requires an in-system Committee Report
+ * that has already been authored, frozen, fully signed, and FINALIZED, and the
+ * conclusion transaction never creates a RAP. Signature slots come from the
+ * stage-aware RAP signatory policy (§15.3). Own-signature CAS; the last required
+ * signer finalizes the RAP server-side.
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 import {
   getRapSignatoryRoles,
   resolveRapSignatureRequirements,
@@ -98,14 +109,45 @@ export function buildRapContent(input: RapContentInput): string {
 
 export class RapReportService {
   /**
-   * Create the official RAP exactly once after formal conclusion.
-   * generatedBy = Rapporteur who finalized notes (not the Chairman).
-   * Initial status FOR_SIGNATURE — no Admin "Generate & Distribute" required.
+   * LEGACY COMPATIBILITY HELPER — do NOT call from the current formal-conclusion
+   * path. New conclusions require an in-system Committee Report that has already
+   * been authored, frozen, fully signed, and FINALIZED BEFORE the verdict; that
+   * path never creates a RAP. This helper remains only for older
+   * admin/compatibility flows and historical convergence.
    */
   async createRapAfterConclusion(
     tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
     input: RapCreationInput,
   ) {
+    // LEGACY compatibility guard. The canonical RAP lifecycle is now: Rapporteur
+    // authors in-system → Save Draft → freeze → required signatures → FINALIZED →
+    // Chairman verdict. `createRapAfterConclusion` is no longer reachable from the
+    // formal-conclusion path (which requires an existing FINALIZED report). If it
+    // is ever invoked (older admin/compatibility flow), it converges on an existing
+    // FINALIZED report and otherwise FAILS CLOSED so a non-finalized report can
+    // never be silently bypassed.
+    const existing = await tx.rapReport.findUnique({
+      where: { scheduleId: input.scheduleId },
+    });
+    if (existing) {
+      const status = String(existing.status);
+      if (status === "FINALIZED") {
+        // Safe compatibility: reuse the already-finalized report.
+        return existing;
+      }
+      if (status === "DRAFT") {
+        throw new AppError(
+          "The Committee Report must complete the required RAP lifecycle (freeze and signatures) before the defense can be formally concluded. The report is still a draft.",
+          409,
+        );
+      }
+      // FOR_SIGNATURE / PARTIALLY_SIGNED / ALL_SIGNED / DISTRIBUTED.
+      throw new AppError(
+        "Required RAP signatures must be completed before the defense can be formally concluded.",
+        409,
+      );
+    }
+
     const participants = await tx.panelAssignment.findMany({
       where: { scheduleId: input.scheduleId },
       select: { userId: true, role: true },
@@ -257,6 +299,13 @@ export class RapReportService {
   /**
    * CP7-FIX1: own-slot CAS only. Aggregate recompute runs AFTER commit so
    * concurrent final signers both commit first, then recompute converges.
+   *
+   * CDW-7 correction: when the RAP carries a frozen collaborative snapshot
+   * (`frozenContentHash`), this legacy-compatible route enforces the SAME
+   * RAP-C1 invariants as the workspace signing flow: the report must be open for
+   * signatures, and the signature is bound to the exact frozen content
+   * version/hash. A genuinely legacy RAP (no frozen snapshot) keeps the previous
+   * compatibility behavior.
    */
   async signRapSlot(
     sigId: string,
@@ -274,47 +323,146 @@ export class RapReportService {
       );
     }
 
-    const rapId = await prisma.$transaction(async (tx) => {
+    const transactionResult = await prisma.$transaction(async (tx) => {
+      const slot = await tx.rapReportSignature.findUnique({
+        where: { id: sigId },
+        select: {
+          rapId: true,
+          userId: true,
+          isSigned: true,
+          rapReport: {
+            select: {
+              status: true,
+              frozenAt: true,
+              frozenContentHash: true,
+              contentVersion: true,
+              schedule: { select: { id: true, sessionStatus: true } },
+            },
+          },
+        },
+      });
+      if (!slot) throw new AppError("Signature request not found.", 404);
+      if (slot.userId !== userId) {
+        throw new AppError(
+          "You may only sign your own Committee Report signature slot.",
+          403,
+        );
+      }
+      const rap = slot.rapReport;
+      // CDW-7: a CONCLUDED attempt is historical and read-only. This applies to
+      // BOTH modern frozen RAPs and legacy RAPs without a frozen snapshot.
+      // Missing attempt state fails closed — never guess.
+      const sessionStatus = String(rap?.schedule?.sessionStatus ?? "");
+      if (!rap?.schedule) {
+        throw new AppError(
+          "The defense attempt for this signature could not be verified.",
+          409,
+        );
+      }
+      if (sessionStatus === "CONCLUDED") {
+        throw new AppError(
+          "This defense attempt is concluded and is read-only.",
+          409,
+        );
+      }
+      if (sessionStatus === "CANCELLED") {
+        throw new AppError("This defense session was cancelled.", 409);
+      }
+
+      const frozenHash = rap?.frozenContentHash ?? null;
+      if (frozenHash) {
+        const status = String(rap?.status ?? "");
+        if (status !== "FOR_SIGNATURE" && status !== "PARTIALLY_SIGNED") {
+          throw new AppError(
+            "The Committee Report is not open for signatures.",
+            409,
+          );
+        }
+      }
+
+      if (slot.isSigned === true) {
+        // CDW-9B FIX-1: allow the committed-state reconcile below to heal a
+        // previous recompute failure; the committed evidence is never rewritten.
+        // CDW-9B FIX-2: only after the attempt/report checks above, so a closed
+        // or historical attempt never reaches aggregate reconciliation.
+        return {
+          rapId: slot.rapId,
+          scheduleId: slot.rapReport?.schedule?.id ?? null,
+          contentVersion: slot.rapReport?.contentVersion ?? 0,
+          duplicate: true,
+        };
+      }
+
+      const data: {
+        isSigned: boolean;
+        signatureData: string;
+        signedAt: Date;
+        signedContentHash?: string;
+        signedContentVersion?: number | null;
+      } = {
+        isSigned: true,
+        signatureData: trimmed,
+        signedAt: new Date(),
+      };
+      if (frozenHash) {
+        data.signedContentHash = frozenHash;
+        data.signedContentVersion = rap?.contentVersion ?? null;
+      }
+
       const updated = await tx.rapReportSignature.updateMany({
         where: {
           id: sigId,
           userId,
           OR: [{ isSigned: false }, { isSigned: null }],
         },
-        data: {
-          isSigned: true,
-          signatureData: trimmed,
-          signedAt: new Date(),
-        },
+        data,
       });
       if (updated.count === 0) {
-        const existing = await tx.rapReportSignature.findUnique({
-          where: { id: sigId },
-          select: { userId: true, isSigned: true },
-        });
-        if (!existing) {
-          throw new AppError("Signature request not found.", 404);
-        }
-        if (existing.userId !== userId) {
-          throw new AppError(
-            "You may only sign your own RAP signature slot.",
-            403,
-          );
-        }
-        throw new AppError("Signature already recorded.", 409);
+        return {
+          rapId: slot.rapId,
+          scheduleId: rap?.schedule?.id ?? null,
+          contentVersion: rap?.contentVersion ?? 0,
+          duplicate: true,
+        };
       }
 
-      const slot = await tx.rapReportSignature.findUnique({
-        where: { id: sigId },
-        select: { rapId: true },
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.REPORT_SIGNED,
+        targetTable: DEFENSE_AUDIT_TARGETS.SIGNATURE,
+        targetId: sigId,
+        metadata: {
+          scheduleId: String(rap?.schedule?.id ?? ""),
+          reportId: slot.rapId,
+          signatureId: sigId,
+          contentVersion: rap?.contentVersion ?? 0,
+          newStatus: "SIGNED",
+        },
       });
-      if (!slot) throw new AppError("Signature request not found.", 404);
-      return slot.rapId;
+
+      return {
+        rapId: slot.rapId,
+        scheduleId: rap?.schedule?.id ?? null,
+        contentVersion: rap?.contentVersion ?? 0,
+        duplicate: false,
+      };
     });
 
-    // CP7-FIX1: committed-state recompute (never downgrades FINALIZED).
-    const status = await this.recomputeRapStatus(rapId);
-    return { signatureId: sigId, rapId, status };
+    // CP7-FIX1 / CDW-9B: committed-state recompute (never downgrades FINALIZED).
+    const recompute = await this.recomputeRapStatusWithTransition(
+      transactionResult.rapId,
+    );
+    if (transactionResult.duplicate) {
+      throw new AppError("Signature already recorded.", 409);
+    }
+    return {
+      signatureId: sigId,
+      rapId: transactionResult.rapId,
+      scheduleId: transactionResult.scheduleId,
+      contentVersion: transactionResult.contentVersion,
+      status: recompute.status,
+      finalizedNow: recompute.transitionedToFinalized,
+    };
   }
 
   /**
@@ -324,6 +472,24 @@ export class RapReportService {
   async recomputeRapStatus(
     rapId: string,
   ): Promise<"FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED"> {
+    return (await this.recomputeRapStatusWithTransition(rapId)).status;
+  }
+
+  /**
+   * CDW-9B: aggregate recompute with truthful transition metadata.
+   *
+   * `transitionedToFinalized` is true only for the request that actually moves
+   * the aggregate to FINALIZED. A concurrent request that observes an already
+   * final RAP returns FINALIZED with false, so callers cannot claim a transition
+   * another request won. The returned status also re-reads the winner when a
+   * conditional update loses, preventing a stale PARTIALLY_SIGNED response.
+   */
+  async recomputeRapStatusWithTransition(
+    rapId: string,
+  ): Promise<{
+    status: "FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED";
+    transitionedToFinalized: boolean;
+  }> {
     const slots = await prisma.rapReportSignature.findMany({
       where: { rapId },
       select: { required: true, isSigned: true },
@@ -343,17 +509,19 @@ export class RapReportService {
       where: { id: rapId },
       select: { status: true, finalizedAt: true },
     });
-    if (!current) return next;
+    if (!current) {
+      return { status: next, transitionedToFinalized: false };
+    }
 
-    // Never downgrade FINALIZED.
+    // Never downgrade FINALIZED. Repair an anomalous missing timestamp once only.
     if (current.status === "FINALIZED") {
       if (!current.finalizedAt) {
-        await prisma.rapReport.update({
-          where: { id: rapId },
+        await prisma.rapReport.updateMany({
+          where: { id: rapId, status: "FINALIZED", finalizedAt: null },
           data: { finalizedAt: new Date() },
         });
       }
-      return "FINALIZED";
+      return { status: "FINALIZED", transitionedToFinalized: false };
     }
 
     if (next === "FINALIZED") {
@@ -367,19 +535,39 @@ export class RapReportService {
           where: { id: rapId },
           select: { status: true },
         });
-        if (winner?.status === "FINALIZED") return "FINALIZED";
+        if (winner?.status === "FINALIZED") {
+          return { status: "FINALIZED", transitionedToFinalized: false };
+        }
+        return {
+          status:
+            winner?.status === "PARTIALLY_SIGNED"
+              ? "PARTIALLY_SIGNED"
+              : winner?.status === "FOR_SIGNATURE"
+                ? "FOR_SIGNATURE"
+                : next,
+          transitionedToFinalized: false,
+        };
       }
-      return "FINALIZED";
+      return { status: "FINALIZED", transitionedToFinalized: true };
     }
 
-    await prisma.rapReport.updateMany({
+    const result = await prisma.rapReport.updateMany({
       where: {
         id: rapId,
         status: { notIn: ["FINALIZED"] },
       },
       data: { status: next },
     });
-    return next;
+    if (result.count === 0) {
+      const winner = await prisma.rapReport.findUnique({
+        where: { id: rapId },
+        select: { status: true },
+      });
+      if (winner?.status === "FINALIZED") {
+        return { status: "FINALIZED", transitionedToFinalized: false };
+      }
+    }
+    return { status: next, transitionedToFinalized: false };
   }
 
   /**

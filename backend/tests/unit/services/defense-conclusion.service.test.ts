@@ -17,6 +17,9 @@ const baseInput = {
   rapporteurNotesFinalized: true,
   oralSummaryExists: true,
   outcomeProvided: true,
+  // RAP-C1: an in-system FINALIZED Committee Report is REQUIRED for a new
+  // conclusion at every stage.
+  rapReportStatus: "FINALIZED",
 };
 
 describe("CP7 Chairman conclusion authority", () => {
@@ -70,14 +73,22 @@ describe("CP7 Chairman conclusion authority", () => {
 });
 
 describe("CP7 readiness gates", () => {
-  it("Test 16: Rapporteur notes not finalized → 409", () => {
-    const result = validateConclusionPreconditions(
+  it("Test 16: finalized legacy notes are no longer the gate (RAP finalization is)", () => {
+    // With a FINALIZED in-system report present, unfinalized legacy notes no
+    // longer block the conclusion.
+    const ok = validateConclusionPreconditions(
       { ...baseInput, rapporteurNotesFinalized: false },
       "PASSED",
     );
-    expect(result.ok).toBe(false);
-    expect(result.statusCode).toBe(409);
-    expect(result.errors.join(" ")).toMatch(/Rapporteur/i);
+    expect(ok.ok).toBe(true);
+    // With NO in-system report, the conclusion is blocked regardless of notes.
+    const blocked = validateConclusionPreconditions(
+      { ...baseInput, rapporteurNotesFinalized: true, rapReportStatus: null },
+      "PASSED",
+    );
+    expect(blocked.ok).toBe(false);
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.errors.join(" ")).toMatch(/Committee Report/i);
   });
 
   it("Test 15: missing Oral Summary on Proposal/Final → not ready", () => {
@@ -242,5 +253,90 @@ describe("CP7 outcome safety", () => {
     expect(isSessionChairmanRole("PANELIST")).toBe(false);
     expect(isSessionChairmanRole(null)).toBe(false);
     expect(isSessionChairmanRole("ADMIN")).toBe(false);
+  });
+});
+
+describe("RAP-C1 conclusion gating (in-system FINALIZED report REQUIRED — no legacy bypass)", () => {
+  const STAGES = ["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"];
+
+  it("blocks conclusion for every stage when there is NO in-system report", () => {
+    for (const defenseType of STAGES) {
+      const result = validateConclusionPreconditions(
+        { ...baseInput, defenseType, rapReportStatus: null },
+        "PASSED",
+      );
+      expect(result.ok).toBe(false);
+      expect(result.statusCode).toBe(409);
+      expect(result.errors.join(" ")).toMatch(/Committee Report/i);
+    }
+  });
+
+  it("blocks conclusion for every stage while the RAP is not FINALIZED", () => {
+    for (const defenseType of STAGES) {
+      for (const status of [
+        "DRAFT",
+        "FOR_SIGNATURE",
+        "PARTIALLY_SIGNED",
+        "ALL_SIGNED",
+        "DISTRIBUTED",
+      ]) {
+        const result = validateConclusionPreconditions(
+          { ...baseInput, defenseType, rapReportStatus: status },
+          "PASSED",
+        );
+        expect(result.ok).toBe(false);
+        expect(result.statusCode).toBe(409);
+      }
+    }
+  });
+
+  it("permits conclusion for every stage when the RAP is FINALIZED", () => {
+    for (const defenseType of STAGES) {
+      const result = validateConclusionPreconditions(
+        { ...baseInput, defenseType, rapReportStatus: "FINALIZED" },
+        "PASSED",
+      );
+      expect(result.ok).toBe(true);
+      expect(result.outcome).toBe("PASSED");
+    }
+  });
+
+  it("legacy Rapporteur notes never substitute for the in-system RAP (Proposal/Final)", () => {
+    for (const defenseType of ["PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
+      const result = validateConclusionPreconditions(
+        {
+          ...baseInput,
+          defenseType,
+          rapReportStatus: null,
+          rapporteurNotesFinalized: true,
+        },
+        "PASSED",
+      );
+      expect(result.ok).toBe(false);
+      expect(result.statusCode).toBe(409);
+    }
+  });
+
+  it("a FINALIZED report makes unfinalized legacy notes irrelevant", () => {
+    const result = validateConclusionPreconditions(
+      { ...baseInput, rapReportStatus: "FINALIZED", rapporteurNotesFinalized: false },
+      "REDEFENSE_REQUIRED",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.outcome).toBe("REDEFENSE_REQUIRED");
+  });
+
+  it("a non-Chairman is still rejected before any RAP gating", () => {
+    const result = validateConclusionPreconditions(
+      {
+        ...baseInput,
+        rapReportStatus: "FINALIZED",
+        isSessionChairman: false,
+        sessionRole: "PANELIST",
+      },
+      "PASSED",
+    );
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(403);
   });
 });

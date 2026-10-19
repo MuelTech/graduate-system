@@ -737,20 +737,24 @@ When implementation reaches one of these boundaries, fail closed or surface the 
 
 ## 20. Testing and validation conventions
 
-Use package-appropriate checks.
+Verification is **risk-based and scope-proportional**. The canonical engineering policy is:
 
-Backend packages commonly require:
+`docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`
 
-- focused unit/integration tests;
-- backend build/typecheck;
-- Prisma generate/migration validation when schema changes;
-- deterministic fixture checks when relevant.
+Do not run the entire frontend verifier set, entire backend test suite, full production builds, and schema tooling for every bounded task by default. Use the smallest verification set that proves the changed behavior and its directly affected regressions, then broaden only when the changed surface or acceptance gate justifies it.
 
-Frontend packages commonly require:
+Typical defaults:
 
-- typecheck/lint/build as available;
-- focused functional inspection;
-- manual browser QA when executable.
+- **docs-only:** inspect the diff + `git diff --check`; no application build/test unless the documentation itself drives generated artifacts;
+- **isolated copy/UI refinement:** focused verifier/test + TypeScript where applicable + scoped lint + `git diff --check`;
+- **bounded frontend behavior:** focused tests/verifiers + directly affected regressions + TypeScript + scoped lint; build when component/API/type wiring or release confidence justifies it;
+- **bounded backend business rule:** focused unit/integration tests + directly affected regressions + backend type/build validation when affected;
+- **shared infrastructure/auth/security/schema/migration:** broader regression and build/schema validation as appropriate;
+- **final acceptance / release / deployment gate:** broad or full suites when the gate is intended to establish system-level confidence.
+
+Full-suite verification is justified when a change touches shared infrastructure broadly, crosses many modules, changes auth/security/schema/migration behavior, or is itself a final milestone/release gate. If an agent escalates from focused verification to a full suite, it should have a concrete reason.
+
+Never rerun identical expensive commands without a reason merely to create more evidence.
 
 Document/storage packages additionally need negative tests for:
 
@@ -765,7 +769,9 @@ Document/storage packages additionally need negative tests for:
 - legacy `filePath` compatibility;
 - persistence across deployment/restart assumptions where environment permits.
 
-Do not turn every bounded package into an unrelated full-system rewrite.
+Manual/browser QA, agent-local automated checks, and hosted CI are separate evidence classes and must be reported truthfully. Local tests/builds are not GitHub Actions evidence.
+
+Do not turn every bounded package into an unrelated full-system rewrite or full-system verification cycle.
 
 ---
 
@@ -888,15 +894,17 @@ Before implementing:
 1. confirm branch = `refactor/document-lifecycle`;
 2. confirm remote HEAD;
 3. read this `CONTEXT.md`;
-4. read:
+4. read the cross-cutting engineering guardrail:
+   - `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`;
+5. read the domain-specific canonical documents required by the assigned work, including:
    - `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`;
    - `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`;
-   - `docs/superpowers/specs/2026-10-02-document-lifecycle-storage-design.md`;
-   - `docs/superpowers/plans/2026-10-02-document-lifecycle-implementation.md`;
-5. inspect the actual current code involved in the assigned package;
-6. implement only that package;
-7. stop and report for independent review.
+   - the applicable design/specification and implementation plan for the active package;
+6. inspect the actual current code involved in the assigned package;
+7. implement only that package;
+8. run risk-based/package-appropriate verification;
+9. stop and report for independent review.
 
 ---
 
-*Updated: 2026-10-02 — refreshed after accepted Defense Workflow corrections and creation of the Document Lifecycle architecture. This file is intentionally an onboarding/index document; canonical source-of-truth files govern detailed domain behavior.*
+*Updated: 2026-10-19 — added the cross-cutting risk-based verification policy for coding-agent work. This file is intentionally an onboarding/index document; canonical source-of-truth and engineering-policy files govern detailed behavior.*

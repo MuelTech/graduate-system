@@ -7,18 +7,14 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { isEvaluatorRole, assertEvaluationSessionEditable } from "./oral-evaluation.rules";
-import { selectCertifiedProposalManuscript, selectCertifiedFinalManuscript } from "./proposal-adviser-review.rules";
+import { selectAuthoritativeAttemptManuscript } from "./defense-attempt-manuscript.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 
 const committeePolicy = new DefenseCommitteePolicy();
-
-const DOC_BY_DEFENSE: Record<
-  string,
-  { docType: string; defenseStage: string }
-> = {
-  TITLE_DEFENSE: { docType: "TITLE_PROPOSAL", defenseStage: "TITLE" },
-  PROPOSAL_DEFENSE: { docType: "PROPOSAL_CHAPTERS", defenseStage: "PROPOSAL" },
-  FINAL_DEFENSE: { docType: "FINAL_MANUSCRIPT", defenseStage: "FINAL" },
-};
 
 export type WorkspaceRole =
   | "CHAIRMAN"
@@ -48,15 +44,21 @@ export interface DefenseWorkspaceDto {
     role: WorkspaceRole;
   };
   capabilities: {
+    /** Caller's role is a numerical evaluator (Chairman/Panelist) for this stage. */
     canEvaluate: boolean;
+    /**
+     * CDW-4: official scoring is OPEN right now — the caller is an evaluator, the
+     * session is IN_PROGRESS, and the attempt is not concluded. Server-authoritative.
+     */
+    evaluationOpen: boolean;
     canEditRapporteurNotes: boolean;
     canViewTitleDeliberation: boolean;
     canViewTitleChairmanResult: boolean;
     canFinalizeRapporteurNotes: boolean;
     canRecordFormalResult: boolean;
     canViewFinalizedRapporteurNotes: boolean;
-    /** 2026-10-04: assigned Chairman may start a scheduled Title Defense. */
-    canStartTitleDefense: boolean;
+    /** CDW-4: assigned Chairman may Start Defense for ANY stage from SCHEDULED. */
+    canStartDefense: boolean;
   };
   documents: Array<{
     id: string;
@@ -81,32 +83,8 @@ export interface DefenseWorkspaceDto {
     evaluatorAssignments: number;
     finalizedEvaluations: number;
   };
-  oralSummary: {
-    ready: boolean;
-    overallAverage: number | null;
-    finalRating: string | null;
-  } | null;
   formalResult: string | null;
   rapStatus: string | null;
-  /**
-   * CP8: prior Proposal context for Final Defense only.
-   * Absent/null for Title and Proposal workspaces.
-   */
-  proposalHistory: {
-    manuscript: {
-      id: string;
-      docType: string;
-      defenseStage: string | null;
-      uploadedAt: string | null;
-      displayName: string;
-    } | null;
-    rap: {
-      id: string;
-      status: "FINALIZED";
-      finalizedAt: string | null;
-      decisionsAndRecommendations: string | null;
-    } | null;
-  } | null;
 }
 
 function wallDate(v: Date | null | undefined): string | null {
@@ -170,6 +148,7 @@ export class DefenseWorkspaceService {
                 id: true,
                 docType: true,
                 defenseStage: true,
+                isCurrent: true,
                 uploadedAt: true,
                 thesisId: true,
               },
@@ -205,19 +184,31 @@ export class DefenseWorkspaceService {
           select: { id: true, outcome: true },
         },
         oralExamSummary: {
-          select: { id: true, overallAverage: true, finalRating: true },
+          // CDW-4 FIX: only existence is needed internally (readiness gating).
+          // The aggregate Summary is Admin-side and never committee-facing.
+          select: { id: true },
         },
         rapReports: {
           select: { status: true },
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        manuscriptDocument: {
+          select: { id: true, docType: true, defenseStage: true, uploadedAt: true },
+        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    // CP6: assignment auth BEFORE role-safe DTO assembly.
-    const myAssignment = await this.resolveOwnAssignment(scheduleId, userId);
+    // CP6: assignment auth BEFORE role-safe DTO assembly. The exact roster is
+    // already loaded with the schedule, so resolve the caller's assignment from
+    // that same authoritative snapshot instead of issuing a redundant query.
+    const myAssignment = schedule.panelAssignments.find(
+      (assignment) => assignment.userId === userId,
+    );
+    if (!myAssignment) {
+      throw new AppError("You are not assigned to this defense session.", 403);
+    }
     const role = String(myAssignment.role) as WorkspaceRole;
     const defenseType = String(schedule.defenseType);
     const isEvaluator = isEvaluatorRole(role, defenseType);
@@ -239,119 +230,61 @@ export class DefenseWorkspaceService {
       uploadedAt: string | null;
       displayName: string;
     }> = [];
-    /** CP8: prior Proposal context — only for FINAL_DEFENSE. */
-    let proposalHistory: DefenseWorkspaceDto["proposalHistory"] = null;
 
-    if (defenseType === "PROPOSAL_DEFENSE") {
-      const cert = certs.find((c) => c.defenseStage === "PROPOSAL_DEFENSE");
-      const exact = selectCertifiedProposalManuscript(
-        allDocs.map((d) => ({
-          id: d.id,
-          thesisId: d.thesisId ?? thesisId,
-          docType: d.docType,
-          defenseStage: d.defenseStage ?? null,
-        })),
-        cert ?? null,
-        thesisId,
-      );
-      if (!exact) {
-        throw new AppError(
-          "Certified defense manuscript is unavailable for this session.",
-          409,
-        );
-      }
-      docs = [
-        {
-          id: exact.id,
-          docType: exact.docType,
-          defenseStage: exact.defenseStage,
-          uploadedAt:
-            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
-            null,
-          displayName: "Certified Proposal Manuscript",
-        },
-      ];
-    } else if (defenseType === "FINAL_DEFENSE") {
-      const cert = certs.find((c) => c.defenseStage === "FINAL_DEFENSE");
-      const exact = selectCertifiedFinalManuscript(
-        allDocs.map((d) => ({
-          id: d.id,
-          thesisId: d.thesisId ?? thesisId,
-          docType: d.docType,
-          defenseStage: d.defenseStage ?? null,
-        })),
-        cert ?? null,
-        thesisId,
-      );
-      if (!exact) {
-        throw new AppError(
-          "Certified defense manuscript is unavailable for this session.",
-          409,
-        );
-      }
-      docs = [
-        {
-          id: exact.id,
-          docType: exact.docType,
-          defenseStage: exact.defenseStage,
-          uploadedAt:
-            allDocs.find((d) => d.id === exact.id)?.uploadedAt?.toISOString() ??
-            null,
-          displayName: "Certified Final Manuscript",
-        },
-      ];
+    const attemptDocDisplayName =
+      defenseType === "PROPOSAL_DEFENSE"
+        ? "Certified Proposal Manuscript"
+        : defenseType === "FINAL_DEFENSE"
+          ? "Certified Final Manuscript"
+          : "Title Defense Proposal Package";
 
-      // CP8: exact certified prior Proposal manuscript (never a later revision).
-      const proposalCert = certs.find(
-        (c) => c.defenseStage === "PROPOSAL_DEFENSE",
-      );
-      const priorProposal = selectCertifiedProposalManuscript(
-        allDocs.map((d) => ({
-          id: d.id,
-          thesisId: d.thesisId ?? thesisId,
-          docType: d.docType,
-          defenseStage: d.defenseStage ?? null,
-        })),
-        proposalCert ?? null,
-        thesisId,
-      );
+    const toWorkspaceDoc = (d: {
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      uploadedAt?: Date | string | null;
+    }) => ({
+      id: d.id,
+      docType: String(d.docType),
+      defenseStage: d.defenseStage ?? null,
+      uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString() : null,
+      displayName: attemptDocDisplayName,
+    });
 
-      // CP8: finalized Proposal RAP bound to the formal Proposal session only.
-      const proposalRap = await this.loadFinalizedProposalRap(thesisId);
-
-      proposalHistory = {
-        manuscript: priorProposal
-          ? {
-              id: priorProposal.id,
-              docType: priorProposal.docType,
-              defenseStage: priorProposal.defenseStage,
-              uploadedAt:
-                allDocs
-                  .find((d) => d.id === priorProposal.id)
-                  ?.uploadedAt?.toISOString() ?? null,
-              displayName: "Previous Proposal Manuscript",
-            }
-          : null,
-        rap: proposalRap,
-      };
+    // CDW-2 correction: an already-bound schedule returns its EXACT attempt
+    // manuscript — even if a newer/current document or certification exists.
+    const boundDocument = schedule.manuscriptDocument;
+    if (boundDocument) {
+      docs = [toWorkspaceDoc(boundDocument)];
     } else {
-      const docRule = DOC_BY_DEFENSE[defenseType];
-      docs = allDocs
-        .filter(
-          (d) =>
-            docRule &&
-            d.docType === docRule.docType &&
-            (d.defenseStage === docRule.defenseStage || d.defenseStage == null),
-        )
-        .slice(0, 1)
-        .map((d) => ({
-          id: d.id,
-          docType: d.docType,
-          defenseStage: d.defenseStage,
-          uploadedAt: d.uploadedAt ? d.uploadedAt.toISOString() : null,
-          displayName: "Title Defense Proposal Package",
-        }));
+      const derived = selectAuthoritativeAttemptManuscript(
+        allDocs,
+        certs,
+        defenseType,
+        thesisId,
+      );
+      if (derived) {
+        docs = [toWorkspaceDoc(derived)];
+        // Safe one-time binding for an ACTIVE (non-concluded) attempt only;
+        // concluded attempts are never re-bound from current state.
+        if (String(schedule.sessionStatus) !== "CONCLUDED") {
+          await prisma.defenseSchedule.updateMany({
+            where: { id: scheduleId, manuscriptDocumentId: null },
+            data: { manuscriptDocumentId: derived.id },
+          });
+        }
+      } else if (defenseType === "PROPOSAL_DEFENSE" || defenseType === "FINAL_DEFENSE") {
+        throw new AppError(
+          "Certified defense manuscript is unavailable for this session.",
+          409,
+        );
+      }
     }
+
+    // CDW-6: prior-Proposal context is no longer duplicated on the workspace read
+    // model. It is served by the generalized, attempt-based Defense History read
+    // model (GET /defense/:scheduleId/history), so there is ONE history system,
+    // resolved from the exact prior attempts (never today's certification).
 
     const evaluationByPanel = new Map(
       schedule.oralExamScores.map((s) => [s.panelId, s.status as string]),
@@ -418,23 +351,31 @@ export class DefenseWorkspaceService {
       (isChairman || role === "RAPPORTEUR") &&
       !schedule.conclusion;
     const summaryReady = Boolean(schedule.oralExamSummary);
-    const canStartTitleDefense =
-      isTitleDefense &&
+    // CDW-4: Start Defense applies to EVERY stage (Title/Proposal/Final). Only the
+    // assigned Chairman may start, only from SCHEDULED, never after conclusion.
+    const canStartDefense =
       isChairman &&
       !schedule.conclusion &&
       sessionStatusValue === "SCHEDULED";
-    // WF-C1b: the Chairman may record the formal result only once the session is
-    // awaiting conclusion, every required evaluator has finalized, and the Oral
-    // Examination Summary exists. Title no longer needs Rapporteur notes/RAP yet
-    // (RAP-before-conclusion is deferred to WF-C1c); Proposal/Final keep the
-    // accepted Rapporteur-notes requirement.
+    // Official scoring is server-authoritative gated on IN_PROGRESS (all stages).
+    const evaluationOpen =
+      isEvaluator &&
+      !schedule.conclusion &&
+      sessionStatusValue === "IN_PROGRESS";
+    // RAP-C1: the Chairman may record the formal result only once the session is
+    // awaiting conclusion, every required evaluator has finalized, the Oral
+    // Examination Summary exists, AND the in-system Committee Report is FINALIZED
+    // (frozen + fully signed) for EVERY stage. This capability mirrors the
+    // authoritative conclusion gate; legacy Rapporteur notes never substitute.
+    const rapFinalized =
+      String(schedule.rapReports?.[0]?.status ?? "") === "FINALIZED";
     const canRecordFormalResult =
       isChairman &&
       !schedule.conclusion &&
       sessionStatusValue === "AWAITING_CONCLUSION" &&
       evaluationsComplete &&
       summaryReady &&
-      (isTitleDefense ? true : Boolean(notesFinalizedAt));
+      rapFinalized;
 
     return {
       schedule: {
@@ -459,13 +400,14 @@ export class DefenseWorkspaceService {
       },
       capabilities: {
         canEvaluate: isEvaluator,
+        evaluationOpen,
         canEditRapporteurNotes,
         canViewTitleDeliberation,
         canViewTitleChairmanResult,
         canFinalizeRapporteurNotes,
         canRecordFormalResult,
         canViewFinalizedRapporteurNotes,
-        canStartTitleDefense,
+        canStartDefense,
       },
       documents: docs,
       proposedTitles:
@@ -489,85 +431,30 @@ export class DefenseWorkspaceService {
         evaluatorAssignments: evaluatorAssignments.length,
         finalizedEvaluations,
       },
-      oralSummary: schedule.oralExamSummary
-        ? {
-            ready: true,
-            overallAverage: Number(schedule.oralExamSummary.overallAverage),
-            finalRating: schedule.oralExamSummary.finalRating ?? null,
-          }
-        : { ready: false, overallAverage: null, finalRating: null },
       formalResult: schedule.conclusion
         ? String(schedule.conclusion.outcome)
         : null,
       rapStatus: schedule.rapReports?.[0]?.status ?? null,
-      proposalHistory,
     };
   }
 
-  /**
-   * CP8: authoritative prior Proposal RAP.
-   * Bound to DefenseConclusion.scheduleId for PROPOSAL_DEFENSE; FINALIZED only.
-   * Never draft/FOR_SIGNATURE/PARTIALLY_SIGNED/ALL_SIGNED content.
-   */
-  /**
-   * CP8-FIX1: authoritative prior Proposal RAP for Final Defense history.
-   * Only from a formally PASSED Proposal DefenseConclusion + exact-schedule
-   * FINALIZED RapReport. REVISION_REQUIRED / FAILED conclusions never expose
-   * RAP history. Fail closed — no fallback to another concluded session.
-   */
-  private async loadFinalizedProposalRap(thesisId: string): Promise<{
-    id: string;
-    status: "FINALIZED";
-    finalizedAt: string | null;
-    decisionsAndRecommendations: string | null;
-  } | null> {
-    const proposalConclusion = await prisma.defenseConclusion.findFirst({
-      where: {
-        thesisId,
-        outcome: "PASSED",
-        schedule: { defenseType: "PROPOSAL_DEFENSE" },
-      },
-      orderBy: { concludedAt: "desc" },
-      select: { scheduleId: true, outcome: true },
-    });
-    if (!proposalConclusion?.scheduleId) return null;
-    if (String(proposalConclusion.outcome) !== "PASSED") return null;
-
-    const rap = await prisma.rapReport.findFirst({
-      where: {
-        scheduleId: proposalConclusion.scheduleId,
-        defenseType: "PROPOSAL_DEFENSE",
-        status: "FINALIZED",
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        finalizedAt: true,
-        decisionsAndRecommendations: true,
-      },
-    });
-    if (!rap) return null;
-
-    return {
-      id: rap.id,
-      status: "FINALIZED" as const,
-      finalizedAt: rap.finalizedAt ? rap.finalizedAt.toISOString() : null,
-      decisionsAndRecommendations: rap.decisionsAndRecommendations ?? null,
-    };
-  }
 
   /**
-   * 2026-10-04 Title correction: the assigned Chairman explicitly starts a
-   * scheduled Title Defense, moving it SCHEDULED → IN_PROGRESS. This is the
-   * earliest phase in which the panel has begun deliberation, so the Chairman
-   * may record the formal result and the Rapporteur may finalize minutes.
+   * CDW-4: the assigned Chairman explicitly starts the defense for ANY stage
+   * (Title/Proposal/Final), moving it SCHEDULED → IN_PROGRESS. Only the assigned
+   * session Chairman may start; this is the gate that opens official scoring.
    *
-   * Idempotent while already active; never touches Proposal/Final sessions.
+   * Idempotent while already active (IN_PROGRESS / AWAITING_CONCLUSION); never
+   * restarts a concluded/cancelled session.
    */
-  async startTitleDefense(
+  async startDefense(
     scheduleId: string,
     userId: string,
-  ): Promise<{ started: true; sessionStatus: string }> {
+  ): Promise<{
+    started: true;
+    sessionStatus: string;
+    transitioned: boolean;
+  }> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       select: {
@@ -577,17 +464,11 @@ export class DefenseWorkspaceService {
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
-    if (String(schedule.defenseType) !== "TITLE_DEFENSE") {
-      throw new AppError(
-        "Only Title Defense uses the digital start action.",
-        400,
-      );
-    }
 
     const assignment = await this.resolveOwnAssignment(scheduleId, userId);
     if (String(assignment.role) !== "CHAIRMAN") {
       throw new AppError(
-        "Only the assigned session Chairman may start the Title Defense.",
+        "Only the assigned session Chairman may start the defense.",
         403,
       );
     }
@@ -597,20 +478,38 @@ export class DefenseWorkspaceService {
 
     const status = String(schedule.sessionStatus);
     if (status === "IN_PROGRESS" || status === "AWAITING_CONCLUSION") {
-      return { started: true, sessionStatus: status };
+      return { started: true, sessionStatus: status, transitioned: false };
     }
     if (status !== "SCHEDULED") {
       throw new AppError(
-        "Title Defense can be started only from a scheduled session.",
+        "The defense can be started only from a scheduled session.",
         409,
       );
     }
 
-    const result = await prisma.defenseSchedule.updateMany({
-      where: { id: scheduleId, sessionStatus: "SCHEDULED" },
-      data: { sessionStatus: "IN_PROGRESS" },
+    const transition = await prisma.$transaction(async (tx) => {
+      const result = await tx.defenseSchedule.updateMany({
+        where: { id: scheduleId, sessionStatus: "SCHEDULED" },
+        data: { sessionStatus: "IN_PROGRESS" },
+      });
+      if (result.count === 0) return { transitioned: false };
+
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.SESSION_STARTED,
+        targetTable: DEFENSE_AUDIT_TARGETS.SESSION,
+        targetId: scheduleId,
+        metadata: {
+          scheduleId,
+          defenseType: String(schedule.defenseType),
+          previousStatus: "SCHEDULED",
+          newStatus: "IN_PROGRESS",
+        },
+      });
+      return { transitioned: true };
     });
-    if (result.count === 0) {
+
+    if (!transition.transitioned) {
       const refreshed = await prisma.defenseSchedule.findUnique({
         where: { id: scheduleId },
         select: { sessionStatus: true },
@@ -618,9 +517,10 @@ export class DefenseWorkspaceService {
       return {
         started: true,
         sessionStatus: String(refreshed?.sessionStatus ?? "IN_PROGRESS"),
+        transitioned: false,
       };
     }
-    return { started: true, sessionStatus: "IN_PROGRESS" };
+    return { started: true, sessionStatus: "IN_PROGRESS", transitioned: true };
   }
 
   /** CP6/CP7: only the session Rapporteur may write draft notes; locked after finalization. */
@@ -634,7 +534,6 @@ export class DefenseWorkspaceService {
       select: {
         sessionStatus: true,
         rapporteurNotesFinalizedAt: true,
-        defenseType: true,
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
@@ -655,13 +554,10 @@ export class DefenseWorkspaceService {
       );
     }
 
-    // 2026-10-04 Title correction: the Chairman may record the formal result
-    // before the Rapporteur finalizes, so Title notes stay editable after
-    // conclusion until they are finalized.
-    const isTitle = String(schedule.defenseType) === "TITLE_DEFENSE";
-    const blockedStatuses = isTitle
-      ? ["CANCELLED"]
-      : ["CONCLUDED", "CANCELLED"];
+    // CDW-7: a CONCLUDED attempt is historical and immutable at EVERY stage.
+    // The former Title-only post-conclusion exception existed for the superseded
+    // "conclude Title, then finalize notes/RAP" flow and is no longer canonical.
+    const blockedStatuses = ["CONCLUDED", "CANCELLED"];
     const status = String(schedule.sessionStatus);
     if (blockedStatuses.includes(status)) {
       throw new AppError(

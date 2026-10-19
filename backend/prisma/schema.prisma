@@ -55,6 +55,7 @@ model User {
   panelist                           Panelist?
   rapReportSignatures                RapReportSignature[]
   rapReportsGenerated                RapReport[]               @relation("RapReportGeneratedBy")
+  rapReportsFrozen                   RapReport[]               @relation("RapReportFrozenBy")
   researchVarSignatures              ResearchVarSignature[]
   schoolCalendarCreated              SchoolYearCalendar[]      @relation("CalendarCreatedBy")
   studentRequirementsReviewed        StudentRequirement[]      @relation("RequirementReviewedBy")
@@ -600,6 +601,8 @@ model ThesisDocument {
   adviserCertReviews AdviserCertification[] @relation("AdviserCertReviewedDoc")
   supersedes         ThesisDocument?        @relation("ThesisDocumentSupersession", fields: [supersedesDocumentId], references: [id])
   supersededBy       ThesisDocument[]       @relation("ThesisDocumentSupersession")
+  defenseAnnotations DefenseAnnotation[]
+  schedulesAsManuscript DefenseSchedule[]  @relation("ScheduleManuscriptDocument")
 
   @@index([thesisId], map: "thesis_documents_thesis_id_fkey")
   @@index([storageKey], map: "thesis_documents_storage_key_idx")
@@ -611,6 +614,12 @@ model ThesisDocument {
 model DefenseSchedule {
   id                           String                   @id @default(uuid()) @map("schedule_id")
   thesisId                     String                   @map("thesis_id")
+  /**
+   * CDW-2 correction: the EXACT manuscript evidence for THIS defense attempt.
+   * Bound server-side at scheduling and immutable for the attempt through normal
+   * APIs (FK is ON DELETE RESTRICT so historical evidence cannot be destroyed).
+   */
+  manuscriptDocumentId         String?                  @map("manuscript_document_id")
   defenseDate                  DateTime                 @map("defense_date") @db.Date
   defenseTime                  DateTime                 @map("defense_time") @db.Time(0)
   venueOrLink                  String?                  @map("venue_or_link")
@@ -628,16 +637,19 @@ model DefenseSchedule {
   setBy                        User                     @relation("ScheduleSetBy", fields: [setById], references: [id])
   rapporteurNotesFinalizedBy   User?                    @relation("RapporteurNotesFinalizedBy", fields: [rapporteurNotesFinalizedById], references: [id])
   thesis                       ThesisRecord             @relation(fields: [thesisId], references: [id])
+  manuscriptDocument           ThesisDocument?          @relation("ScheduleManuscriptDocument", fields: [manuscriptDocumentId], references: [id], onDelete: Restrict)
   oralExamScores               OralExamScore[]
   oralExamSummary              OralExamSummary?
   conclusion                   DefenseConclusion?
   panelAssignments             PanelAssignment[]
   rapReports                   RapReport[]
+  annotations                  DefenseAnnotation[]
   adviserRequests              AdviserRequest[]
 
   @@index([setById], map: "defense_schedules_set_by_fkey")
   @@index([thesisId], map: "defense_schedules_thesis_id_fkey")
   @@index([rapporteurNotesFinalizedById])
+  @@index([manuscriptDocumentId], map: "defense_schedules_manuscript_document_id_fkey")
   @@map("defense_schedules")
 }
 
@@ -650,6 +662,8 @@ model PanelAssignment {
   oralExamScores OralExamScore[]
   schedule       DefenseSchedule @relation(fields: [scheduleId], references: [id])
   user           User            @relation(fields: [userId], references: [id])
+  annotations    DefenseAnnotation[]
+  annotationComments DefenseAnnotationComment[]
 
   @@unique([scheduleId, userId])
   @@index([scheduleId], map: "panel_assignments_schedule_id_fkey")
@@ -674,6 +688,13 @@ model OralExamScore {
   groupBAverage            Decimal?             @map("group_b_average")
   overallAverage           Decimal?             @map("overall_average")
   rating                   OralRating?
+  /**
+   * CDW-4 FIX: which scoring semantics the criterion columns carry. Existing
+   * rows keep LEGACY_POINTS_V1 (10/15-point); new collaborative evaluations are
+   * created as INSTITUTIONAL_MATRIX_V2 (1.00–2.50 matrix). Values are never
+   * reinterpreted across versions.
+   */
+  scoringVersion           OralEvaluationScoringVersion @default(LEGACY_POINTS_V1) @map("scoring_version")
   recommendations          String?              @db.Text
   scoredAt                 DateTime             @map("scored_at")
   /**
@@ -702,6 +723,19 @@ enum OralEvaluationStatus {
   FINALIZED
 
   @@map("oral_evaluation_status")
+}
+
+/**
+ * CDW-4 FIX: scoring semantics marker for OralExamScore rows.
+ * LEGACY_POINTS_V1     — historical 10/15-point criteria + point-subtotal columns.
+ * INSTITUTIONAL_MATRIX_V2 — institutional 1.00–2.50 per-criterion matrix; groupA/B
+ *                            hold group AVERAGES and overallAverage stays null.
+ */
+enum OralEvaluationScoringVersion {
+  LEGACY_POINTS_V1
+  INSTITUTIONAL_MATRIX_V2
+
+  @@map("oral_evaluation_scoring_version")
 }
 
 model OralExamSummary {
@@ -827,14 +861,33 @@ model RapReport {
    * CP7: set server-side when all required RAP signatures complete.
    */
   finalizedAt                 DateTime?            @map("finalized_at")
+  /**
+   * CDW-1: Rapporteur-owned controlled rich-text Committee Report body (JSON
+   * document model) + draft version counter. Null = legacy / no new body yet.
+   */
+  bodyDocument                Json?                @map("body_document")
+  bodyVersion                 Int                  @default(0) @map("body_version")
+  bodyUpdatedAt               DateTime?            @map("body_updated_at")
+  /**
+   * CDW-1: monotonic content version + immutable freeze metadata. The frozen
+   * snapshot/hash are server-generated and never rewritten; later RAP signatures
+   * bind to frozenContentHash.
+   */
+  contentVersion              Int                  @default(0) @map("content_version")
+  frozenAt                    DateTime?            @map("frozen_at")
+  frozenById                  String?              @map("frozen_by")
+  frozenContent               Json?                @map("frozen_content")
+  frozenContentHash           String?              @map("frozen_content_hash")
   createdAt                   DateTime             @default(now()) @map("created_at")
   signatures                  RapReportSignature[]
   generatedBy                 User?                @relation("RapReportGeneratedBy", fields: [generatedById], references: [id])
+  frozenBy                    User?                @relation("RapReportFrozenBy", fields: [frozenById], references: [id])
   schedule                    DefenseSchedule      @relation(fields: [scheduleId], references: [id])
   thesis                      ThesisRecord         @relation(fields: [thesisId], references: [id])
 
   @@index([generatedById], map: "rap_reports_generated_by_fkey")
   @@index([thesisId], map: "rap_reports_thesis_id_fkey")
+  @@index([frozenById], map: "rap_reports_frozen_by_fkey")
   @@map("rap_reports")
 }
 
@@ -877,6 +930,12 @@ model RapReportSignature {
   signatureData String?   @map("signature_data")
   signedAt      DateTime? @map("signed_at")
   notifiedAt    DateTime? @map("notified_at")
+  /**
+   * CDW-1: bind a signature to the exact frozen report version/hash it signed.
+   * Null for legacy signatures created before the collaborative freeze model.
+   */
+  signedContentHash    String? @map("signed_content_hash")
+  signedContentVersion Int?    @map("signed_content_version")
   createdAt     DateTime  @default(now()) @map("created_at")
   rapReport     RapReport @relation(fields: [rapId], references: [id])
   user          User      @relation(fields: [userId], references: [id])
@@ -884,6 +943,60 @@ model RapReportSignature {
   @@unique([rapId, userId])
   @@index([userId], map: "rap_report_signatures_user_id_fkey")
   @@map("rap_report_signatures")
+}
+
+/**
+ * CDW-1: a committee member's highlight/annotation on the exact defense
+ * manuscript. Bound to the exact attempt (schedule), exact document, and the
+ * author's PanelAssignment. The source PDF is never modified; this is an overlay.
+ */
+model DefenseAnnotation {
+  id                 String   @id @default(uuid()) @map("annotation_id")
+  scheduleId         String   @map("schedule_id")
+  thesisDocumentId   String   @map("thesis_document_id")
+  authorAssignmentId String   @map("author_assignment_id")
+  pageNumber         Int      @map("page_number")
+  selectedText       String   @db.Text @map("selected_text")
+  /**
+   * CDW-0A v1 anchor payload: { rects: [{x,y,width,height}], prefix, suffix }
+   * in normalized page space. Validated server-side; never normalized silently.
+   */
+  anchorData         Json     @map("anchor_data")
+  anchorVersion      Int      @default(1) @map("anchor_version")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+  schedule           DefenseSchedule @relation(fields: [scheduleId], references: [id])
+  thesisDocument     ThesisDocument  @relation(fields: [thesisDocumentId], references: [id])
+  author             PanelAssignment @relation(fields: [authorAssignmentId], references: [id])
+  comments           DefenseAnnotationComment[]
+
+  @@index([scheduleId, thesisDocumentId])
+  @@index([thesisDocumentId])
+  @@index([authorAssignmentId])
+  @@map("defense_annotations")
+}
+
+/**
+ * CDW-1: a comment on an annotation. Simple flat thread with an optional single
+ * parent for one level of replies (no arbitrary nesting). No hard delete.
+ */
+model DefenseAnnotationComment {
+  id                 String   @id @default(uuid()) @map("comment_id")
+  annotationId       String   @map("annotation_id")
+  authorAssignmentId String   @map("author_assignment_id")
+  body               String   @db.Text
+  parentCommentId    String?  @map("parent_comment_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+  annotation         DefenseAnnotation @relation(fields: [annotationId], references: [id])
+  author             PanelAssignment   @relation(fields: [authorAssignmentId], references: [id])
+  parent             DefenseAnnotationComment?  @relation("DefenseAnnotationCommentReplies", fields: [parentCommentId], references: [id])
+  replies            DefenseAnnotationComment[] @relation("DefenseAnnotationCommentReplies")
+
+  @@index([annotationId])
+  @@index([authorAssignmentId])
+  @@index([parentCommentId])
+  @@map("defense_annotation_comments")
 }
 
 model AdviserCertification {

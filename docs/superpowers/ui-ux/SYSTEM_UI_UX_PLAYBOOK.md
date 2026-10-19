@@ -192,6 +192,102 @@ Before renaming:
 
 Do not replace precise academic terminology merely because a shorter phrase looks better.
 
+## 8.2.1 User-facing copy must describe the task, not the implementation
+
+Visible product language must be understandable to the actor performing the work. Internal engineering/domain-storage terminology may remain in code, APIs, database models, tests, events, and audit metadata without being copied literally into ordinary UI.
+
+Rules:
+
+- prefer the user's task/action over the implementation mechanism;
+- do not expose raw enum names, route names, model names, version counters, hashes, snapshot terminology, or lifecycle verbs merely because they exist in source;
+- when an approved design specifies exact user-facing labels or confirmation copy, that copy is normative for the implementation package;
+- coding agents must not invent alternate visible labels, helper text, status copy, or confirmation wording when the bounded design already specifies them;
+- if implementation discovers that approved copy is inaccurate, stop/report the conflict instead of silently rewriting the UI;
+- technical metadata may be exposed in a clearly administrative/audit/debug context only when it serves a real operational need;
+- irreversible-action confirmation text should explain the user consequence in plain language.
+
+Canonical example from the Defense Workspace:
+
+| Internal / implementation concept | Faculty-facing language |
+|---|---|
+| freeze report / `/freeze` endpoint | **Finalize Committee Report** |
+| frozen report | **Finalized Committee Report** |
+| `FOR_SIGNATURE` | **Ready for Signatures** |
+| `PARTIALLY_SIGNED` | **Awaiting Signatures** |
+| `contentVersion = 1`, V1, frozen version 1 | hidden from ordinary faculty UI |
+| snapshot/hash binding | hidden integrity metadata |
+| `RapReport` / `RapSignature` model names | **Committee Report** / **Committee Report Signature** |
+| readiness service/checklist internals | concise **Requirements for Verdict** / task progress |
+
+For the Committee Report flow specifically, approved visible action language is:
+
+- **Finalize Committee Report**
+- **Finalize Report**
+- **Ready for Signatures**
+- **Awaiting Signatures**
+- **Sign Committee Report**
+- **Confirm Signature**
+- **Signed**
+- **Committee Report Complete**
+
+Avoid ordinary faculty-facing wording such as **Freeze for Signatures**, **Confirm Freeze**, **Frozen version 1**, **V1**, **frozen snapshot**, and unexplained **RAP Report** terminology.
+
+## 8.2.2 Do not explain what the UI already demonstrates
+
+User-facing copy should be concise, task-centered, and consequence-aware. The interface should communicate most workflow behavior through its structure, labels, statuses, progress, role-specific controls, and enabled/disabled actions rather than through paragraphs that narrate how the system works.
+
+**Core rule:** **Do not explain what the UI already demonstrates.**
+
+Keep explanatory copy when the user needs it to:
+
+- understand an irreversible or high-impact consequence;
+- understand why an action is blocked;
+- recover from an error or conflict;
+- distinguish genuinely ambiguous choices;
+- understand an institutional rule that cannot be inferred from the interface.
+
+Remove or avoid copy that merely:
+
+- narrates the sequence of another role's work;
+- explains internal permissions that the available controls already enforce;
+- repeats a status/progress condition already visible nearby;
+- describes backend/system mechanics;
+- tells a competent user what an obvious control does;
+- adds "what happens next" prose when the next state/action is already self-evident.
+
+Prefer:
+
+```text
+clear label
++ visible state
++ available action
++ concise consequence when needed
+```
+
+over:
+
+```text
+paragraphs explaining the workflow around the current task
+```
+
+Example — Committee Report finalization:
+
+**Keep**
+
+> Once finalized, the report can no longer be edited. Required committee members can review and sign it immediately.
+
+This explains the direct irreversible consequence of the action.
+
+**Do not add**
+
+> Evaluations can be completed separately before the Chairman records the formal verdict.
+
+That sentence is domain-correct but unnecessary in the Rapporteur confirmation UI. The parallel workflow is already communicated by independent Evaluation/Committee Report states and by the Chairman's Formal Verdict readiness surface.
+
+This principle applies system-wide. Existing screens do not need a mass rewrite solely because this rule was documented; apply it when a surface is next implemented/refined, or when a specific copy issue materially harms clarity.
+
+**Autosave vs manual Save — reusable rule:** Do not expose a manual **Save** action when routine persistence is already reliably handled by autosave, unless manual Save serves a distinct user need. Keep visible save-state feedback and the recovery actions required for offline, error, or conflict handling.
+
 ## 8.3 Role-specific architecture is valid
 
 Admin, Applicant, Student, and Panelist do not need identical navigation.
@@ -620,7 +716,7 @@ Destructive styling is reserved for actions with destructive or strongly negativ
 
 Use AlertDialog or equivalent deliberate confirmation for irreversible/high-impact actions.
 
-Confirmation copy should state the consequence, not merely “Are you sure?”
+Confirmation copy should state the consequence, not merely “Are you sure?”. Keep it limited to consequences the user needs for the current decision; do not narrate unrelated workflow branches.
 
 ## 16.3 Pending state
 
@@ -649,7 +745,8 @@ Do not use a toast for information the user must read before proceeding.
 Dialogs must:
 
 - have a clear title;
-- explain consequence/context;
+- explain only the consequence/context necessary for the current decision;
+- avoid redundant workflow narration when states/actions already communicate it;
 - keep primary/secondary actions predictable;
 - support keyboard focus;
 - restore focus correctly when closed.
@@ -1473,11 +1570,19 @@ This is the **eighth** explicitly accepted UI/UX reference. The Panelist Dashboa
 
 - **Primary surface:** `frontend/src/app/(portal)/admin/thesis/defense-records/[scheduleId]/page.tsx`. **Main refinement:** `2b94e7e4bed90e619ea1a70fe62f98b68decc396` (`refactor(uiux): refine admin defense record detail`). **FIX-1:** `75d6c777f1e83fd383e55566604f0d375964ea79` (`fix(uiux): simplify defense record documents and signatures`). **Accepted FIX-2:** `86ce46582c0df713fb443f3ea0b79f8a496fcdb8` (`fix(uiux): align defense record document actions`) on `refactor/system-ui-ux`.
 - **Review status:** **ACCEPTED visual/UI/UX reference** by the project owner on 2026-10-12 after direct review of the final detail-page hierarchy, section-owned document-action placement, RAP signer visibility, and removal of the mock Criteria/Summary document viewers. Acceptance covers the final visual/information-architecture direction; coding-agent browser/manual QA remained **NOT EXECUTED** and must not be restated as runtime certification.
-- **Pattern type:** Admin **official defense-record detail** with clear list → record wayfinding and section ownership. Accepted hierarchy: shared **Breadcrumb (`Defense Records / <Student Name>`) → PageHeader → Defense Overview + structured Defense Committee → Evaluation Results → Oral Examination Summary → RAP / Committee Report**. Do not add a duplicate bottom-level document inventory merely to repeat actions already owned by these sections.
+- **2026-10-18 pre-final-acceptance correction (FIX-5):** the 2026-10-12 reference remains historical design evidence, but its detailed table/content choices are superseded for the collaborative-defense branch where later institutional scoring and live signing behavior now exist. The current FIX-5 design is authoritative for the specific corrections below; implementation `13a4c38a` independently passed source review and the project owner subsequently rechecked the corrected flow and reported it working as intended. FIX-5 is therefore **BOUNDED UX ACCEPTED**. This does not certify the complete role-separated live-defense lifecycle.
+- **Current user-facing hierarchy:** keep the same page structure, but label the final section **Committee Report**, not `RAP / Committee Report`. Internal `RapReport` / `RapSignature` model names remain implementation details.
+- **Evaluation Results registry:** use **Evaluator | Role | Evaluation Status | Signature Status | Signed At**. Do not show the institutional V2 `Overall` null column or a generic `Criteria = Available` column in this summary table. Removing those columns is presentation cleanup only; it does not delete criteria, score snapshots, or future official Individual Evaluation output.
+- **Institutional Oral Examination Summary:** for `INSTITUTIONAL_MATRIX_V2`, the visible Admin Summary is the confirmed examiner table **Examiner | Role | Group A | Group B | Average**, formatted to two decimals. Do not expose `Internal Average` or `Final Rating = Not assigned` as fields of the current institutional Summary presentation. The persisted aggregate may remain for compatibility and `finalRating` remains nullable/deferred.
+- **Committee Report Admin audit:** Admin retains the full operational signer table **Signer | Role | Signature Status | Signed At** plus aggregate required-signature progress. This is the correct place for cross-signer identity/timestamp transparency.
+- **Committee-facing signing privacy/clarity:** ordinary Chairman/Panelist/Rapporteur/Adviser workspace viewers do not need the complete signer audit roster inline. Show aggregate progress plus only the current user's own required signing action/status. Because the finalized Committee Report is already visible on the page, **Sign Committee Report** opens directly to a centered single-step signature modal and uses draw-only e-signature. Do not add a separate review/instruction step that repeats content the UI already shows.
+- **Stale lifecycle copy:** never state that the Committee Report is created after formal conclusion. The canonical flow freezes/signs/finalizes the Committee Report before the Chairman formal verdict.
+
+- **Pattern type:** Admin **official defense-record detail** with clear list → record wayfinding and section ownership. Current hierarchy: shared **Breadcrumb (`Defense Records / <Student Name>`) → PageHeader → Defense Overview + structured Defense Committee → Evaluation Results → Oral Examination Summary → Committee Report**. Do not add a duplicate bottom-level document inventory merely to repeat actions already owned by these sections.
 - **Committee vs evaluator authority:** the Committee roster renders the actual session `panelAssignments`; Title has no Adviser seat, while Proposal/Final may include the authoritative Adviser as a committee participant. Numerical Evaluation Results follow the existing evaluator-role policy (**Chairman + Panelist**) rather than total committee membership; Adviser, Facilitator, and Rapporteur are not fabricated as numerical evaluator rows. This UI acceptance does not create new scoring/signatory authority.
-- **Stage-aware academic detail:** Title Defense presents numerical Criteria/Summary as a compact **not applicable** state rather than empty tables or fake scores. Proposal/Final retain inline evaluator status/overall values and Oral Examination Summary data. Formal Result remains the authoritative recorded conclusion and is not inferred from scores, Summary readiness, session state, RAP status, or signatures.
-- **RAP signature transparency:** the RAP section presents human-readable lifecycle status plus **Signer | Role | Signature Status | Signed At** so Admin can identify who has signed and who is still awaiting signature. Visible progress is derived from required signatory rows only. **Canonical signatory authority comes from the Defense Workflow SOT, not from numerical evaluator rows:** current project direction is Title = Chairman + Panelists + Rapporteur; Proposal/Final = active Adviser + Chairman + Panelists + Rapporteur; Facilitator excluded unless later confirmed; Dean approval is separate. The current implementation's narrower evaluator-only RAP slot policy is a follow-up implementation gap, not an accepted authority rule.
-- **Section-owned document-action precedent:** the upper-right **Download / Print** placement belongs to the section whose data would generate the future document: Defense Overview → Defense Application / Examination Committee proof; Evaluation Results → bundled Individual Evaluation Forms; Oral Examination Summary → Summary document; RAP / Committee Report → RAP document. These controls are intentionally **disabled placeholders** until real document generation exists—no fake PDF, no no-op link, and no whole-screen `window.print()`.
+- **Stage-aware academic detail:** numerical Evaluation Results remain evaluator-owned records and the institutional V2 Admin registry emphasizes finalization/signature evidence rather than a nonexistent per-evaluator Overall field. The Oral Examination Summary presents only the institutionally confirmed examiner rows (Group A, Group B, Average) for V2. Formal Result remains the authoritative recorded conclusion and is not inferred from scores, Summary readiness, Committee Report status, or signatures.
+- **Committee Report signature transparency:** the Admin Committee Report section presents human-readable lifecycle status plus **Signer | Role | Signature Status | Signed At** so Admin can identify who has signed and who is still awaiting signature. Visible progress is derived from required signatory rows only. **Canonical signatory authority comes from the Defense Workflow SOT, not from numerical evaluator rows:** Title = Chairman + Panelists + Rapporteur; Proposal/Final = active Adviser + Chairman + Panelists + Rapporteur; Facilitator excluded under the current policy; Dean approval remains separate.
+- **Section-owned document-action precedent:** the upper-right **Download / Print** placement belongs to the section whose data would generate the future document: Defense Overview → Defense Application / Examination Committee proof; Evaluation Results → bundled Individual Evaluation Forms; Oral Examination Summary → Summary document; Committee Report → Committee Report document. These controls remain intentionally **disabled placeholders** until real document generation exists—no fake PDF, no no-op link, and no whole-screen `window.print()`.
 - **Mock-view cleanup:** FIX-2 removed the obsolete frontend mock routes `defense-records/[scheduleId]/criteria/[panelAssignmentId]` and `defense-records/[scheduleId]/summary`, including the “system-generated official record / not an exact EARIST form facsimile” presentation. Authoritative evaluator/criteria/Summary backend data and read endpoints remain intact for future real document generation.
 - **Validation provenance:** FIX-2 reported frontend `npx tsc --noEmit` **PASS**, scoped ESLint **PASS**, and production compilation/TypeScript **PASS** before the known unrelated `/login` `useSearchParams()`/Suspense prerender failure. The accepted FIX-2 was frontend-only; backend and canonical docs were untouched by the implementation package. Project-owner visual review supplies the acceptance gate, not end-to-end/browser certification.
 - **Deferred functional/document work:** actual Master’s/Doctoral Defense Application / Examination Committee form generation, real bundled evaluator print/PDF output, official Oral Examination Summary form, official RAP document, PDF/print service, snapshot/version lifecycle, Defense Packet, RAP signature-slot alignment, Dean approval/signature execution, and post-scheduling committee correction remain separate work. **The separate Admin RAP Reports page/sidebar is now approved for retirement as a bounded follow-up; UIUX-2N Defense Record detail is the canonical Admin RAP monitoring surface.** This docs update does not claim the retirement has already been implemented.

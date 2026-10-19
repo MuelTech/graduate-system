@@ -35,6 +35,7 @@ function assignment(
     venueOrLink: "Room 101",
     conclusionPresent: false,
     rapporteurNotesFinalized: false,
+    rapStatus: null,
     oralSummaryReady: false,
     studentName: "Ana Student",
     studentNumber: "2026-1",
@@ -49,6 +50,7 @@ function rapSlot(
   return {
     id: "sig-1",
     rapId: "rap-1",
+    scheduleId: "sched-1",
     roleAtDefense: "PANELIST",
     defenseType: "PROPOSAL_DEFENSE",
     generatedDate: "2026-10-05",
@@ -186,23 +188,29 @@ describe("panelist-dashboard rules", () => {
     });
   });
 
-  it("5. evaluator NOT_STARTED/DRAFT is actionable; FINALIZED is not", () => {
+  it("5. evaluator NOT_STARTED/DRAFT is actionable while IN_PROGRESS; FINALIZED is not", () => {
     const notStarted = build({
-      assignments: [assignment({ evaluationStatus: "NOT_STARTED" })],
+      assignments: [
+        assignment({ sessionStatus: "IN_PROGRESS", evaluationStatus: "NOT_STARTED" }),
+      ],
     });
     expect(notStarted.needsAttention).toHaveLength(1);
     expect(notStarted.needsAttention[0]).toMatchObject({
       category: "EVALUATION",
       actionLabel: "Continue Evaluation",
-      priority: 2,
+      // CDW-4: scoring only opens IN_PROGRESS, so an actionable evaluation is an
+      // active-session (priority 1) task.
+      priority: 1,
       href: "/panelist/defense-workspace/sched-1",
     });
 
-    const draft = build({ assignments: [assignment({ evaluationStatus: "DRAFT" })] });
+    const draft = build({
+      assignments: [assignment({ sessionStatus: "IN_PROGRESS", evaluationStatus: "DRAFT" })],
+    });
     expect(draft.needsAttention).toHaveLength(1);
 
     const finalized = build({
-      assignments: [assignment({ evaluationStatus: "FINALIZED" })],
+      assignments: [assignment({ sessionStatus: "IN_PROGRESS", evaluationStatus: "FINALIZED" })],
     });
     expect(finalized.needsAttention).toEqual([]);
   });
@@ -247,6 +255,7 @@ describe("panelist-dashboard rules", () => {
           sessionStatus: "AWAITING_CONCLUSION",
           evaluationStatus: "FINALIZED",
           oralSummaryReady: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -314,6 +323,7 @@ describe("panelist-dashboard rules", () => {
           sessionStatus: "AWAITING_CONCLUSION",
           rapporteurNotesFinalized: true,
           oralSummaryReady: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -364,7 +374,7 @@ describe("panelist-dashboard rules", () => {
     });
     expect(eligible.needsAttention[0]).toMatchObject({
       category: "RAPPORTEUR_FINALIZE",
-      actionLabel: "Open Minutes",
+      actionLabel: "Open Committee Report",
       priority: 1,
     });
 
@@ -373,7 +383,7 @@ describe("panelist-dashboard rules", () => {
         assignment({
           role: "RAPPORTEUR",
           sessionStatus: "IN_PROGRESS",
-          rapporteurNotesFinalized: true,
+          rapStatus: "FINALIZED",
         }),
       ],
     });
@@ -393,7 +403,7 @@ describe("panelist-dashboard rules", () => {
       category: "RAP_SIGNATURE",
       actionLabel: "Review & Sign",
       priority: 2,
-      href: "/panelist/signatures",
+      href: "/panelist/defense-workspace/sched-1",
     });
     expect(view.kpis.pendingTasks).toBe(1);
   });
@@ -474,6 +484,7 @@ describe("panelist-dashboard rules", () => {
         assignment({
           assignmentId: "pa-sched",
           scheduleId: "s-later",
+          sessionStatus: "IN_PROGRESS",
           evaluationStatus: "NOT_STARTED",
           defenseDate: "2026-10-25",
         }),
@@ -488,9 +499,11 @@ describe("panelist-dashboard rules", () => {
     });
     expect(view.needsAttention[0].scheduleId).toBe("s-active");
     expect(view.needsAttention[0].priority).toBe(1);
-    // Remaining tier-2 tasks ordered by authoritative date asc (RAP 10-01 < eval 10-25).
-    expect(view.needsAttention[1].category).toBe("RAP_SIGNATURE");
-    expect(view.needsAttention[2].category).toBe("EVALUATION");
+    // Both evaluations are active (priority 1) and tie-break on date asc
+    // (s-active 10-20 < s-later 10-25); the RAP task is priority 2.
+    expect(view.needsAttention[1].scheduleId).toBe("s-later");
+    expect(view.needsAttention[1].priority).toBe(1);
+    expect(view.needsAttention[2].category).toBe("RAP_SIGNATURE");
   });
 
   it("18. session with an invalid defenseTime is not an upcoming event", () => {

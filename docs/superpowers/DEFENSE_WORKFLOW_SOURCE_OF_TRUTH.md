@@ -5,10 +5,13 @@
 **Campus Context:** Eulogio "Amang" Rodriguez Institute of Science and Technology (EARIST), Manila Campus  
 **Scope:** Graduate Student Thesis / Dissertation workflow  
 **Integration Branch:** `refactor/defense-workflow`  
-**Active Correction Branch:** `refactor/unified-defense-lifecycle`  
+**Historical Correction Branch:** `refactor/unified-defense-lifecycle`  
+**Collaborative Defense Implementation Branch:** `refactor/collaborative-defense-workspace`  
+**Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
+**CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.9-draft  
-**Last Updated:** 2026-10-15  
+**Version:** 1.13-draft  
+**Last Updated:** 2026-10-19  
 
 ---
 
@@ -48,7 +51,7 @@ Where older sections of this SOT or the 2026-09-25 Student Thesis Journey docume
 12. Proposal/Final Adviser Certification remains an Adviser review + e-sign workflow before Admin review/scheduling, not a Student-uploaded certificate.
 13. Research Variables remains temporarily disabled as an active Proposal blocking gate until responsibility/applicability is clarified.
 14. Student defense pages must distinguish application review, scheduling, live defense, formal result, re-defense, and completion rather than collapsing them into a generic WAITING message.
-15. The current Defense Lobby remains a prototype. The approved role-aware collaborative Defense Workspace, manuscript annotation model, Rapporteur report UX, RAP signing UX, defense history, and deferred realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
+15. The legacy Defense Lobby remains a prototype/compatibility surface. The implemented role-aware Collaborative Defense Workspace is the current committee workflow foundation for exact-manuscript review, annotations/comments, evaluation, Rapporteur report authoring, RAP freeze/signing, conclusion readiness, and defense history. Its canonical behavior and implemented realtime architecture are defined by docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md.
 
 ### 0.1 2026-10-15 Title Proposal / title-authority correction
 
@@ -74,18 +77,24 @@ Canonical extension documents:
 
 - docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md
 - docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
+- docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
-The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report freezing before signatures, workspace-based RAP signing, defense-history/revision traceability, and a later Socket.IO synchronization layer.
+The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report finalization before signatures, workspace-based Committee Report signing, defense-history/revision traceability, and the implemented Socket.IO synchronization layer.
 
 Important sequencing clarification:
 
-- the Rapporteur may draft the Committee Report during the live defense;
-- all required evaluator records must be finalized and the Oral Examination Summary ready before the report is frozen for signatures;
-- the frozen Committee Report/RAP is verdict-independent and must not require Formal Outcome content;
-- all required stage-aware RAP signatures must complete and the RAP must be FINALIZED before the Chairman records PASSED or REDEFENSE_REQUIRED;
-- the later DefenseConclusion remains a separate formal record and must not mutate the already frozen/signed RAP;
+- the Rapporteur may draft and finalize the Committee Report during the live defense without waiting for every evaluator to finalize;
+- once the Rapporteur finalizes the Committee Report, required stage-aware signers may review and sign it immediately, including Chairman/Panelists whose own evaluations are still DRAFT;
+- evaluator finalization/Oral Examination Summary generation and Committee Report finalization/signing are parallel pre-verdict workstreams rather than a forced sequence;
+- the finalized Committee Report is verdict-independent and must not require Formal Outcome content;
+- the Chairman may record PASSED or REDEFENSE_REQUIRED only after every required evaluator record is FINALIZED/e-signed, the Oral Examination Summary is ready, the Committee Report is finalized, and every required Committee Report signature is complete;
+- the later DefenseConclusion remains a separate formal record and must not mutate the already finalized/signed Committee Report;
 - new collaborative attempts may be reviewed before the defense date while SCHEDULED, but official Oral Examination scoring opens only after the session is explicitly started and becomes IN_PROGRESS;
-- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room.
+- concluded attempts reopen as immutable historical view-only records and do not require an active realtime room;
+- the CDW-0 through CDW-8 collaborative/realtime foundation is implemented and accepted on `refactor/collaborative-defense-workspace`; accepted production implementation HEAD is `a9a179446284ea928faca8991de34deadc856e1b`, with CDW-8C acceptance package HEAD `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`; manual browser multi-user QA remains explicitly NOT EXECUTED and is not represented as passed;
+- CDW-LIVE-1 and its bounded manual-QA refinements are implemented/accepted through FIX-6 on `refactor/collaborative-defense-workspace`; accepted pre-CDW-9 product-code baseline is `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`; Rapporteur report autosave, authorized read-only live report preview, private evaluator-DRAFT autosave, parallel Evaluation / Committee Report signing, and the strict Chairman verdict convergence gate are current behavior; the project owner waived an additional full pre-CDW-9 replay based on targeted regression evidence + independent source review, without representing unexecuted manual QA as passed; CDW-9 is AUTHORIZED, with bounded execution defined as CDW-9A through CDW-9F in the implementation plan; CDW-9A through CDW-9F are ACCEPTED / CLOSED; CDW-9 is COMPLETE / CLOSED;
+- exact institutional form rendering/export (including official Committee Report/RAP, Individual Evaluation, and Oral Examination Summary PDF/print/download layout, pagination, and signature placement) remains separate future document-processing work and does not change the canonical stored records or defense sequence;
+- the authoritative RAP is authored inside GS-IS; external Word/DOCX/PDF authoring/upload is not a parallel canonical RAP source under the current design.
 
 Where older sections describe post-conclusion RAP creation, Formal Outcome as required RAP content, Proposal/Final RAP after formal conclusion, or Panelist RAP signing as an undefined future UX, this 2026-10-15 extension supersedes that wording for new collaborative attempts.
 
@@ -1240,18 +1249,24 @@ E-SIGNED + FINALIZED
 LOCKED OFFICIAL RECORD
 ```
 
-For the defense session:
+For the defense session, evaluation work and Committee Report work may proceed in parallel:
 
 ```text
-REQUIRED EVALUATIONS IN PROGRESS
-      ↓
-ALL REQUIRED EVALUATIONS FINALIZED
-      ↓
-SUMMARY_READY
-      ↓
-RAP / COMMITTEE REPORT SIGNATURES COMPLETE
-      ↓
-AWAITING_FORMAL_CONCLUSION
+                    ┌─ REQUIRED EVALUATIONS IN PROGRESS
+DEFENSE IN PROGRESS ┤       ↓
+                    │  ALL REQUIRED EVALUATIONS FINALIZED
+                    │       ↓
+                    │  SUMMARY_READY
+                    │
+                    └─ COMMITTEE REPORT DRAFT
+                            ↓
+                       REPORT FINALIZED
+                            ↓
+                       REQUIRED SIGNATURES COMPLETE
+
+SUMMARY_READY + FINALIZED/SIGNED COMMITTEE REPORT
+                    ↓
+          AWAITING_FORMAL_CONCLUSION
 ```
 
 Title remains unique because its deliberation also determines/records the Title decision, but it is no longer exempt from the shared evaluator completion/signing lifecycle.
@@ -1410,7 +1425,54 @@ The individual evaluation form and the summary are not interchangeable, and neit
 
 A finalized individual evaluator record must be reproducible as a printable/downloadable Oral Examination Criteria output. The current supplied form supports Candidate, Course, Date, Group I criteria/average, Group II criteria/average, Recommendations, Summary of Evaluation/Rating/Remarks, and signature over printed name of Panelist.
 
+For the individual evaluation, **signature over printed name** means the evaluator supplies the handwritten/drawn signature evidence while GS-IS supplies the printed evaluator name from the authenticated defense assignment. The evaluator must not manually re-enter their own name merely to satisfy the printed-name portion of the form. The official renderer later composes the drawn signature with the authoritative assigned evaluator name. This does not redefine unrelated RAP or other document-signature experiences.
+
 The Oral Examination Summary must be generated from finalized evaluator records; Admin/Chairman should not manually re-key the same grades.
+
+### Confirmed Oral Examination Summary computation — 2026-10-18
+
+The current EARIST Oral Examination Summary Sheet has one examiner row with **Rating for Group A**, **Rating for Group B**, and **Average**.
+
+For the current institutional matrix workflow, the canonical computation is:
+
+```text
+Individual evaluator
+
+Group I Average
+= arithmetic mean of all finalized Group I criterion ratings
+→ round to 2 decimal places
+
+Group II Average
+= arithmetic mean of all finalized Group II criterion ratings
+→ round to 2 decimal places
+```
+
+The Summary maps those finalized evaluator values directly:
+
+```text
+Summary Group A = evaluator finalized Group I Average
+Summary Group B = evaluator finalized Group II Average
+
+Summary row Average
+= (Summary Group A + Summary Group B) / 2
+→ round to 2 decimal places
+```
+
+Rounding is to the nearest hundredth, not truncation. Example:
+
+```text
+(1.20 + 1.25) / 2
+= 1.225
+→ 1.23
+```
+
+The Summary contains one row for each required numerical evaluator for that defense attempt: the assigned Chairman and assigned evaluator Panelists. Adviser, Rapporteur, and Facilitator are not added as numerical evaluator rows under the current evaluator policy.
+
+Once all required evaluator records are FINALIZED, the backend may generate the Summary automatically and idempotently from those locked values. **Rating and Remarks are deferred for now and must not block Summary generation, Committee Report signing, or later defense progression.** They may remain null until EARIST confirms their separate institutional semantics.
+
+If the current persistence model requires a single aggregate `overallAverage`, it may be derived as the arithmetic mean of the finalized per-evaluator Summary row averages and rounded to 2 decimal places. This aggregate is an internal compatibility/read-model value only; the supplied Summary Sheet does not establish it as an additional visible field, and it must never auto-decide the formal verdict.
+
+This confirmed numeric rule supersedes older implementation comments that blocked the institutional Summary because an Overall/Rating formula was not confirmed. The unresolved part is now only Rating/Remarks, which are explicitly deferred.
 
 Admin must have a read-only **Defense Records** surface where authorized staff can inspect a defense session and access official outputs:
 

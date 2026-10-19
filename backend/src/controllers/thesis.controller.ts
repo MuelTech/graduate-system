@@ -15,6 +15,10 @@ import {
   commitRequestUploads,
 } from '../storage/request-uploads';
 import { managedUploadFromMulter } from '../storage/managed-upload';
+import {
+  publishDefenseRealtimeEvent,
+  publishDefenseRealtimeSequence,
+} from '../realtime/defense-realtime.publish';
 
 function sendEligibilityError(res: Response, error: any): void {
   const missing = (error as { missing?: MissingRequirement[] }).missing;
@@ -671,6 +675,7 @@ export class ThesisController {
           criteria: req.body?.criteria ?? {},
           ...optional,
           clientPanelId: req.body?.panelId ?? null,
+          expectedUpdatedAt: req.body?.expectedUpdatedAt ?? null,
         } as Parameters<typeof this.oralEvaluation.saveDraft>[2]),
       );
     } catch (error: any) {
@@ -692,16 +697,21 @@ export class ThesisController {
         "rating",
         "recommendations",
       ]);
-      res.status(200).json(
-        await this.oralEvaluation.finalize(scheduleId, req.user.userId, {
+      const evaluation = await this.oralEvaluation.finalize(
+        scheduleId,
+        req.user.userId,
+        {
           signatureData: String(req.body?.signatureData ?? ""),
           criteria: req.body?.criteria ?? {},
           ...optional,
           clientPanelId: req.body?.panelId ?? null,
           clientSignedAt: req.body?.signedAt ?? null,
           clientFinalizedAt: req.body?.finalizedAt ?? null,
-        } as Parameters<typeof this.oralEvaluation.finalize>[2]),
+          expectedUpdatedAt: req.body?.expectedUpdatedAt ?? null,
+        } as Parameters<typeof this.oralEvaluation.finalize>[2],
       );
+      publishDefenseRealtimeEvent("evaluation.finalized", { scheduleId });
+      res.status(200).json(evaluation);
     } catch (error: any) {
       res.status(error?.statusCode || 400).json({ error: error.message });
     }
@@ -723,6 +733,24 @@ export class ThesisController {
       const sigId = req.params.sigId as string;
       const { signatureData } = req.body;
       const result = await this.thesisService.signRapReport(sigId, req.user.userId, signatureData);
+      if (typeof result.scheduleId === "string" && result.scheduleId.length > 0) {
+        const signaturePayload = {
+          scheduleId: result.scheduleId,
+          reportId: result.rapId,
+          contentVersion: result.contentVersion,
+        };
+        publishDefenseRealtimeSequence([
+          { eventName: "rap.signature.recorded", payload: signaturePayload },
+          ...(result.finalizedNow
+            ? [
+                {
+                  eventName: "rap.finalized" as const,
+                  payload: signaturePayload,
+                },
+              ]
+            : []),
+        ]);
+      }
       res.status(200).json({ message: "Rap Report successfully signed", result });
     } catch (error: any) {
       // CP7-FIX1: preserve AppError status (400/403/404/409).
@@ -760,6 +788,10 @@ export class ThesisController {
           finalRemarks: req.body?.finalRemarks ?? null,
         },
       );
+      publishDefenseRealtimeEvent("defense.concluded", {
+        scheduleId: req.params.scheduleId as string,
+        sessionStatus: "CONCLUDED",
+      });
       res.status(200).json({
         message: "Formal defense result recorded.",
         conclusion: result.conclusion,
@@ -998,11 +1030,14 @@ export class ThesisController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      res
-        .status(200)
-        .json(
-          await this.defenseWorkspace.startTitleDefense(scheduleId, userId),
-        );
+      const result = await this.defenseWorkspace.startDefense(scheduleId, userId);
+      if (result.transitioned) {
+        publishDefenseRealtimeEvent("defense.started", {
+          scheduleId,
+          sessionStatus: "IN_PROGRESS",
+        });
+      }
+      res.status(200).json(result);
     } catch (error: any) {
       res.status(error?.statusCode || 400).json({ error: error.message });
     }

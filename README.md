@@ -105,6 +105,84 @@ A comprehensive Graduate School Management System with AI-powered features inclu
    ollama pull qwen2.5:7b
    ```
 
+## Development networking / backend origin
+
+The frontend and backend are separate processes. In development, browser REST and Defense Socket.IO follow the hostname used to open the frontend unless an explicit backend URL is configured.
+
+| Frontend URL | Browser backend in development |
+| --- | --- |
+| `http://localhost:3000` | `http://localhost:5000` |
+| `http://127.0.0.1:3000` | `http://127.0.0.1:5000` |
+| `http://<LAN_IP>:3000` | `http://<same-LAN-IP>:5000` |
+| Production | Explicit configured `NEXT_PUBLIC_BACKEND_API_URL` |
+
+### Localhost development
+
+Use the committed examples as the baseline:
+
+```env
+# frontend/.env
+BACKEND_API_URL="http://localhost:5000"
+# NEXT_PUBLIC_BACKEND_API_URL is intentionally left unset
+```
+
+The browser derives `http://localhost:5000` from `window.location.hostname`. Frontend and backend are still separate processes, so DevTools will show requests to port 5000; they remain on loopback.
+
+If you open the frontend at `http://127.0.0.1:3000`, the browser targets `http://127.0.0.1:5000`. Include `http://127.0.0.1:3000` in the backend `FRONTEND_URL` allowlist. The example backend configuration includes both loopback forms.
+
+### LAN / phone / multi-device development
+
+Open the frontend using the host machine's LAN address:
+
+```text
+http://<LAN_IP>:3000
+```
+
+The browser will target `http://<same-LAN-IP>:5000`. Also update these untracked local settings:
+
+```env
+# frontend/.env
+ALLOWED_DEV_ORIGINS="<LAN_IP>"
+
+# backend/.env
+FRONTEND_URL="http://localhost:3000,http://<LAN_IP>:3000"
+```
+
+`ALLOWED_DEV_ORIGINS` controls Next.js development resources/HMR only. It is not the REST or Socket.IO backend URL. `FRONTEND_URL` remains the explicit CORS allowlist for REST and Socket.IO; do not use wildcard CORS with credentialed requests.
+
+### Explicit backend override
+
+`NEXT_PUBLIC_BACKEND_API_URL` is optional in development. Set it only when the browser must use a backend different from the frontend host. It is compiled into the browser bundle, so restart `next dev` or rebuild after changing it.
+
+```env
+# frontend/.env
+NEXT_PUBLIC_BACKEND_API_URL="http://localhost:5000"
+```
+
+### Production
+
+Production must set both values explicitly:
+
+```env
+NEXT_PUBLIC_BACKEND_API_URL="https://api.example.edu"
+BACKEND_API_URL="https://api.example.edu"
+```
+
+Production never infers the backend from `window.location`. Missing required configuration fails clearly instead of silently falling back to localhost or a LAN address.
+
+### Documents and downloads
+
+Document viewing stays same-origin through `/api/documents/...`. The Next.js document proxy uses the server-side `BACKEND_API_URL`; browser code does not need a separate document origin.
+
+### Troubleshooting checklist
+
+1. Open DevTools Network and confirm whether REST calls target `localhost:5000`, `127.0.0.1:5000`, or a LAN IP.
+2. Check that `frontend/.env` does not contain an old LAN value in `NEXT_PUBLIC_BACKEND_API_URL`.
+3. Restart `next dev` after changing any `NEXT_PUBLIC_*` value.
+4. Confirm `http://<target-host>:5000/api/health` is reachable from the browser environment.
+5. For LAN testing, add the LAN frontend origin to `backend/.env` `FRONTEND_URL` and the LAN hostname to `frontend/.env` `ALLOWED_DEV_ORIGINS`.
+6. If the backend is on another machine, set explicit `BACKEND_API_URL` and `NEXT_PUBLIC_BACKEND_API_URL` values.
+
 ## Dependency Installation Workflow
 
 `npm ci` and `npm install` serve different purposes. **`npm ci` does not replace `npm install` when the project intentionally changes dependencies.**
@@ -273,12 +351,13 @@ Recommended workflow:
    ```
 2. Create a bounded feature/fix branch from the current `main`.
 3. Implement and test only the intended scope.
-4. If dependencies change, use `npm install` / `npm uninstall` and commit the resulting `package.json` and `package-lock.json` changes.
-5. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
-6. Build/validate the affected application before pushing.
-7. Push the feature/fix branch.
-8. Open a Pull Request with **base: `main`**.
-9. Address review findings on the feature/fix branch before merge.
+4. Use risk-based verification: focused tests and directly affected regressions first; broaden to full suites/builds only when the changed surface or acceptance gate justifies it. See `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`.
+5. If dependencies change, use `npm install` / `npm uninstall` and commit the resulting `package.json` and `package-lock.json` changes.
+6. If `schema.prisma` changes, generate and commit the corresponding Prisma migration.
+7. Build/validate the affected application when the change scope requires build-level confidence.
+8. Push the feature/fix branch.
+9. Open a Pull Request with **base: `main`**.
+10. Address review findings on the feature/fix branch before merge.
 
 ### Pull Request Checklist
 
@@ -286,8 +365,9 @@ Before requesting merge:
 
 - [ ] Pull Request targets `main` unless a different integration target was explicitly agreed.
 - [ ] Changes are limited to the intended feature/fix.
-- [ ] Frontend changes pass the relevant lint/build checks.
-- [ ] Backend changes compile successfully.
+- [ ] Verification depth matches the change risk; focused checks cover the changed behavior and directly affected regressions.
+- [ ] Frontend changes pass the relevant type/lint/build checks for the affected scope.
+- [ ] Backend changes pass the relevant focused tests/type/build checks for the affected scope.
 - [ ] Dependency changes include the intended `package.json` and `package-lock.json` updates.
 - [ ] Prisma schema validates when Prisma is affected.
 - [ ] Every Prisma schema change includes its generated migration file.

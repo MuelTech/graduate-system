@@ -40,6 +40,11 @@ export class PanelistDashboardRepository {
           include: {
             conclusion: { select: { id: true } },
             oralExamSummary: { select: { id: true } },
+            rapReports: {
+              select: { status: true },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
             thesis: {
               include: {
                 student: {
@@ -85,6 +90,9 @@ export class PanelistDashboardRepository {
         rapporteurNotesFinalized: Boolean(
           row.schedule?.rapporteurNotesFinalizedAt,
         ),
+        rapStatus: row.schedule?.rapReports?.[0]?.status
+          ? String(row.schedule.rapReports[0].status)
+          : null,
         oralSummaryReady: Boolean(row.schedule?.oralExamSummary),
         studentName: student
           ? `${student.user.firstName} ${student.user.lastName}`.trim()
@@ -102,11 +110,17 @@ export class PanelistDashboardRepository {
         userId,
         isSigned: false,
         required: { not: false },
-        rapReport: { status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] } },
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          // CDW-7: a concluded/cancelled attempt is historical and read-only;
+          // its leftover partial slots must not appear as actionable work.
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       include: {
         rapReport: {
           select: {
+            scheduleId: true,
             defenseType: true,
             generatedAt: true,
             thesis: {
@@ -129,6 +143,7 @@ export class PanelistDashboardRepository {
       return {
         id: row.id,
         rapId: row.rapId,
+        scheduleId: String(row.rapReport?.scheduleId ?? ""),
         roleAtDefense: row.roleAtDefense ?? null,
         defenseType: String(row.rapReport?.defenseType ?? ""),
         generatedDate: toWallDate(row.rapReport?.generatedAt),
@@ -151,7 +166,11 @@ export class PanelistDashboardRepository {
       where: {
         userId,
         isSigned: true,
-        rapReport: { status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] } },
+        rapReport: {
+          status: { in: ["FOR_SIGNATURE", "PARTIALLY_SIGNED"] },
+          // CDW-7: historical attempts do not belong in "waiting on others".
+          schedule: { sessionStatus: { notIn: ["CONCLUDED", "CANCELLED"] } },
+        },
       },
       include: {
         rapReport: {

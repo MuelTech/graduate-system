@@ -49,21 +49,21 @@ export function countEvaluatorFinalized(
 }
 
 /**
- * Stage-aware evaluation editability.
+ * CDW-4: official Oral Examination evaluation is editable ONLY while the session
+ * is IN_PROGRESS, for EVERY stage (Title, Proposal, Final). SCHEDULED is
+ * pre-defense manuscript review/collaboration only; the assigned Chairman must
+ * explicitly Start Defense to move the session to IN_PROGRESS before any
+ * evaluator may create/edit/finalize official scoring. AWAITING_CONCLUSION,
+ * CONCLUDED, and CANCELLED are closed to all.
  *
- * Title Defense requires the explicit Chairman Start action: evaluation is
- * editable only once the session is IN_PROGRESS, never while merely
- * SCHEDULED. Proposal/Final keep the accepted SCHEDULED-or-IN_PROGRESS
- * behavior. AWAITING_CONCLUSION / CONCLUDED / CANCELLED are closed to all.
+ * `defenseType` is retained for call-site compatibility; the rule is now
+ * stage-independent.
  */
 export function isSessionEditableForEvaluation(
   sessionStatus: string | null | undefined,
-  defenseType?: string | null,
+  _defenseType?: string | null,
 ): boolean {
-  if (defenseType === "TITLE_DEFENSE") {
-    return sessionStatus === "IN_PROGRESS";
-  }
-  return sessionStatus === "SCHEDULED" || sessionStatus === "IN_PROGRESS";
+  return sessionStatus === "IN_PROGRESS";
 }
 
 export function assertEvaluationSessionEditable(

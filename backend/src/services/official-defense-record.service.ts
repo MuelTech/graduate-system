@@ -3,8 +3,10 @@
  *
  * Oral Examination Summary is generated only from FINALIZED evaluator
  * assignments. WF-C1b: Title, Proposal, and Final Defense all produce the
- * official evaluator Criteria + Oral Examination Summary.
- * Academic outcome is never written here.
+ * official evaluator Criteria + Oral Examination Summary. FIX-4 derives
+ * institutional V2 Summary rows from finalized Group I/II averages with
+ * decimal-safe two-decimal rounding; Rating/Remarks and the formal verdict
+ * remain deferred/separate. Academic outcome is never written here.
  */
 import prisma from "../config/database";
 import { Prisma } from "@prisma/client";
@@ -13,8 +15,27 @@ import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { deriveDefenseRecordStatus } from "./defense-record-status.rules";
 import { RapReportService } from "./rap-report.service";
 import { isEvaluationStage } from "./oral-evaluation.rules";
+import {
+  INSTITUTIONAL_MATRIX_V2,
+  LEGACY_POINTS_V1,
+  type OralEvaluationScoringVersionValue,
+} from "./oral-evaluation.institutional.rules";
+import {
+  meanAcademicValues,
+  roundAcademicValue,
+} from "./academic-number.rules";
 
 const committeePolicy = new DefenseCommitteePolicy();
+
+/**
+ * CDW-4 FIX: official snapshots must record which scoring semantics produced the
+ * values. A row without an explicit marker is legacy (pre-migration).
+ */
+function scoringVersionOf(row: { scoringVersion?: unknown } | null | undefined): OralEvaluationScoringVersionValue {
+  return row?.scoringVersion === INSTITUTIONAL_MATRIX_V2
+    ? INSTITUTIONAL_MATRIX_V2
+    : LEGACY_POINTS_V1;
+}
 
 /** UIUX-2M: bounded, validated list filters for the Admin Defense Records index. */
 const DEFENSE_TYPE_VALUES = [
@@ -35,6 +56,16 @@ function toNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** FIX-4: a V2 group average must remain inside the institutional 1.00–2.50 scale. */
+function assertInstitutionalGroupAverage(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 1 || value > 2.5) {
+    throw new AppError(
+      `Cannot generate the Oral Examination Summary: a finalized evaluator has an invalid ${label} average.`,
+      409,
+    );
+  }
+}
+
 export interface SummaryEvaluatorRow {
   panelAssignmentId: string;
   userId: string;
@@ -42,9 +73,14 @@ export interface SummaryEvaluatorRow {
   functionalRole: string;
   groupIValue: number | null;
   groupIIValue: number | null;
+  /** FIX-4: canonical Summary row Average for institutional V2 rows. */
+  averageValue: number | null;
+  /** Legacy point total; null for INSTITUTIONAL_MATRIX_V2. */
   overallValue: number | null;
   rating: string | null;
   recommendations: string | null;
+  /** CDW-4 FIX: scoring semantics for this evaluator row. */
+  scoringVersion: OralEvaluationScoringVersionValue;
 }
 
 export interface OralExamSummarySnapshot {
@@ -110,6 +146,8 @@ export interface OralExamScoreOfficialSnapshot {
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-4 FIX: scoring semantics the frozen criteria were recorded under. */
+  scoringVersion: OralEvaluationScoringVersionValue;
   snapshotAt: string;
 }
 
@@ -117,15 +155,24 @@ export class OfficialDefenseRecordService {
   /**
    * Idempotent, race-safe Oral Examination Summary generation.
    * Uses OralExamSummary.scheduleId uniqueness as the convergence point.
+   *
+   * Transaction-aware: pass `db` (a Prisma transaction client) to run all reads
+   * and the create on the caller's transaction — required by the locked RAP
+   * freeze so Summary generation cannot open a second connection that deadlocks
+   * on the parent DefenseSchedule row lock. Ordinary callers omit `db` and use
+   * the shared client.
    */
-  async ensureOralExamSummary(scheduleId: string): Promise<{
+  async ensureOralExamSummary(
+    scheduleId: string,
+    db: Prisma.TransactionClient = prisma,
+  ): Promise<{
     created: boolean;
     summaryId: string;
     evaluatorCount: number;
     overallAverage: number;
     finalRating: string | null;
   }> {
-    const schedule = await prisma.defenseSchedule.findUnique({
+    const schedule = await db.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         thesis: {
@@ -157,7 +204,7 @@ export class OfficialDefenseRecordService {
       .getEvaluatorRoles(schedule.defenseType as never)
       .map(String);
 
-    const assignments = await prisma.panelAssignment.findMany({
+    const assignments = await db.panelAssignment.findMany({
       where: { scheduleId, role: { in: evaluatorRoles as never[] } },
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
@@ -173,7 +220,7 @@ export class OfficialDefenseRecordService {
     }
 
     const assignmentIds = assignments.map((a) => a.id);
-    const finalizedRows = await prisma.oralExamScore.findMany({
+    const finalizedRows = await db.oralExamScore.findMany({
       where: {
         scheduleId,
         status: "FINALIZED",
@@ -196,7 +243,7 @@ export class OfficialDefenseRecordService {
     }
 
     // Existing summary is authoritative (idempotent).
-    const existing = await prisma.oralExamSummary.findUnique({
+    const existing = await db.oralExamSummary.findUnique({
       where: { scheduleId },
     });
     if (existing) {
@@ -211,29 +258,107 @@ export class OfficialDefenseRecordService {
       };
     }
 
-    const rowByPanel = new Map(finalizedRows.map((r) => [r.panelId, r]));
-    const evaluators: SummaryEvaluatorRow[] = assignments.map((a) => {
-      const row = rowByPanel.get(a.id);
-      return {
-        panelAssignmentId: a.id,
-        userId: a.userId,
-        evaluatorName: `${a.user.firstName} ${a.user.lastName}`,
-        functionalRole: String(a.role),
-        groupIValue: toNumber(row?.groupAAverage),
-        groupIIValue: toNumber(row?.groupBAverage),
-        overallValue: toNumber(row?.overallAverage),
-        rating: (row?.rating as string | null) ?? null,
-        recommendations: row?.recommendations ?? null,
-      };
-    });
+    // FIX-4: one attempt may not mix legacy point rows with the institutional
+    // matrix. There is no authorized cross-version conversion; fail closed.
+    const scoringVersions = new Set(
+      finalizedRows.map((r) => scoringVersionOf(r)),
+    );
+    if (scoringVersions.size > 1) {
+      throw new AppError(
+        "Cannot generate the Oral Examination Summary from mixed scoring versions. All required evaluations must use the same scoring model.",
+        409,
+      );
+    }
+    const summaryScoringVersion =
+      [...scoringVersions][0] ?? LEGACY_POINTS_V1;
 
-    const overallValues = evaluators
-      .map((e) => e.overallValue)
-      .filter((v): v is number => v !== null);
-    const overallAverage =
-      overallValues.length > 0
-        ? overallValues.reduce((a, b) => a + b, 0) / overallValues.length
-        : 0;
+    const rowByPanel = new Map(finalizedRows.map((r) => [r.panelId, r]));
+    const evaluators: SummaryEvaluatorRow[] = [];
+    let overallAverage: number;
+
+    if (summaryScoringVersion === INSTITUTIONAL_MATRIX_V2) {
+      const rowAverages: number[] = [];
+
+      for (const assignment of assignments) {
+        const row = rowByPanel.get(assignment.id);
+        const groupIValue = roundAcademicValue(row?.groupAAverage);
+        const groupIIValue = roundAcademicValue(row?.groupBAverage);
+
+        if (groupIValue === null || groupIIValue === null) {
+          throw new AppError(
+            "Cannot generate the institutional Oral Examination Summary: a finalized evaluator is missing a Group I or Group II average.",
+            409,
+          );
+        }
+        assertInstitutionalGroupAverage(groupIValue, "Group I");
+        assertInstitutionalGroupAverage(groupIIValue, "Group II");
+
+        const averageValue = meanAcademicValues([groupIValue, groupIIValue]);
+        if (averageValue === null) {
+          throw new AppError(
+            "Cannot generate the institutional Oral Examination Summary: an evaluator row average could not be computed safely.",
+            409,
+          );
+        }
+        rowAverages.push(averageValue);
+
+        evaluators.push({
+          panelAssignmentId: assignment.id,
+          userId: assignment.userId,
+          evaluatorName: `${assignment.user.firstName} ${assignment.user.lastName}`,
+          functionalRole: String(assignment.role),
+          groupIValue,
+          groupIIValue,
+          averageValue,
+          // V2 has no individual Overall or Rating; the Summary row Average is
+          // intentionally a separate field.
+          overallValue: null,
+          rating: null,
+          recommendations: row?.recommendations ?? null,
+          scoringVersion: INSTITUTIONAL_MATRIX_V2,
+        });
+      }
+
+      const computedOverall = meanAcademicValues(rowAverages);
+      if (computedOverall === null) {
+        throw new AppError(
+          "Cannot generate the institutional Oral Examination Summary: the internal overall average could not be computed safely.",
+          409,
+        );
+      }
+      overallAverage = computedOverall;
+    } else {
+      for (const assignment of assignments) {
+        const row = rowByPanel.get(assignment.id);
+        evaluators.push({
+          panelAssignmentId: assignment.id,
+          userId: assignment.userId,
+          evaluatorName: `${assignment.user.firstName} ${assignment.user.lastName}`,
+          functionalRole: String(assignment.role),
+          groupIValue: toNumber(row?.groupAAverage),
+          groupIIValue: toNumber(row?.groupBAverage),
+          averageValue: null,
+          overallValue: toNumber(row?.overallAverage),
+          rating: (row?.rating as string | null) ?? null,
+          recommendations: row?.recommendations ?? null,
+          scoringVersion: LEGACY_POINTS_V1,
+        });
+      }
+
+      // Legacy semantics remain unchanged, but missing historical values must
+      // never be silently converted to zero.
+      const overallValues = evaluators
+        .map((e) => e.overallValue)
+        .filter((v): v is number => v !== null);
+      if (overallValues.length !== evaluators.length) {
+        throw new AppError(
+          "Cannot generate the Oral Examination Summary: a finalized evaluator is missing an overall average.",
+          409,
+        );
+      }
+      overallAverage =
+        overallValues.reduce((a, b) => a + b, 0) / overallValues.length;
+    }
 
     const snapshot: OralExamSummarySnapshot = {
       schemaVersion: 1,
@@ -258,7 +383,7 @@ export class OfficialDefenseRecordService {
     };
 
     try {
-      const created = await prisma.oralExamSummary.create({
+      const created = await db.oralExamSummary.create({
         data: {
           scheduleId,
           overallAverage,
@@ -280,14 +405,18 @@ export class OfficialDefenseRecordService {
       // Concurrent last-finalizer race: unique(scheduleId) converges to one row.
       const code = (error as { code?: string })?.code;
       if (code === "P2002") {
-        const winner = await prisma.oralExamSummary.findUnique({
+        const winner = await db.oralExamSummary.findUnique({
           where: { scheduleId },
         });
         if (winner) {
+          const winnerSnapshot = winner.snapshotData as
+            | OralExamSummarySnapshot
+            | null;
           return {
             created: false,
             summaryId: winner.id,
-            evaluatorCount: evaluators.length,
+            evaluatorCount:
+              winnerSnapshot?.evaluatorCount ?? evaluators.length,
             overallAverage: Number(winner.overallAverage ?? overallAverage),
             finalRating: winner.finalRating ?? null,
           };
@@ -298,8 +427,12 @@ export class OfficialDefenseRecordService {
   }
 
   /**
-   * CP7-FIX1 Issue 3: detailed Summary is ADMIN or session CHAIRMAN only.
-   * Issue 12: Title Defense never fabricates numerical Summary content.
+   * CDW-4 FIX: the detailed Oral Examination Summary is an ADMIN-side official
+   * record. Committee accounts (including the session Chairman) are no longer
+   * authorized to read it — the live workspace exposes only evaluation progress
+   * and roster status. Issue 12: Title never fabricates numerical content.
+   *
+   * `actor` is optional for internal callers; when supplied, only ADMIN passes.
    */
   async getSummaryReadModel(
     scheduleId: string,
@@ -320,30 +453,16 @@ export class OfficialDefenseRecordService {
         },
         oralExamSummary: true,
         conclusion: true,
-        panelAssignments: {
-          where: actor
-            ? { userId: actor.userId }
-            : { id: { in: [] } },
-          select: { role: true },
-          take: 1,
-        },
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    // Authorization: ADMIN or session CHAIRMAN assignment.
-    if (actor) {
-      const isAdmin = actor.role === "ADMIN";
-      const sessionRole = schedule.panelAssignments[0]
-        ? String(schedule.panelAssignments[0].role)
-        : null;
-      const isChairman = sessionRole === "CHAIRMAN";
-      if (!isAdmin && !isChairman) {
-        throw new AppError(
-          "Detailed Oral Examination Summary is restricted to Admin and the session Chairman.",
-          403,
-        );
-      }
+    // Authorization: ADMIN only (committee-facing fallback removed in CDW-4 FIX).
+    if (actor && actor.role !== "ADMIN") {
+      throw new AppError(
+        "Detailed Oral Examination Summary is restricted to Admin.",
+        403,
+      );
     }
 
     // WF-C1b: every canonical defense stage has an official evaluator Summary.
@@ -532,6 +651,7 @@ export class OfficialDefenseRecordService {
         recommendations: row.recommendations ?? null,
         signedAt: row.signedAt?.toISOString() ?? null,
         finalizedAt: row.finalizedAt?.toISOString() ?? null,
+        scoringVersion: scoringVersionOf(row),
         snapshotAt: new Date().toISOString(),
       };
       // Never overwrite academic values during backfill.
@@ -636,6 +756,7 @@ export class OfficialDefenseRecordService {
       recommendations: row.recommendations ?? null,
       signedAt: row.signedAt?.toISOString() ?? null,
       finalizedAt: row.finalizedAt?.toISOString() ?? null,
+      scoringVersion: scoringVersionOf(row),
       snapshotAt: new Date().toISOString(),
     };
 

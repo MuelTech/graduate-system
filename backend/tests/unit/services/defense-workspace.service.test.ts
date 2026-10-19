@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const prismaMock = vi.hoisted(() => ({
-  defenseSchedule: {
-    findUnique: vi.fn(),
-    updateMany: vi.fn(),
-  },
-  panelAssignment: { findFirst: vi.fn() },
-}));
+const prismaMock = vi.hoisted(() => {
+  const client = {
+    defenseSchedule: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    panelAssignment: { findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
+  return {
+    ...client,
+    $transaction: vi.fn(async (fn: (tx: typeof client) => unknown) => fn(client)),
+    __tx: client,
+  };
+});
 
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 
@@ -51,22 +59,41 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
     panelAssignments: [
       {
         id: "pa-eval",
+        userId: "u-eval",
         role: "PANELIST",
         user: { id: "u-eval", firstName: "Eva", lastName: "Evaluator" },
       },
       {
         id: "pa-rap",
+        userId: "u-rap",
         role: "RAPPORTEUR",
         user: { id: "u-rap", firstName: "Rob", lastName: "Rapporteur" },
       },
       {
         id: "pa-fac",
+        userId: "u-fac",
         role: "FACILITATOR",
         user: { id: "u-fac", firstName: "Fay", lastName: "Fac" },
       },
     ],
     oralExamScores: [{ panelId: "pa-eval", status: "DRAFT" }],
     ...overrides,
+  };
+}
+
+const CHAIR_ASSIGNMENT = {
+  id: "pa-chair",
+  scheduleId: "sched-1",
+  userId: "u-chair",
+  role: "CHAIRMAN",
+  user: { id: "u-chair", firstName: "Carl", lastName: "Chair" },
+};
+
+function scheduleRowWithChair(overrides: Record<string, unknown> = {}) {
+  const row = scheduleRow(overrides);
+  return {
+    ...row,
+    panelAssignments: [CHAIR_ASSIGNMENT, ...(row.panelAssignments ?? [])],
   };
 }
 
@@ -220,33 +247,24 @@ describe("DefenseWorkspaceService (CP6)", () => {
     expect(panelist.proposedTitles.length).toBeGreaterThan(0);
     expect(panelist.capabilities.canViewTitleChairmanResult).toBe(false);
 
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-chair",
-      scheduleId: "sched-1",
-      userId: "u-chair",
-      role: "CHAIRMAN",
-    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRowWithChair({
+        defenseType: "TITLE_DEFENSE",
+        sessionStatus: "IN_PROGRESS",
+      }),
+    );
     const chair = await svc.getWorkspace("sched-1", "u-chair");
     expect(chair.capabilities.canEvaluate).toBe(true);
     expect(chair.capabilities.canViewTitleChairmanResult).toBe(true);
     expect(chair.capabilities.canViewTitleDeliberation).toBe(true);
 
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-rap",
-      scheduleId: "sched-1",
-      userId: "u-rap",
-      role: "RAPPORTEUR",
-    });
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType: "TITLE_DEFENSE", sessionStatus: "IN_PROGRESS" }),
+    );
     const rap = await svc.getWorkspace("sched-1", "u-rap");
     expect(rap.capabilities.canEvaluate).toBe(false);
     expect(rap.evaluationStatus).toBe("NONE");
 
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-fac",
-      scheduleId: "sched-1",
-      userId: "u-fac",
-      role: "FACILITATOR",
-    });
     const fac = await svc.getWorkspace("sched-1", "u-fac");
     expect(fac.capabilities.canEvaluate).toBe(false);
   });
@@ -327,12 +345,14 @@ describe("DefenseWorkspaceService (CP6)", () => {
                 id: "d-title",
                 docType: "TITLE_PROPOSAL",
                 defenseStage: "TITLE",
+                isCurrent: true,
                 uploadedAt: new Date(),
               },
               {
                 id: "d-final",
                 docType: "FINAL_MANUSCRIPT",
                 defenseStage: "FINAL",
+                isCurrent: true,
                 uploadedAt: new Date(),
               },
             ],
@@ -346,152 +366,314 @@ describe("DefenseWorkspaceService (CP6)", () => {
 
   it("WF-C1b: Title Chairman cannot record a result before evaluations + Summary are ready", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({
+      scheduleRowWithChair({
         defenseType: "TITLE_DEFENSE",
         sessionStatus: "IN_PROGRESS",
         rapporteurNotesFinalizedAt: null,
       }),
     );
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-chair",
-      scheduleId: "sched-1",
-      userId: "u-chair",
-      role: "CHAIRMAN",
-    });
     const ws = await svc.getWorkspace("sched-1", "u-chair");
     expect(ws.capabilities.canRecordFormalResult).toBe(false);
-    expect(ws.capabilities.canStartTitleDefense).toBe(false);
-    // Title now has a real evaluator-completion gate.
-    expect(ws.evaluationProgress.evaluatorAssignments).toBe(1);
+    expect(ws.capabilities.canStartDefense).toBe(false);
+    // Title has a real evaluator-completion gate; Chairman + Panelist are evaluators.
+    expect(ws.evaluationProgress.evaluatorAssignments).toBe(2);
     expect(ws.evaluationProgress.finalizedEvaluations).toBe(0);
   });
 
   it("WF-C1b: Title Chairman may record a result once evaluators finalize and Summary exists", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({
+      scheduleRowWithChair({
         defenseType: "TITLE_DEFENSE",
         sessionStatus: "AWAITING_CONCLUSION",
         rapporteurNotesFinalizedAt: null,
-        oralExamScores: [{ panelId: "pa-eval", status: "FINALIZED" }],
+        oralExamScores: [
+          { panelId: "pa-chair", status: "FINALIZED" },
+          { panelId: "pa-eval", status: "FINALIZED" },
+        ],
         oralExamSummary: { id: "sum-1", overallAverage: 80, finalRating: null },
+        // CDW-7/RAP-C1: the in-system Committee Report must be FINALIZED.
+        rapReports: [{ status: "FINALIZED" }],
       }),
     );
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-chair",
-      scheduleId: "sched-1",
-      userId: "u-chair",
-      role: "CHAIRMAN",
-    });
     const ws = await svc.getWorkspace("sched-1", "u-chair");
     expect(ws.capabilities.canRecordFormalResult).toBe(true);
-    expect(ws.evaluationProgress.finalizedEvaluations).toBe(1);
-    expect(ws.oralSummary?.ready).toBe(true);
+    expect(ws.evaluationProgress.finalizedEvaluations).toBe(2);
+    // CDW-4 FIX: no committee-facing Oral Summary aggregate is exposed.
+    expect(ws).not.toHaveProperty("oralSummary");
   });
 
   it("2026-10-04: scheduled Title exposes start capability but not conclusion readiness", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
-      scheduleRow({
+      scheduleRowWithChair({
         defenseType: "TITLE_DEFENSE",
         sessionStatus: "SCHEDULED",
         rapporteurNotesFinalizedAt: null,
       }),
     );
+    const ws = await svc.getWorkspace("sched-1", "u-chair");
+    expect(ws.capabilities.canStartDefense).toBe(true);
+    expect(ws.capabilities.canRecordFormalResult).toBe(false);
+    // CDW-4: SCHEDULED exposes Start but NOT official scoring.
+    expect(ws.capabilities.evaluationOpen).toBe(false);
+  });
+
+  it("CDW-7: CONCLUDED attempts are immutable — Rapporteur notes cannot be saved at any stage", async () => {
+    for (const defenseType of [
+      "TITLE_DEFENSE",
+      "PROPOSAL_DEFENSE",
+      "FINAL_DEFENSE",
+    ]) {
+      vi.clearAllMocks();
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({
+          defenseType,
+          sessionStatus: "CONCLUDED",
+          rapporteurNotesFinalizedAt: null,
+        }),
+      );
+      prismaMock.panelAssignment.findFirst.mockResolvedValue({
+        id: "pa-rap",
+        scheduleId: "sched-1",
+        userId: "u-rap",
+        role: "RAPPORTEUR",
+      });
+      prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        svc.saveRapporteurNotes("sched-1", "u-rap", "post-conclusion notes"),
+        defenseType,
+      ).rejects.toMatchObject({ statusCode: 409 });
+      expect(prismaMock.defenseSchedule.updateMany, defenseType).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-4: assigned Chairman starts a SCHEDULED defense for EVERY stage (atomic)", async () => {
+    for (const defenseType of ["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"]) {
+      vi.clearAllMocks();
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        defenseType,
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+      });
+      prismaMock.panelAssignment.findFirst.mockResolvedValue({
+        id: "pa-chair",
+        scheduleId: "sched-1",
+        userId: "u-chair",
+        role: "CHAIRMAN",
+      });
+      prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
+      await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
+        started: true,
+        sessionStatus: "IN_PROGRESS",
+        transitioned: true,
+      });
+      const where = prismaMock.defenseSchedule.updateMany.mock.calls[0][0].where;
+      expect(where).toMatchObject({ id: "sched-1", sessionStatus: "SCHEDULED" });
+      expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+      const audit = prismaMock.auditLog.create.mock.calls[0][0].data;
+      expect(audit).toMatchObject({
+        actorId: "u-chair",
+        actionType: "DEFENSE_SESSION_STARTED",
+        targetTable: "defense_schedules",
+        targetId: "sched-1",
+        oldValue: null,
+        ipAddress: null,
+      });
+      expect(JSON.parse(audit.newValue)).toMatchObject({
+        scheduleId: "sched-1",
+        defenseType,
+        previousStatus: "SCHEDULED",
+        newStatus: "IN_PROGRESS",
+      });
+      expect(audit.newValue).not.toMatch(
+        /signature|criteria|recommendation|reportBody|manuscript|password|token|storagePath/i,
+      );
+    }
+  });
+
+  it("CDW-4: start is idempotent while already active", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      defenseType: "PROPOSAL_DEFENSE",
+      sessionStatus: "IN_PROGRESS",
+      conclusion: null,
+    });
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
       id: "pa-chair",
       scheduleId: "sched-1",
       userId: "u-chair",
       role: "CHAIRMAN",
     });
-    const ws = await svc.getWorkspace("sched-1", "u-chair");
-    expect(ws.capabilities.canStartTitleDefense).toBe(true);
-    expect(ws.capabilities.canRecordFormalResult).toBe(false);
+    await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
+      started: true,
+      sessionStatus: "IN_PROGRESS",
+      transitioned: false,
+    });
+    expect(prismaMock.defenseSchedule.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
-  it("2026-10-04: Title Rapporteur may save notes after conclusion until finalized", async () => {
+  it("CDW-8B: a lost start race reports no local transition", async () => {
+    prismaMock.defenseSchedule.findUnique
+      .mockResolvedValueOnce({
+        defenseType: "PROPOSAL_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+      })
+      .mockResolvedValueOnce({ sessionStatus: "IN_PROGRESS" });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-chair",
+      role: "CHAIRMAN",
+    });
+    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(svc.startDefense("sched-1", "u-chair")).resolves.toEqual({
+      started: true,
+      sessionStatus: "IN_PROGRESS",
+      transitioned: false,
+    });
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("CDW-4: only the assigned Chairman may start; other roles are rejected", async () => {
+    for (const role of ["PANELIST", "RAPPORTEUR", "ADVISER", "FACILITATOR"]) {
+      vi.clearAllMocks();
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        defenseType: "FINAL_DEFENSE",
+        sessionStatus: "SCHEDULED",
+        conclusion: null,
+      });
+      prismaMock.panelAssignment.findFirst.mockResolvedValue({
+        id: `pa-${role}`,
+        scheduleId: "sched-1",
+        userId: `u-${role}`,
+        role,
+      });
+      await expect(
+        svc.startDefense("sched-1", `u-${role}`),
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("CDW-4: a concluded session cannot be started", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "CONCLUDED",
+      conclusion: { id: "c-1" },
+    });
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-chair",
+      scheduleId: "sched-1",
+      userId: "u-chair",
+      role: "CHAIRMAN",
+    });
+    await expect(svc.startDefense("sched-1", "u-chair")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
+
+  it("CDW-4 privacy: roster exposes status only; a fellow evaluator sees no private numeric values", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({
-        defenseType: "TITLE_DEFENSE",
-        sessionStatus: "CONCLUDED",
-        rapporteurNotesFinalizedAt: null,
+        sessionStatus: "IN_PROGRESS",
+        oralExamSummary: { id: "sum-1", overallAverage: 88, finalRating: null },
       }),
     );
     prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-rap",
+      id: "pa-eval",
       scheduleId: "sched-1",
-      userId: "u-rap",
-      role: "RAPPORTEUR",
+      userId: "u-eval",
+      role: "PANELIST",
     });
-    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
-    await expect(
-      svc.saveRapporteurNotes("sched-1", "u-rap", "post-conclusion notes"),
-    ).resolves.toEqual({ saved: true });
+    const ws = await svc.getWorkspace("sched-1", "u-eval");
+
+    // Roster entries carry ONLY non-private status fields.
+    for (const entry of ws.roster) {
+      expect(Object.keys(entry).sort()).toEqual(
+        ["evaluationStatus", "name", "role", "userId"].sort(),
+      );
+    }
+    const serialized = JSON.stringify(ws);
+    for (const privateField of [
+      "criteria",
+      "groupIValue",
+      "groupIIValue",
+      "overallValue",
+      "recommendations",
+      "signatureData",
+      "signedAt",
+    ]) {
+      expect(serialized).not.toContain(privateField);
+    }
+    // CDW-4 FIX: the live workspace exposes NO Oral Summary aggregate for anyone.
+    expect(ws).not.toHaveProperty("oralSummary");
+    expect(serialized).not.toContain("overallAverage");
+    expect(serialized).not.toContain("finalRating");
   });
 
-  it("2026-10-04: assigned Chairman starts a SCHEDULED Title → IN_PROGRESS (atomic)", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "TITLE_DEFENSE",
-      sessionStatus: "SCHEDULED",
-      conclusion: null,
-    });
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-chair",
-      scheduleId: "sched-1",
-      userId: "u-chair",
-      role: "CHAIRMAN",
-    });
-    prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
-    await expect(svc.startTitleDefense("sched-1", "u-chair")).resolves.toEqual({
-      started: true,
-      sessionStatus: "IN_PROGRESS",
-    });
-    const where = prismaMock.defenseSchedule.updateMany.mock.calls[0][0].where;
-    expect(where).toMatchObject({ id: "sched-1", sessionStatus: "SCHEDULED" });
+  it("CDW-4 FIX: no role receives an Oral Summary aggregate from the live workspace", async () => {
+    for (const role of ["CHAIRMAN", "PANELIST", "RAPPORTEUR", "ADVISER", "FACILITATOR"]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({
+          sessionStatus: "AWAITING_CONCLUSION",
+          oralExamSummary: { id: "sum-1", overallAverage: 88, finalRating: "VS" },
+          panelAssignments: [
+            {
+              id: `pa-${role}`,
+              scheduleId: "sched-1",
+              userId: `u-${role}`,
+              role,
+              user: { id: `u-${role}`, firstName: role[0], lastName: "X" },
+            },
+          ],
+        }),
+      );
+      const ws = await svc.getWorkspace("sched-1", `u-${role}`);
+      expect(ws).not.toHaveProperty("oralSummary");
+      const serialized = JSON.stringify(ws);
+      expect(serialized).not.toContain("overallAverage");
+      expect(serialized).not.toContain("finalRating");
+      expect(serialized).not.toContain("sum-1");
+    }
   });
 
-  it("2026-10-04: start is idempotent while already active", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "TITLE_DEFENSE",
-      sessionStatus: "IN_PROGRESS",
-      conclusion: null,
-    });
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-chair",
-      scheduleId: "sched-1",
-      userId: "u-chair",
-      role: "CHAIRMAN",
-    });
-    await expect(svc.startTitleDefense("sched-1", "u-chair")).resolves.toEqual({
-      started: true,
-      sessionStatus: "IN_PROGRESS",
-    });
-    expect(prismaMock.defenseSchedule.updateMany).not.toHaveBeenCalled();
-  });
-
-  it("2026-10-04: non-Chairman cannot start the Title Defense", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "TITLE_DEFENSE",
-      sessionStatus: "SCHEDULED",
-      conclusion: null,
-    });
-    prismaMock.panelAssignment.findFirst.mockResolvedValue({
-      id: "pa-rap",
-      scheduleId: "sched-1",
-      userId: "u-rap",
-      role: "RAPPORTEUR",
-    });
-    await expect(svc.startTitleDefense("sched-1", "u-rap")).rejects.toThrow(
-      /Chairman/i,
+  it("CDW-4 FIX: Chairman still receives evaluation progress + roster status", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRowWithChair({
+        sessionStatus: "AWAITING_CONCLUSION",
+        oralExamSummary: { id: "sum-1", overallAverage: 88, finalRating: null },
+        oralExamScores: [{ panelId: "pa-eval", status: "FINALIZED" }],
+      }),
     );
+    const ws = await svc.getWorkspace("sched-1", "u-chair");
+    expect(ws.evaluationProgress).toBeDefined();
+    expect(ws.roster.length).toBeGreaterThan(0);
+    expect(ws).not.toHaveProperty("oralSummary");
   });
 
-  it("2026-10-04: start action is Title-only (Proposal/Final unchanged)", async () => {
-    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
-      defenseType: "PROPOSAL_DEFENSE",
-      sessionStatus: "SCHEDULED",
-      conclusion: null,
+  it("CDW-4: evaluationOpen is true only for an evaluator on an IN_PROGRESS session", async () => {
+    // Proposal PANELIST, IN_PROGRESS → open
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType: "PROPOSAL_DEFENSE", sessionStatus: "IN_PROGRESS" }),
+    );
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pa-eval",
+      scheduleId: "sched-1",
+      userId: "u-eval",
+      role: "PANELIST",
     });
-    await expect(
-      svc.startTitleDefense("sched-1", "u-eval"),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    const open = await svc.getWorkspace("sched-1", "u-eval");
+    expect(open.capabilities.canEvaluate).toBe(true);
+    expect(open.capabilities.evaluationOpen).toBe(true);
+
+    // Same evaluator while SCHEDULED → closed
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ defenseType: "PROPOSAL_DEFENSE", sessionStatus: "SCHEDULED" }),
+    );
+    const closed = await svc.getWorkspace("sched-1", "u-eval");
+    expect(closed.capabilities.evaluationOpen).toBe(false);
+    expect(closed.capabilities.canStartDefense).toBe(false);
   });
 });

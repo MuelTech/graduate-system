@@ -23,9 +23,35 @@ import {
   type CriteriaInput,
 } from "./oral-evaluation.rules";
 import type { DefenseTypeName } from "../interfaces/defense-eligibility.interfaces";
+import {
+  INSTITUTIONAL_MATRIX_V2,
+  LEGACY_POINTS_V1,
+  calculateInstitutionalScores,
+  isInstitutionalEvaluationComplete,
+  validateInstitutionalCriterionValue,
+  type OralEvaluationScoringVersionValue,
+} from "./oral-evaluation.institutional.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 
 const CRITERION_KEYS = Object.keys(CRITERION_LIMITS) as CriterionKey[];
 const committeePolicy = new DefenseCommitteePolicy();
+
+type ScoringVersion = OralEvaluationScoringVersionValue;
+
+/**
+ * CDW-4 FIX: a row's scoring semantics are immutable once created. Existing rows
+ * (including any pre-migration row) are LEGACY_POINTS_V1; only NEW evaluations
+ * created by the collaborative workspace are INSTITUTIONAL_MATRIX_V2.
+ */
+function resolveScoringVersion(row: { scoringVersion?: unknown } | null | undefined): ScoringVersion {
+  return row?.scoringVersion === INSTITUTIONAL_MATRIX_V2
+    ? INSTITUTIONAL_MATRIX_V2
+    : LEGACY_POINTS_V1;
+}
 
 /** Evaluator-role authority derived from the actual session defense type. */
 function evaluatorRoleList(defenseType: string): string[] {
@@ -42,10 +68,17 @@ export interface OralEvaluationDto {
   groupIValue: number | null;
   groupIIValue: number | null;
   overallValue: number | null;
+  /**
+   * CDW-4 FIX: which scoring semantics this record uses. Legacy rows keep
+   * 10/15-point meaning; new rows use the institutional 1.00–2.50 matrix.
+   */
+  scoringVersion: ScoringVersion;
   rating: string | null;
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-9A: server row version for cross-tab optimistic concurrency. */
+  updatedAt: string | null;
   isLocked: boolean;
 }
 
@@ -85,6 +118,8 @@ export class OralEvaluationService {
       recommendations: string | null;
       signedAt: Date | null;
       finalizedAt: Date | null;
+      updatedAt?: Date | null;
+      scoringVersion?: unknown;
     } | null,
   ): OralEvaluationDto {
     const num = (v: unknown): number | null => {
@@ -112,10 +147,16 @@ export class OralEvaluationService {
       groupIValue: num(row?.groupAAverage),
       groupIIValue: num(row?.groupBAverage),
       overallValue: num(row?.overallAverage),
+      // CDW-4 FIX: no row yet → the evaluation will be created as V2; an
+      // existing row without an explicit marker is a legacy (pre-migration) row.
+      scoringVersion: row
+        ? resolveScoringVersion(row)
+        : INSTITUTIONAL_MATRIX_V2,
       rating: row?.rating ?? null,
       recommendations: row?.recommendations ?? null,
       signedAt: row?.signedAt ? row.signedAt.toISOString() : null,
       finalizedAt: row?.finalizedAt ? row.finalizedAt.toISOString() : null,
+      updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
       isLocked: row?.status === "FINALIZED",
     };
   }
@@ -210,6 +251,72 @@ export class OralEvaluationService {
     }
   }
 
+  /**
+   * CDW-9A: optional optimistic concurrency for clients that carry the row
+   * version returned by the authoritative read. Legacy callers that omit the
+   * token keep the existing status/CAS behavior.
+   */
+  private assertExpectedUpdatedAt(
+    existing: { updatedAt?: Date | null } | null | undefined,
+    expectedUpdatedAt: string | null | undefined,
+  ): void {
+    if (!expectedUpdatedAt) return;
+    if (
+      !existing?.updatedAt ||
+      existing.updatedAt.toISOString() !== expectedUpdatedAt
+    ) {
+      throw new AppError(
+        "Evaluation state changed. Refresh and try again.",
+        409,
+      );
+    }
+  }
+
+  /**
+   * CDW-4 FIX: validate + derive per scoring version. V2 uses the institutional
+   * matrix and yields two-decimal group AVERAGES with NO individual overall
+   * (individual Overall/Rating remain deferred); the Oral Examination Summary is
+   * derived separately by FIX-4 from these finalized group averages. LEGACY
+   * keeps the historical 10/15-point validation + point sums.
+   */
+  private validateAndDerive(
+    version: ScoringVersion,
+    merged: CriteriaInput,
+  ): {
+    validated: Partial<Record<CriterionKey, number | null>>;
+    groupA: number | null;
+    groupB: number | null;
+    overall: number | null;
+  } {
+    const validated: Partial<Record<CriterionKey, number | null>> = {};
+    if (version === INSTITUTIONAL_MATRIX_V2) {
+      for (const key of CRITERION_KEYS) {
+        const result = validateInstitutionalCriterionValue(key, merged[key]);
+        if (!result.ok) throw new AppError(result.reason, 400);
+        validated[key] = result.value;
+      }
+      const institutional = calculateInstitutionalScores(validated);
+      return {
+        validated,
+        groupA: institutional.groupIAverage,
+        groupB: institutional.groupIIAverage,
+        overall: null,
+      };
+    }
+    for (const key of CRITERION_KEYS) {
+      const result = validateCriterionValue(key, merged[key]);
+      if (!result.ok) throw new AppError(result.reason, 400);
+      validated[key] = result.value;
+    }
+    const legacy = calculateEvaluationScores(validated);
+    return {
+      validated,
+      groupA: legacy.groupIValue,
+      groupB: legacy.groupIIValue,
+      overall: legacy.overallValue,
+    };
+  }
+
   async getMyEvaluation(scheduleId: string, userId: string): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
     // CP5-FIX1: assignment auth BEFORE stage disclosure.
@@ -234,6 +341,7 @@ export class OralEvaluationService {
       rating?: string | null;
       recommendations?: string | null;
       clientPanelId?: string | null;
+      expectedUpdatedAt?: string | null;
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
@@ -270,8 +378,13 @@ export class OralEvaluationService {
         if (existing?.status === "FINALIZED") {
           throw new AppError("Evaluation is already finalized.", 409);
         }
+        this.assertExpectedUpdatedAt(existing, input.expectedUpdatedAt);
 
         // CP5-FIX1: PATCH merge — absent fields preserve stored values.
+        const version = existing
+          ? resolveScoringVersion(existing)
+          : INSTITUTIONAL_MATRIX_V2;
+
         const merged = mergePartialCriteria(
           {
             timelinessRelevance: (existing as any)?.timelinessRelevance,
@@ -286,20 +399,23 @@ export class OralEvaluationService {
           },
           input.criteria ?? {},
         );
-        const validated: Partial<Record<CriterionKey, number | null>> = {};
-        for (const key of CRITERION_KEYS) {
-          const result = validateCriterionValue(key, merged[key]);
-          if (!result.ok) throw new AppError(result.reason, 400);
-          validated[key] = result.value;
-        }
-
-        const rating = mergeOptionalField<string>(
-          existing?.rating as string | null,
-          (input ?? {}) as Record<string, unknown>,
-          "rating",
+        const { validated, groupA, groupB, overall } = this.validateAndDerive(
+          version,
+          merged,
         );
-        if (rating !== null && rating !== "" && !isValidOralRating(rating)) {
-          throw new AppError("Invalid evaluation rating value.", 400);
+
+        // V2 never stores a rating (digital Rating semantics are unconfirmed);
+        // legacy rows keep their optional historical rating.
+        let rating: string | null = null;
+        if (version === LEGACY_POINTS_V1) {
+          rating = mergeOptionalField<string>(
+            existing?.rating as string | null,
+            (input ?? {}) as Record<string, unknown>,
+            "rating",
+          );
+          if (rating !== null && rating !== "" && !isValidOralRating(rating)) {
+            throw new AppError("Invalid evaluation rating value.", 400);
+          }
         }
         const recommendations = mergeOptionalField<string>(
           existing?.recommendations as string | null,
@@ -307,23 +423,15 @@ export class OralEvaluationService {
           "recommendations",
         );
 
-        const derived = calculateEvaluationScores(validated);
         const data = {
-          timelinessRelevance: validated.timelinessRelevance,
-          organization: validated.organization,
-          depthComprehensiveness: validated.depthComprehensiveness,
-          relevanceConclusions: validated.relevanceConclusions,
-          evidenceOriginalThinking: validated.evidenceOriginalThinking,
-          presentation: validated.presentation,
-          masterySubject: validated.masterySubject,
-          communicationSkill: validated.communicationSkill,
-          attitude: validated.attitude,
-          groupAAverage: derived.groupIValue,
-          groupBAverage: derived.groupIIValue,
-          overallAverage: derived.overallValue,
+          ...validated,
+          groupAAverage: groupA,
+          groupBAverage: groupB,
+          overallAverage: overall,
           rating: (rating || null) as never,
           recommendations,
           scoredAt: now,
+          scoringVersion: version,
         };
 
         if (existing) {
@@ -333,6 +441,7 @@ export class OralEvaluationService {
               status: "DRAFT",
               scheduleId,
               panelId: assignment.id,
+              ...(existing.updatedAt ? { updatedAt: existing.updatedAt } : {}),
             },
             data,
           });
@@ -353,22 +462,10 @@ export class OralEvaluationService {
           });
         }
 
-        // Proposal/Final: a scheduled session becomes active on first scoring.
-        // Title never auto-starts here — only the explicit Chairman Start action
-        // moves SCHEDULED → IN_PROGRESS (and Title is not editable while SCHEDULED).
-        if (
-          schedule.defenseType !== "TITLE_DEFENSE" &&
-          (schedule.sessionStatus === "SCHEDULED" ||
-            schedule.sessionStatus === "UNSCHEDULED")
-        ) {
-          await tx.defenseSchedule.updateMany({
-            where: {
-              id: scheduleId,
-              sessionStatus: { in: ["SCHEDULED", "UNSCHEDULED"] },
-            },
-            data: { sessionStatus: "IN_PROGRESS" },
-          });
-        }
+        // CDW-4: no scoring path auto-starts the session. Every stage moves
+        // SCHEDULED → IN_PROGRESS ONLY through the assigned Chairman's explicit
+        // Start Defense action; scoring is impossible until then (the editable
+        // gate above already requires IN_PROGRESS).
       });
     } catch (err: any) {
       // Concurrent first-create unique race → friendly 409.
@@ -398,6 +495,7 @@ export class OralEvaluationService {
       clientPanelId?: string | null;
       clientSignedAt?: string | null;
       clientFinalizedAt?: string | null;
+      expectedUpdatedAt?: string | null;
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
@@ -417,64 +515,10 @@ export class OralEvaluationService {
       );
     }
 
-    const existing = await prisma.oralExamScore.findUnique({
-      where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
-    });
-    if (existing?.status === "FINALIZED") {
-      throw new AppError("Evaluation is already finalized.", 409);
-    }
-
-    const criteria = mergePartialCriteria(
-      {
-        timelinessRelevance: (existing as any)?.timelinessRelevance,
-        organization: (existing as any)?.organization,
-        depthComprehensiveness: (existing as any)?.depthComprehensiveness,
-        relevanceConclusions: (existing as any)?.relevanceConclusions,
-        evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
-        presentation: (existing as any)?.presentation,
-        masterySubject: (existing as any)?.masterySubject,
-        communicationSkill: (existing as any)?.communicationSkill,
-        attitude: (existing as any)?.attitude,
-      },
-      input.criteria ?? {},
-    );
-    const validated: Partial<Record<CriterionKey, number | null>> = {};
-    for (const key of CRITERION_KEYS) {
-      const result = validateCriterionValue(key, criteria[key]);
-      if (!result.ok) throw new AppError(result.reason, 400);
-      validated[key] = result.value;
-    }
-    const derived = calculateEvaluationScores(validated);
-    const complete = areAllCriteriaComplete(validated);
-    const gate = canFinalizeEvaluation({
-      status: existing?.status ?? null,
-      criteriaComplete: complete,
-      signaturePresent: Boolean(input.signatureData?.trim()),
-    });
-    if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
-
-    if (
-      input.rating !== null &&
-      input.rating !== undefined &&
-      input.rating !== "" &&
-      !isValidOralRating(input.rating)
-    ) {
-      throw new AppError("Invalid evaluation rating value.", 400);
-    }
-
-    // Server-authoritative timestamps (ignore client signedAt/finalizedAt).
+    // Server-authoritative timestamps (client values are ignored).
     const signedAt = new Date();
     const finalizedAt = signedAt;
-    const rating = mergeOptionalField<string>(
-      existing?.rating as string | null,
-      (input ?? {}) as Record<string, unknown>,
-      "rating",
-    );
-    const recommendations = mergeOptionalField<string>(
-      existing?.recommendations as string | null,
-      (input ?? {}) as Record<string, unknown>,
-      "recommendations",
-    );
+    const signatureData = input.signatureData.trim();
 
     await prisma.$transaction(async (tx) => {
       // CP5-FIX2: re-check session editability inside the write transaction.
@@ -484,40 +528,157 @@ export class OralEvaluationService {
       });
       this.assertSessionEditable(current?.sessionStatus, schedule.defenseType);
 
-      const result = await tx.oralExamScore.updateMany({
-        where: {
-          scheduleId,
-          panelId: assignment.id,
-          status: "DRAFT",
+      // CDW-4 FIX: the persisted row determines the scoring semantics, so read
+      // it on the same transaction client that performs the CAS update.
+      const existing = await tx.oralExamScore.findUnique({
+        where: { scheduleId_panelId: { scheduleId, panelId: assignment.id } },
+      });
+      if (existing?.status === "FINALIZED") {
+        throw new AppError("Evaluation is already finalized.", 409);
+      }
+      this.assertExpectedUpdatedAt(existing, input.expectedUpdatedAt);
+
+      const version = existing
+        ? resolveScoringVersion(existing)
+        : INSTITUTIONAL_MATRIX_V2;
+      const criteria = mergePartialCriteria(
+        {
+          timelinessRelevance: (existing as any)?.timelinessRelevance,
+          organization: (existing as any)?.organization,
+          depthComprehensiveness: (existing as any)?.depthComprehensiveness,
+          relevanceConclusions: (existing as any)?.relevanceConclusions,
+          evidenceOriginalThinking: (existing as any)?.evidenceOriginalThinking,
+          presentation: (existing as any)?.presentation,
+          masterySubject: (existing as any)?.masterySubject,
+          communicationSkill: (existing as any)?.communicationSkill,
+          attitude: (existing as any)?.attitude,
         },
-        data: {
-          status: "FINALIZED",
-          timelinessRelevance: validated.timelinessRelevance,
-          organization: validated.organization,
-          depthComprehensiveness: validated.depthComprehensiveness,
-          relevanceConclusions: validated.relevanceConclusions,
-          evidenceOriginalThinking: validated.evidenceOriginalThinking,
-          presentation: validated.presentation,
-          masterySubject: validated.masterySubject,
-          communicationSkill: validated.communicationSkill,
-          attitude: validated.attitude,
-          groupAAverage: derived.groupIValue,
-          groupBAverage: derived.groupIIValue,
-          overallAverage: derived.overallValue,
-          rating: (rating || null) as never,
-          recommendations,
-          signatureData: input.signatureData.trim(),
-          signedAt,
-          finalizedAt,
-          scoredAt: signedAt,
+        input.criteria ?? {},
+      );
+      const { validated, groupA, groupB, overall } = this.validateAndDerive(
+        version,
+        criteria,
+      );
+      const complete =
+        version === INSTITUTIONAL_MATRIX_V2
+          ? isInstitutionalEvaluationComplete(validated)
+          : areAllCriteriaComplete(validated);
+      const gate = canFinalizeEvaluation({
+        status: existing?.status ?? null,
+        criteriaComplete: complete,
+        signaturePresent: Boolean(signatureData),
+      });
+      if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
+
+      // V2 finalization stores NO rating (digital Rating semantics unconfirmed);
+      // legacy rows keep the existing optional-rating behavior.
+      let rating: string | null = null;
+      if (version === LEGACY_POINTS_V1) {
+        if (
+          input.rating !== null &&
+          input.rating !== undefined &&
+          input.rating !== "" &&
+          !isValidOralRating(input.rating)
+        ) {
+          throw new AppError("Invalid evaluation rating value.", 400);
+        }
+        rating = mergeOptionalField<string>(
+          existing?.rating as string | null,
+          (input ?? {}) as Record<string, unknown>,
+          "rating",
+        );
+      }
+      const recommendations = mergeOptionalField<string>(
+        existing?.recommendations as string | null,
+        (input ?? {}) as Record<string, unknown>,
+        "recommendations",
+      );
+
+      const data = {
+        status: "FINALIZED" as const,
+        ...validated,
+        groupAAverage: groupA,
+        groupBAverage: groupB,
+        overallAverage: overall,
+        rating: (rating || null) as never,
+        recommendations,
+        signatureData,
+        signedAt,
+        finalizedAt,
+        scoredAt: signedAt,
+        scoringVersion: version,
+      };
+
+      let scoreId = existing?.id ?? null;
+      if (existing) {
+        // Existing DRAFT → CAS update (unchanged behavior).
+        const result = await tx.oralExamScore.updateMany({
+          where: {
+            scheduleId,
+            panelId: assignment.id,
+            status: "DRAFT",
+            ...(existing.updatedAt ? { updatedAt: existing.updatedAt } : {}),
+          },
+          data,
+        });
+        if (result.count === 0) {
+          throw new AppError(
+            "Evaluation state changed. Refresh and try again.",
+            409,
+          );
+        }
+      } else {
+        // CDW-4 FIX: a FRESH evaluation finalizes directly — faculty are NOT
+        // required to press Save Draft first. The unique (schedule_id, panel_id)
+        // constraint keeps the concurrent case race-safe; a P2002 loser gets the
+        // same friendly 409 as a stale CAS.
+        try {
+          const created = await tx.oralExamScore.create({
+            data: {
+              scheduleId,
+              panelId: assignment.id,
+              ...data,
+            },
+          });
+          scoreId = created.id;
+        } catch (err: any) {
+          if (err?.code === "P2002") {
+            throw new AppError(
+              "Evaluation state changed. Refresh and try again.",
+              409,
+            );
+          }
+          throw err;
+        }
+      }
+
+      // CDW-9C: audit the committed material transition in the same transaction.
+      if (!scoreId) {
+        throw new Error("Finalized evaluation identity was not resolved.");
+      }
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.EVALUATION_FINALIZED,
+        targetTable: DEFENSE_AUDIT_TARGETS.EVALUATION,
+        targetId: scoreId,
+        metadata: {
+          scheduleId,
+          defenseType: schedule.defenseType,
+          panelAssignmentId: assignment.id,
+          newStatus: "FINALIZED",
         },
       });
-      if (result.count === 0) {
+    }).catch((err: any) => {
+      // CDW-9A: defense-in-depth for any unique-constraint race that escapes the
+      // transaction callback (for example a commit-time collision). Never leak a
+      // raw Prisma error to the evaluator client.
+      if (err?.code === "P2002") {
         throw new AppError(
           "Evaluation state changed. Refresh and try again.",
           409,
         );
       }
+      throw err;
     });
 
     // CP5-FIX1: recompute AFTER commit so concurrent last-finalizers both commit first.
