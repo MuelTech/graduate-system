@@ -158,11 +158,17 @@ export function SharedCommentsRail({
           <TabsContent value="all" className="mt-3">
             <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
               {isLoading && (
-                <p className="text-[14px] text-(--earist-body-text)">Loading comments…</p>
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-[14px] text-(--earist-body-text)"
+                >
+                  Loading comments…
+                </p>
               )}
               {isError && (
                 <div className="space-y-2">
-                  <p className="text-[14px] text-amber-700">
+                  <p role="alert" className="text-[14px] text-amber-800">
                     Comments could not be loaded.
                   </p>
                   <Button type="button" size="sm" variant="outline" onClick={onRetry}>
@@ -182,7 +188,7 @@ export function SharedCommentsRail({
                     onClick={() => handlePick(annotation.id)}
                     aria-pressed={isActive}
                     className={
-                      "w-full rounded border p-2 text-left transition-colors " +
+                      "w-full rounded border p-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 " +
                       (isActive
                         ? "border-(--earist-primary) bg-(--earist-surface-gray)"
                         : "border-(--earist-border-gray) hover:bg-(--earist-surface-gray)")

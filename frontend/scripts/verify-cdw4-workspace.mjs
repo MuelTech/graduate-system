@@ -50,8 +50,9 @@ test("left + right rails are independently collapsible and have responsive drawe
   assert.match(shell, /rightCollapsed/);
   assert.match(shell, /lg:hidden/); // mobile drawer triggers
   assert.match(shell, /lg:block/); // desktop columns
-  assert.match(shell, /leftDrawer/);
-  assert.match(shell, /rightDrawer/);
+  assert.match(shell, /openDrawer/);
+  assert.match(shell, /side="left"/);
+  assert.match(shell, /side="right"/);
   // Collapse is presentation-only: no evaluation/collaboration mutation controls here.
   assert.doesNotMatch(shell, /useMutation|startDefense|createAnnotation/);
 });

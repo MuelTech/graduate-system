@@ -18,7 +18,14 @@
  * that wraps this shell.
  */
 
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   BookOpen,
   FileText,
@@ -54,34 +61,77 @@ export function WorkspaceShell({
   const [tab, setTab] = useState<CenterTab>("doc");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [leftDrawer, setLeftDrawer] = useState(false);
-  const [rightDrawer, setRightDrawer] = useState(false);
+  const [openDrawer, setOpenDrawer] = useState<"left" | "right" | null>(null);
+  const [drawerReturnFocus, setDrawerReturnFocus] = useState<HTMLElement | null>(
+    null,
+  );
+  const drawerOpen = openDrawer !== null;
+  const actionsTriggerRef = useRef<HTMLButtonElement>(null);
+  const commentsTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const selectTab = (next: CenterTab, focus = false) => {
+    setTab(next);
+    if (focus) {
+      requestAnimationFrame(() => {
+        document.getElementById(`workspace-tab-${next}`)?.focus();
+      });
+    }
+  };
+
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const next =
+      event.key === "Home"
+        ? "report"
+        : event.key === "End"
+          ? "doc"
+          : tab === "report"
+            ? "doc"
+            : "report";
+    selectTab(next, true);
+  };
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-(--earist-surface-gray)">
-      <CompactWorkspaceHeader workspace={workspace}>
-        {/* Mobile: open the role rail / comments as drawers. */}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="xl:hidden"
-          onClick={() => setLeftDrawer(true)}
-        >
-          <PanelLeft className="mr-1 h-4 w-4" /> Actions
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="lg:hidden"
-          onClick={() => setRightDrawer(true)}
-        >
-          <MessageSquare className="mr-1 h-4 w-4" /> Comments
-        </Button>
-      </CompactWorkspaceHeader>
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        inert={drawerOpen ? true : undefined}
+        aria-hidden={drawerOpen ? true : undefined}
+      >
+        <CompactWorkspaceHeader workspace={workspace}>
+          {/* Mobile: open the role rail / comments as drawers. */}
+          <Button
+            ref={actionsTriggerRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="xl:hidden"
+            onClick={() => {
+              setDrawerReturnFocus(actionsTriggerRef.current);
+              setOpenDrawer("left");
+            }}
+          >
+            <PanelLeft className="mr-1 h-4 w-4" aria-hidden="true" /> Actions
+          </Button>
+          <Button
+            ref={commentsTriggerRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => {
+              setDrawerReturnFocus(commentsTriggerRef.current);
+              setOpenDrawer("right");
+            }}
+          >
+            <MessageSquare className="mr-1 h-4 w-4" aria-hidden="true" /> Comments
+          </Button>
+        </CompactWorkspaceHeader>
 
-      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1">
         {/* Left role/evaluation rail (wide). Collapse is presentation-only. */}
         <aside
           className={cn(
@@ -109,29 +159,44 @@ export function WorkspaceShell({
         )}
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center gap-1 border-b border-(--earist-border-gray) bg-white px-2">
+          <div
+            role="tablist"
+            aria-label="Workspace view"
+            onKeyDown={handleTabKeyDown}
+            className="flex shrink-0 items-center gap-1 border-b border-(--earist-border-gray) bg-white px-2"
+          >
             <TabButton
-              active={tab === "report"}
-              onClick={() => setTab("report")}
-              icon={<FileText className="h-4 w-4" />}
+              id="workspace-tab-report"
+              controls="workspace-center-panel"
+              selected={tab === "report"}
+              onClick={() => selectTab("report")}
+              icon={<FileText className="h-4 w-4" aria-hidden="true" />}
             >
               Committee Report
             </TabButton>
             <TabButton
-              active={tab === "doc"}
-              onClick={() => setTab("doc")}
-              icon={<BookOpen className="h-4 w-4" />}
+              id="workspace-tab-doc"
+              controls="workspace-center-panel"
+              selected={tab === "doc"}
+              onClick={() => selectTab("doc")}
+              icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
             >
               Student Document
             </TabButton>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div
+            id="workspace-center-panel"
+            role="tabpanel"
+            aria-labelledby={`workspace-tab-${tab}`}
+            tabIndex={0}
+            className="min-h-0 flex-1 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-(--earist-primary)/40"
+          >
             {tab === "report" ? (
               <CommitteeReportPanel workspace={workspace} scheduleId={scheduleId} />
             ) : hasDocument ? (
-              <div className="flex h-full min-h-0 flex-col p-3">
-                <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+              <div className="flex h-full min-h-0 min-w-0 flex-col p-3">
+                <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-(--earist-secondary)">
                     Current Manuscript
                   </span>
@@ -176,77 +241,188 @@ export function WorkspaceShell({
             </IconTooltipButton>
           </div>
         )}
+        </div>
       </div>
 
       {/* Mobile overlay drawers (presentation only). */}
-      {leftDrawer && (
-        <div className="fixed inset-0 z-50 flex xl:hidden">
-          <div className="flex h-full w-[28rem] max-w-[88vw] flex-col bg-white shadow-xl duration-200 ease-out animate-in slide-in-from-left motion-reduce:animate-none">
-            <div className="flex shrink-0 items-center justify-between border-b border-(--earist-border-gray) px-3 py-2">
-              <span className="text-base font-semibold text-(--earist-primary)">
-                Actions
-              </span>
-              <button
-                type="button"
-                onClick={() => setLeftDrawer(false)}
-                aria-label="Close actions"
-                className="inline-flex size-9 items-center justify-center rounded-lg"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">
-              <RoleRail workspace={workspace} scheduleId={scheduleId} />
-            </div>
-          </div>
-          <button
-            type="button"
-            aria-label="Close actions"
-            className="flex-1 bg-black/40"
-            onClick={() => setLeftDrawer(false)}
-          />
-        </div>
+      {openDrawer === "left" && (
+        <WorkspaceDrawer
+          side="left"
+          title="Actions"
+          returnFocusTo={drawerReturnFocus}
+          onClose={() => setOpenDrawer(null)}
+        >
+          <RoleRail workspace={workspace} scheduleId={scheduleId} />
+        </WorkspaceDrawer>
       )}
 
-      {rightDrawer && hasDocument && (
-        <div className="fixed inset-0 z-50 flex justify-end lg:hidden">
-          <button
-            type="button"
-            aria-label="Close comments"
-            className="flex-1 bg-black/40"
-            onClick={() => setRightDrawer(false)}
-          />
-          <div className="flex h-full w-80 max-w-[88vw] flex-col bg-white shadow-xl duration-200 ease-out animate-in slide-in-from-right motion-reduce:animate-none">
-            <div className="flex shrink-0 items-center justify-between border-b border-(--earist-border-gray) px-3 py-2">
-              <span className="text-base font-semibold text-(--earist-primary)">
-                Shared Comments
-              </span>
-              <button
-                type="button"
-                onClick={() => setRightDrawer(false)}
-                aria-label="Close comments"
-                className="inline-flex size-9 items-center justify-center rounded-lg"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1">
-              <CollaborationRailPane className="h-full" />
-            </div>
-          </div>
-        </div>
+      {openDrawer === "right" && hasDocument && (
+        <WorkspaceDrawer
+          side="right"
+          title="Shared Comments"
+          returnFocusTo={drawerReturnFocus}
+          onClose={() => setOpenDrawer(null)}
+        >
+          <CollaborationRailPane className="h-full" />
+        </WorkspaceDrawer>
       )}
     </div>
   );
 }
 
+const DRAWER_FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function WorkspaceDrawer({
+  side,
+  title,
+  onClose,
+  returnFocusTo,
+  children,
+}: {
+  side: "left" | "right";
+  title: string;
+  onClose: () => void;
+  returnFocusTo?: HTMLElement | null;
+  children: ReactNode;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const onCloseRef = useRef(onClose);
+  const returnFocusRef = useRef(returnFocusTo);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    returnFocusRef.current = returnFocusTo;
+  }, [returnFocusTo]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const previouslyFocused =
+      returnFocusRef.current ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
+
+    const focusable = () =>
+      Array.from(panel.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE)).filter(
+        (element) =>
+          !element.hasAttribute("disabled") &&
+          element.getAttribute("aria-hidden") !== "true" &&
+          element.tabIndex !== -1,
+      );
+
+    const initial = focusable()[0] ?? panel;
+    initial.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const items = focusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = active instanceof Node && panel.contains(active);
+
+      if (!inside) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, []);
+
+  return (
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex bg-black/40",
+        side === "right" ? "justify-end lg:hidden" : "xl:hidden",
+      )}
+    >
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Close ${title.toLowerCase()}`}
+        className="flex-1 bg-transparent"
+        onClick={onClose}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={cn(
+          "flex h-full min-w-0 flex-col bg-white shadow-xl outline-none duration-200 ease-out animate-in motion-reduce:animate-none",
+          side === "left"
+            ? "w-[28rem] max-w-[88vw] slide-in-from-left"
+            : "w-80 max-w-[88vw] slide-in-from-right",
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
+          <h2
+            id={titleId}
+            className="min-w-0 truncate text-base font-semibold text-(--earist-primary)"
+          >
+            {title}
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-lg"
+            onClick={onClose}
+            aria-label={`Close ${title.toLowerCase()}`}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TabButton({
-  active,
+  id,
+  controls,
+  selected,
   onClick,
   icon,
   children,
 }: {
-  active: boolean;
+  id: string;
+  controls: string;
+  selected: boolean;
   onClick: () => void;
   icon: ReactNode;
   children: ReactNode;
@@ -254,17 +430,22 @@ function TabButton({
   return (
     <button
       type="button"
+      role="tab"
+      id={id}
+      aria-controls={controls}
+      aria-selected={selected}
+      tabIndex={selected ? 0 : -1}
       onClick={onClick}
-      aria-pressed={active}
       className={
-        "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors " +
-        (active
+        "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 " +
+        (selected
           ? "border-(--earist-primary) text-(--earist-primary)"
           : "border-transparent text-(--earist-body-text) hover:text-(--earist-primary)")
       }
     >
       {icon}
       {children}
+      {selected && <span className="sr-only"> (selected)</span>}
     </button>
   );
 }

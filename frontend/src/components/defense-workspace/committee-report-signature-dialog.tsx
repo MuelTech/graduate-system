@@ -69,9 +69,13 @@ export function CommitteeReportSignatureDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        aria-busy={signPending || undefined}
         className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
         showCloseButton={!signPending}
       >
+        <p className="sr-only" role="status" aria-live="polite">
+          {signPending ? "Signing Committee Report…" : ""}
+        </p>
         <DialogHeader>
           <DialogTitle>Sign Committee Report</DialogTitle>
           <DialogDescription>
@@ -84,6 +88,7 @@ export function CommitteeReportSignatureDialog({
           onChange={setSignature}
           disabled={signPending}
           allowTyped={false}
+          autoFocus
           readyText="Signature ready."
           requiredText="Draw your signature before confirming."
         />

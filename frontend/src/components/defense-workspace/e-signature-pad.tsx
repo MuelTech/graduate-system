@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -14,6 +14,7 @@ export function ESignaturePad({
   onChange,
   disabled,
   allowTyped = true,
+  autoFocus = false,
   readyText = "Signature ready for evaluation finalize.",
   requiredText = "Signature required before finalize.",
 }: {
@@ -22,6 +23,8 @@ export function ESignaturePad({
   disabled?: boolean;
   /** Evaluation signing is draw-only; other flows retain Type support. */
   allowTyped?: boolean;
+  /** Focus the signature input when it mounts (e.g. after moving to Sign). */
+  autoFocus?: boolean;
   /** Optional caller-specific helper copy; defaults preserve Evaluation signing. */
   readyText?: string;
   requiredText?: string;
@@ -31,7 +34,10 @@ export function ESignaturePad({
   );
   const [typed, setTyped] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [hasDrawn, setHasDrawn] = useState(false);
+  const instructionsId = useId();
+  const statusId = useId();
   // Gesture authority — must not depend on render-time React state.
   const drawingRef = useRef(false);
   const strokeStartedRef = useRef(false);
@@ -44,6 +50,13 @@ export function ESignaturePad({
   useEffect(() => {
     disabledRef.current = disabled;
   }, [disabled]);
+
+  useEffect(() => {
+    if (!autoFocus || disabled) return;
+    const target =
+      allowTyped && mode === "type" ? inputRef.current : canvasRef.current;
+    target?.focus();
+  }, [allowTyped, autoFocus, disabled, mode]);
 
   const isDataUrl = (v: string) => v.startsWith("data:image/png;base64,");
 
@@ -204,33 +217,53 @@ export function ESignaturePad({
           Clear
         </Button>
       </div>
-      {!allowTyped && (
-        <p className="text-[13px] font-medium text-(--earist-secondary)">
-          Draw your signature
-        </p>
+      {mode === "draw" && (
+        <div className="space-y-1">
+          <p className="text-[13px] font-medium text-(--earist-secondary)">
+            Draw your signature
+          </p>
+          <p
+            id={instructionsId}
+            className="text-[12px] text-(--earist-body-text)"
+          >
+            Use a pointer or touch device to draw. The signature area is not
+            keyboard-drawable; keyboard-only signing requires a separate
+            institutional signing option.
+          </p>
+        </div>
       )}
       {allowTyped && mode === "type" ? (
         <input
+          ref={inputRef}
           value={typed}
           disabled={disabled}
           onChange={(e) => emitTypedSignature(e.target.value)}
           placeholder="Type your full name as e-signature"
           aria-label="Type your full name as e-signature"
+          aria-describedby={statusId}
           autoComplete="name"
-          className="w-full rounded border border-(--earist-border-gray) px-2 py-2 text-sm"
+          className="w-full rounded border border-(--earist-border-gray) px-2 py-2 text-sm focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none"
         />
       ) : (
         <canvas
           ref={canvasRef}
           width={720}
           height={240}
-          aria-label="Draw your signature"
-          className={`h-auto w-full touch-none rounded border bg-white ${
+          tabIndex={disabled ? -1 : 0}
+          aria-label="Signature drawing area"
+          aria-describedby={`${instructionsId} ${statusId}`}
+          aria-disabled={disabled || undefined}
+          className={`h-auto w-full touch-none rounded border bg-white focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none ${
             disabled ? "opacity-60" : "border-(--earist-border-gray)"
           }`}
         />
       )}
-      <div className="text-xs text-(--earist-body-text)">
+      <div
+        id={statusId}
+        role="status"
+        aria-live="polite"
+        className="text-xs text-(--earist-body-text)"
+      >
         {isValid ? (
           <p>{readyText}</p>
         ) : allowTyped && mode === "type" && typed.trim() ? (

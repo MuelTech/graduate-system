@@ -173,30 +173,47 @@ function EvaluationSaveStatus({
 
   if (state.status === "error") {
     return (
-      <span className="flex items-center gap-1.5 text-[13px] text-red-600">
-        <AlertCircle className="h-4 w-4" /> {label}
+      <span
+        role="alert"
+        className="flex items-center gap-1.5 text-[13px] text-red-600"
+      >
+        <AlertCircle className="h-4 w-4" aria-hidden="true" /> {label}
       </span>
     );
   }
 
   if (state.status === "offline") {
     return (
-      <span className="flex items-center gap-1.5 text-[13px] text-amber-700">
-        <WifiOff className="h-4 w-4" /> {label}
+      <span
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-1.5 text-[13px] text-amber-700"
+      >
+        <WifiOff className="h-4 w-4" aria-hidden="true" /> {label}
       </span>
     );
   }
 
   if (state.status === "saved" && !state.hasUnsavedChanges) {
     return (
-      <span className="flex items-center gap-1.5 text-[13px] text-emerald-700">
-        <CheckCircle2 className="h-4 w-4" /> {label}
+      <span
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-1.5 text-[13px] text-emerald-700"
+      >
+        <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {label}
       </span>
     );
   }
 
   return (
-    <span className="text-[13px] text-(--earist-body-text)">{label}</span>
+    <span
+      role="status"
+      aria-live="polite"
+      className="text-[13px] text-(--earist-body-text)"
+    >
+      {label}
+    </span>
   );
 }
 
@@ -520,13 +537,20 @@ function MatrixEvaluationEditor({
 
       <div className="space-y-4 p-3">
         {message && (
-          <p className="flex items-center gap-2 text-[14px] text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" /> {message}
+          <p
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 text-[14px] text-emerald-700"
+          >
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {message}
           </p>
         )}
         {error && (
-          <p className="flex items-center gap-2 text-[14px] text-red-600">
-            <AlertCircle className="h-4 w-4" /> {error}
+          <p
+            role="alert"
+            className="flex items-center gap-2 break-words text-[14px] text-red-600"
+          >
+            <AlertCircle className="h-4 w-4" aria-hidden="true" /> {error}
           </p>
         )}
 

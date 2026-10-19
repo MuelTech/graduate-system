@@ -101,11 +101,24 @@ export function EvaluationFinalizationDialog({
   const [step, setStep] = useState<Step>("review");
   const [signature, setSignature] = useState("");
   const confirmingRef = useRef(false);
+  const continueRef = useRef<HTMLButtonElement>(null);
+  const warningRef = useRef<HTMLParagraphElement>(null);
   const signatureReady = signature.startsWith("data:image/png;base64,");
 
   useEffect(() => {
     if (!finalizePending) confirmingRef.current = false;
   }, [finalizePending]);
+
+  useEffect(() => {
+    if (!open || step !== "review") return;
+    requestAnimationFrame(() => {
+      if (continueRef.current && !continueRef.current.disabled) {
+        continueRef.current.focus();
+      } else {
+        warningRef.current?.focus();
+      }
+    });
+  }, [open, step, allCriteriaComplete]);
 
   const close = () => {
     if (finalizePending) return;
@@ -138,9 +151,13 @@ export function EvaluationFinalizationDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        aria-busy={finalizePending || undefined}
         className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
         showCloseButton={!finalizePending}
       >
+        <p className="sr-only" role="status" aria-live="polite">
+          {finalizePending ? "Finalizing evaluation…" : ""}
+        </p>
         {step === "review" ? (
           <>
             <DialogHeader>
@@ -185,7 +202,12 @@ export function EvaluationFinalizationDialog({
               </section>
 
               {!allCriteriaComplete && (
-                <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[14px] text-amber-900">
+                <p
+                  ref={warningRef}
+                  tabIndex={-1}
+                  role="alert"
+                  className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-[14px] text-amber-900 focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40 focus-visible:outline-none"
+                >
                   All nine criteria are required before finalization. Return to the
                   evaluation and complete the remaining selections.
                 </p>
@@ -202,6 +224,7 @@ export function EvaluationFinalizationDialog({
                 Cancel
               </Button>
               <Button
+                ref={continueRef}
                 type="button"
                 disabled={finalizePending || !allCriteriaComplete}
                 onClick={() => setStep("sign")}
@@ -228,6 +251,7 @@ export function EvaluationFinalizationDialog({
               onChange={setSignature}
               disabled={finalizePending}
               allowTyped={false}
+              autoFocus
             />
 
             {finalizeError && (

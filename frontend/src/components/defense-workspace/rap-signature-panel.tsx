@@ -180,13 +180,16 @@ export function RapSignaturePanel({
         )}
 
         {!confirmingFinalize && finalizeError && (
-          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-red-700">
-            <AlertCircle className="h-4 w-4" /> {finalizeError}
+          <p role="alert" className="mt-2 flex items-center gap-1.5 break-words text-[13px] text-red-700">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" /> {finalizeError}
           </p>
         )}
 
         {confirmingFinalize && (
           <div className="mt-3 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <p className="sr-only" role="status" aria-live="polite">
+              {finalize.isPending ? "Finalizing Committee Report…" : ""}
+            </p>
             <p className="text-[14px] font-semibold text-amber-900">
               Finalize Committee Report?
             </p>
@@ -195,8 +198,8 @@ export function RapSignaturePanel({
               members can review and sign it immediately.
             </p>
             {finalizeError && (
-              <p className="flex items-center gap-1.5 text-[13px] text-red-700">
-                <AlertCircle className="h-4 w-4" /> {finalizeError}
+              <p role="alert" className="flex items-center gap-1.5 break-words text-[13px] text-red-700">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" /> {finalizeError}
               </p>
             )}
             <div className="flex gap-2">
@@ -238,7 +241,11 @@ export function RapSignaturePanel({
             <Badge className="bg-amber-100 text-amber-800">Awaiting Signatures</Badge>
           )}
         </div>
-        <p className="mt-1 text-[13px] text-(--earist-body-text)">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-1 text-[13px] text-(--earist-body-text)"
+        >
           {signatureProgress.signed} of {signatureProgress.required} signatures completed
         </p>
 
@@ -267,8 +274,8 @@ export function RapSignaturePanel({
         )}
 
         {signError && !signDialogOpen && (
-          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-red-700">
-            <AlertCircle className="h-4 w-4" /> {signError}
+          <p role="alert" className="mt-2 flex items-center gap-1.5 break-words text-[13px] text-red-700">
+            <AlertCircle className="h-4 w-4" aria-hidden="true" /> {signError}
           </p>
         )}
       </section>

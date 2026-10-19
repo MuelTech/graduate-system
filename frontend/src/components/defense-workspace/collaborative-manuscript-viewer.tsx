@@ -259,7 +259,11 @@ export function CollaborativeManuscriptViewer({
         )}
 
         {status === "ready" && !textAvailable && (
-          <p className="shrink-0 border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-[14px] text-amber-800">
+          <p
+            role="status"
+            aria-live="polite"
+            className="shrink-0 border-b border-(--earist-border-gray) bg-amber-50 px-3 py-1.5 text-[14px] text-amber-800"
+          >
             Text selection and highlighting are unavailable for this document (no
             extractable text layer).
           </p>
@@ -270,7 +274,11 @@ export function CollaborativeManuscriptViewer({
           className="flex min-h-0 flex-1 justify-center overflow-auto p-3"
         >
           {status === "loading" && (
-            <div className="flex items-center justify-center gap-2 self-center">
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center justify-center gap-2 self-center"
+            >
               <Loader2 className="h-7 w-7 animate-spin text-(--earist-primary)" aria-hidden="true" />
               <span className="text-sm text-(--earist-body-text)">Loading document…</span>
             </div>
@@ -283,13 +291,16 @@ export function CollaborativeManuscriptViewer({
           )}
 
           {status === "error" && (
-            <div className="flex flex-col items-center justify-center gap-2 self-center text-center">
+            <div
+              role="alert"
+              className="flex flex-col items-center justify-center gap-2 self-center text-center"
+            >
               {errorCode === "invalid" ? (
                 <FileWarning className="h-6 w-6 text-amber-600" aria-hidden="true" />
               ) : (
                 <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
               )}
-              <p className="max-w-sm text-sm text-(--earist-body-text)">
+              <p className="max-w-sm break-words text-sm text-(--earist-body-text)">
                 {errorCode ? ERROR_MESSAGES[errorCode] : ERROR_MESSAGES.load_failed}
               </p>
             </div>

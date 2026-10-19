@@ -135,8 +135,8 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
                 for this attempt? The defense becomes CONCLUDED and read-only.
               </p>
               {error && (
-                <p className="flex items-center gap-1.5 text-[13px] text-red-700">
-                  <AlertCircle className="h-4 w-4" /> {error}
+                <p role="alert" className="flex items-center gap-1.5 break-words text-[13px] text-red-700">
+                  <AlertCircle className="h-4 w-4" aria-hidden="true" /> {error}
                 </p>
               )}
               <div className="flex gap-2">
@@ -161,8 +161,8 @@ export function ChairmanVerdictPanel({ scheduleId }: { scheduleId: string }) {
       )}
 
       {error && !confirming && (
-        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-red-700">
-          <AlertCircle className="h-4 w-4" /> {error}
+        <p role="alert" className="mt-2 flex items-center gap-1.5 break-words text-[13px] text-red-700">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" /> {error}
         </p>
       )}
     </section>

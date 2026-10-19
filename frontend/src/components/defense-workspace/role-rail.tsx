@@ -116,7 +116,7 @@ export function RoleRail({
               {startDefense.isPending ? "Starting…" : "Start Defense"}
             </Button>
             {startDefense.isError && (
-              <p className="mt-2 text-[14px] text-red-600">
+              <p role="alert" className="mt-2 break-words text-[14px] text-red-600">
                 {(startDefense.error as Error)?.message || "Could not start the defense."}
               </p>
             )}
@@ -193,7 +193,7 @@ export function RoleRail({
 
         {/* Committee roster — compact, expandable. */}
         <details className="group">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-[15px] font-semibold text-(--earist-primary)">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-(--earist-border-gray) px-3 py-2 text-[15px] font-semibold text-(--earist-primary) outline-none focus-visible:ring-2 focus-visible:ring-(--earist-primary)/40">
             Committee roster
             <ChevronDown
               aria-hidden="true"

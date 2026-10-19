@@ -7,7 +7,7 @@
  * recoverable failure (the parent remounts to clear after success).
  */
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +41,8 @@ export function AnnotationCommentComposer({
 }: AnnotationCommentComposerProps) {
   const [value, setValue] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
+  const errorId = useId();
+  const countId = useId();
 
   const trimmedEmpty = value.trim().length === 0;
 
@@ -63,7 +65,11 @@ export function AnnotationCommentComposer({
         autoFocus={autoFocus}
         maxLength={MAX_COMMENT_LENGTH}
         disabled={isPending}
-        aria-label={submitLabel}
+        aria-label="Comment body"
+        aria-invalid={Boolean(localError || error)}
+        aria-describedby={
+          localError || error ? `${errorId} ${countId}` : countId
+        }
         onChange={(event) => {
           setValue(event.target.value);
           if (localError) setLocalError(null);
@@ -96,14 +102,16 @@ export function AnnotationCommentComposer({
           </Button>
         )}
         <span
+          id={countId}
           className="ml-auto text-[11px] tabular-nums text-(--earist-body-text)"
-          aria-hidden="true"
         >
-          {value.length}/{MAX_COMMENT_LENGTH}
+          {value.length}/{MAX_COMMENT_LENGTH} characters
         </span>
       </div>
       {(localError || error) && (
-        <p className="text-xs text-red-600">{localError ?? error}</p>
+        <p id={errorId} role="alert" className="break-words text-xs text-red-600">
+          {localError ?? error}
+        </p>
       )}
     </div>
   );
