@@ -200,8 +200,15 @@ export class DefenseWorkspaceService {
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
 
-    // CP6: assignment auth BEFORE role-safe DTO assembly.
-    const myAssignment = await this.resolveOwnAssignment(scheduleId, userId);
+    // CP6: assignment auth BEFORE role-safe DTO assembly. The exact roster is
+    // already loaded with the schedule, so resolve the caller's assignment from
+    // that same authoritative snapshot instead of issuing a redundant query.
+    const myAssignment = schedule.panelAssignments.find(
+      (assignment) => assignment.userId === userId,
+    );
+    if (!myAssignment) {
+      throw new AppError("You are not assigned to this defense session.", 403);
+    }
     const role = String(myAssignment.role) as WorkspaceRole;
     const defenseType = String(schedule.defenseType);
     const isEvaluator = isEvaluatorRole(role, defenseType);

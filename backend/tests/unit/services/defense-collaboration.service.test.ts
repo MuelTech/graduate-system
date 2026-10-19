@@ -484,8 +484,20 @@ describe("DefenseCollaborationService (CDW-1)", () => {
 
   it("CDW-5: read-only roles never get an editable empty report", async () => {
     for (const role of ["CHAIRMAN", "PANELIST", "ADVISER", "FACILITATOR"]) {
-      prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [] }));
-      prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow(role));
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+        scheduleRow({
+          rapReports: [],
+          panelAssignments: [
+            {
+              id: `pa-${role}`,
+              scheduleId: "sched-1",
+              userId: `u-${role}`,
+              role,
+              user: { firstName: role[0], lastName: "X" },
+            },
+          ],
+        }),
+      );
       const model = await svc.getReportReadModel("sched-1", `u-${role}`);
       expect(model.canEditBody).toBe(false);
     }

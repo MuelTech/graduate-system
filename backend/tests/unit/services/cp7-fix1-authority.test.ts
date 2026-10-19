@@ -87,6 +87,7 @@ const scheduleBase = {
       { id: "t2", titleText: "Title Two", isSelected: false },
     ],
   },
+  panelAssignments: [],
 };
 
 describe("CP7-FIX1 Issue 1: legacy RAP distribute cannot mutate lifecycle", () => {

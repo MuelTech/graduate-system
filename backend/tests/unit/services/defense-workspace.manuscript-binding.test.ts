@@ -53,7 +53,7 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
       [{ defenseStage: "PROPOSAL_DEFENSE", status: "ISSUED", reviewedDocumentId: "doc-p" }],
     ),
     panelAssignments: [
-      { id: "pa-eval", role: "PANELIST", user: { id: "u-eval", firstName: "Eva", lastName: "Evaluator" } },
+      { id: "pa-eval", userId: "u-eval", role: "PANELIST", user: { id: "u-eval", firstName: "Eva", lastName: "Evaluator" } },
     ],
     oralExamScores: [{ panelId: "pa-eval", status: "DRAFT" }],
     ...overrides,

@@ -789,7 +789,14 @@ export class DefenseCollaborationService {
 
   async getReportReadModel(scheduleId: string, userId: string): Promise<ReportReadModel> {
     const { schedule, rap } = await this.loadSchedule(scheduleId);
-    const assignment = await this.resolveAssignment(scheduleId, userId);
+    // The exact roster is already part of the attempt snapshot. Resolve the
+    // caller's assignment from it rather than re-querying the same assignment.
+    const assignment = schedule.panelAssignments.find(
+      (candidate) => candidate.userId === userId,
+    );
+    if (!assignment) {
+      throw new AppError("You are not assigned to this defense session.", 403);
+    }
     const reportStatus = rap ? String(rap.status) : "NOT_CREATED";
     const body = (rap?.bodyDocument ?? null) as CanonicalReportDocument | null;
     const student = schedule.thesis?.student;
