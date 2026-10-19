@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 AUTHORIZED / NOT STARTED
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399`; project-owner visual QA pending
 
 ---
 
@@ -382,7 +382,25 @@ Security focus:
 
 ### ADV-3 — My Advisees main workspace
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS — PROJECT-OWNER VISUAL QA PENDING
+
+Implementation:
+- `69f55d83d79a318c16d7a30207821ba10b19f399` — `feat(adviser): add my advisees workspace`
+- independent remote source review: PASS
+- reported focused verification: frontend TypeScript PASS; scoped ESLint PASS; ADV-3 verifier 11/11 PASS; `git diff --check` PASS
+- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual inspection pending
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- backend/schema changes: NONE
+
+Implemented result:
+- new `/panelist/advisees` parent workspace consumes the accepted single `GET /thesis/adviser/workspace` read model;
+- three modes are present: Active Advisees, Incoming Requests, Review Tasks;
+- My Advisees is discoverable in Panelist navigation while legacy Adviser Requests / Adviser Reviews entries remain for compatibility until ADV-7;
+- active-advisee cards do not infer a current working title from historical Title Defense wording;
+- Incoming Requests reuse the existing GS-020 status helpers and label historical wording as `Title Defense title`;
+- Review Tasks use faculty-facing stage/status wording and retain existing Adviser Reviews as the mutation surface;
+- loading, error/integrity, and empty states are distinct;
+- no advisee-detail route, request/review mutation consolidation, history/documents exposure, redirects, or later ADV package work was introduced.
 
 Goal: implement the parent Adviser workspace.
 
