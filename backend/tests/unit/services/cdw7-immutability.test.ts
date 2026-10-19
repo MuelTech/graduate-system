@@ -135,9 +135,13 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
       Promise.resolve(fn(prismaMock)),
     );
     prismaMock.rapReportSignature.updateMany.mockResolvedValue({ count: 1 });
-    vi.spyOn(RapReportService.prototype, "recomputeRapStatus").mockResolvedValue(
-      "PARTIALLY_SIGNED",
-    );
+    vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    ).mockResolvedValue({
+      status: "PARTIALLY_SIGNED",
+      transitionedToFinalized: false,
+    });
   });
 
   it("rejects a LEGACY (no frozen hash) RAP when the attempt is CONCLUDED", async () => {
@@ -233,9 +237,13 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
   });
 
   it("CDW-8B: reports finalizedNow only when this signature finalizes the RAP", async () => {
-    vi.spyOn(RapReportService.prototype, "recomputeRapStatus").mockResolvedValue(
-      "FINALIZED",
-    );
+    vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    ).mockResolvedValue({
+      status: "FINALIZED",
+      transitionedToFinalized: true,
+    });
     prismaMock.rapReportSignature.findUnique.mockResolvedValue(
       slot({
         rapReport: {
@@ -254,5 +262,33 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
 
     expect(result.finalizedNow).toBe(true);
     expect(result.status).toBe("FINALIZED");
+  });
+
+  it("CDW-9B: does not claim finalizedNow when another concurrent signer won the transition", async () => {
+    vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    ).mockResolvedValue({
+      status: "FINALIZED",
+      transitionedToFinalized: false,
+    });
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        rapReport: {
+          ...slot().rapReport,
+          status: "PARTIALLY_SIGNED",
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
+        },
+      }),
+    );
+
+    const result = await svc.signRapSlot(
+      "sig-1",
+      "u-panel",
+      "data:image/png;base64,AAAA",
+    );
+
+    expect(result.status).toBe("FINALIZED");
+    expect(result.finalizedNow).toBe(false);
   });
 });

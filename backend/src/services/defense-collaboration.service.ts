@@ -1285,7 +1285,10 @@ export class DefenseCollaborationService {
     });
 
     // Monotonic aggregate recompute (finalizes once all required slots are signed).
-    const status = await this.rapService.recomputeRapStatus(result.rapId);
+    const recompute = await this.rapService.recomputeRapStatusWithTransition(
+      result.rapId,
+    );
+    const status = recompute.status;
     const slots = await prisma.rapReportSignature.findMany({
       where: { rapId: result.rapId },
       select: { required: true, isSigned: true },
@@ -1298,7 +1301,7 @@ export class DefenseCollaborationService {
       reportId: result.rapId,
       contentVersion: result.contentVersion,
       contentHash: result.contentHash,
-      finalizedNow: status === "FINALIZED",
+      finalizedNow: recompute.transitionedToFinalized,
       signatureProgress: { required: requiredSlots.length, signed: signedSlots.length },
     };
   }

@@ -411,21 +411,20 @@ export class RapReportService {
         rapId: slot.rapId,
         scheduleId: rap?.schedule?.id ?? null,
         contentVersion: rap?.contentVersion ?? 0,
-        previousStatus: String(rap?.status ?? ""),
       };
     });
 
-    // CP7-FIX1: committed-state recompute (never downgrades FINALIZED).
-    const status = await this.recomputeRapStatus(transactionResult.rapId);
+    // CP7-FIX1 / CDW-9B: committed-state recompute (never downgrades FINALIZED).
+    const recompute = await this.recomputeRapStatusWithTransition(
+      transactionResult.rapId,
+    );
     return {
       signatureId: sigId,
       rapId: transactionResult.rapId,
       scheduleId: transactionResult.scheduleId,
       contentVersion: transactionResult.contentVersion,
-      status,
-      finalizedNow:
-        transactionResult.previousStatus !== "FINALIZED" &&
-        status === "FINALIZED",
+      status: recompute.status,
+      finalizedNow: recompute.transitionedToFinalized,
     };
   }
 
@@ -436,6 +435,24 @@ export class RapReportService {
   async recomputeRapStatus(
     rapId: string,
   ): Promise<"FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED"> {
+    return (await this.recomputeRapStatusWithTransition(rapId)).status;
+  }
+
+  /**
+   * CDW-9B: aggregate recompute with truthful transition metadata.
+   *
+   * `transitionedToFinalized` is true only for the request that actually moves
+   * the aggregate to FINALIZED. A concurrent request that observes an already
+   * final RAP returns FINALIZED with false, so callers cannot claim a transition
+   * another request won. The returned status also re-reads the winner when a
+   * conditional update loses, preventing a stale PARTIALLY_SIGNED response.
+   */
+  async recomputeRapStatusWithTransition(
+    rapId: string,
+  ): Promise<{
+    status: "FOR_SIGNATURE" | "PARTIALLY_SIGNED" | "FINALIZED";
+    transitionedToFinalized: boolean;
+  }> {
     const slots = await prisma.rapReportSignature.findMany({
       where: { rapId },
       select: { required: true, isSigned: true },
@@ -455,17 +472,19 @@ export class RapReportService {
       where: { id: rapId },
       select: { status: true, finalizedAt: true },
     });
-    if (!current) return next;
+    if (!current) {
+      return { status: next, transitionedToFinalized: false };
+    }
 
-    // Never downgrade FINALIZED.
+    // Never downgrade FINALIZED. Repair an anomalous missing timestamp once only.
     if (current.status === "FINALIZED") {
       if (!current.finalizedAt) {
-        await prisma.rapReport.update({
-          where: { id: rapId },
+        await prisma.rapReport.updateMany({
+          where: { id: rapId, status: "FINALIZED", finalizedAt: null },
           data: { finalizedAt: new Date() },
         });
       }
-      return "FINALIZED";
+      return { status: "FINALIZED", transitionedToFinalized: false };
     }
 
     if (next === "FINALIZED") {
@@ -479,19 +498,39 @@ export class RapReportService {
           where: { id: rapId },
           select: { status: true },
         });
-        if (winner?.status === "FINALIZED") return "FINALIZED";
+        if (winner?.status === "FINALIZED") {
+          return { status: "FINALIZED", transitionedToFinalized: false };
+        }
+        return {
+          status:
+            winner?.status === "PARTIALLY_SIGNED"
+              ? "PARTIALLY_SIGNED"
+              : winner?.status === "FOR_SIGNATURE"
+                ? "FOR_SIGNATURE"
+                : next,
+          transitionedToFinalized: false,
+        };
       }
-      return "FINALIZED";
+      return { status: "FINALIZED", transitionedToFinalized: true };
     }
 
-    await prisma.rapReport.updateMany({
+    const result = await prisma.rapReport.updateMany({
       where: {
         id: rapId,
         status: { notIn: ["FINALIZED"] },
       },
       data: { status: next },
     });
-    return next;
+    if (result.count === 0) {
+      const winner = await prisma.rapReport.findUnique({
+        where: { id: rapId },
+        select: { status: true },
+      });
+      if (winner?.status === "FINALIZED") {
+        return { status: "FINALIZED", transitionedToFinalized: false };
+      }
+    }
+    return { status: next, transitionedToFinalized: false };
   }
 
   /**

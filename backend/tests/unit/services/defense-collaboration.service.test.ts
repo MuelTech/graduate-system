@@ -628,6 +628,27 @@ describe("DefenseCollaborationService (CDW-1 final-review fixes)", () => {
     );
   });
 
+  it("CDW-9B: returns the winning artifact when a concurrent freeze wins the update", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [rapRow({ bodyDocument: VALID_BODY, bodyVersion: 4 })] }),
+    );
+    prismaMock.rapReport.updateMany.mockResolvedValue({ count: 0 });
+    prismaMock.rapReport.findUnique.mockResolvedValue({
+      status: "FOR_SIGNATURE",
+      contentVersion: 1,
+      frozenContentHash: "a".repeat(64),
+    });
+
+    const result = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
+    expect(result).toMatchObject({
+      alreadyFrozen: true,
+      contentVersion: 1,
+      contentHash: "a".repeat(64),
+      status: "FOR_SIGNATURE",
+    });
+    expect(prismaMock.rapReportSignature.createMany).not.toHaveBeenCalled();
+  });
+
   it("treats an empty/whitespace parentCommentId as no parent (no FK error)", async () => {
     prismaMock.defenseAnnotation.findUnique.mockResolvedValue({ id: "ann-1", scheduleId: "sched-1" });
     prismaMock.defenseAnnotationComment.create.mockResolvedValue({

@@ -761,10 +761,10 @@ test("no CRDT/presence/cursor/typing/Redis stack was introduced", () => {
   assert.doesNotMatch(combined, /presence|cursor|typing indicator|redis/i);
 });
 
-test("CDW-9 remains not started and is not implemented by this package", () => {
+test("CDW-9A is accepted and CDW-9B is the next authorized package", () => {
   const plan = read(
     "../docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md",
   );
-  assert.match(plan, /CDW-9/);
-  assert.doesNotMatch(plan, /CDW-9[^\n]*ACCEPTED/);
+  assert.match(plan, /CDW-9A is ACCEPTED \/ CLOSED/);
+  assert.match(plan, /CDW-9B is NEXT \/ AUTHORIZED/);
 });

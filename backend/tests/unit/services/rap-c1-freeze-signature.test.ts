@@ -35,6 +35,7 @@ vi.mock("../../../src/services/official-defense-record.service", () => ({
 }));
 
 import { DefenseCollaborationService } from "../../../src/services/defense-collaboration.service";
+import { RapReportService } from "../../../src/services/rap-report.service";
 import { AppError } from "../../../src/utils/AppError";
 
 prismaMock.$transaction.mockImplementation(
@@ -393,10 +394,11 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
   });
 
-  it("rejects duplicate signing deterministically (409)", async () => {
+  it("rejects duplicate signing deterministically (409) without rewriting evidence", async () => {
     signerSlot("PANELIST");
     prismaMock.rapReportSignature.findFirst.mockResolvedValue({ id: "sig-PANELIST", required: true, isSigned: true });
     await expect(svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE)).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
   });
 
   it("rejects signing before freeze (RAP not frozen)", async () => {
@@ -431,6 +433,26 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     expect(result.reportId).toBe("rap-1");
     expect(result.finalizedNow).toBe(true);
     expect(result.signatureProgress).toEqual({ required: 3, signed: 3 });
+  });
+
+  it("CDW-9B: does not claim finalizedNow when another concurrent signer won the transition", async () => {
+    signerSlot("PANELIST");
+    vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    ).mockResolvedValue({
+      status: "FINALIZED",
+      transitionedToFinalized: false,
+    });
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
+      { required: true, isSigned: true },
+      { required: true, isSigned: true },
+      { required: true, isSigned: true },
+    ]);
+
+    const result = await svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE);
+    expect(result.status).toBe("FINALIZED");
+    expect(result.finalizedNow).toBe(false);
   });
 });
 

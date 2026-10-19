@@ -221,9 +221,13 @@ describe("CDW-7 acceptance — legacy signing route binds the frozen RAP snapsho
       Promise.resolve(fn(prismaMock)),
     );
     prismaMock.rapReportSignature.updateMany.mockResolvedValue({ count: 1 });
-    vi.spyOn(RapReportService.prototype, "recomputeRapStatus").mockResolvedValue(
-      "PARTIALLY_SIGNED",
-    );
+    vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    ).mockResolvedValue({
+      status: "PARTIALLY_SIGNED",
+      transitionedToFinalized: false,
+    });
   });
 
   it("C1: canonical frozen RAP → signature stores the frozen hash and version", async () => {

@@ -22,7 +22,7 @@ import { AlertCircle, CheckCircle2, Lock, PenLine } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { apiClientRequest } from "@/lib/api.client";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
 
 import { CommitteeReportSignatureDialog } from "./committee-report-signature-dialog";
 
@@ -99,8 +99,19 @@ export function RapSignaturePanel({
       setFinalizeError(null);
       await invalidate();
     },
-    onError: (error: Error) =>
-      setFinalizeError(error.message || FINALIZATION_ERROR),
+    onError: (error: Error) => {
+      if (error instanceof ApiError && error.statusCode === 409) {
+        // CDW-9B: the report changed/was finalized elsewhere. Refresh and force
+        // a fresh review instead of leaving a stale confirmation action.
+        setConfirmingFinalize(false);
+        setFinalizeError(
+          error.message || "The Committee Report changed. Review the latest saved report and try again.",
+        );
+        void invalidate();
+        return;
+      }
+      setFinalizeError(error.message || FINALIZATION_ERROR);
+    },
     onSettled: () => {
       finalizingRef.current = false;
     },
@@ -123,8 +134,19 @@ export function RapSignaturePanel({
       setSignError(null);
       await invalidate();
     },
-    onError: (error: Error) =>
-      setSignError(error.message || "The signature could not be recorded. Please try again."),
+    onError: (error: Error) => {
+      if (error instanceof ApiError && error.statusCode === 409) {
+        // CDW-9B: another client may have signed this slot or completed the
+        // report. Close the stale dialog, never resubmit, and refetch authority.
+        setSignDialogOpen(false);
+        setSignError(null);
+        void invalidate();
+        return;
+      }
+      setSignError(
+        error.message || "The signature could not be recorded. Please try again.",
+      );
+    },
   });
 
   if (!frozen) {
@@ -154,6 +176,12 @@ export function RapSignaturePanel({
         {!confirmingFinalize && !canFinalize && (
           <p className="mt-2 text-[13px] text-(--earist-body-text)">
             Add report content before finalizing the Committee Report.
+          </p>
+        )}
+
+        {!confirmingFinalize && finalizeError && (
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-red-700">
+            <AlertCircle className="h-4 w-4" /> {finalizeError}
           </p>
         )}
 
