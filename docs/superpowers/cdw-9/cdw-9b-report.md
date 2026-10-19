@@ -8,13 +8,13 @@
   - `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a` — initial CDW-9B hardening
   - `cf355e91fda61482cded906868286fe82d9e80f9` — FIX-1 finalization boundary and signature retry convergence
   - `7a4ff5baa90e6d5eb7fb2e058dc7f1b614e8be55` — FIX-2 legacy duplicate-retry state guard
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Schema change:** NONE
 - **Migration:** NONE
 - **Manual browser concurrency QA:** NOT EXECUTED
-- **CDW-9C:** PLANNED / NOT YET IMPLEMENTED — NOT STARTED
-- **Next authorized implementation authority:** CDW-9B review/acceptance; CDW-9C is not authorized automatically
+- **CDW-9C:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED
+- **Next authorized implementation authority:** CDW-9C, subject to explicit project-owner authorization
 
 ---
 
@@ -308,4 +308,26 @@ The previously waived full pre-CDW-9 multi-user replay remains
 - FIX-4 arithmetic: **NO CHANGE**.
 - Verdict authority: **NO CHANGE**.
 - Realtime persisted-event count: **NO CHANGE**.
-- CDW-9C: **NOT STARTED**.
+- CDW-9C: **NEXT / AUTHORIZED — NOT YET IMPLEMENTED; NOT STARTED**.
+
+---
+
+## 9. Independent Acceptance
+
+Independent remote source review: **PASS**.
+
+- the actual pushed source and diffs were independently reviewed;
+- initial CDW-9B, FIX-1, and FIX-2 were reviewed;
+- no remaining blocking CDW-9B defect was found;
+- no schema/migration change;
+- signer policy unchanged;
+- FIX-6 parallel sequencing unchanged;
+- Chairman verdict authority unchanged;
+- realtime persisted-event count unchanged.
+
+Manual/browser concurrency QA remains **NOT EXECUTED**. The previously waived
+full pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**. Hosted CI remains
+**NOT OBSERVED / NOT CLAIMED**. These are not Manual QA or full E2E PASS results.
+
+**CDW-9B is ACCEPTED / CLOSED. CDW-9C is NEXT / AUTHORIZED — NOT YET
+IMPLEMENTED.**
