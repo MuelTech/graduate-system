@@ -187,3 +187,21 @@ test("FIX-7: mobile Add comment stays contextual with a safe gap from native too
     /fixed bottom-\[calc\(env\(safe-area-inset-bottom\)\+1rem\)\]/,
   );
 });
+
+
+test("FIX-8: desktop left-click dismisses a pending selection draft", () => {
+  const source = read(PAGE);
+  const mouseStart = source.indexOf("const handleMouseUp = useCallback");
+  const mouseEnd = source.indexOf("const finalizePendingSelection", mouseStart);
+  const mouseHandler = source.slice(mouseStart, mouseEnd);
+
+  assert.match(mouseHandler, /button: number/);
+  assert.match(mouseHandler, /if \(event\.button !== 0\) return;/);
+  assert.match(mouseHandler, /if \(processSelection\(\)\) return;/);
+  assert.match(
+    mouseHandler,
+    /if \(pendingAnchor\) \{\s*callbacksRef\.current\.onCancelPendingSelection\?\.\(\);\s*\}/,
+  );
+  assert.match(mouseHandler, /denormalizeRects/);
+  assert.match(mouseHandler, /onAnnotationSelect\(hit\.id\)/);
+});

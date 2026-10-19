@@ -309,13 +309,22 @@ export function ManuscriptPage({
   }, [clearTouchTimers, scheduleTouchSelection]);
 
   const handleMouseUp = useCallback(
-    (event: { clientX: number; clientY: number }) => {
+    (event: { clientX: number; clientY: number; button: number }) => {
+      if (event.button !== 0) return;
+
       const selection = window.getSelection();
       // Mobile browsers may synthesize mouse events after long-press. Do not
       // let that compatibility mouseup consume an adjustable native selection.
       if (touchSelectingRef.current && selection && !selection.isCollapsed) return;
 
       if (processSelection()) return;
+
+      // A normal desktop left-click with no new range dismisses any unsaved
+      // selection draft. This mirrors native selection cancellation while still
+      // allowing the same click to hit-test a stored annotation below.
+      if (pendingAnchor) {
+        callbacksRef.current.onCancelPendingSelection?.();
+      }
 
       const pageContainer = pageRef.current;
       if (!pageContainer) return;
@@ -341,7 +350,7 @@ export function ManuscriptPage({
       );
       if (hit) onAnnotationSelect(hit.id);
     },
-    [annotations, onAnnotationSelect, processSelection],
+    [annotations, onAnnotationSelect, pendingAnchor, processSelection],
   );
 
   const finalizePendingSelection = useCallback(() => {
