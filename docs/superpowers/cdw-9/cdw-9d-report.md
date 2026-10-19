@@ -5,14 +5,14 @@
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `63adf1879611fbb423c1e3cee39b96febfe2fdf3`
 - **Implementation commit:** `801f3524282b71ecf7cb6f9f7e2b725680709064`
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Schema change:** NONE
 - **Migration:** NONE
 - **Frontend change:** NONE
 - **Targeted CDW-9D Manual QA:** NOT EXECUTED
 - **Hosted CI:** NOT OBSERVED / NOT CLAIMED
-- **CDW-9E:** PLANNED / NOT YET IMPLEMENTED — NOT STARTED
+- **CDW-9E:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED
 
 ---
 
@@ -162,6 +162,8 @@ No index was added or changed.
 
 ## 10. Verification
 
+Agent-local reported verification results:
+
 | Check | Result |
 |---|---|
 | CDW-9D performance harness | **6 passed / 0 failed** |
@@ -174,7 +176,51 @@ No index was added or changed.
 | Hosted CI | **NOT OBSERVED / NOT CLAIMED** |
 | Targeted CDW-9D Manual QA | **NOT EXECUTED** |
 
-## 11. Known limitations
+## 11. Independent Acceptance
+
+**Independent remote source/diff review: PASS**
+
+The review confirmed:
+
+- measurement preceded production optimization;
+- the only accepted product optimization removed redundant assignment reads
+  from:
+  - `DefenseWorkspaceService.getWorkspace()`
+  - `DefenseCollaborationService.getReportReadModel()`;
+- both paths resolve the caller from the exact `panelAssignments` snapshot
+  already loaded for the schedule;
+- unassigned callers still fail with the same `403` authorization outcome;
+- no authorization widening occurred;
+- product payload/DTO behavior remained unchanged;
+- annotation pagination/lazy loading was correctly not introduced;
+- caching was not introduced;
+- no index/schema/migration change was introduced;
+- the 20-second workspace polling fallback was unchanged;
+- realtime behavior/event taxonomy was unchanged;
+- manuscript bytes/storage behavior was unchanged;
+- role/signer/verdict authority was unchanged.
+
+Evidence limitation:
+
+- mocked Prisma/service timings are **not production/MySQL latency evidence**;
+- no trustworthy MySQL `EXPLAIN` was available;
+- the strongest evidence for the accepted optimization is deterministic
+  top-level Prisma call reduction:
+  - Workspace: **2 → 1**
+  - Committee Report: **2 → 1**;
+- local manuscript filesystem throughput is not browser/network production
+  performance.
+
+No remaining blocking CDW-9D defect was found.
+
+The agent-local performance harness and automated suites above were not
+independently re-run. Targeted CDW-9D Manual QA: **NOT EXECUTED**. Hosted CI:
+**NOT OBSERVED / NOT CLAIMED**.
+
+**CDW-9D is ACCEPTED / CLOSED. CDW-9E is NEXT / AUTHORIZED — NOT YET
+IMPLEMENTED.**
+
+## 12. Known limitations
 
 - Timings are service-harness measurements with mocked Prisma/DB I/O; they do
   not represent production database or network latency.
@@ -182,4 +228,4 @@ No index was added or changed.
 - The large-manuscript fixture models transfer size and page count but not
   browser PDF parsing/rendering.
 - No browser/multi-user performance QA was executed.
-- CDW-9D remains pending independent review and is not marked accepted here.
+- CDW-9E has not started.
