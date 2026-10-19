@@ -51,6 +51,10 @@ export function ManuscriptPage({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textLayerRef = useRef<HTMLDivElement | null>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
+  const touchSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const touchSelectingRef = useRef(false);
   const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
 
   // Keep callbacks in a ref so unstable identities never restart the render loop.
@@ -125,56 +129,102 @@ export function ManuscriptPage({
     };
   }, [pdfjs, pdf, pageNumber, scale]);
 
+  /**
+   * ONE anchor-building path for desktop mouse selection and touch/mobile
+   * native selection. Returns true only when a candidate anchor was created and
+   * the browser selection was consumed by the Add Comment flow.
+   */
+  const processSelection = useCallback((): boolean => {
+    const selection = window.getSelection();
+    const textLayerContainer = textLayerRef.current;
+    const pageContainer = pageRef.current;
+    if (!textLayerContainer || !pageContainer) return false;
+
+    if (!selection || selection.isCollapsed) return false;
+
+    // Read-only viewers (Rapporteur/Adviser/Facilitator, frozen/concluded,
+    // Proposal Context) keep normal selection + copy: do not anchor and do
+    // NOT clear the browser selection.
+    if (!callbacksRef.current.onTextSelection) return false;
+
+    const anchorNode = selection.anchorNode;
+    const focusNode = selection.focusNode;
+    const inside =
+      (anchorNode && textLayerContainer.contains(anchorNode)) ||
+      (focusNode && textLayerContainer.contains(focusNode));
+    if (!inside) return false;
+
+    const selectedText = selection.toString().replace(/\s+/g, " ").trim();
+    if (!selectedText) return false;
+
+    const box = pageContainer.getBoundingClientRect();
+    const clientRects: PageRect[] = [];
+    for (let i = 0; i < selection.rangeCount; i += 1) {
+      const range = selection.getRangeAt(i);
+      for (const rect of Array.from(range.getClientRects())) {
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        clientRects.push({
+          left: rect.left - box.left,
+          top: rect.top - box.top,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+    }
+    if (clientRects.length === 0) return false;
+
+    if (touchSelectionTimerRef.current) {
+      clearTimeout(touchSelectionTimerRef.current);
+      touchSelectionTimerRef.current = null;
+    }
+
+    const anchor = buildAnchor({
+      pageNumber,
+      selectedText,
+      clientRects,
+      page: { width: box.width, height: box.height },
+    });
+    callbacksRef.current.onTextSelection?.(anchor);
+    selection.removeAllRanges();
+    return true;
+  }, [pageNumber]);
+
+  const scheduleTouchSelection = useCallback(() => {
+    if (!touchSelectingRef.current) return;
+    if (touchSelectionTimerRef.current) {
+      clearTimeout(touchSelectionTimerRef.current);
+    }
+    // Let native selection handles settle before creating one candidate anchor.
+    touchSelectionTimerRef.current = setTimeout(() => {
+      touchSelectionTimerRef.current = null;
+      processSelection();
+    }, 180);
+  }, [processSelection]);
+
+  useEffect(() => {
+    const onSelectionChange = () => {
+      if (!touchSelectingRef.current) return;
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      scheduleTouchSelection();
+    };
+
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", onSelectionChange);
+      if (touchSelectionTimerRef.current) {
+        clearTimeout(touchSelectionTimerRef.current);
+        touchSelectionTimerRef.current = null;
+      }
+    };
+  }, [scheduleTouchSelection]);
+
   const handleMouseUp = useCallback(
     (event: { clientX: number; clientY: number }) => {
-      const selection = window.getSelection();
-      const textLayerContainer = textLayerRef.current;
+      if (processSelection()) return;
+
       const pageContainer = pageRef.current;
-      if (!textLayerContainer || !pageContainer) return;
-
-      // A drag selection becomes a candidate anchor (never persisted here).
-      if (selection && !selection.isCollapsed) {
-        // Read-only viewers (Rapporteur/Adviser/Facilitator, frozen/concluded,
-        // Proposal Context) keep normal selection + copy: do not anchor and do
-        // NOT clear the browser selection.
-        if (!callbacksRef.current.onTextSelection) return;
-
-        const anchorNode = selection.anchorNode;
-        const focusNode = selection.focusNode;
-        const inside =
-          (anchorNode && textLayerContainer.contains(anchorNode)) ||
-          (focusNode && textLayerContainer.contains(focusNode));
-        if (!inside) return;
-
-        const selectedText = selection.toString().replace(/\s+/g, " ").trim();
-        if (!selectedText) return;
-
-        const box = pageContainer.getBoundingClientRect();
-        const clientRects: PageRect[] = [];
-        for (let i = 0; i < selection.rangeCount; i += 1) {
-          const range = selection.getRangeAt(i);
-          for (const rect of Array.from(range.getClientRects())) {
-            if (rect.width <= 0 || rect.height <= 0) continue;
-            clientRects.push({
-              left: rect.left - box.left,
-              top: rect.top - box.top,
-              width: rect.width,
-              height: rect.height,
-            });
-          }
-        }
-        if (clientRects.length === 0) return;
-
-        const anchor = buildAnchor({
-          pageNumber,
-          selectedText,
-          clientRects,
-          page: { width: box.width, height: box.height },
-        });
-        callbacksRef.current.onTextSelection?.(anchor);
-        selection.removeAllRanges();
-        return;
-      }
+      if (!pageContainer) return;
 
       // A collapsed click: hit-test existing highlights so a highlight opens its
       // thread WITHOUT making the overlay intercept text selection (the overlay
@@ -197,11 +247,32 @@ export function ManuscriptPage({
       );
       if (hit) onAnnotationSelect(hit.id);
     },
-    [annotations, onAnnotationSelect, pageNumber],
+    [annotations, onAnnotationSelect, processSelection],
   );
 
   return (
-    <div ref={pageRef} className="mwPage" onMouseUp={handleMouseUp}>
+    <div
+      ref={pageRef}
+      className="mwPage"
+      onMouseUp={handleMouseUp}
+      onPointerDown={(event) => {
+        touchSelectingRef.current = event.pointerType === "touch";
+        if (event.pointerType !== "touch" && touchSelectionTimerRef.current) {
+          clearTimeout(touchSelectionTimerRef.current);
+          touchSelectionTimerRef.current = null;
+        }
+      }}
+      onPointerUp={(event) => {
+        if (event.pointerType === "touch") scheduleTouchSelection();
+      }}
+      onPointerCancel={() => {
+        touchSelectingRef.current = false;
+        if (touchSelectionTimerRef.current) {
+          clearTimeout(touchSelectionTimerRef.current);
+          touchSelectionTimerRef.current = null;
+        }
+      }}
+    >
       <canvas ref={canvasRef} className="mwCanvas" />
       <div ref={textLayerRef} className="mwTextLayer" />
       {pageSize && (
