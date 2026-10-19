@@ -5,8 +5,8 @@
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `494514bc88c422f0629d74e6989eb50b23f10e7a`
 - **Test/evidence commit:** `38379267aa679bd5a8763129be5bff41f1fe7fe2`
-- **Final documentation HEAD:** the commit that contains this report (reported in the final Git result)
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Implementation ending HEAD:** `41b2239e2cc9157c35c60787c0bdd816731f6e2e`
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-20
 - **Product-code change:** **NONE**
 - **Schema change:** **NONE**
@@ -14,7 +14,7 @@
 - **Manual/browser QA:** **NOT EXECUTED**
 - **Hosted CI:** **NOT OBSERVED / NOT CLAIMED**
 - **CDW-9A through CDW-9E:** ACCEPTED / CLOSED
-- **CDW-9:** NOT COMPLETE — final acceptance remains an independent-review decision
+- **CDW-9:** COMPLETE / CLOSED
 
 ---
 
@@ -319,9 +319,60 @@ rehearsal was performed in this package.
 - Exactly the nine persisted realtime events remain; `report:preview` remains
   ephemeral.
 - `main` was not merged, rebased, reset, or force-pushed.
-- CDW-9F is **not** marked ACCEPTED / CLOSED by this report; CDW-9 is **not**
-  marked COMPLETE.
+- The implementation/evidence commits did not self-accept CDW-9F. Independent
+  remote review subsequently accepted the package and closed CDW-9.
 
 ## 9. Recommendation
 
 **READY FOR INDEPENDENT CDW-9F REVIEW.**
+
+
+## 10. Independent acceptance
+
+**Independent remote source/diff review: PASS.**
+
+The independent review verified the exact remote branch at implementation ending
+HEAD `41b2239e2cc9157c35c60787c0bdd816731f6e2e` and confirmed the expected linear
+package history:
+
+`494514bc88c422f0629d74e6989eb50b23f10e7a`
+→ `38379267aa679bd5a8763129be5bff41f1fe7fe2`
+→ `41b2239e2cc9157c35c60787c0bdd816731f6e2e`.
+
+Independent scope review confirmed:
+
+- the evidence commit changes only the new CDW-9F migration-readiness test and
+  two superseded verifier assertions;
+- the documentation commit changes only the CDW-9F report, implementation plan,
+  and the two canonical Source-of-Truth status lines;
+- no product code, Prisma schema, or migration was changed by CDW-9F;
+- the verifier reconciliations match already-accepted contracts rather than
+  weakening current behavior;
+- the repository contains 37 ordered migration directories from
+  `20260714133043_init` through
+  `20261018090000_oral_evaluation_scoring_version`;
+- the CDW migrations were spot-checked as forward/additive, preserving legacy
+  outcomes and defaulting pre-existing scoring rows to `LEGACY_POINTS_V1`;
+- current source preserves explicit CORS origin parsing, shared REST/Socket.IO
+  JWT verification, server-derived defense-room authorization, private document
+  authorization, safe frontend document proxying, exact historical manuscript
+  binding, legacy report provenance, and the canonical nine persisted realtime
+  events.
+
+The agent-local executable evidence is accepted as reported: full backend tests,
+focused compatibility suites, frontend type/lint/build checks, all CDW verifier
+scripts, and both disposable-database migration replays passed. Those commands
+were not re-executed by the connector-only independent review and are not
+represented as independently executed tests.
+
+Manual/browser multi-user QA, hosted CI, production-topology migration,
+backup/restore rehearsal, and reverse-proxy WebSocket testing remain truthfully
+**NOT EXECUTED / NOT OBSERVED** for CDW-9F. They remain deployment/operator
+considerations rather than hidden PASS claims. CDW-9F introduced no product-code
+change, and the project owner's prior practical mobile/desktop UX acceptance for
+CDW-9E remains the latest browser interaction evidence.
+
+**CDW-9F is ACCEPTED / CLOSED. CDW-9 is COMPLETE / CLOSED.**
+
+Per the accepted STOP boundary, no later initiative is authorized or started by
+this acceptance.

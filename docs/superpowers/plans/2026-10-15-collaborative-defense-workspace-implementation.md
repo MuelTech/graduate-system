@@ -11,10 +11,10 @@
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
 **Latest acceptance reconciliation:** docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md<br>
-**Current package:** CDW-9F — Migration / Read Compatibility and Final Production-Readiness Gate (IMPLEMENTED / PENDING INDEPENDENT REVIEW)<br>
+**Current package:** CDW-9F — Migration / Read Compatibility and Final Production-Readiness Gate (ACCEPTED / CLOSED)<br>
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is AUTHORIZED; CDW-9 is split into bounded packages CDW-9A through CDW-9F; CDW-9A through CDW-9E are ACCEPTED / CLOSED; CDW-9F is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9 is NOT YET COMPLETE
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9A through CDW-9F are ACCEPTED / CLOSED; CDW-9 is COMPLETE / CLOSED; STOP — no later initiative is started automatically
 
 ---
 
@@ -63,7 +63,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
 | CDW-LIVE-1 MANUAL-QA FIX-6 | FINAL ACCEPTED / CLOSED | parallel evaluation/report workstreams, autosave-safe finalization, single-step signing, and concise faculty UI independently source-reviewed and accepted |
 | Additional pre-CDW-9 multi-user replay | WAIVED / NOT REQUIRED | project owner explicitly waived another full replay after FIX-6 because targeted regressions + independent source review sufficiently cover the changed sequence; this is not recorded as a manual-QA PASS |
-| CDW-9 | IN PROGRESS — PENDING FINAL ACCEPTANCE | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; CDW-9A through CDW-9E are ACCEPTED / CLOSED; CDW-9F is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9 is NOT YET COMPLETE |
+| CDW-9 | ACCEPTED / CLOSED | production hardening completed through CDW-9F; CDW-9A through CDW-9F are independently ACCEPTED / CLOSED; STOP boundary applies |
 
 Accepted CDW-8 production implementation HEAD:
 
@@ -1410,7 +1410,7 @@ Accepted product-code baseline before the docs-only reconciliation: `3e5ed6847db
 
 ## 13. Phase CDW-9 — Hardening and production readiness
 
-**Parent status:** IN PROGRESS — CDW-9A through CDW-9E ACCEPTED / CLOSED; CDW-9F IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9 NOT YET COMPLETE.
+**Parent status:** ACCEPTED / CLOSED — CDW-9A through CDW-9F ACCEPTED / CLOSED; CDW-9 COMPLETE / CLOSED.
 
 CDW-9 is the final planned production-hardening phase for the Collaborative
 Defense Workspace. It is not a workflow redesign, a feature-expansion phase, or
@@ -1431,7 +1431,7 @@ reference this section rather than duplicating it.
 | **CDW-9C** | **ACCEPTED / CLOSED** | Security and audit hardening | CDW-9B accepted |
 | **CDW-9D** | **ACCEPTED / CLOSED** | Measured performance and query hardening | CDW-9C accepted |
 | **CDW-9E** | **ACCEPTED / CLOSED** | Accessibility, keyboard, and responsive hardening | CDW-9D accepted |
-| **CDW-9F** | **IMPLEMENTED / PENDING INDEPENDENT REVIEW** | Migration/read compatibility and final production-readiness gate | CDW-9A through CDW-9E accepted |
+| **CDW-9F** | **ACCEPTED / CLOSED** | Migration/read compatibility and final production-readiness gate | CDW-9A through CDW-9E accepted |
 
 Execution order is mandatory:
 
@@ -2149,7 +2149,7 @@ remains subject to independent acceptance.
 
 ### 13.10 CDW-9F — Migration / Read Compatibility and Final Production-Readiness Gate
 
-**Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+**Status:** ACCEPTED / CLOSED.
 
 #### Purpose
 
@@ -2231,6 +2231,7 @@ cross-package regression gate.
   frontend TypeScript, scoped lint, lint, and production build **PASS**; all 24
   `verify-cdw*.mjs` scripts **454 passed / 0 failed**.
 - Manual/browser QA and hosted CI: **NOT EXECUTED / NOT OBSERVED**.
+- Independent remote review: **PASS** at implementation ending HEAD `41b2239e2cc9157c35c60787c0bdd816731f6e2e`; CDW-9F ACCEPTED / CLOSED and CDW-9 COMPLETE / CLOSED.
 
 #### Acceptance / STOP boundary
 
@@ -2252,9 +2253,9 @@ CDW-9 is complete only when CDW-9A through CDW-9F are independently accepted in
 order and the final production-readiness gate has passed under the evidence rules
 above.
 
-Until then, CDW-9 remains **AUTHORIZED — NOT YET COMPLETE**. CDW-9A through
-CDW-9E are **ACCEPTED / CLOSED**. CDW-9F is **IMPLEMENTED / PENDING INDEPENDENT
-REVIEW**.
+CDW-9 is now **COMPLETE / CLOSED**. CDW-9A through CDW-9F are independently
+**ACCEPTED / CLOSED**. Per the final acceptance boundary, **STOP CDW-9** and do
+not begin a later initiative automatically.
 
 ### 13.12 Explicitly deferred / outside CDW-9
 
