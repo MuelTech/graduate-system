@@ -48,6 +48,33 @@ test("mobile drawers isolate the background and trap/restore focus", () => {
   assert.match(source, /aria-label=\{`Close \$\{title\.toLowerCase\(\)\}`\}/);
 });
 
+test("FIX-1: comments drawer cannot orphan without a current document", () => {
+  const source = read(WORKSPACE);
+  const header = source.slice(
+    source.indexOf("<CompactWorkspaceHeader"),
+    source.indexOf("</CompactWorkspaceHeader>"),
+  );
+
+  assert.match(source, /openDrawer === "right" && !hasDocument \? null : openDrawer/);
+  assert.match(
+    source,
+    /if \(hasDocument \|\| openDrawer !== "right"\) return;[\s\S]*?setOpenDrawer\(null\)/,
+  );
+  assert.match(header, /\{hasDocument && \(/);
+  assert.match(header, /Comments/);
+});
+
+test("FIX-1: left Actions drawer renders before the backdrop; right drawer after", () => {
+  const source = read(WORKSPACE);
+  const leftPanel = source.indexOf('{side === "left" && panel}');
+  const backdrop = source.indexOf('className="flex-1 bg-transparent"');
+  const rightPanel = source.indexOf('{side === "right" && panel}');
+
+  assert.ok(leftPanel >= 0, "left panel branch is present");
+  assert.ok(backdrop > leftPanel, "left panel precedes the backdrop");
+  assert.ok(rightPanel > backdrop, "right panel follows the backdrop");
+});
+
 test("center navigation uses tab semantics and keyboard activation", () => {
   const source = read(WORKSPACE);
 

@@ -65,9 +65,19 @@ export function WorkspaceShell({
   const [drawerReturnFocus, setDrawerReturnFocus] = useState<HTMLElement | null>(
     null,
   );
-  const drawerOpen = openDrawer !== null;
+  const activeDrawer =
+    openDrawer === "right" && !hasDocument ? null : openDrawer;
+  const drawerOpen = activeDrawer !== null;
   const actionsTriggerRef = useRef<HTMLButtonElement>(null);
   const commentsTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (hasDocument || openDrawer !== "right") return;
+    // The derived active drawer already prevents an inert orphan immediately.
+    // Also clear the stored state so it cannot reappear if a document returns.
+    const id = window.setTimeout(() => setOpenDrawer(null), 0);
+    return () => window.clearTimeout(id);
+  }, [hasDocument, openDrawer]);
 
   const selectTab = (next: CenterTab, focus = false) => {
     setTab(next);
@@ -116,19 +126,21 @@ export function WorkspaceShell({
           >
             <PanelLeft className="mr-1 h-4 w-4" aria-hidden="true" /> Actions
           </Button>
-          <Button
-            ref={commentsTriggerRef}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => {
-              setDrawerReturnFocus(commentsTriggerRef.current);
-              setOpenDrawer("right");
-            }}
-          >
-            <MessageSquare className="mr-1 h-4 w-4" aria-hidden="true" /> Comments
-          </Button>
+          {hasDocument && (
+            <Button
+              ref={commentsTriggerRef}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => {
+                setDrawerReturnFocus(commentsTriggerRef.current);
+                setOpenDrawer("right");
+              }}
+            >
+              <MessageSquare className="mr-1 h-4 w-4" aria-hidden="true" /> Comments
+            </Button>
+          )}
         </CompactWorkspaceHeader>
 
         <div className="flex min-h-0 flex-1">
@@ -245,7 +257,7 @@ export function WorkspaceShell({
       </div>
 
       {/* Mobile overlay drawers (presentation only). */}
-      {openDrawer === "left" && (
+      {activeDrawer === "left" && (
         <WorkspaceDrawer
           side="left"
           title="Actions"
@@ -256,7 +268,7 @@ export function WorkspaceShell({
         </WorkspaceDrawer>
       )}
 
-      {openDrawer === "right" && hasDocument && (
+      {activeDrawer === "right" && hasDocument && (
         <WorkspaceDrawer
           side="right"
           title="Shared Comments"
@@ -360,6 +372,43 @@ function WorkspaceDrawer({
     };
   }, []);
 
+  const panel = (
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      className={cn(
+        "flex h-full min-w-0 flex-col bg-white shadow-xl outline-none duration-200 ease-out animate-in motion-reduce:animate-none",
+        side === "left"
+          ? "w-[28rem] max-w-[88vw] slide-in-from-left"
+          : "w-80 max-w-[88vw] slide-in-from-right",
+      )}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
+        <h2
+          id={titleId}
+          className="min-w-0 truncate text-base font-semibold text-(--earist-primary)"
+        >
+          {title}
+        </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-lg"
+          onClick={onClose}
+          aria-label={`Close ${title.toLowerCase()}`}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
+        {children}
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={cn(
@@ -367,6 +416,7 @@ function WorkspaceDrawer({
         side === "right" ? "justify-end lg:hidden" : "xl:hidden",
       )}
     >
+      {side === "left" && panel}
       <button
         type="button"
         tabIndex={-1}
@@ -374,40 +424,7 @@ function WorkspaceDrawer({
         className="flex-1 bg-transparent"
         onClick={onClose}
       />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className={cn(
-          "flex h-full min-w-0 flex-col bg-white shadow-xl outline-none duration-200 ease-out animate-in motion-reduce:animate-none",
-          side === "left"
-            ? "w-[28rem] max-w-[88vw] slide-in-from-left"
-            : "w-80 max-w-[88vw] slide-in-from-right",
-        )}
-      >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-(--earist-border-gray) px-3 py-2">
-          <h2
-            id={titleId}
-            className="min-w-0 truncate text-base font-semibold text-(--earist-primary)"
-          >
-            {title}
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-lg"
-            onClick={onClose}
-            aria-label={`Close ${title.toLowerCase()}`}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
-          {children}
-        </div>
-      </div>
+      {side === "right" && panel}
     </div>
   );
 }
