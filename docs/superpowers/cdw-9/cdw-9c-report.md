@@ -5,14 +5,14 @@
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `b462562521ac55f9c4a6051801193097d7ae81f8`
 - **Implementation commit:** `c530a237eb7ad43da5ed99ddf6684f93ccfeb6e1`
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Schema change:** NONE
 - **Migration:** NONE
 - **Frontend change:** NONE
-- **Manual browser/security QA:** NOT EXECUTED
+- **Targeted CDW-9C Manual QA:** NOT EXECUTED
 - **Hosted CI:** NOT OBSERVED / NOT CLAIMED
-- **CDW-9D:** PLANNED / NOT YET IMPLEMENTED — NOT STARTED
+- **CDW-9D:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED
 
 ---
 
@@ -156,7 +156,7 @@ Updated material-action suites cover:
   write none;
 - metadata action/target/actor correctness and sensitive-field exclusion.
 
-Verification results:
+Agent-local reported verification results:
 
 | Check | Result |
 |---|---|
@@ -168,9 +168,42 @@ Verification results:
 | Schema/migration change | **NONE** |
 | Frontend change | **NONE** |
 | Hosted CI | **NOT OBSERVED / NOT CLAIMED** |
-| Manual browser/security QA | **NOT EXECUTED** |
+| Targeted CDW-9C Manual QA | **NOT EXECUTED** |
 
-## 7. Limitations
+## 7. Independent Acceptance
+
+**Independent remote source/diff review: PASS**
+
+The review confirmed:
+
+- exact-assignment authorization remains intact;
+- cross-attempt/document isolation remains intact;
+- evaluator DRAFT privacy remains intact;
+- raw signature evidence is excluded from ordinary faculty/realtime reads;
+- concluded/finalized immutability remains intact;
+- realtime join/revalidation/eviction remains fail-closed;
+- report-preview sender/recipient reauthorization remains intact;
+- audit records exist for the five required material defense actions;
+- audit writes occur in the same successful transaction as the material
+  mutation;
+- duplicate/no-op/failed operations do not create duplicate success audit rows;
+- sensitive academic/signature content is excluded by the runtime audit
+  allow-list;
+- the existing `AuditLog` model was reused;
+- no schema/migration change;
+- no frontend change;
+- no role/signer/verdict/realtime-event-policy change.
+
+No remaining blocking CDW-9C defect was found.
+
+The agent-local automated evidence above was not independently re-run.
+Targeted CDW-9C Manual QA: **NOT EXECUTED**. Hosted CI:
+**NOT OBSERVED / NOT CLAIMED**.
+
+**CDW-9C is ACCEPTED / CLOSED. CDW-9D is NEXT / AUTHORIZED — NOT YET
+IMPLEMENTED.**
+
+## 8. Limitations
 
 - This package is not a live penetration test or a multi-user browser security
   exercise.
@@ -180,4 +213,4 @@ Verification results:
   IP.
 - No audit dashboard or audit retention feature was added.
 - No performance, indexing, accessibility, or official-form work was started.
-- CDW-9C remains pending independent review and is not marked accepted here.
+- CDW-9D has not started.
