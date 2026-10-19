@@ -30,6 +30,15 @@ function activeAssignment(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function activeRow(assignment: ReturnType<typeof activeAssignment>) {
+  return {
+    id: assignment.id,
+    studentId: assignment.studentId,
+    adviserId: assignment.adviserId,
+    assignedDate: assignment.assignedDate,
+  };
+}
+
 function proposalTask(overrides: Record<string, unknown> = {}) {
   return {
     thesisId: "thesis-1",
@@ -80,6 +89,7 @@ function requestRow(overrides: Record<string, unknown> = {}) {
 describe("AdviserWorkspaceService", () => {
   const repo = {
     listActiveAssignmentsForAdviser: vi.fn(),
+    listActiveAdviserAssignmentsForStudents: vi.fn(),
     findStudentForAdviseeDetail: vi.fn(),
   };
   const requests = { listMyAdviserRequests: vi.fn() };
@@ -96,6 +106,7 @@ describe("AdviserWorkspaceService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     repo.listActiveAssignmentsForAdviser.mockResolvedValue([]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([]);
     repo.findStudentForAdviseeDetail.mockResolvedValue(null);
     requests.listMyAdviserRequests.mockResolvedValue([]);
     proposalReviews.listReviewTasks.mockResolvedValue([]);
@@ -103,7 +114,11 @@ describe("AdviserWorkspaceService", () => {
   });
 
   it("returns only the authenticated Adviser's active advisees", async () => {
-    repo.listActiveAssignmentsForAdviser.mockResolvedValue([activeAssignment()]);
+    const assignment = activeAssignment();
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([assignment]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(assignment),
+    ]);
 
     const result = await service.getWorkspace("adviser-a");
 
@@ -163,7 +178,11 @@ describe("AdviserWorkspaceService", () => {
   });
 
   it("composes Proposal and Final review tasks with explicit stages", async () => {
-    repo.listActiveAssignmentsForAdviser.mockResolvedValue([activeAssignment()]);
+    const assignment = activeAssignment();
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([assignment]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(assignment),
+    ]);
     proposalReviews.listReviewTasks.mockResolvedValue([proposalTask()]);
     finalReviews.listReviewTasks.mockResolvedValue([
       finalTask({ manuscriptDocumentId: "doc-final" }),
@@ -265,15 +284,57 @@ describe("AdviserWorkspaceService", () => {
   });
 
   it("fails the workspace closed for duplicate active rows for one Student", async () => {
-    repo.listActiveAssignmentsForAdviser.mockResolvedValue([
-      activeAssignment({ id: "asg-1" }),
-      activeAssignment({ id: "asg-2" }),
+    const first = activeAssignment({ id: "asg-1" });
+    const second = activeAssignment({ id: "asg-2" });
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([first, second]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(first),
+      activeRow(second),
     ]);
 
     await expect(service.getWorkspace("adviser-a")).rejects.toMatchObject({
       statusCode: 409,
     });
     expect(requests.listMyAdviserRequests).not.toHaveBeenCalled();
+  });
+
+  it("detects a cross-Adviser duplicate for Adviser A's candidate Student", async () => {
+    const asgA = activeAssignment({ id: "asg-a", adviserId: "adviser-a" });
+    const asgB = activeAssignment({
+      id: "asg-b",
+      adviserId: "adviser-b",
+      assignedDate: new Date("2026-10-02T00:00:00.000Z"),
+    });
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([asgA]);
+    // The second active row belongs to another Adviser and is not in the
+    // candidate query, but must still invalidate the Student.
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(asgA),
+      activeRow(asgB),
+    ]);
+
+    await expect(service.getWorkspace("adviser-a")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(requests.listMyAdviserRequests).not.toHaveBeenCalled();
+  });
+
+  it("detects the symmetric cross-Adviser duplicate for Adviser B", async () => {
+    const asgA = activeAssignment({ id: "asg-a", adviserId: "adviser-a" });
+    const asgB = activeAssignment({
+      id: "asg-b",
+      adviserId: "adviser-b",
+      assignedDate: new Date("2026-10-02T00:00:00.000Z"),
+    });
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([asgB]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(asgA),
+      activeRow(asgB),
+    ]);
+
+    await expect(service.getWorkspace("adviser-b")).rejects.toMatchObject({
+      statusCode: 409,
+    });
   });
 
   it("does not infer a current working title from historical Title data", async () => {
@@ -298,7 +359,11 @@ describe("AdviserWorkspaceService", () => {
   });
 
   it("does not expose raw relations or private academic evidence", async () => {
-    repo.listActiveAssignmentsForAdviser.mockResolvedValue([activeAssignment()]);
+    const assignment = activeAssignment();
+    repo.listActiveAssignmentsForAdviser.mockResolvedValue([assignment]);
+    repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([
+      activeRow(assignment),
+    ]);
     repo.findStudentForAdviseeDetail.mockResolvedValue({
       ...student(),
       adviserAssignments: [

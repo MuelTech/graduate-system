@@ -36,6 +36,14 @@ export type AdviserActiveAssignmentRow = {
   student: AdviserWorkspaceStudentRow;
 };
 
+/** Minimal row used to validate every candidate Student's full active set. */
+export type AdviserStudentActiveAssignmentRow = {
+  id: string;
+  studentId: string;
+  adviserId: string;
+  assignedDate: Date;
+};
+
 export type AdviserDetailStudentRow = {
   id: string;
   studentNumber: string | null;
@@ -59,6 +67,27 @@ export class AdviserWorkspaceRepository {
       include: { student: { select: ACTIVE_ADVISEE_STUDENT_SELECT } },
       orderBy: { assignedDate: "desc" },
     }) as unknown as Promise<AdviserActiveAssignmentRow[]>;
+  }
+
+  /**
+   * All active AdviserAssignments for the candidate Students, in one bounded
+   * query. This detects duplicate active authority even when the second row
+   * belongs to a different Adviser.
+   */
+  async listActiveAdviserAssignmentsForStudents(
+    studentIds: string[],
+  ): Promise<AdviserStudentActiveAssignmentRow[]> {
+    const ids = Array.from(new Set(studentIds.filter(Boolean)));
+    if (ids.length === 0) return [];
+    return prisma.adviserAssignment.findMany({
+      where: { studentId: { in: ids }, isActive: true },
+      select: {
+        id: true,
+        studentId: true,
+        adviserId: true,
+        assignedDate: true,
+      },
+    });
   }
 
   /**

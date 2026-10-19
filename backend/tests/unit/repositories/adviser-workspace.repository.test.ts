@@ -36,6 +36,28 @@ describe("AdviserWorkspaceRepository", () => {
     );
   });
 
+  it("loads all active rows for candidate Student ids in one bounded query", async () => {
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([]);
+
+    await repo.listActiveAdviserAssignmentsForStudents([
+      "student-1",
+      "student-2",
+      "student-1",
+    ]);
+
+    const args = prismaMock.adviserAssignment.findMany.mock.calls[0][0];
+    expect(args.where).toEqual({
+      studentId: { in: ["student-1", "student-2"] },
+      isActive: true,
+    });
+    expect(args.select).toEqual({
+      id: true,
+      studentId: true,
+      adviserId: true,
+      assignedDate: true,
+    });
+  });
+
   it("loads only active assignments for exact advisee authorization", async () => {
     prismaMock.student.findUnique.mockResolvedValue(null);
 

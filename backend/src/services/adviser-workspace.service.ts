@@ -18,6 +18,7 @@ import {
   AdviserWorkspaceRepository,
   type AdviserActiveAssignmentRow,
   type AdviserDetailStudentRow,
+  type AdviserStudentActiveAssignmentRow,
   type AdviserWorkspaceStudentRow,
 } from "../repositories/adviser-workspace.repository";
 
@@ -36,6 +37,8 @@ import {
 export const ADVISEE_NOT_FOUND_MESSAGE = "Advisee not found.";
 export const MULTIPLE_ACTIVE_ADVISERS_WORKSPACE_MESSAGE =
   "More than one active adviser is recorded for this student. Correct the adviser record before continuing.";
+export const ADVISER_RELATIONSHIP_INCONSISTENT_MESSAGE =
+  "The active adviser relationship could not be verified. Correct the adviser record before continuing.";
 
 export type AdviserReviewStage = "PROPOSAL" | "FINAL";
 
@@ -176,7 +179,7 @@ export class AdviserWorkspaceService {
   async getWorkspace(adviserUserId: string): Promise<AdviserWorkspaceDto> {
     const assignments =
       await this.repository.listActiveAssignmentsForAdviser(adviserUserId);
-    this.assertNoDuplicateAdviseeRelationships(assignments);
+    await this.assertSingleActiveAdviserForCandidates(adviserUserId, assignments);
 
     const [incomingRequests, proposalTasks, finalTasks] = await Promise.all([
       this.adviserRequests.listMyAdviserRequests(adviserUserId),
@@ -250,21 +253,41 @@ export class AdviserWorkspaceService {
   }
 
   /**
-   * Duplicate active rows for the same Student are invalid data. Fail the whole
-   * workspace deterministically rather than choosing a "latest" Adviser.
+   * Validate every candidate Student against ALL active assignments, not only
+   * the rows owned by the authenticated Adviser. A second active Adviser on the
+   * same Student is invalid authority and fails the workspace closed.
    */
-  private assertNoDuplicateAdviseeRelationships(
+  private async assertSingleActiveAdviserForCandidates(
+    adviserUserId: string,
     assignments: AdviserActiveAssignmentRow[],
-  ): void {
-    const byStudent = new Map<string, AdviserActiveAssignmentRow[]>();
-    for (const assignment of assignments) {
-      const rows = byStudent.get(assignment.studentId) ?? [];
-      rows.push(assignment);
-      byStudent.set(assignment.studentId, rows);
+  ): Promise<void> {
+    const studentIds = Array.from(
+      new Set(assignments.map((assignment) => assignment.studentId)),
+    );
+    if (studentIds.length === 0) return;
+
+    const activeRows =
+      await this.repository.listActiveAdviserAssignmentsForStudents(studentIds);
+
+    const byStudent = new Map<string, AdviserStudentActiveAssignmentRow[]>();
+    for (const row of activeRows) {
+      const rows = byStudent.get(row.studentId) ?? [];
+      rows.push(row);
+      byStudent.set(row.studentId, rows);
     }
-    for (const rows of byStudent.values()) {
-      if (resolveSingleActiveAdviser(rows).status === "CONFLICT") {
+
+    for (const studentId of studentIds) {
+      const resolution = resolveSingleActiveAdviser(
+        byStudent.get(studentId) ?? [],
+      );
+      if (resolution.status === "CONFLICT") {
         throw new AppError(MULTIPLE_ACTIVE_ADVISERS_WORKSPACE_MESSAGE, 409);
+      }
+      if (
+        resolution.status !== "ACTIVE" ||
+        resolution.assignment.adviserId !== adviserUserId
+      ) {
+        throw new AppError(ADVISER_RELATIONSHIP_INCONSISTENT_MESSAGE, 409);
       }
     }
   }
