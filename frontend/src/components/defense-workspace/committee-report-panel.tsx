@@ -289,6 +289,8 @@ function ReportAuthoringPanel({
   const [previewing, setPreviewing] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const [reloading, setReloading] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const finalizingRef = useRef(false);
   const controllerRef = useRef<ReportAutosaveController | null>(null);
 
   const legacyText =
@@ -403,6 +405,7 @@ function ReportAuthoringPanel({
   }, [report.body, report.bodyVersion]);
 
   const handleBodyChange = (doc: ReportDocument) => {
+    if (finalizingRef.current) return;
     const normalized = normalizeReportDocument(doc);
     setBody(normalized);
     controllerRef.current?.update(normalized);
@@ -436,36 +439,50 @@ function ReportAuthoringPanel({
   };
 
   const handleFinalizeReport = async () => {
+    if (finalizingRef.current) {
+      throw new Error("The Committee Report is already being finalized.");
+    }
+    // Synchronous boundary: stop accepting local edits before the first await.
+    finalizingRef.current = true;
+    setFinalizing(true);
+
     const controller = controllerRef.current;
     if (!controller) {
+      finalizingRef.current = false;
+      setFinalizing(false);
       throw new Error("The Committee Report is not ready to finalize.");
     }
 
     try {
-      // FIX-6 source-review correction: never finalize the older persisted body.
-      // The autosave controller owns the newest editor text and must reach a
-      // stable saved state before the irreversible finalization request.
-      await controller.flushAndWait();
-    } catch (error) {
-      if (error instanceof ReportAutosaveConflictError) {
+      try {
+        // FIX-1: close the edit boundary before the irreversible freeze. The
+        // autosave controller drains every edit accepted before this boundary.
+        await controller.flushAndWait();
+      } catch (error) {
+        if (error instanceof ReportAutosaveConflictError) {
+          throw new Error(
+            "The saved Committee Report changed. Reload the saved version and try again.",
+          );
+        }
         throw new Error(
-          "The saved Committee Report changed. Reload the saved version and try again.",
+          "The latest Committee Report changes could not be saved. Resolve the save issue and try again.",
         );
       }
-      throw new Error(
-        "The latest Committee Report changes could not be saved. Resolve the save issue and try again.",
-      );
-    }
 
-    return apiClientRequest(
-      `/thesis/defense/${scheduleId}/collaboration/report/freeze`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          expectedBodyVersion: controller.getServerVersion(),
-        }),
-      },
-    );
+      return await apiClientRequest(
+        `/thesis/defense/${scheduleId}/collaboration/report/freeze`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            expectedBodyVersion: controller.getServerVersion(),
+          }),
+        },
+      );
+    } catch (error) {
+      finalizingRef.current = false;
+      setFinalizing(false);
+      throw error;
+    }
   };
 
   const conflict = saveState.status === "conflict";
@@ -503,6 +520,7 @@ function ReportAuthoringPanel({
         <RichTextReportEditor
           key={editorKey}
           initialDocument={body}
+          editable={!finalizing}
           onChange={handleBodyChange}
         />
       )}
@@ -517,6 +535,7 @@ function ReportAuthoringPanel({
             <Button
               type="button"
               variant="outline"
+              disabled={finalizing}
               onClick={() => setPreviewing(true)}
             >
               <Eye className="mr-2 h-4 w-4" /> Preview Report

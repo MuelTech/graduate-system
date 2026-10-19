@@ -1256,7 +1256,15 @@ export class DefenseCollaborationService {
         throw new AppError("You are not a required signer for this Committee Report.", 403);
       }
       if (slot.isSigned === true) {
-        throw new AppError("You have already signed this Committee Report.", 409);
+        // CDW-9B FIX-1: a committed signature can outlive a failed aggregate
+        // recompute. Return a duplicate marker so the committed-state reconcile
+        // still runs after the transaction; never rewrite evidence.
+        return {
+          rapId: rap.id,
+          contentVersion: rap.contentVersion ?? 0,
+          contentHash: rap.frozenContentHash,
+          duplicate: true,
+        };
       }
 
       const updated = await tx.rapReportSignature.updateMany({
@@ -1275,19 +1283,29 @@ export class DefenseCollaborationService {
         },
       });
       if (updated.count === 0) {
-        throw new AppError("You have already signed this Committee Report.", 409);
+        return {
+          rapId: rap.id,
+          contentVersion: rap.contentVersion ?? 0,
+          contentHash: rap.frozenContentHash,
+          duplicate: true,
+        };
       }
       return {
         rapId: rap.id,
         contentVersion: rap.contentVersion ?? 0,
         contentHash: rap.frozenContentHash,
+        duplicate: false,
       };
     });
 
     // Monotonic aggregate recompute (finalizes once all required slots are signed).
+    // This also heals a duplicate retry whose first recompute failed after commit.
     const recompute = await this.rapService.recomputeRapStatusWithTransition(
       result.rapId,
     );
+    if (result.duplicate) {
+      throw new AppError("You have already signed this Committee Report.", 409);
+    }
     const status = recompute.status;
     const slots = await prisma.rapReportSignature.findMany({
       where: { rapId: result.rapId },

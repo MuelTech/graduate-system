@@ -264,6 +264,35 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
     expect(result.status).toBe("FINALIZED");
   });
 
+  it("FIX-1: legacy duplicate retry heals aggregate after the first recompute fails", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    recompute
+      .mockRejectedValueOnce(new Error("transient recompute failure"))
+      .mockResolvedValueOnce({
+        status: "FINALIZED",
+        transitionedToFinalized: true,
+      });
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(slot());
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toThrow(/transient recompute failure/i);
+    expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
+
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({ isSigned: true }),
+    );
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).toHaveBeenCalledTimes(2);
+    expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
+  });
+
   it("CDW-9B: does not claim finalizedNow when another concurrent signer won the transition", async () => {
     vi.spyOn(
       RapReportService.prototype,

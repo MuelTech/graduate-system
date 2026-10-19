@@ -98,6 +98,13 @@ export function RichTextReportEditor({
   });
 
   useEffect(() => {
+    if (!editor) return;
+    // Tiptap reads `editable` only at creation; keep it in sync when the
+    // finalization boundary changes so the content area and toolbar lock together.
+    editor.setEditable(editable);
+  }, [editor, editable]);
+
+  useEffect(() => {
     if (!editor || !editable) {
       registerInsert(null);
       return;

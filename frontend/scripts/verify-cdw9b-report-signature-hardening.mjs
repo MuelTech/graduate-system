@@ -14,6 +14,8 @@ const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 
 const SIGNATURE_PANEL = "src/components/defense-workspace/rap-signature-panel.tsx";
 const REPORT_PANEL = "src/components/defense-workspace/committee-report-panel.tsx";
+const RICH_TEXT_EDITOR =
+  "src/components/defense-workspace/rich-text-report-editor.tsx";
 const SIGNATURE_DIALOG =
   "src/components/defense-workspace/committee-report-signature-dialog.tsx";
 
@@ -73,4 +75,47 @@ test("Rapporteur finalization still drains autosave and sends its body version",
   assert.match(report, /expectedBodyVersion: controller\.getServerVersion\(\)/);
   assert.match(report, /ReportAutosaveConflictError/);
   assert.doesNotMatch(report, /force/i);
+});
+
+test("FIX-1: finalization boundary locks the editor before drain/freeze", () => {
+  const report = read(REPORT_PANEL);
+
+  const boundary = report.indexOf("finalizingRef.current = true");
+  const flush = report.indexOf("await controller.flushAndWait()");
+  const freeze = report.indexOf("/collaboration/report/freeze");
+  assert.ok(boundary >= 0, "synchronous finalizing boundary is set");
+  assert.ok(flush > boundary, "drain starts after the edit boundary");
+  assert.ok(freeze > flush, "freeze starts after the drain");
+  assert.match(report, /editable=\{!finalizing\}/);
+  assert.match(report, /if \(finalizingRef\.current\) return;/);
+  assert.match(report, /finalizingRef\.current = false/);
+});
+
+test("FIX-1: drain failure restores editing and never reaches freeze", () => {
+  const report = read(REPORT_PANEL);
+  const handler = mutationSource(
+    report,
+    "const handleFinalizeReport = async () => {",
+    "const conflict =",
+  );
+
+  assert.match(handler, /setFinalizing\(false\)/);
+  assert.match(handler, /throw error/);
+
+  const successStart = handler.indexOf("return await apiClientRequest");
+  const successEnd = handler.indexOf("} catch (error)", successStart);
+  const successPath = handler.slice(successStart, successEnd);
+  assert.ok(successStart >= 0);
+  assert.doesNotMatch(successPath, /setFinalizing\(false\)/);
+});
+
+test("FIX-1: Tiptap applies editable dynamically and disables inserts", () => {
+  const editor = read(RICH_TEXT_EDITOR);
+
+  assert.match(editor, /editor\.setEditable\(editable\)/);
+  assert.match(
+    editor,
+    /if \(!editor \|\| !editable\) \{\s*registerInsert\(null\)/,
+  );
+  assert.match(editor, /\{editable && editor && <ReportEditorToolbar/);
 });

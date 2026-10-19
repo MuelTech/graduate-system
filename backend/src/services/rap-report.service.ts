@@ -344,7 +344,14 @@ export class RapReportService {
         );
       }
       if (slot.isSigned === true) {
-        throw new AppError("Signature already recorded.", 409);
+        // CDW-9B FIX-1: allow the committed-state reconcile below to heal a
+        // previous recompute failure; the committed evidence is never rewritten.
+        return {
+          rapId: slot.rapId,
+          scheduleId: slot.rapReport?.schedule?.id ?? null,
+          contentVersion: slot.rapReport?.contentVersion ?? 0,
+          duplicate: true,
+        };
       }
 
       const rap = slot.rapReport;
@@ -404,13 +411,19 @@ export class RapReportService {
         data,
       });
       if (updated.count === 0) {
-        throw new AppError("Signature already recorded.", 409);
+        return {
+          rapId: slot.rapId,
+          scheduleId: rap?.schedule?.id ?? null,
+          contentVersion: rap?.contentVersion ?? 0,
+          duplicate: true,
+        };
       }
 
       return {
         rapId: slot.rapId,
         scheduleId: rap?.schedule?.id ?? null,
         contentVersion: rap?.contentVersion ?? 0,
+        duplicate: false,
       };
     });
 
@@ -418,6 +431,9 @@ export class RapReportService {
     const recompute = await this.recomputeRapStatusWithTransition(
       transactionResult.rapId,
     );
+    if (transactionResult.duplicate) {
+      throw new AppError("Signature already recorded.", 409);
+    }
     return {
       signatureId: sigId,
       rapId: transactionResult.rapId,

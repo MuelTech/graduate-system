@@ -287,6 +287,7 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
   const EVIDENCE = "data:image/png;base64,AAAA";
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow({ rapReports: [frozenRap()] }));
     prismaMock.rapReportSignature.updateMany.mockResolvedValue({ count: 1 });
@@ -433,6 +434,44 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     expect(result.reportId).toBe("rap-1");
     expect(result.finalizedNow).toBe(true);
     expect(result.signatureProgress).toEqual({ required: 3, signed: 3 });
+  });
+
+  it("FIX-1: duplicate retry heals aggregate after the first recompute fails", async () => {
+    signerSlot("PANELIST");
+    prismaMock.rapReportSignature.findMany.mockResolvedValue([
+      { required: true, isSigned: true },
+      { required: true, isSigned: true },
+      { required: true, isSigned: true },
+    ]);
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    recompute
+      .mockRejectedValueOnce(new Error("transient recompute failure"))
+      .mockResolvedValueOnce({
+        status: "FINALIZED",
+        transitionedToFinalized: true,
+      });
+
+    await expect(
+      svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE),
+    ).rejects.toThrow(/transient recompute failure/i);
+    expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
+
+    // The signature committed; the retry now observes the caller's own signed slot.
+    prismaMock.rapReportSignature.findFirst.mockResolvedValue({
+      id: "sig-PANELIST",
+      required: true,
+      isSigned: true,
+    });
+    await expect(
+      svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    // Retry reconciles but never rewrites the committed evidence.
+    expect(recompute).toHaveBeenCalledTimes(2);
+    expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
   });
 
   it("CDW-9B: does not claim finalizedNow when another concurrent signer won the transition", async () => {
