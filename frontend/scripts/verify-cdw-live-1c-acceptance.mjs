@@ -761,10 +761,12 @@ test("no CRDT/presence/cursor/typing/Redis stack was introduced", () => {
   assert.doesNotMatch(combined, /presence|cursor|typing indicator|redis/i);
 });
 
-test("CDW-9A is accepted and CDW-9B is the next authorized package", () => {
+test("CDW-9A through CDW-9E remain recorded as accepted", () => {
   const plan = read(
     "../docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md",
   );
-  assert.match(plan, /CDW-9A is ACCEPTED \/ CLOSED/);
-  assert.match(plan, /CDW-9B is NEXT \/ AUTHORIZED/);
+  // The former "CDW-9B is next" assertion was superseded when CDW-9B..9E were
+  // accepted. Only the stable accepted-history claim remains here; later
+  // package progression is covered by the CDW-9F readiness evidence.
+  assert.match(plan, /CDW-9A through CDW-9E are ACCEPTED \/ CLOSED/);
 });

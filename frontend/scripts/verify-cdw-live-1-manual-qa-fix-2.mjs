@@ -193,7 +193,11 @@ test("signature canvas scales pointer coordinates and is touch-friendly", () => 
   assert.match(signature, /width=\{720\}/);
   assert.match(signature, /height=\{240\}/);
   assert.match(signature, /touch-none/);
-  assert.match(signature, /aria-label="Draw your signature"/);
+  // CDW-9E acceptance renamed the canvas accessible name while keeping the
+  // visible "Draw your signature" instruction. The keyboard/focus contract is
+  // owned by verify-cdw9e-accessibility.mjs.
+  assert.match(signature, /aria-label="Signature drawing area"/);
+  assert.match(signature, /Draw your signature/);
   assert.match(signature, /aria-label="Type your full name as e-signature"/);
   assert.match(signature, /data:image\/png;base64/);
 });
