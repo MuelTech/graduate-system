@@ -10,7 +10,8 @@
 - **FIX-3 commit:** `1a119f6ca73ce46f979e57d47867943cd1721b0f`
 - **FIX-4 commit:** `e4b24faf32eb7137351186f5bf323238382ab363`
 - **FIX-5 commit:** `51e506cf244e30129614b7ed4c49f4e2e82f950b`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile selection UX FIX-5 pending owner retest
+- **FIX-6 commit:** `cfcf5c1149f6e938ab38eeb4894fedbbd64407bc`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment action FIX-6 pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -362,6 +363,52 @@ Owner acceptance flow:
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile selection
 UX FIX-5 pending owner retest**.
+
+## 3F. FIX-6 — stable mobile Add comment action placement
+
+Project-owner real-phone QA after FIX-5 confirmed that native selection handles were
+adjustable again, but the contextual **Add comment** action could be obscured by
+Android/browser's native text-selection action menu because both were positioned
+near the selected text.
+
+### Fix
+
+- Native browser text selection, handles, and action menu remain untouched.
+- The pending draft highlight and FIX-5 adjustable selection lifecycle remain
+  unchanged.
+- Removed selection-relative Add comment positioning and its page-geometry
+  clamping.
+- The mobile-only **Add comment** action now uses a stable bottom-center fixed
+  position in the visible viewport with safe-area-aware bottom spacing.
+- The action remains visible only while a current-page pending anchor exists and
+  continues to use the same explicit commit behavior:
+  consume the native selection, preserve the latest pending anchor, then open the
+  existing Shared Comments drawer/composer.
+- Desktop behavior is unchanged because the action remains `lg:hidden`.
+- No backend, schema, API, annotation model, permissions, realtime, or academic
+  workflow behavior changed.
+
+### FIX-6 evidence/status
+
+- Remote product commit:
+  `cfcf5c1149f6e938ab38eeb4894fedbbd64407bc`.
+- Independent connector source/diff review: **PASS**; changed product scope is only
+  `manuscript-page.tsx` plus the focused source-contract verifier.
+- Focused verifier source was extended to require stable bottom-center positioning
+  and to reject the old selection-relative positioning helpers.
+- Automated verifier execution in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
+- Project-owner real-phone FIX-6 retest: **PENDING**.
+
+Owner acceptance flow:
+
+`phone → long-press/select text → native Android menu may appear → drag handles as needed → Add comment remains reachable at bottom-center → tap Add comment → Shared Comments drawer opens with latest selection → submit comment`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
+action FIX-6 pending owner retest**.
 
 ## 4. Responsive evidence
 
