@@ -7,11 +7,12 @@
 **Integration Branch:** `refactor/defense-workflow`  
 **Historical Correction Branch:** `refactor/unified-defense-lifecycle`  
 **Collaborative Defense Implementation Branch:** `refactor/collaborative-defense-workspace`  
+**Adviser Workflow Branch:** `refactor/adviser-workflow`  
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.13-draft  
-**Last Updated:** 2026-10-19  
+**Version:** 1.14-draft  
+**Last Updated:** 2026-10-20  
 
 ---
 
@@ -98,6 +99,133 @@ Important sequencing clarification:
 
 Where older sections describe post-conclusion RAP creation, Formal Outcome as required RAP content, Proposal/Final RAP after formal conclusion, or Panelist RAP signing as an undefined future UX, this 2026-10-15 extension supersedes that wording for new collaborative attempts.
 
+
+## 0.3 2026-10-20 Adviser Workflow / My Advisees correction
+
+**CONFIRMED_PROJECT_DESIGN**
+
+This correction establishes one authoritative Adviser relationship across Student progression, Admin scheduling, Adviser manuscript review, and the Panelist/Adviser portal. It also defines the product direction for the new **My Advisees** workspace.
+
+Implementation plan:
+
+- `docs/superpowers/plans/2026-10-20-adviser-workflow-implementation.md`
+
+Where older code/comments/read models treat `ThesisRecord.assignmentId` as the current Adviser authority, this correction supersedes that behavior.
+
+### 0.3.1 Canonical current Adviser authority
+
+1. The canonical current thesis/dissertation Adviser is the Student's active `AdviserAssignment` (`studentId` + `adviserId` + `isActive = true`).
+2. `AdviserRequest` is not an active Adviser relationship. The normal path remains Student request -> requested Adviser CONFORME -> Dean APPROVED -> active `AdviserAssignment`.
+3. `ThesisRecord.assignmentId` is legacy/compatibility linkage only. It must not be the authoritative lookup for the current Adviser in Proposal/Final scheduling, Adviser authorization, My Advisees, or Student progression.
+4. Creating an active `AdviserAssignment` must not require retroactively rewriting historical Title Defense records. Historical Title attempts remain immutable.
+5. Proposal and Final workflow gates must fail closed when no active Adviser exists. A legitimate Proposal/Final application that reaches **Ready for Scheduling** is therefore expected to already have an active Adviser.
+6. If multiple active AdviserAssignment rows ever exist because of invalid/legacy data, workflow code must not silently choose an arbitrary adviser. The implementation must detect/fail closed or resolve according to an explicitly documented repair policy.
+7. Replacing or ending an Adviser relationship must be modeled through AdviserAssignment state/history, not by rewriting concluded defense attempts.
+
+### 0.3.2 Admin Proposal/Final scheduling
+
+Proposal/Final Defense committee composition continues to use the accepted automatic Adviser seat.
+
+- Admin never manually chooses or substitutes the Adviser in Scheduling.
+- Scheduling resolves the Student's active `AdviserAssignment` directly.
+- The resolved Adviser appears as a locked **Automatic** committee row.
+- Admin assigns the remaining Chairman, Panelists, Facilitator, and Rapporteur according to the existing stage/program policy.
+- The schedule mutation must independently re-check the active Adviser server-side; the frontend read model is not authority.
+- Title Defense has no Adviser seat.
+- The currently observed Scheduling defect where an approved Proposal can show **Active thesis adviser not found** because the read model follows `ThesisRecord.assignmentId` is an implementation bug, not a valid Proposal business state.
+- The fix applies to both Proposal and Final because both stages use the same active-Adviser authority.
+
+### 0.3.3 My Advisees — Adviser-facing parent workspace
+
+The Panelist/Adviser portal will consolidate Adviser-specific work under **My Advisees**.
+
+My Advisees is an academic-supervision workspace, not Admin Student Management.
+
+The parent workspace may contain these task/context views:
+
+- **Active Advisees** — Students whose current active AdviserAssignment belongs to the authenticated Panelist.
+- **Incoming Requests** — Adviser Requests addressed to the authenticated Panelist. These Students are not yet active advisees until the full GS-020 path produces an active AdviserAssignment.
+- **Review Tasks** — Proposal/Final manuscript-review work for the authenticated active Adviser.
+
+The existing standalone Adviser Requests and Adviser Reviews capabilities may remain as compatibility routes during implementation, but the accepted target navigation places these workflows under My Advisees. Dashboard tasks should deep-link into the relevant My Advisees context instead of forcing users to understand separate technical modules.
+
+### 0.3.4 Advisee detail / longitudinal research context
+
+An active Adviser should have a longitudinal, read-mostly research context for each current advisee. The workspace may show:
+
+- Student identity needed for academic supervision (for example name, Student number, program);
+- current thesis/dissertation stage and authoritative next Adviser responsibility;
+- current working research title when an authorized workflow has captured one;
+- Adviser relationship state/date;
+- Title Defense academic history relevant to later supervision;
+- Proposal and Final manuscript review state;
+- current authoritative manuscript and permitted historical manuscript versions;
+- defense schedules/results relevant to the advisee;
+- finalized Committee Report / recommendations needed for research continuity;
+- Adviser Certification state;
+- the Adviser's own required Committee Report signing responsibilities.
+
+This workspace must reuse backend-authoritative journey/domain records. It must not create a second frontend progression state machine.
+
+### 0.3.5 Historical access boundaries
+
+After an AdviserAssignment becomes active, the Adviser may read the prior academic research context necessary to supervise the Student even when that context predates the AdviserAssignment. Initial authorized history includes:
+
+- the submitted Title Defense Proposal Package;
+- formal Title Defense verdict and attempt metadata;
+- finalized Committee Report / recommendations for relevant concluded attempts;
+- exact Proposal/Final manuscripts and revisions authorized by the Adviser manuscript-review workflow;
+- other exact attempt-bound research manuscripts when an existing history rule authorizes them.
+
+Detailed individual evaluator drafts, private signature evidence, or unrestricted evaluator-by-evaluator records are **not automatically added** to My Advisees merely because the user is the active Adviser. Existing evaluator privacy and exact-attempt authorization continue to control until a later explicit institutional rule broadens them.
+
+A former/inactive Adviser does not retain the active My Advisees relationship merely because they once advised the Student. Historical access may still exist only through another valid authority already recorded by the system (for example, exact committee assignment to a historical defense attempt).
+
+### 0.3.6 Adviser document-access boundary
+
+Active Adviser access is for academic supervision, not generic Student-file administration.
+
+The My Advisees workflow may expose research-relevant records such as:
+
+- `TITLE_PROPOSAL`;
+- `PROPOSAL_CHAPTERS`;
+- `FINAL_MANUSCRIPT`;
+- authoritative/superseded manuscript versions when the review/history policy allows them;
+- finalized Committee Report / defense history through their owning read models.
+
+Active Adviser status alone must **not** grant blanket access to unrelated administrative evidence merely because it is stored under the same ThesisRecord. In particular, My Advisees must not automatically expose:
+
+- COR;
+- defense-fee/payment receipt;
+- admission/account records;
+- unrelated Student requirements;
+- Admin-only evidence or controls.
+
+The current shared document authorization path must be reviewed and, where necessary, narrowed so active-Adviser authority does not accidentally become unrestricted `ThesisDocument` access.
+
+### 0.3.7 Adviser authority is not Admin authority
+
+My Advisees must not provide Adviser controls for:
+
+- enrollment/admission changes;
+- Student account administration;
+- Comprehensive Examination administration;
+- COR verification;
+- payment/receipt administration;
+- arbitrary committee scheduling;
+- formal defense verdict override;
+- another evaluator's score/e-signature;
+- Admin-only academic-record repair.
+
+The Adviser owns only the academic supervision actions explicitly assigned to the Adviser workflow.
+
+### 0.3.8 Existing Adviser review behavior retained
+
+The existing Proposal/Final manuscript lifecycle remains authoritative:
+
+Student manuscript submission -> active Adviser review -> Request Changes or Certify/e-sign -> exact certified manuscript binding -> Student Proposal/Final application.
+
+The My Advisees initiative reorganizes and contextualizes that workflow; it does not weaken exact-document binding, write-once certification, stage scoping, or server-side Adviser authorization.
 
 ## 1. Purpose
 
