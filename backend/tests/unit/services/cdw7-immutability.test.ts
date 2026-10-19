@@ -293,6 +293,136 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
     expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
   });
 
+  it("FIX-2: active already-signed legacy retry still reconciles before duplicate 409", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        isSigned: true,
+        rapReport: {
+          status: "FOR_SIGNATURE",
+          frozenAt: null,
+          frozenContentHash: null,
+          contentVersion: 0,
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
+        },
+      }),
+    );
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).toHaveBeenCalledTimes(1);
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("FIX-2: CONCLUDED already-signed legacy retry rejects before aggregate recompute", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        isSigned: true,
+        rapReport: {
+          status: "FOR_SIGNATURE",
+          frozenAt: null,
+          frozenContentHash: null,
+          contentVersion: 0,
+          schedule: { id: "sched-1", sessionStatus: "CONCLUDED" },
+        },
+      }),
+    );
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).not.toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("FIX-2: CANCELLED already-signed legacy retry rejects before aggregate recompute", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        isSigned: true,
+        rapReport: {
+          status: "FOR_SIGNATURE",
+          frozenAt: null,
+          frozenContentHash: null,
+          contentVersion: 0,
+          schedule: { id: "sched-1", sessionStatus: "CANCELLED" },
+        },
+      }),
+    );
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).not.toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("FIX-2: missing attempt state with an already-signed slot fails closed before aggregate recompute", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        isSigned: true,
+        rapReport: {
+          status: "FOR_SIGNATURE",
+          frozenAt: null,
+          frozenContentHash: null,
+          contentVersion: 0,
+          schedule: null,
+        },
+      }),
+    );
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).not.toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("FIX-2: modern frozen FINALIZED report with an already-signed slot does not recompute", async () => {
+    const recompute = vi.spyOn(
+      RapReportService.prototype,
+      "recomputeRapStatusWithTransition",
+    );
+    prismaMock.rapReportSignature.findUnique.mockResolvedValue(
+      slot({
+        isSigned: true,
+        rapReport: {
+          status: "FINALIZED",
+          frozenAt: new Date("2026-10-10T00:00:00Z"),
+          frozenContentHash: "frozen-hash-1",
+          contentVersion: 3,
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
+        },
+      }),
+    );
+
+    await expect(
+      svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(recompute).not.toHaveBeenCalled();
+    expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+  });
+
   it("CDW-9B: does not claim finalizedNow when another concurrent signer won the transition", async () => {
     vi.spyOn(
       RapReportService.prototype,

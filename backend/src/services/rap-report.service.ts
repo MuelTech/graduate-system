@@ -343,17 +343,6 @@ export class RapReportService {
           403,
         );
       }
-      if (slot.isSigned === true) {
-        // CDW-9B FIX-1: allow the committed-state reconcile below to heal a
-        // previous recompute failure; the committed evidence is never rewritten.
-        return {
-          rapId: slot.rapId,
-          scheduleId: slot.rapReport?.schedule?.id ?? null,
-          contentVersion: slot.rapReport?.contentVersion ?? 0,
-          duplicate: true,
-        };
-      }
-
       const rap = slot.rapReport;
       // CDW-7: a CONCLUDED attempt is historical and read-only. This applies to
       // BOTH modern frozen RAPs and legacy RAPs without a frozen snapshot.
@@ -384,6 +373,19 @@ export class RapReportService {
             409,
           );
         }
+      }
+
+      if (slot.isSigned === true) {
+        // CDW-9B FIX-1: allow the committed-state reconcile below to heal a
+        // previous recompute failure; the committed evidence is never rewritten.
+        // CDW-9B FIX-2: only after the attempt/report checks above, so a closed
+        // or historical attempt never reaches aggregate reconciliation.
+        return {
+          rapId: slot.rapId,
+          scheduleId: slot.rapReport?.schedule?.id ?? null,
+          contentVersion: slot.rapReport?.contentVersion ?? 0,
+          duplicate: true,
+        };
       }
 
       const data: {
