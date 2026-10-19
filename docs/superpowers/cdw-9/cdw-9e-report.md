@@ -11,7 +11,9 @@
 - **FIX-4 commit:** `e4b24faf32eb7137351186f5bf323238382ab363`
 - **FIX-5 commit:** `51e506cf244e30129614b7ed4c49f4e2e82f950b`
 - **FIX-6 commit:** `cfcf5c1149f6e938ab38eeb4894fedbbd64407bc`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment action FIX-6 pending owner retest
+- **FIX-7 commit:** `8b04ef339b2d38d36cb307dd1f988105ccdc7468`
+- **FIX-7 verifier reconciliation:** `4947ce0790ed7a558858d01afeab230d7324293c`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment action FIX-7 pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -409,6 +411,57 @@ Owner acceptance flow:
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
 action FIX-6 pending owner retest**.
+
+## 3G. FIX-7 — contextual Add comment placement with native-toolbar clearance
+
+Project-owner real-phone QA after FIX-6 found that the viewport-bottom action was
+reliably reachable but too detached from the selected manuscript text. The preferred
+interaction is to keep **Add comment** contextual near the selection while avoiding
+the Android/browser native text-selection action menu.
+
+### Fix
+
+- Reverted the FIX-6 viewport-bottom placement only; FIX-5 adjustable native
+  selection behavior remains unchanged.
+- The mobile-only **Add comment** action is again positioned relative to the
+  current pending anchor geometry.
+- Placement now prefers **below the last selected rect with a 64 px vertical
+  clearance**, keeping the action visually tied to the selection while leaving
+  room for the browser-controlled native selection toolbar/handles.
+- If there is insufficient room below the manuscript page, the action falls back
+  above the first selected rect with a larger 108 px clearance.
+- Horizontal placement remains clamped inside the manuscript page.
+- The action still appears only for a valid pending selection and still uses the
+  existing explicit commit behavior: consume native selection, preserve the latest
+  pending anchor, then open the existing Shared Comments drawer/composer.
+- Desktop behavior remains unchanged because the action stays `lg:hidden`.
+- No backend, schema, API, annotation model, permission, realtime, or academic
+  workflow behavior changed.
+
+### FIX-7 evidence/status
+
+- Remote product commit:
+  `8b04ef339b2d38d36cb307dd1f988105ccdc7468`.
+- Focused verifier reconciliation:
+  `4947ce0790ed7a558858d01afeab230d7324293c`.
+- Independent connector source/diff review: **PASS** for the bounded positioning
+  change; FIX-5 selection lifecycle was not modified.
+- The focused source-contract verifier now requires the contextual 64 px
+  below-selection clearance / 108 px above fallback and no longer carries the
+  superseded FIX-6 bottom-fixed assertion.
+- Automated verifier execution in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
+- Project-owner real-phone FIX-7 retest: **PENDING**.
+
+Owner acceptance flow:
+
+`phone → long-press/select text → adjust handles → native Android menu may remain visible → Add comment appears near selection with safe spacing → tap Add comment → Shared Comments opens with latest selection → submit comment`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
+action FIX-7 pending owner retest**.
 
 ## 4. Responsive evidence
 
