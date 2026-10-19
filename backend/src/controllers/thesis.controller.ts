@@ -675,6 +675,7 @@ export class ThesisController {
           criteria: req.body?.criteria ?? {},
           ...optional,
           clientPanelId: req.body?.panelId ?? null,
+          expectedUpdatedAt: req.body?.expectedUpdatedAt ?? null,
         } as Parameters<typeof this.oralEvaluation.saveDraft>[2]),
       );
     } catch (error: any) {
@@ -706,6 +707,7 @@ export class ThesisController {
           clientPanelId: req.body?.panelId ?? null,
           clientSignedAt: req.body?.signedAt ?? null,
           clientFinalizedAt: req.body?.finalizedAt ?? null,
+          expectedUpdatedAt: req.body?.expectedUpdatedAt ?? null,
         } as Parameters<typeof this.oralEvaluation.finalize>[2],
       );
       publishDefenseRealtimeEvent("evaluation.finalized", { scheduleId });

@@ -224,6 +224,13 @@ function MatrixEvaluationEditor({
     savedAt: null,
   }));
   const controllerRef = useRef<EvaluationAutosaveController | null>(null);
+  const latestVersionRef = useRef<string | null>(evaluation?.updatedAt ?? null);
+
+  useEffect(() => {
+    const controller = controllerRef.current;
+    if (!controller || controller.hasUnsavedChanges()) return;
+    latestVersionRef.current = evaluation?.updatedAt ?? null;
+  }, [evaluation?.updatedAt]);
 
   const locked = evaluation?.isLocked === true;
   const hasServerDraft = hasMeaningfulServerDraft(evaluation);
@@ -283,16 +290,18 @@ function MatrixEvaluationEditor({
     const controller = new EvaluationAutosaveController({
       save: async (snapshot) => {
         try {
-          await apiClientRequest(
+          const saved = (await apiClientRequest(
             `/thesis/defense/${scheduleId}/evaluation/draft`,
             {
               method: "PUT",
               body: JSON.stringify({
                 criteria: snapshot.criteria,
                 recommendations: snapshot.recommendations,
+                expectedUpdatedAt: latestVersionRef.current,
               }),
             },
-          );
+          )) as OralEvaluation;
+          latestVersionRef.current = saved.updatedAt ?? latestVersionRef.current;
           void queryClient.invalidateQueries({
             queryKey: evalQueryKey(scheduleId),
           });
@@ -379,6 +388,7 @@ function MatrixEvaluationEditor({
             signatureData,
             criteria: buildCriteriaPayload(),
             recommendations,
+            expectedUpdatedAt: latestVersionRef.current,
           }),
         },
       );

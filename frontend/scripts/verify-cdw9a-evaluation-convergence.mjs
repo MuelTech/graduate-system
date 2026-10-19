@@ -54,6 +54,27 @@ test("autosave 409 still reconciles authoritative state", () => {
   assert.match(save, /queryKey: \["defenseWorkspace", scheduleId\]/);
 });
 
+test("autosave and finalization carry the authoritative row version", () => {
+  const source = read(FORM);
+  const mutation = finalizeMutationSource(source);
+
+  assert.match(
+    source,
+    /expectedUpdatedAt: latestVersionRef\.current/,
+    "draft autosave sends the current row version",
+  );
+  assert.match(
+    mutation,
+    /expectedUpdatedAt: latestVersionRef\.current/,
+    "finalization sends the current row version",
+  );
+  assert.match(
+    source,
+    /latestVersionRef\.current = saved\.updatedAt/,
+    "saved autosave response updates the current row version",
+  );
+});
+
 test("finalization still drains autosave before the irreversible request", () => {
   const mutation = finalizeMutationSource(read(FORM));
   const flush = mutation.indexOf("controller.flushAndWait()");

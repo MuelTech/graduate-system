@@ -82,6 +82,34 @@ describe("CP5-FIX2 controller PATCH property presence", () => {
     expect(input.recommendations).toBeNull();
   });
 
+  it("CDW-9A: passes expectedUpdatedAt to draft and finalize", async () => {
+    const saveReq: any = {
+      user: { userId: "user-a" },
+      params: { scheduleId: "sched-1" },
+      body: {
+        criteria: { attitude: 9 },
+        expectedUpdatedAt: "2026-10-19T10:00:00.000Z",
+      },
+    };
+    await controller.saveOralEvaluationDraft(saveReq, res);
+    expect(saveDraft.mock.calls[0][2].expectedUpdatedAt).toBe(
+      "2026-10-19T10:00:00.000Z",
+    );
+
+    const finalizeReq: any = {
+      user: { userId: "user-a" },
+      params: { scheduleId: "sched-1" },
+      body: {
+        signatureData: "sig",
+        expectedUpdatedAt: "2026-10-19T10:00:00.000Z",
+      },
+    };
+    await controller.finalizeOralEvaluation(finalizeReq, res);
+    expect(finalize.mock.calls[0][2].expectedUpdatedAt).toBe(
+      "2026-10-19T10:00:00.000Z",
+    );
+  });
+
   it("finalize also preserves absent optional fields", async () => {
     const req: any = {
       user: { userId: "user-a" },

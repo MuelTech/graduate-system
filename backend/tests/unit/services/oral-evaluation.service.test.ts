@@ -707,6 +707,73 @@ describe("OralEvaluationService (CP5)", () => {
       });
     });
 
+    it("CDW-9A: stale DRAFT save version mismatch returns 409 without update", async () => {
+      const updatedAt = new Date("2026-10-19T10:00:00.000Z");
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        updatedAt,
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+
+      await expect(
+        svc.saveDraft("sched-1", "user-a", {
+          criteria: instComplete,
+          expectedUpdatedAt: "2026-10-19T09:00:00.000Z",
+        } as any),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringMatching(/Evaluation state changed/i),
+      });
+
+      expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("CDW-9A: stale DRAFT finalize version mismatch returns 409 without update", async () => {
+      const updatedAt = new Date("2026-10-19T10:00:00.000Z");
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        updatedAt,
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+          expectedUpdatedAt: "2026-10-19T09:00:00.000Z",
+        } as any),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringMatching(/Evaluation state changed/i),
+      });
+
+      expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("CDW-9A: finalization CAS includes the authoritative row version", async () => {
+      const updatedAt = new Date("2026-10-19T10:00:00.000Z");
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        updatedAt,
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+
+      await svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: instComplete,
+        expectedUpdatedAt: updatedAt.toISOString(),
+      } as any);
+
+      const call = prismaMock.__tx.oralExamScore.updateMany.mock.calls[0]?.[0];
+      expect(call?.where?.updatedAt).toEqual(updatedAt);
+    });
+
     it("CDW-9A: maps a transaction-level P2002 unique race to a friendly 409", async () => {
       prismaMock.$transaction.mockRejectedValueOnce(
         Object.assign(new Error("Unique constraint failed"), {

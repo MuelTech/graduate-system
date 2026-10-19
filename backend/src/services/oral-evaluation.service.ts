@@ -72,6 +72,8 @@ export interface OralEvaluationDto {
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-9A: server row version for cross-tab optimistic concurrency. */
+  updatedAt: string | null;
   isLocked: boolean;
 }
 
@@ -111,6 +113,7 @@ export class OralEvaluationService {
       recommendations: string | null;
       signedAt: Date | null;
       finalizedAt: Date | null;
+      updatedAt?: Date | null;
       scoringVersion?: unknown;
     } | null,
   ): OralEvaluationDto {
@@ -148,6 +151,7 @@ export class OralEvaluationService {
       recommendations: row?.recommendations ?? null,
       signedAt: row?.signedAt ? row.signedAt.toISOString() : null,
       finalizedAt: row?.finalizedAt ? row.finalizedAt.toISOString() : null,
+      updatedAt: row?.updatedAt ? row.updatedAt.toISOString() : null,
       isLocked: row?.status === "FINALIZED",
     };
   }
@@ -243,6 +247,27 @@ export class OralEvaluationService {
   }
 
   /**
+   * CDW-9A: optional optimistic concurrency for clients that carry the row
+   * version returned by the authoritative read. Legacy callers that omit the
+   * token keep the existing status/CAS behavior.
+   */
+  private assertExpectedUpdatedAt(
+    existing: { updatedAt?: Date | null } | null | undefined,
+    expectedUpdatedAt: string | null | undefined,
+  ): void {
+    if (!expectedUpdatedAt) return;
+    if (
+      !existing?.updatedAt ||
+      existing.updatedAt.toISOString() !== expectedUpdatedAt
+    ) {
+      throw new AppError(
+        "Evaluation state changed. Refresh and try again.",
+        409,
+      );
+    }
+  }
+
+  /**
    * CDW-4 FIX: validate + derive per scoring version. V2 uses the institutional
    * matrix and yields two-decimal group AVERAGES with NO individual overall
    * (individual Overall/Rating remain deferred); the Oral Examination Summary is
@@ -311,6 +336,7 @@ export class OralEvaluationService {
       rating?: string | null;
       recommendations?: string | null;
       clientPanelId?: string | null;
+      expectedUpdatedAt?: string | null;
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
@@ -347,6 +373,7 @@ export class OralEvaluationService {
         if (existing?.status === "FINALIZED") {
           throw new AppError("Evaluation is already finalized.", 409);
         }
+        this.assertExpectedUpdatedAt(existing, input.expectedUpdatedAt);
 
         // CP5-FIX1: PATCH merge — absent fields preserve stored values.
         const version = existing
@@ -409,6 +436,7 @@ export class OralEvaluationService {
               status: "DRAFT",
               scheduleId,
               panelId: assignment.id,
+              ...(existing.updatedAt ? { updatedAt: existing.updatedAt } : {}),
             },
             data,
           });
@@ -462,6 +490,7 @@ export class OralEvaluationService {
       clientPanelId?: string | null;
       clientSignedAt?: string | null;
       clientFinalizedAt?: string | null;
+      expectedUpdatedAt?: string | null;
     },
   ): Promise<OralEvaluationDto> {
     const schedule = await this.getScheduleOrThrow(scheduleId);
@@ -502,6 +531,7 @@ export class OralEvaluationService {
       if (existing?.status === "FINALIZED") {
         throw new AppError("Evaluation is already finalized.", 409);
       }
+      this.assertExpectedUpdatedAt(existing, input.expectedUpdatedAt);
 
       const version = existing
         ? resolveScoringVersion(existing)
@@ -581,6 +611,7 @@ export class OralEvaluationService {
             scheduleId,
             panelId: assignment.id,
             status: "DRAFT",
+            ...(existing.updatedAt ? { updatedAt: existing.updatedAt } : {}),
           },
           data,
         });

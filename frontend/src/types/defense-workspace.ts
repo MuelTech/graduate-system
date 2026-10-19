@@ -92,5 +92,7 @@ export interface OralEvaluation {
   recommendations: string | null;
   signedAt: string | null;
   finalizedAt: string | null;
+  /** CDW-9A: server row version for cross-tab optimistic concurrency. */
+  updatedAt: string | null;
   isLocked: boolean;
 }
