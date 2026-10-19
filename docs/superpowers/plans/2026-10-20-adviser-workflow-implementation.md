@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** DESIGN / IMPLEMENTATION AUTHORITY — documentation established; product-code implementation has not started
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 AUTHORIZED / NOT STARTED
 
 ---
 
@@ -300,6 +300,18 @@ Verification:
 
 ### ADV-1 — Admin Scheduling active-Adviser resolution fix
 
+**Status:** ACCEPTED / CLOSED
+
+Accepted implementation:
+- core ADV-1: `4992fc8306694f8ff37d8616a6fb39f06377b34c` — `fix(adviser): resolve scheduling adviser from active assignment`
+- bounded FIX-1 read-model cleanup: `b1a83ec8bba91247c03b9411ff2531210ae3dc2f` — `fix(adviser): keep active adviser rows out of application dto`
+- independent remote source review: PASS
+- project-owner manual browser QA of the reproduced Proposal Scheduling defect: PASS
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- schema/migration: NONE
+
+Accepted result: a legitimate Proposal/Final application resolves its automatic Adviser from the Student's active `AdviserAssignment`; null/stale `ThesisRecord.assignmentId` no longer hides the Adviser; duplicate active assignments fail closed; the internal `student.adviserAssignments` rows are not serialized as a second public authority path.
+
 Goal: fix the reproduced Admin Proposal/Final scheduling defect.
 
 Expected scope:
@@ -329,6 +341,8 @@ Verification proportional to bounded backend + frontend wiring:
 - manual browser QA recorded separately if executed.
 
 ### ADV-2 — Adviser read model + authorization foundation
+
+**Status:** AUTHORIZED / NOT STARTED
 
 Goal: add Adviser-scoped read models for My Advisees without UI consolidation yet.
 
