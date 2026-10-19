@@ -73,6 +73,7 @@ export class EvaluationAutosaveController {
 
   private dirty = false;
   private inFlight = false;
+  private blocked = false;
   private online = true;
   private lifecycle: EvaluationAutosaveLifecycle = "active";
   private hasPersistedSave: boolean;
@@ -126,12 +127,51 @@ export class EvaluationAutosaveController {
     return this.dirty || this.inFlight;
   }
 
+  /**
+   * CDW-9A FIX-1: stop automatic persistence after an explicit stale conflict.
+   * The local snapshot and dirty state remain available for display/preservation;
+   * only the evaluator's explicit reconciliation can clear this hold.
+   */
+  markConflict(): void {
+    if (this.lifecycle === "disposed") return;
+    this.blocked = true;
+    this.clearTimers();
+  }
+
+  /**
+   * Deliberately replace the persisted baseline with an authoritative server
+   * snapshot after the evaluator chooses to reload it. Refuses while a write is
+   * in flight so serialization is never bypassed.
+   */
+  reconcileWithPersisted(snapshot: EvaluationDraftSnapshot): boolean {
+    if (this.lifecycle !== "active" || this.inFlight) return false;
+
+    const normalized = normalizeSnapshot(snapshot);
+    this.latestSnapshot = normalized;
+    this.latestKey = JSON.stringify(normalized);
+    this.savedKey = this.latestKey;
+    this.dirty = false;
+    this.blocked = false;
+    this.unsavedSince = null;
+    this.error = null;
+    this.hasPersistedSave = true;
+    this.clearTimers();
+    this.setStatus("saved");
+    return true;
+  }
+
   update(snapshot: EvaluationDraftSnapshot): void {
     if (this.lifecycle !== "active") return;
 
     const normalized = normalizeSnapshot(snapshot);
     this.latestSnapshot = normalized;
     this.latestKey = JSON.stringify(normalized);
+
+    if (this.blocked) {
+      this.dirty = true;
+      this.emit();
+      return;
+    }
 
     if (this.latestKey === this.savedKey) {
       this.dirty = false;
@@ -171,7 +211,7 @@ export class EvaluationAutosaveController {
    * save (offline/lifecycle no longer active).
    */
   flushNow(): boolean {
-    if (this.lifecycle !== "active") return false;
+    if (this.lifecycle !== "active" || this.blocked) return false;
     if (this.inFlight) return false;
     if (!this.dirty) return true;
     if (!this.online) {
@@ -190,7 +230,9 @@ export class EvaluationAutosaveController {
    * finalizes anything itself.
    */
   flushAndWait(): Promise<boolean> {
-    if (this.lifecycle !== "active") return Promise.resolve(false);
+    if (this.lifecycle !== "active" || this.blocked) {
+      return Promise.resolve(false);
+    }
     if (!this.dirty && !this.inFlight) {
       return Promise.resolve(this.status !== "error" && this.status !== "offline");
     }
@@ -218,7 +260,7 @@ export class EvaluationAutosaveController {
       return;
     }
 
-    if (this.dirty && !this.inFlight) {
+    if (this.dirty && !this.inFlight && !this.blocked) {
       this.clearTimers();
       void this.requestSave();
     }
@@ -241,7 +283,7 @@ export class EvaluationAutosaveController {
     });
 
     if (!this.inFlight) {
-      if (this.dirty && this.online) {
+      if (this.dirty && this.online && !this.blocked) {
         void this.requestSave();
       } else {
         this.finishDispose();
@@ -283,7 +325,7 @@ export class EvaluationAutosaveController {
   }
 
   private async requestSave(): Promise<void> {
-    if (this.lifecycle === "disposed") return;
+    if (this.lifecycle === "disposed" || this.blocked) return;
 
     if (this.inFlight || !this.dirty) {
       if (this.lifecycle === "draining" && !this.inFlight) {

@@ -528,11 +528,11 @@ test("M — finalized evaluations are locked and do not start autosave", () => {
   assert.match(form, /disabled=\{inputsDisabled\}/);
 });
 
-test("N - autosave payload contains criteria/recommendations only, never signatures", () => {
+test("N - autosave payload contains draft fields/version only, never signatures", () => {
   const form = read(FORM);
   assert.match(
     form,
-    /body: JSON\.stringify\(\{\s*criteria: snapshot\.criteria,\s*recommendations: snapshot\.recommendations,\s*\}\)/s,
+    /body: JSON\.stringify\(\{\s*criteria: snapshot\.criteria,\s*recommendations: snapshot\.recommendations,\s*expectedUpdatedAt: latestVersionRef\.current,\s*\}\)/s,
   );
   const autosaveSection = form.slice(
     form.indexOf("save: async (snapshot)"),

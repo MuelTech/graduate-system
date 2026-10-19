@@ -217,6 +217,8 @@ function MatrixEvaluationEditor({
   const [showFinalization, setShowFinalization] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [saveState, setSaveState] = useState<EvaluationAutosaveState>(() => ({
     status: hasMeaningfulServerDraft(evaluation) ? "saved" : "clean",
     hasUnsavedChanges: false,
@@ -307,8 +309,12 @@ function MatrixEvaluationEditor({
           });
         } catch (error) {
           if (error instanceof ApiError && error.statusCode === 409) {
-            // The evaluation may have been finalized or changed elsewhere.
-            // Server state wins; do not retry over the conflict.
+            // CDW-9A FIX-1: keep the local draft visible, stop automatic writes,
+            // and require an explicit authoritative reload.
+            controllerRef.current?.markConflict();
+            setConflict(true);
+            setError(null);
+            setShowFinalization(false);
             void queryClient.invalidateQueries({
               queryKey: evalQueryKey(scheduleId),
             });
@@ -364,6 +370,62 @@ function MatrixEvaluationEditor({
     };
   }, [locked, queryClient, scheduleId]);
 
+  const loadLatestEvaluation = async () => {
+    setReloading(true);
+    try {
+      const latest = (await queryClient.fetchQuery({
+        queryKey: evalQueryKey(scheduleId),
+        queryFn: async () =>
+          (await apiClientRequest(
+            `/thesis/defense/${scheduleId}/evaluation/me`,
+          )) as OralEvaluation,
+        staleTime: 0,
+      })) as OralEvaluation;
+
+      if (!latest.updatedAt) {
+        throw new Error(
+          "The latest saved evaluation could not be loaded. Please try again.",
+        );
+      }
+
+      const nextValues = initialMatrixValues(latest);
+      const nextRecommendations = latest.recommendations ?? "";
+      const reconciled =
+        controllerRef.current?.reconcileWithPersisted(
+          buildSnapshot(nextValues, nextRecommendations),
+        ) ?? true;
+
+      if (!reconciled) {
+        setError(
+          "The latest saved evaluation could not be loaded while a save is in progress. Please try again.",
+        );
+        return;
+      }
+
+      setValues(nextValues);
+      setRecommendations(nextRecommendations);
+      latestVersionRef.current = latest.updatedAt;
+      setConflict(false);
+      setError(null);
+      setMessage(
+        latest.isLocked
+          ? "This evaluation is finalized and locked."
+          : "Latest saved evaluation loaded.",
+      );
+      void queryClient.invalidateQueries({
+        queryKey: ["defenseWorkspace", scheduleId],
+      });
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "The latest saved evaluation could not be loaded. Please try again.",
+      );
+    } finally {
+      setReloading(false);
+    }
+  };
+
   const finalize = useMutation({
     mutationFn: async (signatureData: string) => {
       if (!signatureData.startsWith("data:image/png;base64,")) {
@@ -396,20 +458,27 @@ function MatrixEvaluationEditor({
     onSuccess: async () => {
       setMessage("Evaluation finalized and locked");
       setError(null);
+      setConflict(false);
       setShowFinalization(false);
       await queryClient.invalidateQueries({ queryKey: evalQueryKey(scheduleId) });
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
     },
     onError: (e: Error) => {
       if (e instanceof ApiError && e.statusCode === 409) {
-        // CDW-9A: another tab/request may have finalized or changed this
-        // evaluation. Server state wins; refresh own evaluation and workspace.
+        // CDW-9A FIX-1: another tab/request may have finalized or changed this
+        // evaluation. Preserve local work, block automatic writes, and require
+        // an explicit authoritative reload.
+        controllerRef.current?.markConflict();
+        setConflict(true);
+        setShowFinalization(false);
+        setError(null);
         void queryClient.invalidateQueries({
           queryKey: evalQueryKey(scheduleId),
         });
         void queryClient.invalidateQueries({
           queryKey: ["defenseWorkspace", scheduleId],
         });
+        return;
       }
       const extra =
         e instanceof ApiError && e.missing?.length
@@ -419,7 +488,7 @@ function MatrixEvaluationEditor({
     },
   });
 
-  const inputsDisabled = locked || finalize.isPending;
+  const inputsDisabled = locked || finalize.isPending || conflict || reloading;
 
   return (
     <section className="rounded-lg border border-(--earist-border-gray)">
@@ -448,6 +517,32 @@ function MatrixEvaluationEditor({
           <p className="flex items-center gap-2 text-[14px] text-red-600">
             <AlertCircle className="h-4 w-4" /> {error}
           </p>
+        )}
+
+        {conflict && !locked && (
+          <div
+            role="alert"
+            className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-[14px] text-amber-950"
+          >
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                This evaluation was updated in another tab or session. Your
+                unsaved changes are still here. Reload the latest saved
+                evaluation before continuing.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={reloading}
+              onClick={() => void loadLatestEvaluation()}
+            >
+              {reloading
+                ? "Reloading…"
+                : "Reload latest saved evaluation"}
+            </Button>
+          </div>
         )}
 
         <InstitutionalEvaluationMatrix
