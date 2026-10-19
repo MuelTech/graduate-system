@@ -6,7 +6,8 @@
 - **Starting HEAD:** `6f6e7760e8081fea0adab1687028322d5a2a94b1`
 - **Implementation commit:** `b5c751e1b777a44f2efe44b353ef6e814c7b4b3e`
 - **FIX-1 commit:** `edb6f50995241b877476d3da53df7004a5a33db7`
-- **Status:** ACCEPTED / CLOSED
+- **FIX-2 commit:** `d10403fbdc0135d22fcc75cb0bf5f27697f66f05`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance FIX-2 pending owner mobile retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -146,6 +147,51 @@ Independent review of CDW-9E found two concrete mobile-drawer defects.
 - Targeted CDW-9E Manual Accessibility/Responsive QA remains **NOT EXECUTED**.
 
 CDW-9E FIX-1 remains independently reviewed; final package acceptance is recorded below.
+
+## 3B. FIX-2 — mobile anchored comment selection
+
+Project-owner manual QA after CDW-9E acceptance found that phone users could
+open the Defense Workspace but could not reliably create a new anchored comment
+from manuscript text selection.
+
+### Root cause
+
+`manuscript-page.tsx` finalized candidate selection from the desktop `mouseup`
+path. Native mobile text selection may complete through long-press + selection
+handles without delivering that mouse event path, so the accepted anchor builder
+was not reached reliably.
+
+### Fix
+
+- Extracted the existing anchor-building logic into one shared
+  `processSelection()` path used by desktop and touch/mobile.
+- Kept `mouseup` selection and collapsed-highlight hit-testing unchanged.
+- Added touch/pointer mode and a debounced `selectionchange` completion path.
+- The debounce waits for native selection handles to settle before creating one
+  candidate anchor.
+- Existing `removeAllRanges()` consumption remains, preventing duplicate
+  candidate anchors from one completed selection.
+- Read-only viewers still keep native selection/copy and do not create anchors or
+  clear the selection.
+- Event listeners and timers are cleaned up on unmount.
+
+This is the same anchored-comment flow, not a new comment type or free-floating
+comment feature.
+
+### FIX-2 verification
+
+- New FIX-2 mobile-selection verifier: **5 passed / 0 failed**.
+- CDW-2 contracts + CDW-3 collaboration + FIX-2 verifiers: **40 passed / 0 failed**.
+- Frontend TypeScript: **PASS**.
+- Scoped ESLint for `manuscript-page.tsx`: **PASS**.
+- Full frontend build: **NOT REQUIRED / NOT RUN**.
+- Agent manual mobile QA: **NOT EXECUTED**.
+- Project-owner phone retest remains pending:
+
+  `phone/mobile viewport → long-press/select manuscript text → Add Comment composer appears → submit comment → comment appears in Shared Comments`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance FIX-2 pending
+owner mobile retest**.
 
 ## 4. Responsive evidence
 
