@@ -235,10 +235,20 @@ function MatrixEvaluationEditor({
   }, [evaluation?.updatedAt]);
 
   const locked = evaluation?.isLocked === true;
+  const mountedLockedRef = useRef(locked);
+  const displayValues = locked ? initialMatrixValues(evaluation) : values;
+  const displayRecommendations = locked
+    ? evaluation?.recommendations ?? ""
+    : recommendations;
   const hasServerDraft = hasMeaningfulServerDraft(evaluation);
+
+  useEffect(() => {
+    if (locked) controllerRef.current?.markConflict();
+  }, [locked]);
+
   const selectedValues = (criteria: readonly { key: string }[]): number[] =>
     criteria
-      .map((criterion) => values[criterion.key])
+      .map((criterion) => displayValues[criterion.key])
       .filter((raw) => raw !== undefined && raw !== "")
       .map(Number)
       .filter((value) => Number.isFinite(value));
@@ -287,7 +297,7 @@ function MatrixEvaluationEditor({
   const initialPersistedRef = useRef<boolean>(hasServerDraft);
 
   useEffect(() => {
-    if (locked) return;
+    if (mountedLockedRef.current) return;
 
     const controller = new EvaluationAutosaveController({
       save: async (snapshot) => {
@@ -362,13 +372,14 @@ function MatrixEvaluationEditor({
       window.removeEventListener("blur", flush);
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      // Drain, never abandon, the newest private draft on unmount/tab change.
+      // Drain, never abandon, the newest private draft on unmount unless the
+      // FINALIZED transition has already blocked the controller.
       void controller.dispose();
       if (controllerRef.current === controller) {
         controllerRef.current = null;
       }
     };
-  }, [locked, queryClient, scheduleId]);
+  }, [queryClient, scheduleId]);
 
   const loadLatestEvaluation = async () => {
     setReloading(true);
@@ -546,7 +557,7 @@ function MatrixEvaluationEditor({
         )}
 
         <InstitutionalEvaluationMatrix
-          values={values}
+          values={displayValues}
           disabled={inputsDisabled}
           onChange={(key, value) => {
             setMessage(null);
@@ -600,7 +611,7 @@ function MatrixEvaluationEditor({
           <Textarea
             disabled={inputsDisabled}
             rows={3}
-            value={recommendations}
+            value={displayRecommendations}
             onChange={(e) => {
               setMessage(null);
               setRecommendations(e.target.value);
@@ -648,7 +659,7 @@ function MatrixEvaluationEditor({
         </div>
       )}
 
-      {showFinalization && (
+      {showFinalization && !locked && (
         <EvaluationFinalizationDialog
           open={showFinalization}
           onOpenChange={(next) => {

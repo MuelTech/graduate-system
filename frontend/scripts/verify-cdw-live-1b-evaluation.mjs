@@ -524,7 +524,11 @@ test("L — legacy LEGACY_POINTS_V1 rows never mount the autosave editor", () =>
 test("M — finalized evaluations are locked and do not start autosave", () => {
   const form = read(FORM);
   assert.match(form, /evaluation\?\.isLocked === true/);
-  assert.match(form, /if \(locked\) return;/);
+  assert.match(form, /if \(mountedLockedRef\.current\) return;/);
+  assert.match(
+    form,
+    /if \(locked\) controllerRef\.current\?\.markConflict\(\)/,
+  );
   assert.match(form, /disabled=\{inputsDisabled\}/);
 });
 

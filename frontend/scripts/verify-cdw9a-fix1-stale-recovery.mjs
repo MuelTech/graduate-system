@@ -176,6 +176,56 @@ test("FINALIZED authoritative state hides conflict and locks edits", () => {
   assert.match(source, /\{locked && \(/);
 });
 
+test("FINALIZED transition presents authoritative values without remounting on draft refresh", () => {
+  const source = read(FORM);
+
+  assert.match(
+    source,
+    /const displayValues = locked\s*\?\s*initialMatrixValues\(evaluation\)\s*:\s*values/,
+  );
+  assert.match(
+    source,
+    /const displayRecommendations = locked\s*\?\s*evaluation\?\.recommendations \?\? ""\s*:\s*recommendations/,
+  );
+  assert.match(source, /values=\{displayValues\}/);
+  assert.match(source, /value=\{displayRecommendations\}/);
+  assert.doesNotMatch(source, /key=.*updatedAt/);
+});
+
+test("FINALIZED transition blocks stale autosave/dispose and closes finalization UI", () => {
+  const source = read(FORM);
+
+  assert.match(source, /const mountedLockedRef = useRef\(locked\)/);
+  assert.match(source, /if \(mountedLockedRef\.current\) return/);
+  assert.match(
+    source,
+    /if \(locked\) controllerRef\.current\?\.markConflict\(\)/,
+  );
+  assert.match(source, /void controller\.dispose\(\)/);
+  assert.match(source, /showFinalization && !locked/);
+});
+
+test("blocked dispose does not drain a dirty local draft during finalized transition", async () => {
+  let saves = 0;
+  const controller = new EvaluationAutosaveController({
+    save: async () => {
+      saves += 1;
+    },
+    initialSnapshot: snapshot(),
+    debounceMs: 1,
+    maxWaitMs: 10,
+    setTimer: () => 1,
+    clearTimer: () => {},
+  });
+
+  controller.update(snapshot(1.5, "stale local work"));
+  controller.markConflict();
+  await controller.dispose();
+
+  assert.equal(saves, 0);
+  assert.equal(controller.getState().hasUnsavedChanges, true);
+});
+
 test("finalization still drains autosave before the irreversible request", () => {
   const source = read(FORM);
   const start = source.indexOf("const finalize = useMutation({");

@@ -437,7 +437,11 @@ test("finalized evaluation remains server-immutable and autosave-protected", () 
   assert.match(service, /existing\?\.status === "FINALIZED"[\s\S]*already finalized/);
   assert.match(service, /status: "DRAFT"/);
   assert.match(form, /const locked = evaluation\?\.isLocked === true/);
-  assert.match(form, /if \(locked\) return;/);
+  assert.match(form, /if \(mountedLockedRef\.current\) return;/);
+  assert.match(
+    form,
+    /if \(locked\) controllerRef\.current\?\.markConflict\(\)/,
+  );
 });
 
 test("legacy evaluation rows stay read-only", () => {
