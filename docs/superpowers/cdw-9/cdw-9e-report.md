@@ -8,7 +8,8 @@
 - **FIX-1 commit:** `edb6f50995241b877476d3da53df7004a5a33db7`
 - **FIX-2 commit:** `d10403fbdc0135d22fcc75cb0bf5f27697f66f05`
 - **FIX-3 commit:** `1a119f6ca73ce46f979e57d47867943cd1721b0f`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment fix pending owner retest
+- **FIX-4 commit:** `e4b24faf32eb7137351186f5bf323238382ab363`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment UX refinement pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -250,6 +251,55 @@ FIX-2 cleared the touch-selection mode on `pointercancel`, so the later
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
 fix pending owner retest**.
+
+## 3D. FIX-4 — mobile anchored comment action UX
+
+FIX-3 restored mobile anchored selection, but project-owner phone QA found the
+interaction hard to discover: the native selection highlight disappeared, the
+Comments drawer did not open, and there was little visible confirmation that the
+selected text had been captured.
+
+### Fix
+
+- The existing normalized `pendingAnchor` now drives a presentation-only draft
+  highlight in the manuscript overlay.
+- The draft highlight uses the existing anchor geometry and disappears whenever
+  the pending anchor is replaced, cancelled, submitted, or no longer writable.
+- On narrow/mobile layouts, a contextual **Add comment** button appears near the
+  pending selection. It is clamped within the page so it stays usable near page
+  edges.
+- Tapping **Add comment** does not auto-open on selection and does not create an
+  annotation. It:
+  1. keeps the same pending anchor;
+  2. ensures the rail view is `selected`;
+  3. opens the existing mobile Shared Comments drawer.
+- The existing `AnnotationCommentComposer` renders from the same pending anchor;
+  persistence still happens only on composer submit.
+- The existing drawer retains one-active-drawer state, focus trap, Escape,
+  backdrop close, focus restoration, inert background, and left/right placement.
+- Read-only viewers receive no pending anchor, draft highlight, or contextual
+  action.
+- No backend, API, annotation model, permissions, or realtime behavior changed.
+
+### FIX-4 verification
+
+- Mobile-selection verifier: **9 passed / 0 failed**.
+- CDW-3 collaboration + CDW-4 workspace + mobile-selection verifiers:
+  **42 passed / 0 failed**.
+- Frontend TypeScript: **PASS**.
+- Scoped ESLint for changed source: **PASS**.
+- Full frontend build: **NOT REQUIRED / NOT RUN**.
+- Agent real-phone QA: **NOT EXECUTED**.
+- Project-owner phone retest remains pending:
+
+  `phone → long-press/select manuscript text → temporary selected-text highlight remains visible → Add comment contextual button appears → tap Add comment → Shared Comments drawer opens → Selected tab / Add Comment composer visible → type comment → submit → persisted comment/highlight appears`
+
+  Cancel path to verify:
+
+  `select text → tap Cancel in composer → pending highlight/action disappear`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
+UX refinement pending owner retest**.
 
 ## 4. Responsive evidence
 
