@@ -10,11 +10,11 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
-**Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md  
-**Next implementation package:** CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening (within parent phase CDW-9)<br>
+**Latest acceptance reconciliation:** docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md<br>
+**Next implementation package:** CDW-9B — Committee Report Finalization and Signature Concurrency Hardening<br>
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED; CDW-9 is split into bounded packages CDW-9A through CDW-9F; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F remain PLANNED / NOT YET IMPLEMENTED; CDW-9B is not authorized until CDW-9A review/acceptance
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED; CDW-9 is split into bounded packages CDW-9A through CDW-9F; CDW-9A is ACCEPTED / CLOSED; CDW-9B is NEXT / AUTHORIZED — NOT YET IMPLEMENTED; CDW-9C through CDW-9F remain PLANNED / NOT YET IMPLEMENTED
 
 ---
 
@@ -63,7 +63,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
 | CDW-LIVE-1 MANUAL-QA FIX-6 | FINAL ACCEPTED / CLOSED | parallel evaluation/report workstreams, autosave-safe finalization, single-step signing, and concise faculty UI independently source-reviewed and accepted |
 | Additional pre-CDW-9 multi-user replay | WAIVED / NOT REQUIRED | project owner explicitly waived another full replay after FIX-6 because targeted regressions + independent source review sufficiently cover the changed sequence; this is not recorded as a manual-QA PASS |
-| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; CDW-9A is IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9B through CDW-9F are PLANNED / NOT YET IMPLEMENTED |
+| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; CDW-9A is ACCEPTED / CLOSED; CDW-9B is NEXT / AUTHORIZED — NOT YET IMPLEMENTED; CDW-9C through CDW-9F are PLANNED / NOT YET IMPLEMENTED |
 
 Accepted CDW-8 production implementation HEAD:
 
@@ -1410,7 +1410,7 @@ Accepted product-code baseline before the docs-only reconciliation: `3e5ed6847db
 
 ## 13. Phase CDW-9 — Hardening and production readiness
 
-**Parent status:** NEXT / AUTHORIZED — CDW-9A IMPLEMENTED / PENDING INDEPENDENT REVIEW; CDW-9 NOT YET COMPLETE.
+**Parent status:** NEXT / AUTHORIZED — CDW-9A ACCEPTED / CLOSED; CDW-9B NEXT / AUTHORIZED — NOT YET IMPLEMENTED; CDW-9 NOT YET COMPLETE.
 
 CDW-9 is the final planned production-hardening phase for the Collaborative
 Defense Workspace. It is not a workflow redesign, a feature-expansion phase, or
@@ -1426,8 +1426,8 @@ reference this section rather than duplicating it.
 
 | Package | Status | Bounded purpose | Starts after |
 |---|---|---|---|
-| **CDW-9A** | **IMPLEMENTED / PENDING INDEPENDENT REVIEW** | Evaluation and Oral Examination Summary convergence hardening | Accepted pre-CDW-9 baseline + this plan |
-| **CDW-9B** | **PLANNED / NOT YET IMPLEMENTED** | Committee Report finalization and signature concurrency hardening | CDW-9A accepted |
+| **CDW-9A** | **ACCEPTED / CLOSED** | Evaluation and Oral Examination Summary convergence hardening | Accepted pre-CDW-9 baseline + this plan |
+| **CDW-9B** | **NEXT / AUTHORIZED — NOT YET IMPLEMENTED** | Committee Report finalization and signature concurrency hardening | CDW-9A accepted |
 | **CDW-9C** | **PLANNED / NOT YET IMPLEMENTED** | Security and audit hardening | CDW-9B accepted |
 | **CDW-9D** | **PLANNED / NOT YET IMPLEMENTED** | Measured performance and query hardening | CDW-9C accepted |
 | **CDW-9E** | **PLANNED / NOT YET IMPLEMENTED** | Accessibility, keyboard, and responsive hardening | CDW-9D accepted |
@@ -1580,7 +1580,7 @@ persisted state or exposing internal identifiers to ordinary faculty UI.
 
 ### 13.5 CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening
 
-**Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+**Status:** ACCEPTED / CLOSED.
 
 #### Purpose
 
@@ -1653,16 +1653,17 @@ ownership, scoring semantics, or verdict authority.
 
 #### Acceptance / STOP boundary
 
-CDW-9A is accepted only after independent review of the actual pushed diff/source
-confirms the concurrency, idempotency, stale-client, privacy, and arithmetic
-invariants above. After acceptance, **STOP**. Do not begin CDW-9B without explicit
-project-owner authorization.
+CDW-9A was accepted after independent review of the actual pushed diff/source
+confirmed the concurrency, idempotency, stale-client, privacy, and arithmetic
+invariants above. The package is now **ACCEPTED / CLOSED**; no remaining blocking
+CDW-9A defect was found. Do not begin CDW-9B without explicit project-owner
+authorization even though it is the next authorized package.
 
 #### Dependency / order
 
-CDW-9A is the first CDW-9 implementation package. It may start only after the
-project owner authorizes implementation and the exact starting HEAD is verified.
-CDW-9B depends on CDW-9A being accepted.
+CDW-9A was the first CDW-9 implementation package. Its dependency on explicit
+project-owner authorization and an exact starting-HEAD check was satisfied. CDW-9B
+depends on CDW-9A being accepted; that prerequisite is now satisfied.
 
 #### Implementation evidence
 
@@ -1705,12 +1706,24 @@ CDW-9B depends on CDW-9A being accepted.
 - Manual browser/multi-user QA: **NOT EXECUTED**. The previously waived
   pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**, not a PASS.
 
-CDW-9A is not accepted until independent project-owner review. CDW-9B remains
-**PLANNED / NOT YET IMPLEMENTED** and must not begin automatically.
+#### Acceptance review
+
+- Independent remote source review: **PASS**.
+- Review verified the actual remote commits/diff/source for finalization CAS,
+  unique-race handling, Summary convergence, version conflict behavior,
+  DRAFT-conflict recovery, authoritative FINALIZED display, and preserved domain
+  boundaries.
+- No remaining blocking CDW-9A defect was found.
+- Targeted two-tab stale-evaluation Manual QA: **NOT EXECUTED**. The waived
+  pre-CDW-9 replay remains **WAIVED / NOT REQUIRED** and is not represented as a
+  manual/browser/full-E2E PASS.
+- Acceptance reconciliation:
+  `docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`.
+- **CDW-9A is ACCEPTED / CLOSED.**
 
 ### 13.6 CDW-9B — Committee Report Finalization and Signature Concurrency Hardening
 
-**Status:** PLANNED / NOT YET IMPLEMENTED.
+**Status:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED.
 
 #### Purpose
 
@@ -1784,8 +1797,9 @@ without explicit project-owner authorization.
 
 #### Dependency / order
 
-CDW-9B starts only after CDW-9A is accepted. CDW-9C depends on CDW-9B being
-accepted.
+CDW-9A is accepted, so the CDW-9B dependency is satisfied. CDW-9B is the next
+authorized package but implementation still requires explicit project-owner
+authorization. CDW-9C depends on CDW-9B being accepted.
 
 ### 13.7 CDW-9C — Security and Audit Hardening
 
@@ -2098,9 +2112,10 @@ CDW-9 is complete only when CDW-9A through CDW-9F are independently accepted in
 order and the final production-readiness gate has passed under the evidence rules
 above.
 
-Until then, CDW-9 remains **NEXT / AUTHORIZED — NOT YET IMPLEMENTED**, and only
-**CDW-9A** is authorized for implementation after explicit project-owner
-authorization.
+Until then, CDW-9 remains **NEXT / AUTHORIZED — NOT YET COMPLETE**. CDW-9A is
+**ACCEPTED / CLOSED**. **CDW-9B** is the next authorized implementation package
+but remains **NOT YET IMPLEMENTED** until explicit project-owner authorization.
+CDW-9C through CDW-9F remain **PLANNED / NOT YET IMPLEMENTED**.
 
 ### 13.12 Explicitly deferred / outside CDW-9
 

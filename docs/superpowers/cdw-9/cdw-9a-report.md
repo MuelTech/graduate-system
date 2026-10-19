@@ -9,13 +9,14 @@
   - `bc695f36016f487908af64715ed43a64b609d3ee` — stale evaluation draft version guard
   - `b167f8c4c40cdac9b67fc3db590f81e9f94462de` — CDW-9A FIX-1 explicit stale-draft recovery
   - `cc11d58df4a397faa10c9a76f1ffc917544847db` — CDW-9A FIX-2 authoritative finalized display
-- **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- **Final pre-acceptance documentation HEAD:** `83bd2d2fcfc27756e56e38182041eba2af666db3`
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Schema change:** NONE
 - **Migration:** NONE
 - **Manual browser/multi-user QA:** NOT EXECUTED
-- **CDW-9B:** NOT STARTED
-- **Next package:** CDW-9B — Committee Report Finalization and Signature Concurrency Hardening, only after CDW-9A review/acceptance
+- **CDW-9B:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED
+- **Next package:** CDW-9B — Committee Report Finalization and Signature Concurrency Hardening
 
 ---
 
@@ -264,6 +265,7 @@ Existing FIX-4 tests continue to cover:
 | Existing CDW-9A verifier | **4 passed / 0 failed** |
 | CDW-LIVE-1B evaluation autosave verifier | **24 passed / 0 failed** |
 | CDW-LIVE-1C acceptance verifier | **31 passed / 0 failed** |
+| CDW-LIVE-1 FIX-3 verifier | **17 passed / 0 failed** |
 | Frontend `npx tsc --noEmit` | **PASS** |
 | Scoped ESLint on changed files | **PASS** |
 | Frontend production build | **PASS** |
@@ -287,7 +289,58 @@ not represented as Manual QA PASS, full replay PASS, or full E2E PASS.
 
 ---
 
-## 7. Known limitations
+## 7. Acceptance
+
+**Final status: ACCEPTED / CLOSED.**
+
+Independent remote source review: **PASS**. Review verified the actual remote
+commits/diff/source for evaluator finalization CAS/version behavior, transaction
+and direct-create `P2002` handling, Summary uniqueness and `P2002` convergence,
+DRAFT stale-client recovery, authoritative FINALIZED display, and the preserved
+academic/domain boundaries. No remaining blocking CDW-9A defect was found.
+
+Accepted implementation chain:
+
+- starting baseline: `74584c31737243ba071f059b4c844153de32a142`;
+- `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4` — convergence hardening;
+- `bc695f36016f487908af64715ed43a64b609d3ee` — stale evaluation draft version guard;
+- `b167f8c4c40cdac9b67fc3db590f81e9f94462de` — FIX-1 explicit stale-draft recovery;
+- `cc11d58df4a397faa10c9a76f1ffc917544847db` — FIX-2 authoritative finalized display;
+- final pre-acceptance documentation HEAD: `83bd2d2fcfc27756e56e38182041eba2af666db3`.
+
+Accepted behavior includes both bounded corrections:
+
+- FIX-1: DRAFT-vs-DRAFT conflicts preserve local work, block automatic
+  persistence, and require explicit **Reload latest saved evaluation** before
+  authoritative content/version replaces the local baseline.
+- FIX-2: authoritative FINALIZED transitions immediately display server
+  criteria/recommendations, lock editing, block stale autosave/unmount drain, and
+  require no explicit reload.
+
+Evidence provenance remains separate:
+
+- agent-local focused tests/verifiers and build/static checks are recorded in
+  Section 6;
+- independent review is remote source/diff verification, not agent execution;
+- targeted two-tab stale-evaluation Manual QA: **NOT EXECUTED**;
+- the waived pre-CDW-9 multi-user replay remains **WAIVED / NOT REQUIRED**, not a
+  manual/browser/full-E2E PASS;
+- hosted CI: **NOT OBSERVED / NOT CLAIMED**.
+
+CDW-9A FIX-1/FIX-2 introduced **no backend production, schema, or migration
+change**. FIX-4 arithmetic, Rating/Remarks deferral, Summary verdict independence,
+Chairman verdict authority, Committee Report parallelism, and the realtime event
+count remain unchanged.
+
+Acceptance reconciliation:
+`docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`.
+
+Next package: **CDW-9B — Committee Report Finalization and Signature Concurrency
+Hardening**, status **NEXT / AUTHORIZED — NOT YET IMPLEMENTED**.
+
+---
+
+## 8. Known limitations
 
 - Concurrency evidence is deterministic service-level interleaving and unique
   race coverage; it is not a live MariaDB contention benchmark or browser
@@ -301,11 +354,12 @@ not represented as Manual QA PASS, full replay PASS, or full E2E PASS.
 
 ---
 
-## 8. Boundary confirmation
+## 9. Boundary confirmation
 
-- CDW-9B was not started.
-- CDW-9C through CDW-9F were not started.
-- Backend production: **NO CHANGE** in CDW-9A FIX-1.
+- CDW-9B is **NEXT / AUTHORIZED — NOT YET IMPLEMENTED**; no CDW-9B implementation
+  was started.
+- CDW-9C through CDW-9F remain **PLANNED / NOT YET IMPLEMENTED**.
+- Backend production: **NO CHANGE** in CDW-9A FIX-1/FIX-2.
 - FIX-4 computation: **NO CHANGE**.
 - Verdict authority: **NO CHANGE**.
 - Committee Report sequencing: **NO CHANGE**.
