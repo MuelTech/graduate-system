@@ -17,6 +17,7 @@ const prismaMock = vi.hoisted(() => ({
     updateMany: vi.fn(),
     create: vi.fn(),
   },
+  auditLog: { create: vi.fn() },
 }));
 
 const { ensureSummary } = vi.hoisted(() => ({ ensureSummary: vi.fn() }));

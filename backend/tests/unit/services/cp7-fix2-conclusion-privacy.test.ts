@@ -34,6 +34,7 @@ const prismaMock = vi.hoisted(() => {
       findMany: vi.fn(),
       findMany: vi.fn(),
     },
+    auditLog: { create: vi.fn() },
   };
   return {
     defenseSchedule: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
@@ -54,6 +55,7 @@ const prismaMock = vi.hoisted(() => {
     },
     panelAssignment: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
     oralExamScore: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+    auditLog: { create: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
     __tx: tx,
   };
@@ -173,6 +175,7 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
     expect(createRapAfterConclusion).not.toHaveBeenCalled();
     expect(prismaMock.__tx.thesisRecord.update).not.toHaveBeenCalled();
     expect(prismaMock.__tx.defenseSchedule.update).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("REAL F: non-Rapporteur finalizer → 409 and no official writes", async () => {
@@ -223,6 +226,25 @@ describe("CP7-FIX2 REAL E–G: ThesisRepository.concludeDefense finalizer integr
     expect(prismaMock.__tx.rapReport.update).not.toHaveBeenCalled();
     expect(prismaMock.__tx.rapReport.updateMany).not.toHaveBeenCalled();
     expect(result.rapReport.id).toBe("rap-1");
+    expect(prismaMock.__tx.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.__tx.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "chair-1",
+      actionType: "DEFENSE_VERDICT_RECORDED",
+      targetTable: "defense_conclusions",
+      targetId: "c-1",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toEqual({
+      scheduleId: "sched-1",
+      thesisId: "thesis-1",
+      defenseType: "TITLE_DEFENSE",
+      outcome: "PASSED",
+    });
+    expect(audit.newValue).not.toMatch(
+      /signature|criteria|recommendation|reportBody|manuscript|finalRemarks|password|token|storagePath/i,
+    );
   });
 
   it("CDW-5 FIX: a failing RAP-lifecycle (non-finalized report) aborts the conclusion (409 propagates)", async () => {

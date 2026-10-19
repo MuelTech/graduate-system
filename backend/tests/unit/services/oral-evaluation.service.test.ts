@@ -19,6 +19,7 @@ const prismaMock = vi.hoisted(() => {
     rapReport: { create: vi.fn() },
     rapReportSignature: { create: vi.fn(), createMany: vi.fn() },
     thesisRecord: { update: vi.fn(), updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
   };
   return {
     defenseSchedule: {
@@ -38,6 +39,7 @@ const prismaMock = vi.hoisted(() => {
     rapReport: { create: vi.fn() },
     rapReportSignature: { create: vi.fn(), createMany: vi.fn() },
     thesisRecord: { update: vi.fn(), updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
     __tx: tx,
   };
@@ -232,6 +234,53 @@ describe("OralEvaluationService (CP5)", () => {
     expect(call?.data?.signedAt?.getFullYear?.()).not.toBe(2000);
     // Group I sum of completeCriteria: 8+8+12+8+12 = 48
     expect(Number(call?.data?.groupAAverage)).toBe(48);
+    expect(prismaMock.__tx.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.__tx.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "user-a",
+      actionType: "DEFENSE_EVALUATION_FINALIZED",
+      targetTable: "oral_exam_scores",
+      targetId: "eval-1",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toEqual({
+      scheduleId: "sched-1",
+      defenseType: "PROPOSAL_DEFENSE",
+      panelAssignmentId: "panel-1",
+      newStatus: "FINALIZED",
+    });
+    expect(audit.newValue).not.toMatch(
+      /signature|criteria|recommendation|reportBody|manuscript|password|token|storagePath/i,
+    );
+  });
+
+  it("CDW-9C: unauthorized or duplicate finalize never writes a success audit", async () => {
+    prismaMock.panelAssignment.findFirst.mockResolvedValueOnce({
+      id: "panel-x",
+      scheduleId: "sched-1",
+      userId: "user-x",
+      role: "ADVISER",
+    });
+    await expect(
+      svc.finalize("sched-1", "user-x", {
+        signatureData: "e-sign",
+        criteria: completeCriteria,
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(prismaMock.__tx.auditLog.create).not.toHaveBeenCalled();
+
+    prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+      id: "eval-1",
+      status: "FINALIZED",
+    });
+    await expect(
+      svc.finalize("sched-1", "user-a", {
+        signatureData: "e-sign",
+        criteria: completeCriteria,
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.__tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("Test 14–15: finalize requires complete criteria and signature", async () => {

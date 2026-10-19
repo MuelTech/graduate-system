@@ -12,6 +12,11 @@
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
+import {
   getRapSignatoryRoles,
   resolveRapSignatureRequirements,
 } from "./rap-signature.policy";
@@ -420,6 +425,20 @@ export class RapReportService {
           duplicate: true,
         };
       }
+
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.REPORT_SIGNED,
+        targetTable: DEFENSE_AUDIT_TARGETS.SIGNATURE,
+        targetId: sigId,
+        metadata: {
+          scheduleId: String(rap?.schedule?.id ?? ""),
+          reportId: slot.rapId,
+          signatureId: sigId,
+          contentVersion: rap?.contentVersion ?? 0,
+          newStatus: "SIGNED",
+        },
+      });
 
       return {
         rapId: slot.rapId,

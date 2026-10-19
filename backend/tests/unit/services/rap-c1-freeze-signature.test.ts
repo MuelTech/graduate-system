@@ -23,6 +23,7 @@ const prismaMock = vi.hoisted(() => ({
     updateMany: vi.fn(),
     create: vi.fn(),
   },
+  auditLog: { create: vi.fn() },
 }));
 
 const { ensureSummary } = vi.hoisted(() => ({ ensureSummary: vi.fn() }));
@@ -161,6 +162,26 @@ describe("RAP-C1 freeze (DefenseCollaborationService)", () => {
     // TITLE excludes Adviser and Facilitator.
     expect(users).toEqual(["u-CHAIRMAN", "u-PANELIST", "u-RAPPORTEUR"]);
     expect(created.every((c) => c.required === true)).toBe(true);
+    expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "u-RAPPORTEUR",
+      actionType: "DEFENSE_REPORT_FINALIZED",
+      targetTable: "rap_reports",
+      targetId: "rap-1",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toMatchObject({
+      scheduleId: "sched-1",
+      reportId: "rap-1",
+      contentVersion: 1,
+      requiredSigners: 3,
+      newStatus: "FOR_SIGNATURE",
+    });
+    expect(audit.newValue).not.toMatch(
+      /signatureData|criteria|recommendation|reportBody|manuscript|password|token|storagePath/i,
+    );
   });
 
   it("includes the active Adviser for Proposal and excludes the Facilitator", async () => {
@@ -187,6 +208,7 @@ describe("RAP-C1 freeze (DefenseCollaborationService)", () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("CHAIRMAN"));
     await expect(svc.freezeReportForSignatures("sched-1", "u-CHAIRMAN")).rejects.toMatchObject({ statusCode: 403 });
     expect(prismaMock.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejects a Rapporteur who is not the assigned Rapporteur (403)", async () => {
@@ -201,6 +223,7 @@ describe("RAP-C1 freeze (DefenseCollaborationService)", () => {
     const result = await svc.freezeReportForSignatures("sched-1", "u-RAPPORTEUR");
     expect(result).toMatchObject({ alreadyFrozen: true, contentHash: "a".repeat(64) });
     expect(prismaMock.rapReportSignature.createMany).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejects freezing an empty report (409)", async () => {
@@ -332,6 +355,25 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
         }),
       }),
     );
+    expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "u-CHAIRMAN",
+      actionType: "DEFENSE_REPORT_SIGNED",
+      targetTable: "rap_report_signatures",
+      targetId: "sig-CHAIRMAN",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toEqual({
+      scheduleId: "sched-1",
+      defenseType: "TITLE_DEFENSE",
+      reportId: "rap-1",
+      signatureId: "sig-CHAIRMAN",
+      contentVersion: 2,
+      newStatus: "SIGNED",
+    });
+    expect(audit.newValue).not.toContain(EVIDENCE);
   });
 
   it("lets a required Panelist and Rapporteur sign their own slots", async () => {
@@ -385,6 +427,7 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("PANELIST"));
     prismaMock.rapReportSignature.findFirst.mockResolvedValue(null);
     await expect(svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE)).rejects.toMatchObject({ statusCode: 403 });
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("cannot sign another signer's slot (own-slot enforcement)", async () => {
@@ -400,6 +443,7 @@ describe("RAP-C1 signing (DefenseCollaborationService)", () => {
     prismaMock.rapReportSignature.findFirst.mockResolvedValue({ id: "sig-PANELIST", required: true, isSigned: true });
     await expect(svc.signReportForSignatures("sched-1", "u-PANELIST", EVIDENCE)).rejects.toMatchObject({ statusCode: 409 });
     expect(prismaMock.rapReportSignature.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejects signing before freeze (RAP not frozen)", async () => {

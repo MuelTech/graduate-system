@@ -45,6 +45,11 @@ import {
   resolveRapSignatureRequirements,
 } from "./rap-signature.policy";
 import { RapReportService } from "./rap-report.service";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import {
   selectCertifiedFinalManuscript,
@@ -1193,6 +1198,22 @@ export class DefenseCollaborationService {
         skipDuplicates: true,
       });
 
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.REPORT_FINALIZED,
+        targetTable: DEFENSE_AUDIT_TARGETS.REPORT,
+        targetId: rap.id,
+        metadata: {
+          scheduleId,
+          thesisId: freezeContext.thesisId,
+          defenseType: freezeContext.defenseType,
+          reportId: rap.id,
+          contentVersion,
+          requiredSigners: requirements.length,
+          newStatus: "FOR_SIGNATURE",
+        },
+      });
+
       return {
         frozen: true,
         alreadyFrozen: false,
@@ -1290,6 +1311,22 @@ export class DefenseCollaborationService {
           duplicate: true,
         };
       }
+
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.REPORT_SIGNED,
+        targetTable: DEFENSE_AUDIT_TARGETS.SIGNATURE,
+        targetId: slot.id,
+        metadata: {
+          scheduleId,
+          defenseType: String(schedule.defenseType),
+          reportId: rap.id,
+          signatureId: slot.id,
+          contentVersion: rap.contentVersion ?? 0,
+          newStatus: "SIGNED",
+        },
+      });
+
       return {
         rapId: rap.id,
         contentVersion: rap.contentVersion ?? 0,

@@ -10,6 +10,11 @@ import {
 } from "../services/defense-evidence.rules";
 import { DEFENSE_REVIEW_ACTIONS } from "../services/defense-review-events";
 import { selectAuthoritativeAttemptManuscript } from "../services/defense-attempt-manuscript.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "../services/defense-audit";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -1408,6 +1413,19 @@ export class ThesisRepository {
       await tx.defenseSchedule.update({
         where: { id: scheduleId },
         data: { sessionStatus: "CONCLUDED" },
+      });
+
+      await writeDefenseAudit(tx, {
+        actorId: chairmanUserId,
+        actionType: DEFENSE_AUDIT_ACTIONS.VERDICT_RECORDED,
+        targetTable: DEFENSE_AUDIT_TARGETS.CONCLUSION,
+        targetId: conclusion.id,
+        metadata: {
+          scheduleId,
+          thesisId: schedule.thesisId,
+          defenseType: String(schedule.defenseType),
+          outcome,
+        },
       });
 
       // No RapReport is created here: the canonical RAP lifecycle is inverted for

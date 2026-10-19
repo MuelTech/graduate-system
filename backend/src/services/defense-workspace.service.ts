@@ -8,6 +8,11 @@ import { AppError } from "../utils/AppError";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
 import { isEvaluatorRole, assertEvaluationSessionEditable } from "./oral-evaluation.rules";
 import { selectAuthoritativeAttemptManuscript } from "./defense-attempt-manuscript.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 
 const committeePolicy = new DefenseCommitteePolicy();
 
@@ -475,11 +480,29 @@ export class DefenseWorkspaceService {
       );
     }
 
-    const result = await prisma.defenseSchedule.updateMany({
-      where: { id: scheduleId, sessionStatus: "SCHEDULED" },
-      data: { sessionStatus: "IN_PROGRESS" },
+    const transition = await prisma.$transaction(async (tx) => {
+      const result = await tx.defenseSchedule.updateMany({
+        where: { id: scheduleId, sessionStatus: "SCHEDULED" },
+        data: { sessionStatus: "IN_PROGRESS" },
+      });
+      if (result.count === 0) return { transitioned: false };
+
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.SESSION_STARTED,
+        targetTable: DEFENSE_AUDIT_TARGETS.SESSION,
+        targetId: scheduleId,
+        metadata: {
+          scheduleId,
+          defenseType: String(schedule.defenseType),
+          previousStatus: "SCHEDULED",
+          newStatus: "IN_PROGRESS",
+        },
+      });
+      return { transitioned: true };
     });
-    if (result.count === 0) {
+
+    if (!transition.transitioned) {
       const refreshed = await prisma.defenseSchedule.findUnique({
         where: { id: scheduleId },
         select: { sessionStatus: true },

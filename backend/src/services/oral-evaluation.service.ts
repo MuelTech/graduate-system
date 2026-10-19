@@ -31,6 +31,11 @@ import {
   validateInstitutionalCriterionValue,
   type OralEvaluationScoringVersionValue,
 } from "./oral-evaluation.institutional.rules";
+import {
+  DEFENSE_AUDIT_ACTIONS,
+  DEFENSE_AUDIT_TARGETS,
+  writeDefenseAudit,
+} from "./defense-audit";
 
 const CRITERION_KEYS = Object.keys(CRITERION_LIMITS) as CriterionKey[];
 const committeePolicy = new DefenseCommitteePolicy();
@@ -604,6 +609,7 @@ export class OralEvaluationService {
         scoringVersion: version,
       };
 
+      let scoreId = existing?.id ?? null;
       if (existing) {
         // Existing DRAFT → CAS update (unchanged behavior).
         const result = await tx.oralExamScore.updateMany({
@@ -627,13 +633,14 @@ export class OralEvaluationService {
         // constraint keeps the concurrent case race-safe; a P2002 loser gets the
         // same friendly 409 as a stale CAS.
         try {
-          await tx.oralExamScore.create({
+          const created = await tx.oralExamScore.create({
             data: {
               scheduleId,
               panelId: assignment.id,
               ...data,
             },
           });
+          scoreId = created.id;
         } catch (err: any) {
           if (err?.code === "P2002") {
             throw new AppError(
@@ -644,6 +651,23 @@ export class OralEvaluationService {
           throw err;
         }
       }
+
+      // CDW-9C: audit the committed material transition in the same transaction.
+      if (!scoreId) {
+        throw new Error("Finalized evaluation identity was not resolved.");
+      }
+      await writeDefenseAudit(tx, {
+        actorId: userId,
+        actionType: DEFENSE_AUDIT_ACTIONS.EVALUATION_FINALIZED,
+        targetTable: DEFENSE_AUDIT_TARGETS.EVALUATION,
+        targetId: scoreId,
+        metadata: {
+          scheduleId,
+          defenseType: schedule.defenseType,
+          panelAssignmentId: assignment.id,
+          newStatus: "FINALIZED",
+        },
+      });
     }).catch((err: any) => {
       // CDW-9A: defense-in-depth for any unique-constraint race that escapes the
       // transaction callback (for example a commit-time collision). Never leak a

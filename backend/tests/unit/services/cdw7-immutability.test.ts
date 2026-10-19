@@ -10,6 +10,7 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn(),
   },
   rapReport: { findUnique: vi.fn(), updateMany: vi.fn() },
+  auditLog: { create: vi.fn() },
   $transaction: vi.fn(),
 }));
 
@@ -193,13 +194,31 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
           frozenAt: null,
           frozenContentHash: null,
           contentVersion: 0,
-          schedule: { sessionStatus: "IN_PROGRESS" },
+          schedule: { id: "sched-1", sessionStatus: "IN_PROGRESS" },
         },
       }),
     );
 
     await svc.signRapSlot("sig-1", "u-panel", "data:image/png;base64,AAAA");
     expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+    const audit = prismaMock.auditLog.create.mock.calls[0][0].data;
+    expect(audit).toMatchObject({
+      actorId: "u-panel",
+      actionType: "DEFENSE_REPORT_SIGNED",
+      targetTable: "rap_report_signatures",
+      targetId: "sig-1",
+      oldValue: null,
+      ipAddress: null,
+    });
+    expect(JSON.parse(audit.newValue)).toEqual({
+      scheduleId: "sched-1",
+      reportId: "rap-1",
+      signatureId: "sig-1",
+      contentVersion: 0,
+      newStatus: "SIGNED",
+    });
+    expect(audit.newValue).not.toContain("data:image");
   });
 
   it("modern frozen signing still binds hash/version for an ACTIVE attempt", async () => {
@@ -291,6 +310,7 @@ describe("CDW-7 correction — concluded attempts reject RAP signing (legacy and
 
     expect(recompute).toHaveBeenCalledTimes(2);
     expect(prismaMock.rapReportSignature.updateMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
   });
 
   it("FIX-2: active already-signed legacy retry still reconciles before duplicate 409", async () => {

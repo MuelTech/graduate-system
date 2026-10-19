@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const prismaMock = vi.hoisted(() => ({
-  defenseSchedule: {
-    findUnique: vi.fn(),
-    updateMany: vi.fn(),
-  },
-  panelAssignment: { findFirst: vi.fn() },
-}));
+const prismaMock = vi.hoisted(() => {
+  const client = {
+    defenseSchedule: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    panelAssignment: { findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
+  return {
+    ...client,
+    $transaction: vi.fn(async (fn: (tx: typeof client) => unknown) => fn(client)),
+    __tx: client,
+  };
+});
 
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 
@@ -466,6 +474,25 @@ describe("DefenseWorkspaceService (CP6)", () => {
       });
       const where = prismaMock.defenseSchedule.updateMany.mock.calls[0][0].where;
       expect(where).toMatchObject({ id: "sched-1", sessionStatus: "SCHEDULED" });
+      expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+      const audit = prismaMock.auditLog.create.mock.calls[0][0].data;
+      expect(audit).toMatchObject({
+        actorId: "u-chair",
+        actionType: "DEFENSE_SESSION_STARTED",
+        targetTable: "defense_schedules",
+        targetId: "sched-1",
+        oldValue: null,
+        ipAddress: null,
+      });
+      expect(JSON.parse(audit.newValue)).toMatchObject({
+        scheduleId: "sched-1",
+        defenseType,
+        previousStatus: "SCHEDULED",
+        newStatus: "IN_PROGRESS",
+      });
+      expect(audit.newValue).not.toMatch(
+        /signature|criteria|recommendation|reportBody|manuscript|password|token|storagePath/i,
+      );
     }
   });
 
@@ -487,6 +514,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
       transitioned: false,
     });
     expect(prismaMock.defenseSchedule.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("CDW-8B: a lost start race reports no local transition", async () => {
@@ -510,6 +538,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
       sessionStatus: "IN_PROGRESS",
       transitioned: false,
     });
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("CDW-4: only the assigned Chairman may start; other roles are rejected", async () => {
@@ -529,6 +558,7 @@ describe("DefenseWorkspaceService (CP6)", () => {
       await expect(
         svc.startDefense("sched-1", `u-${role}`),
       ).rejects.toMatchObject({ statusCode: 403 });
+      expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
     }
   });
 

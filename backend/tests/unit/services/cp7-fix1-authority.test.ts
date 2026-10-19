@@ -38,6 +38,7 @@ const prismaMock = vi.hoisted(() => {
     },
     thesisRecord: { update: vi.fn() },
     thesisTitle: { update: vi.fn(), updateMany: vi.fn() },
+    auditLog: { create: vi.fn() },
   });
   const root = makeModels();
   const tx = makeModels();

@@ -9,6 +9,7 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn(),
   },
   rapReport: { findUnique: vi.fn(), updateMany: vi.fn() },
+  auditLog: { create: vi.fn() },
   $transaction: vi.fn(),
 }));
 
