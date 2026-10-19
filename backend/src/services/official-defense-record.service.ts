@@ -409,10 +409,14 @@ export class OfficialDefenseRecordService {
           where: { scheduleId },
         });
         if (winner) {
+          const winnerSnapshot = winner.snapshotData as
+            | OralExamSummarySnapshot
+            | null;
           return {
             created: false,
             summaryId: winner.id,
-            evaluatorCount: evaluators.length,
+            evaluatorCount:
+              winnerSnapshot?.evaluatorCount ?? evaluators.length,
             overallAverage: Number(winner.overallAverage ?? overallAverage),
             finalRating: winner.finalRating ?? null,
           };

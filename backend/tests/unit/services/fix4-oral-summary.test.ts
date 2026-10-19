@@ -319,6 +319,58 @@ describe("FIX-4 institutional Oral Examination Summary", () => {
     expect(prismaMock.oralExamSummary.create).toHaveBeenCalledTimes(1);
   });
 
+  it("converges two simultaneous ensure calls to one authoritative Summary", async () => {
+    let createCalls = 0;
+    prismaMock.oralExamSummary.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        id: "sum-winner",
+        overallAverage: 1.28,
+        finalRating: null,
+        snapshotData: { evaluatorCount: 5 },
+      });
+    prismaMock.oralExamSummary.create.mockImplementation(async (args: any) => {
+      createCalls += 1;
+      if (createCalls === 1) {
+        return { id: "sum-winner", ...args.data };
+      }
+      throw Object.assign(new Error("Unique constraint"), { code: "P2002" });
+    });
+
+    const [first, second] = await Promise.all([
+      svc.ensureOralExamSummary("sched-1"),
+      svc.ensureOralExamSummary("sched-1"),
+    ]);
+
+    expect([first.summaryId, second.summaryId]).toEqual([
+      "sum-winner",
+      "sum-winner",
+    ]);
+    expect(first.created || second.created).toBe(true);
+    expect(prismaMock.oralExamSummary.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the winning Summary snapshot metadata on a P2002 loss", async () => {
+    prismaMock.oralExamSummary.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "sum-winner",
+        overallAverage: 1.28,
+        finalRating: null,
+        snapshotData: { evaluatorCount: 4 },
+      });
+    prismaMock.oralExamSummary.create.mockRejectedValue(
+      Object.assign(new Error("Unique constraint"), { code: "P2002" }),
+    );
+
+    const result = await svc.ensureOralExamSummary("sched-1");
+
+    expect(result.created).toBe(false);
+    expect(result.summaryId).toBe("sum-winner");
+    expect(result.evaluatorCount).toBe(4);
+  });
+
   it("never writes a verdict from Summary generation", async () => {
     await svc.ensureOralExamSummary("sched-1");
     expect(prismaMock.defenseConclusion.create).not.toHaveBeenCalled();

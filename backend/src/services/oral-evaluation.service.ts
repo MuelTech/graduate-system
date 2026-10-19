@@ -613,6 +613,17 @@ export class OralEvaluationService {
           throw err;
         }
       }
+    }).catch((err: any) => {
+      // CDW-9A: defense-in-depth for any unique-constraint race that escapes the
+      // transaction callback (for example a commit-time collision). Never leak a
+      // raw Prisma error to the evaluator client.
+      if (err?.code === "P2002") {
+        throw new AppError(
+          "Evaluation state changed. Refresh and try again.",
+          409,
+        );
+      }
+      throw err;
     });
 
     // CP5-FIX1: recompute AFTER commit so concurrent last-finalizers both commit first.

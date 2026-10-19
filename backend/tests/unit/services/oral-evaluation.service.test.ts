@@ -665,6 +665,189 @@ describe("OralEvaluationService (CP5)", () => {
       expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
     });
 
+    it("CDW-9A: duplicate finalization of a FINALIZED record returns 409 without rewriting", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "FINALIZED",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringMatching(/already finalized/i),
+      });
+
+      expect(prismaMock.__tx.oralExamScore.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.oralExamScore.create).not.toHaveBeenCalled();
+    });
+
+    it("CDW-9A: stale DRAFT finalize CAS conflict returns 409 without overwriting", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      prismaMock.__tx.oralExamScore.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringMatching(/Evaluation state changed/i),
+      });
+    });
+
+    it("CDW-9A: maps a transaction-level P2002 unique race to a friendly 409", async () => {
+      prismaMock.$transaction.mockRejectedValueOnce(
+        Object.assign(new Error("Unique constraint failed"), {
+          code: "P2002",
+          meta: { target: ["schedule_id", "panel_id"] },
+        }),
+      );
+
+      await expect(
+        svc.finalize("sched-1", "user-a", {
+          signatureData: "e-sign",
+          criteria: instComplete,
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        message: expect.stringMatching(/Evaluation state changed/i),
+      });
+    });
+
+    it("CDW-9A: evaluator finalization remains independent of Committee Report state", async () => {
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
+        id: "eval-1",
+        status: "DRAFT",
+        scoringVersion: "INSTITUTIONAL_MATRIX_V2",
+        ...instComplete,
+      });
+      const snapshotSpy = vi
+        .spyOn(
+          OfficialDefenseRecordService.prototype,
+          "snapshotFinalizedEvaluation",
+        )
+        .mockResolvedValue(undefined as any);
+      const ensureSpy = vi
+        .spyOn(OfficialDefenseRecordService.prototype, "ensureOralExamSummary")
+        .mockResolvedValue({
+          created: false,
+          summaryId: "sum-1",
+          evaluatorCount: 4,
+          overallAverage: 1.5,
+          finalRating: null,
+        });
+
+      try {
+        await expect(
+          svc.finalize("sched-1", "user-a", {
+            signatureData: "e-sign",
+            criteria: instComplete,
+          }),
+        ).resolves.toMatchObject({ panelAssignmentId: "panel-1" });
+        expect(prismaMock.rapReport.create).not.toHaveBeenCalled();
+        expect(prismaMock.rapReportSignature.create).not.toHaveBeenCalled();
+      } finally {
+        snapshotSpy.mockRestore();
+        ensureSpy.mockRestore();
+      }
+    });
+
+    it("CDW-9A: concurrent evaluator finalizations remain independently owned", async () => {
+      prismaMock.panelAssignment.findFirst.mockImplementation(
+        async ({ where }: { where: { userId: string } }) => {
+          if (where.userId === "user-a") {
+            return {
+              id: "panel-1",
+              scheduleId: "sched-1",
+              userId: "user-a",
+              role: "PANELIST",
+            };
+          }
+          if (where.userId === "user-b") {
+            return {
+              id: "panel-2",
+              scheduleId: "sched-1",
+              userId: "user-b",
+              role: "PANELIST",
+            };
+          }
+          return null;
+        },
+      );
+      prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue(null);
+      prismaMock.__tx.oralExamScore.create.mockImplementation(
+        async (args: any) => ({
+          id: `eval-${args.data.panelId}`,
+          ...args.data,
+        }),
+      );
+
+      const snapshotSpy = vi
+        .spyOn(
+          OfficialDefenseRecordService.prototype,
+          "snapshotFinalizedEvaluation",
+        )
+        .mockResolvedValue(undefined as any);
+      const ensureSpy = vi
+        .spyOn(OfficialDefenseRecordService.prototype, "ensureOralExamSummary")
+        .mockResolvedValue({
+          created: true,
+          summaryId: "sum-1",
+          evaluatorCount: 4,
+          overallAverage: 1.5,
+          finalRating: null,
+        });
+
+      try {
+        await Promise.all([
+          svc.finalize("sched-1", "user-a", {
+            signatureData: "sig-a",
+            criteria: instComplete,
+          }),
+          svc.finalize("sched-1", "user-b", {
+            signatureData: "sig-b",
+            criteria: instComplete,
+          }),
+        ]);
+
+        const created = prismaMock.__tx.oralExamScore.create.mock.calls
+          .map((call: any[]) => ({
+            panelId: call[0]?.data?.panelId,
+            status: call[0]?.data?.status,
+            signatureData: call[0]?.data?.signatureData,
+          }))
+          .sort((a: any, b: any) => a.panelId.localeCompare(b.panelId));
+        expect(created).toEqual([
+          {
+            panelId: "panel-1",
+            status: "FINALIZED",
+            signatureData: "sig-a",
+          },
+          {
+            panelId: "panel-2",
+            status: "FINALIZED",
+            signatureData: "sig-b",
+          },
+        ]);
+        expect(ensureSpy).toHaveBeenCalled();
+      } finally {
+        snapshotSpy.mockRestore();
+        ensureSpy.mockRestore();
+      }
+    });
+
     it("last required finalizer triggers the idempotent Summary ensure path", async () => {
       prismaMock.__tx.oralExamScore.findUnique.mockResolvedValue({
         id: "eval-1",

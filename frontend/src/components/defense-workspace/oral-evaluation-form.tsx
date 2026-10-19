@@ -391,6 +391,16 @@ function MatrixEvaluationEditor({
       await queryClient.invalidateQueries({ queryKey: ["defenseWorkspace", scheduleId] });
     },
     onError: (e: Error) => {
+      if (e instanceof ApiError && e.statusCode === 409) {
+        // CDW-9A: another tab/request may have finalized or changed this
+        // evaluation. Server state wins; refresh own evaluation and workspace.
+        void queryClient.invalidateQueries({
+          queryKey: evalQueryKey(scheduleId),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["defenseWorkspace", scheduleId],
+        });
+      }
       const extra =
         e instanceof ApiError && e.missing?.length
           ? ` ${e.missing.map((m) => m.message).join(" ")}`
