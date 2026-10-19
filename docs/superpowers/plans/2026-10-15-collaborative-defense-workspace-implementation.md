@@ -10,7 +10,7 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
-**Latest acceptance reconciliation:** docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md<br>
+**Latest acceptance reconciliation:** docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md<br>
 **Current package:** CDW-9F — Migration / Read Compatibility and Final Production-Readiness Gate (ACCEPTED / CLOSED)<br>
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
@@ -75,7 +75,7 @@ CDW-8C acceptance package HEAD:
 
 Acceptance report:
 
-    docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8c-acceptance-report.md
 
 Core CDW-LIVE-1 was independently accepted before manual QA. Subsequent real-device/manual QA found bounded usability issues rather than a domain-model failure. FIX-1 is implemented and the LAN symptom was retested successfully by the user after restart. FIX-2 was implemented/source-reviewed, then superseded by the bounded FIX-3/FIX-3A refinements. FIX-3/FIX-3A are implemented, independently source-reviewed, and accepted for their visible UI/UX scope. A later source audit found one substantive pre-CDW-9 workflow blocker: institutional Oral Examination Summary generation still rejected the new matrix because older code treated Overall/Rating as unconfirmed. EARIST confirmed the bounded numeric Summary rule; FIX-4 implemented it and independently passed source review at `3b24c496`. Project-owner manual inspection then confirmed the Summary is generated and visible with institutional Group A/Group B/Average rows, while exposing a separate bounded UX problem: stale inline Committee Report signing, overexposed faculty signer rosters, and outdated Admin Defense Records presentation. FIX-5 implements that UX alignment at `13a4c38a`, independently passed source review, and subsequently passed project-owner targeted manual QA for the corrected flow. The project owner then exercised the complete current defense path successfully and confirmed the implementation is mechanically working, but identified a real-world workflow mismatch: the Rapporteur and required Committee Report signers must not be forced to wait for every evaluation/Summary before report finalization/signing. FIX-6 documents that correction and the associated faculty-facing language cleanup. FIX-5 remains accepted for its bounded UX scope, but its serialized report-finalization assumption is superseded by FIX-6.
 
@@ -818,7 +818,7 @@ attempt-based, read-only Defense History read model
 historical bound-manuscript document rule, and the frontend `defense-history-panel.tsx`
 (which replaced the CP8 `ProposalHistoryPanel` / "Proposal Context" tab). No database
 migration. Manual visual/runtime QA remains user-owned. See
-`docs/superpowers/cdw-6/cdw-6-report.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-6/cdw-6-report.md`.
 
 ### Goal
 
@@ -929,11 +929,11 @@ CDW-8C acceptance package HEAD:
 
 Detailed technical design:
 
-    docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8-realtime-integration-design.md
 
 Acceptance report:
 
-    docs/superpowers/cdw-8/cdw-8c-acceptance-report.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8c-acceptance-report.md
 
 The technical design fixes the server bootstrap, JWT/room authorization, post-commit event contracts, React Query invalidation map, reconnect behavior, polling fallback, test matrix, and deployment assumptions. It supplements this plan without changing domain authority.
 
@@ -975,7 +975,7 @@ Hard gates were satisfied:
 - CDW-8B was independently reviewed and accepted before CDW-8C;
 - CDW-8C was accepted and CDW-8 was closed before CDW-9 became eligible to begin. CDW-9 remains NOT STARTED.
 
-The detailed scope and exit criteria for each package are authoritative in `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md` §21.
+The detailed scope and exit criteria for each package are authoritative in `docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8-realtime-integration-design.md` §21.
 
 ### Goal
 
@@ -1046,7 +1046,7 @@ Do not join socket rooms for CONCLUDED historical viewing.
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
 ### Why this is separate from CDW-8
 
@@ -1123,7 +1123,7 @@ The project owner has explicitly changed and closed the pre-CDW-9 gate: no addit
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md
 
 ### Goal
 
@@ -1171,7 +1171,7 @@ This package must be independently reviewed and manually QA'd before CDW-9 begin
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md
 
 ### Goal
 
@@ -1237,11 +1237,11 @@ Acceptance provenance must remain truthful: the waived replay is **NOT EXECUTED 
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md
 
 Implementation report:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-report.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-4-report.md
 
 ### Goal
 
@@ -1297,11 +1297,11 @@ FIX-4 implementation and independent source review are complete. Its numeric Sum
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md
 
 Implementation report:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-5-report.md
 
 ### Goal
 
@@ -1363,7 +1363,7 @@ FIX-5 remains accepted for its bounded UX scope. Its serialized report-finalizat
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md
 
 ### Why this package exists
 
@@ -1676,7 +1676,7 @@ depends on CDW-9A being accepted; that prerequisite is now satisfied.
     (`fix(cdw): recover stale evaluation drafts safely`);
   - `cc11d58df4a397faa10c9a76f1ffc917544847db`
     (`fix(cdw): sync authoritative finalized evaluation`).
-- Implementation report: `docs/superpowers/cdw-9/cdw-9a-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9a-report.md`.
 - Production hardening:
   - finalization converts any escaping transaction-level `P2002` unique race to
     the existing friendly `409` conflict;
@@ -1718,7 +1718,7 @@ depends on CDW-9A being accepted; that prerequisite is now satisfied.
   pre-CDW-9 replay remains **WAIVED / NOT REQUIRED** and is not represented as a
   manual/browser/full-E2E PASS.
 - Acceptance reconciliation:
-  `docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`.
+  `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`.
 - **CDW-9A is ACCEPTED / CLOSED.**
 
 ### 13.6 CDW-9B — Committee Report Finalization and Signature Concurrency Hardening
@@ -1810,7 +1810,7 @@ CDW-9D are **ACCEPTED / CLOSED**. CDW-9E is **ACCEPTED / CLOSED**.
     (`fix(cdw): close report finalization race windows`);
   - `7a4ff5baa90e6d5eb7fb2e058dc7f1b614e8be55`
     (`fix(cdw): guard legacy signature retry reconciliation`).
-- Implementation report: `docs/superpowers/cdw-9/cdw-9b-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9b-report.md`.
 - Production hardening:
   - added transition-aware RAP aggregate recompute;
   - `finalizedNow` is truthful in modern and legacy-compatible signing;
@@ -1911,7 +1911,7 @@ and immutability boundaries before production readiness.
 
 - Implementation commit: `c530a237eb7ad43da5ed99ddf6684f93ccfeb6e1`
   (`fix(cdw): harden defense security and audit boundaries`).
-- Implementation report: `docs/superpowers/cdw-9/cdw-9c-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9c-report.md`.
 - Added a shared allow-listed `AuditLog` writer and transaction-bound audit
   records for session start, evaluation finalization, Committee Report
   finalization, Committee Report signature (modern and legacy-compatible), and
@@ -2004,7 +2004,7 @@ proven bottlenecks.
 
 - Implementation commit: `801f3524282b71ecf7cb6f9f7e2b725680709064`
   (`perf(cdw): harden measured workspace query paths`).
-- Implementation report: `docs/superpowers/cdw-9/cdw-9d-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9d-report.md`.
 - Measurement harness:
   `backend/tests/performance/cdw9d-performance.test.ts`.
 - Measured representative workload: 7 committee assignments, 4 evaluator rows,
@@ -2098,7 +2098,7 @@ assistive-technology, focus, and responsive use without redesigning it.
 
 - Implementation commit: `b5c751e1b777a44f2efe44b353ef6e814c7b4b3e`
   (`fix(cdw): harden workspace accessibility and responsive behavior`).
-- Implementation report: `docs/superpowers/cdw-9/cdw-9e-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9e-report.md`.
 - Mobile drawers: focus movement/trap, Escape close, background inertness, and
   trigger focus restoration.
 - Center navigation: tablist/tab/tabpanel semantics and arrow/Home/End behavior.
@@ -2217,7 +2217,7 @@ cross-package regression gate.
 
 #### Implementation evidence
 
-- Implementation report: `docs/superpowers/cdw-9/cdw-9f-report.md`.
+- Implementation report: `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9f-report.md`.
 - Product code: **NONE** — no production defect required a code change.
 - Schema/migration: **NONE** — the final migration remains
   `20261018090000_oral_evaluation_scoring_version`.

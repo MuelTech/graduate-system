@@ -21,7 +21,7 @@ const RAP_PANEL = "src/components/defense-workspace/rap-signature-panel.tsx";
 const BACKEND_WORKSPACE =
   "../backend/src/services/defense-workspace.service.ts";
 const DESIGN =
-  "../docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md";
+  "../docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md";
 
 test("individual evaluation signing is draw-only", () => {
   const dialog = read(DIALOG);

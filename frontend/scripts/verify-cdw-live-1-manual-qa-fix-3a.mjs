@@ -21,7 +21,7 @@ const RAIL = "src/components/defense-workspace/role-rail.tsx";
 const TYPE = "src/types/defense-workspace.ts";
 const BACKEND = "../backend/src/services/defense-workspace.service.ts";
 const DESIGN =
-  "../docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md";
+  "../docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md";
 
 const base = {
   eventName: null,

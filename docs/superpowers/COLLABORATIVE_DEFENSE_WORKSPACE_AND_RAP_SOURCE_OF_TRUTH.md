@@ -10,10 +10,10 @@
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
-**Latest pre-CDW-9 acceptance reconciliation:** `docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md`<br>
-**CDW-9A acceptance reconciliation:** `docs/superpowers/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`<br>
-**FIX-4 computation authority:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
-**Accepted pre-CDW-9 workflow/UX correction:** `docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
+**Latest pre-CDW-9 acceptance reconciliation:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md`<br>
+**CDW-9A acceptance reconciliation:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-9/cdw-9a-acceptance-reconciliation-2026-10-19.md`<br>
+**FIX-4 computation authority:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`  
+**Accepted pre-CDW-9 workflow/UX correction:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-6-parallel-report-signing-and-ui-language-design.md`  
 **Document status:** CONFIRMED_PROJECT_DESIGN + IMPLEMENTED / ACCEPTED through FIX-6; parallel Evaluation / Committee Report sequencing, autosave-safe finalization, single-step Committee Report signing, and concise faculty UI are accepted; the project owner waived an additional full multi-user replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is AUTHORIZED; its bounded execution plan is CDW-9A through CDW-9F in the implementation plan; CDW-9A through CDW-9F are ACCEPTED / CLOSED; CDW-9 is COMPLETE / CLOSED unless a section is explicitly marked OPEN_QUESTION, DEFERRED, or HISTORICAL_BASELINE
 
 **Version:** 1.11  
@@ -186,7 +186,7 @@ For the current institutional matrix, the Oral Examination Summary remains gener
 - the Summary generator must be idempotent/race-safe when the last required evaluator finalizes.
 
 The detailed computation authority is:
-`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-4-oral-summary-computation-design.md`.
 
 The Chairman's Formal Verdict remains the strict convergence gate. PASSED or REDEFENSE_REQUIRED may be recorded only when all authoritative pre-conclusion requirements are satisfied:
 
@@ -361,7 +361,7 @@ Layout guardrails:
 - keyboard focus, Escape/cancel behavior, labels, error states, and responsive sizing must remain accessible.
 
 Detailed bounded design:
-`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-2-evaluation-finalization-ux-design.md`.
 
 ### 5.3.2 Chairman Formal Verdict readiness UX
 
@@ -391,10 +391,10 @@ Committee Roster remains collapsible, but the control must visibly communicate t
 Use a clear expand/collapse affordance such as a chevron next to **Committee Roster**. Prefer preserving native `<details>/<summary>` semantics and rotate/change the chevron for open state rather than building unnecessary custom accordion state.
 
 Bounded refinement design:
-`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-3-signature-verdict-roster-ux-design.md`.
 
 Latest acceptance reconciliation:
-`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-acceptance-reconciliation-2026-10-18.md`.
 
 ### 5.3.4 Committee Report signing presentation — FIX-5
 
@@ -444,7 +444,7 @@ Avoid unexplained UI labels such as:
 The last statement is also workflow-stale: the Committee Report is authored, frozen, signed, and finalized **before** the Chairman may record the formal verdict.
 
 Detailed bounded design:
-`docs/superpowers/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`.
+`docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-manual-qa-fix-5-committee-report-signing-defense-records-ux-design.md`.
 
 ### 5.4 Shared comments rail
 
@@ -786,7 +786,7 @@ REST/database state remains authoritative. Polling/refetch and the accepted real
 
 Detailed design:
 
-    docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
+    docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
 The assigned Rapporteur remains the only report-body editor.
 
@@ -1036,8 +1036,8 @@ Historical attempts do not join real-time collaboration rooms.
 
 Realtime is an enhancement to a correct persisted workflow, not the source of truth.
 
-**CDW-8 technical integration design:** `docs/superpowers/cdw-8/cdw-8-realtime-integration-design.md`.  
-**CDW-8 acceptance report:** `docs/superpowers/cdw-8/cdw-8c-acceptance-report.md`.
+**CDW-8 technical integration design:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8-realtime-integration-design.md`.  
+**CDW-8 acceptance report:** `docs/superpowers/archive/collaborative-defense-workspace/cdw-8/cdw-8c-acceptance-report.md`.
 
 CDW-8 is implemented and accepted at production implementation HEAD `a9a179446284ea928faca8991de34deadc856e1b`, with the CDW-8C acceptance package finalized at `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`. These technical documents supplement this Source of Truth and do not override its academic/domain rules.
 

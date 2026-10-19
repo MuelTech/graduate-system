@@ -77,7 +77,7 @@ Canonical extension documents:
 
 - docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md
 - docs/superpowers/plans/2026-10-15-collaborative-defense-workspace-implementation.md
-- docs/superpowers/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
+- docs/superpowers/archive/collaborative-defense-workspace/cdw-live-1/cdw-live-1-live-report-and-draft-autosave-design.md
 
 The extension defines pre-defense manuscript review, shared PDF annotations/comments, an immersive sidebar-free committee workspace, institutional-form-inspired evaluator UX, the Rapporteur structured Committee Report, report finalization before signatures, workspace-based Committee Report signing, defense-history/revision traceability, and the implemented Socket.IO synchronization layer.
 
