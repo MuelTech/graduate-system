@@ -4,7 +4,7 @@
 **Branch:** `refactor/collaborative-defense-workspace`  
 **Accepted product-code baseline before this docs-only reconciliation:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
 **Status:** PRE-CDW-9 GATE CLOSED — FIX-6 FINAL ACCEPTED / CLOSED; ADDITIONAL FULL MULTI-USER REPLAY WAIVED / NOT REQUIRED  
-**Next package:** CDW-9 — Hardening and production readiness  
+**Next package:** CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening (within parent phase CDW-9)<br>
 **Schema/migration change in this reconciliation:** NONE  
 **Production-code change in this reconciliation:** NONE
 
@@ -183,7 +183,7 @@ CDW-LIVE-1 core                     ACCEPTED / CLOSED
 FIX-1 through FIX-5                 ACCEPTED at recorded bounded gates
 FIX-6                               FINAL ACCEPTED / CLOSED
 Additional full multi-user replay   WAIVED / NOT REQUIRED
-CDW-9                               NEXT / AUTHORIZED
+CDW-9                               NEXT / AUTHORIZED (CDW-9A next)
 ```
 
 No further FIX-6 implementation or acceptance task is required before CDW-9 unless a new concrete regression is discovered.
@@ -208,6 +208,8 @@ Current planned focus remains:
 - responsive QA;
 - security regression;
 - migration rollback/read compatibility.
+
+CDW-9 execution is split into bounded packages **CDW-9A through CDW-9F** in the canonical implementation plan. All six are **PLANNED / NOT YET IMPLEMENTED**; **CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening** is next. The implementation plan remains the detailed package-sequencing authority.
 
 Measure performance before adding speculative caching.
 

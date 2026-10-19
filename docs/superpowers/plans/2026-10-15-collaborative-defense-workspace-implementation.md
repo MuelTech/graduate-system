@@ -1,7 +1,7 @@
 # Collaborative Defense Workspace and RAP — Implementation Plan
 
 **Date:** 2026-10-15  
-**Last synchronized:** 2026-10-18  
+**Last synchronized:** 2026-10-19<br>
 **Repository:** MuelTech/graduate-system  
 **Historical documentation branch:** refactor/unified-defense-lifecycle  
 **Historical baseline implementation HEAD:** e33d2291fea04a36da34ac73713c3865997876a3  
@@ -11,10 +11,10 @@
 **Accepted CDW-LIVE-1 core HEAD:** `0b06149889a1645919ecea557ca63562e1680208`  
 **Accepted pre-CDW-9 product-code baseline:** `3e5ed6847db737e6395d531c04ee5f3b9b5c9812`  
 **Latest acceptance reconciliation:** docs/superpowers/cdw-live-1/cdw-live-1-pre-cdw-9-acceptance-reconciliation-2026-10-19.md  
-**Next implementation package:** CDW-9 — Hardening and production readiness  
+**Next implementation package:** CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening (within parent phase CDW-9)<br>
 **Canonical functional authority:** docs/superpowers/COLLABORATIVE_DEFENSE_WORKSPACE_AND_RAP_SOURCE_OF_TRUTH.md  
 **Parent workflow authority:** docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md  
-**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented
+**Plan status:** CDW-0 through CDW-8 ACCEPTED / CLOSED; CDW-LIVE-1 core and FIX-1 through FIX-6 are implemented/accepted at their recorded bounded gates; FIX-6 parallel Evaluation / Committee Report sequencing, autosave-before-finalize protection, single-step Committee Report signing, and redundant-control cleanup are FINAL ACCEPTED / CLOSED; the project owner waived an additional full multi-user manual replay based on targeted regression evidence + independent source review under the risk-based verification policy; CDW-9 is NEXT / AUTHORIZED and not yet implemented; CDW-9 is split into bounded packages CDW-9A through CDW-9F, all PLANNED / NOT YET IMPLEMENTED, with CDW-9A next
 
 ---
 
@@ -38,7 +38,7 @@ The implementation must be phased because this feature crosses:
 
 The first objective is correctness and a testable foundation. Realtime is added only after the persisted REST/UI workflow is accepted.
 
-### 0.1 Current implementation status — 2026-10-18
+### 0.1 Current implementation status — 2026-10-19
 
 This plan is intentionally retained as an implementation-history document. The pre-CDW baseline sections below explain why the packages existed; they do **not** describe the current branch after CDW-0 through CDW-8.
 
@@ -63,7 +63,7 @@ This plan is intentionally retained as an implementation-history document. The p
 | CDW-LIVE-1 MANUAL-QA FIX-5 | BOUNDED UX ACCEPTED | implementation `13a4c38a`; independent source review PASS; project-owner targeted manual QA PASS for Committee Report signing and Admin Defense Records alignment; later FIX-6 supersedes only its serialized report-finalization assumption and technical faculty-facing copy |
 | CDW-LIVE-1 MANUAL-QA FIX-6 | FINAL ACCEPTED / CLOSED | parallel evaluation/report workstreams, autosave-safe finalization, single-step signing, and concise faculty UI independently source-reviewed and accepted |
 | Additional pre-CDW-9 multi-user replay | WAIVED / NOT REQUIRED | project owner explicitly waived another full replay after FIX-6 because targeted regressions + independent source review sufficiently cover the changed sequence; this is not recorded as a manual-QA PASS |
-| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned package; not yet implemented at this docs-only reconciliation |
+| CDW-9 | NEXT / AUTHORIZED | production hardening is the final planned phase; execution is split into CDW-9A through CDW-9F; all are PLANNED / NOT YET IMPLEMENTED; CDW-9A is next |
 
 Accepted CDW-8 production implementation HEAD:
 
@@ -1410,22 +1410,674 @@ Accepted product-code baseline before the docs-only reconciliation: `3e5ed6847db
 
 ## 13. Phase CDW-9 — Hardening and production readiness
 
-Focus:
+**Parent status:** NEXT / AUTHORIZED — NOT YET IMPLEMENTED.
 
-- concurrency around final evaluation/Summary creation;
-- concurrent final RAP signatures;
-- idempotency;
-- stale-client error messaging;
-- large manuscript performance;
-- annotation pagination/lazy-loading if needed;
-- indexing for schedule/document/thread queries;
-- audit logging;
-- accessibility/keyboard navigation;
-- responsive QA;
-- security regression;
-- migration rollback/read-compatibility.
+CDW-9 is the final planned production-hardening phase for the Collaborative
+Defense Workspace. It is not a workflow redesign, a feature-expansion phase, or
+permission to reopen accepted behavior. FIX-6 remains FINAL ACCEPTED / CLOSED. A
+concrete regression may be corrected in the CDW-9 package that owns the affected
+behavior; accepted behavior is not reopened for preference or cleanup.
 
-Performance should be measured before adding speculative caching.
+The phase is executed through six bounded subpackages. The implementation plan
+remains the detailed sequencing authority; the Source of Truth documents should
+reference this section rather than duplicating it.
+
+### 13.1 Package map and execution order
+
+| Package | Status | Bounded purpose | Starts after |
+|---|---|---|---|
+| **CDW-9A** | **PLANNED / NOT YET IMPLEMENTED** | Evaluation and Oral Examination Summary convergence hardening | Accepted pre-CDW-9 baseline + this plan |
+| **CDW-9B** | **PLANNED / NOT YET IMPLEMENTED** | Committee Report finalization and signature concurrency hardening | CDW-9A accepted |
+| **CDW-9C** | **PLANNED / NOT YET IMPLEMENTED** | Security and audit hardening | CDW-9B accepted |
+| **CDW-9D** | **PLANNED / NOT YET IMPLEMENTED** | Measured performance and query hardening | CDW-9C accepted |
+| **CDW-9E** | **PLANNED / NOT YET IMPLEMENTED** | Accessibility, keyboard, and responsive hardening | CDW-9D accepted |
+| **CDW-9F** | **PLANNED / NOT YET IMPLEMENTED** | Migration/read compatibility and final production-readiness gate | CDW-9A through CDW-9E accepted |
+
+Execution order is mandatory:
+
+```text
+CDW-9A
+  -> independent review / acceptance
+CDW-9B
+  -> independent review / acceptance
+CDW-9C
+  -> independent review / acceptance
+CDW-9D
+  -> independent review / acceptance
+CDW-9E
+  -> independent review / acceptance
+CDW-9F
+  -> final CDW-9 acceptance
+```
+
+Do not collapse multiple subpackages into one implementation prompt, and do not
+start the next subpackage automatically after one is accepted. A concrete defect
+found during a later package is fixed in the package that owns the affected
+behavior unless the project owner explicitly authorizes a separate bounded
+correction.
+
+### 13.2 Shared non-negotiable domain guardrails
+
+These rules apply to every CDW-9 subpackage.
+
+#### Verdict authority
+
+- The assigned session Chairman is the sole formal academic verdict authority.
+- `PASSED` and `REDEFENSE_REQUIRED` remain the only current new-attempt outcomes.
+- Scores, averages, Summary readiness, or rating values never automatically
+  determine the verdict.
+- The Formal Verdict control remains hidden or disabled until the authoritative
+  backend conclusion-readiness decision is true.
+
+#### Evaluator authority and privacy
+
+- Chairman and assigned evaluator Panelists own their own evaluations.
+- Rapporteur is not an evaluator.
+- Adviser is not an evaluator under current policy.
+- Facilitator is not an evaluator.
+- Evaluations remain private, own-record `DRAFT` -> signed/finalized -> immutable.
+- No evaluator may read or mutate another evaluator's private draft scores,
+  criteria, recommendations, or signature evidence.
+- Evaluation finalization remains irreversible and own-record only.
+
+#### Committee Report authority
+
+- The assigned Rapporteur remains the single authoritative Committee Report
+  writer.
+- Chairman and Panelists may view the report but cannot directly edit its
+  authoritative body.
+- Committee Report finalization and signing remain parallel to evaluation and
+  Summary completion until the Chairman verdict gate.
+- Finalizing the report does not automatically sign the Rapporteur's slot.
+- Report content cannot be silently changed after finalization/freeze.
+
+#### Committee Report signing
+
+- Required signers review and sign the exact finalized immutable report content.
+- A required signer may sign while that signer's own evaluation is still `DRAFT`.
+- Each user may sign only their own required slot.
+- Every signature remains bound to the exact finalized report content/version/hash
+  internally.
+- Facilitator remains excluded from required Committee Report signing.
+- Adviser participation remains stage-aware under the accepted policy:
+  - Title: Chairman + Panelists + Rapporteur;
+  - Proposal/Final: active Adviser + Chairman + Panelists + Rapporteur.
+
+#### Formal verdict convergence
+
+The Chairman may conclude only when all current canonical prerequisites remain
+satisfied, including:
+
+- all required evaluator records are `FINALIZED`/e-signed;
+- the Oral Examination Summary exists and corresponds to the exact attempt;
+- the Committee Report is finalized;
+- every required Committee Report signature is complete;
+- no prior `DefenseConclusion` exists;
+- all other canonical conclusion prerequisites remain satisfied.
+
+#### Manuscript and history integrity
+
+- Attempt-bound manuscript evidence is immutable.
+- Later revisions are new documents/versions, not overwrites.
+- Annotations and comments do not mutate the source PDF.
+- Annotations are not automatically promoted into the official Committee Report.
+- Concluded attempts remain immutable and read-only.
+- Old attempts, accepted signatures, and historical evidence must never be
+  rewritten or backfilled with fabricated data.
+- Realtime must never mutate historical attempts.
+
+#### Title authority
+
+- Do not reintroduce permanent system-selected-title authority.
+- Title suggestions remain advisory/history content in the Committee Report.
+- The Chairman records only the formal verdict for the Title attempt.
+
+#### Realtime authority
+
+- REST, domain services, and the database remain authoritative.
+- Socket.IO remains synchronization/transport only.
+- Persisted events occur only after successful persistence.
+- Reconnect triggers authoritative refetch.
+- The nine accepted persisted-domain events remain the canonical event set.
+- `report:preview` remains an ephemeral transport message, not a tenth persisted
+  domain event and never authoritative saved report content.
+- No socket academic write path may be introduced.
+- Polling fallback remains functional even when realtime is unavailable.
+
+### 13.3 Shared verification and evidence discipline
+
+Every subpackage must follow
+`docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`.
+
+- Use focused tests/verifiers for the changed behavior and directly affected
+  regressions first.
+- Broaden verification only when the change touches shared infrastructure,
+  authorization/security, schema/migration/runtime boundaries, or when focused
+  failures create uncertainty.
+- Treat automated tests, static checks, builds, manual/browser QA, hosted CI, and
+  source review as separate evidence classes.
+- Do not claim manual/browser QA, multi-user replay, or hosted CI unless actually
+  executed and observed.
+- Each implementation must begin from the exact task prompt HEAD and verify the
+  actual remote baseline before editing.
+- No subpackage may silently change evaluator authority, signer policy, Summary
+  arithmetic, verdict authority, title authority, realtime event count, or
+  concluded-attempt immutability.
+
+### 13.4 Stale-client behavior ownership
+
+There is no separate CDW-9 stale-client package.
+
+Stale-client behavior must remain close to the mutation that owns it so backend
+conflict semantics and faculty-facing recovery are reviewed together:
+
+- evaluation finalization / Summary conflicts -> **CDW-9A**;
+- Committee Report draft/finalization/signature/freeze conflicts -> **CDW-9B**.
+
+The implementation for each must return a deterministic, actionable conflict
+result (for example `409` with a safe recovery path) without overwriting newer
+persisted state or exposing internal identifiers to ordinary faculty UI.
+
+### 13.5 CDW-9A — Evaluation and Oral Examination Summary Convergence Hardening
+
+**Status:** PLANNED / NOT YET IMPLEMENTED — NEXT AUTHORIZED PACKAGE.
+
+#### Purpose
+
+Harden evaluator finalization and Oral Examination Summary generation under
+concurrent, retried, and near-simultaneous completion without changing evaluator
+ownership, scoring semantics, or verdict authority.
+
+#### Exact scope
+
+- Concurrent finalization of multiple required evaluator records.
+- Simultaneous or near-simultaneous finalization of the last required evaluator.
+- Exactly-once / convergence behavior for one Oral Examination Summary per exact
+  defense attempt.
+- Idempotent retry behavior for evaluation finalization and Summary generation.
+- Evaluation-finalization CAS/version/unique-race handling.
+- Stale evaluation-client behavior, including actionable `409` recovery that
+  preserves the evaluator's private draft and prevents stale overwrite.
+- Preservation of the confirmed institutional Summary arithmetic.
+
+#### Affected technical concerns
+
+- Evaluation finalization transaction boundaries and persistence uniqueness.
+- Summary generation idempotency, race safety, and duplicate prevention.
+- Existing evaluation version/CAS fields or equivalent conflict detection.
+- Existing evaluator draft/finalize endpoints and conclusion-readiness reads.
+- Deterministic conflict responses and faculty-facing recovery messaging owned by
+  the evaluation surface.
+- Focused concurrency and retry tests.
+
+#### Preserved invariants
+
+- Evaluator records remain individually owned and private.
+- Finalized evaluations remain immutable.
+- Every required evaluator must be `FINALIZED` before Summary generation.
+- Summary rows derive only from finalized evaluator records.
+- Summary generation never determines the academic verdict.
+- FIX-4 arithmetic remains unchanged:
+  - Group A = finalized evaluator Group I Average;
+  - Group B = finalized evaluator Group II Average;
+  - row Average = `(Group A + Group B) / 2`;
+  - two-decimal rounding;
+  - internal aggregate, if retained, is the mean of finalized row averages;
+  - Rating and Remarks remain deferred/null unless separately authorized.
+- Chairman + assigned evaluator Panelists remain the only numerical evaluator rows.
+
+#### Explicit non-goals
+
+- Redesigning Committee Report signing or report authority.
+- Changing evaluator roles, signer policy, or scoring scale.
+- Introducing automatic verdicts.
+- Introducing Rating/Remarks policy.
+- Adding a new realtime event or socket write path.
+- Official PDF/print rendering.
+- CDW-9B or later subpackage work.
+
+#### Verification expectation
+
+- Focused deterministic and concurrent tests for:
+  - two or more finalizations completing close together;
+  - last-evaluator finalization racing Summary generation;
+  - repeated/retried finalization and Summary requests;
+  - one Summary per exact attempt;
+  - stale version/CAS conflict returning actionable failure without overwrite;
+  - independence of Committee Report finalization from Summary readiness.
+- Directly affected evaluation, Summary, readiness, and immutable-finalization
+  regressions.
+- Backend type/build validation when affected.
+- Manual/browser QA remains project-owner owned and must not be claimed unless
+  actually executed.
+
+#### Acceptance / STOP boundary
+
+CDW-9A is accepted only after independent review of the actual pushed diff/source
+confirms the concurrency, idempotency, stale-client, privacy, and arithmetic
+invariants above. After acceptance, **STOP**. Do not begin CDW-9B without explicit
+project-owner authorization.
+
+#### Dependency / order
+
+CDW-9A is the first CDW-9 implementation package. It may start only after the
+project owner authorizes implementation and the exact starting HEAD is verified.
+CDW-9B depends on CDW-9A being accepted.
+
+### 13.6 CDW-9B — Committee Report Finalization and Signature Concurrency Hardening
+
+**Status:** PLANNED / NOT YET IMPLEMENTED.
+
+#### Purpose
+
+Harden concurrent Committee Report finalization and signing so every required
+signer converges on the same immutable report version without weakening the
+parallel FIX-6 workflow or the Chairman verdict gate.
+
+#### Exact scope
+
+- Concurrent required Committee Report signatures.
+- Duplicate and retried signing attempts.
+- Final-signature convergence and exactly-once report-finalized behavior.
+- Report finalization/freeze races against draft autosave and pending saves.
+- Body-version / stale-client conflict behavior for report authoring and
+  finalization.
+- Idempotent report-finalization behavior.
+- Deterministic stale-client recovery for report finalization and signing.
+- Immutable content/hash/version binding across all signatures.
+
+#### Affected technical concerns
+
+- Report draft save CAS/body-version handling.
+- Finalization transaction, snapshot/hash creation, and signer-slot reconciliation.
+- Signature uniqueness/idempotency and final-signature aggregation.
+- Existing `409` conflict paths and recovery UX owned by the report surface.
+- Post-commit realtime publication remains best-effort and unchanged in count.
+- Autosave drain / `flushAndWait()` ordering before irreversible finalization.
+
+#### Preserved invariants
+
+- Assigned Rapporteur is the single authoritative writer.
+- Committee Report work proceeds in parallel with evaluation work.
+- Report finalization does not wait for evaluator completion or Summary generation.
+- Required signers may sign while their own evaluations remain `DRAFT`.
+- Rapporteur finalization does not auto-sign the Rapporteur slot.
+- Each user signs only their own required slot.
+- Report body cannot be silently changed after finalization/freeze.
+- All signatures bind the same exact finalized content/hash/version internally.
+- Chairman verdict still waits for both workstreams to converge.
+
+#### Explicit non-goals
+
+- Changing evaluator authority or scoring semantics.
+- Requiring evaluation/Summary completion before report finalization.
+- Auto-signing any slot.
+- Changing stage-aware signer policy.
+- Reopening the accepted single-step signing UX.
+- Adding a tenth persisted-domain event.
+- CDW-9C or later subpackage work.
+
+#### Verification expectation
+
+- Focused concurrent-signature and duplicate/retry tests.
+- Final-signature convergence and exactly-once finalization tests.
+- Freeze-versus-save race tests, including stale body-version rejection.
+- Signature-to-content/hash/version binding tests.
+- Own-slot authorization and duplicate-sign protection tests.
+- Regression proving report finalization remains independent of evaluations and
+  Summary, while the Chairman verdict remains blocked until all gates pass.
+- Directly affected autosave, report, signature, readiness, and realtime
+  invalidation regressions.
+- Manual/browser QA remains project-owner owned and is not claimed unless
+  actually executed.
+
+#### Acceptance / STOP boundary
+
+CDW-9B is accepted only after independent review of the actual pushed diff/source
+confirms concurrency, idempotency, immutable binding, signer authorization, and
+parallel-workflow invariants. After acceptance, **STOP**. Do not begin CDW-9C
+without explicit project-owner authorization.
+
+#### Dependency / order
+
+CDW-9B starts only after CDW-9A is accepted. CDW-9C depends on CDW-9B being
+accepted.
+
+### 13.7 CDW-9C — Security and Audit Hardening
+
+**Status:** PLANNED / NOT YET IMPLEMENTED.
+
+#### Purpose
+
+Prove and harden the collaborative workspace's authorization, privacy, audit,
+and immutability boundaries before production readiness.
+
+#### Exact scope
+
+- Defense-workspace authorization regression.
+- Exact-attempt and exact-document authorization.
+- Role-based read/write boundaries across Chairman, Panelists, Rapporteur,
+  Adviser, Facilitator, Admin, and Student surfaces.
+- Signature privacy and signature-evidence protection.
+- Finalized and historical immutability enforcement.
+- Realtime room authorization regression.
+- Sensitive field/data-leak regression.
+- Production audit coverage for material defense actions.
+
+#### Affected technical concerns
+
+- Existing authorization services/middleware and assignment-derived capabilities.
+- Document retrieval authorization and storage-path containment.
+- Signature evidence serialization and read-model field allow-lists.
+- Finalized/concluded mutation rejection paths.
+- Socket authentication, room join, stale-member eviction, and event delivery.
+- Audit logging for material actions such as start, finalize, report finalize,
+  sign, and conclude.
+- Audit storage/query design that remains distinct from realtime synchronization.
+
+#### Preserved invariants
+
+- Authorization is based on exact current schedule/attempt assignment, not broad
+  account role alone.
+- No cross-thesis or cross-attempt document/annotation access.
+- Raw signature evidence is not exposed unnecessarily.
+- Private evaluator `DRAFT` scores/recommendations are not exposed to other
+  evaluators.
+- Unauthorized document/storage paths are not exposed.
+- Faculty UI does not receive sensitive implementation details.
+- Concluded attempts and historical records remain read-only.
+- Audit logging does not become a second domain-event bus, workflow engine, or
+  mutation path.
+
+#### Explicit non-goals
+
+- Redesigning authorization policy or expanding role authority.
+- Making Admin a live committee collaborator.
+- Adding a tenth realtime event.
+- Replacing realtime events with audit records or vice versa.
+- Exposing raw signature images in ordinary faculty/realtime surfaces.
+- Official form rendering or Dean-signing authority.
+- CDW-9D or later subpackage work.
+
+#### Verification expectation
+
+- Negative authorization tests across roles and exact attempts/documents.
+- Realtime room join/denial, removed-member eviction, and reconnect denial tests.
+- Payload and read-model privacy allow-list regression.
+- Finalized/concluded immutability tests.
+- Audit assertions for material actions and sensitive-field exclusion.
+- Broader security regression is justified for this subpackage because the change
+  touches shared authorization/security boundaries; broaden to related suites and
+  builds as appropriate and state the reason.
+- Manual/browser QA remains project-owner owned and is not claimed unless
+  actually executed.
+
+#### Acceptance / STOP boundary
+
+CDW-9C is accepted only after independent review confirms the authorization,
+privacy, immutability, audit, and realtime-boundary evidence. After acceptance,
+**STOP**. Do not begin CDW-9D without explicit project-owner authorization.
+
+#### Dependency / order
+
+CDW-9C starts only after CDW-9B is accepted. CDW-9D depends on CDW-9C being
+accepted.
+
+### 13.8 CDW-9D — Measured Performance and Query Hardening
+
+**Status:** PLANNED / NOT YET IMPLEMENTED.
+
+#### Purpose
+
+Establish measured evidence for Defense Workspace performance and optimize only
+proven bottlenecks.
+
+#### Exact scope
+
+- Measure representative large-manuscript performance first.
+- Measure annotation/thread loading behavior.
+- Inspect Defense Workspace query patterns.
+- Inspect schedule/document/thread query plans where practical.
+- Introduce pagination or lazy loading only when measurement justifies it.
+- Introduce indexes only when justified by actual query patterns.
+- Optimize proven bottlenecks.
+- Validate realtime/polling behavior under representative load.
+
+#### Affected technical concerns
+
+- Representative dataset/fixture construction and repeatable measurement method.
+- PDF/manuscript load and rendering behavior.
+- Annotation/comment thread query volume and payload size.
+- Workspace aggregate query patterns and N+1 risks.
+- Database query plans/index usage where practical.
+- Realtime invalidation/refetch load and polling fallback under active sessions.
+- Before/after evidence retained in the package report.
+
+#### Preserved invariants
+
+- Performance must be measured before adding speculative caching.
+- No caching, pagination, virtualisation, or schema/index change merely because
+  it seems useful.
+- PDF/manuscript bytes remain immutable.
+- REST/database remains authoritative.
+- Socket.IO remains invalidation-only.
+- Polling fallback remains intact.
+- No academic workflow or authority changes.
+
+#### Explicit non-goals
+
+- New product features or workflow states.
+- Speculative caching or speculative denormalization.
+- Indexes without measured query evidence.
+- CRDT, presence, typing indicators, or manuscript diff.
+- Changing polling intervals without measured justification.
+- CDW-9E or later subpackage work.
+
+#### Verification expectation
+
+- Document the measurement environment, representative dataset, baseline
+  metrics, bottleneck evidence, and reason for each optimization.
+- Provide before/after measurements for every accepted optimization.
+- Focused regression for changed query/loading behavior.
+- Query-plan evidence where an index is introduced; any schema/index change must
+  ship with an additive committed migration and explicit justification.
+- Realtime/polling load validation under representative conditions.
+- Manual/browser QA remains project-owner owned and is not claimed unless
+  actually executed.
+
+#### Acceptance / STOP boundary
+
+CDW-9D is accepted only after independent review confirms that measurement
+preceded optimization, the evidence justifies each change, and no speculative
+optimization or workflow change was introduced. After acceptance, **STOP**. Do
+not begin CDW-9E without explicit project-owner authorization.
+
+#### Dependency / order
+
+CDW-9D starts only after CDW-9C is accepted. CDW-9E depends on CDW-9D being
+accepted.
+
+### 13.9 CDW-9E — Accessibility, Keyboard, and Responsive Hardening
+
+**Status:** PLANNED / NOT YET IMPLEMENTED.
+
+#### Purpose
+
+Harden the accepted Defense Workspace interaction experience for keyboard,
+assistive-technology, focus, and responsive use without redesigning it.
+
+#### Exact scope
+
+- Defense Workspace keyboard navigation.
+- Focus behavior, focus trapping, focus restoration, and Escape/cancel behavior.
+- Dialogs and signature flows.
+- Evaluator finalization flow.
+- Committee Report finalization/signing flow.
+- Collapsible rails/drawers.
+- Narrow/mobile layouts where applicable.
+- Practical accessibility semantics, labels, and status announcements.
+- Loading/error/conflict states.
+- Responsive QA of the affected surfaces.
+
+#### Affected technical concerns
+
+- Shared Dialog/focus primitives and canvas signature pad accessibility.
+- Role rail, comments rail, and responsive drawer behavior.
+- Keyboard order and operable controls in dense workspace regions.
+- Status/error/conflict messaging that remains perceivable without color alone.
+- Layout stability and overflow on narrow screens.
+- Existing verifiers, typecheck, and scoped lint for changed components.
+
+#### Preserved invariants
+
+- This is hardening, not a redesign.
+- Accepted visual language and domain workflow remain unchanged.
+- No new academic action, permission, or state is introduced.
+- No UI copy invents policy or exposes implementation terminology.
+- Existing loading/error/conflict recovery remains truthful.
+- No unrelated UI/UX design decision is reopened solely because it is imperfect.
+
+#### Explicit non-goals
+
+- Redesigning Defense Workspace information architecture.
+- Changing evaluator/report/verdict workflow.
+- Adding presence, cursors, typing indicators, or collaborative editing.
+- Broad unrelated accessibility cleanup outside the affected surfaces.
+- CDW-9F or later subpackage work.
+
+#### Verification expectation
+
+- Focused component/verifier coverage for changed keyboard, focus, label, and
+  responsive behavior where the repository supports it.
+- TypeScript and scoped lint for changed frontend source.
+- Targeted manual browser/keyboard/responsive QA where executable; otherwise
+  report **NOT EXECUTED** and identify the project-owner-owned review.
+- Do not treat source inspection as a substitute for manual accessibility QA.
+
+#### Acceptance / STOP boundary
+
+CDW-9E is accepted only after independent review and truthful manual-QA evidence
+for the affected surfaces, or an explicit project-owner acceptance decision that
+does not misstate unexecuted checks as passed. After acceptance, **STOP**. Do not
+begin CDW-9F without explicit project-owner authorization.
+
+#### Dependency / order
+
+CDW-9E starts only after CDW-9D is accepted. CDW-9F depends on CDW-9E being
+accepted.
+
+### 13.10 CDW-9F — Migration / Read Compatibility and Final Production-Readiness Gate
+
+**Status:** PLANNED / NOT YET IMPLEMENTED.
+
+#### Purpose
+
+Close CDW-9 by proving migration/read compatibility and production readiness
+across the accepted collaborative workspace, then run the final risk-based
+cross-package regression gate.
+
+#### Exact scope
+
+- Migration forward compatibility.
+- Rollback planning/validation where the project’s supported deployment process
+  permits it.
+- Legacy record readability.
+- Legacy scoring-version preservation.
+- Concluded attempt readability.
+- Historical Committee Report/signature readability.
+- Production/deployment readiness related to the collaborative workspace.
+- Final risk-based cross-package regression after CDW-9A through CDW-9E are
+  accepted.
+
+#### Affected technical concerns
+
+- Prisma migration chain integrity and `migrate deploy` readiness.
+- Read compatibility for legacy and concluded attempts.
+- Legacy `LEGACY_POINTS_V1` and institutional `INSTITUTIONAL_MATRIX_V2` records.
+- Historical report snapshots/signatures and read-only rendering.
+- Runtime configuration, CORS/allowlists, WebSocket upgrade readiness, JWT
+  transport, private document retrieval, and polling fallback.
+- Final integration regression across the accepted collaborative workflow.
+
+#### Preserved invariants
+
+- No destructive migration, enum removal, historical rewrite, or fabricated
+  backfill.
+- Any schema change must ship with a committed additive migration; use
+  `npx prisma migrate deploy`, never `prisma db push`.
+- Legacy records remain readable and unchanged.
+- Concluded attempts remain immutable/read-only.
+- No new feature, workflow state, or authority expansion is introduced.
+- CDW-9F is a convergence/acceptance gate, not permission to revisit accepted
+  product decisions.
+
+#### Explicit non-goals
+
+- New features or workflow redesign.
+- Rewriting historical acceptance evidence.
+- Backfilling legacy records with fabricated data.
+- Official PDF/form rendering.
+- Dean signing authority, Facilitator authority, or Adviser evaluator authority.
+- Starting a later initiative after CDW-9 acceptance.
+
+#### Verification expectation
+
+- Verify the complete migration chain and forward compatibility.
+- Validate rollback/read-compatibility expectations where supported; report what
+  was not executable.
+- Run legacy/concluded-attempt read-compatibility regressions.
+- Run a final risk-based cross-package regression. Broader or full suites are
+  justified here because CDW-9F is an explicit final production-readiness gate;
+  state the exact commands and reason.
+- Validate backend/frontend builds and schema tooling appropriate to the final
+  gate.
+- Manual/browser QA and hosted CI must be reported truthfully as executed,
+  waived, or not executed. A waived replay is not a manual-QA PASS.
+
+#### Acceptance / STOP boundary
+
+CDW-9F is the final CDW-9 acceptance gate. It may be accepted only after
+CDW-9A through CDW-9E are accepted and independent review confirms migration/read
+compatibility, production-readiness evidence, and final regression results.
+
+After CDW-9F acceptance, **STOP CDW-9**. Do not begin any new initiative
+automatically.
+
+#### Dependency / order
+
+CDW-9F starts only after CDW-9E is accepted. It is the last package in the CDW-9
+sequence.
+
+### 13.11 CDW-9 phase completion
+
+CDW-9 is complete only when CDW-9A through CDW-9F are independently accepted in
+order and the final production-readiness gate has passed under the evidence rules
+above.
+
+Until then, CDW-9 remains **NEXT / AUTHORIZED — NOT YET IMPLEMENTED**, and only
+**CDW-9A** is authorized for implementation after explicit project-owner
+authorization.
+
+### 13.12 Explicitly deferred / outside CDW-9
+
+CDW-9 must not implement or authorize:
+
+- CRDT/Yjs collaborative editing;
+- multi-author Committee Report editing;
+- live cursors;
+- generic presence or typing indicators unless separately authorized;
+- manuscript byte editing by committee members;
+- AI manuscript comparison;
+- automatic RAP recommendation-compliance checking;
+- AI-based academic verdicts;
+- automatic verdict selection from scores;
+- official EARIST form/PDF rendering unless separately scoped;
+- new Dean signing authority;
+- new Facilitator academic authority;
+- new Adviser evaluator authority;
+- a permanent system-selected Title;
+- unrelated Student/Admin workflow redesign;
+- unrelated repository cleanup or refactoring.
 
 ---
 
