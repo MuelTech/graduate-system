@@ -3,6 +3,7 @@ import { ThesisService } from '../services/thesis.service';
 import { StudentThesisJourneyService } from '../services/student-thesis-journey.service';
 import { ProposalAdviserReviewService } from '../services/proposal-adviser-review.service';
 import { FinalAdviserReviewService } from '../services/final-adviser-review.service';
+import { AdviserWorkspaceService } from '../services/adviser-workspace.service';
 import { OralEvaluationService } from '../services/oral-evaluation.service';
 import { DefenseWorkspaceService } from '../services/defense-workspace.service';
 import { DefenseApplicationDocumentHistoryService } from '../services/defense-document-history.service';
@@ -53,6 +54,7 @@ export class ThesisController {
   private journeyService = new StudentThesisJourneyService();
   private proposalAdviserReview = new ProposalAdviserReviewService();
   private finalAdviserReview = new FinalAdviserReviewService();
+  private adviserWorkspace = new AdviserWorkspaceService();
   private oralEvaluation = new OralEvaluationService();
   private defenseWorkspace = new DefenseWorkspaceService();
   private defenseDocumentHistory = new DefenseApplicationDocumentHistoryService();
@@ -334,6 +336,45 @@ export class ThesisController {
         return;
       }
       res.status(400).json({ error: error.message });
+    }
+  };
+
+  /** PANELIST: one Adviser-scoped My Advisees read model (read-only). */
+  getAdviserWorkspace = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      const result = await this.adviserWorkspace.getWorkspace(userId);
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** PANELIST: bounded overview for one CURRENT active advisee. */
+  getAdviserAdviseeDetail = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      const result = await this.adviserWorkspace.getAdviseeDetail(
+        userId,
+        String(req.params.studentId),
+      );
+      res.status(200).json(result);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
     }
   };
 
