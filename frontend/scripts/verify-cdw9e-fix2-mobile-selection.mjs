@@ -42,6 +42,23 @@ test("touch/pointer selection schedules the same anchor builder after settling",
   assert.match(source, /clearTimeout\(touchSelectionTimerRef\.current\)/);
 });
 
+test("FIX-3: pointercancel preserves the native mobile selection session", () => {
+  const source = read(PAGE);
+
+  assert.match(source, /const armTouchSelectionSession = useCallback/);
+  assert.match(source, /touchSessionTimeoutRef/);
+  assert.match(
+    source,
+    /onPointerCancel=\{\(event\) => \{[\s\S]*?if \(event\.pointerType === "touch"\) armTouchSelectionSession\(\);/,
+  );
+  assert.doesNotMatch(
+    source,
+    /onPointerCancel=\{[\s\S]{0,400}?touchSelectingRef\.current = false/,
+  );
+  assert.match(source, /if \(!touchSelectingRef\.current\) return;[\s\S]*?scheduleTouchSelection\(\)/);
+  assert.match(source, /}, 5000\);/);
+});
+
 test("read-only selection and copy remain untouched", () => {
   const source = read(PAGE);
 
@@ -56,8 +73,8 @@ test("one completed selection cannot create duplicate candidate anchors", () => 
   const process = source.slice(processStart, processEnd);
 
   assert.ok(processStart >= 0 && processEnd > processStart);
-  assert.match(process, /if \(touchSelectionTimerRef\.current\) \{/);
-  assert.match(process, /clearTimeout\(touchSelectionTimerRef\.current\)/);
+  assert.match(process, /clearTouchTimers\(\)/);
+  assert.match(process, /touchSelectingRef\.current = false;/);
   assert.match(process, /selection\.removeAllRanges\(\)/);
   assert.match(process, /return true;/);
 });

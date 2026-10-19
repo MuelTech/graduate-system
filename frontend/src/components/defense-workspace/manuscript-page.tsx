@@ -54,6 +54,9 @@ export function ManuscriptPage({
   const touchSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const touchSessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const touchSelectingRef = useRef(false);
   const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -129,6 +132,37 @@ export function ManuscriptPage({
     };
   }, [pdfjs, pdf, pageNumber, scale]);
 
+  const clearTouchTimers = useCallback(() => {
+    if (touchSelectionTimerRef.current) {
+      clearTimeout(touchSelectionTimerRef.current);
+      touchSelectionTimerRef.current = null;
+    }
+    if (touchSessionTimeoutRef.current) {
+      clearTimeout(touchSessionTimeoutRef.current);
+      touchSessionTimeoutRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Native mobile long-press selection can cancel the originating pointer
+   * sequence. Keep the selection session armed across pointercancel and bound it
+   * with a cleanup timer instead of leaving touch mode active indefinitely.
+   */
+  const armTouchSelectionSession = useCallback(() => {
+    touchSelectingRef.current = true;
+    if (touchSessionTimeoutRef.current) {
+      clearTimeout(touchSessionTimeoutRef.current);
+    }
+    touchSessionTimeoutRef.current = setTimeout(() => {
+      touchSessionTimeoutRef.current = null;
+      touchSelectingRef.current = false;
+      if (touchSelectionTimerRef.current) {
+        clearTimeout(touchSelectionTimerRef.current);
+        touchSelectionTimerRef.current = null;
+      }
+    }, 5000);
+  }, []);
+
   /**
    * ONE anchor-building path for desktop mouse selection and touch/mobile
    * native selection. Returns true only when a candidate anchor was created and
@@ -173,10 +207,8 @@ export function ManuscriptPage({
     }
     if (clientRects.length === 0) return false;
 
-    if (touchSelectionTimerRef.current) {
-      clearTimeout(touchSelectionTimerRef.current);
-      touchSelectionTimerRef.current = null;
-    }
+    clearTouchTimers();
+    touchSelectingRef.current = false;
 
     const anchor = buildAnchor({
       pageNumber,
@@ -187,10 +219,11 @@ export function ManuscriptPage({
     callbacksRef.current.onTextSelection?.(anchor);
     selection.removeAllRanges();
     return true;
-  }, [pageNumber]);
+  }, [clearTouchTimers, pageNumber]);
 
   const scheduleTouchSelection = useCallback(() => {
     if (!touchSelectingRef.current) return;
+    armTouchSelectionSession();
     if (touchSelectionTimerRef.current) {
       clearTimeout(touchSelectionTimerRef.current);
     }
@@ -199,7 +232,7 @@ export function ManuscriptPage({
       touchSelectionTimerRef.current = null;
       processSelection();
     }, 180);
-  }, [processSelection]);
+  }, [armTouchSelectionSession, processSelection]);
 
   useEffect(() => {
     const onSelectionChange = () => {
@@ -212,12 +245,10 @@ export function ManuscriptPage({
     document.addEventListener("selectionchange", onSelectionChange);
     return () => {
       document.removeEventListener("selectionchange", onSelectionChange);
-      if (touchSelectionTimerRef.current) {
-        clearTimeout(touchSelectionTimerRef.current);
-        touchSelectionTimerRef.current = null;
-      }
+      clearTouchTimers();
+      touchSelectingRef.current = false;
     };
-  }, [scheduleTouchSelection]);
+  }, [clearTouchTimers, scheduleTouchSelection]);
 
   const handleMouseUp = useCallback(
     (event: { clientX: number; clientY: number }) => {
@@ -256,21 +287,21 @@ export function ManuscriptPage({
       className="mwPage"
       onMouseUp={handleMouseUp}
       onPointerDown={(event) => {
-        touchSelectingRef.current = event.pointerType === "touch";
-        if (event.pointerType !== "touch" && touchSelectionTimerRef.current) {
-          clearTimeout(touchSelectionTimerRef.current);
-          touchSelectionTimerRef.current = null;
+        if (event.pointerType === "touch") {
+          armTouchSelectionSession();
+        } else {
+          clearTouchTimers();
+          touchSelectingRef.current = false;
         }
       }}
       onPointerUp={(event) => {
         if (event.pointerType === "touch") scheduleTouchSelection();
       }}
-      onPointerCancel={() => {
-        touchSelectingRef.current = false;
-        if (touchSelectionTimerRef.current) {
-          clearTimeout(touchSelectionTimerRef.current);
-          touchSelectionTimerRef.current = null;
-        }
+      onPointerCancel={(event) => {
+        // Native long-press selection legitimately cancels the pointer sequence.
+        // Keep the mobile selection session armed so the following
+        // selectionchange can still produce the pending anchor.
+        if (event.pointerType === "touch") armTouchSelectionSession();
       }}
     >
       <canvas ref={canvasRef} className="mwCanvas" />
