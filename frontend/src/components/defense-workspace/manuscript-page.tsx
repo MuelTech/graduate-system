@@ -356,6 +356,26 @@ export function ManuscriptPage({
 
   const pendingAnchorForPage =
     pendingAnchor?.pageNumber === pageNumber ? pendingAnchor : null;
+  const pendingRects =
+    pendingAnchorForPage && pageSize
+      ? denormalizeRects(pendingAnchorForPage.rects, pageSize)
+      : [];
+  const firstPendingRect = pendingRects[0] ?? null;
+  const lastPendingRect = pendingRects[pendingRects.length - 1] ?? null;
+  const pendingActionPosition =
+    firstPendingRect && lastPendingRect && pageSize
+      ? {
+          left: Math.min(
+            Math.max(lastPendingRect.left + lastPendingRect.width / 2, 72),
+            Math.max(pageSize.width - 72, 72),
+          ),
+          top:
+            lastPendingRect.top + lastPendingRect.height + 64 <=
+            pageSize.height - 44
+              ? lastPendingRect.top + lastPendingRect.height + 64
+              : Math.max(firstPendingRect.top - 108, 8),
+        }
+      : null;
 
   return (
     <div
@@ -390,12 +410,16 @@ export function ManuscriptPage({
           pendingAnchor={pendingAnchorForPage}
         />
       )}
-      {pendingAnchorForPage && onOpenPendingComments && (
+      {pendingActionPosition && onOpenPendingComments && (
         <Button
           type="button"
           size="sm"
           aria-label="Add comment to selected text"
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 z-40 -translate-x-1/2 shadow-lg lg:hidden"
+          className="absolute z-[4] -translate-x-1/2 shadow-md lg:hidden"
+          style={{
+            left: `${pendingActionPosition.left}px`,
+            top: `${pendingActionPosition.top}px`,
+          }}
           onPointerDown={(event) => {
             event.stopPropagation();
             // Explicit Add comment is the mobile commit point. Consume native

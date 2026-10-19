@@ -182,3 +182,22 @@ test("FIX-6: mobile Add comment action uses stable viewport-bottom positioning",
   assert.doesNotMatch(page, /lastPendingRect/);
   assert.doesNotMatch(page, /style=\{\{[\s\S]*?pendingActionPosition/);
 });
+
+
+test("FIX-7: mobile Add comment stays contextual with a safe gap from native toolbar", () => {
+  const page = read(PAGE);
+
+  assert.match(page, /const pendingActionPosition =/);
+  assert.match(page, /lastPendingRect\.top \+ lastPendingRect\.height \+ 64/);
+  assert.match(page, /firstPendingRect\.top - 108/);
+  assert.match(
+    page,
+    /className="absolute z-\[4\] -translate-x-1\/2 shadow-md lg:hidden"/,
+  );
+  assert.match(page, /left: `\$\{pendingActionPosition\.left\}px`/);
+  assert.match(page, /top: `\$\{pendingActionPosition\.top\}px`/);
+  assert.doesNotMatch(
+    page,
+    /fixed bottom-\[calc\(env\(safe-area-inset-bottom\)\+1rem\)\]/,
+  );
+});
