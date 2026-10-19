@@ -15,6 +15,7 @@ import {
   DEFENSE_AUDIT_TARGETS,
   writeDefenseAudit,
 } from "../services/defense-audit";
+import { requireSingleActiveAdviser } from "../services/active-adviser.rules";
 
 /** DL-6: builds a stage/type-scoped evidence row from DL-2 managed metadata. */
 function toDocumentData(
@@ -327,10 +328,13 @@ export class ThesisRepository {
   }
 
   async getActiveAdviserAssignment(studentId: string) {
-    return prisma.adviserAssignment.findFirst({
+    // ADV-1: one canonical active Adviser. Duplicate active rows are invalid and
+    // must fail closed rather than resolving to an arbitrary/latest Adviser.
+    const active = await prisma.adviserAssignment.findMany({
       where: { studentId, isActive: true },
       orderBy: { assignedDate: "desc" },
     });
+    return requireSingleActiveAdviser(active);
   }
 
   async getAllAdviserRequests() {

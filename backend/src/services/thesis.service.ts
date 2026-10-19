@@ -659,17 +659,22 @@ export class ThesisService {
       ? await this.thesisRepo.getStudentById(snap.studentId)
       : null;
     const programType = mapProgramType(student?.program?.programType);
-    const activeAdviser = snap.studentId
-      ? await this.thesisRepo.getActiveAdviserAssignment(snap.studentId)
-      : null;
+    // ADV-1: Title has no Adviser seat, so Title scheduling never resolves or
+    // validates a current Adviser. Proposal/Final derive the Student's active
+    // AdviserAssignment automatically; invalid duplicate active rows fail closed
+    // inside the repository resolver.
+    const requiresActiveAdviser = defenseType !== 'TITLE_DEFENSE';
+    const activeAdviser =
+      requiresActiveAdviser && snap.studentId
+        ? await this.thesisRepo.getActiveAdviserAssignment(snap.studentId)
+        : null;
     const adviserUserId = activeAdviser?.adviserId ?? null;
 
-    // Adviser relationship is required for Proposal/Final eligibility, but does NOT
-    // auto-create a committee seat (source of truth §12.6). Seat is optional/explicit.
-    if (
-      (defenseType === 'PROPOSAL_DEFENSE' || defenseType === 'FINAL_DEFENSE') &&
-      !adviserUserId
-    ) {
+    // Proposal/Final use the active Adviser as the required automatic Adviser
+    // committee participant (source of truth §3.3 / §12.6). Admin never selects
+    // or substitutes the Adviser; the submitted ADVISER seat must match the
+    // authoritative active AdviserAssignment below.
+    if (requiresActiveAdviser && !adviserUserId) {
       throw new AppError(
         'Proposal/Final Defense cannot be scheduled without an active thesis adviser relationship.',
         400,

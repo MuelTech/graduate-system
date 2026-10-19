@@ -19,6 +19,7 @@ import {
   resolveCurrentFinalApplicationDocuments,
   resolveCurrentProposalApplicationDocuments,
 } from "../services/proposal-adviser-review.rules";
+import { resolveSingleActiveAdviser } from "../services/active-adviser.rules";
 import type { DefenseStage } from "../interfaces/defense-eligibility.interfaces";
 
 type AppDocRow = {
@@ -36,6 +37,57 @@ export type ApplicationDocumentDto = {
   docType: string;
   isCurrent: boolean;
 };
+
+/**
+ * ADV-1: explicit current active-Adviser projection. This is resolved from the
+ * Student's active AdviserAssignment, never from ThesisRecord.assignment.
+ */
+export type ApplicationActiveAdviserDto = {
+  assignmentId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+};
+
+type ActiveAdviserRow = {
+  id: string;
+  adviserId: string;
+  adviser?: { id: string; firstName: string; lastName: string } | null;
+};
+
+/**
+ * Pure projection of the canonical active Adviser. More than one active row is
+ * invalid data: expose no arbitrary Adviser and mark the conflict so the Admin
+ * surface fails closed instead of silently picking one.
+ */
+function projectActiveAdviser(student: unknown): {
+  activeAdviser: ApplicationActiveAdviserDto | null;
+  activeAdviserConflict: boolean;
+} {
+  const rows =
+    (student as { adviserAssignments?: ActiveAdviserRow[] } | null)
+      ?.adviserAssignments ?? [];
+  const resolution = resolveSingleActiveAdviser(rows);
+  if (resolution.status !== "ACTIVE") {
+    return {
+      activeAdviser: null,
+      activeAdviserConflict: resolution.status === "CONFLICT",
+    };
+  }
+  const adviser = resolution.assignment.adviser;
+  if (!adviser) {
+    return { activeAdviser: null, activeAdviserConflict: false };
+  }
+  return {
+    activeAdviser: {
+      assignmentId: resolution.assignment.id,
+      userId: resolution.assignment.adviserId,
+      firstName: adviser.firstName,
+      lastName: adviser.lastName,
+    },
+    activeAdviserConflict: false,
+  };
+}
 
 /** UIUX-2L FIX-3: committee seat for the exact scheduled-defense read model. */
 export type ScheduledDefenseCommitteeMember = {
@@ -208,6 +260,16 @@ function applicationInclude() {
         program: {
           select: { id: true, programName: true, programType: true },
         },
+        adviserAssignments: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            adviserId: true,
+            adviser: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+        },
       },
     },
     thesisTitles: {
@@ -339,6 +401,8 @@ function mapApplicationRow(row: {
     thesisTitles: row.thesisTitles,
     thesisDocuments: resolveApplicationDocuments(row),
     assignment: row.assignment,
+    // ADV-1: current Adviser authority is the Student's active AdviserAssignment.
+    ...projectActiveAdviser(row.student),
     currentSchedule: sessionForDisplay
       ? {
           id: sessionForDisplay.id,
@@ -562,6 +626,16 @@ export class DefenseApplicationsRepository {
                     programType: true,
                   },
                 },
+                adviserAssignments: {
+                  where: { isActive: true },
+                  select: {
+                    id: true,
+                    adviserId: true,
+                    adviser: {
+                      select: { id: true, firstName: true, lastName: true },
+                    },
+                  },
+                },
               },
             },
             thesisTitles: {
@@ -647,6 +721,7 @@ export class DefenseApplicationsRepository {
           }> }).adviserCertifications,
         }),
         assignment: c.thesis.assignment,
+        ...projectActiveAdviser(c.thesis.student),
         currentSchedule: {
           id: c.schedule.id,
           defenseType: c.schedule.defenseType,

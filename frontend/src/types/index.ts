@@ -200,6 +200,19 @@ export interface ApprovedApplicationDto {
   assignment?: {
     adviser?: { id: string; firstName: string; lastName: string } | null;
   } | null;
+  /**
+   * ADV-1: current Adviser authority, resolved from the Student's active
+   * AdviserAssignment. `assignment` above remains legacy compatibility data and
+   * must not drive current Adviser resolution.
+   */
+  activeAdviser?: {
+    assignmentId: string;
+    userId: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  /** Invalid duplicate active advisers: no Adviser may be chosen automatically. */
+  activeAdviserConflict?: boolean;
   /** Current-stage defense session (stage-matched), when scheduled. */
   currentSchedule?: DefenseSessionDto | null;
 }

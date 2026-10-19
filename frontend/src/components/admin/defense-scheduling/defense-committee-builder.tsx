@@ -26,6 +26,8 @@ type Props = {
   programTypeLabel: string;
   members: CommitteeMember[];
   adviser: CommitteeMember | null;
+  /** Invalid duplicate active advisers were detected; no Adviser was chosen. */
+  adviserConflict?: boolean;
   onAssignRole: (role: DefensePanelRole, people: PickerPerson[]) => void;
 };
 
@@ -127,6 +129,7 @@ export function DefenseCommitteeBuilder({
   programTypeLabel,
   members,
   adviser,
+  adviserConflict = false,
   onAssignRole,
 }: Props) {
   const [activeRole, setActiveRole] = useState<DefensePanelRole | null>(null);
@@ -190,7 +193,13 @@ export function DefenseCommitteeBuilder({
           {showAdviser && (
             <RosterRow
               role="Adviser"
-              participants={adviser ? adviser.name : "Active thesis adviser not found"}
+              participants={
+                adviser
+                  ? adviser.name
+                  : adviserConflict
+                    ? "Multiple active advisers recorded"
+                    : "Active thesis adviser not found"
+              }
               secondary="Active thesis adviser"
               empty={!adviser}
               assigned={adviser ? "1 / 1" : "0 / 1"}
