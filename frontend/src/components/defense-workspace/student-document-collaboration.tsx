@@ -278,6 +278,7 @@ export function CollaborationViewerPane({
           annotations={c.annotations}
           pendingAnchor={c.pendingAnchor}
           onTextSelection={c.handleTextSelection}
+          onCancelPendingSelection={c.cancelNewComment}
           onOpenPendingComments={
             onRequestComments
               ? () => {

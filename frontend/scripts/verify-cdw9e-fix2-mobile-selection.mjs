@@ -43,7 +43,7 @@ test("touch/pointer selection schedules the same anchor builder after settling",
   assert.match(source, /scheduleTouchSelection\(\)/);
   assert.match(source, /touchSelectionTimerRef/);
   assert.match(source, /setTimeout\(\(\) => \{/);
-  assert.match(source, /processSelection\(\)/);
+  assert.match(source, /processSelection\(false\)/);
   assert.match(source, /180\)/);
   assert.match(source, /document\.removeEventListener\("selectionchange", onSelectionChange\)/);
   assert.match(source, /clearTimeout\(touchSelectionTimerRef\.current\)/);
@@ -137,4 +137,34 @@ test("FIX-4: pending lifecycle clears the draft action on submit/cancel", () => 
   assert.match(collaboration, /resetCreate\(\);\s*setPendingAnchor\(null\)/);
   assert.match(collaboration, /submitNewComment/);
   assert.match(collaboration, /cancelNewComment/);
+});
+
+
+test("FIX-5: mobile selection remains adjustable until explicit Add comment", () => {
+  const page = read(PAGE);
+  const viewer = read(VIEWER);
+  const collaboration = read(COLLABORATION);
+
+  assert.match(page, /const processSelection = useCallback\(\(consumeSelection = true\)/);
+  assert.match(page, /processSelection\(false\)/);
+  assert.match(page, /touchHasPreviewRef\.current = true/);
+  assert.match(
+    page,
+    /if \(consumeSelection\) \{[\s\S]*?selection\.removeAllRanges\(\);[\s\S]*?\} else \{/,
+  );
+  assert.match(
+    page,
+    /touchSelectingRef\.current && selection && !selection\.isCollapsed\) return;/,
+  );
+  assert.match(page, /const finalizePendingSelection = useCallback/);
+  assert.match(
+    page,
+    /finalizePendingSelection\(\);[\s\S]*?onOpenPendingComments\(\)/,
+  );
+  assert.match(
+    page,
+    /if \(!selection \|\| selection\.rangeCount === 0 \|\| selection\.isCollapsed\) \{[\s\S]*?onCancelPendingSelection/,
+  );
+  assert.match(viewer, /onCancelPendingSelection=\{onCancelPendingSelection\}/);
+  assert.match(collaboration, /onCancelPendingSelection=\{c\.cancelNewComment\}/);
 });

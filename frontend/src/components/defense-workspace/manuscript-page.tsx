@@ -32,6 +32,8 @@ export interface ManuscriptPageProps {
   /** Unsaved selection draft (presentation only, never persisted here). */
   pendingAnchor?: PdfAnchor | null;
   onTextSelection?: (anchor: PdfAnchor) => void;
+  /** Clear a mobile selection draft when native selection is dismissed. */
+  onCancelPendingSelection?: () => void;
   /** Open the existing Shared Comments drawer for the pending selection. */
   onOpenPendingComments?: () => void;
   /** CDW-3: select an existing highlight's thread via pointer hit-testing. */
@@ -49,6 +51,7 @@ export function ManuscriptPage({
   focusedAnnotationId,
   pendingAnchor = null,
   onTextSelection,
+  onCancelPendingSelection,
   onOpenPendingComments,
   onAnnotationSelect,
   onTextLayerStatus,
@@ -65,12 +68,23 @@ export function ManuscriptPage({
     null,
   );
   const touchSelectingRef = useRef(false);
+  const touchHasPreviewRef = useRef(false);
   const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
 
   // Keep callbacks in a ref so unstable identities never restart the render loop.
-  const callbacksRef = useRef({ onTextSelection, onTextLayerStatus, onBaseSize });
+  const callbacksRef = useRef({
+    onTextSelection,
+    onCancelPendingSelection,
+    onTextLayerStatus,
+    onBaseSize,
+  });
   useEffect(() => {
-    callbacksRef.current = { onTextSelection, onTextLayerStatus, onBaseSize };
+    callbacksRef.current = {
+      onTextSelection,
+      onCancelPendingSelection,
+      onTextLayerStatus,
+      onBaseSize,
+    };
   });
 
   useEffect(() => {
@@ -157,6 +171,18 @@ export function ManuscriptPage({
    */
   const armTouchSelectionSession = useCallback(() => {
     touchSelectingRef.current = true;
+
+    // Once a real native selection preview exists, keep the session alive while
+    // the browser selection handles are being adjusted. selectionchange/cancel
+    // becomes the lifecycle boundary instead of an arbitrary timeout.
+    if (touchHasPreviewRef.current) {
+      if (touchSessionTimeoutRef.current) {
+        clearTimeout(touchSessionTimeoutRef.current);
+        touchSessionTimeoutRef.current = null;
+      }
+      return;
+    }
+
     if (touchSessionTimeoutRef.current) {
       clearTimeout(touchSessionTimeoutRef.current);
     }
@@ -172,10 +198,10 @@ export function ManuscriptPage({
 
   /**
    * ONE anchor-building path for desktop mouse selection and touch/mobile
-   * native selection. Returns true only when a candidate anchor was created and
-   * the browser selection was consumed by the Add Comment flow.
+   * native selection. Desktop consumes immediately; mobile preview keeps the
+   * native range alive so selection handles remain adjustable until Add comment.
    */
-  const processSelection = useCallback((): boolean => {
+  const processSelection = useCallback((consumeSelection = true): boolean => {
     const selection = window.getSelection();
     const textLayerContainer = textLayerRef.current;
     const pageContainer = pageRef.current;
@@ -214,9 +240,6 @@ export function ManuscriptPage({
     }
     if (clientRects.length === 0) return false;
 
-    clearTouchTimers();
-    touchSelectingRef.current = false;
-
     const anchor = buildAnchor({
       pageNumber,
       selectedText,
@@ -224,7 +247,21 @@ export function ManuscriptPage({
       page: { width: box.width, height: box.height },
     });
     callbacksRef.current.onTextSelection?.(anchor);
-    selection.removeAllRanges();
+
+    if (consumeSelection) {
+      clearTouchTimers();
+      touchSelectingRef.current = false;
+      touchHasPreviewRef.current = false;
+      selection.removeAllRanges();
+    } else {
+      touchHasPreviewRef.current = true;
+      // A valid mobile preview now has its own natural lifecycle: handle
+      // adjustment, explicit Add comment, or native selection dismissal.
+      if (touchSessionTimeoutRef.current) {
+        clearTimeout(touchSessionTimeoutRef.current);
+        touchSessionTimeoutRef.current = null;
+      }
+    }
     return true;
   }, [clearTouchTimers, pageNumber]);
 
@@ -237,7 +274,7 @@ export function ManuscriptPage({
     // Let native selection handles settle before creating one candidate anchor.
     touchSelectionTimerRef.current = setTimeout(() => {
       touchSelectionTimerRef.current = null;
-      processSelection();
+      processSelection(false);
     }, 180);
   }, [armTouchSelectionSession, processSelection]);
 
@@ -245,7 +282,20 @@ export function ManuscriptPage({
     const onSelectionChange = () => {
       if (!touchSelectingRef.current) return;
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
+
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        // Ignore the early collapsed events that occur before long-press has
+        // produced a real range. Once a preview exists, collapse means the user
+        // dismissed the native selection and the draft should disappear too.
+        if (touchHasPreviewRef.current) {
+          clearTouchTimers();
+          touchSelectingRef.current = false;
+          touchHasPreviewRef.current = false;
+          callbacksRef.current.onCancelPendingSelection?.();
+        }
+        return;
+      }
+
       scheduleTouchSelection();
     };
 
@@ -254,11 +304,17 @@ export function ManuscriptPage({
       document.removeEventListener("selectionchange", onSelectionChange);
       clearTouchTimers();
       touchSelectingRef.current = false;
+      touchHasPreviewRef.current = false;
     };
   }, [clearTouchTimers, scheduleTouchSelection]);
 
   const handleMouseUp = useCallback(
     (event: { clientX: number; clientY: number }) => {
+      const selection = window.getSelection();
+      // Mobile browsers may synthesize mouse events after long-press. Do not
+      // let that compatibility mouseup consume an adjustable native selection.
+      if (touchSelectingRef.current && selection && !selection.isCollapsed) return;
+
       if (processSelection()) return;
 
       const pageContainer = pageRef.current;
@@ -287,6 +343,16 @@ export function ManuscriptPage({
     },
     [annotations, onAnnotationSelect, processSelection],
   );
+
+  const finalizePendingSelection = useCallback(() => {
+    clearTouchTimers();
+    touchSelectingRef.current = false;
+    touchHasPreviewRef.current = false;
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      selection.removeAllRanges();
+    }
+  }, [clearTouchTimers]);
 
   const pendingAnchorForPage =
     pendingAnchor?.pageNumber === pageNumber ? pendingAnchor : null;
@@ -358,10 +424,17 @@ export function ManuscriptPage({
             left: `${pendingActionPosition.left}px`,
             top: `${pendingActionPosition.top}px`,
           }}
-          onPointerDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            // Explicit Add comment is the mobile commit point. Consume native
+            // selection here, not while the user is still adjusting handles.
+            finalizePendingSelection();
+          }}
           onPointerUp={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
+            // Keyboard/click activation may not have pointerdown.
+            finalizePendingSelection();
             onOpenPendingComments();
           }}
         >

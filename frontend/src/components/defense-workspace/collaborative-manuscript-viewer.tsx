@@ -83,6 +83,8 @@ export interface CollaborativeManuscriptViewerProps {
   pendingAnchor?: PdfAnchor | null;
   /** Report a new text selection as a candidate anchor (not persisted here). */
   onTextSelection?: (anchor: PdfAnchor) => void;
+  /** Clear the pending mobile draft when native selection is dismissed. */
+  onCancelPendingSelection?: () => void;
   /** Open the existing Shared Comments drawer for the pending selection. */
   onOpenPendingComments?: () => void;
   /** Select an existing highlight's thread (CDW-3 focus contract). */
@@ -98,6 +100,7 @@ export function CollaborativeManuscriptViewer({
   annotations = [],
   pendingAnchor = null,
   onTextSelection,
+  onCancelPendingSelection,
   onOpenPendingComments,
   onAnnotationSelect,
   focusedAnnotationId = null,
@@ -322,6 +325,7 @@ export function CollaborativeManuscriptViewer({
               focusedAnnotationId={focusedAnnotationId}
               pendingAnchor={pendingAnchor}
               onTextSelection={onTextSelection}
+              onCancelPendingSelection={onCancelPendingSelection}
               onOpenPendingComments={onOpenPendingComments}
               onAnnotationSelect={onAnnotationSelect}
               onTextLayerStatus={setTextAvailable}
