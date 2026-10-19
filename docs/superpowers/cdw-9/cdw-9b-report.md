@@ -4,7 +4,9 @@
 - **Repository:** MuelTech/graduate-system
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `527de80389d246086031092262dbba9b30347a26`
-- **Implementation commit:** `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a`
+- **Implementation commits:**
+  - `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a` — initial CDW-9B hardening
+  - `cf355e91fda61482cded906868286fe82d9e80f9` — FIX-1 finalization boundary and signature retry convergence
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Schema change:** NONE
@@ -114,6 +116,41 @@ drain:
 - explicit **Reload saved version** remains the recovery path;
 - no manual force overwrite exists.
 
+### 3.4 FIX-1 — duplicate signed-slot retry heals aggregate status
+
+`backend/src/services/defense-collaboration.service.ts`
+`backend/src/services/rap-report.service.ts`
+
+- Modern and legacy-compatible signing now return a duplicate marker when the
+  caller's required slot is already signed, or when the own-slot CAS loses the
+  race.
+- After the transaction commits/returns, the service still runs committed-state
+  aggregate reconciliation before returning the deterministic duplicate `409`.
+- A previously committed last signature whose first recompute failed therefore
+  converges to `FINALIZED` on retry.
+- Duplicate retries never call the signature update path, so
+  `signatureData`, `signedAt`, `signedContentHash`, and `signedContentVersion`
+  remain untouched.
+- `finalizedNow` remains truthful and `finalizedAt` remains set once.
+
+### 3.5 FIX-1 — finalization edit boundary
+
+`frontend/src/components/defense-workspace/committee-report-panel.tsx`
+`frontend/src/components/defense-workspace/rich-text-report-editor.tsx`
+
+- `handleFinalizeReport()` sets a synchronous `finalizingRef` boundary and
+  `finalizing` state before the first await.
+- The Tiptap editor receives `editable={!finalizing}` and now applies dynamic
+  editability with `editor.setEditable(editable)`.
+- Toolbar controls are hidden and the Insert into Report bridge is unregistered
+  while finalizing.
+- `handleBodyChange()` ignores late editor updates after the boundary.
+- Accepted pre-boundary edits are drained through `flushAndWait()`; the freeze
+  request follows only after a successful drain and uses the drained bodyVersion.
+- Safe drain/freeze failure resets the boundary and restores editing.
+- Successful finalization leaves the editor locked until authoritative frozen
+  state takes over; no stale unmount save is created because the body was drained.
+
 ---
 
 ## 4. Preserved invariants
@@ -158,11 +195,14 @@ drain:
 
 - modern signing does not claim `finalizedNow` when another concurrent signer won;
 - duplicate signing rejects without rewriting signature evidence;
+- FIX-1: a committed signature whose first aggregate recompute fails is healed by
+  the duplicate retry, with no evidence rewrite;
 - own-slot, hash/version binding, and final-signature convergence remain covered.
 
 `backend/tests/unit/services/cdw7-immutability.test.ts`
 
-- legacy-compatible signing reports `finalizedNow` only for the winning request.
+- legacy-compatible signing reports `finalizedNow` only for the winning request;
+- FIX-1: legacy duplicate retry heals the aggregate after a failed first recompute.
 
 `backend/tests/unit/services/cdw7-acceptance-regression.test.ts`
 
@@ -176,7 +216,10 @@ drain:
 - finalization `409` closes stale confirmation and refreshes;
 - signing `409` closes stale dialog and refreshes;
 - signature dialog never auto-submits or reuses evidence;
-- Rapporteur finalization still drains autosave and sends its body version.
+- Rapporteur finalization still drains autosave and sends its body version;
+- FIX-1: finalization boundary is set before drain/freeze;
+- FIX-1: drain failure restores editing and never reaches freeze;
+- FIX-1: Tiptap applies `editable` dynamically and disables Insert into Report.
 
 ---
 
@@ -184,16 +227,17 @@ drain:
 
 | Check | Result |
 |---|---|
-| Focused backend service suite (8 files) | **238 passed / 0 failed** |
+| Focused backend service suite (8 files) | **240 passed / 0 failed** |
 | Focused controller/support suite (4 files) | **57 passed / 0 failed** |
 | Backend `npm run build` (`tsc`) | **PASS** |
-| CDW-9B frontend verifier | **5 passed / 0 failed** |
-| RAP-C1 verifier | **13 passed / 0 failed** |
+| CDW-9B frontend verifier | **8 passed / 0 failed** |
+| Report autosave verifier | **48 passed / 0 failed** |
 | FIX-6 verifier | **15 passed / 0 failed** |
 | FIX-5 verifier | **17 passed / 0 failed** |
 | CDW-9A verifier | **4 passed / 0 failed** |
 | CDW-LIVE-1B evaluation verifier | **24 passed / 0 failed** |
 | CDW-LIVE-1C acceptance verifier | **31 passed / 0 failed** |
+| CDW-5 report editor verifier | **57 passed / 0 failed** |
 | Frontend `npx tsc --noEmit` | **PASS** |
 | Scoped frontend ESLint | **PASS** |
 | Frontend production build | **PASS** |
@@ -213,17 +257,19 @@ The previously waived full pre-CDW-9 multi-user replay remains
   coverage, not a live MariaDB contention benchmark.
 - No two-browser concurrent finalize/signature QA was executed.
 - No hosted CI evidence is claimed.
-- A transient database failure after a signature commit can still leave aggregate
-  recompute to a later request; no new retry queue or background reconciler was
-  introduced in CDW-9B.
+- A transient database failure after a signature commit is healed by a duplicate
+  retry; CDW-9B did not add a background reconciler or retry queue.
+- The finalization edit boundary is client-enforced before freeze; the server's
+  frozen-state CAS remains the final authority.
 
 ---
 
 ## 8. Boundary confirmation
 
-- Backend changed: **YES** (aggregate recompute metadata and timestamp
-  conditional repair).
-- Frontend changed: **YES** (stale finalize/sign 409 recovery).
+- Backend changed: **YES** (aggregate recompute metadata, duplicate-retry
+  reconciliation, and timestamp conditional repair).
+- Frontend changed: **YES** (stale finalize/sign 409 recovery and the FIX-1
+  finalization edit boundary).
 - Schema/migration: **NONE**.
 - Signer policy: **NO CHANGE**.
 - FIX-6 parallel sequencing: **NO CHANGE**.

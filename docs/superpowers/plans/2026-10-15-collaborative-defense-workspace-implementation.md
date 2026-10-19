@@ -1804,8 +1804,11 @@ and explicit project-owner authorization.
 
 #### Implementation evidence
 
-- Implementation commit: `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a`
-  (`fix(cdw): harden report signature convergence`).
+- Implementation commits:
+  - `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a`
+    (`fix(cdw): harden report signature convergence`);
+  - `cf355e91fda61482cded906868286fe82d9e80f9`
+    (`fix(cdw): close report finalization race windows`).
 - Implementation report: `docs/superpowers/cdw-9/cdw-9b-report.md`.
 - Production hardening:
   - added transition-aware RAP aggregate recompute;
@@ -1814,10 +1817,16 @@ and explicit project-owner authorization.
     the persisted RAP already finalized;
   - anomalous `FINALIZED` rows receive `finalizedAt` once via conditional update;
   - finalize/sign `409` responses invalidate authoritative report/workspace/
-    readiness state and close stale UI dialogs without retrying.
+    readiness state and close stale UI dialogs without retrying;
+  - duplicate signed-slot retries reconcile committed aggregate state before
+    returning `409`, healing a lost final recompute without rewriting evidence;
+  - Committee Report finalization sets a synchronous edit boundary, disables
+    Tiptap/toolbar/Insert into Report, drains accepted edits, and restores
+    editing only on safe failure.
 - Schema/migration: **NONE**.
 - Focused backend and frontend verification recorded in the implementation
-  report.
+  report, including
+  `frontend/scripts/verify-cdw9b-report-signature-hardening.mjs`.
 - Targeted Committee Report concurrency Manual QA: **NOT EXECUTED**. The waived
   pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**, not a PASS.
 
