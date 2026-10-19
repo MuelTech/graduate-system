@@ -1672,7 +1672,9 @@ CDW-9B depends on CDW-9A being accepted.
   - `bc695f36016f487908af64715ed43a64b609d3ee`
     (`fix(cdw): guard stale evaluation drafts`);
   - `b167f8c4c40cdac9b67fc3db590f81e9f94462de`
-    (`fix(cdw): recover stale evaluation drafts safely`).
+    (`fix(cdw): recover stale evaluation drafts safely`);
+  - `cc11d58df4a397faa10c9a76f1ffc917544847db`
+    (`fix(cdw): sync authoritative finalized evaluation`).
 - Implementation report: `docs/superpowers/cdw-9/cdw-9a-report.md`.
 - Production hardening:
   - finalization converts any escaping transaction-level `P2002` unique race to
@@ -1686,7 +1688,10 @@ CDW-9B depends on CDW-9A being accepted.
   - stale draft `409` enters an explicit conflict state, blocks automatic
     persistence, preserves local work, and requires an explicit
     **Reload latest saved evaluation** action before the authoritative snapshot
-    and row version replace the local baseline.
+    and row version replace the local baseline;
+  - an authoritative `FINALIZED` transition displays the server criteria and
+    recommendations immediately, blocks stale autosave/unmount draining, hides
+    the conflict/finalization UI, and needs no explicit reload.
 - Schema/migration: **NONE**.
 - Focused backend tests include concurrent finalization, duplicate/stale
   finalization, stale DRAFT version rejection, transaction-level unique-race
@@ -1695,7 +1700,8 @@ CDW-9B depends on CDW-9A being accepted.
 - Focused frontend verifiers:
   `frontend/scripts/verify-cdw9a-evaluation-convergence.mjs` and
   `frontend/scripts/verify-cdw9a-fix1-stale-recovery.mjs` (behavioral autosave
-  conflict/reconcile coverage plus explicit recovery UI contract).
+  conflict/reconcile coverage, explicit DRAFT recovery UI contract, and
+  authoritative FINALIZED display/remount-safety contract).
 - Manual browser/multi-user QA: **NOT EXECUTED**. The previously waived
   pre-CDW-9 replay remains **WAIVED / NOT REQUIRED**, not a PASS.
 

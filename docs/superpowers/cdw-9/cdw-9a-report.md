@@ -8,6 +8,7 @@
   - `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4` — convergence hardening
   - `bc695f36016f487908af64715ed43a64b609d3ee` — stale evaluation draft version guard
   - `b167f8c4c40cdac9b67fc3db590f81e9f94462de` — CDW-9A FIX-1 explicit stale-draft recovery
+  - `cc11d58df4a397faa10c9a76f1ffc917544847db` — CDW-9A FIX-2 authoritative finalized display
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Schema change:** NONE
@@ -124,6 +125,24 @@ No schema or migration change was required.
   finalization sends the drained version.
 - No internal version/hash/database identifiers are displayed in faculty UI.
 
+### 3.5 Authoritative finalized display (CDW-9A FIX-2)
+
+`frontend/src/components/defense-workspace/oral-evaluation-form.tsx`
+
+- When the authoritative evaluator record transitions from `DRAFT` to
+  `FINALIZED`, the visible matrix and recommendations are now derived from the
+  authoritative server record, not the stale local draft.
+- This is a display derivation, not a state reset: normal DRAFT query refreshes
+  retain local unsaved work.
+- The finalized transition blocks the autosave controller via `markConflict()`,
+  so no stale autosave, finalize retry, or unmount drain can be triggered by the
+  transition.
+- The finalization dialog is not rendered in the locked state.
+- No explicit **Reload latest saved evaluation** action is required once the
+  authoritative record is finalized.
+- Local stale values are retained only in inactive component state and are never
+  presented as the finalized record or persisted.
+
 ---
 
 ## 4. Preserved invariants
@@ -205,12 +224,21 @@ Existing FIX-4 tests continue to cover:
 - explicit reload adopts the authoritative snapshot and row version;
 - conflict recovery is not invoked automatically;
 - FINALIZED authoritative state hides the conflict and locks edits;
+- FINALIZED transition displays authoritative matrix/recommendation values;
+- FINALIZED transition blocks stale autosave/dispose and hides finalization UI;
+- normal DRAFT refresh does not use a per-version remount key;
 - finalization still drains autosave first.
 
 `frontend/scripts/verify-cdw-live-1b-evaluation.mjs`
 
 - autosave payload now includes the authoritative row version alongside private
-  criteria/recommendations and never signatures.
+  criteria/recommendations and never signatures;
+- finalized rows use the locked/mounted-finalized autosave guard.
+
+`frontend/scripts/verify-cdw-live-1c-acceptance.mjs`
+
+- finalized evaluation remains server-immutable and the frontend blocks autosave
+  on the authoritative locked transition.
 
 ---
 
@@ -228,11 +256,11 @@ Existing FIX-4 tests continue to cover:
 | Hosted CI | **NOT OBSERVED / NOT CLAIMED** |
 | Manual browser/multi-user QA | **NOT EXECUTED** |
 
-### CDW-9A FIX-1 verification (frontend-only)
+### CDW-9A FIX-1/FIX-2 verification (frontend-only)
 
 | Check | Result |
 |---|---|
-| New stale-recovery verifier (behavioral controller + UI contract) | **9 passed / 0 failed** |
+| Stale-recovery verifier (behavioral controller + DRAFT/FINALIZED UI contract) | **12 passed / 0 failed** |
 | Existing CDW-9A verifier | **4 passed / 0 failed** |
 | CDW-LIVE-1B evaluation autosave verifier | **24 passed / 0 failed** |
 | CDW-LIVE-1C acceptance verifier | **31 passed / 0 failed** |
