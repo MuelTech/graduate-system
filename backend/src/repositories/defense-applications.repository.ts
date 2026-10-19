@@ -89,6 +89,20 @@ function projectActiveAdviser(student: unknown): {
   };
 }
 
+/**
+ * ADV-1 FIX-1: the internal Prisma include loads `adviserAssignments` only so
+ * the canonical Adviser can be derived. The Admin DTO must expose the explicit
+ * `activeAdviser` projection instead of the raw nested relation.
+ */
+function publicStudentDto(student: unknown): unknown {
+  if (!student || typeof student !== "object" || Array.isArray(student)) {
+    return student;
+  }
+  const safe = { ...(student as Record<string, unknown>) };
+  delete safe.adviserAssignments;
+  return safe;
+}
+
 /** UIUX-2L FIX-3: committee seat for the exact scheduled-defense read model. */
 export type ScheduledDefenseCommitteeMember = {
   userId: string;
@@ -397,7 +411,7 @@ function mapApplicationRow(row: {
     outcome: row.outcome ?? null,
     rejectionReason: row.rejectionReason ?? null,
     createdAt: row.createdAt,
-    student: row.student,
+    student: publicStudentDto(row.student),
     thesisTitles: row.thesisTitles,
     thesisDocuments: resolveApplicationDocuments(row),
     assignment: row.assignment,
@@ -703,7 +717,7 @@ export class DefenseApplicationsRepository {
         rejectionReason: null as string | null,
         createdAt: c.concludedAt,
         concludedAt: c.concludedAt,
-        student: c.thesis.student,
+        student: publicStudentDto(c.thesis.student),
         thesisTitles: c.thesis.thesisTitles,
         // Scope to THIS history record's stage (not ThesisRecord.current stage).
         // CP3-FIX2: Proposal history prefers certified manuscript authority.
