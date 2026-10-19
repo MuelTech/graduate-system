@@ -9,7 +9,8 @@
 - **FIX-2 commit:** `d10403fbdc0135d22fcc75cb0bf5f27697f66f05`
 - **FIX-3 commit:** `1a119f6ca73ce46f979e57d47867943cd1721b0f`
 - **FIX-4 commit:** `e4b24faf32eb7137351186f5bf323238382ab363`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment UX refinement pending owner retest
+- **FIX-5 commit:** `51e506cf244e30129614b7ed4c49f4e2e82f950b`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile selection UX FIX-5 pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -300,6 +301,67 @@ selected text had been captured.
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
 UX refinement pending owner retest**.
+
+## 3E. FIX-5 — adjustable native mobile selection before comment finalization
+
+Project-owner real-phone QA after FIX-4 found a regression in the mobile selection
+lifecycle: the first selected word/paragraph was converted to a pending anchor too
+quickly, the browser selection was consumed, and the native selection handles could
+no longer be dragged to expand/shrink or dismiss the range naturally.
+
+### Root cause
+
+FIX-4 still reused the FIX-3 completion behavior that called
+`processSelection()` after a 180 ms settled-selection debounce. That path called
+`selection.removeAllRanges()`, so the first usable mobile range became final before
+the user had finished adjusting the native handles. A synthesized compatibility
+`mouseup` could also reach the immediate desktop-consume path.
+
+### Fix
+
+- `processSelection(consumeSelection)` remains the single anchor-geometry path.
+- Desktop keeps `consumeSelection=true` and retains the accepted immediate
+  mouse-selection behavior.
+- Mobile settled selection now calls `processSelection(false)`: it updates the
+  existing presentation-only `pendingAnchor` preview without consuming the native
+  browser range.
+- Once a valid mobile preview exists, the touch-selection session stays alive while
+  the user adjusts native handles; later `selectionchange` events replace the draft
+  anchor/highlight with the latest selected range.
+- Compatibility `mouseup` is ignored while an active touch selection is
+  non-collapsed, preventing accidental early consumption.
+- If the native selection is dismissed/collapsed before committing, the pending
+  draft is cleared through the existing collaboration cancel path.
+- The contextual **Add comment** action is now the explicit mobile commit point:
+  it disarms touch tracking, consumes the native selection, preserves the latest
+  pending anchor, and then opens the existing Shared Comments drawer/composer.
+- Read-only native selection/copy remains non-destructive.
+- No backend, schema, API, annotation model, permission, realtime, or academic
+  workflow behavior changed.
+
+### FIX-5 evidence/status
+
+- Remote product commit:
+  `51e506cf244e30129614b7ed4c49f4e2e82f950b`.
+- Independent connector source/diff review: **PASS** for the bounded selection
+  lifecycle change and scope boundary.
+- Focused mobile-selection source-contract verifier was updated to cover:
+  adjustable preview without consumption, explicit Add comment finalization,
+  cancellation on collapsed native selection, callback wiring, and synthesized
+  mouseup protection.
+- Automated verifier execution in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
+- Project-owner real-phone FIX-5 retest: **PENDING**.
+
+Owner acceptance flow:
+
+`phone → long-press/select text → drag native handles to expand/shrink → pending highlight/button follows latest range → tap elsewhere cancels draft OR tap Add comment → Shared Comments drawer opens with latest selection → submit comment`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile selection
+UX FIX-5 pending owner retest**.
 
 ## 4. Responsive evidence
 
