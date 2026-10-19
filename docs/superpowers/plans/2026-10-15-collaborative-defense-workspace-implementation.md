@@ -1666,21 +1666,26 @@ CDW-9B depends on CDW-9A being accepted.
 
 #### Implementation evidence
 
-- Implementation commit: `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4`
-  (`fix(cdw): harden evaluation summary convergence`).
+- Implementation commits:
+  - `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4`
+    (`fix(cdw): harden evaluation summary convergence`);
+  - `bc695f36016f487908af64715ed43a64b609d3ee`
+    (`fix(cdw): guard stale evaluation drafts`).
 - Implementation report: `docs/superpowers/cdw-9/cdw-9a-report.md`.
 - Production hardening:
   - finalization converts any escaping transaction-level `P2002` unique race to
     the existing friendly `409` conflict;
   - Summary `P2002` convergence returns the winning row's authoritative snapshot
     evaluator count;
+  - draft saves/finalization use an optional authoritative `updatedAt` row
+    version guard and CAS predicate;
   - evaluator finalization `409` now refreshes the evaluator and workspace read
     models.
 - Schema/migration: **NONE**.
 - Focused backend tests include concurrent finalization, duplicate/stale
-  finalization, transaction-level unique-race mapping, simultaneous Summary
-  ensure convergence, P2002 winner convergence, and the preserved FIX-4/verdict/
-  Committee Report boundaries.
+  finalization, stale DRAFT version rejection, transaction-level unique-race
+  mapping, simultaneous Summary ensure convergence, P2002 winner convergence,
+  and the preserved FIX-4/verdict/Committee Report boundaries.
 - Focused frontend source-contract verifier:
   `frontend/scripts/verify-cdw9a-evaluation-convergence.mjs`.
 - Manual browser/multi-user QA: **NOT EXECUTED**. The previously waived

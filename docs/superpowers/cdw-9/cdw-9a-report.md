@@ -4,7 +4,9 @@
 - **Repository:** MuelTech/graduate-system
 - **Branch:** `refactor/collaborative-defense-workspace`
 - **Starting HEAD:** `74584c31737243ba071f059b4c844153de32a142`
-- **Implementation commit:** `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4`
+- **Implementation commits:**
+  - `676d2c02d33aee1ae04bd3e94a9a51a58a91aee4` — convergence hardening
+  - `bc695f36016f487908af64715ed43a64b609d3ee` — stale evaluation draft version guard
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Schema change:** NONE
@@ -46,7 +48,10 @@ The bounded gaps closed by CDW-9A were:
 2. Summary `P2002` convergence returned the loser's computed evaluator count
    instead of the winning summary snapshot metadata;
 3. evaluator finalization `409` did not refresh authoritative evaluation/workspace
-   state in the frontend, unlike autosave conflicts.
+   state in the frontend, unlike autosave conflicts;
+4. draft saves and finalization had no content-version guard, so a stale tab could
+   overwrite a newer DRAFT. Finalized rows were already protected by the DRAFT
+   status CAS and `(scheduleId, panelId)` uniqueness.
 
 No schema or migration change was required.
 
@@ -74,12 +79,28 @@ No schema or migration change was required.
 - The winner row remains the only authoritative Summary.
 - Existing Summary rows are not updated or rewritten by a retry.
 
-### 3.3 Stale evaluator client
+### 3.3 Evaluation row version guard
+
+`backend/src/services/oral-evaluation.service.ts`,
+`backend/src/controllers/thesis.controller.ts`
+
+- Evaluation reads now expose the server row version as an ISO `updatedAt`.
+- Draft saves and finalization accept an optional `expectedUpdatedAt`.
+- When supplied, a mismatch returns `409 Evaluation state changed. Refresh and
+  try again.` without writing.
+- Existing-row CAS writes include the authoritative `updatedAt`, so a stale tab
+  cannot overwrite a newer DRAFT between read and update.
+- Legacy callers that omit the token retain the existing status/unique-constraint
+  behavior.
+
+### 3.4 Stale evaluator client
 
 `frontend/src/components/defense-workspace/oral-evaluation-form.tsx`
 
 - A finalization `409` now invalidates the evaluator's own evaluation query and
   the authoritative Defense Workspace query.
+- Autosave sends the current row version and updates it from the save response;
+  finalization sends the drained version.
 - Local form state is not silently cleared; the backend/faculty-readable error
   message remains visible.
 - No internal version/hash/database identifiers are added to faculty UI.
@@ -117,9 +138,15 @@ No schema or migration change was required.
 
 - duplicate finalization of a FINALIZED record returns `409` without rewriting;
 - stale DRAFT finalization CAS conflict returns `409`;
+- stale DRAFT save/finalize version mismatch returns `409` without update;
+- finalization CAS includes the authoritative row version;
 - transaction-level `P2002` maps to the friendly `409`;
 - concurrent evaluator finalizations remain independently owned and signed;
 - finalization remains independent of Committee Report state.
+
+`backend/tests/unit/services/oral-evaluation-controller-patch.test.ts`
+
+- `expectedUpdatedAt` is passed through to draft save and finalization.
 
 ### Oral Examination Summary
 
@@ -146,6 +173,7 @@ Existing FIX-4 tests continue to cover:
 
 - finalization `409` refreshes own evaluation and workspace state;
 - autosave `409` reconciliation remains;
+- autosave and finalization carry the authoritative row version;
 - autosave drain still precedes the irreversible finalize request.
 
 ---
@@ -154,11 +182,11 @@ Existing FIX-4 tests continue to cover:
 
 | Check | Result |
 |---|---|
-| Focused backend suite (9 directly affected files) | **259 passed / 0 failed** |
+| Focused backend suite (9 directly affected files) | **263 passed / 0 failed** |
 | `backend npm run build` (`tsc`) | **PASS** |
-| CDW-9A frontend verifier | **3 passed / 0 failed** |
+| CDW-9A frontend verifier | **4 passed / 0 failed** |
 | Frontend `npx tsc --noEmit` | **PASS** |
-| Scoped frontend ESLint on changed component | **PASS** |
+| Scoped frontend ESLint on changed frontend files | **PASS** |
 | `git diff --check` | **clean** (line-ending notices only) |
 | Schema/migration change | **NONE** |
 | Hosted CI | **NOT OBSERVED / NOT CLAIMED** |
