@@ -7,6 +7,7 @@
 - **Implementation commits:**
   - `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a` — initial CDW-9B hardening
   - `cf355e91fda61482cded906868286fe82d9e80f9` — FIX-1 finalization boundary and signature retry convergence
+  - `7a4ff5baa90e6d5eb7fb2e058dc7f1b614e8be55` — FIX-2 legacy duplicate-retry state guard
 - **Status:** IMPLEMENTED / PENDING INDEPENDENT REVIEW
 - **Date:** 2026-10-19
 - **Schema change:** NONE
@@ -151,6 +152,24 @@ drain:
 - Successful finalization leaves the editor locked until authoritative frozen
   state takes over; no stale unmount save is created because the body was drained.
 
+### 3.6 FIX-2 — legacy duplicate-retry state guard
+
+`backend/src/services/rap-report.service.ts`
+
+- `signRapSlot()` now resolves and validates the authoritative attempt/report
+  state before returning an already-signed duplicate marker.
+- The duplicate marker remains valid only after:
+  - own-slot ownership;
+  - RAP + schedule resolution;
+  - missing-attempt fail-closed;
+  - `CONCLUDED` rejection;
+  - `CANCELLED` rejection;
+  - modern frozen RAP `FOR_SIGNATURE` / `PARTIALLY_SIGNED` validation.
+- An eligible active duplicate still reaches the post-transaction aggregate
+  reconciliation, preserving FIX-1 healing.
+- A concluded, cancelled, missing-attempt, or closed modern report rejects before
+  reconciliation and never rewrites signature evidence.
+
 ---
 
 ## 4. Preserved invariants
@@ -201,6 +220,17 @@ drain:
 
 `backend/tests/unit/services/cdw7-immutability.test.ts`
 
+- FIX-2: an active already-signed legacy-compatible retry still reconciles the
+  aggregate before returning duplicate `409`;
+- FIX-2: `CONCLUDED` and `CANCELLED` already-signed retries reject before
+  aggregate recompute;
+- FIX-2: missing attempt state fails closed before aggregate recompute;
+- FIX-2: a modern frozen `FINALIZED` report with an already-signed slot does not
+  recompute;
+- duplicate paths do not call the signature update write.
+
+`backend/tests/unit/services/cdw7-immutability.test.ts`
+
 - legacy-compatible signing reports `finalizedNow` only for the winning request;
 - FIX-1: legacy duplicate retry heals the aggregate after a failed first recompute.
 
@@ -229,6 +259,8 @@ drain:
 |---|---|
 | Focused backend service suite (8 files) | **240 passed / 0 failed** |
 | Focused controller/support suite (4 files) | **57 passed / 0 failed** |
+| FIX-2 immutability suite (`cdw7-immutability.test.ts`) | **17 passed / 0 failed** |
+| FIX-2 directly affected RAP/legacy set (5 files) | **101 passed / 0 failed** |
 | Backend `npm run build` (`tsc`) | **PASS** |
 | CDW-9B frontend verifier | **8 passed / 0 failed** |
 | Report autosave verifier | **48 passed / 0 failed** |

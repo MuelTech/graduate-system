@@ -1808,7 +1808,9 @@ and explicit project-owner authorization.
   - `8fb6f9996c24ff0e93a87d468a4a26a87ce39e6a`
     (`fix(cdw): harden report signature convergence`);
   - `cf355e91fda61482cded906868286fe82d9e80f9`
-    (`fix(cdw): close report finalization race windows`).
+    (`fix(cdw): close report finalization race windows`);
+  - `7a4ff5baa90e6d5eb7fb2e058dc7f1b614e8be55`
+    (`fix(cdw): guard legacy signature retry reconciliation`).
 - Implementation report: `docs/superpowers/cdw-9/cdw-9b-report.md`.
 - Production hardening:
   - added transition-aware RAP aggregate recompute;
@@ -1820,6 +1822,10 @@ and explicit project-owner authorization.
     readiness state and close stale UI dialogs without retrying;
   - duplicate signed-slot retries reconcile committed aggregate state before
     returning `409`, healing a lost final recompute without rewriting evidence;
+  - FIX-2: legacy-compatible duplicate retries validate the authoritative
+    attempt/report state first; concluded, cancelled, missing-attempt, and
+    closed modern reports reject before aggregate reconciliation while eligible
+    active retries still heal;
   - Committee Report finalization sets a synchronous edit boundary, disables
     Tiptap/toolbar/Insert into Report, drains accepted edits, and restores
     editing only on safe failure.
