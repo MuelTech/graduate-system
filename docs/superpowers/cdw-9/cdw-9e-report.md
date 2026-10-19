@@ -13,7 +13,8 @@
 - **FIX-6 commit:** `cfcf5c1149f6e938ab38eeb4894fedbbd64407bc`
 - **FIX-7 commit:** `8b04ef339b2d38d36cb307dd1f988105ccdc7468`
 - **FIX-7 verifier reconciliation:** `4947ce0790ed7a558858d01afeab230d7324293c`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance mobile comment action FIX-7 pending owner retest
+- **FIX-8 commit:** `6874fc154f9ee1dcd3a6dab949c870408c32eb35`
+- **Status:** ACCEPTED / CLOSED with bounded post-acceptance desktop selection dismissal FIX-8 pending owner retest
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -462,6 +463,54 @@ Owner acceptance flow:
 
 CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
 action FIX-7 pending owner retest**.
+
+## 3H. FIX-8 — desktop pending-selection dismissal
+
+Project-owner desktop QA found that after selecting manuscript text, the browser
+selection was consumed into the existing pending annotation draft, but a later normal
+left-click did not clear that pending draft/highlight. The selection therefore appeared
+stuck even though the native browser range had already been removed.
+
+### Fix
+
+- Desktop `mouseup` now explicitly accepts only the primary/left mouse button.
+- If the mouseup creates a new valid text range, the existing desktop
+  `processSelection()` path remains unchanged.
+- If there is no new range and an unsaved `pendingAnchor` exists, a normal
+  left-click clears that draft through the existing
+  `onCancelPendingSelection` callback.
+- The same click then continues through stored-highlight hit-testing, so clicking an
+  existing annotation can both dismiss the draft and open the stored thread.
+- Right/middle mouse buttons do not trigger draft cancellation.
+- Mobile FIX-5 adjustable native selection, FIX-7 mobile action placement, read-only
+  selection/copy, and backend/domain behavior are unchanged.
+
+### FIX-8 evidence/status
+
+- Remote product commit:
+  `6874fc154f9ee1dcd3a6dab949c870408c32eb35`.
+- Independent connector source/diff review: **PASS** for the bounded desktop
+  dismissal change and unchanged mobile paths.
+- Focused source-contract verifier was extended to require:
+  primary-button gating, cancellation after a collapsed/no-new-range click, and
+  preservation of stored-highlight hit-testing.
+- Automated verifier execution in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
+  **NOT EXECUTED**.
+- Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
+- Project-owner desktop FIX-8 retest: **PENDING**.
+
+Owner acceptance flow:
+
+`desktop → drag/select manuscript text → pending highlight appears → left-click elsewhere → pending highlight/draft clears`
+
+Stored highlight sanity:
+
+`desktop → create pending selection → left-click an existing stored highlight → pending draft clears and stored comment thread opens`
+
+CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance desktop selection
+dismissal FIX-8 pending owner retest**.
 
 ## 4. Responsive evidence
 
