@@ -14,7 +14,7 @@
 - **FIX-7 commit:** `8b04ef339b2d38d36cb307dd1f988105ccdc7468`
 - **FIX-7 verifier reconciliation:** `4947ce0790ed7a558858d01afeab230d7324293c`
 - **FIX-8 commit:** `6874fc154f9ee1dcd3a6dab949c870408c32eb35`
-- **Status:** ACCEPTED / CLOSED with bounded post-acceptance desktop selection dismissal FIX-8 pending owner retest
+- **Status:** ACCEPTED / CLOSED
 - **Date:** 2026-10-19
 - **Backend change:** NONE
 - **Schema/migration:** NONE
@@ -455,14 +455,14 @@ the Android/browser native text-selection action menu.
 - Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
   **NOT EXECUTED**.
 - Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
-- Project-owner real-phone FIX-7 retest: **PENDING**.
+- Project-owner real-phone FIX-7 retest: **PASS / ACCEPTED**.
 
 Owner acceptance flow:
 
 `phone → long-press/select text → adjust handles → native Android menu may remain visible → Add comment appears near selection with safe spacing → tap Add comment → Shared Comments opens with latest selection → submit comment`
 
-CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance mobile comment
-action FIX-7 pending owner retest**.
+CDW-9E remains **ACCEPTED / CLOSED**. FIX-7 mobile comment placement is
+project-owner accepted.
 
 ## 3H. FIX-8 — desktop pending-selection dismissal
 
@@ -499,7 +499,7 @@ stuck even though the native browser range had already been removed.
 - Frontend TypeScript / scoped ESLint in this ChatGPT connector-only session:
   **NOT EXECUTED**.
 - Full frontend build: **NOT RUN / NOT REQUIRED by scope**.
-- Project-owner desktop FIX-8 retest: **PENDING**.
+- Project-owner desktop FIX-8 retest: **PASS / ACCEPTED**.
 
 Owner acceptance flow:
 
@@ -509,8 +509,41 @@ Stored highlight sanity:
 
 `desktop → create pending selection → left-click an existing stored highlight → pending draft clears and stored comment thread opens`
 
-CDW-9E remains **ACCEPTED / CLOSED with bounded post-acceptance desktop selection
-dismissal FIX-8 pending owner retest**.
+CDW-9E remains **ACCEPTED / CLOSED**. FIX-8 desktop selection dismissal is
+project-owner accepted.
+
+## 3I. Final owner UX retest closure
+
+After the bounded post-acceptance FIX-2 through FIX-8 sequence, the project owner
+completed practical mobile and desktop interaction retesting and accepted the
+current Defense Workspace behavior.
+
+Accepted owner-observed outcomes include:
+
+- mobile native manuscript selection works with long-press and adjustable handles;
+- the latest selected range is retained as the pending comment anchor;
+- the mobile **Add comment** action remains contextual while leaving clearance for
+  the Android/browser native selection toolbar;
+- **Add comment** opens the existing Shared Comments drawer/composer for the
+  selected text;
+- desktop pending manuscript selection can be dismissed with a normal left-click;
+- stored annotation/highlight interaction remains available after draft dismissal.
+
+This owner acceptance is a practical UX/browser retest, not a full accessibility
+certification. It does **not** convert the unexecuted keyboard-only,
+screen-reader, comprehensive focus-behavior, or WCAG checks into PASS.
+
+Final evidence classification remains:
+
+- independent remote source/diff review for the bounded fixes: **PASS**;
+- project-owner practical mobile/desktop UX retest: **PASS / ACCEPTED**;
+- Targeted CDW-9E Manual Accessibility/Responsive QA as formally defined
+  (keyboard/screen-reader/full accessibility pass): **NOT EXECUTED**;
+- hosted CI for these later bounded fixes: **NOT OBSERVED / NOT CLAIMED**;
+- no WCAG compliance claim.
+
+**CDW-9E is ACCEPTED / CLOSED. CDW-9F is NEXT / AUTHORIZED — NOT YET
+IMPLEMENTED.**
 
 ## 4. Responsive evidence
 
