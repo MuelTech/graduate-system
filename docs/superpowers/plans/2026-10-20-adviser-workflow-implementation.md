@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399`; project-owner visual QA pending
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 AUTHORIZED / NOT STARTED
 
 ---
 
@@ -382,13 +382,13 @@ Security focus:
 
 ### ADV-3 — My Advisees main workspace
 
-**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS — PROJECT-OWNER VISUAL QA PENDING
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS — PROJECT-OWNER VISUAL QA DEFERRED
 
 Implementation:
 - `69f55d83d79a318c16d7a30207821ba10b19f399` — `feat(adviser): add my advisees workspace`
 - independent remote source review: PASS
 - reported focused verification: frontend TypeScript PASS; scoped ESLint PASS; ADV-3 verifier 11/11 PASS; `git diff --check` PASS
-- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual inspection pending
+- manual/browser QA: NOT EXECUTED by coding agent; project owner explicitly chose to continue to ADV-4 before visual inspection, so visual QA remains deferred rather than passed
 - hosted CI: NOT OBSERVED / NOT CLAIMED
 - backend/schema changes: NONE
 
@@ -416,18 +416,22 @@ Use existing UI/UX playbook hierarchy and vocabulary. Do not create Admin-like S
 
 ### ADV-4 — Advisee detail + research overview
 
-Goal: longitudinal supervision context.
+**Status:** AUTHORIZED / NOT STARTED
+
+Goal: add the bounded longitudinal advisee-detail surface on top of the already-accepted ADV-2 exact-detail read model.
 
 Include:
 
 - Student/program identity;
-- current stage;
-- current working title when available;
-- Adviser relationship;
-- next Adviser responsibility;
-- research-document summary.
+- current research stage;
+- current working title only when separately authorized and present;
+- Adviser relationship/date;
+- concise next Adviser responsibility derived from the accepted review-task context;
+- research/review summary without exposing direct document files.
 
-Must consume authoritative backend read models.
+ADV-4 must consume the existing `GET /thesis/adviser/advisees/:studentId` authority. It must not add a parallel Student lookup or broaden backend access.
+
+**Boundary with ADV-5:** direct research-document listing/download, manuscript history, defense history, finalized Committee Reports, and any adviser document-authorization hardening remain ADV-5. ADV-4 may summarize current Proposal/Final review context but must not introduce new document/file links from the detail page.
 
 ### ADV-5 — Academic document/history integration + access hardening
 
