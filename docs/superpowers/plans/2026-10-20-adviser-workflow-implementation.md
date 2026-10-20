@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 AUTHORIZED / NOT STARTED
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec`; project-owner visual QA pending
 
 ---
 
@@ -416,7 +416,24 @@ Use existing UI/UX playbook hierarchy and vocabulary. Do not create Admin-like S
 
 ### ADV-4 — Advisee detail + research overview
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS — PROJECT-OWNER VISUAL QA PENDING
+
+Implementation:
+- `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` — `feat(adviser): add advisee detail overview`
+- independent remote source review: PASS
+- reported focused verification: frontend TypeScript PASS; scoped ESLint PASS; ADV-4 verifier 16/16 PASS; retained ADV-3 verifier 11/11 PASS; `git diff --check` PASS
+- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual inspection pending
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- backend/schema changes: NONE
+
+Implemented result:
+- new `/panelist/advisees/[studentId]` detail page consumes only the accepted exact-advisee endpoint;
+- Active Advisee cards now expose a bounded `View advisee` link while Incoming Requests remain non-advisee request context;
+- the detail page shows Student identity, research stage, active Adviser relationship/date, and current review context;
+- next Adviser responsibility is derived only from accepted review-task context and does not create a second thesis-progression authority;
+- current working title is rendered only from `research.workingTitle`; no historical Title Defense wording is promoted to current title;
+- 404, integrity conflict, generic error, and loading states are distinct and non-enumerating;
+- no direct document/file access, Defense History, Committee Report, request/review mutation controls, or later ADV package work was introduced.
 
 Goal: add the bounded longitudinal advisee-detail surface on top of the already-accepted ADV-2 exact-detail read model.
 
