@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 AUTHORIZED / NOT STARTED
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 ACCEPTED / CLOSED at FIX-1 `3497cb24ba9e9b5345ab6312c0276d9f5df4ad3c`; project-owner visual QA pending; ADV-7 READY FOR AUTHORIZATION
 
 ---
 
@@ -521,7 +521,29 @@ This package has a security/authorization blast radius and therefore justifies b
 
 ### ADV-6 — Adviser Requests + Adviser Reviews integration
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** ACCEPTED / CLOSED at FIX-1
+
+Accepted implementation:
+- core ADV-6: `17d158c280f769427a878404251d0943ade14f2a` — `feat(adviser): integrate request and review actions`
+- bounded FIX-1: `3497cb24ba9e9b5345ab6312c0276d9f5df4ad3c` — `fix(adviser): wait for resubmission before review actions`
+- independent remote source review: PASS
+- reported backend verification for core ADV-6: Panelist Dashboard focused rules 21/21 PASS; backend TypeScript build PASS
+- reported frontend verification after FIX-1: TypeScript PASS; scoped ESLint PASS; ADV-6 verifier 19/19 PASS; retained ADV-3 11/11 PASS; ADV-4 16/16 PASS; ADV-5 8/8 PASS; `git diff --check` PASS
+- production frontend build for core ADV-6: PASS, run specifically to validate the new `useSearchParams` Suspense boundary
+- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual/interaction QA pending
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- schema/migration: NONE
+- backend domain transitions: unchanged except Dashboard Adviser-task href generation
+
+Accepted result:
+- My Advisees is the primary Adviser action surface for GS-020 request response and Proposal/Final Adviser manuscript review;
+- Incoming Requests reuses the existing CONFORME / Decline transition and does not locally create an active Adviser relationship before Dean approval;
+- Review Tasks and exact Advisee detail share one Adviser Review action panel that loads the exact stage-specific task, uses the exact manuscript as the optimistic concurrency token, preserves Final STRIKE authority, and refreshes authoritative state on stale 409 without automatic resubmission;
+- `CHANGES_REQUESTED` is now correctly read-only / waiting for Student resubmission, while mutation controls are exposed only for exact `AWAITING_REVIEW` state;
+- `ISSUED` remains immutable/read-only;
+- My Advisees tabs and exact Adviser task context are URL-addressable, with deep-link IDs matched only against the authenticated workspace projection before opening/fetching task detail;
+- Panelist Dashboard Adviser Request / Adviser Review action and waiting links deep-link into the matching My Advisees context; unrelated Dashboard links remain unchanged;
+- legacy `/panelist/adviser-requests` and `/panelist/adviser-reviews` routes remain functional and reuse shared action surfaces; their sidebar entries remain until ADV-7.
 
 Goal: make My Advisees the primary Adviser workflow surface while preserving the existing GS-020 and Proposal/Final Adviser-review mutation authorities.
 
@@ -544,6 +566,8 @@ Compatibility boundary:
 Do not delete compatibility routes until the integrated My Advisees actions are independently source-reviewed and visually exercised.
 
 ### ADV-7 — Navigation consolidation / compatibility redirects
+
+**Status:** READY FOR AUTHORIZATION / NOT STARTED
 
 Goal: simplify Panelist navigation only after My Advisees is accepted.
 
