@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 AUTHORIZED / NOT STARTED
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d`; project-owner visual QA pending
 
 ---
 
@@ -452,7 +452,25 @@ ADV-4 must consume the existing `GET /thesis/adviser/advisees/:studentId` author
 
 ### ADV-5 — Academic document/history integration + access hardening
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS — PROJECT-OWNER VISUAL QA PENDING
+
+Implementation:
+- `e3c64450495ee4c9a378c7a877f67783a0d52b8d` — `feat(adviser): harden document access and expose history`
+- independent remote source review: PASS
+- reported security-focused backend verification: 8 focused/directly related test files, 80/80 PASS; backend TypeScript build PASS
+- reported frontend verification: TypeScript PASS; scoped ESLint PASS; ADV-5 verifier 8/8 PASS; retained ADV-4 verifier 16/16 PASS; retained ADV-3 verifier 11/11 PASS; `git diff --check` PASS
+- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual inspection pending
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+- schema/migration: NONE
+
+Accepted source behavior:
+- the former blanket active-Adviser `thesis-document` grant is removed;
+- active-Adviser-derived file access now requires exactly one active Adviser row owned by the caller plus a valid academic document identity: `TITLE_PROPOSAL/TITLE`, `PROPOSAL_CHAPTERS/PROPOSAL`, or `FINAL_MANUSCRIPT/FINAL` (legacy null stage only when safely implied by the academic type);
+- COR, RECEIPT, INSTRUMENTS, RESPONDENT_DATA, PLAGIARISM_REPORT, ambiguous rows, and contradictory academic type/stage identities no longer pass merely by Adviser status;
+- owner/Admin and existing independent committee authorities remain separate and intact;
+- exact advisee detail now returns deliberate academic research-document metadata and same-thesis concluded defense history only after current active-Adviser authorization succeeds;
+- defense history uses only exact `DefenseSchedule.manuscriptDocumentId` bindings, hides invalid/missing bindings, exposes only FINALIZED Committee Report content, and excludes evaluator scores/criteria, annotations/comments, raw signatures, storage internals, and Admin repair data;
+- the frontend adds read-only Research Documents and Defense History surfaces using the authenticated document viewer and safe Committee Report renderer, without moving Adviser request/review mutations into My Advisees.
 
 Goal: expose the right academic research documents and immutable defense history to the current active Adviser while narrowing generic thesis-document authorization.
 
