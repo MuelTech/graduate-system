@@ -109,11 +109,10 @@ test("review tasks use readable status labels, not raw enums", () => {
   assert.doesNotMatch(page, /task\.reviewStatus\}\s*<\/Badge>/);
 });
 
-test("the page exposes no raw internals or dead advisee-detail links", () => {
+test("the page exposes no raw internals or ambiguous detail affordances", () => {
   const page = read(PAGE);
 
   assert.doesNotMatch(page, /AdviserAssignment|ThesisRecord|Prisma|read model/i);
-  assert.doesNotMatch(page, /href="\/panelist\/advisees\//);
   assert.doesNotMatch(page, /View details/);
 });
 

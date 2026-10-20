@@ -53,3 +53,17 @@ export interface AdviserWorkspaceDto {
   incomingRequests: PanelistAdviserRequestDto[];
   reviewTasks: AdviserWorkspaceReviewTaskDto[];
 }
+
+/** ADV-4 — accepted exact-advisee detail contract. */
+export interface AdviserAdviseeDetailDto {
+  assignment: {
+    assignmentId: string;
+    assignedDate: string;
+  };
+  student: AdviserWorkspaceStudentDto;
+  research: AdviserWorkspaceResearchDto;
+  reviewContext: {
+    stages: AdviserWorkspaceReviewStage[];
+    tasks: AdviserWorkspaceReviewTaskDto[];
+  };
+}

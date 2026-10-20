@@ -171,6 +171,14 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
             </div>
           ) : null}
         </dl>
+        <div className="mt-3">
+          <Link
+            href={`/panelist/advisees/${advisee.student.id}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            View advisee
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
