@@ -42,7 +42,7 @@ import { AlertCircle, FileText, Inbox, RefreshCw, Users } from "lucide-react";
 
 const EMPTY_MESSAGES = {
   active: "No active advisees yet.",
-  requests: "No incoming adviser requests.",
+  requests: "No adviser requests need your attention.",
   reviews: "No manuscript reviews need your attention.",
 } as const;
 
@@ -447,7 +447,7 @@ export function MyAdviseesWorkspace() {
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <PageHeader
         title="My Advisees"
-        description="View your advisees, incoming requests, and manuscript review tasks."
+        description="Manage your active advisees, adviser requests, and manuscript reviews."
         actions={
           <Button
             type="button"
@@ -501,7 +501,7 @@ export function MyAdviseesWorkspace() {
               value="requests"
               className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
             >
-              Incoming Requests
+              Adviser Requests
               {requestWorkloadCount > 0 ? (
                 <Badge variant="secondary">{requestWorkloadCount}</Badge>
               ) : null}
@@ -510,7 +510,7 @@ export function MyAdviseesWorkspace() {
               value="reviews"
               className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
             >
-              Review Tasks
+              Manuscript Reviews
               {reviewWorkloadCount > 0 ? (
                 <Badge variant="secondary">{reviewWorkloadCount}</Badge>
               ) : null}

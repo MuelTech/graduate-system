@@ -52,6 +52,18 @@ test("current request projection keeps only awaiting Adviser and awaiting Dean",
   assert.match(page, /incomingRequests\.length === 0/);
 });
 
+test("workspace labels use clear Adviser-facing terminology", () => {
+  assert.match(page, /Active Advisees/);
+  assert.match(tab("requests"), /Adviser Requests/);
+  assert.match(tab("reviews"), /Manuscript Reviews/);
+  assert.match(
+    page,
+    /Manage your active advisees, adviser requests, and manuscript reviews\./,
+  );
+  assert.doesNotMatch(tab("requests"), /Incoming Requests/);
+  assert.doesNotMatch(tab("reviews"), /Review Tasks/);
+});
+
 test("Active Advisees has no counter and zero workload badges are hidden", () => {
   assert.ok(tab("active"));
   assert.doesNotMatch(tab("active"), /<Badge|\.length|WorkloadCount/);
