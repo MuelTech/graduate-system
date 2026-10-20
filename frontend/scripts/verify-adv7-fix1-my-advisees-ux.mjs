@@ -77,26 +77,28 @@ test("badge counts follow current workflow, not tab visits or raw records", () =
   );
 });
 
-test("tabs use a boxed segmented control with unmistakable active and neutral hover states", () => {
+test("tabs reuse the My Defenses segmented-filter treatment", () => {
   assert.match(
     page,
-    /<TabsList className="[^"]*rounded-xl[^"]*border[^"]*bg-white[^"]*p-2[^"]*group-data-horizontal\/tabs:h-auto[^"]*sm:grid-cols-3/,
+    /<TabsList className="[^"]*rounded-lg[^"]*border[^"]*bg-\(--earist-surface-gray\)[^"]*p-1[^"]*group-data-horizontal\/tabs:h-auto[^"]*sm:grid-cols-3/,
   );
   for (const value of ["active", "requests", "reviews"]) {
     const trigger = tab(value);
-    assert.match(trigger, /h-auto min-h-12/);
-    assert.match(trigger, /text-base font-semibold/);
-    assert.match(trigger, /hover:bg-\(--earist-surface-gray\)/);
-    assert.match(trigger, /data-active:bg-\(--earist-primary\)/);
-    assert.match(trigger, /data-active:text-white/);
-    assert.doesNotMatch(trigger, /hover:bg-\(--earist-primary\)\/5/);
+    assert.match(trigger, /h-auto min-h-11/);
+    assert.match(trigger, /text-base font-medium/);
+    assert.match(trigger, /hover:bg-white\/60/);
+    assert.match(trigger, /data-active:bg-white/);
+    assert.match(trigger, /data-active:text-\(--earist-primary\)/);
+    assert.match(trigger, /data-active:shadow-sm/);
+    assert.doesNotMatch(trigger, /data-active:bg-\(--earist-primary\)/);
+    assert.doesNotMatch(trigger, /data-active:text-white/);
   }
 });
 
 test("tab list overrides the shared horizontal height so triggers cannot overflow the shell", () => {
   assert.match(page, /group-data-horizontal\/tabs:h-auto/);
   for (const value of ["active", "requests", "reviews"]) {
-    assert.match(tab(value), /h-auto min-h-12/);
+    assert.match(tab(value), /h-auto min-h-11/);
   }
 });
 

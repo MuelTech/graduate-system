@@ -490,16 +490,16 @@ export function MyAdviseesWorkspace() {
 
       {!isLoading && !isError && data ? (
         <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-1 gap-2 rounded-xl border border-(--earist-border-gray) bg-white p-2 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 gap-1 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-1 group-data-horizontal/tabs:h-auto sm:grid-cols-3">
             <TabsTrigger
               value="active"
-              className="h-auto min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
+              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
             >
               Active Advisees
             </TabsTrigger>
             <TabsTrigger
               value="requests"
-              className="h-auto min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
+              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
             >
               Incoming Requests
               {requestWorkloadCount > 0 ? (
@@ -508,7 +508,7 @@ export function MyAdviseesWorkspace() {
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="h-auto min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
+              className="h-auto min-h-11 rounded-md border border-transparent px-4 py-2 text-base font-medium text-(--earist-body-text) hover:bg-white/60 hover:text-(--earist-primary) data-active:bg-white data-active:text-(--earist-primary) data-active:shadow-sm data-active:hover:bg-white data-active:hover:text-(--earist-primary)"
             >
               Review Tasks
               {reviewWorkloadCount > 0 ? (
