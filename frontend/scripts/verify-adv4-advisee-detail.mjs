@@ -199,8 +199,8 @@ test("My Advisees sidebar behavior remains intact", () => {
   assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
   assert.match(layout, /pathname\.startsWith\(`\$\{href\}\/`\)/);
   assert.match(layout, /MY_DEFENSES_CONTEXT_ROUTES/);
-  assert.match(layout, /href: "\/panelist\/adviser-requests"/);
-  assert.match(layout, /href: "\/panelist\/adviser-reviews"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
 });
 
 test("frontend detail types match the accepted DTO and contain no raw relations", () => {

@@ -123,12 +123,12 @@ test("exact task status gates all review controls and requested changes wait for
   assert.match(panel, /\{task\.reviewRemarks \? \([\s\S]*?Review remarks/);
 });
 
-test("exact manuscript viewing and the shared panel remain available on all three surfaces", () => {
+test("exact manuscript viewing and the shared panel remain available on both canonical surfaces", () => {
   const panel = read(REVIEW_PANEL);
   assert.match(panel, /disabled=\{!manuscriptId\}[\s\S]*?Open manuscript/);
   assert.match(panel, /viewerOpen && manuscriptId[\s\S]*?DocumentViewer[\s\S]*?thesis-document\/\$\{manuscriptId\}\/file/);
 
-  for (const surface of [WORKSPACE, DETAIL, LEGACY_REVIEWS]) {
+  for (const surface of [WORKSPACE, DETAIL]) {
     assert.match(read(surface), /<AdviserReviewActionPanel\b/);
   }
 });
@@ -238,20 +238,18 @@ test("unrelated Dashboard links remain on their existing destinations", () => {
   assert.match(rules, /href: "\/panelist\/signatures"/);
 });
 
-test("compatibility pages, sidebar entries, and no ADV-7 redirect remain", () => {
+test("compatibility pages redirect to My Advisees without removing shared actions", () => {
   assert.equal(existsSync(resolve(root, LEGACY_REQUESTS)), true);
   assert.equal(existsSync(resolve(root, LEGACY_REVIEWS)), true);
 
   const requests = read(LEGACY_REQUESTS);
   const reviews = read(LEGACY_REVIEWS);
-  assert.match(requests, /Adviser Requests/);
-  assert.match(reviews, /Adviser Reviews/);
-  assert.doesNotMatch(requests, /\bredirect\(/);
-  assert.doesNotMatch(reviews, /\bredirect\(/);
+  assert.match(requests, /redirect\("\/panelist\/advisees\?tab=requests"\)/);
+  assert.match(reviews, /redirect\("\/panelist\/advisees\?tab=reviews"\)/);
 
   const layout = read(LAYOUT);
-  assert.match(layout, /href: "\/panelist\/adviser-requests"/);
-  assert.match(layout, /href: "\/panelist\/adviser-reviews"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
   assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
 });
 

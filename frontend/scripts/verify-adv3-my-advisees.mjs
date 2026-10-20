@@ -117,13 +117,13 @@ test("the page exposes no raw internals or ambiguous detail affordances", () => 
   assert.doesNotMatch(page, /View details/);
 });
 
-test("sidebar adds My Advisees and keeps legacy entry points", () => {
+test("sidebar keeps My Advisees as the Adviser entry point", () => {
   const layout = read(LAYOUT);
 
   assert.match(layout, /href: "\/panelist\/advisees", label: "My Advisees"/);
   assert.match(layout, /href: "\/panelist\/defenses", label: "My Defenses"/);
-  assert.match(layout, /href: "\/panelist\/adviser-requests", label: "Adviser Requests"/);
-  assert.match(layout, /href: "\/panelist\/adviser-reviews", label: "Adviser Reviews"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-requests"/);
+  assert.doesNotMatch(layout, /href: "\/panelist\/adviser-reviews"/);
 
   // My Defenses active-route behavior remains untouched.
   assert.match(layout, /MY_DEFENSES_CONTEXT_ROUTES/);
