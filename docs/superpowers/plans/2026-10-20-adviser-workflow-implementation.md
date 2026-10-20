@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec`; project-owner visual QA pending
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 AUTHORIZED / NOT STARTED
 
 ---
 
@@ -422,7 +422,7 @@ Implementation:
 - `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` — `feat(adviser): add advisee detail overview`
 - independent remote source review: PASS
 - reported focused verification: frontend TypeScript PASS; scoped ESLint PASS; ADV-4 verifier 16/16 PASS; retained ADV-3 verifier 11/11 PASS; `git diff --check` PASS
-- manual/browser QA: NOT EXECUTED by coding agent; project-owner visual inspection pending
+- manual/browser QA: NOT EXECUTED by coding agent; project owner explicitly chose to continue before visual inspection, so visual QA remains deferred rather than passed
 - hosted CI: NOT OBSERVED / NOT CLAIMED
 - backend/schema changes: NONE
 
@@ -452,18 +452,54 @@ ADV-4 must consume the existing `GET /thesis/adviser/advisees/:studentId` author
 
 ### ADV-5 — Academic document/history integration + access hardening
 
-Goal: expose the right research history while narrowing Adviser document authorization.
+**Status:** AUTHORIZED / NOT STARTED
+
+Goal: expose the right academic research documents and immutable defense history to the current active Adviser while narrowing generic thesis-document authorization.
+
+Pre-implementation audit finding:
+- `backend/src/services/document.service.ts::canPanelistAccessThesisDocument` currently returns `true` immediately when the caller appears in the Student's active Adviser assignments.
+- Because that early return happens before document-type filtering, an active Adviser can currently pass the generic `thesis-document` authorization check for same-thesis non-manuscript evidence such as COR/RECEIPT. Existing unit coverage explicitly preserves that behavior.
+- ADV-5 must remove that blanket active-Adviser grant and replace it with an explicit academic-document allow-list / stage identity rule.
+
+Academic Adviser document scope:
+- Title Defense Proposal Package (`TITLE_PROPOSAL`);
+- Proposal manuscripts (`PROPOSAL_CHAPTERS`);
+- Final manuscripts (`FINAL_MANUSCRIPT`);
+- authorized manuscript version/history rows for the same thesis where the document type/stage identity is valid.
+
+Explicitly excluded merely-by-Adviser authority:
+- COR;
+- RECEIPT/payment evidence;
+- INSTRUMENTS;
+- RESPONDENT_DATA;
+- PLAGIARISM_REPORT;
+- arbitrary or ambiguous ThesisDocument rows;
+- admission/account/Comprehensive Examination evidence;
+- private evaluator drafts/scores/signature data.
+
+History scope:
+- immutable concluded defense attempts for the advisee's thesis;
+- stage/date/formal verdict;
+- exact attempt-bound manuscript identity when valid;
+- finalized Committee Report/recommendations only;
+- no private evaluator criteria/scores, raw signature blobs, or historical mutation controls.
+
+The existing committee Defense History endpoints remain assignment-scoped to a current defense schedule and must not be repurposed by weakening their authorization. Adviser history should be exposed through the Adviser workspace/detail authority or a dedicated Adviser-scoped read path that first proves the current active Adviser relationship.
 
 Required negative tests:
 
-- Adviser can read authorized Title/Proposal/Final research documents for own active advisee;
-- Adviser cannot read COR solely because it belongs to the same ThesisRecord;
-- Adviser cannot read receipt/payment evidence solely because it belongs to the same ThesisRecord;
-- Adviser cannot read another Adviser's Student;
-- history access obeys exact attempt/document rules;
-- inactive former Adviser does not retain active workspace access.
+- current active Adviser can read allow-listed Title/Proposal/Final academic documents for own active advisee;
+- active Adviser cannot read COR solely because it belongs to the same ThesisRecord;
+- active Adviser cannot read receipt/payment evidence solely because it belongs to the same ThesisRecord;
+- active Adviser cannot read instruments/respondent-data/plagiarism evidence solely by Adviser status;
+- Adviser cannot read another Adviser's Student/documents/history;
+- inactive former Adviser does not retain active workspace/document/history access;
+- duplicate active Adviser state fails closed;
+- ambiguous/mismatched manuscript stage/type fails closed;
+- history uses exact concluded attempt bindings and never substitutes a latest/current manuscript;
+- only FINALIZED Committee Report content is surfaced as official history; raw signature evidence and evaluator-private data remain excluded.
 
-This package has a security/authorization blast radius and therefore justifies broader related authorization regressions under ENGINEERING_VERIFICATION_POLICY.
+This package has a security/authorization blast radius and therefore justifies broader directly related document-authorization/history regressions under ENGINEERING_VERIFICATION_POLICY.
 
 ### ADV-6 — Adviser Requests + Adviser Reviews integration
 
