@@ -48,6 +48,43 @@ export interface AdviserWorkspaceReviewTaskDto {
   manuscriptUploadedAt: string | null;
 }
 
+export type AdviserResearchDocumentKind =
+  | "TITLE_PROPOSAL_PACKAGE"
+  | "PROPOSAL_MANUSCRIPT"
+  | "FINAL_MANUSCRIPT";
+
+export interface AdviserResearchDocumentDto {
+  id: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  kind: AdviserResearchDocumentKind;
+  uploadedAt: string;
+  isCurrent: boolean;
+  supersedesDocumentId: string | null;
+}
+
+export interface AdviserDefenseHistoryManuscriptDto {
+  id: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  kind: AdviserResearchDocumentKind;
+  uploadedAt: string | null;
+}
+
+export interface AdviserDefenseHistoryReportDto {
+  finalizedAt: string | null;
+  bodyDocument: unknown | null;
+  text: string | null;
+}
+
+export interface AdviserDefenseHistoryEntryDto {
+  scheduleId: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL" | null;
+  defenseDate: string | null;
+  concludedAt: string | null;
+  verdict: string;
+  manuscript: AdviserDefenseHistoryManuscriptDto | null;
+  committeeReport: AdviserDefenseHistoryReportDto | null;
+}
+
 export interface AdviserWorkspaceDto {
   activeAdvisees: AdviserActiveAdviseeDto[];
   incomingRequests: PanelistAdviserRequestDto[];
@@ -66,4 +103,6 @@ export interface AdviserAdviseeDetailDto {
     stages: AdviserWorkspaceReviewStage[];
     tasks: AdviserWorkspaceReviewTaskDto[];
   };
+  researchDocuments: AdviserResearchDocumentDto[];
+  defenseHistory: AdviserDefenseHistoryEntryDto[];
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -7,12 +8,15 @@ import { apiClientRequest, ApiError } from "@/lib/api.client";
 import {
   adviserAdviseeDetailQueryKey,
   adviserReviewStatusLabel,
+  defenseVerdictLabel,
   formatWorkspaceDate,
   nextAdviserResponsibility,
+  researchDocumentKindLabel,
   workspaceStageLabel,
 } from "@/lib/adviser-workspace";
 import type {
   AdviserAdviseeDetailDto,
+  AdviserDefenseHistoryEntryDto,
   AdviserWorkspaceReviewTaskDto,
 } from "@/types/adviser-workspace";
 import { PageHeader } from "@/components/ui/page-header";
@@ -25,7 +29,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DocumentViewer } from "@/components/ui/document-viewer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReportDocumentView } from "@/components/defense-workspace/report-document-view";
+import { normalizeReportDocument } from "@/lib/report/report-document";
 import {
   AlertCircle,
   ArrowLeft,
@@ -128,6 +142,12 @@ export default function AdviseeDetailPage() {
   const params = useParams<{ studentId: string }>();
   const studentId =
     typeof params?.studentId === "string" ? params.studentId : "";
+  const [viewerDoc, setViewerDoc] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [reportEntry, setReportEntry] =
+    useState<AdviserDefenseHistoryEntryDto | null>(null);
 
   const {
     data,
@@ -229,6 +249,12 @@ export default function AdviseeDetailPage() {
   const nextResponsibility = nextAdviserResponsibility(
     data.reviewContext.tasks,
   );
+  const documentGroups = (["TITLE", "PROPOSAL", "FINAL"] as const)
+    .map((stage) => ({
+      stage,
+      documents: data.researchDocuments.filter((doc) => doc.stage === stage),
+    }))
+    .filter((group) => group.documents.length > 0);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
@@ -346,6 +372,189 @@ export default function AdviseeDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            Research Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {data.researchDocuments.length === 0 ? (
+            <p className="text-sm text-(--earist-body-text)">
+              No research documents are available yet.
+            </p>
+          ) : (
+            documentGroups.map((group) => (
+              <div key={group.stage} className="space-y-2">
+                <p className="text-xs font-semibold tracking-wide text-(--earist-body-text) uppercase">
+                  {workspaceStageLabel(group.stage)}
+                </p>
+                <div className="space-y-2">
+                  {group.documents.map((document) => (
+                    <div
+                      key={document.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-(--earist-border-gray) p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-(--earist-primary)">
+                          {researchDocumentKindLabel(document.kind)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-(--earist-body-text)">
+                          Uploaded {formatWorkspaceDate(document.uploadedAt)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">
+                          {document.isCurrent ? "Current" : "Previous version"}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setViewerDoc({
+                              id: document.id,
+                              title: researchDocumentKindLabel(document.kind),
+                            })
+                          }
+                        >
+                          View document
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+            Defense History
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data.defenseHistory.length === 0 ? (
+            <p className="text-sm text-(--earist-body-text)">
+              No concluded defenses are available yet.
+            </p>
+          ) : (
+            data.defenseHistory.map((entry) => (
+              <div
+                key={entry.scheduleId}
+                className="space-y-3 rounded-lg border border-(--earist-border-gray) p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-(--earist-primary)">
+                    {entry.stage
+                      ? `${workspaceStageLabel(entry.stage)} Defense`
+                      : "Defense"}
+                  </p>
+                  <Badge variant="outline">
+                    {defenseVerdictLabel(entry.verdict)}
+                  </Badge>
+                </div>
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  <Meta
+                    label="Defense date"
+                    value={formatWorkspaceDate(entry.defenseDate)}
+                  />
+                  <Meta
+                    label="Concluded"
+                    value={formatWorkspaceDate(entry.concludedAt)}
+                  />
+                </dl>
+                <div className="flex flex-wrap items-center gap-2">
+                  {entry.manuscript ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setViewerDoc({
+                          id: entry.manuscript!.id,
+                          title: researchDocumentKindLabel(
+                            entry.manuscript!.kind,
+                          ),
+                        })
+                      }
+                    >
+                      View manuscript
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-(--earist-body-text)">
+                      Manuscript unavailable
+                    </span>
+                  )}
+                  {entry.committeeReport ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReportEntry(entry)}
+                    >
+                      View Committee Report
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-(--earist-body-text)">
+                      Committee Report unavailable
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {viewerDoc ? (
+        <DocumentViewer
+          open
+          onOpenChange={(open) => {
+            if (!open) setViewerDoc(null);
+          }}
+          fetchUrl={`/api/documents/thesis-document/${viewerDoc.id}/file`}
+          title={viewerDoc.title}
+        />
+      ) : null}
+
+      <Dialog
+        open={reportEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) setReportEntry(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Committee Report</DialogTitle>
+            <DialogDescription>
+              {reportEntry?.stage
+                ? `${workspaceStageLabel(reportEntry.stage)} Defense`
+                : "Defense"}
+              {reportEntry?.committeeReport?.finalizedAt
+                ? ` · Finalized ${formatWorkspaceDate(
+                    reportEntry.committeeReport.finalizedAt,
+                  )}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {reportEntry?.committeeReport?.bodyDocument ? (
+            <ReportDocumentView
+              doc={normalizeReportDocument(
+                reportEntry.committeeReport.bodyDocument,
+              )}
+            />
+          ) : (
+            <pre className="text-sm break-words whitespace-pre-wrap text-(--earist-secondary)">
+              {reportEntry?.committeeReport?.text ?? "No report content."}
+            </pre>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

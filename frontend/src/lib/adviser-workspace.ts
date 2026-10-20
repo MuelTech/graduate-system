@@ -1,4 +1,5 @@
 import type {
+  AdviserResearchDocumentKind,
   AdviserWorkspaceReviewStage,
   AdviserWorkspaceReviewTaskDto,
 } from "../types/adviser-workspace";
@@ -100,4 +101,36 @@ export function formatWorkspaceDate(
     month: "short",
     day: "numeric",
   });
+}
+
+/** ADV-5 — human-facing academic document kind. */
+export function researchDocumentKindLabel(
+  kind: AdviserResearchDocumentKind,
+): string {
+  switch (kind) {
+    case "TITLE_PROPOSAL_PACKAGE":
+      return "Title Proposal Package";
+    case "PROPOSAL_MANUSCRIPT":
+      return "Proposal Manuscript";
+    case "FINAL_MANUSCRIPT":
+      return "Final Manuscript";
+    default:
+      return "Research Document";
+  }
+}
+
+/** ADV-5 — safe human-facing verdict labels, including readable legacy values. */
+export function defenseVerdictLabel(verdict: string): string {
+  switch (String(verdict ?? "").toUpperCase()) {
+    case "PASSED":
+      return "Passed";
+    case "REDEFENSE_REQUIRED":
+      return "Re-defense required";
+    case "REVISION_REQUIRED":
+      return "Revisions required";
+    case "FAILED":
+      return "Failed";
+    default:
+      return "Recorded";
+  }
 }

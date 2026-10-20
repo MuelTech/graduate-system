@@ -4,6 +4,7 @@ import { AppError } from "../utils/AppError";
 import { storageService } from "../storage";
 import { isAuthoritativePriorProposalManuscript } from "./proposal-adviser-review.rules";
 import { canReadHistoricalBoundManuscript } from "./defense-history.rules";
+import { canActiveAdviserAccessAcademicThesisDocument } from "./adviser-document.rules";
 
 interface ModelConfig {
     prismaModel: string;
@@ -43,7 +44,11 @@ const STAGE_TO_DEFENSE_TYPE: Record<string, string> = {
  * through the stage-assignment path. Evidence/administrative rows (COR, RECEIPT,
  * INSTRUMENTS, RESPONDENT_DATA, PLAGIARISM_REPORT) are frequently persisted with
  * an explicit `defenseStage`; an explicit stage must never widen Panelist access
- * beyond the authorized manuscripts. Active advisers keep their separate path.
+ * beyond the authorized manuscripts.
+ *
+ * ADV-5: active Advisers receive only the academic manuscript/package allow-list
+ * through their separate path. Non-manuscript thesis evidence is never granted
+ * merely because the caller is the current Adviser.
  */
 const PANELIST_STAGE_DOC_TYPES = new Set([
   "TITLE_PROPOSAL",
@@ -94,7 +99,19 @@ export function canPanelistAccessThesisDocument(
 ): boolean {
   const activeAdviserIds: string[] =
     record.thesis?.student?.adviserAssignments?.map((a) => a.adviserId) ?? [];
-  if (activeAdviserIds.includes(userId)) return true;
+  // ADV-5: narrow active-Adviser access to valid academic research documents
+  // only. COR/RECEIPT/INSTRUMENTS/RESPONDENT_DATA/PLAGIARISM_REPORT and malformed
+  // type/stage identities never pass through this path.
+  if (
+    canActiveAdviserAccessAcademicThesisDocument({
+      userId,
+      activeAdviserIds,
+      docType: record.docType,
+      defenseStage: record.defenseStage,
+    })
+  ) {
+    return true;
+  }
 
   const schedules = record.thesis?.defenseSchedules ?? [];
   const documentId = typeof record.id === "string" && record.id.length > 0 ? record.id : null;

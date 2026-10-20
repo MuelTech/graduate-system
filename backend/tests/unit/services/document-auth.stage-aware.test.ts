@@ -28,9 +28,10 @@ function makeRecord(opts: {
 }
 
 describe("CP3-FIX1 stage-aware thesis document auth", () => {
-  it("Test L: active Adviser allowed Proposal pre-review document", () => {
+  it("Test L: active Adviser allowed valid Proposal academic manuscript", () => {
     const record = makeRecord({
       defenseStage: "PROPOSAL",
+      docType: "PROPOSAL_CHAPTERS",
       adviserIds: ["adviser-1"],
     });
     expect(canPanelistAccessThesisDocument(record, "adviser-1")).toBe(true);
@@ -244,7 +245,8 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
       ),
     ).toBe(true);
 
-    // The active-adviser path is unchanged for non-manuscript evidence.
+    // ADV-5 supersedes the old blanket active-adviser path: non-manuscript
+    // evidence is denied even to a valid active Adviser.
     expect(
       canPanelistAccessThesisDocument(
         makeRecord({
@@ -254,6 +256,6 @@ describe("CP3-FIX1 stage-aware thesis document auth", () => {
         }),
         "adviser-1",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 });

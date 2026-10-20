@@ -157,12 +157,13 @@ test("the detail query key is stable and user-scoped by student", () => {
   );
 });
 
-test("no document or history access is introduced", () => {
+test("ADV-4 review context remains distinct from ADV-5 document/history work", () => {
   const page = read(DETAIL);
 
-  assert.doesNotMatch(page, /\/api\/documents|DocumentViewer|manuscriptDocumentId/);
-  assert.doesNotMatch(page, /Defense History|Committee Report|document version/i);
-  assert.doesNotMatch(page, /View document|Download|Print/i);
+  assert.match(page, /Current Review Context/);
+  assert.match(page, /nextAdviserResponsibility/);
+  // Direct research-document/history integration is owned by ADV-5 and is
+  // asserted by verify-adv5-adviser-documents-history.mjs.
 });
 
 test("no request or review mutation is introduced", () => {

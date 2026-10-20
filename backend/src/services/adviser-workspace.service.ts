@@ -17,10 +17,17 @@ import {
 import {
   AdviserWorkspaceRepository,
   type AdviserActiveAssignmentRow,
+  type AdviserDefenseHistoryRow,
   type AdviserDetailStudentRow,
+  type AdviserResearchDocumentRow,
   type AdviserStudentActiveAssignmentRow,
   type AdviserWorkspaceStudentRow,
 } from "../repositories/adviser-workspace.repository";
+import {
+  resolveAdviserAcademicDocument,
+  resolveAdviserBoundAcademicManuscript,
+} from "./adviser-document.rules";
+import { DEFENSE_TYPE_TO_DOCUMENT_STAGE } from "./defense-history.rules";
 
 /**
  * ADV-2 — authenticated Adviser workspace read model.
@@ -80,6 +87,46 @@ export interface AdviserWorkspaceReviewTaskDto {
   manuscriptUploadedAt: string | null;
 }
 
+/** ADV-5 — safe academic document metadata. */
+export interface AdviserResearchDocumentDto {
+  id: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  kind:
+    | "TITLE_PROPOSAL_PACKAGE"
+    | "PROPOSAL_MANUSCRIPT"
+    | "FINAL_MANUSCRIPT";
+  uploadedAt: string;
+  isCurrent: boolean;
+  supersedesDocumentId: string | null;
+}
+
+export interface AdviserDefenseHistoryManuscriptDto {
+  id: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL";
+  kind:
+    | "TITLE_PROPOSAL_PACKAGE"
+    | "PROPOSAL_MANUSCRIPT"
+    | "FINAL_MANUSCRIPT";
+  uploadedAt: string | null;
+}
+
+export interface AdviserDefenseHistoryReportDto {
+  finalizedAt: string | null;
+  bodyDocument: unknown | null;
+  text: string | null;
+}
+
+/** ADV-5 — narrow adviser-safe concluded-attempt projection. */
+export interface AdviserDefenseHistoryEntryDto {
+  scheduleId: string;
+  stage: "TITLE" | "PROPOSAL" | "FINAL" | null;
+  defenseDate: string | null;
+  concludedAt: string | null;
+  verdict: string;
+  manuscript: AdviserDefenseHistoryManuscriptDto | null;
+  committeeReport: AdviserDefenseHistoryReportDto | null;
+}
+
 export interface AdviserActiveAdviseeDto {
   assignmentId: string;
   assignedDate: string;
@@ -107,6 +154,8 @@ export interface AdviserAdviseeDetailDto {
     stages: AdviserReviewStage[];
     tasks: AdviserWorkspaceReviewTaskDto[];
   };
+  researchDocuments: AdviserResearchDocumentDto[];
+  defenseHistory: AdviserDefenseHistoryEntryDto[];
 }
 
 function personName(user: { firstName: string; lastName: string }): string {
@@ -161,6 +210,96 @@ function reviewStagesFor(
     if (task.student.id === studentId) stages.add(task.stage);
   }
   return [...stages];
+}
+
+function iso(value: Date | null | undefined): string | null {
+  return value ? new Date(value).toISOString() : null;
+}
+
+function isStructuredReportBody(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function meaningfulText(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function researchDocumentDto(
+  row: AdviserResearchDocumentRow,
+): AdviserResearchDocumentDto | null {
+  const identity = resolveAdviserAcademicDocument({
+    docType: row.docType,
+    defenseStage: row.defenseStage,
+  });
+  if (!identity) return null;
+  return {
+    id: row.id,
+    stage: identity.stage,
+    kind: identity.kind,
+    uploadedAt: row.uploadedAt.toISOString(),
+    isCurrent: row.isCurrent !== false,
+    supersedesDocumentId: row.supersedesDocumentId ?? null,
+  };
+}
+
+function defenseHistoryDto(
+  row: AdviserDefenseHistoryRow,
+  thesisId: string,
+): AdviserDefenseHistoryEntryDto | null {
+  if (!row.conclusion) return null;
+  const stage =
+    (DEFENSE_TYPE_TO_DOCUMENT_STAGE[row.defenseType] as
+      | "TITLE"
+      | "PROPOSAL"
+      | "FINAL"
+      | undefined) ?? null;
+
+  const manuscriptIdentity = resolveAdviserBoundAcademicManuscript({
+    thesisId,
+    defenseType: row.defenseType,
+    manuscriptDocumentId: row.manuscriptDocumentId,
+    document: row.manuscriptDocument,
+  });
+
+  const manuscript =
+    manuscriptIdentity && row.manuscriptDocument
+      ? {
+          id: row.manuscriptDocument.id,
+          stage: manuscriptIdentity.stage,
+          kind: manuscriptIdentity.kind,
+          uploadedAt: iso(row.manuscriptDocument.uploadedAt),
+        }
+      : null;
+
+  const rap = row.rapReports[0] ?? null;
+  let committeeReport: AdviserDefenseHistoryReportDto | null = null;
+  if (rap && String(rap.status) === "FINALIZED") {
+    const bodyDocument = isStructuredReportBody(rap.bodyDocument)
+      ? rap.bodyDocument
+      : null;
+    const text = bodyDocument
+      ? null
+      : meaningfulText(rap.decisionsAndRecommendations);
+    if (bodyDocument || text) {
+      committeeReport = {
+        finalizedAt: iso(rap.finalizedAt),
+        bodyDocument,
+        text,
+      };
+    }
+  }
+
+  return {
+    scheduleId: row.id,
+    stage,
+    defenseDate: iso(row.defenseDate),
+    concludedAt: iso(row.conclusion.concludedAt),
+    verdict: String(row.conclusion.outcome),
+    manuscript,
+    committeeReport,
+  };
 }
 
 export class AdviserWorkspaceService {
@@ -227,6 +366,27 @@ export class AdviserWorkspaceService {
       student.adviserAssignments,
     );
 
+    const thesisId = student.thesisRecords[0]?.id ?? null;
+    let researchDocuments: AdviserResearchDocumentDto[] = [];
+    let defenseHistory: AdviserDefenseHistoryEntryDto[] = [];
+    if (thesisId) {
+      const [documentRows, historyRows] = await Promise.all([
+        this.repository.listAdviserResearchDocuments(thesisId),
+        this.repository.listAdviserDefenseHistory(thesisId),
+      ]);
+      researchDocuments = documentRows
+        .map(researchDocumentDto)
+        .filter(
+          (document): document is AdviserResearchDocumentDto =>
+            document !== null,
+        );
+      defenseHistory = historyRows
+        .map((row) => defenseHistoryDto(row, thesisId))
+        .filter(
+          (entry): entry is AdviserDefenseHistoryEntryDto => entry !== null,
+        );
+    }
+
     const [proposalTasks, finalTasks] = await Promise.all([
       this.proposalReviews.listReviewTasks(adviserUserId),
       this.finalReviews.listReviewTasks(adviserUserId),
@@ -249,6 +409,8 @@ export class AdviserWorkspaceService {
       student: studentDto(student),
       research: researchContext(student.thesisRecords[0]),
       reviewContext: { stages, tasks },
+      researchDocuments,
+      defenseHistory,
     };
   }
 

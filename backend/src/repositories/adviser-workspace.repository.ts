@@ -57,6 +57,38 @@ export type AdviserDetailStudentRow = {
   thesisRecords: Array<{ id: string; stage: string; status: string }>;
 };
 
+/** ADV-5: safe academic research-document metadata only. */
+export type AdviserResearchDocumentRow = {
+  id: string;
+  docType: string;
+  defenseStage: string | null;
+  uploadedAt: Date;
+  isCurrent: boolean;
+  supersedesDocumentId: string | null;
+};
+
+/** ADV-5: narrow concluded-attempt projection. */
+export type AdviserDefenseHistoryRow = {
+  id: string;
+  defenseType: string;
+  defenseDate: Date;
+  manuscriptDocumentId: string | null;
+  conclusion: { outcome: string; concludedAt: Date } | null;
+  manuscriptDocument: {
+    id: string;
+    thesisId: string;
+    docType: string;
+    defenseStage: string | null;
+    uploadedAt: Date;
+  } | null;
+  rapReports: Array<{
+    status: string;
+    finalizedAt: Date | null;
+    bodyDocument: unknown;
+    decisionsAndRecommendations: string | null;
+  }>;
+};
+
 export class AdviserWorkspaceRepository {
   /** Active advisees for exactly one authenticated Adviser. */
   async listActiveAssignmentsForAdviser(
@@ -115,5 +147,78 @@ export class AdviserWorkspaceRepository {
         },
       },
     }) as unknown as Promise<AdviserDetailStudentRow | null>;
+  }
+
+  /**
+   * ADV-5: academic research documents for the current advisee. The query is
+   * filtered at the database boundary to the Adviser academic allow-list.
+   * Callers must authorize the active-Adviser relationship before calling.
+   */
+  async listAdviserResearchDocuments(
+    thesisId: string,
+  ): Promise<AdviserResearchDocumentRow[]> {
+    return prisma.thesisDocument.findMany({
+      where: {
+        thesisId,
+        docType: {
+          in: ["TITLE_PROPOSAL", "PROPOSAL_CHAPTERS", "FINAL_MANUSCRIPT"],
+        },
+      },
+      select: {
+        id: true,
+        docType: true,
+        defenseStage: true,
+        uploadedAt: true,
+        isCurrent: true,
+        supersedesDocumentId: true,
+      },
+      orderBy: { uploadedAt: "desc" },
+    }) as unknown as Promise<AdviserResearchDocumentRow[]>;
+  }
+
+  /**
+   * ADV-5: concluded same-thesis attempts. Only the exact attempt binding and a
+   * FINALIZED Committee Report are selected; evaluator/signature relations are
+   * deliberately absent.
+   */
+  async listAdviserDefenseHistory(
+    thesisId: string,
+  ): Promise<AdviserDefenseHistoryRow[]> {
+    return prisma.defenseSchedule.findMany({
+      where: {
+        thesisId,
+        conclusion: { isNot: null },
+      },
+      select: {
+        id: true,
+        defenseType: true,
+        defenseDate: true,
+        manuscriptDocumentId: true,
+        conclusion: {
+          select: { outcome: true, concludedAt: true },
+        },
+        manuscriptDocument: {
+          select: {
+            id: true,
+            thesisId: true,
+            docType: true,
+            defenseStage: true,
+            uploadedAt: true,
+          },
+        },
+        rapReports: {
+          where: { status: "FINALIZED" },
+          orderBy: { finalizedAt: "desc" },
+          take: 1,
+          select: {
+            status: true,
+            finalizedAt: true,
+            bodyDocument: true,
+            decisionsAndRecommendations: true,
+          },
+        },
+      },
+      orderBy: { defenseDate: "desc" },
+    }) as unknown as Promise<AdviserDefenseHistoryRow[]>;
   }
 }

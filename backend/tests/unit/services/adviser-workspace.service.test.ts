@@ -86,11 +86,54 @@ function requestRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function researchDoc(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "doc-1",
+    docType: "PROPOSAL_CHAPTERS",
+    defenseStage: "PROPOSAL",
+    uploadedAt: new Date("2026-10-02T00:00:00.000Z"),
+    isCurrent: true,
+    supersedesDocumentId: null,
+    ...overrides,
+  };
+}
+
+function historyRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "sched-1",
+    defenseType: "FINAL_DEFENSE",
+    defenseDate: new Date("2026-09-30T00:00:00.000Z"),
+    manuscriptDocumentId: "doc-final",
+    conclusion: {
+      outcome: "PASSED",
+      concludedAt: new Date("2026-10-01T00:00:00.000Z"),
+    },
+    manuscriptDocument: {
+      id: "doc-final",
+      thesisId: "thesis-1",
+      docType: "FINAL_MANUSCRIPT",
+      defenseStage: "FINAL",
+      uploadedAt: new Date("2026-09-01T00:00:00.000Z"),
+    },
+    rapReports: [
+      {
+        status: "FINALIZED",
+        finalizedAt: new Date("2026-10-01T00:00:00.000Z"),
+        bodyDocument: { type: "doc", content: [] },
+        decisionsAndRecommendations: null,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe("AdviserWorkspaceService", () => {
   const repo = {
     listActiveAssignmentsForAdviser: vi.fn(),
     listActiveAdviserAssignmentsForStudents: vi.fn(),
     findStudentForAdviseeDetail: vi.fn(),
+    listAdviserResearchDocuments: vi.fn(),
+    listAdviserDefenseHistory: vi.fn(),
   };
   const requests = { listMyAdviserRequests: vi.fn() };
   const proposalReviews = { listReviewTasks: vi.fn() };
@@ -108,6 +151,8 @@ describe("AdviserWorkspaceService", () => {
     repo.listActiveAssignmentsForAdviser.mockResolvedValue([]);
     repo.listActiveAdviserAssignmentsForStudents.mockResolvedValue([]);
     repo.findStudentForAdviseeDetail.mockResolvedValue(null);
+    repo.listAdviserResearchDocuments.mockResolvedValue([]);
+    repo.listAdviserDefenseHistory.mockResolvedValue([]);
     requests.listMyAdviserRequests.mockResolvedValue([]);
     proposalReviews.listReviewTasks.mockResolvedValue([]);
     finalReviews.listReviewTasks.mockResolvedValue([]);
@@ -381,5 +426,207 @@ describe("AdviserWorkspaceService", () => {
         /adviserAssignments|thesisDocuments|signatureData|signature_data|evaluator|score|COR|RECEIPT|receipt/i,
       );
     }
+  });
+
+  it("returns only valid academic research-document identities", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserResearchDocuments.mockResolvedValue([
+      researchDoc({
+        id: "doc-title",
+        docType: "TITLE_PROPOSAL",
+        defenseStage: "TITLE",
+      }),
+      researchDoc({
+        id: "doc-proposal-old",
+        isCurrent: false,
+        supersedesDocumentId: null,
+      }),
+      researchDoc({
+        id: "doc-final",
+        docType: "FINAL_MANUSCRIPT",
+        defenseStage: "FINAL",
+      }),
+      // Contradictory academic identity must fail closed in the DTO.
+      researchDoc({
+        id: "doc-bad",
+        docType: "PROPOSAL_CHAPTERS",
+        defenseStage: "FINAL",
+      }),
+      // The repository query excludes evidence rows; the service must never
+      // turn one into an academic document if supplied.
+      researchDoc({
+        id: "doc-cor",
+        docType: "COR",
+        defenseStage: "PROPOSAL",
+      }),
+    ]);
+
+    const result = await service.getAdviseeDetail("adviser-a", "student-1");
+
+    expect(repo.listAdviserResearchDocuments).toHaveBeenCalledWith("thesis-1");
+    expect(result.researchDocuments.map((d) => d.id)).toEqual([
+      "doc-title",
+      "doc-proposal-old",
+      "doc-final",
+    ]);
+    expect(result.researchDocuments[1]).toMatchObject({
+      stage: "PROPOSAL",
+      kind: "PROPOSAL_MANUSCRIPT",
+      isCurrent: false,
+    });
+  });
+
+  it("maps a concluded attempt with exact manuscript and FINALIZED report", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserDefenseHistory.mockResolvedValue([historyRow()]);
+
+    const result = await service.getAdviseeDetail("adviser-a", "student-1");
+
+    expect(result.defenseHistory).toHaveLength(1);
+    expect(result.defenseHistory[0]).toMatchObject({
+      scheduleId: "sched-1",
+      stage: "FINAL",
+      verdict: "PASSED",
+      manuscript: {
+        id: "doc-final",
+        stage: "FINAL",
+        kind: "FINAL_MANUSCRIPT",
+      },
+    });
+    expect(result.defenseHistory[0].committeeReport).toMatchObject({
+      bodyDocument: { type: "doc", content: [] },
+      text: null,
+    });
+  });
+
+  it("hides a DRAFT Committee Report from Adviser history", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserDefenseHistory.mockResolvedValue([
+      historyRow({
+        rapReports: [
+          {
+            status: "DRAFT",
+            finalizedAt: null,
+            bodyDocument: { type: "doc", content: [] },
+            decisionsAndRecommendations: null,
+          },
+        ],
+      }),
+    ]);
+
+    const result = await service.getAdviseeDetail("adviser-a", "student-1");
+
+    expect(result.defenseHistory[0].committeeReport).toBeNull();
+  });
+
+  it("supports legacy finalized report text without promoting it from drafts", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserDefenseHistory.mockResolvedValue([
+      historyRow({
+        rapReports: [
+          {
+            status: "FINALIZED",
+            finalizedAt: new Date("2026-10-01T00:00:00.000Z"),
+            bodyDocument: null,
+            decisionsAndRecommendations: "Legacy finalized report text.",
+          },
+        ],
+      }),
+    ]);
+
+    const result = await service.getAdviseeDetail("adviser-a", "student-1");
+
+    expect(result.defenseHistory[0].committeeReport).toMatchObject({
+      bodyDocument: null,
+      text: "Legacy finalized report text.",
+    });
+  });
+
+  it("leaves the bound manuscript null when the exact attempt binding is invalid", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserDefenseHistory.mockResolvedValue([
+      historyRow({
+        manuscriptDocumentId: "doc-different",
+      }),
+    ]);
+
+    const result = await service.getAdviseeDetail("adviser-a", "student-1");
+
+    expect(result.defenseHistory[0].manuscript).toBeNull();
+  });
+
+  it("does not read documents/history before exact authorization succeeds", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-b", adviserId: "adviser-b", assignedDate: new Date() },
+      ],
+    });
+
+    await expect(
+      service.getAdviseeDetail("adviser-a", "student-1"),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    expect(repo.listAdviserResearchDocuments).not.toHaveBeenCalled();
+    expect(repo.listAdviserDefenseHistory).not.toHaveBeenCalled();
+  });
+
+  it("does not read documents/history for duplicate active Adviser data", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+        { id: "asg-2", adviserId: "adviser-b", assignedDate: new Date() },
+      ],
+    });
+
+    await expect(
+      service.getAdviseeDetail("adviser-a", "student-1"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.listAdviserResearchDocuments).not.toHaveBeenCalled();
+    expect(repo.listAdviserDefenseHistory).not.toHaveBeenCalled();
+  });
+
+  it("does not expose storage fields, signatures, or evaluator data in detail", async () => {
+    repo.findStudentForAdviseeDetail.mockResolvedValue({
+      ...student(),
+      adviserAssignments: [
+        { id: "asg-1", adviserId: "adviser-a", assignedDate: new Date() },
+      ],
+    });
+    repo.listAdviserResearchDocuments.mockResolvedValue([researchDoc()]);
+    repo.listAdviserDefenseHistory.mockResolvedValue([historyRow()]);
+
+    const detail = JSON.stringify(
+      await service.getAdviseeDetail("adviser-a", "student-1"),
+    );
+
+    expect(detail).not.toMatch(
+      /filePath|storageKey|checksum|storageProvider|signatureData|signedContentHash|oralExamScore|criteria|adviserAssignments/i,
+    );
   });
 });
