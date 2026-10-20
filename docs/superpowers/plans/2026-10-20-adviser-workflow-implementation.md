@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 ACCEPTED / CLOSED at FIX-1 `3497cb24ba9e9b5345ab6312c0276d9f5df4ad3c`; project-owner visual QA pending; ADV-7 READY FOR AUTHORIZATION
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 ACCEPTED / CLOSED at FIX-1 `3497cb24ba9e9b5345ab6312c0276d9f5df4ad3c` with project-owner visual QA deferred; ADV-7 AUTHORIZED / NOT STARTED
 
 ---
 
@@ -567,16 +567,24 @@ Do not delete compatibility routes until the integrated My Advisees actions are 
 
 ### ADV-7 — Navigation consolidation / compatibility redirects
 
-**Status:** READY FOR AUTHORIZATION / NOT STARTED
+**Status:** AUTHORIZED / NOT STARTED
 
-Goal: simplify Panelist navigation only after My Advisees is accepted.
+Goal: make **My Advisees** the single canonical Adviser navigation destination now that the integrated request/review surfaces are accepted.
 
-- add/retain **My Advisees** as canonical Adviser destination;
-- remove standalone **Adviser Requests** and **Adviser Reviews** sidebar items;
-- legacy index routes should redirect/deep-link safely to the matching My Advisees mode where feasible;
-- do not break bookmarked exact task links without an explicit redirect strategy.
+Required consolidation:
 
-This is navigation consolidation, not domain authority change.
+- retain **My Advisees** in the Panelist sidebar and remove standalone **Adviser Requests** / **Adviser Reviews** sidebar entries;
+- preserve the existing legacy index URLs as compatibility redirects:
+  - `/panelist/adviser-requests` -> `/panelist/advisees?tab=requests`
+  - `/panelist/adviser-reviews` -> `/panelist/advisees?tab=reviews`
+- redirects must not introduce a second Adviser workflow UI or perform data/mutations before redirecting;
+- current Dashboard Adviser-task deep links already target exact My Advisees context and must remain unchanged;
+- My Advisees must stay active for `/panelist/advisees` and nested advisee detail routes;
+- My Defenses active-route behavior must remain unchanged.
+
+Repository audit for ADV-7 found only the two legacy index pages as compatibility Adviser routes; no accepted nested legacy exact-task route requires a separate redirect contract in this package. If implementation discovers another live legacy Adviser route, stop and report it rather than guessing.
+
+This is navigation consolidation only: no Adviser authority, request/review transition, document/history authorization, Dashboard task semantics, schema, or migration changes are expected.
 
 ### ADV-8 — Assembled regression / QA gate
 
