@@ -16,8 +16,7 @@ import {
 const root = process.cwd();
 const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 
-const DETAIL =
-  "src/app/(portal)/panelist/advisees/[studentId]/page.tsx";
+const DETAIL = "src/app/(portal)/panelist/advisees/[studentId]/page.tsx";
 const WORKSPACE = "src/components/panelist/my-advisees-workspace.tsx";
 const LAYOUT = "src/app/(portal)/panelist/layout.tsx";
 const TYPES = "src/types/adviser-workspace.ts";
@@ -63,7 +62,7 @@ test("the Active Advisee card links to the detail route", () => {
     activeBlock,
     /href=\{`\/panelist\/advisees\/\$\{advisee\.student\.id\}`\}/,
   );
-  assert.match(activeBlock, /View advisee/);
+  assert.match(activeBlock, /Open Advisee/);
 });
 
 test("Incoming Requests do not receive an advisee-detail link", () => {
@@ -116,7 +115,10 @@ test("review context and next responsibility come from authoritative tasks", () 
   const page = read(DETAIL);
 
   assert.match(page, /data\.reviewContext\.tasks/);
-  assert.match(page, /nextAdviserResponsibility\(\s*data\.reviewContext\.tasks,?\s*\)/);
+  assert.match(
+    page,
+    /nextAdviserResponsibility\(\s*data\.reviewContext\.tasks,?\s*\)/,
+  );
   assert.match(page, /data\.reviewContext\.tasks\.map/);
   assert.match(page, /adviserReviewStatusLabel\(task\.reviewStatus\)/);
 
@@ -130,9 +132,7 @@ test("review context and next responsibility come from authoritative tasks", () 
     "Final manuscript review pending",
   );
   assert.equal(
-    nextAdviserResponsibility([
-      task({ reviewStatus: "CHANGES_REQUESTED" }),
-    ]),
+    nextAdviserResponsibility([task({ reviewStatus: "CHANGES_REQUESTED" })]),
     "Changes requested; awaiting student revision",
   );
   assert.equal(
@@ -168,7 +168,10 @@ test("ADV-4 review context remains distinct from ADV-5 document/history work", (
 test("no request or review mutation is introduced", () => {
   const page = read(DETAIL);
 
-  assert.doesNotMatch(page, /useMutation|adviser-response|request-changes|certify/);
+  assert.doesNotMatch(
+    page,
+    /useMutation|adviser-response|request-changes|certify/,
+  );
   assert.match(page, /\/panelist\/adviser-reviews/);
 });
 
@@ -190,7 +193,10 @@ test("404, 409, generic error, and loading states are distinct", () => {
 test("the detail page exposes no persistence terminology", () => {
   const page = read(DETAIL);
 
-  assert.doesNotMatch(page, /AdviserAssignment|assignmentId|Prisma|ThesisRecord/);
+  assert.doesNotMatch(
+    page,
+    /AdviserAssignment|assignmentId|Prisma|ThesisRecord/,
+  );
 });
 
 test("My Advisees sidebar behavior remains intact", () => {

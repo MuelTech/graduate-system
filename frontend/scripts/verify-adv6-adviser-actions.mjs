@@ -10,20 +10,15 @@ const root = process.cwd();
 const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 
 const WORKSPACE = "src/components/panelist/my-advisees-workspace.tsx";
-const DETAIL =
-  "src/app/(portal)/panelist/advisees/[studentId]/page.tsx";
+const DETAIL = "src/app/(portal)/panelist/advisees/[studentId]/page.tsx";
 const REQUEST_DIALOG =
   "src/components/panelist/adviser-request-action-dialog.tsx";
-const REVIEW_PANEL =
-  "src/components/panelist/adviser-review-action-panel.tsx";
+const REVIEW_PANEL = "src/components/panelist/adviser-review-action-panel.tsx";
 const REVIEW_LIB = "src/lib/adviser-reviews.ts";
-const LEGACY_REQUESTS =
-  "src/app/(portal)/panelist/adviser-requests/page.tsx";
-const LEGACY_REVIEWS =
-  "src/app/(portal)/panelist/adviser-reviews/page.tsx";
+const LEGACY_REQUESTS = "src/app/(portal)/panelist/adviser-requests/page.tsx";
+const LEGACY_REVIEWS = "src/app/(portal)/panelist/adviser-reviews/page.tsx";
 const LAYOUT = "src/app/(portal)/panelist/layout.tsx";
-const DASHBOARD_RULES =
-  "../backend/src/services/panelist-dashboard.rules.ts";
+const DASHBOARD_RULES = "../backend/src/services/panelist-dashboard.rules.ts";
 
 test("Incoming Requests exposes CONFORME / Decline only for ACTIONABLE requests", () => {
   const page = read(WORKSPACE);
@@ -76,12 +71,10 @@ test("Request Changes and Certify use the exact task manuscript concurrency toke
   const panel = read(REVIEW_PANEL);
 
   assert.match(panel, /const documentId = task\?\.manuscript\?\.documentId/);
-  assert.match(
-    panel,
-    /expectedReviewedDocumentId: documentId/,
-  );
+  assert.match(panel, /expectedReviewedDocumentId: documentId/);
   // Both mutations use the same exact-task token; no workspace summary id.
-  const occurrences = panel.match(/expectedReviewedDocumentId: documentId/g) ?? [];
+  const occurrences =
+    panel.match(/expectedReviewedDocumentId: documentId/g) ?? [];
   assert.equal(occurrences.length, 2);
   assert.doesNotMatch(panel, /manuscriptDocumentId/);
 });
@@ -99,9 +92,18 @@ test("Certify requires a signature and a clear confirmation step", () => {
 test("exact task status gates all review controls and requested changes wait for resubmission", () => {
   const panel = read(REVIEW_PANEL);
 
-  assert.match(panel, /const reviewStatus = String\(task\?\.reviewStatus \?\? ""\)\.toUpperCase\(\)/);
-  assert.match(panel, /const awaitingReview = reviewStatus === "AWAITING_REVIEW"/);
-  assert.match(panel, /const changesRequested = reviewStatus === "CHANGES_REQUESTED"/);
+  assert.match(
+    panel,
+    /const reviewStatus = String\(task\?\.reviewStatus \?\? ""\)\.toUpperCase\(\)/,
+  );
+  assert.match(
+    panel,
+    /const awaitingReview = reviewStatus === "AWAITING_REVIEW"/,
+  );
+  assert.match(
+    panel,
+    /const changesRequested = reviewStatus === "CHANGES_REQUESTED"/,
+  );
   assert.match(
     panel,
     /const actionsAvailable =\s*awaitingReview &&\s*!!manuscriptId &&\s*!issued &&\s*!strikeBlocked &&\s*!taskQuery\.isFetching/,
@@ -110,23 +112,38 @@ test("exact task status gates all review controls and requested changes wait for
   const waitingBranch = panel.match(
     /\) : changesRequested \? \(([\s\S]*?)\) : actionsAvailable \? \(/,
   )?.[1];
-  assert.ok(waitingBranch, "Changes requested must precede the actionable branch");
+  assert.ok(
+    waitingBranch,
+    "Changes requested must precede the actionable branch",
+  );
   assert.match(waitingBranch, /Changes requested/);
-  assert.match(waitingBranch, /Waiting for the Student to submit a revised manuscript\./);
+  assert.match(
+    waitingBranch,
+    /Waiting for the Student to submit a revised manuscript\./,
+  );
   assert.doesNotMatch(
     waitingBranch,
     /Textarea|Request Changes|Certify &amp; Sign|Confirm Certification/,
   );
 
-  assert.match(panel, /\{issued \? \([\s\S]*?Certification issued[\s\S]*?\) : changesRequested \? \(/);
-  assert.match(panel, /\) : actionsAvailable \? \([\s\S]*?Certify this manuscript\?[\s\S]*?id="adviser-review-remarks"[\s\S]*?id="adviser-review-signature"[\s\S]*?Request Changes[\s\S]*?Certify &amp; Sign/);
+  assert.match(
+    panel,
+    /\{issued \? \([\s\S]*?Certification issued[\s\S]*?\) : changesRequested \? \(/,
+  );
+  assert.match(
+    panel,
+    /\) : actionsAvailable \? \([\s\S]*?Certify this manuscript\?[\s\S]*?id="adviser-review-remarks"[\s\S]*?id="adviser-review-signature"[\s\S]*?Request Changes[\s\S]*?Certify &amp; Sign/,
+  );
   assert.match(panel, /\{task\.reviewRemarks \? \([\s\S]*?Review remarks/);
 });
 
 test("exact manuscript viewing and the shared panel remain available on both canonical surfaces", () => {
   const panel = read(REVIEW_PANEL);
   assert.match(panel, /disabled=\{!manuscriptId\}[\s\S]*?Open manuscript/);
-  assert.match(panel, /viewerOpen && manuscriptId[\s\S]*?DocumentViewer[\s\S]*?thesis-document\/\$\{manuscriptId\}\/file/);
+  assert.match(
+    panel,
+    /viewerOpen && manuscriptId[\s\S]*?DocumentViewer[\s\S]*?thesis-document\/\$\{manuscriptId\}\/file/,
+  );
 
   for (const surface of [WORKSPACE, DETAIL]) {
     assert.match(read(surface), /<AdviserReviewActionPanel\b/);
@@ -192,25 +209,32 @@ test("My Advisees tabs are URL-controlled and keep the URL in sync", () => {
   assert.match(page, /router\.replace/);
 });
 
-test("request deep links are matched only against the caller's own workspace requests", () => {
+test("request deep links are matched only against current workspace requests", () => {
   const page = read(WORKSPACE);
 
   assert.match(
     page,
-    /data\?\.incomingRequests\.find\(\(request\) => request\.id === requestIdParam\)/,
+    /incomingRequests\.find\(\(request\) => request\.id === requestIdParam\)/,
+  );
+  assert.match(
+    page,
+    /data\?\.incomingRequests\.filter\(isCurrentAdviserRequest\)/,
   );
   assert.match(page, /This task is no longer available\./);
-  assert.doesNotMatch(page, /\/adviser\/requests\/dean-review|\/adviser\/requests`/);
+  assert.doesNotMatch(
+    page,
+    /\/adviser\/requests\/dean-review|\/adviser\/requests`/,
+  );
 });
 
 test("review deep links are matched only against the caller's own workspace review tasks", () => {
   const page = read(WORKSPACE);
 
+  assert.match(page, /data\?\.reviewTasks\.find\(/);
   assert.match(
     page,
-    /data\?\.reviewTasks\.find\(/,
+    /task\.stage === validStageParam && task\.thesisId === thesisIdParam/,
   );
-  assert.match(page, /task\.stage === validStageParam && task\.thesisId === thesisIdParam/);
   assert.match(page, /This task is no longer available\./);
   assert.doesNotMatch(page, /\/admin\//);
 });
@@ -233,8 +257,14 @@ test("Dashboard Adviser links now target My Advisees contexts", () => {
 test("unrelated Dashboard links remain on their existing destinations", () => {
   const rules = read(DASHBOARD_RULES);
 
-  assert.match(rules, /function workspaceHref\(scheduleId: string\): string \{/);
-  assert.match(rules, /return `\/panelist\/defense-workspace\/\$\{scheduleId\}`/);
+  assert.match(
+    rules,
+    /function workspaceHref\(scheduleId: string\): string \{/,
+  );
+  assert.match(
+    rules,
+    /return `\/panelist\/defense-workspace\/\$\{scheduleId\}`/,
+  );
   assert.match(rules, /href: "\/panelist\/signatures"/);
 });
 

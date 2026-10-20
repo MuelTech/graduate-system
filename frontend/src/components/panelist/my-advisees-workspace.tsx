@@ -14,6 +14,8 @@ import {
 } from "@/lib/adviser-workspace";
 import type { AdviserReviewStageKey } from "@/lib/adviser-reviews";
 import {
+  isActionableAdviserRequest,
+  isCurrentAdviserRequest,
   requestStatusLabel,
   resolvePanelistRequestUiState,
   type PanelistAdviserRequestDto,
@@ -32,22 +34,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import {
-  AlertCircle,
-  FileText,
-  Inbox,
-  RefreshCw,
-  Users,
-} from "lucide-react";
+import { AlertCircle, FileText, Inbox, RefreshCw, Users } from "lucide-react";
 
 const EMPTY_MESSAGES = {
   active: "No active advisees yet.",
@@ -55,13 +46,7 @@ const EMPTY_MESSAGES = {
   reviews: "No manuscript reviews need your attention.",
 } as const;
 
-function Meta({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs font-medium text-(--earist-body-text)">{label}</dt>
@@ -112,7 +97,9 @@ function WorkspaceSkeleton() {
   );
 }
 
-function requestBadgeClass(state: ReturnType<typeof resolvePanelistRequestUiState>) {
+function requestBadgeClass(
+  state: ReturnType<typeof resolvePanelistRequestUiState>,
+) {
   switch (state) {
     case "ACTIONABLE":
       return "border-amber-300 bg-amber-50 text-amber-800";
@@ -148,11 +135,14 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
     <Card>
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="text-base font-semibold text-(--earist-primary)">
+          <CardTitle className="text-lg font-semibold text-(--earist-primary)">
             {advisee.student.name}
           </CardTitle>
           {reviewLabel ? (
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+            <Badge
+              variant="outline"
+              className="border-amber-300 bg-amber-50 text-amber-800"
+            >
               {reviewLabel}
             </Badge>
           ) : null}
@@ -163,8 +153,8 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
           {advisee.student.program || "—"}
         </p>
       </CardHeader>
-      <CardContent>
-        <dl className="grid gap-3 sm:grid-cols-2">
+      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <dl className="grid flex-1 gap-3 sm:grid-cols-2">
           <Meta
             label="Research stage"
             value={workspaceStageLabel(advisee.research.currentStage)}
@@ -175,18 +165,22 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
           />
           {advisee.research.workingTitle ? (
             <div className="sm:col-span-2">
-              <Meta label="Current title" value={advisee.research.workingTitle} />
+              <Meta
+                label="Current title"
+                value={advisee.research.workingTitle}
+              />
             </div>
           ) : null}
         </dl>
-        <div className="mt-3">
-          <Link
-            href={`/panelist/advisees/${advisee.student.id}`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            View advisee
-          </Link>
-        </div>
+        <Link
+          href={`/panelist/advisees/${advisee.student.id}`}
+          className={cn(
+            buttonVariants(),
+            "min-h-11 w-full bg-(--earist-primary) px-5 font-semibold text-white hover:bg-(--earist-primary)/90 sm:w-auto",
+          )}
+        >
+          Open Advisee
+        </Link>
       </CardContent>
     </Card>
   );
@@ -286,7 +280,10 @@ function ReviewTaskCard({
           </CardTitle>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="outline">{workspaceStageLabel(task.stage)}</Badge>
-            <Badge variant="outline" className={reviewBadgeClass(task.reviewStatus)}>
+            <Badge
+              variant="outline"
+              className={reviewBadgeClass(task.reviewStatus)}
+            >
               {adviserReviewStatusLabel(task.reviewStatus)}
             </Badge>
           </div>
@@ -336,21 +333,15 @@ export function MyAdviseesWorkspace() {
     decision: AdviserRequestDecision;
   } | null>(null);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isRefetching,
-  } = useQuery<AdviserWorkspaceDto>({
-    queryKey: adviserWorkspaceQueryKey,
-    queryFn: async () =>
-      (await apiClientRequest(
-        "/thesis/adviser/workspace",
-      )) as AdviserWorkspaceDto,
-    refetchOnWindowFocus: true,
-  });
+  const { data, isLoading, isError, error, refetch, isRefetching } =
+    useQuery<AdviserWorkspaceDto>({
+      queryKey: adviserWorkspaceQueryKey,
+      queryFn: async () =>
+        (await apiClientRequest(
+          "/thesis/adviser/workspace",
+        )) as AdviserWorkspaceDto,
+      refetchOnWindowFocus: true,
+    });
 
   const integrityMessage =
     error instanceof ApiError && error.statusCode === 409
@@ -365,6 +356,14 @@ export function MyAdviseesWorkspace() {
   const thesisIdParam = searchParams.get("thesisId");
   const validStageParam =
     stageParam === "PROPOSAL" || stageParam === "FINAL" ? stageParam : null;
+  const incomingRequests =
+    data?.incomingRequests.filter(isCurrentAdviserRequest) ?? [];
+  const requestWorkloadCount = incomingRequests.filter(
+    isActionableAdviserRequest,
+  ).length;
+  const reviewWorkloadCount =
+    data?.reviewTasks.filter((task) => task.reviewStatus === "AWAITING_REVIEW")
+      .length ?? 0;
 
   const setContext = (
     nextTab: WorkspaceTab,
@@ -390,11 +389,14 @@ export function MyAdviseesWorkspace() {
 
   const deepLinkedRequest =
     tab === "requests" && requestIdParam
-      ? (data?.incomingRequests.find((request) => request.id === requestIdParam) ??
+      ? (incomingRequests.find((request) => request.id === requestIdParam) ??
         null)
       : null;
   const staleRequestLink =
-    tab === "requests" && Boolean(requestIdParam) && Boolean(data) && !deepLinkedRequest;
+    tab === "requests" &&
+    Boolean(requestIdParam) &&
+    Boolean(data) &&
+    !deepLinkedRequest;
 
   const deepLinkedReview =
     tab === "reviews" && validStageParam && thesisIdParam
@@ -440,7 +442,6 @@ export function MyAdviseesWorkspace() {
   const closeReview = () => {
     setContext("reviews");
   };
-
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -489,18 +490,33 @@ export function MyAdviseesWorkspace() {
 
       {!isLoading && !isError && data ? (
         <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="grid h-auto w-full grid-cols-1 gap-1 p-1 sm:grid-cols-3">
-            <TabsTrigger value="active" className="h-9 gap-2 py-1.5">
+          <TabsList
+            variant="line"
+            className="grid h-auto w-full grid-cols-1 gap-0 rounded-none border-b border-(--earist-border-gray) p-0 sm:grid-cols-3"
+          >
+            <TabsTrigger
+              value="active"
+              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+            >
               Active Advisees
-              <Badge variant="secondary">{data.activeAdvisees.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="requests" className="h-9 gap-2 py-1.5">
+            <TabsTrigger
+              value="requests"
+              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+            >
               Incoming Requests
-              <Badge variant="secondary">{data.incomingRequests.length}</Badge>
+              {requestWorkloadCount > 0 ? (
+                <Badge variant="secondary">{requestWorkloadCount}</Badge>
+              ) : null}
             </TabsTrigger>
-            <TabsTrigger value="reviews" className="h-9 gap-2 py-1.5">
+            <TabsTrigger
+              value="reviews"
+              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+            >
               Review Tasks
-              <Badge variant="secondary">{data.reviewTasks.length}</Badge>
+              {reviewWorkloadCount > 0 ? (
+                <Badge variant="secondary">{reviewWorkloadCount}</Badge>
+              ) : null}
             </TabsTrigger>
           </TabsList>
 
@@ -509,7 +525,10 @@ export function MyAdviseesWorkspace() {
               <EmptyState icon={Users} message={EMPTY_MESSAGES.active} />
             ) : (
               data.activeAdvisees.map((advisee) => (
-                <ActiveAdviseeCard key={advisee.assignmentId} advisee={advisee} />
+                <ActiveAdviseeCard
+                  key={advisee.assignmentId}
+                  advisee={advisee}
+                />
               ))
             )}
           </TabsContent>
@@ -523,10 +542,10 @@ export function MyAdviseesWorkspace() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {data.incomingRequests.length === 0 ? (
+            {incomingRequests.length === 0 ? (
               <EmptyState icon={Inbox} message={EMPTY_MESSAGES.requests} />
             ) : (
-              data.incomingRequests.map((request) => (
+              incomingRequests.map((request) => (
                 <IncomingRequestCard
                   key={request.id}
                   request={request}

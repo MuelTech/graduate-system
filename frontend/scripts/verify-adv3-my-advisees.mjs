@@ -33,7 +33,10 @@ test("the page uses one accepted workspace query", () => {
   assert.match(page, /apiClientRequest\(\s*"\/thesis\/adviser\/workspace"/);
   assert.match(page, /adviserWorkspaceQueryKey/);
   assert.match(lib, /"panelist",\s*"adviser-workspace"/);
-  assert.equal(adviserWorkspaceQueryKey.join("/"), "panelist/adviser-workspace");
+  assert.equal(
+    adviserWorkspaceQueryKey.join("/"),
+    "panelist/adviser-workspace",
+  );
 
   // No duplicate per-section reads or mutation endpoints.
   assert.doesNotMatch(page, /\/thesis\/adviser\/requests\/mine/);
@@ -45,24 +48,30 @@ test("the three workspace modes consume the accepted DTO", () => {
   const page = read(PAGE);
 
   assert.match(page, /value=\{tab\}/);
-  assert.match(page, /<TabsTrigger value="active"/);
-  assert.match(page, /<TabsTrigger value="requests"/);
-  assert.match(page, /<TabsTrigger value="reviews"/);
+  assert.match(page, /<TabsTrigger\s+value="active"/);
+  assert.match(page, /<TabsTrigger\s+value="requests"/);
+  assert.match(page, /<TabsTrigger\s+value="reviews"/);
   assert.match(page, /Active Advisees/);
   assert.match(page, /Incoming Requests/);
   assert.match(page, /Review Tasks/);
 
   assert.match(page, /data\.activeAdvisees/);
-  assert.match(page, /data\.incomingRequests/);
+  assert.match(page, /data\?\.incomingRequests/);
   assert.match(page, /data\.reviewTasks/);
 });
 
-test("tabs expose actual returned counts", () => {
+test("tabs derive workload from current requests and review tasks", () => {
   const page = read(PAGE);
 
-  assert.match(page, /data\.activeAdvisees\.length/);
-  assert.match(page, /data\.incomingRequests\.length/);
-  assert.match(page, /data\.reviewTasks\.length/);
+  assert.match(
+    page,
+    /data\?\.incomingRequests\.filter\(isCurrentAdviserRequest\)/,
+  );
+  assert.match(
+    page,
+    /incomingRequests\.filter\(\s*isActionableAdviserRequest,?\s*\)\.length/,
+  );
+  assert.match(page, /data\?\.reviewTasks\.filter\(/);
 });
 
 test("Active Advisees uses human-facing stage and review wording", () => {
@@ -104,7 +113,10 @@ test("review tasks use readable status labels, not raw enums", () => {
 
   assert.match(page, /adviserReviewStatusLabel\(task\.reviewStatus\)/);
   assert.equal(adviserReviewStatusLabel("AWAITING_REVIEW"), "Awaiting review");
-  assert.equal(adviserReviewStatusLabel("CHANGES_REQUESTED"), "Changes requested");
+  assert.equal(
+    adviserReviewStatusLabel("CHANGES_REQUESTED"),
+    "Changes requested",
+  );
   assert.equal(adviserReviewStatusLabel("ISSUED"), "Certification issued");
 
   assert.doesNotMatch(page, /task\.reviewStatus\}\s*<\/Badge>/);
@@ -113,7 +125,10 @@ test("review tasks use readable status labels, not raw enums", () => {
 test("the page exposes no raw internals or ambiguous detail affordances", () => {
   const page = read(PAGE);
 
-  assert.doesNotMatch(page, /AdviserAssignment|ThesisRecord|Prisma|read model/i);
+  assert.doesNotMatch(
+    page,
+    /AdviserAssignment|ThesisRecord|Prisma|read model/i,
+  );
   assert.doesNotMatch(page, /View details/);
 });
 
