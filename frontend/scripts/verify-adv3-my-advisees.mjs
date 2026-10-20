@@ -52,8 +52,8 @@ test("the three workspace modes consume the accepted DTO", () => {
   assert.match(page, /<TabsTrigger\s+value="requests"/);
   assert.match(page, /<TabsTrigger\s+value="reviews"/);
   assert.match(page, /Active Advisees/);
-  assert.match(page, /Incoming Requests/);
-  assert.match(page, /Review Tasks/);
+  assert.match(page, /Adviser Requests/);
+  assert.match(page, /Manuscript Reviews/);
 
   assert.match(page, /data\.activeAdvisees/);
   assert.match(page, /data\?\.incomingRequests/);
@@ -152,7 +152,7 @@ test("loading, error, and empty states are distinct", () => {
   assert.match(page, /Unable to load your advisees/);
   assert.match(page, /Try again/);
   assert.match(page, /No active advisees yet\./);
-  assert.match(page, /No incoming adviser requests\./);
+  assert.match(page, /No adviser requests need your attention\./);
   assert.match(page, /No manuscript reviews need your attention\./);
 });
 

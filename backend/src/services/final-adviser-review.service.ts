@@ -28,9 +28,34 @@ import {
 } from "./proposal-adviser-review.rules";
 import { isProposalStageComplete } from "./stage-completion";
 import { getFinalOptionalGates, resolveStrikePolicy } from "./strike-policy";
+import {
+  MULTIPLE_ACTIVE_ADVISERS_MESSAGE,
+  requireSingleActiveAdviser,
+  resolveSingleActiveAdviser,
+  type ActiveAdviserAssignmentLike,
+} from "./active-adviser.rules";
 
 const MANUSCRIPT_DOC_TYPE = FINAL_MANUSCRIPT_DOC_TYPE;
 const DOC_STAGE = FINAL_MANUSCRIPT_DOC_STAGE;
+
+function callerIsSoleActiveAdviser(
+  assignments: readonly ActiveAdviserAssignmentLike[],
+  adviserUserId: string,
+): boolean {
+  const resolution = resolveSingleActiveAdviser(assignments);
+  if (resolution.status === "CONFLICT") {
+    if (
+      assignments.some((assignment) => assignment.adviserId === adviserUserId)
+    ) {
+      throw new AppError(MULTIPLE_ACTIVE_ADVISERS_MESSAGE, 409);
+    }
+    return false;
+  }
+  return (
+    resolution.status === "ACTIVE" &&
+    resolution.assignment.adviserId === adviserUserId
+  );
+}
 
 export interface FinalAdviserReviewDto {
   thesisId: string | null;
@@ -91,10 +116,11 @@ export class FinalAdviserReviewService {
     adviserUserId: string,
     studentId: string,
   ): Promise<boolean> {
-    const assignment = await prisma.adviserAssignment.findFirst({
-      where: { studentId, adviserId: adviserUserId, isActive: true },
+    const assignments = await prisma.adviserAssignment.findMany({
+      where: { studentId, isActive: true },
+      select: { id: true, adviserId: true },
     });
-    return Boolean(assignment);
+    return callerIsSoleActiveAdviser(assignments, adviserUserId);
   }
 
   private async loadReviewContext(thesisId: string) {
@@ -113,7 +139,6 @@ export class FinalAdviserReviewService {
                   select: { id: true, firstName: true, lastName: true },
                 },
               },
-              take: 1,
             },
           },
         },
@@ -224,7 +249,13 @@ export class FinalAdviserReviewService {
     thesis: Awaited<ReturnType<FinalAdviserReviewService["loadReviewContext"]>>,
     authenticatedUserId: string,
   ): FinalAdviserReviewDto {
-    const assignment = thesis.student.adviserAssignments[0] ?? null;
+    const activeAdviserResolution = resolveSingleActiveAdviser(
+      thesis.student.adviserAssignments,
+    );
+    const assignment =
+      activeAdviserResolution.status === "ACTIVE"
+        ? activeAdviserResolution.assignment
+        : null;
     const cert =
       thesis.adviserCertifications.find((c) => c.status === "ISSUED") ??
       thesis.adviserCertifications[0] ??
@@ -364,9 +395,10 @@ export class FinalAdviserReviewService {
       );
     }
 
-    const assignment = await prisma.adviserAssignment.findFirst({
+    const activeAssignments = await prisma.adviserAssignment.findMany({
       where: { studentId: student.id, isActive: true },
     });
+    const assignment = requireSingleActiveAdviser(activeAssignments);
 
     const proposalComplete = await this.proposalStageCompleteFor(thesis.id);
     const strikePolicy = getFinalOptionalGates();
@@ -435,6 +467,12 @@ export class FinalAdviserReviewService {
     });
     const items: FinalReviewQueueItem[] = [];
     for (const assignment of assignments) {
+      const isSoleActiveAdviser = await this.isActiveAdviserForStudent(
+        adviserUserId,
+        assignment.studentId,
+      );
+      if (!isSoleActiveAdviser) continue;
+
       const thesis = await prisma.thesisRecord.findFirst({
         where: { studentId: assignment.studentId },
         orderBy: { createdAt: "desc" },

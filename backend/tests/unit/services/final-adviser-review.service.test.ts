@@ -55,6 +55,19 @@ function studentRow() {
   };
 }
 
+function activeAssignment(
+  adviserId = "adviser-1",
+  id = `assign-${adviserId}`,
+) {
+  return {
+    id,
+    studentId: "student-1",
+    adviserId,
+    isActive: true,
+    student: studentRow(),
+  };
+}
+
 /** DL-7: test documents carry real column identity so exact binding validates. */
 function finalDoc<T extends Record<string, unknown>>(doc: T) {
   return {
@@ -74,6 +87,8 @@ function thesisRow(overrides: Record<string, unknown> = {}) {
       user: { id: "student-user", firstName: "Ana", lastName: "Student" },
       adviserAssignments: [
         {
+          id: "assign-adviser-1",
+          adviserId: "adviser-1",
           adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
         },
       ],
@@ -123,12 +138,9 @@ describe("FinalAdviserReviewService (CP4)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.student.findUnique.mockResolvedValue(studentRow());
-    prismaMock.adviserAssignment.findFirst.mockResolvedValue({
-      id: "assign-1",
-      studentId: "student-1",
-      adviserId: "adviser-1",
-      isActive: true,
-    });
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment(),
+    ]);
     prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
       if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {
         return { outcome: "PASSED", scheduleId: "prop-sched" };
@@ -198,7 +210,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
   });
 
   it("Test 3: no active Adviser rejects Final manuscript submit", async () => {
-    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([]);
     await expect(
       svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
     ).rejects.toThrow(/active Thesis Adviser/i);
@@ -395,7 +407,9 @@ describe("FinalAdviserReviewService (CP4)", () => {
   }
 
   it("Test 1/2/3/4: unauthorized caller gets 403 before Proposal/STRIKE checks", async () => {
-    prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment("other-adviser"),
+    ]);
     prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
     // If prerequisites ran, Proposal incomplete would throw 400 — force incomplete Proposal
     prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
@@ -482,5 +496,91 @@ describe("FinalAdviserReviewService (CP4)", () => {
       if (prev === undefined) delete process.env.STRIKE_BEFORE_FINAL_REQUIRED;
       else process.env.STRIKE_BEFORE_FINAL_REQUIRED = prev;
     }
+  });
+
+  it("ADV-8 FIX-1: queue accepts only the sole active caller Adviser", async () => {
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(awaitingThesis());
+
+    await expect(svc.listReviewTasks("adviser-1")).resolves.toHaveLength(1);
+
+    vi.clearAllMocks();
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment("adviser-1"),
+      activeAssignment("adviser-2"),
+    ]);
+    await expect(svc.listReviewTasks("adviser-1")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(prismaMock.thesisRecord.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("ADV-8 FIX-1: duplicate active authority including caller blocks direct read and mutations", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment("adviser-1"),
+      activeAssignment("adviser-2"),
+    ]);
+
+    await expect(
+      svc.getReviewTask("adviser-1", "thesis-1"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "must not write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "must-not-write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("ADV-8 FIX-1: duplicate active authority excluding caller does not disclose a task", async () => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(awaitingThesis());
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment("adviser-2"),
+      activeAssignment("adviser-3"),
+    ]);
+
+    await expect(
+      svc.getReviewTask("adviser-1", "thesis-1"),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      svc.requestChanges("adviser-1", "thesis-1", {
+        remarks: "must not write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      svc.certify("adviser-1", "thesis-1", {
+        signatureData: "must-not-write",
+        expectedReviewedDocumentId: "doc-a",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    prismaMock.adviserAssignment.findMany.mockResolvedValueOnce([]);
+    await expect(svc.listReviewTasks("adviser-1")).resolves.toEqual([]);
+    expect(prismaMock.adviserCertification.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("ADV-8 FIX-1: duplicate active authority blocks Student submission before binding", async () => {
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([
+      activeAssignment("adviser-1"),
+      activeAssignment("adviser-2"),
+    ]);
+
+    await expect(
+      svc.submitManuscriptForReview("student-user", managed()),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.create).not.toHaveBeenCalled();
   });
 });
