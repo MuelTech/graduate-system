@@ -132,7 +132,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
     (advisee.review.hasOpenTask ? "Review pending" : null);
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <CardTitle className="text-lg font-semibold text-(--earist-primary)">
@@ -147,14 +147,14 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
             </Badge>
           ) : null}
         </div>
-        <p className="text-xs text-(--earist-body-text)">
+        <p className="text-sm leading-5 text-(--earist-body-text)">
           {advisee.student.studentNumber || "—"}
           <span aria-hidden="true"> · </span>
           {advisee.student.program || "—"}
         </p>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <dl className="grid flex-1 gap-3 sm:grid-cols-2">
+      <CardContent className="flex flex-1 flex-col gap-5">
+        <dl className="grid gap-4 sm:grid-cols-2">
           <Meta
             label="Research stage"
             value={workspaceStageLabel(advisee.research.currentStage)}
@@ -176,7 +176,7 @@ function ActiveAdviseeCard({ advisee }: { advisee: AdviserActiveAdviseeDto }) {
           href={`/panelist/advisees/${advisee.student.id}`}
           className={cn(
             buttonVariants(),
-            "min-h-11 w-full bg-(--earist-primary) px-5 font-semibold text-white hover:bg-(--earist-primary)/90 sm:w-auto",
+            "mt-auto min-h-11 w-full bg-(--earist-primary) px-5 font-semibold text-white hover:bg-(--earist-primary)/90",
           )}
         >
           Open Advisee
@@ -490,19 +490,16 @@ export function MyAdviseesWorkspace() {
 
       {!isLoading && !isError && data ? (
         <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList
-            variant="line"
-            className="grid h-auto w-full grid-cols-1 gap-0 rounded-none border-b border-(--earist-border-gray) p-0 sm:grid-cols-3"
-          >
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-xl border border-(--earist-border-gray) bg-white p-2 sm:grid-cols-3">
             <TabsTrigger
               value="active"
-              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+              className="min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
             >
               Active Advisees
             </TabsTrigger>
             <TabsTrigger
               value="requests"
-              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+              className="min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
             >
               Incoming Requests
               {requestWorkloadCount > 0 ? (
@@ -511,7 +508,7 @@ export function MyAdviseesWorkspace() {
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="min-h-11 rounded-none px-3 py-2 font-semibold text-(--earist-secondary) hover:bg-(--earist-primary)/5 hover:text-(--earist-primary) data-active:bg-(--earist-primary)/10 data-active:text-(--earist-primary) data-active:after:bg-(--earist-primary)"
+              className="min-h-12 rounded-lg border border-transparent px-4 py-3 text-base font-semibold text-(--earist-secondary) hover:border-(--earist-border-gray) hover:bg-(--earist-surface-gray) hover:text-(--earist-primary) data-active:border-(--earist-primary) data-active:bg-(--earist-primary) data-active:text-white data-active:hover:bg-(--earist-primary) data-active:hover:text-white"
             >
               Review Tasks
               {reviewWorkloadCount > 0 ? (
@@ -524,12 +521,14 @@ export function MyAdviseesWorkspace() {
             {data.activeAdvisees.length === 0 ? (
               <EmptyState icon={Users} message={EMPTY_MESSAGES.active} />
             ) : (
-              data.activeAdvisees.map((advisee) => (
-                <ActiveAdviseeCard
-                  key={advisee.assignmentId}
-                  advisee={advisee}
-                />
-              ))
+              <div className="grid gap-4 md:grid-cols-2">
+                {data.activeAdvisees.map((advisee) => (
+                  <ActiveAdviseeCard
+                    key={advisee.assignmentId}
+                    advisee={advisee}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 

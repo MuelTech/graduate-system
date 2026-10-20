@@ -20,6 +20,7 @@ const activeCard = page.slice(
   page.indexOf("function ActiveAdviseeCard"),
   page.indexOf("function IncomingRequestCard"),
 );
+const detail = read("src/app/(portal)/panelist/advisees/[studentId]/page.tsx");
 
 const request = (status, adviserStatus, deanStatus) => ({
   status,
@@ -76,32 +77,42 @@ test("badge counts follow current workflow, not tab visits or raw records", () =
   );
 });
 
-test("tabs have a connected navigation rail and strong readable active states", () => {
-  assert.match(page, /<TabsList\s+variant="line"[\s\S]*?border-b/);
+test("tabs use a boxed segmented control with unmistakable active and neutral hover states", () => {
+  assert.match(
+    page,
+    /<TabsList className="[^"]*rounded-xl[^"]*border[^"]*bg-white[^"]*p-2[^"]*sm:grid-cols-3/,
+  );
   for (const value of ["active", "requests", "reviews"]) {
     const trigger = tab(value);
-    assert.match(trigger, /text-\(--earist-secondary\)/);
-    assert.match(trigger, /data-active:bg-\(--earist-primary\)\/10/);
-    assert.match(trigger, /data-active:text-\(--earist-primary\)/);
-    assert.match(trigger, /data-active:after:bg-\(--earist-primary\)/);
+    assert.match(trigger, /min-h-12/);
+    assert.match(trigger, /text-base font-semibold/);
+    assert.match(trigger, /hover:bg-\(--earist-surface-gray\)/);
+    assert.match(trigger, /data-active:bg-\(--earist-primary\)/);
+    assert.match(trigger, /data-active:text-white/);
+    assert.doesNotMatch(trigger, /hover:bg-\(--earist-primary\)\/5/);
   }
-  assert.match(page, /sm:grid-cols-3/);
 });
 
-test("Active Advisee has a prominent primary detail action", () => {
+test("Active Advisee uses compact grid cards with a prominent full-width detail action", () => {
+  assert.match(activeCard, /<Card className="h-full">/);
   assert.match(activeCard, /text-lg font-semibold/);
   assert.match(activeCard, /Research stage/);
   assert.match(activeCard, /Adviser since/);
   assert.match(
     activeCard,
-    /min-h-11 w-full bg-\(--earist-primary\) px-5 font-semibold/,
+    /mt-auto min-h-11 w-full bg-\(--earist-primary\) px-5 font-semibold/,
   );
-  assert.match(activeCard, /sm:flex-row/);
+  assert.match(page, /<div className="grid gap-4 md:grid-cols-2">/);
   assert.match(
     activeCard,
     /href=\{`\/panelist\/advisees\/\$\{advisee\.student\.id\}`\}/,
   );
   assert.match(activeCard, /Open Advisee/);
+});
+
+test("defense history distinguishes missing exact attempt binding from research-document availability", () => {
+  assert.match(detail, /Historical manuscript version not linked/);
+  assert.doesNotMatch(detail, />\s*Manuscript unavailable\s*</);
 });
 
 test("legacy routes, dashboard deep links, and My Defenses matching remain intact", () => {

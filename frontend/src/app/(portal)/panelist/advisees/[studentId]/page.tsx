@@ -516,8 +516,8 @@ export default function AdviseeDetailPage() {
                       View manuscript
                     </Button>
                   ) : (
-                    <span className="text-xs text-(--earist-body-text)">
-                      Manuscript unavailable
+                    <span className="text-xs font-medium text-(--earist-body-text)">
+                      Historical manuscript version not linked
                     </span>
                   )}
                   {entry.committeeReport ? (
