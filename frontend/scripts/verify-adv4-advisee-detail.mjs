@@ -18,7 +18,7 @@ const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 
 const DETAIL =
   "src/app/(portal)/panelist/advisees/[studentId]/page.tsx";
-const WORKSPACE = "src/app/(portal)/panelist/advisees/page.tsx";
+const WORKSPACE = "src/components/panelist/my-advisees-workspace.tsx";
 const LAYOUT = "src/app/(portal)/panelist/layout.tsx";
 const TYPES = "src/types/adviser-workspace.ts";
 
@@ -74,7 +74,6 @@ test("Incoming Requests do not receive an advisee-detail link", () => {
   );
 
   assert.doesNotMatch(requestBlock, /\/panelist\/advisees\//);
-  assert.match(requestBlock, /\/panelist\/adviser-requests/);
 });
 
 test("the detail page renders authoritative identity from the detail DTO", () => {

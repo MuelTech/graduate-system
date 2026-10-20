@@ -16,13 +16,14 @@ import {
 const root = process.cwd();
 const read = (relative) => readFileSync(resolve(root, relative), "utf8");
 
-const PAGE = "src/app/(portal)/panelist/advisees/page.tsx";
+const ROUTE = "src/app/(portal)/panelist/advisees/page.tsx";
+const PAGE = "src/components/panelist/my-advisees-workspace.tsx";
 const LAYOUT = "src/app/(portal)/panelist/layout.tsx";
 const LIB = "src/lib/adviser-workspace.ts";
 const TYPES = "src/types/adviser-workspace.ts";
 
 test("the My Advisees workspace route exists", () => {
-  assert.equal(existsSync(resolve(root, PAGE)), true);
+  assert.equal(existsSync(resolve(root, ROUTE)), true);
 });
 
 test("the page uses one accepted workspace query", () => {
@@ -43,7 +44,7 @@ test("the page uses one accepted workspace query", () => {
 test("the three workspace modes consume the accepted DTO", () => {
   const page = read(PAGE);
 
-  assert.match(page, /defaultValue="active"/);
+  assert.match(page, /value=\{tab\}/);
   assert.match(page, /<TabsTrigger value="active"/);
   assert.match(page, /<TabsTrigger value="requests"/);
   assert.match(page, /<TabsTrigger value="reviews"/);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
 import {
   panelistAdviserRequestsQueryKey,
@@ -11,6 +11,10 @@ import {
   type PanelistAdviserRequestDto,
 } from "@/lib/panelist-adviser-requests";
 import {
+  AdviserRequestActionDialog,
+  type AdviserRequestDecision,
+} from "@/components/panelist/adviser-request-action-dialog";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -18,18 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertCircle,
   CheckCircle2,
   Clock,
   Inbox,
@@ -37,16 +30,15 @@ import {
   XCircle,
 } from "lucide-react";
 
-type PendingAction = {
-  requestId: string;
-  decision: "CONFORMED" | "DECLINED";
-} | null;
-
+/**
+ * Compatibility route retained for ADV-7. ADV-6 centralizes the GS-020 response
+ * transition through the same shared dialog used by My Advisees.
+ */
 export default function PanelistAdviserRequestsPage() {
-  const queryClient = useQueryClient();
-  const [remarks, setRemarks] = useState("");
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    request: PanelistAdviserRequestDto;
+    decision: AdviserRequestDecision;
+  } | null>(null);
 
   const {
     data: requests = [],
@@ -61,39 +53,6 @@ export default function PanelistAdviserRequestsPage() {
     },
   });
 
-  const respond = useMutation({
-    mutationFn: async () => {
-      if (!pendingAction) throw new Error("No request selected.");
-      return apiClientRequest(
-        `/thesis/adviser/requests/${pendingAction.requestId}/adviser-response`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            decision: pendingAction.decision,
-            remarks: remarks.trim() ? remarks.trim() : undefined,
-          }),
-        },
-      );
-    },
-    onSuccess: async () => {
-      setActionError(null);
-      setPendingAction(null);
-      setRemarks("");
-      await queryClient.invalidateQueries({
-        queryKey: panelistAdviserRequestsQueryKey,
-      });
-    },
-    onError: (error: Error) => {
-      setActionError(error.message || "Unable to record your response.");
-      setPendingAction(null);
-      setRemarks("");
-      void queryClient.invalidateQueries({
-        queryKey: panelistAdviserRequestsQueryKey,
-      });
-      void refetch();
-    },
-  });
-
   return (
     <div className="space-y-4">
       <div>
@@ -105,14 +64,6 @@ export default function PanelistAdviserRequestsPage() {
           panel included you as an eligible adviser candidate.
         </p>
       </div>
-
-      {actionError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Response failed</AlertTitle>
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
 
       {isLoading && (
         <Card>
@@ -213,7 +164,7 @@ export default function PanelistAdviserRequestsPage() {
                   </div>
                   <div className="sm:col-span-2">
                     <p className="text-xs text-(--earist-body-text)">
-                      Official research title
+                      Title Defense title
                     </p>
                     <p className="font-medium text-(--earist-primary)">
                       {row.officialTitle || "—"}
@@ -285,7 +236,7 @@ export default function PanelistAdviserRequestsPage() {
                       className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
                       onClick={() =>
                         setPendingAction({
-                          requestId: row.id,
+                          request: row,
                           decision: "CONFORMED",
                         })
                       }
@@ -299,7 +250,7 @@ export default function PanelistAdviserRequestsPage() {
                       className="text-red-600"
                       onClick={() =>
                         setPendingAction({
-                          requestId: row.id,
+                          request: row,
                           decision: "DECLINED",
                         })
                       }
@@ -315,74 +266,14 @@ export default function PanelistAdviserRequestsPage() {
         })}
       </div>
 
-      <Dialog
-        open={pendingAction !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingAction(null);
-            setRemarks("");
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {pendingAction?.decision === "CONFORMED"
-                ? "Record CONFORME?"
-                : "Decline Adviser Request?"}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingAction?.decision === "CONFORMED"
-                ? "After you accept, this request will be forwarded for Dean review. You are not yet the officially assigned adviser until Dean approval."
-                : "No adviser assignment will be created. The student may submit another valid adviser request."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <label
-              className="text-xs font-medium text-(--earist-body-text)"
-              htmlFor="response-remarks"
-            >
-              Response Remarks (Optional)
-            </label>
-            <Textarea
-              id="response-remarks"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              rows={3}
-              placeholder="Optional note for the student"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setPendingAction(null);
-                setRemarks("");
-              }}
-              disabled={respond.isPending}
-            >
-              Go Back
-            </Button>
-            <Button
-              type="button"
-              disabled={respond.isPending}
-              onClick={() => respond.mutate()}
-              className={
-                pendingAction?.decision === "DECLINED"
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-(--earist-primary) hover:bg-(--earist-primary)/90"
-              }
-            >
-              {respond.isPending
-                ? "Saving…"
-                : pendingAction?.decision === "CONFORMED"
-                  ? "Record CONFORME"
-                  : "Decline Request"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {pendingAction ? (
+        <AdviserRequestActionDialog
+          key={`${pendingAction.request.id}:${pendingAction.decision}`}
+          request={pendingAction.request}
+          decision={pendingAction.decision}
+          onClose={() => setPendingAction(null)}
+        />
+      ) : null}
     </div>
   );
 }

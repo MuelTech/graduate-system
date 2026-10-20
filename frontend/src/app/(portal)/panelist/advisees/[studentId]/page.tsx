@@ -19,6 +19,8 @@ import type {
   AdviserDefenseHistoryEntryDto,
   AdviserWorkspaceReviewTaskDto,
 } from "@/types/adviser-workspace";
+import { AdviserReviewActionPanel } from "@/components/panelist/adviser-review-action-panel";
+import type { AdviserReviewStageKey } from "@/lib/adviser-reviews";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -107,7 +109,13 @@ function DetailSkeleton() {
   );
 }
 
-function ReviewTaskRow({ task }: { task: AdviserWorkspaceReviewTaskDto }) {
+function ReviewTaskRow({
+  task,
+  onReview,
+}: {
+  task: AdviserWorkspaceReviewTaskDto;
+  onReview: (task: AdviserWorkspaceReviewTaskDto) => void;
+}) {
   return (
     <div className="rounded-lg border border-(--earist-border-gray) p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -134,6 +142,16 @@ function ReviewTaskRow({ task }: { task: AdviserWorkspaceReviewTaskDto }) {
           </p>
         </div>
       ) : null}
+      <div className="mt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onReview(task)}
+        >
+          Review manuscript
+        </Button>
+      </div>
     </div>
   );
 }
@@ -148,6 +166,11 @@ export default function AdviseeDetailPage() {
   } | null>(null);
   const [reportEntry, setReportEntry] =
     useState<AdviserDefenseHistoryEntryDto | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{
+    stage: AdviserReviewStageKey;
+    thesisId: string;
+    studentName: string | null;
+  } | null>(null);
 
   const {
     data,
@@ -359,6 +382,13 @@ export default function AdviseeDetailPage() {
                   <ReviewTaskRow
                     key={`${task.stage}-${task.thesisId}`}
                     task={task}
+                    onReview={(selected) =>
+                      setReviewTarget({
+                        stage: selected.stage,
+                        thesisId: selected.thesisId,
+                        studentName: selected.student.name,
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -519,6 +549,18 @@ export default function AdviseeDetailPage() {
           }}
           fetchUrl={`/api/documents/thesis-document/${viewerDoc.id}/file`}
           title={viewerDoc.title}
+        />
+      ) : null}
+
+      {reviewTarget ? (
+        <AdviserReviewActionPanel
+          open
+          onOpenChange={(open) => {
+            if (!open) setReviewTarget(null);
+          }}
+          stage={reviewTarget.stage}
+          thesisId={reviewTarget.thesisId}
+          studentName={reviewTarget.studentName}
         />
       ) : null}
 

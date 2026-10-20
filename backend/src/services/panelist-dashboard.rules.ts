@@ -303,6 +303,14 @@ export interface PanelistDashboardView {
 type RankedTask = PanelistAttentionTask & { _sortMs: number };
 type RankedWaiting = WaitingItem & { _sortMs: number };
 
+function adviserRequestHref(requestId: string): string {
+  return `/panelist/advisees?tab=requests&requestId=${encodeURIComponent(requestId)}`;
+}
+
+function adviserReviewHref(stage: "PROPOSAL" | "FINAL", thesisId: string): string {
+  return `/panelist/advisees?tab=reviews&stage=${encodeURIComponent(stage)}&thesisId=${encodeURIComponent(thesisId)}`;
+}
+
 function workspaceHref(scheduleId: string): string {
   return `/panelist/defense-workspace/${scheduleId}`;
 }
@@ -571,7 +579,7 @@ export function buildPanelistDashboard(
       statusText: "Awaiting your response",
       date: r.requestDate,
       actionLabel: "Review Request",
-      href: "/panelist/adviser-requests",
+      href: adviserRequestHref(r.id),
       priority: 2,
       _sortMs: wallDateMs(r.requestDate),
     });
@@ -594,7 +602,7 @@ export function buildPanelistDashboard(
       statusText: "Awaiting your review",
       date: t.manuscriptUploadedAt,
       actionLabel: "Review Manuscript",
-      href: "/panelist/adviser-reviews",
+      href: adviserReviewHref(t.stage, t.thesisId),
       priority: 2,
       _sortMs: wallDateMs(t.manuscriptUploadedAt),
     });
@@ -622,7 +630,7 @@ export function buildPanelistDashboard(
         responsibleRole: "Dean, Graduate School",
         statusText: "Awaiting Dean decision",
         date: r.requestDate,
-        href: "/panelist/adviser-requests",
+        href: adviserRequestHref(r.id),
         _sortMs: wallDateMs(r.requestDate),
       });
     }
@@ -639,7 +647,7 @@ export function buildPanelistDashboard(
       responsibleRole: "Student",
       statusText: "Changes requested",
       date: t.manuscriptUploadedAt,
-      href: "/panelist/adviser-reviews",
+      href: adviserReviewHref(t.stage, t.thesisId),
       _sortMs: wallDateMs(t.manuscriptUploadedAt),
     });
   }
