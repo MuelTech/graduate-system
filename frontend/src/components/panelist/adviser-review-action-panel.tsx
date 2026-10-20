@@ -166,13 +166,19 @@ export function AdviserReviewActionPanel({
     },
   });
 
+  const reviewStatus = String(task?.reviewStatus ?? "").toUpperCase();
+  const awaitingReview = reviewStatus === "AWAITING_REVIEW";
+  const changesRequested = reviewStatus === "CHANGES_REQUESTED";
   const issued =
-    task?.certification?.issued === true ||
-    String(task?.reviewStatus ?? "") === "ISSUED";
+    task?.certification?.issued === true || reviewStatus === "ISSUED";
   const strikeBlocked = isFinalStrikeBlocked(stage, task);
   const manuscriptId = task?.manuscript?.documentId ?? null;
-  const actionsDisabled =
-    !manuscriptId || issued || strikeBlocked || taskQuery.isFetching;
+  const actionsAvailable =
+    awaitingReview &&
+    !!manuscriptId &&
+    !issued &&
+    !strikeBlocked &&
+    !taskQuery.isFetching;
 
   return (
     <>
@@ -311,7 +317,15 @@ export function AdviserReviewActionPanel({
                     .
                   </AlertDescription>
                 </Alert>
-              ) : task.manuscript && !strikeBlocked ? (
+              ) : changesRequested ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Changes requested</AlertTitle>
+                  <AlertDescription>
+                    Waiting for the Student to submit a revised manuscript.
+                  </AlertDescription>
+                </Alert>
+              ) : actionsAvailable ? (
                 confirmCertify ? (
                   <div className="space-y-3 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
                     <div>
@@ -361,7 +375,7 @@ export function AdviserReviewActionPanel({
                         onChange={(event) => setRemarks(event.target.value)}
                         placeholder="Comments for the student (required when requesting changes)"
                         rows={3}
-                        disabled={actionsDisabled}
+                        disabled={!actionsAvailable}
                       />
                     </div>
                     <div>
@@ -377,7 +391,7 @@ export function AdviserReviewActionPanel({
                         onChange={(event) => setSignature(event.target.value)}
                         placeholder="Type your full name as e-signature"
                         rows={2}
-                        disabled={actionsDisabled}
+                        disabled={!actionsAvailable}
                       />
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -385,7 +399,7 @@ export function AdviserReviewActionPanel({
                         type="button"
                         variant="outline"
                         disabled={
-                          actionsDisabled ||
+                          !actionsAvailable ||
                           requestChanges.isPending ||
                           !remarks.trim()
                         }
@@ -398,7 +412,7 @@ export function AdviserReviewActionPanel({
                       <Button
                         type="button"
                         disabled={
-                          actionsDisabled ||
+                          !actionsAvailable ||
                           certify.isPending ||
                           !signature.trim()
                         }
@@ -410,11 +424,15 @@ export function AdviserReviewActionPanel({
                     </div>
                   </>
                 )
-              ) : (
+              ) : !manuscriptId ? (
                 <p className="text-sm text-(--earist-body-text)">
                   No manuscript is currently available for review.
                 </p>
-              )}
+              ) : !strikeBlocked && !taskQuery.isFetching ? (
+                <p className="text-sm text-(--earist-body-text)">
+                  This manuscript is not currently awaiting Adviser review.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </DialogContent>

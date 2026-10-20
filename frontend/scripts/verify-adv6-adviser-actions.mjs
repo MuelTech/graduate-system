@@ -96,6 +96,43 @@ test("Certify requires a signature and a clear confirmation step", () => {
   assert.match(panel, /cannot be undone/);
 });
 
+test("exact task status gates all review controls and requested changes wait for resubmission", () => {
+  const panel = read(REVIEW_PANEL);
+
+  assert.match(panel, /const reviewStatus = String\(task\?\.reviewStatus \?\? ""\)\.toUpperCase\(\)/);
+  assert.match(panel, /const awaitingReview = reviewStatus === "AWAITING_REVIEW"/);
+  assert.match(panel, /const changesRequested = reviewStatus === "CHANGES_REQUESTED"/);
+  assert.match(
+    panel,
+    /const actionsAvailable =\s*awaitingReview &&\s*!!manuscriptId &&\s*!issued &&\s*!strikeBlocked &&\s*!taskQuery\.isFetching/,
+  );
+
+  const waitingBranch = panel.match(
+    /\) : changesRequested \? \(([\s\S]*?)\) : actionsAvailable \? \(/,
+  )?.[1];
+  assert.ok(waitingBranch, "Changes requested must precede the actionable branch");
+  assert.match(waitingBranch, /Changes requested/);
+  assert.match(waitingBranch, /Waiting for the Student to submit a revised manuscript\./);
+  assert.doesNotMatch(
+    waitingBranch,
+    /Textarea|Request Changes|Certify &amp; Sign|Confirm Certification/,
+  );
+
+  assert.match(panel, /\{issued \? \([\s\S]*?Certification issued[\s\S]*?\) : changesRequested \? \(/);
+  assert.match(panel, /\) : actionsAvailable \? \([\s\S]*?Certify this manuscript\?[\s\S]*?id="adviser-review-remarks"[\s\S]*?id="adviser-review-signature"[\s\S]*?Request Changes[\s\S]*?Certify &amp; Sign/);
+  assert.match(panel, /\{task\.reviewRemarks \? \([\s\S]*?Review remarks/);
+});
+
+test("exact manuscript viewing and the shared panel remain available on all three surfaces", () => {
+  const panel = read(REVIEW_PANEL);
+  assert.match(panel, /disabled=\{!manuscriptId\}[\s\S]*?Open manuscript/);
+  assert.match(panel, /viewerOpen && manuscriptId[\s\S]*?DocumentViewer[\s\S]*?thesis-document\/\$\{manuscriptId\}\/file/);
+
+  for (const surface of [WORKSPACE, DETAIL, LEGACY_REVIEWS]) {
+    assert.match(read(surface), /<AdviserReviewActionPanel\b/);
+  }
+});
+
 test("Final STRIKE blocking remains driven by the exact Final task", () => {
   const panel = read(REVIEW_PANEL);
   const lib = read(REVIEW_LIB);
