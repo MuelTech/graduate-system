@@ -7,7 +7,7 @@
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d`; project-owner visual QA pending
+**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 AUTHORIZED / NOT STARTED
 
 ---
 
@@ -521,14 +521,27 @@ This package has a security/authorization blast radius and therefore justifies b
 
 ### ADV-6 — Adviser Requests + Adviser Reviews integration
 
-Goal: make My Advisees the primary Adviser workflow surface.
+**Status:** AUTHORIZED / NOT STARTED
 
-- Incoming Requests performs/reuses CONFORME/Decline.
-- Review Tasks and Advisee detail perform/reuse Request Changes / Certify & Sign.
-- Existing backend transition rules remain unchanged.
-- Dashboard Adviser tasks deep-link into My Advisees context.
+Goal: make My Advisees the primary Adviser workflow surface while preserving the existing GS-020 and Proposal/Final Adviser-review mutation authorities.
 
-Do not delete compatibility routes until new routes are proven.
+Integration contract:
+
+- Incoming Requests performs CONFORME / Decline through the existing `POST /thesis/adviser/requests/:id/adviser-response` transition. The request remains distinct from an active advisee until Dean approval creates the active AdviserAssignment.
+- Review Tasks and the active Advisee detail reuse the existing stage-specific task-detail and mutation endpoints for Request Changes / Certify & Sign. `expectedReviewedDocumentId` optimistic concurrency remains mandatory; stale 409 state must refresh rather than auto-retry.
+- Final review STRIKE/plagiarism eligibility behavior remains exactly as enforced by the existing Final Adviser Review read model/service; My Advisees must not recreate or bypass that rule.
+- Shared frontend action components/hooks are preferred so My Advisees and the retained compatibility pages do not maintain divergent copies of mutation logic.
+- My Advisees becomes URL-addressable by context: `tab=requests` / `tab=reviews`, with optional request/review identifiers for deterministic Dashboard deep links. Invalid/stale identifiers must fail safely without revealing another user's data.
+- Dashboard Adviser Request and Adviser Manuscript Review actions/waiting links must point into the matching My Advisees context instead of the standalone legacy pages.
+- Successful mutations invalidate/refetch the My Advisees workspace, affected exact advisee detail, legacy compatibility queue when applicable, and Panelist Dashboard so the same authoritative transition is reflected everywhere.
+
+Compatibility boundary:
+
+- `/panelist/adviser-requests` and `/panelist/adviser-reviews` remain functional in ADV-6.
+- Do not remove their sidebar entries or redirect those routes yet; ADV-7 owns navigation consolidation.
+- No backend transition rule, schema, Adviser authority, document authority, or review state machine change is expected.
+
+Do not delete compatibility routes until the integrated My Advisees actions are independently source-reviewed and visually exercised.
 
 ### ADV-7 — Navigation consolidation / compatibility redirects
 
