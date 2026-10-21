@@ -1,13 +1,14 @@
 # Adviser Workflow and My Advisees — Implementation Plan
 
 **Date:** 2026-10-20  
+**Last Updated:** 2026-10-21  
 **Repository:** MuelTech/graduate-system  
 **Baseline branch:** `main`  
 **Baseline HEAD:** `467e0bebcefb2cb24aaacfe3bf5fc5750652e308`  
 **Implementation branch:** `refactor/adviser-workflow`  
 **Parent workflow authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **Cross-cutting verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Plan status:** ADV-0 COMPLETE; ADV-1 ACCEPTED / CLOSED at `b1a83ec8bba91247c03b9411ff2531210ae3dc2f`; reproduced Proposal Scheduling bug manually verified fixed by the project owner; ADV-2 ACCEPTED / CLOSED at `6e042a3d81feff89098773a5dc81aec882fa6a8a`; ADV-3 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `69f55d83d79a318c16d7a30207821ba10b19f399` with project-owner visual QA deferred; ADV-4 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `9b032d439f0432fa7e908a4e6b568c1339dfc7ec` with project-owner visual QA deferred; ADV-5 IMPLEMENTED / INDEPENDENT SOURCE REVIEW PASS at `e3c64450495ee4c9a378c7a877f67783a0d52b8d` with project-owner visual QA deferred; ADV-6 ACCEPTED / CLOSED at FIX-1 `3497cb24ba9e9b5345ab6312c0276d9f5df4ad3c` with project-owner visual QA deferred; ADV-7 AUTHORIZED / NOT STARTED
+**Plan status:** COMPLETE / ACCEPTED — ADV-0 through ADV-8 are CLOSED. Final accepted Adviser product-code HEAD: `e887623921d0e5d38e17fdf9b70b5509e207274d` (`fix(adviser): fail closed on duplicate review authority`). ADV-8 final re-verification passed on 2026-10-21. Project-owner visual acceptance covers the final My Advisees main-workspace design; coding-agent final-gate browser QA was NOT EXECUTED and hosted CI was NOT OBSERVED.
 
 ---
 
@@ -120,8 +121,8 @@ Adviser-specific standalone navigation is consolidated under My Advisees after t
 Recommended task/context modes:
 
 - **Active Advisees**
-- **Incoming Requests**
-- **Review Tasks**
+- **Adviser Requests**
+- **Manuscript Reviews**
 
 These are semantic workflow groupings, not three independent authority models.
 
@@ -138,7 +139,7 @@ A row should answer:
 
 The server must return only Students whose active AdviserAssignment belongs to the authenticated user.
 
-### 3.3 Incoming Requests
+### 3.3 Adviser Requests
 
 Shows Adviser Requests where `requestedAdviserId` is the authenticated Panelist.
 
@@ -146,7 +147,7 @@ The user may CONFORME or decline according to the existing GS-020 transition rul
 
 A pending/conformed request must not be presented as an active advisee until Dean APPROVED has created the active AdviserAssignment.
 
-### 3.4 Review Tasks
+### 3.4 Manuscript Reviews
 
 Shows Proposal/Final manuscript reviews where the authenticated user is the current active Adviser.
 
@@ -355,7 +356,7 @@ Accepted implementation:
 - schema/migration: NONE
 
 Accepted result:
-- `GET /thesis/adviser/workspace` provides authenticated Adviser-scoped Active Advisees, Incoming Requests, and Proposal/Final Review Tasks by composing existing authorities;
+- `GET /thesis/adviser/workspace` provides authenticated Adviser-scoped Active Advisees, Adviser Requests, and Proposal/Final Manuscript Reviews by composing existing authorities;
 - `GET /thesis/adviser/advisees/:studentId` provides a bounded overview only for the Student's current active Adviser;
 - cross-Adviser and former/inactive Adviser detail access fail closed without Student enumeration;
 - duplicate active AdviserAssignments are detected against all active rows for candidate Students in a bounded query, including cross-Adviser conflicts;
@@ -394,11 +395,11 @@ Implementation:
 
 Implemented result:
 - new `/panelist/advisees` parent workspace consumes the accepted single `GET /thesis/adviser/workspace` read model;
-- three modes are present: Active Advisees, Incoming Requests, Review Tasks;
+- three modes are present: Active Advisees, Adviser Requests, Manuscript Reviews;
 - My Advisees is discoverable in Panelist navigation while legacy Adviser Requests / Adviser Reviews entries remain for compatibility until ADV-7;
 - active-advisee cards do not infer a current working title from historical Title Defense wording;
-- Incoming Requests reuse the existing GS-020 status helpers and label historical wording as `Title Defense title`;
-- Review Tasks use faculty-facing stage/status wording and retain existing Adviser Reviews as the mutation surface;
+- Adviser Requests reuse the existing GS-020 status helpers and label historical wording as `Title Defense title`;
+- Manuscript Reviews use faculty-facing stage/status wording and retain existing Adviser Reviews as the mutation surface;
 - loading, error/integrity, and empty states are distinct;
 - no advisee-detail route, request/review mutation consolidation, history/documents exposure, redirects, or later ADV package work was introduced.
 
@@ -407,8 +408,8 @@ Goal: implement the parent Adviser workspace.
 UI:
 
 - Active Advisees;
-- Incoming Requests;
-- Review Tasks;
+- Adviser Requests;
+- Manuscript Reviews;
 - loading/error/empty distinctions;
 - task-oriented filters/search only if justified by real data volume.
 
@@ -428,7 +429,7 @@ Implementation:
 
 Implemented result:
 - new `/panelist/advisees/[studentId]` detail page consumes only the accepted exact-advisee endpoint;
-- Active Advisee cards now expose a bounded `View advisee` link while Incoming Requests remain non-advisee request context;
+- Active Advisee cards now expose a bounded `View advisee` link while Adviser Requests remain non-advisee request context;
 - the detail page shows Student identity, research stage, active Adviser relationship/date, and current review context;
 - next Adviser responsibility is derived only from accepted review-task context and does not create a second thesis-progression authority;
 - current working title is rendered only from `research.workingTitle`; no historical Title Defense wording is promoted to current title;
@@ -537,8 +538,8 @@ Accepted implementation:
 
 Accepted result:
 - My Advisees is the primary Adviser action surface for GS-020 request response and Proposal/Final Adviser manuscript review;
-- Incoming Requests reuses the existing CONFORME / Decline transition and does not locally create an active Adviser relationship before Dean approval;
-- Review Tasks and exact Advisee detail share one Adviser Review action panel that loads the exact stage-specific task, uses the exact manuscript as the optimistic concurrency token, preserves Final STRIKE authority, and refreshes authoritative state on stale 409 without automatic resubmission;
+- Adviser Requests reuses the existing CONFORME / Decline transition and does not locally create an active Adviser relationship before Dean approval;
+- Manuscript Reviews and exact Advisee detail share one Adviser Review action panel that loads the exact stage-specific task, uses the exact manuscript as the optimistic concurrency token, preserves Final STRIKE authority, and refreshes authoritative state on stale 409 without automatic resubmission;
 - `CHANGES_REQUESTED` is now correctly read-only / waiting for Student resubmission, while mutation controls are exposed only for exact `AWAITING_REVIEW` state;
 - `ISSUED` remains immutable/read-only;
 - My Advisees tabs and exact Adviser task context are URL-addressable, with deep-link IDs matched only against the authenticated workspace projection before opening/fetching task detail;
@@ -549,8 +550,8 @@ Goal: make My Advisees the primary Adviser workflow surface while preserving the
 
 Integration contract:
 
-- Incoming Requests performs CONFORME / Decline through the existing `POST /thesis/adviser/requests/:id/adviser-response` transition. The request remains distinct from an active advisee until Dean approval creates the active AdviserAssignment.
-- Review Tasks and the active Advisee detail reuse the existing stage-specific task-detail and mutation endpoints for Request Changes / Certify & Sign. `expectedReviewedDocumentId` optimistic concurrency remains mandatory; stale 409 state must refresh rather than auto-retry.
+- Adviser Requests performs CONFORME / Decline through the existing `POST /thesis/adviser/requests/:id/adviser-response` transition. The request remains distinct from an active advisee until Dean approval creates the active AdviserAssignment.
+- Manuscript Reviews and the active Advisee detail reuse the existing stage-specific task-detail and mutation endpoints for Request Changes / Certify & Sign. `expectedReviewedDocumentId` optimistic concurrency remains mandatory; stale 409 state must refresh rather than auto-retry.
 - Final review STRIKE/plagiarism eligibility behavior remains exactly as enforced by the existing Final Adviser Review read model/service; My Advisees must not recreate or bypass that rule.
 - Shared frontend action components/hooks are preferred so My Advisees and the retained compatibility pages do not maintain divergent copies of mutation logic.
 - My Advisees becomes URL-addressable by context: `tab=requests` / `tab=reviews`, with optional request/review identifiers for deterministic Dashboard deep links. Invalid/stale identifiers must fail safely without revealing another user's data.
@@ -567,7 +568,27 @@ Do not delete compatibility routes until the integrated My Advisees actions are 
 
 ### ADV-7 — Navigation consolidation / compatibility redirects
 
-**Status:** AUTHORIZED / NOT STARTED
+**Status:** ACCEPTED / CLOSED
+
+Accepted implementation chain:
+- core ADV-7: `943d56f9b61f2b14bff92eb00e8dda3f209d9dac` — `refactor(adviser): consolidate panelist navigation`
+- FIX-1 current-workflow/UX refinement: `eccc53ebd063f16ceccbecf392e1930af66c1a2b` — `fix(adviser): refine my advisees workspace ux`
+- FIX-2 card/history clarity refinement: `bf5d4267af32025c339d590e6350cb5e655b7d87` — `fix(adviser): refine advisee cards and history clarity`
+- FIX-2b tab containment: `94495c626ed9b27cf327bbcfa8f36dfd7dfbd100` — `fix(adviser): contain advisee tab controls`
+- My Defenses-aligned segmented tabs: `df84596aaada7b7a35a8b494a76e3216aa64c6e5` — `fix(adviser): align advisee tabs with defenses`
+- accepted terminology: `97869699c608f4e3f5f07a544c5079408409c1f1` — `fix(adviser): clarify advisee workspace labels`
+- independent remote source review: PASS
+- project-owner screenshot/manual visual review: ACCEPTED for the final My Advisees main-workspace design
+- hosted CI: NOT OBSERVED / NOT CLAIMED
+
+Accepted result:
+- My Advisees is the single Panelist navigation entry for Adviser work;
+- legacy Adviser Requests / Adviser Reviews index routes redirect to the corresponding URL-addressable My Advisees contexts;
+- Dashboard deep links remain exact and My Defenses route-family matching remains intact;
+- the accepted visible modes are **Active Advisees**, **Adviser Requests**, and **Manuscript Reviews**;
+- request/review badges represent actionable workload rather than unread state; zero badges are hidden and Active Advisees has no notification-style count;
+- the final tabs use the accepted My Defenses-like segmented treatment; Active Advisee cards use a compact responsive grid with a prominent full-width **Open Advisee** action;
+- historical exact-manuscript absence is communicated as **Historical manuscript version not linked**, without implying that the thesis has no Research Documents.
 
 Goal: make **My Advisees** the single canonical Adviser navigation destination now that the integrated request/review surfaces are accepted.
 
@@ -587,6 +608,29 @@ Repository audit for ADV-7 found only the two legacy index pages as compatibilit
 This is navigation consolidation only: no Adviser authority, request/review transition, document/history authorization, Dashboard task semantics, schema, or migration changes are expected.
 
 ### ADV-8 — Assembled regression / QA gate
+
+**Status:** ACCEPTED / CLOSED
+
+Acceptance history:
+- initial ADV-8 verification correctly BLOCKED on duplicate-active-Adviser authority in direct Proposal/Final review APIs;
+- bounded ADV-8 FIX-1: `e887623921d0e5d38e17fdf9b70b5509e207274d` — `fix(adviser): fail closed on duplicate review authority`;
+- independent remote diff/source review of FIX-1: PASS;
+- final ADV-8 re-verification on 2026-10-21: PASS;
+- focused Proposal review: 23/23 PASS; focused Final review: 14/14 PASS;
+- Adviser-focused regression: 285/285 PASS;
+- full backend regression: 169 files, 1,962 PASS, 5 environment-conditional storage tests skipped, 0 failed;
+- frontend Adviser verifiers: 72/72 PASS;
+- backend build, frontend TypeScript, scoped lint, frontend production build, and `git diff --check`: PASS in the final re-verification report;
+- final-gate manual/browser QA: NOT EXECUTED by the verifying agent;
+- hosted CI: NOT OBSERVED / NOT CLAIMED.
+
+Accepted security result:
+- Proposal and Final review services load all active AdviserAssignment rows and resolve the sole current Adviser through the canonical single-active-Adviser rule;
+- zero active rows remain unauthorized, exactly one row is authoritative, and multiple active rows fail closed;
+- Student manuscript submission uses the same single-active-Adviser invariant before manuscript/certification binding;
+- review queues, direct task reads, Request Changes, and Certification revalidate current Adviser authority; ambiguous duplicate authority cannot mutate academic state;
+- caller-excluding conflicts remain non-disclosing, while conflicts that include the caller produce the deterministic conflict behavior;
+- no schema migration or mass backfill was introduced.
 
 Goal: prove the complete Adviser workflow.
 
@@ -641,7 +685,7 @@ Use the existing SYSTEM_UI_UX_PLAYBOOK.
 
 Specific Adviser guidance:
 
-- user-facing language should say **My Advisees**, **Incoming Requests**, and **Review Tasks**;
+- user-facing language should say **My Advisees**, **Adviser Requests**, and **Manuscript Reviews**;
 - avoid technical labels such as AdviserAssignment, assignmentId, reviewedDocumentId, or enum names;
 - do not duplicate explanatory text the UI already demonstrates;
 - task queues should show the next action and why it is actionable;
@@ -649,7 +693,7 @@ Specific Adviser guidance:
 - request/certification actions must clearly distinguish reversible review remarks from irreversible certification;
 - keep Adviser and Panelist defense roles conceptually distinct even when the same account performs both at different times.
 
-The accepted My Advisees pattern should be added to `SYSTEM_UI_UX_PLAYBOOK.md` only after implementation and project-owner visual acceptance. Do not pre-declare it an Approved Reference.
+The project-owner-accepted My Advisees pattern is now registered in `SYSTEM_UI_UX_PLAYBOOK.md` as an Approved Reference. Future Adviser-facing refinements should preserve its accepted hierarchy, terminology, workload-count semantics, and authority boundaries unless a later bounded design explicitly supersedes them.
 
 ---
 

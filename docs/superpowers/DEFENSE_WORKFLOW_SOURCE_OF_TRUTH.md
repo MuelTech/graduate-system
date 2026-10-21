@@ -8,11 +8,12 @@
 **Historical Correction Branch:** `refactor/unified-defense-lifecycle`  
 **Collaborative Defense Implementation Branch:** `refactor/collaborative-defense-workspace`  
 **Adviser Workflow Branch:** `refactor/adviser-workflow`  
+**Accepted Adviser Workflow HEAD through ADV-8:** `e887623921d0e5d38e17fdf9b70b5509e207274d`  
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.14-draft  
-**Last Updated:** 2026-10-20  
+**Version:** 1.15-draft  
+**Last Updated:** 2026-10-21  
 
 ---
 
@@ -144,8 +145,8 @@ My Advisees is an academic-supervision workspace, not Admin Student Management.
 The parent workspace may contain these task/context views:
 
 - **Active Advisees** — Students whose current active AdviserAssignment belongs to the authenticated Panelist.
-- **Incoming Requests** — Adviser Requests addressed to the authenticated Panelist. These Students are not yet active advisees until the full GS-020 path produces an active AdviserAssignment.
-- **Review Tasks** — Proposal/Final manuscript-review work for the authenticated active Adviser.
+- **Adviser Requests** — Adviser Requests addressed to the authenticated Panelist. These Students are not yet active advisees until the full GS-020 path produces an active AdviserAssignment.
+- **Manuscript Reviews** — Proposal/Final manuscript-review work for the authenticated active Adviser.
 
 The existing standalone Adviser Requests and Adviser Reviews capabilities may remain as compatibility routes during implementation, but the accepted target navigation places these workflows under My Advisees. Dashboard tasks should deep-link into the relevant My Advisees context instead of forcing users to understand separate technical modules.
 
@@ -226,6 +227,25 @@ The existing Proposal/Final manuscript lifecycle remains authoritative:
 Student manuscript submission -> active Adviser review -> Request Changes or Certify/e-sign -> exact certified manuscript binding -> Student Proposal/Final application.
 
 The My Advisees initiative reorganizes and contextualizes that workflow; it does not weaken exact-document binding, write-once certification, stage scoping, or server-side Adviser authorization.
+
+### 0.3.9 Adviser workflow implementation acceptance — 2026-10-21
+
+**CONFIRMED_PROJECT_DESIGN / IMPLEMENTED_AND_ACCEPTED**
+
+ADV-0 through ADV-8 are accepted/closed on `refactor/adviser-workflow`. The final accepted product-code HEAD is `e887623921d0e5d38e17fdf9b70b5509e207274d` (`fix(adviser): fail closed on duplicate review authority`).
+
+The accepted Adviser-facing information architecture is:
+
+- **My Advisees** as the single Adviser navigation destination;
+- **Active Advisees** for current active Adviser relationships;
+- **Adviser Requests** for current GS-020 request context and Adviser response work;
+- **Manuscript Reviews** for Proposal/Final Adviser review work.
+
+The canonical active-Adviser invariant now applies consistently across My Advisees, Admin Scheduling, Adviser document authorization, and direct Proposal/Final review APIs: zero active AdviserAssignments means no current Adviser; exactly one active row is authoritative; multiple active rows are an integrity conflict and must fail closed rather than selecting a first/latest/caller-matching row. Student Proposal/Final manuscript submission must also resolve the sole active Adviser before binding the review manuscript/certification.
+
+The accepted My Advisees UI uses URL-addressable request/review contexts for deterministic Dashboard and compatibility-route deep links. Action badges represent actionable workload rather than unread state; Active Advisees has no notification-style count. Historical Defense History resolves a manuscript only from the exact attempt's `DefenseSchedule.manuscriptDocumentId`; an unbound legacy attempt is shown as **Historical manuscript version not linked** and must not substitute the current/latest manuscript.
+
+Final ADV-8 re-verification reported focused Proposal 23/23 PASS, focused Final 14/14 PASS, Adviser-focused regression 285/285 PASS, full backend 1,962 PASS / 5 environment-conditional storage skips / 0 failures, frontend Adviser verifiers 72/72 PASS, and successful backend/frontend build-static checks. The project owner separately accepted the final My Advisees main-workspace visual design. Final-gate coding-agent browser QA was **NOT EXECUTED** and hosted CI was **NOT OBSERVED**; neither is represented as passed.
 
 ## 1. Purpose
 
@@ -2604,6 +2624,7 @@ Every workflow-policy update should add an entry below.
 
 | Version | Date | Change | Source |
 |---|---|---|---|
+| 1.15-draft | 2026-10-21 | Closed the Adviser Workflow / My Advisees implementation through ADV-8; recorded the accepted Adviser HEAD, final Adviser-facing labels, single-active-Adviser fail-closed review authority, exact historical manuscript wording, and final verification evidence boundaries. | Accepted `refactor/adviser-workflow` implementation + project-owner visual acceptance + ADV-8 final re-verification |
 | 1.0-draft | 2026-09-22 | Consolidated old workflow/UIUX references, current `refactor/defense-workflow` audit, current client panel counts, and EARIST research into one canonical refactor specification. | Client + project references + EARIST research |
 | 1.1-draft | 2026-09-22 | Integrated current EARIST 2025 forms, printable-form placement, adviser conforme/dean approval flow, formal defense approval chain, form-specific signatories, and revised committee interpretation. | Current EARIST forms supplied by client |
 | 1.2-draft | 2026-09-22 | Moved Expert Evaluation outside the core defense workflow; introduced official document classification plus separate print/e-signature architecture and immutable generated-document snapshots. | Project scope review + current EARIST forms |
@@ -2616,6 +2637,7 @@ Every workflow-policy update should add an entry below.
 
 | Date | Decision | Status / Source |
 |---|---|---|
+| 2026-10-21 | Current Adviser authority is the sole active `AdviserAssignment` across Adviser workspace, scheduling, academic document access, and Proposal/Final review APIs; duplicate active rows fail closed. Accepted Adviser workspace labels are **Active Advisees**, **Adviser Requests**, and **Manuscript Reviews**. | CONFIRMED_PROJECT_DESIGN / IMPLEMENTED_AND_ACCEPTED — ADV-8 CLOSED at `e8876239` |
 | 2026-09-22 | Title application does not require adviser. | Current client/project clarification — CONFIRMED_CLIENT |
 | 2026-09-24 | After formal Title Defense PASS and official-title selection, the student may begin Adviser Request. | Current client clarification — CONFIRMED_CLIENT |
 | 2026-10-15 | Supersede the project requirement that Title Defense must select/lock one title. The submitted Title Proposal document/package remains the defense basis; title suggestions are advisory; after `PASSED` and completed required defense records, Adviser Request may begin and the Student + Adviser may later refine the working title. | Current project-owner workflow clarification — CONFIRMED_PROJECT_DESIGN; supersedes the selected-title dependency above for GS-IS behavior |
