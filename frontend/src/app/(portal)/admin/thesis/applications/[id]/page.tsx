@@ -294,7 +294,7 @@ export default function DefenseApplicationDetailPage() {
   const isProposal = app.stage === "PROPOSAL";
   const isFinal = app.stage === "FINAL";
   const selectedTitle = app.thesisTitles.find((t) => t.isSelected) ?? null;
-  const adviser = app.assignment?.adviser;
+  const adviser = app.activeAdviser;
   const canDecide =
     app.workflowBucket === "NEEDS_REVIEW" ||
     app.rawApplicationStatus === "PENDING";
@@ -404,8 +404,8 @@ export default function DefenseApplicationDetailPage() {
                         {adviser.firstName} {adviser.lastName}
                       </p>
                       <p className="mt-1 text-xs text-(--earist-body-text)">
-                        The Adviser relationship is not automatically a defense
-                        committee seat.
+                        Included automatically in the Proposal/Final defense
+                        committee.
                       </p>
                     </div>
                   )}

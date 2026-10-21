@@ -75,6 +75,27 @@ export function resolvePanelistRequestUiState(
   return "CLOSED";
 }
 
+/** Current request workflow in My Advisees; terminal requests stay in history. */
+export function isCurrentAdviserRequest(
+  row: Pick<
+    PanelistAdviserRequestDto,
+    "status" | "adviserStatus" | "deanStatus"
+  >,
+): boolean {
+  const state = resolvePanelistRequestUiState(row);
+  return state === "ACTIONABLE" || state === "CONFORMED_WAITING_DEAN";
+}
+
+/** Only a request awaiting this Adviser's response contributes to workload. */
+export function isActionableAdviserRequest(
+  row: Pick<
+    PanelistAdviserRequestDto,
+    "status" | "adviserStatus" | "deanStatus"
+  >,
+): boolean {
+  return resolvePanelistRequestUiState(row) === "ACTIONABLE";
+}
+
 export function titleDefenseRoleLabel(role: string | null): string {
   if (role === "CHAIRMAN") return "Chairman";
   if (role === "PANELIST") return "Panelist";

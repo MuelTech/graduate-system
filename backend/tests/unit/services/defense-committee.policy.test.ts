@@ -129,6 +129,18 @@ describe("Title Defense validation (no Adviser)", () => {
     expect(result.valid).toBe(false);
     expect(result.errors.join(" ")).toMatch(/ADVISER/i);
   });
+
+  it("does not auto-add or require an Adviser seat at Title even when one is active", () => {
+    const result = policy.validateAssignments(
+      "TITLE_DEFENSE",
+      "MASTERS",
+      titleMasters(),
+      { adviserUserId: "active-adviser" },
+    );
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(policy.getPolicy("TITLE_DEFENSE", "MASTERS").adviserMode).toBe("NONE");
+  });
 });
 
 describe("Proposal/Final validation (automatic active Adviser)", () => {

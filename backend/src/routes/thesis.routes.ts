@@ -186,6 +186,24 @@ router.get(
   thesisController.getMyAdviserRequests,
 );
 
+// PANELIST/ADVISER: ADV-2 read-only My Advisees foundation. One workspace
+// projection composed from the caller's active assignments, own requests, and
+// existing Proposal/Final review queues.
+router.get(
+  "/adviser/workspace",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getAdviserWorkspace,
+);
+
+// PANELIST/ADVISER: bounded overview for one CURRENT active advisee.
+router.get(
+  "/adviser/advisees/:studentId",
+  authenticateJWT,
+  requireRole(["PANELIST"]),
+  thesisController.getAdviserAdviseeDetail,
+);
+
 // PANELIST/ADVISER: CONFORME / Decline (does not create AdviserAssignment)
 router.post(
   "/adviser/requests/:id/adviser-response",

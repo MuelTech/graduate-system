@@ -413,6 +413,7 @@ describe("panelist-dashboard rules", () => {
     expect(actionable.needsAttention[0]).toMatchObject({
       category: "ADVISER_REQUEST",
       actionLabel: "Review Request",
+      href: "/panelist/advisees?tab=requests&requestId=req-1",
     });
 
     const waitingDean = build({
@@ -420,6 +421,9 @@ describe("panelist-dashboard rules", () => {
     });
     expect(waitingDean.needsAttention).toEqual([]);
     expect(waitingDean.waitingOnOthers.some((w) => w.id === "adviser-dean:req-1")).toBe(true);
+    expect(
+      waitingDean.waitingOnOthers.find((w) => w.id === "adviser-dean:req-1")?.href,
+    ).toBe("/panelist/advisees?tab=requests&requestId=req-1");
     expect(waitingDean.kpis.pendingTasks).toBe(0);
   });
 
@@ -429,12 +433,16 @@ describe("panelist-dashboard rules", () => {
       category: "ADVISER_MANUSCRIPT_REVIEW",
       actionLabel: "Review Manuscript",
       stage: "Proposal",
+      href: "/panelist/advisees?tab=reviews&stage=PROPOSAL&thesisId=thesis-1",
     });
 
     const finalReview = build({
       finalReviewTasks: [reviewTask({ stage: "FINAL" })],
     });
     expect(finalReview.needsAttention[0].stage).toBe("Final");
+    expect(finalReview.needsAttention[0].href).toBe(
+      "/panelist/advisees?tab=reviews&stage=FINAL&thesisId=thesis-1",
+    );
 
     const awaitingRevision = build({
       proposalReviewTasks: [reviewTask({ reviewStatus: "CHANGES_REQUESTED" })],
@@ -443,6 +451,11 @@ describe("panelist-dashboard rules", () => {
     expect(
       awaitingRevision.waitingOnOthers.some((w) => w.id === "manuscript-revision:PROPOSAL:thesis-1"),
     ).toBe(true);
+    expect(
+      awaitingRevision.waitingOnOthers.find(
+        (w) => w.id === "manuscript-revision:PROPOSAL:thesis-1",
+      )?.href,
+    ).toBe("/panelist/advisees?tab=reviews&stage=PROPOSAL&thesisId=thesis-1");
   });
 
   it("14. facilitator receives no evaluator or conclusion tasks", () => {

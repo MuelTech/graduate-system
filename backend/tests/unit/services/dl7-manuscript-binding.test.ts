@@ -107,7 +107,11 @@ function thesis(overrides: Record<string, unknown> = {}) {
       studentNumber: "2026-001",
       user: { id: "student-user", firstName: "Ana", lastName: "Student" },
       adviserAssignments: [
-        { adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" } },
+        {
+          id: "assign-1",
+          adviserId: "adviser-1",
+          adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
+        },
       ],
     },
     thesisTitles: [],
@@ -150,14 +154,18 @@ function finalCert(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.student.findUnique.mockResolvedValue(student());
-  prismaMock.adviserAssignment.findFirst.mockResolvedValue({
-    id: "assign-1",
-    studentId: "student-1",
-    adviserId: "adviser-1",
-    isActive: true,
-  });
   prismaMock.adviserAssignment.findMany.mockResolvedValue([
-    { student: { id: "student-1", studentNumber: "2026-001", user: student().user } },
+    {
+      id: "assign-1",
+      studentId: "student-1",
+      adviserId: "adviser-1",
+      isActive: true,
+      student: {
+        id: "student-1",
+        studentNumber: "2026-001",
+        user: student().user,
+      },
+    },
   ]);
   prismaMock.defenseConclusion.findFirst.mockImplementation(async (args: any) => {
     if (args?.where?.schedule?.defenseType === "PROPOSAL_DEFENSE") {

@@ -241,15 +241,17 @@ function AdminSchedulingPageInner() {
     },
   });
 
-  // Proposal/Final: the active adviser is derived (never hand-picked here).
+  // ADV-1: Proposal/Final derive the current active Adviser from the Student's
+  // active AdviserAssignment projection. The legacy ThesisRecord.assignment link
+  // is compatibility data and is never the current-Adviser authority here.
   const adviser = useMemo<CommitteeMember | null>(() => {
     if (!selected || selected.stage === "TITLE") return null;
-    const assignment = selected.assignment?.adviser;
-    if (!assignment) return null;
+    const active = selected.activeAdviser;
+    if (!active) return null;
     return {
-      userId: assignment.id,
+      userId: active.userId,
       role: "ADVISER",
-      name: `${assignment.firstName} ${assignment.lastName}`,
+      name: `${active.firstName} ${active.lastName}`,
       email: "",
       affiliation: "Active thesis adviser",
       isDerivedAdviser: true,
@@ -529,6 +531,7 @@ function AdminSchedulingPageInner() {
                     programTypeLabel={programTypeLabel(programType)}
                     members={committee}
                     adviser={adviser}
+                    adviserConflict={selected.activeAdviserConflict === true}
                     onAssignRole={handleAssignRole}
                   />
                   <DefenseScheduleForm
