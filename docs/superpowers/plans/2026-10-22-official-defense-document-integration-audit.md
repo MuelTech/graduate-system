@@ -6,7 +6,7 @@
 **Audit base:** `main` @ `401219c8c22f5b56247a79fa42f99bfe2ee8d41c`  
 **Status:** ACCEPTED AS INTEGRATION PLANNING BASELINE  
 **Runtime/schema changes:** none  
-**Next package:** FORM-INT-PRE1
+**Next package:** FORM-INT-1
 
 ## Purpose
 
@@ -179,20 +179,28 @@ Do not add a separate generic Defense Documents inventory and do not print the w
 
 ## Prerequisite correction
 
-### FORM-INT-PRE1 — Defense Record status alignment
+### FORM-INT-PRE1 — Defense Record status alignment — ACCEPTED
 
-`backend/src/services/defense-record-status.rules.ts` still contains the obsolete assumption that Title Defense does not use numerical Criteria/Summary.
+Accepted implementation:
+
+`ae68d14b7af037e0570c21336de1ea7c43fb424c`
+
+The obsolete Title Defense completion exemption has been removed from `backend/src/services/defense-record-status.rules.ts`.
 
 Current official-record runtime already treats Title, Proposal, and Final Defense as using evaluator scoring/finalization and producing official evaluator Criteria + Oral Examination Summary.
 
-Before document readiness is exposed through Admin record status, align the pure completion projection and its focused tests with the current runtime/source-of-truth.
+Current accepted projection:
 
-PRE1 scope:
+- Title, Proposal, and Final all require Summary ready + FINALIZED RAP after conclusion before `COMPLETE`;
+- no academic outcome is inferred by the projection;
+- missing Summary or non-finalized RAP remains `AWAITING_COMPLETION`.
+
+PRE1 changed only:
 
 - `backend/src/services/defense-record-status.rules.ts`;
-- `backend/tests/unit/services/defense-record-status.rules.test.ts`;
-- comments/tests only as needed;
-- no renderer, schema, API, route, or frontend change.
+- `backend/tests/unit/services/defense-record-status.rules.test.ts`.
+
+No renderer, schema, API, route, frontend, scoring, verdict, RAP-lifecycle, or committee-policy change was included.
 
 ## Additional integration constraints
 
@@ -206,8 +214,8 @@ PRE1 scope:
 
 ## Accepted bounded implementation sequence
 
-1. **FORM-INT-PRE1** — correct stale Title Defense record-status projection.
-2. **FORM-INT-1** — shared official-document orchestration + Individual Criteria PDF endpoint.
+1. **FORM-INT-PRE1 — ACCEPTED** — corrected stale Title Defense record-status projection.
+2. **FORM-INT-1 — NEXT** — shared official-document orchestration + Individual Criteria PDF endpoint.
 3. **FORM-INT-2** — GS-011 Summary PDF endpoint.
 4. **FORM-INT-3** — GS-006 / GS-007 Defense Application PDF endpoint.
 5. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
