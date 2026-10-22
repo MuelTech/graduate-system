@@ -112,6 +112,33 @@ export interface OfficialSummaryDocumentSource {
   adviserName: string | null;
 }
 
+export interface DefenseApplicationAssignmentSource {
+  panelAssignmentId: string;
+  userId: string;
+  role: string;
+  name: string;
+  createdAt: string;
+}
+
+/**
+ * FORM-INT-3: exact current-record source for GS-006/GS-007. Identity, program,
+ * schedule metadata, and committee seats all come from the exact schedule.
+ * This is a current-record print source; nothing is persisted or versioned.
+ */
+export interface OfficialDefenseApplicationDocumentSource {
+  scheduleId: string;
+  defenseType: string;
+  defenseDate: string;
+  defenseTime: string;
+  venueOrLink: string | null;
+  studentName: string | null;
+  studentNumber: string | null;
+  cellphone: string | null;
+  programName: string | null;
+  programType: string | null;
+  assignments: DefenseApplicationAssignmentSource[];
+}
+
 export interface OfficialCriteriaDto {
   available: boolean;
   status: string;
@@ -591,6 +618,82 @@ export class OfficialDefenseRecordService {
       summaryId: summary?.id ?? null,
       snapshot: (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null,
       adviserName,
+    };
+  }
+
+  /**
+   * FORM-INT-3: exact current-record source for the GS-006/GS-007 Defense
+   * Application. ADMIN-only, read-only, and anchored to the exact schedule.
+   * The student's generic User.email is deliberately not selected because the
+   * form's personal-Gmail field has no approved authoritative source.
+   */
+  async getOfficialDefenseApplicationDocumentSource(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<OfficialDefenseApplicationDocumentSource> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+                program: {
+                  select: { programName: true, programType: true },
+                },
+              },
+            },
+          },
+        },
+        panelAssignments: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          // Stable fallback ordering; the document mapper also sorts explicitly.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const student = schedule.thesis?.student ?? null;
+    const studentName = student
+      ? `${student.user.firstName} ${student.user.lastName}`.trim()
+      : "";
+    const assignments = Array.isArray(schedule.panelAssignments)
+      ? schedule.panelAssignments
+      : [];
+
+    return {
+      scheduleId: schedule.id,
+      defenseType: String(schedule.defenseType),
+      defenseDate: schedule.defenseDate.toISOString(),
+      defenseTime: schedule.defenseTime.toISOString(),
+      venueOrLink: schedule.venueOrLink ?? null,
+      studentName: studentName || null,
+      studentNumber: student?.studentNumber ?? null,
+      cellphone: student?.cellphone ?? null,
+      programName: student?.program?.programName ?? null,
+      programType: student?.program?.programType
+        ? String(student.program.programType)
+        : null,
+      assignments: assignments.map((assignment) => ({
+        panelAssignmentId: assignment.id,
+        userId: assignment.userId,
+        role: String(assignment.role),
+        name: `${assignment.user.firstName} ${assignment.user.lastName}`.trim(),
+        createdAt: assignment.createdAt.toISOString(),
+      })),
     };
   }
 

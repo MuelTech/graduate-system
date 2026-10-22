@@ -359,6 +359,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
       records: {
         getOfficialCriteria,
         getOfficialSummaryDocumentSource: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
       },
       loadLogos: async () => LOGOS,
       render,
@@ -456,6 +457,7 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
       records: {
         getOfficialCriteria: vi.fn().mockResolvedValue(v2Record()),
         getOfficialSummaryDocumentSource: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
       },
       loadLogos: async () => LOGOS,
       render: async () => {

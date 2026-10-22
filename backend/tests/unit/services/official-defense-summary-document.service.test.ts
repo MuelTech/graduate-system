@@ -386,6 +386,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     const service = new OfficialDefenseDocumentService({
       records: {
         getOfficialCriteria: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource,
       },
       loadLogos: async () => LOGOS,
@@ -416,6 +417,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     const service = new OfficialDefenseDocumentService({
       records: {
         getOfficialCriteria: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },
     });
@@ -446,6 +448,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     const service = new OfficialDefenseDocumentService({
       records: {
         getOfficialCriteria: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },
       loadLogos: async () => LOGOS,
@@ -465,6 +468,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     const service = new OfficialDefenseDocumentService({
       records: {
         getOfficialCriteria: vi.fn(),
+        getOfficialDefenseApplicationDocumentSource: vi.fn(),
         getOfficialSummaryDocumentSource: vi.fn().mockResolvedValue(source()),
       },
       loadLogos: async () => {

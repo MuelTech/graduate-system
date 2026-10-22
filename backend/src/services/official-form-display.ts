@@ -36,3 +36,31 @@ export function formatOfficialFormDate(value: string | null | undefined): string
   }
   return `${parsed.getUTCDate()} ${MONTH_NAMES[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
 }
+
+/**
+ * Format a stored wall-clock time (MySQL TIME represented by Prisma as a Date
+ * anchored at 1970-01-01 UTC). UTC components preserve the Admin-entered hour
+ * and minute; no local-timezone or timezone-instant conversion is performed.
+ */
+export function formatOfficialFormTime(
+  value: Date | string | null | undefined,
+): string {
+  if (!value) {
+    throw new AppError(
+      "The defense time is missing from the official record.",
+      422,
+    );
+  }
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new AppError(
+      "The defense time on the official record is invalid.",
+      422,
+    );
+  }
+  const hours24 = parsed.getUTCHours();
+  const minutes = String(parsed.getUTCMinutes()).padStart(2, "0");
+  const period = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  return `${hours12}:${minutes} ${period}`;
+}

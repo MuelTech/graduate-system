@@ -922,6 +922,14 @@ export class ThesisService {
     return this.officialDocuments.generateOralExamSummaryPdf(scheduleId, actor);
   }
 
+  /** FORM-INT-3: authenticated ADMIN GS-006/GS-007 Defense Application PDF. */
+  async generateDefenseApplicationPdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateDefenseApplicationPdf(scheduleId, actor);
+  }
+
   async getOralExamSummaryRecord(
     scheduleId: string,
     actor: { userId: string; role: string },

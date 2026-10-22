@@ -613,6 +613,14 @@ router.get(
   thesisController.getOralExamSummaryPdf,
 );
 
+// FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/application/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseApplicationPdf,
+);
+
 // CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
 // data. Committee accounts (incl. the session Chairman) are denied.
 router.get(

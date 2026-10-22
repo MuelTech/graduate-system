@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   generateSummary: vi.fn(),
+  generateApplication: vi.fn(),
 }));
 
 vi.mock("../../../src/config/database", () => ({ default: {} }));
@@ -10,6 +11,7 @@ vi.mock("../../../src/services/thesis.service", () => ({
   ThesisService: class {
     generateOfficialCriteriaPdf = mocks.generate;
     generateOralExamSummaryPdf = mocks.generateSummary;
+    generateDefenseApplicationPdf = mocks.generateApplication;
   },
 }));
 
@@ -188,6 +190,64 @@ describe("ThesisController.getOralExamSummaryPdf (FORM-INT-2)", () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
       error: "The Oral Examination Summary is not yet available for this defense.",
+    });
+    expect(res.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("ThesisController.getDefenseApplicationPdf (FORM-INT-3)", () => {
+  const controller = new ThesisController();
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns the GS-006/GS-007 PDF with a safe deterministic filename", async () => {
+    const pdf = Buffer.from("%PDF-1.7\ndefense application");
+    mocks.generateApplication.mockResolvedValue(pdf);
+    const res = makeRes();
+
+    await controller.getDefenseApplicationPdf(makeReq(), res);
+
+    expect(mocks.generateApplication).toHaveBeenCalledWith("sched-1", {
+      userId: "admin-1",
+      role: "ADMIN",
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
+    expect(res.setHeader).toHaveBeenCalledWith(
+      "Content-Disposition",
+      'attachment; filename="defense-application-sched-1.pdf"',
+    );
+    expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+    expect(res.setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
+    expect(res.send).toHaveBeenCalledTimes(1);
+    const body = res.send.mock.calls[0][0];
+    expect(Buffer.isBuffer(body)).toBe(true);
+    expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(res.json).not.toHaveBeenCalled();
+    expect(String(body)).not.toContain("signatureData");
+  });
+
+  it("rejects an unauthenticated request without generating a document", async () => {
+    const res = makeRes();
+    const req = { params: { scheduleId: "sched-1" } } as any;
+
+    await controller.getDefenseApplicationPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mocks.generateApplication).not.toHaveBeenCalled();
+  });
+
+  it("preserves the controlled invalid-committee conflict", async () => {
+    mocks.generateApplication.mockRejectedValue(
+      new AppError("The defense application requires exactly one Chairman assignment.", 409),
+    );
+    const res = makeRes();
+
+    await controller.getDefenseApplicationPdf(makeReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "The defense application requires exactly one Chairman assignment.",
     });
     expect(res.send).not.toHaveBeenCalled();
   });

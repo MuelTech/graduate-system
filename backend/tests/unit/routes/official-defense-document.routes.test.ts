@@ -21,6 +21,7 @@ function routes(router: unknown): StackLayer[] {
 const layers = routes(thesisRoutes);
 const CRITERIA_PDF_PATH = "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf";
 const SUMMARY_PDF_PATH = "/defense/:scheduleId/records/summary/pdf";
+const APPLICATION_PDF_PATH = "/defense/:scheduleId/records/application/pdf";
 
 function findRoute(path: string, method: string): StackLayer["route"] {
   return layers.find(
@@ -107,5 +108,16 @@ describe("FORM-INT-2 GS-011 Oral Examination Summary PDF route", () => {
     const allowedNext = vi.fn();
     roleGuard({ user: { userId: "admin-1", role: "ADMIN" } }, {} as any, allowedNext);
     expect(allowedNext).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("FORM-INT-3 Defense Application PDF route", () => {
+  it("is an authenticated ADMIN-only GET route", () => {
+    expectAdminOnlyRoute(APPLICATION_PDF_PATH);
+  });
+
+  it("keeps Criteria and Summary PDF routes intact", () => {
+    expect(findRoute(CRITERIA_PDF_PATH, "get")).toBeDefined();
+    expect(findRoute(SUMMARY_PDF_PATH, "get")).toBeDefined();
   });
 });

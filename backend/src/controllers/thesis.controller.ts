@@ -968,6 +968,32 @@ export class ThesisController {
     }
   };
 
+  /** FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only). */
+  public getDefenseApplicationPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const pdf = await this.thesisService.generateDefenseApplicationPdf(
+        scheduleId,
+        { userId, role: accountRole },
+      );
+      const fileName = `defense-application-${
+        safeFilenameToken(scheduleId) || "schedule"
+      }.pdf`;
+      sendPdfResponse(res, pdf, fileName);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
   /** CP7: Oral Examination Summary — ADMIN or session CHAIRMAN only (auth inside service). */
   public getOralExamSummary = async (
     req: AuthenticatedRequest,

@@ -17,7 +17,15 @@ import {
   type OfficialCriteriaDto,
 } from "./official-defense-record.service";
 import { loadOfficialFormLogos } from "./official-form-assets";
-import { formatOfficialFormDate } from "./official-form-display";
+import {
+  formatOfficialFormDate,
+  formatOfficialFormTime,
+} from "./official-form-display";
+import { DefenseCommitteePolicy } from "./defense-committee.policy";
+import { renderDefenseApplication } from "../documents/official-defense/defense-application/defense-application.renderer";
+import type { DefenseApplicationRenderInput } from "../documents/official-defense/defense-application/defense-application.types";
+import type { DefenseTypeName } from "../interfaces/defense-eligibility.interfaces";
+import type { ProgramTypeKey } from "../interfaces/defense-committee.interfaces";
 import { renderOralExamCriteria } from "../documents/official-defense/oral-exam-criteria/oral-exam-criteria.renderer";
 import type {
   OralExamCriteriaRenderInput,
@@ -31,7 +39,11 @@ import type {
 import type { InstitutionalLogos } from "../documents/official-defense/shared/institutional-header";
 import type { PdfImageInput } from "../documents/official-defense/shared/pdf-layout";
 import { LEGACY_POINTS_V1 } from "./oral-evaluation.institutional.rules";
-import type { OfficialSummaryDocumentSource } from "./official-defense-record.service";
+import type {
+  DefenseApplicationAssignmentSource,
+  OfficialDefenseApplicationDocumentSource,
+  OfficialSummaryDocumentSource,
+} from "./official-defense-record.service";
 
 /** Conservative scoped limit for one evaluator signature image. */
 export const MAX_SIGNATURE_BYTES = 1024 * 1024;
@@ -67,7 +79,9 @@ export interface OfficialDefenseDocumentActor {
 
 type RecordsReader = Pick<
   OfficialDefenseRecordService,
-  "getOfficialCriteria" | "getOfficialSummaryDocumentSource"
+  | "getOfficialCriteria"
+  | "getOfficialSummaryDocumentSource"
+  | "getOfficialDefenseApplicationDocumentSource"
 >;
 
 export interface OfficialDefenseDocumentDeps {
@@ -75,7 +89,12 @@ export interface OfficialDefenseDocumentDeps {
   readonly loadLogos?: () => Promise<InstitutionalLogos>;
   readonly render?: (input: OralExamCriteriaRenderInput) => Promise<Uint8Array>;
   readonly renderSummary?: (input: OralExamSummaryRenderInput) => Promise<Uint8Array>;
+  readonly renderApplication?: (
+    input: DefenseApplicationRenderInput,
+  ) => Promise<Uint8Array>;
 }
+
+const committeePolicy = new DefenseCommitteePolicy();
 
 function toFiniteNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -422,17 +441,231 @@ export function mapOfficialSummaryToRenderInput(
   };
 }
 
+const APPLICATION_TYPES: Record<
+  string,
+  "title" | "proposal" | "final"
+> = {
+  TITLE_DEFENSE: "title",
+  PROPOSAL_DEFENSE: "proposal",
+  FINAL_DEFENSE: "final",
+};
+
+/** Deterministic printed Panelist order: createdAt ascending, then id ascending. */
+function comparePanelists(
+  a: DefenseApplicationAssignmentSource,
+  b: DefenseApplicationAssignmentSource,
+): number {
+  const aTime = Date.parse(a.createdAt);
+  const bTime = Date.parse(b.createdAt);
+  const aValid = Number.isFinite(aTime);
+  const bValid = Number.isFinite(bTime);
+  if (aValid && bValid && aTime !== bTime) return aTime - bTime;
+  if (aValid !== bValid) return aValid ? -1 : 1;
+  return a.panelAssignmentId.localeCompare(b.panelAssignmentId);
+}
+
+function printableAssignmentName(
+  assignment: DefenseApplicationAssignmentSource,
+): string {
+  const name = nonEmpty(assignment.name);
+  if (!name) {
+    throw new AppError(
+      `The ${assignment.role.toLowerCase()} assignment has no printable name.`,
+      409,
+    );
+  }
+  return name;
+}
+
+/**
+ * Pure mapping from the exact schedule source to the accepted TEMPLATE-3
+ * contract. Committee quotas and role requirements come from the centralized
+ * `DefenseCommitteePolicy`; the integration does not maintain a second table.
+ * Fields without an approved authoritative source stay intentionally blank.
+ */
+export function mapDefenseApplicationToRenderInput(
+  source: OfficialDefenseApplicationDocumentSource,
+  logos: InstitutionalLogos,
+): DefenseApplicationRenderInput {
+  const programTypeRaw = String(source.programType ?? "").toUpperCase();
+  let variant: "masters" | "doctoral";
+  if (programTypeRaw === "MASTERS") variant = "masters";
+  else if (programTypeRaw === "DOCTORAL") variant = "doctoral";
+  else {
+    throw new AppError(
+      "The defense application has an unsupported program type.",
+      422,
+    );
+  }
+
+  const defenseTypeRaw = String(source.defenseType ?? "").toUpperCase();
+  const applicationType = APPLICATION_TYPES[defenseTypeRaw];
+  if (!applicationType) {
+    throw new AppError(
+      "The defense application has an unsupported defense type.",
+      422,
+    );
+  }
+
+  const studentName = nonEmpty(source.studentName);
+  if (!studentName) {
+    throw new AppError(
+      "The defense schedule is missing the student name required by the application form.",
+      422,
+    );
+  }
+  const programName = nonEmpty(source.programName);
+  if (!programName) {
+    throw new AppError(
+      "The defense schedule is missing the program required by the application form.",
+      422,
+    );
+  }
+
+  const policy = committeePolicy.getPolicy(
+    defenseTypeRaw as DefenseTypeName,
+    programTypeRaw as ProgramTypeKey,
+  );
+  const assignments = Array.isArray(source.assignments)
+    ? source.assignments
+    : [];
+
+  for (const assignment of assignments) {
+    if (
+      !policy.allowedRoles.includes(
+        String(assignment.role) as never,
+      )
+    ) {
+      if (assignment.role === "ADVISER" && policy.adviserMode === "NONE") {
+        throw new AppError(
+          "Title Defense applications cannot include an Adviser seat.",
+          409,
+        );
+      }
+      throw new AppError(
+        `Role ${assignment.role} is not allowed for this defense application.`,
+        409,
+      );
+    }
+  }
+
+  const seenUsers = new Set<string>();
+  for (const assignment of assignments) {
+    if (seenUsers.has(assignment.userId)) {
+      throw new AppError(
+        "The defense committee cannot assign the same user to more than one seat.",
+        409,
+      );
+    }
+    seenUsers.add(assignment.userId);
+  }
+
+  const roleOf = (role: string) =>
+    assignments.filter((assignment) => assignment.role === role);
+
+  const chairmen = roleOf("CHAIRMAN");
+  if (chairmen.length !== 1) {
+    throw new AppError(
+      "The defense application requires exactly one Chairman assignment.",
+      409,
+    );
+  }
+
+  const panelists = roleOf("PANELIST").sort(comparePanelists);
+  if (panelists.length !== policy.panelistCount) {
+    throw new AppError(
+      `The defense application requires exactly ${policy.panelistCount} Panelist assignment(s) for this stage (got ${panelists.length}).`,
+      409,
+    );
+  }
+
+  const facilitators = roleOf("FACILITATOR");
+  if (facilitators.length !== 1) {
+    throw new AppError(
+      "The defense application requires exactly one Facilitator assignment.",
+      409,
+    );
+  }
+
+  const rapporteurs = roleOf("RAPPORTEUR");
+  if (rapporteurs.length !== 1) {
+    throw new AppError(
+      "The defense application requires exactly one Rapporteur assignment.",
+      409,
+    );
+  }
+
+  const advisers = roleOf("ADVISER");
+  if (policy.adviserMode === "NONE") {
+    if (advisers.length !== 0) {
+      throw new AppError(
+        "Title Defense applications cannot include an Adviser seat.",
+        409,
+      );
+    }
+  } else if (advisers.length !== 1) {
+    throw new AppError(
+      "Proposal and Final Defense applications require exactly one exact-schedule Adviser.",
+      409,
+    );
+  }
+
+  if (assignments.length !== policy.sessionTotal) {
+    throw new AppError(
+      `The defense application requires exactly ${policy.sessionTotal} committee assignments (got ${assignments.length}).`,
+      409,
+    );
+  }
+
+  const chairmanName = printableAssignmentName(chairmen[0]);
+  const panelistNames = [chairmanName, ...panelists.map(printableAssignmentName)];
+  const adviserName =
+    advisers.length === 1 ? printableAssignmentName(advisers[0]) : "";
+
+  return {
+    logos,
+    variant,
+    applicationType,
+    studentName,
+    courseAndMajor: programName,
+    studentNumber: source.studentNumber ?? "",
+    cellphoneNumber: source.cellphone ?? "",
+    // No approved authoritative source exists for these fields.
+    applicantDateAndTime: "",
+    amountPaid: "",
+    officialReceiptNumber: "",
+    dateOfApplication: "",
+    personalGmail: "",
+    defenseDate: formatOfficialFormDate(source.defenseDate),
+    defenseTime: formatOfficialFormTime(source.defenseTime),
+    defenseLink: source.venueOrLink ?? "",
+    committee: {
+      adviserName,
+      panelistNames,
+      facilitatorName: printableAssignmentName(facilitators[0]),
+      rapporteurName: printableAssignmentName(rapporteurs[0]),
+    },
+    deanName: "",
+    vicePresidentName: "",
+    presidentName: "",
+  };
+}
+
 export class OfficialDefenseDocumentService {
   private readonly records: RecordsReader;
   private readonly loadLogos: () => Promise<InstitutionalLogos>;
   private readonly render: (input: OralExamCriteriaRenderInput) => Promise<Uint8Array>;
   private readonly renderSummary: (input: OralExamSummaryRenderInput) => Promise<Uint8Array>;
+  private readonly renderApplication: (
+    input: DefenseApplicationRenderInput,
+  ) => Promise<Uint8Array>;
 
   constructor(deps: OfficialDefenseDocumentDeps = {}) {
     this.records = deps.records ?? new OfficialDefenseRecordService();
     this.loadLogos = deps.loadLogos ?? loadOfficialFormLogos;
     this.render = deps.render ?? renderOralExamCriteria;
     this.renderSummary = deps.renderSummary ?? renderOralExamSummary;
+    this.renderApplication = deps.renderApplication ?? renderDefenseApplication;
   }
 
   /**
@@ -512,6 +745,47 @@ export class OfficialDefenseDocumentService {
       }
       throw new AppError(
         "The official Oral Examination Summary could not be generated.",
+        500,
+      );
+    }
+  }
+
+  /**
+   * Generate the GS-006/GS-007 Defense Application PDF from the EXACT scheduled
+   * defense. FORM-INT-3 is ADMIN-only and a current-record on-demand print; it
+   * does not persist or version generated documents.
+   */
+  async generateDefenseApplicationPdf(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ): Promise<Uint8Array> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const source =
+      await this.records.getOfficialDefenseApplicationDocumentSource(
+        scheduleId,
+        actor,
+      );
+    const logos = await this.loadLogos();
+    const input = mapDefenseApplicationToRenderInput(source, logos);
+
+    try {
+      return await this.renderApplication(input);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error instanceof RangeError) {
+        throw new AppError(
+          "The defense application cannot fit the official one-page form.",
+          422,
+        );
+      }
+      throw new AppError(
+        "The official defense application could not be generated.",
         500,
       );
     }
