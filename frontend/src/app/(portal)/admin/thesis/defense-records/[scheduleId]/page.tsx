@@ -1,9 +1,15 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ApiError, apiClientRequest } from "@/lib/api.client";
+import {
+  OfficialDocumentError,
+  downloadOfficialDefensePdf,
+} from "@/lib/official-defense-documents.client";
 import { cn } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ExternalLink, Printer, RefreshCw } from "lucide-react";
+import { AlertCircle, ExternalLink, Loader2, Printer, RefreshCw } from "lucide-react";
 import {
   formatDefenseDate,
   formatDefenseTime,
@@ -241,9 +247,9 @@ function CommitteeRoster({
 /* ------------------------------------------------------------- skeleton */
 
 /**
- * Section-owned document action placeholder. The future official document
- * outputs are not implemented yet, so this is a real, semantically disabled
- * button: no href, no no-op click handler, no window.print(), no fake PDF.
+ * Committee Report placeholder. GS Form No. 22 is not implemented in this
+ * sequence, so this remains a real, semantically disabled button: no href, no
+ * no-op click handler, no browser-page printing, no fake PDF.
  */
 function DownloadPrintButton() {
   return (
@@ -252,10 +258,48 @@ function DownloadPrintButton() {
       variant="outline"
       size="sm"
       disabled
-      title="Document output is not available yet"
+      title="Official Committee Report PDF is not available yet."
     >
       <Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />
       Download / Print
+    </Button>
+  );
+}
+
+interface OfficialPdfButtonProps {
+  label: string;
+  ariaLabel: string;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}
+
+/** Section-owned official PDF action with scoped loading state. */
+function OfficialPdfButton({
+  label,
+  ariaLabel,
+  title,
+  onClick,
+  disabled = false,
+  loading = false,
+}: OfficialPdfButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={disabled || loading}
+      title={title}
+      aria-label={ariaLabel}
+      onClick={onClick}
+    >
+      {loading ? (
+        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
+      ) : (
+        <Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />
+      )}
+      {loading ? "Generating…" : label}
     </Button>
   );
 }
@@ -328,6 +372,34 @@ export default function AdminDefenseRecordDetailPage() {
         )) as RecordDetail,
       retry: false,
     });
+
+  const [pendingPdfKeys, setPendingPdfKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  // Ref guard prevents a second click before React commits the disabled state.
+  const pendingPdfKeysRef = useRef<Set<string>>(new Set());
+
+  const generateOfficialPdf = async (
+    key: string,
+    path: string,
+    fallbackFilename: string,
+  ): Promise<void> => {
+    if (pendingPdfKeysRef.current.has(key)) return;
+    pendingPdfKeysRef.current.add(key);
+    setPendingPdfKeys(new Set(pendingPdfKeysRef.current));
+    try {
+      await downloadOfficialDefensePdf(path, fallbackFilename);
+    } catch (pdfError: unknown) {
+      toast.error(
+        pdfError instanceof OfficialDocumentError
+          ? pdfError.message
+          : "Unable to generate the official PDF. Please try again.",
+      );
+    } finally {
+      pendingPdfKeysRef.current.delete(key);
+      setPendingPdfKeys(new Set(pendingPdfKeysRef.current));
+    }
+  };
 
   if (isLoading) {
     return <DetailSkeleton />;
@@ -402,6 +474,7 @@ export default function AdminDefenseRecordDetailPage() {
   // thesis-global ThesisTitle.isSelected (cross-attempt leakage).
   const recordedTitle = data.rapReport?.selectedTitle ?? null;
   const venue = parseVenueOrLink(o.venueOrLink);
+  const summaryReady = data.oralExamSummary.ready;
 
   // RAP required-signature progress is derived from the signatory rows so it
   // can never over-count optional signers (exact §9 formula).
@@ -444,7 +517,19 @@ export default function AdminDefenseRecordDetailPage() {
               >
                 {sessionStatusLabel(o.sessionStatus)}
               </Badge>
-              <DownloadPrintButton />
+              <OfficialPdfButton
+                label="Download / Print"
+                ariaLabel="Download / Print Defense Application"
+                title="Download / Print the official Defense Application (GS-006 / GS-007)."
+                loading={pendingPdfKeys.has("application")}
+                onClick={() =>
+                  void generateOfficialPdf(
+                    "application",
+                    `/thesis/defense/${scheduleId}/records/application/pdf`,
+                    `defense-application-${scheduleId}.pdf`,
+                  )
+                }
+              />
             </div>
           </div>
         </CardHeader>
@@ -521,7 +606,6 @@ export default function AdminDefenseRecordDetailPage() {
                 <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                   Evaluation Results
                 </CardTitle>
-                <DownloadPrintButton />
               </div>
             </CardHeader>
             <CardContent>
@@ -531,7 +615,7 @@ export default function AdminDefenseRecordDetailPage() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[820px] text-left text-sm">
                     <thead>
                       <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
                         <th className="px-3 py-2">Evaluator</th>
@@ -539,6 +623,7 @@ export default function AdminDefenseRecordDetailPage() {
                         <th className="px-3 py-2">Evaluation Status</th>
                         <th className="px-3 py-2">Signature Status</th>
                         <th className="px-3 py-2">Signed At</th>
+                        <th className="px-3 py-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -582,6 +667,28 @@ export default function AdminDefenseRecordDetailPage() {
                               ? formatSignedAt(e.signedAt)
                               : "—"}
                           </td>
+                          <td className="px-3 py-2 text-right">
+                            <OfficialPdfButton
+                              label="PDF"
+                              ariaLabel={`Download / Print Individual Evaluation for ${e.evaluatorName}`}
+                              title={
+                                e.hasOfficialCriteria
+                                  ? "Download / Print Individual Evaluation"
+                                  : "Available after the evaluator finalizes and signs the evaluation."
+                              }
+                              disabled={!e.hasOfficialCriteria}
+                              loading={pendingPdfKeys.has(
+                                `criteria:${e.panelAssignmentId}`,
+                              )}
+                              onClick={() =>
+                                void generateOfficialPdf(
+                                  `criteria:${e.panelAssignmentId}`,
+                                  `/thesis/defense/${scheduleId}/records/criteria/${e.panelAssignmentId}/pdf`,
+                                  `individual-evaluation-${scheduleId}-${e.panelAssignmentId}.pdf`,
+                                )
+                              }
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -598,7 +705,24 @@ export default function AdminDefenseRecordDetailPage() {
                 <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                   Oral Examination Summary
                 </CardTitle>
-                <DownloadPrintButton />
+                <OfficialPdfButton
+                  label="Download / Print"
+                  ariaLabel="Download / Print Oral Examination Summary"
+                  title={
+                    summaryReady
+                      ? "Download / Print the official Oral Examination Summary (GS-011)."
+                      : "Available after the official Oral Examination Summary is generated."
+                  }
+                  disabled={!summaryReady}
+                  loading={pendingPdfKeys.has("summary")}
+                  onClick={() =>
+                    void generateOfficialPdf(
+                      "summary",
+                      `/thesis/defense/${scheduleId}/records/summary/pdf`,
+                      `oral-examination-summary-${scheduleId}.pdf`,
+                    )
+                  }
+                />
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">

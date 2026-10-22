@@ -180,12 +180,18 @@ test("Admin Committee Report keeps full signer audit and uses Committee Report w
   assert.match(admin, /The Committee Report has not been prepared yet\./);
 });
 
-test("Download / Print remains disabled and no document processing was added", () => {
+test("Admin official PDF actions are active; Committee Report stays deferred", () => {
   const admin = read(ADMIN);
 
-  assert.match(admin, /function DownloadPrintButton/);
-  assert.match(admin, /disabled/);
-  assert.doesNotMatch(admin, /window\.print\(\);/);
+  // FORM-INT-4 supersedes the earlier deferred-document placeholder.
+  assert.match(admin, /records\/application\/pdf/);
+  assert.match(admin, /records\/summary\/pdf/);
+  assert.match(admin, /records\/criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
+  assert.match(admin, /e\.hasOfficialCriteria/);
+  assert.match(admin, /!data\.oralExamSummary\.ready/);
+  assert.match(admin, /Official Committee Report PDF is not available yet\./);
+  // Still no browser-page printing or client-side PDF generation dependency.
+  assert.doesNotMatch(admin, /window\.print\(\)/);
   assert.doesNotMatch(admin, /import .*jspdf|import .*pdf-lib/i);
 });
 
