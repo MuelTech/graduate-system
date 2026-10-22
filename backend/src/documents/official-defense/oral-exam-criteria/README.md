@@ -1,6 +1,6 @@
 # TEMPLATE-1: Oral Examination Criteria
 
-Status: implemented for project-owner visual review; **not yet accepted**. No other form or system integration is included.
+Status: **ACCEPTED / PUBLISHED** on 2026-10-22. Accepted remote HEAD: `9e76390623739dbb9ec0e609baf6c78880d6edce`. No system integration is included.
 
 `renderOralExamCriteria(input): Promise<Uint8Array>` draws one A4 portrait PDF with `pdf-lib`. It imports only `pdf-lib`, its render-input types, and the local layout/header/text helpers. It does not read files, query data, bootstrap the application, inspect authorization, select attempts, or make academic decisions.
 
@@ -41,7 +41,7 @@ The actual reference photograph and both logo images were inspected before autho
 
 The clean reconstruction deliberately removes skew, noise, shadows, hole marks, and mottled photocopy shading. Summary bands use uniform dark/light gray with readable text. The supplied logos retain their original colors, whereas the photographed sheet is monochrome. Table values are consistently printed to two decimal places as requested (`1.00`, `2.00`, `2.50`), while the photograph abbreviates some trailing zeros. Font family/size and physical measurements are reconstructed from a perspective photograph, so exact original typefaces and millimeter geometry cannot be verified. The reference has no confirmed form code/revision and none is added.
 
-Project-owner visual approval is still required. TEMPLATE-2 and all data/API/UI/workflow integration remain deferred.
+Project-owner visual approval was granted on 2026-10-22. TEMPLATE-2 may proceed as the next bounded static-template package; all data/API/UI/workflow integration remains deferred.
 
 ## Bounded spacing/marker refinement (2026-10-22)
 
@@ -53,8 +53,30 @@ Starting checkout: `feat/official-defense-document-forms` at `d06e7967f2212bd86a
 - The existing `X` is unchanged visually and explicitly documented as an unconfirmed QA glyph in the renderer, sample script, and test. Tests verify placement from selected values without defining an institutional symbol rule.
 - Blank, filled, and long-value PDFs/PNGs were regenerated and compared with the same reference. Compact identity baselines, safe long-value wrapping, lower-page whitespace, and name/rule/caption spacing were visually checked; no clipping or overlap was observed. Eight focused tests and the backend build pass, including new checks for inline baseline proximity, conditional wrapping, signature-name proximity, and dummy-marker column placement.
 
-No commit/push is part of this refinement. Project-owner visual approval and subsequent publication remain separate steps.
+This refinement was accepted and published. The accepted TEMPLATE-1 publication ends at `9e76390623739dbb9ec0e609baf6c78880d6edce`.
 
 ### Identity typography follow-up
 
 After comparison with the local institutional reference, normal Candidate/Course/Date values and labels use 12 pt Helvetica (previously 9.5-10 pt values and 11 pt labels). Labels share the values' underline baseline. Candidate text retains its 116 pt region; Course retains a short underline for `MAEd` and a 116 pt text region; Date receives a 90 pt text region so `22 October 2026` fits at 12 pt. Horizontal label positions accommodate the larger lettering with a gap between neighboring fields, including wrapped long values. The one-line/two-line height policy, table typography, signature block, and lower-page whitespace are unchanged. Long stress-test inputs can still wrap or reduce within the existing bounds. The filled sample uses only the supplied abbreviation `MAEd`; no specialization is appended.
+
+
+## Acceptance record
+
+Project-owner visual acceptance was granted on 2026-10-22 after review of the final regenerated output.
+
+Published commits:
+
+- `d06e7967f2212bd86a2a869e4ed1dcfd90c498db` — initial TEMPLATE-1 renderer package
+- `9e76390623739dbb9ec0e609baf6c78880d6edce` — final layout/sample refinements
+
+Accepted points:
+
+- Candidate, Course, and Date fields use the compact inline treatment;
+- the normal filled sample uses `Course: MAEd`;
+- long values remain bounded/wrappable without silent truncation;
+- evaluator printed name, optional signature area, rule, and caption form a compact unit while preserving the reference's lower-page whitespace;
+- the selected-cell `X` remains an unconfirmed QA glyph only and does not define institutional scoring policy;
+- blank, filled, and long-value samples were visually reviewed with no observed clipping or overlap;
+- focused renderer tests and backend build passed.
+
+TEMPLATE-1 is closed as the accepted static renderer baseline. TEMPLATE-2 / GS-011 is the next authorized static-template package.
