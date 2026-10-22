@@ -8,6 +8,8 @@ const ALLOWED_MODEL_TYPES = [
   "rap-report",
   "student-requirement",
   "plagiarism-result",
+  "elibrary-manuscript",
+  "elibrary-respondent-data",
 ] as const;
 
 const DOCUMENT_HEADERS: Record<string, string> = {

@@ -27,7 +27,8 @@ export class RepositoryController {
     try {
       const query =
         typeof req.query.q === "string" ? req.query.q : undefined;
-      const result = await this.service.listPublished(query);
+      const caller = (req as AuthenticatedRequest).user;
+      const result = await this.service.listPublished(query, caller);
       res.json(result);
     } catch (error) {
       sendRepositoryError(res, error);
@@ -37,7 +38,8 @@ export class RepositoryController {
   /** PUBLIC: one published Repository entry; private/unknown -> 404. */
   getPublic = async (req: Request, res: Response) => {
     try {
-      const result = await this.service.getPublished(req.params.id as string);
+      const caller = (req as AuthenticatedRequest).user;
+      const result = await this.service.getPublished(req.params.id as string, caller);
       res.json(result);
     } catch (error) {
       sendRepositoryError(res, error);
@@ -73,10 +75,35 @@ export class RepositoryController {
   };
 
   /** ADMIN: remove Repository metadata (private archive is untouched). */
-  unpublish = async (req: Request, res: Response) => {
+  unpublish = async (req: AuthenticatedRequest, res: Response) => {
     try {
+      const adminId = req.user?.userId;
       const result = await this.service.unpublishMetadata(
         req.params.id as string,
+        adminId,
+      );
+      res.json(result);
+    } catch (error) {
+      sendRepositoryError(res, error);
+    }
+  };
+
+  /** ADMIN: update research metadata (title, abstract, keywords). */
+  updateMetadata = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const adminId = req.user?.userId;
+      if (!adminId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const result = await this.service.updateMetadata(
+        req.params.id as string,
+        adminId,
+        {
+          title: req.body?.title,
+          abstract: req.body?.abstract,
+          keywords: req.body?.keywords,
+        },
       );
       res.json(result);
     } catch (error) {

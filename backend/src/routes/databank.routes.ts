@@ -1,9 +1,17 @@
 import { Router } from "express";
 import { DatabankController } from "../controllers/databank.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import { secureUpload } from "../storage/secure-upload";
 
 const router = Router();
 const controller = new DatabankController();
+
+const databankUpload = secureUpload("databank-archive").fields([
+  { name: "manuscript", maxCount: 1 },
+  { name: "certifications", maxCount: 1 },
+  { name: "instruments", maxCount: 1 },
+  { name: "respondentData", maxCount: 1 },
+]);
 
 // 1. DEPRECATED public read aliases.
 //    These MUST delegate to the canonical /repository publication service so
@@ -27,11 +35,18 @@ router.post(
   "/archive",
   authenticateJWT,
   requireRole(["STUDENT"]),
+  databankUpload,
   controller.registerArchive,
 );
 
 // DEPRECATED compatibility alias: delegates to the safe archive contract and
 // ignores any client-supplied thesisId/title/path authority fields.
-router.post("/", authenticateJWT, requireRole(["STUDENT"]), controller.createEntry);
+router.post(
+  "/",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  databankUpload,
+  controller.createEntry,
+);
 
 export default router;

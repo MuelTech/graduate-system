@@ -298,6 +298,43 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
         getOwnerId: (r) => r.createdById ?? null,
         getExtraAuthCheck: (record) => !record.isArchived,
     },
+    "elibrary-manuscript": {
+        prismaModel: "eLibrary",
+        fileField: "fullPaperPath",
+        include: {
+            thesis: {
+                include: {
+                    student: {
+                        include: { user: true },
+                    },
+                },
+            },
+        },
+        getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
+        getExtraAuthCheck: (record, _userId, userRole) => {
+            // Any active authenticated student, panelist, or admin can stream a published manuscript
+            if (record.isPublic && (userRole === "STUDENT" || userRole === "PANELIST" || userRole === "ADMIN")) {
+                return true;
+            }
+            return false;
+        },
+    },
+    "elibrary-respondent-data": {
+        prismaModel: "eLibrary",
+        fileField: "respondentDataPath",
+        include: {
+            thesis: {
+                include: {
+                    student: {
+                        include: { user: true },
+                    },
+                },
+            },
+        },
+        getOwnerId: (r) => r.thesis?.student?.user?.id ?? null,
+        // STRICT PRIVACY: only owner or Admin can stream raw respondent datasets
+        getExtraAuthCheck: () => false,
+    },
 };
 
 export class DocumentService {

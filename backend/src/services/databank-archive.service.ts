@@ -1,8 +1,28 @@
+import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import {
   DatabankArchiveRepository,
   type ArchiveRecord,
 } from "../repositories/databank-archive.repository";
+import type { SecureMulterFile } from "../storage/secure-upload";
+
+export interface ArchivalFiles {
+  manuscript?: Express.Multer.File | SecureMulterFile;
+  certifications?: Express.Multer.File | SecureMulterFile;
+  instruments?: Express.Multer.File | SecureMulterFile;
+  respondentData?: Express.Multer.File | SecureMulterFile;
+}
+
+export interface DatabankArchiveSummaryDto {
+  id: string;
+  officialTitle: string;
+  abstract: string | null;
+  keywords: string | null;
+  registeredAt: string;
+  hasManuscript: boolean;
+  hasRespondentData: boolean;
+}
+
 
 /**
  * DL-9: private Research Databank archival registration.
@@ -31,22 +51,14 @@ export interface DatabankResearchContextDto {
   finalRapFinalizedAt: string | null;
 }
 
-export interface DatabankArchiveSummaryDto {
-  id: string;
-  officialTitle: string;
-  abstract: string | null;
-  keywords: string | null;
-  registeredAt: string;
-}
-
 export interface DatabankArchiveContextDto {
   eligible: boolean;
   reasons: DatabankEligibilityReason[];
   researchContext: DatabankResearchContextDto | null;
   archive: DatabankArchiveSummaryDto | null;
   artifactPolicy: {
-    archivalArtifactLinked: false;
-    policyResolved: false;
+    archivalArtifactLinked: boolean;
+    policyResolved: boolean;
   };
 }
 
@@ -82,6 +94,8 @@ function toArchiveDto(archive: ArchiveRecord, officialTitle: string): DatabankAr
     abstract: archive.abstract ?? null,
     keywords: archive.keywords ?? null,
     registeredAt: archive.createdAt.toISOString(),
+    hasManuscript: Boolean(archive.fullPaperPath),
+    hasRespondentData: Boolean(archive.respondentDataPath),
   };
 }
 
@@ -268,17 +282,22 @@ export class DatabankArchiveService {
           : null,
       },
       archive: archive ? toArchiveDto(archive, context.officialTitle) : null,
-      artifactPolicy: { archivalArtifactLinked: false, policyResolved: false },
+      artifactPolicy: {
+        archivalArtifactLinked: Boolean(archive?.fullPaperPath),
+        policyResolved: true,
+      },
     };
   }
 
   /**
    * STUDENT registration. All authority fields are server-derived; only safe
-   * private metadata is accepted from the client.
+   * private metadata is accepted from the client, with physical files promoted
+   * by the DL-2 secure upload pipeline.
    */
   async registerArchive(
     userId: string,
     metadata: RegisterArchiveMetadata = {},
+    files?: ArchivalFiles,
   ): Promise<DatabankArchiveSummaryDto> {
     const studentId = await this.requireStudent(userId);
     const resolved = await this.resolveCompletedContext(studentId);
@@ -298,13 +317,91 @@ export class DatabankArchiveService {
       throw new AppError("Archive already registered.", 409);
     }
 
+    // Build document descriptors for uploaded archival artifacts
+    const documents: any[] = [];
+
+    const manuscript = files?.manuscript as SecureMulterFile | undefined;
+    if (manuscript) {
+      documents.push({
+        docType: "FINAL_MANUSCRIPT",
+        defenseStage: "FINAL",
+        filePath: manuscript.path,
+        storageKey: manuscript.storageMeta?.storageKey ?? manuscript.filename,
+        storageProvider: manuscript.storageMeta?.storageProvider ?? "local",
+        originalFilename: manuscript.originalname,
+        verifiedMimeType: manuscript.storageMeta?.verifiedMimeType ?? manuscript.mimetype,
+        sizeBytes: manuscript.storageMeta?.sizeBytes ?? manuscript.size,
+        checksum: manuscript.storageMeta?.checksum ?? null,
+        checksumAlgorithm: manuscript.storageMeta?.checksumAlgorithm ?? null,
+        uploadedById: userId,
+      });
+    }
+
+    const instruments = files?.instruments as SecureMulterFile | undefined;
+    if (instruments) {
+      documents.push({
+        docType: "INSTRUMENTS",
+        defenseStage: "FINAL",
+        filePath: instruments.path,
+        storageKey: instruments.storageMeta?.storageKey ?? instruments.filename,
+        storageProvider: instruments.storageMeta?.storageProvider ?? "local",
+        originalFilename: instruments.originalname,
+        verifiedMimeType: instruments.storageMeta?.verifiedMimeType ?? instruments.mimetype,
+        sizeBytes: instruments.storageMeta?.sizeBytes ?? instruments.size,
+        checksum: instruments.storageMeta?.checksum ?? null,
+        checksumAlgorithm: instruments.storageMeta?.checksumAlgorithm ?? null,
+        uploadedById: userId,
+      });
+    }
+
+    const respondentData = files?.respondentData as SecureMulterFile | undefined;
+    if (respondentData) {
+      documents.push({
+        docType: "RESPONDENT_DATA",
+        defenseStage: "FINAL",
+        filePath: respondentData.path,
+        storageKey: respondentData.storageMeta?.storageKey ?? respondentData.filename,
+        storageProvider: respondentData.storageMeta?.storageProvider ?? "local",
+        originalFilename: respondentData.originalname,
+        verifiedMimeType: respondentData.storageMeta?.verifiedMimeType ?? respondentData.mimetype,
+        sizeBytes: respondentData.storageMeta?.sizeBytes ?? respondentData.size,
+        checksum: respondentData.storageMeta?.checksum ?? null,
+        checksumAlgorithm: respondentData.storageMeta?.checksumAlgorithm ?? null,
+        uploadedById: userId,
+      });
+    }
+
     try {
       const created = await this.repo.createArchive({
         thesisId: context.thesisId,
         title: context.officialTitle,
         abstract: optionalText(metadata.abstract),
         keywords: optionalText(metadata.keywords),
+        fullPaperPath: manuscript?.path ?? null,
+        respondentDataPath: respondentData?.path ?? null,
+        documents,
+        certificationsPath: files?.certifications?.path ?? null,
       });
+
+      // Audit Log: DATABANK_ARCHIVE_SUBMITTED (NFR7 Compliance)
+      await prisma.auditLog.create({
+        data: {
+          actorId: userId,
+          actionType: "DATABANK_ARCHIVE_SUBMITTED",
+          targetTable: "e_library",
+          targetId: created.id,
+          description: `Student submitted research databank archive for "${context.officialTitle}".`,
+          newValue: JSON.stringify({
+            thesisId: context.thesisId,
+            title: context.officialTitle,
+            hasManuscript: Boolean(manuscript),
+            hasRespondentData: Boolean(respondentData),
+            hasInstruments: Boolean(instruments),
+            hasCertifications: Boolean(files?.certifications),
+          }),
+        },
+      });
+
       return toArchiveDto(created, context.officialTitle);
     } catch (error) {
       // ELibrary.thesisId is unique: map the race loser cleanly.
