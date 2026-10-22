@@ -1,7 +1,8 @@
 # TEMPLATE-2: Oral Examination Summary Sheet
 
-Status: **IMPLEMENTED — AWAITING PROJECT-OWNER VISUAL REVIEW** (2026-10-22).
-Starting local and verified remote HEAD: `84002a713e3c9a0342e6414e662793fcfa0308ed`.
+Status: **ACCEPTED / PUBLISHED** (2026-10-22).
+Starting implementation HEAD: `84002a713e3c9a0342e6414e662793fcfa0308ed`.
+Accepted remote HEAD: `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d`.
 
 `renderOralExamSummary(input): Promise<Uint8Array>` reconstructs
 **EARIST-QSF-GS-011 Rev. 01 (06.20.25)** as one A4 portrait page using `pdf-lib`.
@@ -116,12 +117,32 @@ Fine logo lettering remains limited by the existing 141/207 px originals (see th
 No photograph background, hole marks, or full-page scan artifacts are reproduced.
 
 TEMPLATE-1 source, shared helpers, script/tests, and retained filled PDF/PNG were verified unchanged.
-This checkpoint does not confer institutional/project-owner acceptance.
-Stop for visual review; TEMPLATE-3 and all GS-IS integration remain deferred.
+Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-2 is closed as the accepted GS-011 static renderer baseline. TEMPLATE-3 may proceed as the next bounded static-template package; GS-IS integration remains deferred.
 
 ## Project-owner footer refinement
 
 The project owner requested removal of the visible `EARIST-QSF-GS-011 Rev. 01 (06.20.25)`
 footer. Only that drawn text was removed; all field, table, and signatory positions are retained.
-The reference identity remains documented above. Blank, filled, and long-value samples
-are regenerated for review; this request does not confer acceptance of the complete template.
+The reference identity remains documented above. Blank, filled, and long-value samples were regenerated and reviewed. This footer omission is part of the project-owner-accepted TEMPLATE-2 output.
+
+
+## Acceptance record
+
+Project-owner visual acceptance was granted on 2026-10-22 after the final GS-011 refinements.
+
+Published implementation:
+
+- `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` — `feat(documents): add oral examination summary sheet renderer`
+
+Accepted points:
+
+- six examiner slots and one Chairman/five Member lines follow the reviewed printed structure;
+- explicit ratings/Average and signatory display values remain caller-supplied;
+- no score calculation, verdict inference, committee fabrication, or signature inference is introduced;
+- normal filled QA uses `Course: MAEd`;
+- long values remain bounded and fail explicitly when they cannot fit;
+- the visible `EARIST-QSF-GS-011 Rev. 01 (06.20.25)` footer is intentionally omitted from generated output per project-owner instruction;
+- blank, filled, and long-value samples were visually reviewed with no observed clipping or overlap;
+- eight TEMPLATE-2 tests, nine TEMPLATE-1 tests, and backend build passed.
+
+TEMPLATE-2 is accepted and closed. TEMPLATE-3 / GS-006 + GS-007 is the next authorized static-template package.
