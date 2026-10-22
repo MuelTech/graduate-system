@@ -6,3 +6,6 @@ uploads
 test-results/
 *.log
 
+# Local official-form visual QA output (never production assets)
+.tmp/
+
