@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -260,7 +260,7 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-The static form phase is now closed. The next package is **FORM-INT-0 — integration readiness audit** on a new branch before any production integration code is written.
+The static form phase is closed. **FORM-INT-0 is complete and accepted as the integration planning baseline** on `feat/official-defense-document-integration`. The next bounded package is **FORM-INT-PRE1 — Defense Record status alignment** before any production PDF endpoint is added.
 
 ## Explicitly deferred
 
@@ -434,27 +434,33 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Create a new integration branch from the accepted `main` checkpoint:
+Proceed on:
 
 `feat/official-defense-document-integration`
 
-Then run:
+FORM-INT-0 audit record:
 
-**FORM-INT-0 — Official Defense Document integration readiness audit**
+`docs/superpowers/plans/2026-10-22-official-defense-document-integration-audit.md`
 
-FORM-INT-0 is analysis/documentation only. It must inspect the current repository and produce the exact integration map for:
+Next bounded package:
 
-- Individual Oral Examination Criteria / evaluator PDF;
-- GS-011 Oral Examination Summary;
-- GS-006 / GS-007 Defense Application;
-- authenticated Admin Download / Print placement and authorization;
-- exact defense-attempt/document/evaluator binding;
-- signature evidence boundaries;
-- existing services/repositories/controllers that should be reused;
-- known stale Title Defense status projection;
-- payment/O.R. data availability for Defense Application;
-- the accepted stage-specific committee mapping from TEMPLATE-3 FIX-1.
+**FORM-INT-PRE1 — Defense Record status alignment**
 
-Do not implement routes, services, UI actions, Prisma changes, or document persistence in FORM-INT-0.
+Scope:
 
-After the audit is independently reviewed and accepted, split implementation into bounded FORM-INT packages.
+- correct the stale Title Defense completion projection in `backend/src/services/defense-record-status.rules.ts`;
+- update only its focused tests/comments as required;
+- align the projection with the current official-record runtime where Title, Proposal, and Final produce evaluator Criteria + Oral Examination Summary;
+- keep this package independent from PDF rendering/integration.
+
+Do not change:
+
+- renderers;
+- Prisma/schema;
+- controllers/routes;
+- Admin UI;
+- scoring/verdict logic;
+- committee policy;
+- GS Form No. 22.
+
+After PRE1 is independently reviewed, proceed to FORM-INT-1 for the first real production integration: finalized Individual Evaluation → authenticated Admin PDF endpoint.
