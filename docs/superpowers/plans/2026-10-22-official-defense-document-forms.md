@@ -1,0 +1,313 @@
+# Official Defense Document Forms — Initiative Plan
+
+**System:** EARIST Graduate School Information System (GS-IS)  
+**Repository:** `MuelTech/graduate-system`  
+**Initiative branch:** `feat/official-defense-document-forms`  
+**Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
+**Date:** 2026-10-22  
+**Status:** PLANNING CHECKPOINT — DOCUMENTATION ONLY; IMPLEMENTATION NOT STARTED
+
+## 1. Purpose
+
+This document records the bounded starting contract for the next thesis/dissertation document-generation initiative.
+
+The Collaborative Defense Workspace and Adviser Workflow initiatives are closed. This initiative must consume the existing authoritative defense records; it must not introduce a second defense state machine, reinterpret academic records, or invent institutional policy.
+
+The initial target is **clean, printable official-form rendering** for three form families already supported by authoritative GS-IS data.
+
+## 2. Approved initial scope
+
+### TEMPLATE-1 — Oral Examination Criteria / Individual Evaluation
+
+Reference evidence supplied by the project owner on 2026-10-22 shows the current EARIST Graduate School form with:
+
+- EARIST institutional header and two logos;
+- Candidate, Course, and Date fields;
+- Group I with five criteria;
+- Group II with four criteria;
+- fixed institutional matrix:
+  - 1.00 — E — Excellent
+  - 1.25 — HS — Highly Satisfactory
+  - 1.50 — VS — Very Satisfactory
+  - 1.75 — S — Satisfactory
+  - 2.00 — BS — Barely Satisfactory
+  - 2.50 — F — Fail
+- Group I Average;
+- Group II Average;
+- Recommendations;
+- Summary of Evaluation;
+- Rating;
+- Remarks;
+- signature over printed name of Panelist.
+
+The supplied photograph does **not** confirm a form code/revision for this form. Do not invent one.
+
+Authoritative system source for later integration:
+
+- `OralExamScore`;
+- `OralExamScore.officialSnapshot`;
+- exact `PanelAssignment`;
+- stored evaluator signature evidence;
+- current scoring version.
+
+Legacy `LEGACY_POINTS_V1` rows must retain their historical meaning. They must not be converted into the institutional matrix without an explicit institutional conversion rule.
+
+### TEMPLATE-2 — Oral Examination Summary Sheet
+
+Confirmed reference:
+
+**EARIST-QSF-GS-011 Rev. 01 (06.20.25)**
+
+Reference evidence supplied by the project owner on 2026-10-22 shows:
+
+- institutional header and two logos;
+- Graduate School heading;
+- Candidate;
+- Course;
+- Date;
+- Student No.;
+- Panel of Examiners table;
+- Rating for Group A;
+- Rating for Group B;
+- Average;
+- Submitted by:
+  - Chairman;
+  - Member rows;
+- Concurred In:
+  - Thesis/Dissertation Adviser;
+- Attested:
+  - Dean, Graduate School;
+- footer code `EARIST-QSF-GS-011 Rev. 01 (06.20.25)`.
+
+Authoritative system source for later integration:
+
+- persisted `OralExamSummary`;
+- `OralExamSummary.snapshotData`;
+- finalized evaluator identities and values from the exact defense attempt.
+
+The renderer must not infer a verdict, Rating, Remarks, Adviser concurrence signature, Chairman/Member GS-011 signature, or Dean attestation signature from unrelated records.
+
+Whether GS-011 sign-off remains wet-signature only or receives a dedicated digital-signature workflow is an institutional policy question and is **not** part of static-template reconstruction.
+
+### TEMPLATE-3 — Defense Application
+
+Confirmed references supplied by the project owner on 2026-10-22:
+
+- **EARIST-QSF-GS-006 Rev. 01 (06.20.25)** — Master's Program;
+- **EARIST-QSF-GS-007 Rev. 01 (06.20.25)** — Doctoral Program.
+
+Both forms cover Application for Title / Proposal / Final Defense and include:
+
+- institutional header and two logos;
+- student/application identity fields;
+- payment / O.R. fields;
+- defense date/time/link;
+- Examination Committee table;
+- Prepared by — Dean, Graduate School;
+- Recommending Approval — Vice President for Academic Affairs;
+- Approved — President.
+
+GS-006 and GS-007 should be treated as variants of one document family where practical, rather than two unrelated renderers.
+
+The static template must preserve the printed institutional structure. Dynamic population must later use current authoritative GS-IS records and must not invent missing committee members, advisers, approval signatures, payment facts, or approval states.
+
+## 3. Explicitly deferred from this first scope
+
+### GS Form No. 22 / Committee Report / Rapporteur Report
+
+The Committee Report renderer is deliberately deferred until after the first three form families are implemented and accepted.
+
+Reason:
+
+- report content is dynamic and may span multiple pages;
+- it requires pagination and continuation-page rules;
+- signature evidence is bound to the exact frozen report content/hash/version;
+- the final form has separate Prepared by and Dean approval areas;
+- the output needs a stronger document-layout/pagination package than the static forms.
+
+Existing `RapReport.frozenContent`, `frozenContentHash`, and `RapReportSignature` remain authoritative. Deferral does not reopen or change the RAP lifecycle.
+
+Also deferred:
+
+- Defense Packet / bundled full-record generator;
+- generic Admin-managed form-template platform;
+- template upload/version-management UI;
+- automatic Dean signature insertion;
+- new institutional signature workflows;
+- new academic scoring or verdict rules;
+- whole-page browser `window.print()` substitutes.
+
+## 4. Template reconstruction strategy
+
+The supplied photographs are **visual references**, not production backgrounds.
+
+The official digital templates should be reconstructed cleanly using:
+
+- project-supplied clean EARIST institutional logo;
+- project-supplied clean Graduate School logo;
+- drawn text, rules, tables, lines, and signature areas;
+- A4 page geometry;
+- deterministic PDF output.
+
+Do not embed the photographed paper as the production template because it contains perspective distortion, scan noise, shadows, page holes, and non-digital artifacts.
+
+The two clean logo assets and the reference photos are project inputs. They are **not yet versioned in the repository** by this documentation-only checkpoint.
+
+## 5. Agent/workflow allocation
+
+### Codex — template reconstruction and visual fidelity
+
+Codex owns the initial static-template packages:
+
+1. TEMPLATE-1 — Oral Examination Criteria;
+2. TEMPLATE-2 — GS-011 Oral Examination Summary Sheet;
+3. TEMPLATE-3 — GS-006 / GS-007 Defense Application.
+
+For each template:
+
+1. reconstruct a clean digital A4 layout from the supplied reference;
+2. use the clean logo assets;
+3. keep all student/committee/score/signature values as explicit dynamic fields/placeholders;
+4. generate sample PDF output using dummy data only;
+5. render the generated PDF for visual comparison;
+6. iterate on spacing, typography, table geometry, logo placement, and page layout;
+7. stop at static-template visual acceptance.
+
+No database, API, authorization, or business-rule integration should be added during the initial template package unless separately approved.
+
+### DeepSeek — GS-IS integration after template approval
+
+After a template is visually accepted, DeepSeek may implement the bounded integration package:
+
+- authoritative data mapping;
+- backend rendering service integration;
+- Admin authorization;
+- secure generation/download endpoints;
+- server-side signature embedding where already authorized;
+- Admin Defense Record Download / Print activation;
+- unit/contract/security tests;
+- storage/provenance work if approved for that package.
+
+Static template approval must happen before system-data integration.
+
+## 6. Rendering architecture direction
+
+Current backend dependencies already include `pdf-lib`. The initial implementation should prefer the existing Node/backend environment and avoid introducing Chromium/Puppeteer unless exact fidelity proves impractical after a real prototype.
+
+Recommended separation:
+
+```text
+authoritative defense record
+        ↓
+document-specific render DTO
+        ↓
+approved static renderer/template
+        ↓
+server-generated PDF
+        ↓
+authenticated Admin download / print
+```
+
+Raw signature evidence must remain server-side. Do not expose base64 signature data through the general Admin Defense Record read model merely to generate PDFs in the browser.
+
+## 7. Existing Admin integration target
+
+The accepted Admin Defense Record detail page already owns section-level disabled `Download / Print` controls.
+
+Future activation should remain section-owned:
+
+- Evaluation Results → Individual Evaluation forms;
+- Oral Examination Summary → GS-011 Summary;
+- Defense Application / relevant Admin application surface → GS-006 / GS-007;
+- Committee Report → later GS Form No. 22 package.
+
+Do not add fake download links, no-op controls, or print the whole Defense Record screen.
+
+## 8. Pre-implementation repository consistency item
+
+Before document readiness is used as an official completion signal, reconcile the stale Title Defense record-status projection in:
+
+`backend/src/services/defense-record-status.rules.ts`
+
+The newer canonical workflow and current runtime evaluation services treat Title, Proposal, and Final Defense as using the evaluator scoring/finalization lifecycle. The stale projection still carries an older assumption that Title Defense has no numerical Criteria/Summary requirement.
+
+This must be corrected in a bounded prerequisite package using the current canonical Defense Workflow SOT and current runtime behavior as authority. The forms initiative must not copy the stale assumption.
+
+## 9. Policy boundaries that must not be invented
+
+The following remain explicit boundaries until institutional/client confirmation:
+
+- no invented form code/revision for Oral Examination Criteria;
+- no automatic reuse of Individual Evaluation signature evidence as a GS-011 signature;
+- no automatic Adviser concurrence signature on GS-011;
+- no automatic Dean attestation/signature on GS-011;
+- no automatic Dean/VPAA/President signatures on GS-006/GS-007;
+- no invented mapping that turns Adviser, Facilitator, or Rapporteur into numerical evaluators;
+- no fabricated committee member to fill a printed row;
+- no silent reinterpretation of legacy scoring;
+- no score-derived PASSED / REDEFENSE_REQUIRED verdict;
+- no inferred official title where the exact defense attempt has none.
+
+## 10. Recommended implementation order
+
+```text
+DOC-FORM-0
+Documentation + template/readiness audit + bounded stale-status correction
+        ↓
+TEMPLATE-1
+Oral Examination Criteria static PDF
+        ↓
+project-owner visual acceptance
+        ↓
+TEMPLATE-2
+GS-011 static PDF
+        ↓
+project-owner visual acceptance
+        ↓
+TEMPLATE-3
+GS-006 / GS-007 static PDFs
+        ↓
+project-owner visual acceptance
+        ↓
+approved-template integration packages
+        ↓
+Admin authenticated Download / Print
+        ↓
+security + regression + visual/print QA
+        ↓
+GS Form No. 22 / Rapporteur renderer as a later initiative package
+```
+
+## 11. Acceptance rule for template work
+
+A template is not accepted merely because PDF generation succeeds.
+
+Acceptance requires:
+
+- correct institutional text and confirmed form code/revision where known;
+- correct page size/orientation;
+- accurate logo/header hierarchy;
+- accurate table structure;
+- accurate field placement;
+- stable typography and spacing;
+- printable output with no clipping/overflow;
+- dynamic placeholder values fitting realistic data;
+- visual comparison against the supplied institutional reference;
+- project-owner visual approval.
+
+## 12. This checkpoint changes no runtime behavior
+
+This commit is documentation only.
+
+It does not:
+
+- add a PDF endpoint;
+- add a renderer;
+- add template assets;
+- alter Prisma schema;
+- alter defense workflow;
+- alter evaluator authority;
+- alter RAP signatures;
+- enable any Download / Print button.
+
+Implementation starts only in the next approved bounded package.
