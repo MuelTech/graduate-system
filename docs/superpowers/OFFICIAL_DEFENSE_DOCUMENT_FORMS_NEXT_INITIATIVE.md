@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 IMPLEMENTED / FIX REQUIRED
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -438,36 +438,37 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-3 implementation is present at:
+FORM-INT-3 is **ACCEPTED** after its bounded renderer correction:
 
-`8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
+- integration: `8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
+- renderer hardening: `d387526ad153df54b674b7b4b9b7ef09478a7676` — `fix(documents): harden defense application venue layout`
 
-Independent remote review confirms the integration logic is aligned:
+Accepted production route:
 
-- exact `DefenseSchedule.id` source;
-- strict Program.programType → GS-006 / GS-007 mapping;
-- strict defense-stage mapping;
-- exact schedule committee validation via `DefenseCommitteePolicy`;
-- Chairman remains `CHAIRMAN` and prints first under the form's `Panelist` rows;
-- actual Panelists are stable by `createdAt` then id;
-- Title has no Adviser; Proposal/Final require the exact schedule Adviser;
-- Facilitator/Rapporteur exact schedule seats;
-- Student.cellphone may populate; unsupported application/payment/personal-Gmail/approval fields stay blank;
-- wall-clock defense time is preserved;
-- ADMIN-only PDF endpoint;
-- no signature reuse or persistence/versioning.
+`GET /thesis/defense/:scheduleId/records/application/pdf`
 
-FORM-INT-3 is **not yet accepted** because production integration exposed a renderer-capacity defect:
+Accepted behavior:
 
-- the accepted TEMPLATE-3 schedule-row `Link` box is fixed to a narrow one-line region;
-- a realistic valid value such as `Room 101, GS Building` already overflows;
-- ordinary Teams/Meet URLs are typically longer;
-- the service correctly returns controlled 422 rather than clipping, but a valid exact `venueOrLink` must remain printable for production use.
+- exact `DefenseSchedule.id` current-record source;
+- Program.programType selects GS-006 Master's / GS-007 Doctoral;
+- exact stage mapping;
+- centralized `DefenseCommitteePolicy` validation;
+- Chairman prints first under the form's `Panelist` rows without domain-role mutation;
+- actual Panelists use deterministic `createdAt` + id ordering;
+- Title has no Adviser; Proposal/Final require exact same-schedule Adviser;
+- exact Facilitator and Rapporteur;
+- Student cellphone may populate; unapproved application/payment/personal-Gmail/approval fields remain blank;
+- wall-clock defense time preserved;
+- exact `venueOrLink` preserved;
+- realistic physical venues and Meet/Teams URLs now wrap in a bounded full-width schedule row;
+- no truncation/ellipsis/URL rewriting;
+- one-page A4 and signatory/footer clearance preserved;
+- extreme impossible link values still fail explicitly;
+- ADMIN-only access;
+- no digital-signature reuse or generated-document persistence.
 
 Next bounded package:
 
-**FORM-INT-3 FIX-1 — Defense Application schedule Link/Venue capacity hardening**
+**FORM-INT-4 — Admin Download / Print activation, availability metadata, and frontend/security/regression hardening**
 
-FIX-1 must remain renderer/layout-focused. Preserve exact stored `venueOrLink`; do not truncate, ellipsize, shorten, rewrite URLs, or change scheduling data. Adjust the TEMPLATE-3 schedule-row geometry/wrapping so realistic physical venues and meeting URLs render completely on one-page A4 for both GS-006 and GS-007, with regression/visual QA.
-
-Do not begin FORM-INT-4 until FORM-INT-3 FIX-1 is reviewed and accepted.
+Do not introduce generated-document persistence/versioning or GS Form No. 22 inside FORM-INT-4.
