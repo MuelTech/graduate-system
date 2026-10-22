@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 PUBLISHED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 REQUIRED BEFORE INTEGRATION
+**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -258,9 +258,9 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 **FORM-DX-1 is COMPLETE / PASS** at `299ca18a89e8fae54785326935fce966995302d8`. A scripts-local TypeScript project now covers all three official-form QA generators without changing production `dist` output; all 32 renderer tests, backend build, sample generation, and PDF hash regression checks passed.
 
-After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. A bounded **TEMPLATE-3 FIX-1** is required before GS-IS integration. Printed `Panelist` rows represent the authoritative Chairman plus the stage-specific Panelist quota: Master's Title = 5 printed Panelist rows (Chairman + 4 Panelists); Master's Proposal/Final = Adviser + 4 printed Panelist rows (Chairman + 3 Panelists); Doctoral Title = 6 printed Panelist rows (Chairman + 5 Panelists); Doctoral Proposal/Final = Adviser + 5 printed Panelist rows (Chairman + 4 Panelists). The renderer must not rename or mutate the underlying GS-IS roles.
+After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is implemented and verified.
+The static form phase is now closed. The next package is **FORM-INT-0 — integration readiness audit** on a new branch before any production integration code is written.
 
 ## Explicitly deferred
 
@@ -434,59 +434,27 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Implement the bounded post-merge renderer correction:
+Create a new integration branch from the accepted `main` checkpoint:
 
-**TEMPLATE-3 FIX-1 — Defense Application committee-role alignment**
+`feat/official-defense-document-integration`
 
-The generated form must follow the existing centralized Admin/backend committee policy. The current authority is `backend/src/services/defense-committee.policy.ts`; the Admin committee builder consumes that policy instead of maintaining separate counts.
+Then run:
 
-Printed-role rule:
+**FORM-INT-0 — Official Defense Document integration readiness audit**
 
-- GS-IS `CHAIRMAN` remains `CHAIRMAN` in domain data and authorization.
-- Because GS-006/GS-007 have no dedicated Chairman label, the Chairman is displayed in a printed row labelled `Panelist`.
-- Printed Panelist rows are therefore `Chairman + stage-specific PANELIST assignments`.
-- The integration layer will later supply the names in deterministic order; the renderer must not query or infer committee roles.
+FORM-INT-0 is analysis/documentation only. It must inspect the current repository and produce the exact integration map for:
 
-### Master's — GS-006
+- Individual Oral Examination Criteria / evaluator PDF;
+- GS-011 Oral Examination Summary;
+- GS-006 / GS-007 Defense Application;
+- authenticated Admin Download / Print placement and authorization;
+- exact defense-attempt/document/evaluator binding;
+- signature evidence boundaries;
+- existing services/repositories/controllers that should be reused;
+- known stale Title Defense status projection;
+- payment/O.R. data availability for Defense Application;
+- the accepted stage-specific committee mapping from TEMPLATE-3 FIX-1.
 
-**Title Defense**
+Do not implement routes, services, UI actions, Prisma changes, or document persistence in FORM-INT-0.
 
-- no Adviser;
-- 1 Chairman + 4 Panelists → **5 printed `Panelist` rows**;
-- 1 Facilitator;
-- 1 Rapporteur;
-- **7 total participants**.
-
-**Proposal / Final Defense**
-
-- 1 automatic active Adviser;
-- 1 Chairman + 3 Panelists → **4 printed `Panelist` rows**;
-- 1 Facilitator;
-- 1 Rapporteur;
-- **7 total participants**.
-
-### Doctoral — GS-007
-
-**Title Defense**
-
-- no Adviser;
-- 1 Chairman + 5 Panelists → **6 printed `Panelist` rows**;
-- 1 Facilitator;
-- 1 Rapporteur;
-- **8 total participants**.
-
-**Proposal / Final Defense**
-
-- 1 automatic active Adviser;
-- 1 Chairman + 4 Panelists → **5 printed `Panelist` rows**;
-- 1 Facilitator;
-- 1 Rapporteur;
-- **8 total participants**.
-
-Adviser presence is therefore stage-specific for **both Master's and Doctoral**: absent at Title, automatically included at Proposal/Final.
-
-The supplied photographs remain visual/layout references. Where their committee-row arrangement conflicts with the centralized GS-IS policy above, the generated form must adapt to the authoritative system policy.
-
-TEMPLATE-3 FIX-1 must include focused tests and visual QA for all four stage/program combinations before GS-IS integration begins.
-
-After FIX-1 passes, proceed to a separate integration/readiness package for authoritative data mapping and authenticated Download / Print.
+After the audit is independently reviewed and accepted, split implementation into bounded FORM-INT packages.
