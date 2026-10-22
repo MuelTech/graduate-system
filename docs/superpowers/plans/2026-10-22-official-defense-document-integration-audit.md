@@ -257,6 +257,37 @@ The PDF mapper preserves persisted evaluator order and uses persisted `averageVa
 
 Minor hardening note: the exact `OralExamSummary` row is already schedule-bound by persistence. A later bounded hardening pass may additionally compare `snapshot.scheduleId` / `snapshot.defenseType` with the owning schedule metadata for corruption detection.
 
+## FORM-INT-3 implementation review
+
+Implementation:
+
+`8393a368dd56230e6669a85de42cc3880f60b2da`
+
+Production route:
+
+`GET /thesis/defense/:scheduleId/records/application/pdf`
+
+Verified integration behavior:
+
+- exact `DefenseSchedule.id` anchor;
+- exact student/program/contact source;
+- strict Master's/Doctoral and Title/Proposal/Final mapping;
+- `DefenseCommitteePolicy` drives committee validation;
+- Chairman is explicitly role-selected and printed first under `Panelist`;
+- actual Panelists sort by `createdAt` then assignment id;
+- Title has no Adviser; Proposal/Final require the exact schedule Adviser;
+- exact Facilitator and Rapporteur;
+- unsupported payment/application/personal-Gmail/approval fields remain blank;
+- wall-clock defense time is preserved;
+- ADMIN-only access and no signature reuse;
+- current-record on-demand semantics only.
+
+Acceptance blocker:
+
+The TEMPLATE-3 renderer's fixed schedule-row Link box is too narrow for realistic authoritative `venueOrLink` values. `Room 101, GS Building` already overflows, and normal meeting URLs are longer. Controlled 422 behavior is safe but insufficient for production document availability.
+
+FORM-INT-3 therefore requires **FORM-INT-3 FIX-1** before acceptance and before FORM-INT-4 frontend activation.
+
 ## Additional integration constraints
 
 - Validate evaluator signature image data before embedding; malformed evidence must fail closed.
@@ -272,8 +303,9 @@ Minor hardening note: the exact `OralExamSummary` row is already schedule-bound 
 1. **FORM-INT-PRE1 — ACCEPTED** — corrected stale Title Defense record-status projection.
 2. **FORM-INT-1 — ACCEPTED** — shared official-document orchestration + Individual Criteria PDF endpoint (`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`).
 3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
-4. **FORM-INT-3 — NEXT** — GS-006 / GS-007 Defense Application PDF endpoint.
-5. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
+4. **FORM-INT-3 — IMPLEMENTED / FIX REQUIRED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`); exact schedule/domain integration accepted in principle, renderer Link/Venue capacity blocks final acceptance.
+5. **FORM-INT-3 FIX-1 — NEXT** — harden TEMPLATE-3 schedule Link/Venue capacity for realistic stored values.
+6. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
 
 Optional later package only if institutionally required:
 
