@@ -5,8 +5,8 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 NEXT
-**Last updated:** 2026-10-22
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 SOURCE-ACCEPTED / MANUAL QA PENDING
+**Last updated:** 2026-10-23
 
 ## Purpose
 
@@ -438,37 +438,48 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-3 is **ACCEPTED** after its bounded renderer correction:
+FORM-INT-4 implementation is **SOURCE-ACCEPTED / MANUAL QA PENDING** at:
 
-- integration: `8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
-- renderer hardening: `d387526ad153df54b674b7b4b9b7ef09478a7676` — `fix(documents): harden defense application venue layout`
+`02043af2d8b99156046622438eb3635089417465` — `feat(documents): activate admin official PDF actions`
 
-Accepted production route:
+Independent remote review confirmed:
 
-`GET /thesis/defense/:scheduleId/records/application/pdf`
+- no backend production file changed;
+- Defense Overview activates the exact schedule Defense Application PDF;
+- Evaluation Results uses one exact `panelAssignmentId` PDF action per evaluator row;
+- evaluator actions enable only from existing safe `hasOfficialCriteria` metadata;
+- GS-011 action enables only from existing `oralExamSummary.ready` metadata;
+- Committee Report remains disabled because GS Form No. 22 is deferred;
+- PDF requests use the authenticated NextAuth bearer token only in the Authorization header;
+- absolute/query-string/protocol-relative document paths are rejected;
+- successful responses must be `application/pdf`, non-empty, and begin with `%PDF-`;
+- backend Content-Disposition filenames are sanitized with deterministic fallbacks;
+- temporary Blob URLs are revoked after the browser download action;
+- scoped loading prevents duplicate clicks without blocking the whole page;
+- controlled failures surface through Sonner;
+- no `window.print()`, client-side PDF generation, public PDF link, schema change, renderer change, or new Student/Panelist access was added;
+- stale FIX-4/FIX-5 verifier assertions were narrowly updated for the now-active official document actions.
 
-Accepted behavior:
+Agent-reported verification:
 
-- exact `DefenseSchedule.id` current-record source;
-- Program.programType selects GS-006 Master's / GS-007 Doctoral;
-- exact stage mapping;
-- centralized `DefenseCommitteePolicy` validation;
-- Chairman prints first under the form's `Panelist` rows without domain-role mutation;
-- actual Panelists use deterministic `createdAt` + id ordering;
-- Title has no Adviser; Proposal/Final require exact same-schedule Adviser;
-- exact Facilitator and Rapporteur;
-- Student cellphone may populate; unapproved application/payment/personal-Gmail/approval fields remain blank;
-- wall-clock defense time preserved;
-- exact `venueOrLink` preserved;
-- realistic physical venues and Meet/Teams URLs now wrap in a bounded full-width schedule row;
-- no truncation/ellipsis/URL rewriting;
-- one-page A4 and signatory/footer clearance preserved;
-- extreme impossible link values still fail explicitly;
-- ADMIN-only access;
-- no digital-signature reuse or generated-document persistence.
+- FORM-INT-4 verifier: 18/18 PASS;
+- updated FIX-4 + FIX-5 verifiers: 27/27 PASS;
+- frontend TypeScript: PASS;
+- scoped frontend ESLint: PASS;
+- frontend build: PASS;
+- backend official-document regression slice: 172/172 PASS;
+- `npm run forms:check`: PASS;
+- backend build: PASS;
+- `git diff --check`: PASS.
 
-Next bounded package:
+Manual authenticated browser QA was **not executed** by the coding agent. Final acceptance requires project-owner targeted QA of:
 
-**FORM-INT-4 — Admin Download / Print activation, availability metadata, and frontend/security/regression hardening**
+1. Defense Application PDF download;
+2. one finalized evaluator PDF;
+3. one unfinished evaluator disabled state;
+4. ready GS-011 Summary PDF;
+5. unready Summary disabled state;
+6. Committee Report document action remains disabled;
+7. controlled PDF failure surfaces a readable toast while the page remains usable.
 
-Do not introduce generated-document persistence/versioning or GS Form No. 22 inside FORM-INT-4.
+Do not begin GS Form No. 22 or generated-document persistence/versioning until FORM-INT-4 manual QA is accepted.
