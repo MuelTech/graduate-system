@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 AWAITING VISUAL REVIEW
+**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 AUTHORIZED NEXT
 
 ## 1. Purpose
 
@@ -534,8 +534,7 @@ TEMPLATE-2 remains static-template only. It may reuse accepted TEMPLATE-1 shared
 
 ## 14. TEMPLATE-2 implementation checkpoint (2026-10-22)
 
-**IMPLEMENTED — AWAITING PROJECT-OWNER VISUAL REVIEW.** TEMPLATE-1 remains accepted/published.
-TEMPLATE-3 and all GS-IS integration remain deferred.
+**ACCEPTED / PUBLISHED.** TEMPLATE-1 remains accepted/published. Project-owner visual approval for TEMPLATE-2 was granted on 2026-10-22. TEMPLATE-3 is authorized next; GS-IS integration remains deferred.
 
 - Verified branch: `feat/official-defense-document-forms`; starting local and GitHub remote HEAD: `84002a713e3c9a0342e6414e662793fcfa0308ed`.
 - Re-read both initiative documents and the accepted TEMPLATE-1 implementation/shared helpers.
@@ -545,8 +544,7 @@ TEMPLATE-3 and all GS-IS integration remain deferred.
   display-name slots, Adviser name, and Dean name. All ratings/Average are supplied strings.
 - Reuses accepted A4/rules, bounded measured text, image containment, and institutional masthead
   without changing shared files or TEMPLATE-1. GS-011 geometry remains form-specific.
-- Preserves six printed examiner rows, one Chairman/five Member lines, Adviser/Dean areas,
-  and `EARIST-QSF-GS-011 Rev. 01 (06.20.25)`. Unused slots remain blank.
+- Preserves six printed examiner rows, one Chairman/five Member lines, and Adviser/Dean areas. The confirmed reference identity remains `EARIST-QSF-GS-011 Rev. 01 (06.20.25)`, while the visible footer is omitted from generated PDFs per project-owner instruction. Unused slots remain blank.
 - Pure typed input to PDF bytes: no I/O, DB/repository/API/auth/workflow, signature retrieval,
   scorer-role inference, average calculation, or verdict inference.
 - Dev command: `npm run forms:sample:summary -- --rasterize` from `backend/`.
@@ -562,11 +560,36 @@ TEMPLATE-3 and all GS-IS integration remain deferred.
 The clean reconstruction uses standard PDF fonts and the supplied color logos.
 Exact original typefaces/physical measurements remain approximate because the source is a
 perspective photocopy photograph; existing logo resolution limits fine seal lettering.
-Project-owner visual approval is still required before proceeding.
+Project-owner visual approval was granted on 2026-10-22. Accepted remote HEAD for TEMPLATE-2: `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d`.
 
 ### TEMPLATE-2 footer refinement requested by project owner
 
 The visible `EARIST-QSF-GS-011 Rev. 01 (06.20.25)` footer is omitted from generated
 TEMPLATE-2 PDFs per the latest project-owner instruction. This supersedes the earlier
 footer reproduction requirement for the current output; the reference form identity remains
-unchanged. Field/table/signatory geometry is retained. Visual acceptance is still pending.
+unchanged. Field/table/signatory geometry is retained. This footer omission is part of the accepted TEMPLATE-2 output.
+
+
+### TEMPLATE-2 accepted publication state
+
+TEMPLATE-2 was published on `feat/official-defense-document-forms` as:
+
+- `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` — `feat(documents): add oral examination summary sheet renderer`
+
+Final accepted points:
+
+- pure typed input to PDF bytes with no DB/API/workflow/signature retrieval;
+- accepted shared helpers reused unchanged;
+- six physical examiner rows and one Chairman/five Member printed lines;
+- explicit caller-supplied ratings, averages, and signatory display names;
+- blank/filled/long-value variants visually reviewed with no observed clipping or overlap;
+- filled QA sample uses `Course: MAEd`;
+- visible GS-011 footer omitted per project-owner instruction while the confirmed form identity remains documented;
+- eight TEMPLATE-2 tests, nine TEMPLATE-1 tests, backend build, and diff checks passed;
+- TEMPLATE-1 and shared helper output remained unchanged.
+
+### Next authorized package
+
+**TEMPLATE-3 — GS-006 / GS-007 Defense Application**
+
+TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controlled variants of one document family where practical. Do not add GS-IS integration, approval-signature inference, payment-rule changes, GS Form No. 22, or a generic template platform.
