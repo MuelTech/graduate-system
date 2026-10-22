@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 IMPLEMENTED / FIX REQUIRED
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -438,50 +438,36 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-2 is **ACCEPTED** at:
+FORM-INT-3 implementation is present at:
 
-`d16f2819df176a470e68bfd1301873fbee9ea119` — `feat(documents): integrate oral exam summary PDF`
+`8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
 
-Accepted production path:
+Independent remote review confirms the integration logic is aligned:
 
-```text
-GET /thesis/defense/:scheduleId/records/summary/pdf
-        ↓
-authenticated ADMIN route
-        ↓
-ThesisController
-        ↓
-ThesisService
-        ↓
-OfficialDefenseDocumentService
-        ↓
-OfficialDefenseRecordService.getOfficialSummaryDocumentSource(...)
-        ↓
-persisted OralExamSummary.snapshotData
-        ↓
-accepted TEMPLATE-2 renderer
-        ↓
-PDF bytes
-```
+- exact `DefenseSchedule.id` source;
+- strict Program.programType → GS-006 / GS-007 mapping;
+- strict defense-stage mapping;
+- exact schedule committee validation via `DefenseCommitteePolicy`;
+- Chairman remains `CHAIRMAN` and prints first under the form's `Panelist` rows;
+- actual Panelists are stable by `createdAt` then id;
+- Title has no Adviser; Proposal/Final require the exact schedule Adviser;
+- Facilitator/Rapporteur exact schedule seats;
+- Student.cellphone may populate; unsupported application/payment/personal-Gmail/approval fields stay blank;
+- wall-clock defense time is preserved;
+- ADMIN-only PDF endpoint;
+- no signature reuse or persistence/versioning.
 
-Accepted constraints:
+FORM-INT-3 is **not yet accepted** because production integration exposed a renderer-capacity defect:
 
-- persisted Summary snapshot is the frozen academic/identity source;
-- examiner order and values come from that persisted snapshot;
-- persisted evaluator `averageValue` is printed directly with no PDF-time recomputation;
-- exactly one Chairman; remaining evaluator rows are Panelists;
-- Title has no Adviser;
-- Proposal/Final use the exact same-schedule ADVISER seat only;
-- Dean stays blank;
-- no evaluator/RAP/Adviser digital signature is reused;
-- V2-only; legacy/mixed scoring fails closed;
-- ADMIN-only PDF access;
-- no frontend activation or persistence/versioning yet.
-
-Minor hardening note for a later bounded pass: the persisted `OralExamSummary` row is already exact-`scheduleId` related, but a defensive consistency assertion between snapshot metadata (`snapshot.scheduleId` / `snapshot.defenseType`) and its owning schedule may be added without changing academic semantics.
+- the accepted TEMPLATE-3 schedule-row `Link` box is fixed to a narrow one-line region;
+- a realistic valid value such as `Room 101, GS Building` already overflows;
+- ordinary Teams/Meet URLs are typically longer;
+- the service correctly returns controlled 422 rather than clipping, but a valid exact `venueOrLink` must remain printable for production use.
 
 Next bounded package:
 
-**FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration**
+**FORM-INT-3 FIX-1 — Defense Application schedule Link/Venue capacity hardening**
 
-Do not start frontend activation, generated-document persistence, GS Form No. 22, or unrelated workflow cleanup inside FORM-INT-3.
+FIX-1 must remain renderer/layout-focused. Preserve exact stored `venueOrLink`; do not truncate, ellipsize, shorten, rewrite URLs, or change scheduling data. Adjust the TEMPLATE-3 schedule-row geometry/wrapping so realistic physical venues and meeting URLs render completely on one-page A4 for both GS-006 and GS-007, with regression/visual QA.
+
+Do not begin FORM-INT-4 until FORM-INT-3 FIX-1 is reviewed and accepted.
