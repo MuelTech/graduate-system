@@ -32,6 +32,7 @@ import { canApplyReviewTransition } from './defense-workflow.rules';
 import { AdviserRequestService } from './adviser-request.service';
 import { OralEvaluationService } from './oral-evaluation.service';
 import { OfficialDefenseRecordService } from './official-defense-record.service';
+import { OfficialDefenseDocumentService } from './official-defense-document.service';
 import { RapporteurFinalizationService } from './rapporteur-finalization.service';
 import { RapReportService } from './rap-report.service';
 
@@ -53,6 +54,7 @@ export class ThesisService {
   private adviserRequestService = new AdviserRequestService();
   private conclusion = new DefenseConclusionService();
   private officialRecords = new OfficialDefenseRecordService();
+  private officialDocuments = new OfficialDefenseDocumentService();
   private rapporteurFinalization = new RapporteurFinalizationService();
   private rapReports = new RapReportService();
 
@@ -893,6 +895,19 @@ export class ThesisService {
   ) {
     // CP7-FIX1 Issue 8: authorization happens inside the service BEFORE any backfill.
     return this.officialRecords.getOfficialCriteria(
+      scheduleId,
+      panelAssignmentId,
+      actor,
+    );
+  }
+
+  /** FORM-INT-1: authenticated ADMIN individual evaluation PDF (exact attempt). */
+  async generateOfficialCriteriaPdf(
+    scheduleId: string,
+    panelAssignmentId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateIndividualEvaluationPdf(
       scheduleId,
       panelAssignmentId,
       actor,

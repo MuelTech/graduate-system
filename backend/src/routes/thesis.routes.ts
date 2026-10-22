@@ -597,6 +597,14 @@ router.get(
   thesisController.getOfficialCriteria,
 );
 
+// FORM-INT-1: exact-attempt Individual Evaluation PDF (ADMIN-only, no public URL)
+router.get(
+  "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOfficialCriteriaPdf,
+);
+
 // CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
 // data. Committee accounts (incl. the session Chairman) are denied.
 router.get(
