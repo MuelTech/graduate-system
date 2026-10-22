@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -438,14 +438,14 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-1 is **ACCEPTED** at:
+FORM-INT-2 is **ACCEPTED** at:
 
-`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca` — `feat(documents): integrate individual evaluation PDF`
+`d16f2819df176a470e68bfd1301873fbee9ea119` — `feat(documents): integrate oral exam summary PDF`
 
 Accepted production path:
 
 ```text
-GET /thesis/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf
+GET /thesis/defense/:scheduleId/records/summary/pdf
         ↓
 authenticated ADMIN route
         ↓
@@ -455,29 +455,33 @@ ThesisService
         ↓
 OfficialDefenseDocumentService
         ↓
-OfficialDefenseRecordService.getOfficialCriteria(...)
+OfficialDefenseRecordService.getOfficialSummaryDocumentSource(...)
         ↓
-accepted TEMPLATE-1 renderer
+persisted OralExamSummary.snapshotData
+        ↓
+accepted TEMPLATE-2 renderer
         ↓
 PDF bytes
 ```
 
 Accepted constraints:
 
-- exact schedule + evaluator assignment binding;
-- finalized `OralExamScore.officialSnapshot`;
-- `INSTITUTIONAL_MATRIX_V2` only;
-- exact evaluator signature image only;
-- raw signature evidence remains server-side;
+- persisted Summary snapshot is the frozen academic/identity source;
+- examiner order and values come from that persisted snapshot;
+- persisted evaluator `averageValue` is printed directly with no PDF-time recomputation;
+- exactly one Chairman; remaining evaluator rows are Panelists;
+- Title has no Adviser;
+- Proposal/Final use the exact same-schedule ADVISER seat only;
+- Dean stays blank;
+- no evaluator/RAP/Adviser digital signature is reused;
+- V2-only; legacy/mixed scoring fails closed;
 - ADMIN-only PDF access;
-- no frontend activation yet;
-- no generated-document persistence/versioning;
-- production deployment must retain `backend/assets/official-forms/` beside the compiled backend tree.
+- no frontend activation or persistence/versioning yet.
+
+Minor hardening note for a later bounded pass: the persisted `OralExamSummary` row is already exact-`scheduleId` related, but a defensive consistency assertion between snapshot metadata (`snapshot.scheduleId` / `snapshot.defenseType`) and its owning schedule may be added without changing academic semantics.
 
 Next bounded package:
 
-**FORM-INT-2 — GS-011 Oral Examination Summary PDF integration**
+**FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration**
 
-FORM-INT-2 should reuse the accepted document-service/asset/route architecture where appropriate and map the exact persisted `OralExamSummary.snapshotData` into the accepted TEMPLATE-2 renderer.
-
-Do not start GS-006/GS-007, frontend activation, generated-document persistence, digital-signature reuse, or GS Form No. 22 inside FORM-INT-2.
+Do not start frontend activation, generated-document persistence, GS Form No. 22, or unrelated workflow cleanup inside FORM-INT-3.
