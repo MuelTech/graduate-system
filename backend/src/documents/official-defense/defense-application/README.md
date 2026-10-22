@@ -229,6 +229,8 @@ This bounded renderer/layout correction was independently reviewed and merged to
 
 ## FORM-INT-3 FIX-1 — schedule Link/Venue capacity (2026-10-22)
 
+Status: **ACCEPTED** at `d387526ad153df54b674b7b4b9b7ef09478a7676`.
+
 Production integration exposed that the original single-line Link box was too narrow for
 authoritative `venueOrLink` values (`Room 101, GS Building` already failed). The schedule block
 now renders Date of Defense and Time on the first line and Link/Venue on a measured full-width
@@ -240,3 +242,6 @@ domain mutation. A value that cannot fit the bounded row still fails explicitly 
 `RangeError`. Regression coverage includes realistic physical venues, Google Meet and long
 Teams-style URLs, geometry/bounds checks, unchanged GS-006/GS-007 committee structures, and the
 deliberate over-capacity failure.
+
+
+Integration acceptance note: FORM-INT-3 is accepted with integration commit `8393a368dd56230e6669a85de42cc3880f60b2da` plus this renderer hardening commit. The next integration package is FORM-INT-4; no further TEMPLATE-3 domain mapping change is required for that handoff.
