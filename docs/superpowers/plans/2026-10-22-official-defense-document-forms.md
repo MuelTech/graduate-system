@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 NEXT
 
 ## 1. Purpose
 
@@ -795,39 +795,70 @@ TEMPLATE-3 FIX-1 is accepted. The next package is FORM-INT-0, an analysis-only i
 
 ## 18. FORM-INT-0 — Official Defense Document integration readiness audit
 
-**NEXT / ANALYSIS ONLY.**
+**COMPLETE / ACCEPTED AS INTEGRATION PLANNING BASELINE.**
 
-Create a fresh branch from accepted `main`:
+Branch:
 
 `feat/official-defense-document-integration`
 
-Expected base checkpoint at package start:
+Actual audit base:
 
-`48e7e02f546de894d9591b0e4a271b9629f1bdbd`
+`401219c8c22f5b56247a79fa42f99bfe2ee8d41c`
 
-FORM-INT-0 must inspect the existing implementation and document the exact production integration path for the three accepted form families. It must not change runtime behavior.
+Dedicated audit record:
 
-Required audit areas:
+`docs/superpowers/plans/2026-10-22-official-defense-document-integration-audit.md`
 
-- authoritative source records for Individual Evaluation, GS-011 Summary, and GS-006/GS-007 Defense Application;
-- exact defense attempt and schedule binding;
-- evaluator identity and finalized-state binding;
-- current Oral Examination Summary snapshot/service behavior;
-- existing Admin Defense Record sections and the correct ownership surface for Download / Print;
-- server-side authorization requirements;
-- raw signature evidence boundaries and which signatures may or may not be reused;
-- payment/O.R. and application data availability for GS-006/GS-007;
-- accepted stage-specific DefenseCommitteePolicy mapping for printed rows;
-- stale `defense-record-status.rules.ts` Title Defense assumption and whether it blocks document readiness;
-- existing repositories/services/controllers/routes that can be extended without creating a parallel workflow;
-- whether generated-document persistence/versioning is actually required for the first integration packages or can remain deferred.
+FORM-INT-0 made no runtime, schema, API, renderer, or UI changes. Its accepted planning conclusions are:
 
-Deliverables:
+- Individual Evaluation uses the exact finalized evaluator `OralExamScore.officialSnapshot` plus that evaluator's exact signature evidence;
+- GS-011 uses the persisted `OralExamSummary.snapshotData` and does not reuse unrelated signatures;
+- GS-006/GS-007 is anchored to the exact `DefenseSchedule.id` plus exact committee assignments;
+- official generation must not use thesis-level latest/current schedule fallback;
+- the accepted TEMPLATE-3 FIX-1 committee presentation remains authoritative;
+- unavailable Defense Application fields remain blank rather than inferred;
+- first integration is on-demand rendering; generated-document persistence/versioning stays deferred;
+- Admin Defense Record detail remains the owning UI surface for official outputs;
+- the stale Title Defense record-status projection is a prerequisite correction before exposing document readiness.
 
-- concrete source-to-renderer field map per form;
-- recommended service/controller/API boundaries;
-- authorization matrix;
-- exact Admin UI action placement;
-- prerequisites/blockers ranked by package;
-- bounded implementation sequence (FORM-INT-1, FORM-INT-2, FORM-INT-3, FORM-INT-4 or equivalent);
-- no code behavior changes.
+The audit is a planning baseline, not permission to broaden scope. Each implementation package must still verify its exact repository dependencies.
+
+## 19. FORM-INT-PRE1 — Defense Record status alignment
+
+**NEXT / BOUNDED PREREQUISITE.**
+
+Purpose:
+
+Correct the stale Title Defense completion projection before official-document readiness is activated.
+
+Current inconsistency:
+
+- `defense-record-status.rules.ts` still carries the old assumption that Title Defense has no numerical Criteria/Summary requirement;
+- current official-record runtime and source-of-truth now treat Title, Proposal, and Final as producing evaluator Criteria + Oral Examination Summary.
+
+Scope:
+
+- `backend/src/services/defense-record-status.rules.ts`;
+- `backend/tests/unit/services/defense-record-status.rules.test.ts`;
+- comments/documentation only if needed to describe the corrected projection.
+
+Required result:
+
+- Title, Proposal, and Final must not reach COMPLETE merely because conclusion/RAP state is complete when the required Oral Examination Summary is absent;
+- no academic result is inferred from scores;
+- this remains a UI/readiness projection only.
+
+Explicit exclusions:
+
+- no renderer changes;
+- no PDF endpoints;
+- no controller/route work;
+- no Admin UI;
+- no Prisma/schema/migration;
+- no scoring/verdict changes;
+- no committee-policy changes;
+- no GS Form No. 22 work.
+
+After FORM-INT-PRE1 is accepted, proceed to FORM-INT-1:
+
+**Shared official-document orchestration + Individual Oral Examination Criteria PDF integration.**
