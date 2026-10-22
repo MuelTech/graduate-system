@@ -1,8 +1,9 @@
 # TEMPLATE-3: Defense Application (GS-006 / GS-007)
 
-Status: **IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW** (2026-10-22).
+Status: **ACCEPTED / PUBLISHED** (2026-10-22).
 Branch: `feat/official-defense-document-forms`.
-Verified starting local/remote HEAD: `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`.
+Starting implementation HEAD: `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`.
+Accepted remote HEAD: `959233de1d9be7209a3792702fb392056b605613`.
 
 `renderDefenseApplication(input): Promise<Uint8Array>` draws one A4 portrait PDF using
 `pdf-lib`. One discriminated input and one renderer implement this bounded form family.
@@ -164,6 +165,30 @@ Color logos retain their supplied colors and existing 141/207 px resolution limi
 vector geometry removes paper holes, skew, grain, shadows, and scan artifacts. Footer placement
 is slightly higher to retain a safe print margin. No photographed background is embedded.
 
-This completes implementation of the approved static-template family only.
-Project-owner visual acceptance remains pending.
-Do not start GS-IS integration, GS Form No. 22, or another package.
+Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
+
+A post-acceptance developer-tooling follow-up remains before integration: the QA generators live under `backend/scripts/`, outside the production `backend/tsconfig.json` project (`rootDir: "./src"`, `include: ["src/**/*"]`). VS Code therefore reports Node built-in/global typing diagnostics for those scripts even though the production backend build passes and the generators run through `ts-node --transpile-only`. See FORM-DX-1 in the initiative plan.
+
+Do not start GS-IS integration or GS Form No. 22 until FORM-DX-1 is verified.
+
+
+## Acceptance record
+
+Project-owner visual acceptance was granted on 2026-10-22.
+
+Published implementation:
+
+- `959233de1d9be7209a3792702fb392056b605613` — `feat(documents): add defense application renderers`
+
+Accepted points:
+
+- one controlled `masters` / `doctoral` renderer family;
+- GS-006 and GS-007 printed capacities remain documented as layout facts, not committee policy;
+- exact confirmed GS-006/GS-007 footers retained;
+- explicit caller-supplied application/payment/schedule/committee/approval display values;
+- no DB/API/payment verification/signature/workflow inference;
+- three visual QA passes over six variants with no observed clipping or overlap;
+- fifteen TEMPLATE-3 tests plus existing TEMPLATE-1/TEMPLATE-2 tests, backend build, and diff checks passed;
+- accepted TEMPLATE-1/TEMPLATE-2/shared renderer files remained unchanged.
+
+The static renderer itself is accepted. FORM-DX-1 concerns development-script TypeScript project coverage only.
