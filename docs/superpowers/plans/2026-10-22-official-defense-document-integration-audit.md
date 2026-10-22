@@ -6,7 +6,7 @@
 **Audit base:** `main` @ `401219c8c22f5b56247a79fa42f99bfe2ee8d41c`  
 **Status:** ACCEPTED AS INTEGRATION PLANNING BASELINE  
 **Runtime/schema changes:** none  
-**Next package:** FORM-INT-1
+**Next package:** FORM-INT-2
 
 ## Purpose
 
@@ -202,6 +202,33 @@ PRE1 changed only:
 
 No renderer, schema, API, route, frontend, scoring, verdict, RAP-lifecycle, or committee-policy change was included.
 
+## FORM-INT-1 accepted implementation
+
+Accepted implementation:
+
+`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`
+
+Production route:
+
+`GET /thesis/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf`
+
+Accepted architecture:
+
+- ADMIN-only authenticated route;
+- ThesisController / ThesisService delegation;
+- `OfficialDefenseDocumentService` orchestration;
+- reuse of `OfficialDefenseRecordService.getOfficialCriteria(...)`;
+- finalized V2 snapshot mapping into the accepted TEMPLATE-1 renderer;
+- exact evaluator signature validation/decoding;
+- server-side production-logo loading;
+- PDF bytes only; no raw signature/storage-path exposure.
+
+Legacy `LEGACY_POINTS_V1` records fail closed. No conversion or reinterpretation is authorized.
+
+The loader resolves `backend/assets/official-forms/` relative to the service module and works in both source and compiled `dist/services` layouts. Deployment packaging must retain the external `assets/` directory beside the compiled backend.
+
+No frontend activation or generated-document persistence was added.
+
 ## Additional integration constraints
 
 - Validate evaluator signature image data before embedding; malformed evidence must fail closed.
@@ -215,8 +242,8 @@ No renderer, schema, API, route, frontend, scoring, verdict, RAP-lifecycle, or c
 ## Accepted bounded implementation sequence
 
 1. **FORM-INT-PRE1 — ACCEPTED** — corrected stale Title Defense record-status projection.
-2. **FORM-INT-1 — NEXT** — shared official-document orchestration + Individual Criteria PDF endpoint.
-3. **FORM-INT-2** — GS-011 Summary PDF endpoint.
+2. **FORM-INT-1 — ACCEPTED** — shared official-document orchestration + Individual Criteria PDF endpoint (`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`).
+3. **FORM-INT-2 — NEXT** — GS-011 Summary PDF endpoint.
 4. **FORM-INT-3** — GS-006 / GS-007 Defense Application PDF endpoint.
 5. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
 
