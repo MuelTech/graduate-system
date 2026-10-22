@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 SOURCE-ACCEPTED / MANUAL QA PENDING
 
 ## 1. Purpose
 
@@ -1054,7 +1054,11 @@ FORM-INT-4 is now unblocked.
 
 ## 24. FORM-INT-4 — Admin Download / Print activation and hardening
 
-**NEXT / BOUNDED INTEGRATION.**
+**SOURCE-ACCEPTED / MANUAL QA PENDING.**
+
+Implementation:
+
+`02043af2d8b99156046622438eb3635089417465` — `feat(documents): activate admin official PDF actions`
 
 Activate the three accepted official-document PDF endpoints in the schedule-scoped Admin Defense Record UI:
 
@@ -1063,5 +1067,34 @@ Activate the three accepted official-document PDF endpoints in the schedule-scop
 - Oral Examination Summary → GS-011.
 
 Add only the minimum availability metadata/read-model changes required to show correct enabled/disabled actions and reasons. Preserve authenticated blob download/open behavior, exact `scheduleId` / evaluator binding, and existing section ownership.
+
+Implemented result:
+
+- Defense Overview now calls the exact schedule GS-006/GS-007 endpoint;
+- Evaluation Results has an exact per-evaluator PDF action using `panelAssignmentId`;
+- Individual actions enable only from `hasOfficialCriteria`;
+- GS-011 action enables only from `oralExamSummary.ready`;
+- Committee Report remains a disabled document placeholder;
+- authenticated PDF retrieval is centralized in `official-defense-documents.client.ts`;
+- bearer token is sent only in the Authorization header;
+- PDF MIME/signature/empty-response validation is enforced before download;
+- backend filenames are sanitized and deterministic fallbacks exist;
+- scoped loading and Sonner error feedback are implemented;
+- stale deferred-document assertions in the FIX-4/FIX-5 verifiers were narrowly superseded;
+- no backend production, renderer, schema, workflow, GS Form No. 22, or new role-access change was included.
+
+Agent-reported verification:
+
+- new FORM-INT-4 verifier: 18/18 PASS;
+- updated FIX-4/FIX-5 verifiers: 27/27 PASS;
+- frontend TypeScript, scoped ESLint, build, and `git diff --check`: PASS;
+- backend official-document regression slice: 172/172 PASS;
+- `npm run forms:check` and backend build: PASS.
+
+Independent remote source/diff review found no blocking implementation or security defect.
+
+Remaining acceptance gate:
+
+Manual authenticated Admin QA must confirm the actual browser download/error behavior for application, finalized/unfinalized evaluator, ready/unready Summary, and disabled Committee Report states. Coding-agent browser QA was not executed because no running authenticated environment was available.
 
 Do not add a generic Defense Documents inventory, browser-page printing as the official form, schema changes, generated-document persistence/versioning, GS Form No. 22, or new Student/Panelist document access.
