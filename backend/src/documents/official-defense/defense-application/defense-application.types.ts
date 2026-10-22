@@ -26,29 +26,29 @@ interface DefenseApplicationCommonInput {
   readonly presidentName: string;
 }
 interface CommitteeDisplayNames {
-  /** In printed order; absent names leave the corresponding remaining slots blank. */
+  /**
+   * Printed Adviser display name for Proposal/Final Defense. Omit or leave
+   * blank for Title/null; a nonblank value is rejected when no Adviser row is
+   * printed rather than being silently discarded.
+   */
+  readonly adviserName?: string;
+  /**
+   * Printed Panelist display names, in row order. Capacity is determined by
+   * program variant plus applicationType. The first name may later be supplied
+   * from the authoritative Chairman assignment; the renderer does not infer
+   * roles from names or reorder them.
+   */
   readonly panelistNames: readonly string[];
   readonly facilitatorName: string;
   readonly rapporteurName: string;
 }
 
-/** Physical variants from the photographs, not GS-IS committee membership policy. */
+/**
+ * Presentation-only input for the GS-006/GS-007 family. `applicationType`
+ * selects the stage-specific printed committee capacity and Adviser visibility;
+ * it does not define or mutate GS-IS committee membership.
+ */
 export type DefenseApplicationRenderInput = DefenseApplicationCommonInput & (
-  | {
-    readonly variant: "masters";
-    readonly committee: CommitteeDisplayNames & {
-      readonly adviserName: string;
-      /** At most four physical Panelist slots on GS-006. */
-      readonly panelistNames: readonly string[];
-    };
-  }
-  | {
-    readonly variant: "doctoral";
-    readonly committee: CommitteeDisplayNames & {
-      /** GS-007 has no printed Adviser slot. */
-      readonly adviserName?: never;
-      /** At most six physical Panelist slots on GS-007. */
-      readonly panelistNames: readonly string[];
-    };
-  }
+  | { readonly variant: "masters"; readonly committee: CommitteeDisplayNames }
+  | { readonly variant: "doctoral"; readonly committee: CommitteeDisplayNames }
 );
