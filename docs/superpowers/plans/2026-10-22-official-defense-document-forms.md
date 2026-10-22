@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 NEXT
 
 ## 1. Purpose
 
@@ -825,7 +825,11 @@ The audit is a planning baseline, not permission to broaden scope. Each implemen
 
 ## 19. FORM-INT-PRE1 — Defense Record status alignment
 
-**NEXT / BOUNDED PREREQUISITE.**
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`ae68d14b7af037e0570c21336de1ea7c43fb424c` — `fix(defense-records): align title completion with summary lifecycle`
 
 Purpose:
 
@@ -859,6 +863,36 @@ Explicit exclusions:
 - no committee-policy changes;
 - no GS Form No. 22 work.
 
-After FORM-INT-PRE1 is accepted, proceed to FORM-INT-1:
+Accepted result:
 
-**Shared official-document orchestration + Individual Oral Examination Criteria PDF integration.**
+- the obsolete Title-specific Summary exemption was removed;
+- Title, Proposal, and Final now require Summary ready + FINALIZED RAP after conclusion before the record projection becomes `COMPLETE`;
+- focused status tests cover the corrected Title matrix;
+- no renderer, API, route, frontend, schema, scoring, verdict, RAP-lifecycle, or committee-policy change was included.
+
+Agent-reported verification for PRE1:
+
+- focused status tests: 12/12 PASS;
+- official-defense-record service tests: 41/41 PASS;
+- backend TypeScript build: PASS;
+- `git diff --check`: PASS.
+
+The implementation was independently source/diff reviewed before acceptance.
+
+## 20. FORM-INT-1 — Individual Oral Examination Criteria PDF integration
+
+**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+
+Use the accepted FORM-INT-0 mapping and PRE1 readiness baseline.
+
+Scope should remain limited to the first official document:
+
+- exact schedule + evaluator assignment binding;
+- finalized `OralExamScore.officialSnapshot`;
+- evaluator signature image validation/decoding;
+- server-side production logo loading;
+- mapping to the accepted TEMPLATE-1 renderer;
+- authenticated Admin PDF endpoint;
+- focused authorization, exact-binding, V2-only, malformed-signature, and renderer-mapping tests.
+
+No frontend activation yet. Do not include GS-011, GS-006/GS-007, persistence/versioning, schema changes, or GS Form No. 22.
