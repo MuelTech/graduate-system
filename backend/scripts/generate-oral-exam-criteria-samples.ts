@@ -24,10 +24,11 @@ async function main(): Promise<void> {
   };
   // All names and academic values below are fictitious, explicitly supplied layout examples.
   // Deliberately no calculated averages, interpreted remarks, verdicts, or real signatures.
+  // X marks are unconfirmed dummy QA glyphs; the blank reference prescribes no selected-cell symbol.
   const filled: OralExamCriteriaRenderInput = {
     ...blank,
     candidateName: "Alexandra M. Santos",
-    course: "MAEd - Educational Management",
+    course: "MAEd",
     date: "22 October 2026",
     groupI: ["1.25", "1.50", "1.25", "1.50", "1.25"],
     groupII: ["1.25", "1.50", "1.25", "1.50"],

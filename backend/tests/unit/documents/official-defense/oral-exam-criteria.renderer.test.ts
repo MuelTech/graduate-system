@@ -67,8 +67,60 @@ describe("TEMPLATE-1 pure Oral Examination Criteria renderer", () => {
     for (const value of ["1.00", "1.25", "1.50", "1.75", "2.00", "2.50"]) {
       expect(items.filter(item => item.str === value)).toHaveLength(2);
     }
-    expect(items.filter(item => item.str === "X")).toHaveLength(8);
     expect(text).not.toMatch(/GS-\d+|Rev\.|PASSED|REDEFENSE/);
+  });
+
+  it("places the unconfirmed dummy X marker only in columns selected by the explicit values", async () => {
+    const items = await inspect(await renderOralExamCriteria(input));
+    const marks = items.filter(item => item.str === "X");
+    expect(marks).toHaveLength(8);
+    // This checks the current QA presentation, not an institutional marking convention.
+    const selectedColumns = [0, 1, 2, 3, 4, 5, 1, 2];
+    marks.forEach((mark, i) => {
+      expect(mark.transform[4] + mark.width / 2).toBeCloseTo(340 + 36 * selectedColumns[i], 1);
+    });
+  });
+
+  it("keeps normal identity values inline and the name near its rule, reserving extra height only for wrapping", async () => {
+    const normal = { ...input, candidateName: "Alexandra M. Santos", course: "MAEd" };
+    const items = await inspect(await renderOralExamCriteria(normal));
+    const find = (str: string) => {
+      // PDF.js may combine adjacent labels and values now that their font and baseline match.
+      const item = items.find(item => item.str.includes(str));
+      expect(item, str).toBeDefined();
+      return item!;
+    };
+    const baselineFromTop = (item: TextItem) => 841.89 - item.transform[5];
+    for (const [label, value] of [
+      ["Candidate:", normal.candidateName], ["Course:", normal.course], ["Date:", normal.date],
+    ]) {
+      const field = find(value);
+      expect(field.transform[0]).toBeCloseTo(12, 2);
+      expect(find(label).transform[0]).toBeCloseTo(12, 2);
+      expect(Math.abs(field.transform[5] - find(label).transform[5])).toBeLessThan(1);
+      expect(194 - baselineFromTop(field)).toBeGreaterThan(2);
+      expect(194 - baselineFromTop(field)).toBeLessThan(4);
+    }
+    expect(749 - baselineFromTop(find(normal.evaluatorPrintedName))).toBeGreaterThan(2);
+    expect(749 - baselineFromTop(find(normal.evaluatorPrintedName))).toBeLessThan(4);
+    expect(baselineFromTop(find("Group I"))).toBeLessThan(210);
+
+    const longItems = await inspect(await renderOralExamCriteria({
+      ...normal,
+      candidateName: "Maria Alexandra de los Santos-Villanueva",
+      course: "PhD in Education - Educational Leadership",
+      evaluatorPrintedName: "Dr. Maria Esperanza de la Cruz-Villanueva",
+    }));
+    const longGroup = longItems.find(item => item.str === "Group I")!;
+    expect(find("Group I").transform[5] - longGroup.transform[5]).toBeCloseTo(12, 2);
+    expect(longItems.find(item => item.str === "Signature over printed name of Panelist")!.transform[5])
+      .toBeCloseTo(find("Signature over printed name of Panelist").transform[5], 2);
+    const nameLines = longItems.filter(item => item.transform[4] >= 58 && item.transform[4] < 208
+      && baselineFromTop(item) > 725 && baselineFromTop(item) < 749);
+    expect(nameLines).toHaveLength(2);
+    const lastBaseline = Math.max(...nameLines.map(baselineFromTop));
+    expect(749 - lastBaseline).toBeGreaterThan(2);
+    expect(749 - lastBaseline).toBeLessThan(4);
   });
 
   it("renders realistic long values within print-safe page bounds and retains their complete text", async () => {
@@ -90,6 +142,22 @@ describe("TEMPLATE-1 pure Oral Examination Criteria renderer", () => {
       expect(item.transform[4] + item.width).toBeLessThanOrEqual(559.28);
       expect(item.transform[5]).toBeGreaterThanOrEqual(36);
       expect(item.transform[5] + item.height).toBeLessThanOrEqual(805.89);
+    }
+  });
+
+  it("aligns both average labels and values on a compact baseline above their underline", async () => {
+    const items = await inspect(await renderOralExamCriteria({
+      ...input, groupIAverage: "1.35", groupIIAverage: "1.38",
+    }));
+    const labels = items.filter(item => item.str === "Average:");
+    expect(labels).toHaveLength(2);
+    for (const [index, value, ruleTop] of [[0, "1.35", 383], [1, "1.38", 546]] as const) {
+      const average = items.find(item => item.str === value)!;
+      expect(average).toBeDefined();
+      expect(average.transform[5]).toBeCloseTo(labels[index].transform[5], 2);
+      const gap = ruleTop - (841.89 - average.transform[5]);
+      expect(gap).toBeGreaterThan(2);
+      expect(gap).toBeLessThan(4);
     }
   });
 
