@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -260,7 +260,7 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-The static form phase is closed. **FORM-INT-0 is complete and accepted as the integration planning baseline** on `feat/official-defense-document-integration`. The next bounded package is **FORM-INT-PRE1 — Defense Record status alignment** before any production PDF endpoint is added.
+The static form phase is closed. **FORM-INT-0** and **FORM-INT-PRE1** are accepted, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** is now accepted at `9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`. The next bounded package is **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration**.
 
 ## Explicitly deferred
 
@@ -438,21 +438,46 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-PRE1 is **ACCEPTED** at:
+FORM-INT-1 is **ACCEPTED** at:
 
-`ae68d14b7af037e0570c21336de1ea7c43fb424c` — `fix(defense-records): align title completion with summary lifecycle`
+`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca` — `feat(documents): integrate individual evaluation PDF`
 
-Accepted behavior:
+Accepted production path:
 
-- Title, Proposal, and Final share the same official-record completion projection;
-- after conclusion, a ready Oral Examination Summary and FINALIZED RAP are both required for `COMPLETE`;
-- missing Summary remains `AWAITING_COMPLETION`;
-- the projection remains UI/readiness-only and does not infer academic outcome.
+```text
+GET /thesis/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf
+        ↓
+authenticated ADMIN route
+        ↓
+ThesisController
+        ↓
+ThesisService
+        ↓
+OfficialDefenseDocumentService
+        ↓
+OfficialDefenseRecordService.getOfficialCriteria(...)
+        ↓
+accepted TEMPLATE-1 renderer
+        ↓
+PDF bytes
+```
+
+Accepted constraints:
+
+- exact schedule + evaluator assignment binding;
+- finalized `OralExamScore.officialSnapshot`;
+- `INSTITUTIONAL_MATRIX_V2` only;
+- exact evaluator signature image only;
+- raw signature evidence remains server-side;
+- ADMIN-only PDF access;
+- no frontend activation yet;
+- no generated-document persistence/versioning;
+- production deployment must retain `backend/assets/official-forms/` beside the compiled backend tree.
 
 Next bounded package:
 
-**FORM-INT-1 — Individual Oral Examination Criteria PDF integration**
+**FORM-INT-2 — GS-011 Oral Examination Summary PDF integration**
 
-FORM-INT-1 should add the smallest production integration foundation needed to map the exact finalized evaluator record into the accepted TEMPLATE-1 renderer and return authenticated PDF bytes for Admin use.
+FORM-INT-2 should reuse the accepted document-service/asset/route architecture where appropriate and map the exact persisted `OralExamSummary.snapshotData` into the accepted TEMPLATE-2 renderer.
 
-Do not start GS-011, GS-006/GS-007, frontend activation, generated-document persistence, GS Form No. 22, or unrelated workflow cleanup inside FORM-INT-1.
+Do not start GS-006/GS-007, frontend activation, generated-document persistence, digital-signature reuse, or GS Form No. 22 inside FORM-INT-2.
