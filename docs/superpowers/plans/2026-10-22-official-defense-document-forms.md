@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 IMPLEMENTED LOCALLY - PUBLICATION AND VISUAL APPROVAL PENDING
+**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 AUTHORIZED NEXT
 
 ## 1. Purpose
 
@@ -487,11 +487,11 @@ It does not:
 
 Implementation was subsequently authorized for TEMPLATE-1 only, as recorded below.
 
-## 13. TEMPLATE-1 implementation checkpoint (2026-10-22)
+## 13. TEMPLATE-1 implementation and acceptance checkpoint (2026-10-22)
 
-**Implemented locally; publication and project-owner visual acceptance pending.** No TEMPLATE-2/3 or integration package is authorized by this checkpoint.
+**ACCEPTED / PUBLISHED.** Project-owner visual approval was granted after the bounded refinement pass. TEMPLATE-2 is authorized next; TEMPLATE-3 and GS-IS integration remain separately gated.
 
-- Starting branch HEAD: `74b09e8475d7767b3e573b70d3c7151c23c2241b`; verified against GitHub before implementation.
+- Starting implementation HEAD: `74b09e8475d7767b3e573b70d3c7151c23c2241b`; verified against GitHub before implementation.
 - Both planning documents were re-read; the reference photograph and both clean logos were actually viewed locally before coding.
 - Renderer: `backend/src/documents/official-defense/oral-exam-criteria/oral-exam-criteria.renderer.ts`.
 - Explicit typed input: `oral-exam-criteria.types.ts`; logo/signature bytes, identity, date, nine criterion choices, both averages, recommendations, rating, remarks, and evaluator printed name. No averages, verdicts, or academic interpretation are computed.
@@ -505,6 +505,29 @@ Implementation was subsequently authorized for TEMPLATE-1 only, as recorded belo
 
 Known fidelity limits: the photograph does not establish exact typefaces or physical dimensions; these are reconstructed. Color logos are retained from the supplied clean assets, fine seal lettering remains limited by the 141/207 px originals, and photocopy noise/skew/shading are replaced by straight vector geometry and uniform gray bands. Matrix numbers use the requested consistent two-decimal notation. No form code or revision is invented.
 
-The detailed renderer contract, sample commands, limits, and QA notes are in `backend/src/documents/official-defense/oral-exam-criteria/README.md`. The next action is **project-owner visual review of TEMPLATE-1**, not TEMPLATE-2 implementation or system integration.
+The detailed renderer contract, sample commands, limits, and QA notes are in `backend/src/documents/official-defense/oral-exam-criteria/README.md`.
 
-Publication status: the local HEAD remains `74b09e8475d7767b3e573b70d3c7151c23c2241b`. Local Git metadata is read-only in this session. GitHub blob-creation calls were rejected with `MCP tool call requires approval, but approval policy is never`; no commit or remote ref update was created. The bounded local changes are ready for a normal authorized Git commit/push, excluding both temporary directories.
+### Accepted publication state
+
+TEMPLATE-1 was published on `feat/official-defense-document-forms` through:
+
+- `d06e7967f2212bd86a2a869e4ed1dcfd90c498db` — `feat(documents): add oral examination criteria renderer`
+- `9e76390623739dbb9ec0e609baf6c78880d6edce` — `fix(documents): refine oral examination criteria layout`
+
+Accepted remote HEAD for TEMPLATE-1: `9e76390623739dbb9ec0e609baf6c78880d6edce`.
+
+Final accepted visual refinements include:
+
+- compact inline Candidate / Course / Date fields;
+- filled sample Course value corrected to `MAEd`;
+- preserved long-value wrapping behavior;
+- tightened evaluator printed-name / signature-line relationship while retaining the intentional lower-page whitespace;
+- `X` retained only as an explicitly unconfirmed QA marker, not an institutional scoring rule;
+- regenerated blank, filled, and long-value samples with no observed clipping or overlap;
+- eight focused renderer tests and backend build passing.
+
+### Next authorized package
+
+**TEMPLATE-2 — EARIST-QSF-GS-011 Rev. 01 (06.20.25) — Oral Examination Summary Sheet**
+
+TEMPLATE-2 remains static-template only. It may reuse accepted TEMPLATE-1 shared PDF/header helpers where appropriate, but it must not add database/API/UI integration, invent GS-011 signature policy, or start TEMPLATE-3.
