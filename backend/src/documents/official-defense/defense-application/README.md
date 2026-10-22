@@ -1,9 +1,11 @@
 # TEMPLATE-3: Defense Application (GS-006 / GS-007)
 
-Status: **ACCEPTED VISUAL BASELINE / PUBLISHED — TEMPLATE-3 FIX-1 REQUIRED BEFORE INTEGRATION** (2026-10-22).
+Status: **TEMPLATE-3 FIX-1 IMPLEMENTED / LOCAL VISUAL QA PASS — PENDING INDEPENDENT ACCEPTANCE** (2026-10-22).
 Merged to `main` via PR #37.
 Starting implementation HEAD: `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`.
 Accepted remote HEAD: `959233de1d9be7209a3792702fb392056b605613`.
+FIX-1 implementation branch: `fix/defense-application-committee-layout`.
+FIX-1 starting HEAD: `5d906730fce9f0430def864722a6230f21cec60b`.
 
 `renderDefenseApplication(input): Promise<Uint8Array>` draws one A4 portrait PDF using
 `pdf-lib`. One discriminated input and one renderer implement this bounded form family.
@@ -23,8 +25,6 @@ Photographs are never embedded. Only the existing clean production logo JPEGs ar
 | Printed detail | Master's GS-006 | Doctoral GS-007 |
 | --- | --- | --- |
 | Program heading | `MASTERS PROGRAM` | `DOCTORAL PROGRAM` |
-| Printed detail | Master's GS-006 | Doctoral GS-007 |
-| --- | --- | --- |
 | Adviser slots | Title: none; Proposal/Final: 1 | Title: none; Proposal/Final: 1 |
 | Printed `Panelist` rows — Title | **5** = Chairman + 4 Panelists | **6** = Chairman + 5 Panelists |
 | Printed `Panelist` rows — Proposal/Final | **4** = Chairman + 3 Panelists | **5** = Chairman + 4 Panelists |
@@ -56,12 +56,14 @@ The unlabelled right committee column stays blank for the printed signing area.
 - upper `applicantDateAndTime`, independent of the lower defense schedule fields;
 - `amountPaid`, `officialReceiptNumber`, `dateOfApplication`, `personalGmail`;
 - `defenseDate`, `defenseTime`, `defenseLink`;
-- explicit committee display values: Master's `adviserName`, bounded `panelistNames`
-  in physical row order, `facilitatorName`, and `rapporteurName`;
+- explicit committee display values: optional `adviserName` for both programs,
+  bounded `panelistNames` in printed row order, `facilitatorName`, and `rapporteurName`;
 - explicit `deanName`, `vicePresidentName`, and `presidentName`.
 
 Empty strings and absent Panelist names leave printed slots blank.
-No missing identity is fabricated. After TEMPLATE-3 FIX-1, allowed printed Panelist-name capacity is stage-specific: GS-006 Title 5, GS-006 Proposal/Final 4, GS-007 Title 6, and GS-007 Proposal/Final 5. These are display slots; the first supplied name may represent the authoritative Chairman while retaining the printed `Panelist` label.
+No missing identity is fabricated. After TEMPLATE-3 FIX-1, allowed printed Panelist-name capacity is stage-specific: GS-006 Title 5, GS-006 Proposal/Final 4, GS-007 Title 6, and GS-007 Proposal/Final 5. These are display slots; the first supplied name may represent the authoritative Chairman while retaining the printed `Panelist` label. The renderer never infers which supplied name is Chairman and preserves the caller's order.
+
+`adviserName` is printed only for Proposal/Final. A nonblank value at Title or null is rejected explicitly rather than silently discarded. For `applicationType: null`, the renderer uses the program's maximum blank Panelist capacity (5 Master's / 6 Doctoral) and no Adviser row; this is a neutral blank-form layout, not a Title inference, and no stage marker is printed.
 All dates, amounts, O.R. identifiers, contact values, and schedule values are rendered as supplied.
 There is no O.R./Gmail validation, course specialization inference, approval state, scoring,
 payment-state determination, signature image, or automatic signing.
@@ -119,40 +121,49 @@ Ignored outputs under `backend/.tmp/official-form-samples/`:
 
 | Variant | PDF | PNG |
 | --- | --- | --- |
-| Master's blank | `defense-application-gs006-blank.pdf` | `defense-application-gs006-blank.png` |
-| Master's filled | `defense-application-gs006.pdf` | `defense-application-gs006.png` |
-| Master's long | `defense-application-gs006-long.pdf` | `defense-application-gs006-long.png` |
-| Doctoral blank | `defense-application-gs007-blank.pdf` | `defense-application-gs007-blank.png` |
-| Doctoral filled | `defense-application-gs007.pdf` | `defense-application-gs007.png` |
-| Doctoral long | `defense-application-gs007-long.pdf` | `defense-application-gs007-long.png` |
+| Master's blank/null | `defense-application-gs006-blank.pdf` | `defense-application-gs006-blank.png` |
+| Master's Title | `defense-application-gs006-title.pdf` | `defense-application-gs006-title.png` |
+| Master's Title long | `defense-application-gs006-title-long.pdf` | `defense-application-gs006-title-long.png` |
+| Master's Proposal | `defense-application-gs006-proposal.pdf` | `defense-application-gs006-proposal.png` |
+| Master's Final long | `defense-application-gs006-final-long.pdf` | `defense-application-gs006-final-long.png` |
+| Doctoral blank/null | `defense-application-gs007-blank.pdf` | `defense-application-gs007-blank.png` |
+| Doctoral Title | `defense-application-gs007-title.pdf` | `defense-application-gs007-title.png` |
+| Doctoral Title long | `defense-application-gs007-title-long.pdf` | `defense-application-gs007-title-long.png` |
+| Doctoral Proposal | `defense-application-gs007-proposal.pdf` | `defense-application-gs007-proposal.png` |
+| Doctoral Final long | `defense-application-gs007-final-long.pdf` | `defense-application-gs007-final-long.png` |
 
-Filled examples use `MAEd` / `EdD` with fictitious identities. The Doctoral filled example
-leaves two Panelist slots blank; its long-value stress example explicitly supplies six
-distinct fictitious Panelist identities. Facilitator/Rapporteur remain separate identities.
-The stress examples use long course, email, O.R., schedule, committee, and approval-name values.
-None of the dummy values defines an academic, payment, or signature rule.
+Filled examples use `MAEd` / `EdD` with fictitious identities. The Title samples exercise
+five Master's / six Doctoral printed Panelist rows without an Adviser. The Proposal samples
+and Final long samples exercise Adviser + four Master's / five Doctoral printed Panelist rows.
+Long-value stress variants supply full printed capacities and long course, email, O.R.,
+schedule, committee, and approval-name values. Facilitator and Rapporteur remain separate
+identities. None of the dummy values defines an academic, payment, or signature rule.
 
-## Visual QA checkpoint (2026-10-22)
+## TEMPLATE-3 FIX-1 visual QA checkpoint (2026-10-22)
 
-Three PDF-generation/raster-review passes inspected all six variants against the photographs:
+All ten PDFs were generated and rasterized at 150 dpi, then inspected for the four required
+stage/program structures plus long and blank variants:
 
-1. Checked printed text, fees, fixed committee capacity, table proportions, identity rules,
-   approval blocks, and footer. Found an X placement issue caused by normalized spaces,
-   a tight Doctoral heading gap, and insufficient footer bottom clearance.
-2. Preserved measured selection spaces, placed the marker within the correct parentheses,
-   raised the Doctoral masthead/application section, and moved both footers upward.
-   Reviewed every variant; the normal email still reserved an unnecessary second line.
-3. Rebalanced only the Email label/value widths, regenerated all six PDFs/PNGs, and inspected
-   them again. Normal fields are compact; long course/email/approval names remain bounded.
-   No clipping, text/line overlap, or missing footer was observed. Printed committee signing
-   lines, unused slots, and lower-page whitespace are preserved.
+- **Master's Title:** five printed `Panelist` rows, no Adviser, Facilitator, Rapporteur.
+- **Master's Proposal/Final:** Adviser, four printed `Panelist` rows, Facilitator, Rapporteur.
+- **Doctoral Title:** six printed `Panelist` rows, no Adviser, Facilitator, Rapporteur.
+- **Doctoral Proposal/Final:** Adviser, five printed `Panelist` rows, Facilitator, Rapporteur.
 
-Fifteen TEMPLATE-3 tests pass, plus all eight TEMPLATE-2 and nine TEMPLATE-1 tests (32 total).
-Coverage includes deterministic valid one-page A4 bytes for both forms, exact labels/codes,
-physical slot counts and blank slots, literal fee text independent of payment values, explicit
-selection-marker position, unchanged display values, no inferred identities/approval/payment,
-long-value bounds, overflow rejection, and the production import boundary.
-Backend TypeScript build and `git diff --check` pass.
+No dedicated Chairman label is printed. Supplied names remain in caller order; the first
+printed Panelist name may later come from the authoritative Chairman assignment. The total
+printed committee rows remain 7 for Master's and 8 for Doctoral at every stage, so the
+lower-page Prepared by / approval blocks and footer did not require geometry changes.
+
+The corrected samples remain one-page A4 with no observed clipping or text/line overlap.
+Footer clearance and all signatory blocks remain intact. The blank/null samples use the
+neutral maximum blank layout and print no stage marker or Adviser row.
+
+Thirty-nine TEMPLATE-3 tests pass, plus all eight TEMPLATE-2 and nine TEMPLATE-1 tests (56 total).
+Coverage includes deterministic valid one-page A4 bytes for all six stage/program combinations,
+stage-specific Adviser visibility and printed Panelist capacity, no Chairman label, no role
+inference from supplied names, blank and excessive slots, literal fee text, exact form codes,
+long-value bounds, overflow rejection, null behavior, and the production import boundary.
+`npm run forms:check`, the backend TypeScript build, and `git diff --check` pass.
 
 Accepted TEMPLATE-1/TEMPLATE-2 files, shared helpers, sample scripts/tests, and all retained
 PDF/PNG samples were checked against pre-implementation hashes and remain unchanged.
@@ -167,9 +178,9 @@ is slightly higher to retain a safe print margin. No photographed background is 
 
 Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
 
-FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. The remaining pre-integration blocker is TEMPLATE-3 FIX-1, which must align the generated committee rows with the centralized stage/program committee policy.
+FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 now aligns the generated committee rows with the centralized stage/program committee policy; independent acceptance remains pending.
 
-Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is verified.
+Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is independently accepted.
 
 
 ## Acceptance record
@@ -191,7 +202,7 @@ Accepted points:
 - fifteen TEMPLATE-3 tests plus existing TEMPLATE-1/TEMPLATE-2 tests, backend build, and diff checks passed;
 - accepted TEMPLATE-1/TEMPLATE-2/shared renderer files remained unchanged.
 
-The published renderer remains the accepted visual baseline. FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. Before GS-IS integration, TEMPLATE-3 FIX-1 must align GS-006 committee capacity and defense-type Adviser visibility with the project-owner-confirmed generated-form rule.
+The published renderer remains the accepted visual baseline. FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 applies the project-owner-confirmed stage-specific committee capacity and Adviser visibility described below; independent acceptance remains pending.
 
 ## TEMPLATE-3 FIX-1 clarification (2026-10-22)
 
@@ -208,4 +219,4 @@ Authoritative generated-form behavior:
 - renderer presentation must not mutate or reinterpret stored committee roles;
 - the centralized `DefenseCommitteePolicy` remains the participant-count authority.
 
-This is a bounded renderer/layout correction. It must be completed and visually verified before authoritative GS-IS mapping or Download / Print integration begins.
+This is a bounded renderer/layout correction. It is implemented locally with focused tests and visual QA in this branch. Authoritative GS-IS mapping or Download / Print integration must not begin until independent acceptance is recorded.

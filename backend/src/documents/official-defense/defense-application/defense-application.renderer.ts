@@ -13,15 +13,36 @@ const QA_APPLICATION_MARKER = "X";
 const VARIANTS = {
   masters: {
     heading: "MASTERS PROGRAM", code: "EARIST-QSF-GS-006 Rev. 01 (06.20.25)",
-    panelists: 4, mastheadUp: 2, schoolTop: 132, applicationTop: 154, selectionTop: 168, programTop: 194, identityTop: 218,
+    mastheadUp: 2, schoolTop: 132, applicationTop: 154, selectionTop: 168, programTop: 194, identityTop: 218,
     deanLine: 650, recommendationTop: 686, vicePresidentLine: 724, approvedTop: 750, presidentLine: 776,
   },
   doctoral: {
     heading: "DOCTORAL PROGRAM", code: "EARIST-QSF-GS-007 Rev. 01 (06.20.25)",
-    panelists: 6, mastheadUp: 16, schoolTop: 118, applicationTop: 140, selectionTop: 154, programTop: 180, identityTop: 204,
+    mastheadUp: 16, schoolTop: 118, applicationTop: 140, selectionTop: 154, programTop: 180, identityTop: 204,
     deanLine: 656, recommendationTop: 672, vicePresidentLine: 710, approvedTop: 732, presidentLine: 758,
   },
 } as const;
+
+/**
+ * Presentation-only printed capacity. The centralized DefenseCommitteePolicy
+ * remains authoritative for GS-IS committee membership; this table only maps
+ * the already-decided stage/program to the number of printed rows.
+ *
+ * `blank` is the null applicationType layout: the program's maximum Panelist
+ * capacity with no Adviser row. It is a neutral blank-form layout, not a Title
+ * inference, and it keeps the total printed committee rows at 7/8 so lower-page
+ * approval geometry remains stable.
+ */
+const PRINTED_PANELIST_ROWS = {
+  masters: { title: 5, proposal: 4, final: 4, blank: 5 },
+  doctoral: { title: 6, proposal: 5, final: 5, blank: 6 },
+} as const;
+
+function printedAdviserVisible(
+  applicationType: DefenseApplicationRenderInput["applicationType"],
+): boolean {
+  return applicationType === "proposal" || applicationType === "final";
+}
 
 /** Static A4 GS-006/GS-007 family. No I/O, domain lookup, payment/approval inference, or HTTP. */
 export async function renderDefenseApplication(input: DefenseApplicationRenderInput): Promise<Uint8Array> {
@@ -32,11 +53,18 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     throw new RangeError("Application type must be an explicit title, proposal, final, or null selection.");
   }
   const variant = VARIANTS[input.variant];
-  if (input.committee.panelistNames.length > variant.panelists) {
-    throw new RangeError(variant.heading + " has only " + variant.panelists + " printed Panelist slots.");
+  const showAdviser = printedAdviserVisible(input.applicationType);
+  if (!showAdviser && input.committee.adviserName?.trim()) {
+    throw new RangeError(
+      "The printed Adviser row is only available for Proposal or Final Defense.",
+    );
   }
-  if (input.variant === "doctoral" && input.committee.adviserName) {
-    throw new RangeError("GS-007 has no printed Adviser slot.");
+  const printedPanelistRows =
+    PRINTED_PANELIST_ROWS[input.variant][input.applicationType ?? "blank"];
+  if (input.committee.panelistNames.length > printedPanelistRows) {
+    throw new RangeError(
+      variant.heading + " has only " + printedPanelistRows + " printed Panelist slots for this application type.",
+    );
   }
   const doc = await PDFDocument.create();
   doc.setCreationDate(new Date(0));
@@ -148,11 +176,19 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
   const committeeHeadingTop = scheduleTop + scheduleHeight;
   const committeeTop = committeeHeadingTop + committeeHeadingHeight;
   const committeeNames: { label: string; name: string; field: string }[] = [];
-  if (input.variant === "masters") {
-    committeeNames.push({ label: "Adviser", name: input.committee.adviserName, field: "Adviser name" });
+  if (showAdviser) {
+    committeeNames.push({
+      label: "Adviser",
+      name: input.committee.adviserName ?? "",
+      field: "Adviser name",
+    });
   }
-  for (let index = 0; index < variant.panelists; index++) {
-    committeeNames.push({ label: "Panelist", name: input.committee.panelistNames[index] ?? "", field: "Panelist " + (index + 1) + " name" });
+  for (let index = 0; index < printedPanelistRows; index++) {
+    committeeNames.push({
+      label: "Panelist",
+      name: input.committee.panelistNames[index] ?? "",
+      field: "Panelist " + (index + 1) + " name",
+    });
   }
   committeeNames.push(
     { label: "Facilitator", name: input.committee.facilitatorName, field: "Facilitator name" },
