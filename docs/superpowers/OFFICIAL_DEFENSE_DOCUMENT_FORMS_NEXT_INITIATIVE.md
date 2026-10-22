@@ -5,7 +5,7 @@
 **Active initiative branch:** `feat/official-defense-document-forms`  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 AWAITING VISUAL REVIEW
+**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -209,13 +209,13 @@ The first package remains **static-template only**. The typed renderer, minimal 
 
 TEMPLATE-1 is accepted as the static renderer baseline. TEMPLATE-2 is now authorized as the next bounded static-template package. GS-IS integration remains deferred until the approved template sequence reaches its integration phase.
 
-### TEMPLATE-2 — Oral Examination Summary Sheet — AWAITING VISUAL REVIEW
+### TEMPLATE-2 — Oral Examination Summary Sheet — ACCEPTED / PUBLISHED
 
 Implemented from verified local/remote HEAD `84002a713e3c9a0342e6414e662793fcfa0308ed`
 after viewing the local GS-011 reference. The pure renderer under
 `backend/src/documents/official-defense/oral-exam-summary/` reuses accepted shared helpers unchanged.
-It preserves six examiner rows, one Chairman/five Member lines, Adviser/Dean areas, and the exact
-`EARIST-QSF-GS-011 Rev. 01 (06.20.25)` footer. Values and signatory names are explicit;
+It preserves six examiner rows, one Chairman/five Member lines, and Adviser/Dean areas. The reference remains
+**EARIST-QSF-GS-011 Rev. 01 (06.20.25)**, while the visible footer is intentionally omitted from generated PDFs per project-owner instruction. Values and signatory names are explicit;
 no averages, verdicts, committee identities, or signature evidence are inferred.
 
 Blank, filled (`Course: MAEd`), and long-value PDF/PNG samples were generated under ignored
@@ -224,7 +224,7 @@ and long-name clearance. Eight TEMPLATE-2 tests, nine TEMPLATE-1 tests, and the 
 TEMPLATE-1 and shared helper files remain unchanged; no new assets/dependencies or system integration.
 See the TEMPLATE-2 README and plan checkpoint for commands, QA details, and fidelity limits.
 
-**Project-owner visual acceptance is pending. Do not start TEMPLATE-3.**
+Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-2 was published at `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` and is closed as the accepted GS-011 static renderer baseline. TEMPLATE-3 is now authorized as the next bounded static-template package.
 
 ## Explicitly deferred
 
@@ -398,41 +398,21 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Proceed with the next bounded static-template package:
+Proceed with the final bounded static-template family:
 
-**TEMPLATE-2 — EARIST-QSF-GS-011 Rev. 01 (06.20.25) — Oral Examination Summary Sheet**
+**TEMPLATE-3 — Defense Application**
 
-Inputs:
+Confirmed institutional variants:
 
-- Oral Examination Criteria institutional reference photo;
-- clean EARIST institutional logo;
-- clean Graduate School logo;
-- this initiative overview;
-- detailed plan:
-  `docs/superpowers/plans/2026-10-22-official-defense-document-forms.md`.
+- **EARIST-QSF-GS-006 Rev. 01 (06.20.25)** — Master's Program;
+- **EARIST-QSF-GS-007 Rev. 01 (06.20.25)** — Doctoral Program.
 
-TEMPLATE-2 inputs:
+TEMPLATE-3 remains static-template only. It may reuse accepted shared PDF/header helpers from TEMPLATE-1 and TEMPLATE-2 where appropriate. GS-006 and GS-007 should be implemented as controlled variants of one document family where practical.
 
-- GS-011 institutional reference photo;
-- accepted production logo assets from `backend/assets/official-forms/`;
-- accepted shared PDF helpers from TEMPLATE-1 where they genuinely apply;
-- this initiative overview;
-- detailed plan:
-  `docs/superpowers/plans/2026-10-22-official-defense-document-forms.md`.
+Do not start GS-IS data/API/UI integration, invent approval signatures, alter payment/workflow rules, or start GS Form No. 22 during TEMPLATE-3.
 
-Expected TEMPLATE-2 output:
+Accepted TEMPLATE-2 publication checkpoint:
 
-- clean static A4 GS-011 template;
-- explicit typed render input;
-- dummy-data sample PDF;
-- render-and-compare visual QA evidence;
-- no GS-IS data/API/UI integration yet.
+`5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` — `feat(documents): add oral examination summary sheet renderer`
 
-TEMPLATE-1 acceptance notes remain in `backend/src/documents/official-defense/oral-exam-criteria/README.md`.
-
-### TEMPLATE-2 footer refinement requested by project owner
-
-The visible `EARIST-QSF-GS-011 Rev. 01 (06.20.25)` footer is omitted from generated
-TEMPLATE-2 PDFs per the latest project-owner instruction. This supersedes the earlier
-footer reproduction requirement for the current output; the reference form identity remains
-unchanged. Field/table/signatory geometry is retained. Visual acceptance is still pending.
+The project-owner-approved TEMPLATE-2 output intentionally omits the visible GS-011 form-code/revision footer while retaining the confirmed reference identity in documentation.
