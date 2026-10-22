@@ -5,7 +5,7 @@
 **Active initiative branch:** `feat/official-defense-document-forms`  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 NEXT
+**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -226,6 +226,36 @@ See the TEMPLATE-2 README and plan checkpoint for commands, QA details, and fide
 
 Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-2 was published at `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` and is closed as the accepted GS-011 static renderer baseline. TEMPLATE-3 is now authorized as the next bounded static-template package.
 
+### TEMPLATE-3 — Defense Application — IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
+
+Starting local and remote HEAD were verified as `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`
+on `feat/official-defense-document-forms` with a clean working tree. Both actual local
+reference photographs were visually inspected before coding.
+
+The pure renderer under `backend/src/documents/official-defense/defense-application/`
+implements one controlled Master's/Doctoral family. GS-006 retains Adviser, four Panelist,
+Facilitator, and Rapporteur slots (seven rows). GS-007 retains six Panelist, Facilitator,
+and Rapporteur slots (eight rows), with no Adviser. Neither form prints a Chairman label.
+These are physical capacities, not committee policy.
+
+Both confirmed GS-006/GS-007 code/revision footers remain visible. TEMPLATE-2's accepted
+GS-011 footer omission is unchanged and is not applied to this family.
+Payment/O.R., schedule, committee, and approval names are explicit display values.
+Pre-printed 300/900 fee text is literal; no payment, approval, signature, identity, or
+workflow fact is fetched, calculated, or inferred.
+
+Accepted A4/rules, measured text, image containment, and masthead helpers are reused unchanged.
+Three visual QA passes inspected all six blank/filled/long-value PDF/PNG variants.
+Fifteen TEMPLATE-3 tests plus eight TEMPLATE-2/nine TEMPLATE-1 tests (32 total), backend
+TypeScript build, and diff checks pass. Accepted files and retained samples remain unchanged.
+
+Samples stay ignored under `backend/.tmp/official-form-samples/`.
+See the TEMPLATE-3 README for all six PDF/PNG paths, generation commands, variant differences,
+overflow behavior, policy boundaries, and fidelity limits.
+
+**Implementation is complete; project-owner visual acceptance is pending.
+Do not start GS-IS integration, GS Form No. 22, or another package.**
+
 ## Explicitly deferred
 
 ### GS Form No. 22 / Committee Report / Rapporteur Report
@@ -398,7 +428,7 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Proceed with the final bounded static-template family:
+Review the completed final static-template family:
 
 **TEMPLATE-3 — Defense Application**
 
@@ -407,7 +437,7 @@ Confirmed institutional variants:
 - **EARIST-QSF-GS-006 Rev. 01 (06.20.25)** — Master's Program;
 - **EARIST-QSF-GS-007 Rev. 01 (06.20.25)** — Doctoral Program.
 
-TEMPLATE-3 remains static-template only. It may reuse accepted shared PDF/header helpers from TEMPLATE-1 and TEMPLATE-2 where appropriate. GS-006 and GS-007 should be implemented as controlled variants of one document family where practical.
+TEMPLATE-3 is implemented as one controlled-variant static renderer and awaits project-owner visual review. Shared helpers and accepted TEMPLATE-1/TEMPLATE-2 outputs remain unchanged. Do not begin an integration package or another renderer.
 
 Do not start GS-IS data/API/UI integration, invent approval signatures, alter payment/workflow rules, or start GS Form No. 22 during TEMPLATE-3.
 

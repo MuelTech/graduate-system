@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 AUTHORIZED NEXT
+**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
 
 ## 1. Purpose
 
@@ -593,3 +593,52 @@ Final accepted points:
 **TEMPLATE-3 — GS-006 / GS-007 Defense Application**
 
 TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controlled variants of one document family where practical. Do not add GS-IS integration, approval-signature inference, payment-rule changes, GS Form No. 22, or a generic template platform.
+
+## 15. TEMPLATE-3 implementation checkpoint (2026-10-22)
+
+**IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW.**
+TEMPLATE-1 and TEMPLATE-2 remain accepted/published. No integration package is authorized here.
+
+- Branch: `feat/official-defense-document-forms`; starting local/remote HEAD:
+  `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`; initial working tree clean.
+- Fully re-read both initiative documents and reviewed the accepted renderers/shared helpers.
+  Actual reference filenames were enumerated and both photographs viewed at pixel level:
+  `gs-006-masters-defense-application.jpg` and `gs-007-doctoral-defense-application.jpg`.
+- New family: `backend/src/documents/official-defense/defense-application/`.
+  One discriminated typed input (`masters`/`doctoral`) and one renderer return PDF bytes.
+  There is no file/DB/repository/API/auth/workflow lookup, payment validation, signature retrieval,
+  scoring, academic rule, or latest-record fallback.
+- GS-006: `MASTERS PROGRAM`; Adviser + four Panelists + Facilitator + Rapporteur (seven printed rows).
+  GS-007: `DOCTORAL PROGRAM`; six Panelists + Facilitator + Rapporteur (eight printed rows), no Adviser.
+  Neither photograph prints Chairman. Unused slots stay blank; no member or evaluator authority is inferred.
+- Program-specific masthead/application positioning, committee capacity, lower approval spacing,
+  and the exact `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` /
+  `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` footers are preserved.
+- Shared A4/rules, bounded text, image containment, and institutional header are reused unchanged.
+  No accepted TEMPLATE-1/TEMPLATE-2 source, README, script, tests, or retained samples changed.
+- Both references print the same fee text: three 300 entries and P 900.00 in each Proposal/Final column.
+  This is drawn as static text independently of explicit Amount Paid/O.R. values; no formula or payment state.
+- The input explicitly supplies selection, applicant identity/contact/date-time, payment/O.R./application date,
+  defense date/time/link, committee display slots, and Dean/VPAA/President names.
+  No extra fields, signatures, approval states, specialization, or workflow mapping are introduced.
+- The isolated `X` is an unconfirmed dummy QA marker only, not an official institutional marking rule.
+- Dev command: `npm run forms:sample:application -- --rasterize` from `backend/`.
+  Six dummy-data PDF/PNG pairs remain ignored under `backend/.tmp/official-form-samples/`.
+  Normal examples use `MAEd` and `EdD`; all reference photographs remain local-only.
+- Three visual-review passes inspected all six variants. Refinements corrected marker placement,
+  Doctoral title/header spacing, footer print clearance, and normal email wrapping.
+  Latest PNGs show no observed clipping/overlap; long values remain bounded.
+- Fifteen TEMPLATE-3, eight TEMPLATE-2, and nine TEMPLATE-1 tests pass (32 total), including exact form identities,
+  deterministic one-page A4 output, printed capacities/blank slots, explicit values, static fee text,
+  marker placement, long-value bounds, overflow errors, and production import boundaries.
+  Backend TypeScript build and diff checks pass.
+- No new assets/dependencies, schema, API/UI, extraction/storage, waiver, payment verification,
+  signature/approval workflow, committee/scoring/verdict, or stale-status change is included.
+
+Exact original fonts/physical measurements remain approximate because the sources are perspective photographs.
+Standard PDF fonts and supplied color logos are used; fine logo lettering retains existing resolution limits.
+Clean vector geometry removes scan defects; footer positions retain safe bottom margins.
+See the TEMPLATE-3 README for the contract, all sample paths, QA details, and remaining fidelity limits.
+
+Stop at project-owner visual review. Do not mark TEMPLATE-3 accepted, start GS-IS integration,
+or start GS Form No. 22 without a separately approved package.

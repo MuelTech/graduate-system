@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "forms:sample:criteria": "ts-node --transpile-only scripts/generate-oral-exam-criteria-samples.ts",
     "forms:sample:summary": "ts-node --transpile-only scripts/generate-oral-exam-summary-samples.ts",
+    "forms:sample:application": "ts-node --transpile-only scripts/generate-defense-application-samples.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
