@@ -99,6 +99,19 @@ export interface OralExamSummarySnapshot {
   generatedAt: string;
 }
 
+/**
+ * FORM-INT-2: exact frozen source for the official GS-011 document. Identity and
+ * examiner data come only from the persisted summary snapshot; only the
+ * stage-specific Adviser seat is resolved from the exact schedule.
+ */
+export interface OfficialSummaryDocumentSource {
+  scheduleId: string;
+  defenseType: string;
+  summaryId: string | null;
+  snapshot: OralExamSummarySnapshot | null;
+  adviserName: string | null;
+}
+
 export interface OfficialCriteriaDto {
   available: boolean;
   status: string;
@@ -510,6 +523,74 @@ export class OfficialDefenseRecordService {
         : null,
       evaluators: snapshot?.evaluators ?? [],
       formalOutcome: schedule.conclusion?.outcome ?? null,
+    };
+  }
+
+  /**
+   * FORM-INT-2: exact persisted Oral Examination Summary source for official
+   * GS-011 rendering. This never regenerates, mutates, or recomputes a summary.
+   * ADMIN-only; Proposal/Final require exactly one exact-schedule ADVISER seat.
+   */
+  async getOfficialSummaryDocumentSource(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<OfficialSummaryDocumentSource> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      select: {
+        id: true,
+        defenseType: true,
+        oralExamSummary: {
+          select: { id: true, snapshotData: true },
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const defenseType = String(schedule.defenseType);
+    const summary = schedule.oralExamSummary;
+
+    // Title Defense has no Adviser seat. Proposal/Final use only the exact
+    // historical ADVISER assignment on this schedule - never the current active
+    // AdviserAssignment or another attempt.
+    let adviserName: string | null = null;
+    if (defenseType !== "TITLE_DEFENSE") {
+      const advisers = await prisma.panelAssignment.findMany({
+        where: { scheduleId, role: "ADVISER" },
+        include: {
+          user: { select: { firstName: true, lastName: true } },
+        },
+      });
+      if (advisers.length !== 1) {
+        throw new AppError(
+          "The defense schedule has no unambiguous Adviser seat.",
+          409,
+        );
+      }
+      adviserName =
+        `${advisers[0].user.firstName} ${advisers[0].user.lastName}`.trim() ||
+        null;
+      if (!adviserName) {
+        throw new AppError(
+          "The defense schedule Adviser has no printable name.",
+          409,
+        );
+      }
+    }
+
+    return {
+      scheduleId,
+      defenseType,
+      summaryId: summary?.id ?? null,
+      snapshot: (summary?.snapshotData ?? null) as OralExamSummarySnapshot | null,
+      adviserName,
     };
   }
 

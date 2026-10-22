@@ -605,6 +605,14 @@ router.get(
   thesisController.getOfficialCriteriaPdf,
 );
 
+// FORM-INT-2: exact-attempt GS-011 Oral Examination Summary PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/summary/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOralExamSummaryPdf,
+);
+
 // CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
 // data. Committee accounts (incl. the session Chairman) are denied.
 router.get(

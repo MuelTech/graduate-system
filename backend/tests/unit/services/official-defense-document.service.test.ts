@@ -356,7 +356,10 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
     const getOfficialCriteria = vi.fn().mockResolvedValue(record);
     const render = vi.fn().mockResolvedValue(Buffer.from("%PDF-1.7 fake"));
     const service = new OfficialDefenseDocumentService({
-      records: { getOfficialCriteria },
+      records: {
+        getOfficialCriteria,
+        getOfficialSummaryDocumentSource: vi.fn(),
+      },
       loadLogos: async () => LOGOS,
       render,
     });
@@ -450,7 +453,10 @@ describe("OfficialDefenseDocumentService.generateIndividualEvaluationPdf", () =>
 
   it("maps renderer content rejection to a controlled 422", async () => {
     const failing = new OfficialDefenseDocumentService({
-      records: { getOfficialCriteria: vi.fn().mockResolvedValue(v2Record()) },
+      records: {
+        getOfficialCriteria: vi.fn().mockResolvedValue(v2Record()),
+        getOfficialSummaryDocumentSource: vi.fn(),
+      },
       loadLogos: async () => LOGOS,
       render: async () => {
         throw new RangeError("Recommendations exceed the field bounds.");

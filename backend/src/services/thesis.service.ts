@@ -914,6 +914,14 @@ export class ThesisService {
     );
   }
 
+  /** FORM-INT-2: authenticated ADMIN GS-011 Oral Examination Summary PDF. */
+  async generateOralExamSummaryPdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateOralExamSummaryPdf(scheduleId, actor);
+  }
+
   async getOralExamSummaryRecord(
     scheduleId: string,
     actor: { userId: string; role: string },
