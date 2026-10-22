@@ -258,7 +258,7 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 **FORM-DX-1 is COMPLETE / PASS** at `299ca18a89e8fae54785326935fce966995302d8`. A scripts-local TypeScript project now covers all three official-form QA generators without changing production `dist` output; all 32 renderer tests, backend build, sample generation, and PDF hash regression checks passed.
 
-After merge, the project owner clarified the authoritative Defense Application presentation rule. A bounded **TEMPLATE-3 FIX-1** is required before GS-IS integration: GS-006 must expose five printed `Panelist` rows (Chairman + four Panelists), omit Adviser for Title Defense, and show Adviser for Proposal/Final Defense. GS-007 keeps six printed `Panelist` rows (Chairman + five Panelists). The renderer must not rename or mutate the underlying GS-IS roles.
+After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. A bounded **TEMPLATE-3 FIX-1** is required before GS-IS integration. Printed `Panelist` rows represent the authoritative Chairman plus the stage-specific Panelist quota: Master's Title = 5 printed Panelist rows (Chairman + 4 Panelists); Master's Proposal/Final = Adviser + 4 printed Panelist rows (Chairman + 3 Panelists); Doctoral Title = 6 printed Panelist rows (Chairman + 5 Panelists); Doctoral Proposal/Final = Adviser + 5 printed Panelist rows (Chairman + 4 Panelists). The renderer must not rename or mutate the underlying GS-IS roles.
 
 Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is implemented and verified.
 
@@ -438,41 +438,55 @@ Implement the bounded post-merge renderer correction:
 
 **TEMPLATE-3 FIX-1 — Defense Application committee-role alignment**
 
-Authoritative presentation rules confirmed by the project owner on 2026-10-22:
+The generated form must follow the existing centralized Admin/backend committee policy. The current authority is `backend/src/services/defense-committee.policy.ts`; the Admin committee builder consumes that policy instead of maintaining separate counts.
 
-- GS-IS remains authoritative for committee roles and evaluator authority.
-- The `CHAIRMAN` remains `CHAIRMAN` in GS-IS.
-- Because GS-006 and GS-007 do not print a dedicated Chairman label, the Chairman is displayed in a row labelled `Panelist`.
-- The renderer receives already ordered display values; it must not query, infer, rename, or persist committee roles.
+Printed-role rule:
 
-### GS-006 — Master's
+- GS-IS `CHAIRMAN` remains `CHAIRMAN` in domain data and authorization.
+- Because GS-006/GS-007 have no dedicated Chairman label, the Chairman is displayed in a printed row labelled `Panelist`.
+- Printed Panelist rows are therefore `Chairman + stage-specific PANELIST assignments`.
+- The integration layer will later supply the names in deterministic order; the renderer must not query or infer committee roles.
+
+### Master's — GS-006
 
 **Title Defense**
 
-- no Adviser row;
-- five printed `Panelist` rows = one Chairman + four Panelists;
-- one Facilitator row;
-- one Rapporteur row.
+- no Adviser;
+- 1 Chairman + 4 Panelists → **5 printed `Panelist` rows**;
+- 1 Facilitator;
+- 1 Rapporteur;
+- **7 total participants**.
 
 **Proposal / Final Defense**
 
-- Adviser row is shown;
-- five printed `Panelist` rows = one Chairman + four Panelists;
-- one Facilitator row;
-- one Rapporteur row.
+- 1 automatic active Adviser;
+- 1 Chairman + 3 Panelists → **4 printed `Panelist` rows**;
+- 1 Facilitator;
+- 1 Rapporteur;
+- **7 total participants**.
 
-Therefore GS-006 must change from the current four printed Panelist slots to five. Adviser visibility must depend only on the explicit `applicationType`: absent for `title`, present for `proposal` and `final`.
+### Doctoral — GS-007
 
-### GS-007 — Doctoral
+**Title Defense**
 
-- retain six printed `Panelist` rows = one Chairman + five Panelists;
-- retain Facilitator and Rapporteur rows;
-- no dedicated printed Chairman label.
+- no Adviser;
+- 1 Chairman + 5 Panelists → **6 printed `Panelist` rows**;
+- 1 Facilitator;
+- 1 Rapporteur;
+- **8 total participants**.
 
-No GS-IS committee role, evaluator authority, scoring rule, or workflow state is changed by this presentation mapping.
+**Proposal / Final Defense**
 
-The supplied photographs remain visual/layout references. Where their committee slot arrangement conflicts with the confirmed generated-form rule above, the generated form must adapt to the confirmed GS-IS workflow presentation requirement.
+- 1 automatic active Adviser;
+- 1 Chairman + 4 Panelists → **5 printed `Panelist` rows**;
+- 1 Facilitator;
+- 1 Rapporteur;
+- **8 total participants**.
 
-TEMPLATE-3 FIX-1 must include focused tests and visual QA for the resulting one-page layout before integration begins.
+Adviser presence is therefore stage-specific for **both Master's and Doctoral**: absent at Title, automatically included at Proposal/Final.
 
-After FIX-1 passes, proceed to a separate GS-IS integration/readiness package for authoritative data mapping and authenticated Download / Print.
+The supplied photographs remain visual/layout references. Where their committee-row arrangement conflicts with the centralized GS-IS policy above, the generated form must adapt to the authoritative system policy.
+
+TEMPLATE-3 FIX-1 must include focused tests and visual QA for all four stage/program combinations before GS-IS integration begins.
+
+After FIX-1 passes, proceed to a separate integration/readiness package for authoritative data mapping and authenticated Download / Print.
