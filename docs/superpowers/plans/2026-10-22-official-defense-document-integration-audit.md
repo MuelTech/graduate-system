@@ -286,7 +286,7 @@ Acceptance blocker:
 
 The TEMPLATE-3 renderer's fixed schedule-row Link box is too narrow for realistic authoritative `venueOrLink` values. `Room 101, GS Building` already overflows, and normal meeting URLs are longer. Controlled 422 behavior is safe but insufficient for production document availability.
 
-FORM-INT-3 therefore requires **FORM-INT-3 FIX-1** before acceptance and before FORM-INT-4 frontend activation.
+FORM-INT-3 FIX-1 was completed and accepted at `d387526ad153df54b674b7b4b9b7ef09478a7676`. The renderer now supports realistic physical venues and normal Meet/Teams URLs using a bounded full-width wrapped Link/Venue row while retaining exact text, one-page A4 geometry, committee structure, approval/signatory clearance, and explicit failure for extreme over-capacity input. FORM-INT-3 is accepted and FORM-INT-4 is unblocked.
 
 ## Additional integration constraints
 
@@ -303,9 +303,9 @@ FORM-INT-3 therefore requires **FORM-INT-3 FIX-1** before acceptance and before 
 1. **FORM-INT-PRE1 — ACCEPTED** — corrected stale Title Defense record-status projection.
 2. **FORM-INT-1 — ACCEPTED** — shared official-document orchestration + Individual Criteria PDF endpoint (`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`).
 3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
-4. **FORM-INT-3 — IMPLEMENTED / FIX REQUIRED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`); exact schedule/domain integration accepted in principle, renderer Link/Venue capacity blocks final acceptance.
-5. **FORM-INT-3 FIX-1 — NEXT** — harden TEMPLATE-3 schedule Link/Venue capacity for realistic stored values.
-6. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
+4. **FORM-INT-3 — ACCEPTED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`).
+5. **FORM-INT-3 FIX-1 — ACCEPTED** — schedule Link/Venue capacity hardening (`d387526ad153df54b674b7b4b9b7ef09478a7676`).
+6. **FORM-INT-4 — NEXT** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
 
 Optional later package only if institutionally required:
 
