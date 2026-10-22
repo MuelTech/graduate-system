@@ -5,7 +5,7 @@
 **Active initiative branch:** `feat/official-defense-document-forms`  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 IMPLEMENTED LOCALLY - PUBLICATION AND VISUAL APPROVAL PENDING
+**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -136,7 +136,7 @@ The project owner supplied:
 - one clean EARIST institutional logo asset;
 - one clean Graduate School logo asset.
 
-The two clean logos have been copied into `backend/assets/official-forms/` as production assets for the pending TEMPLATE-1 commit. Reference photographs remain local-only inputs under `backend/.temp/official-form-inputs/` and must not be committed.
+The two clean logos are versioned in `backend/assets/official-forms/` as production assets. Reference photographs remain local-only inputs under `backend/.temp/official-form-inputs/` and must not be committed.
 
 The photographed sheets are visual references only. They must not be used as production PDF backgrounds because they contain scan/photograph artifacts, perspective distortion, shadows, and page-hole marks.
 
@@ -184,9 +184,18 @@ Expected responsibilities:
 
 ## Current implementation checkpoint
 
-The implemented package awaiting project-owner visual review is:
+**TEMPLATE-1 — Oral Examination Criteria — ACCEPTED**
 
-**TEMPLATE-1 — Oral Examination Criteria**
+Project-owner visual acceptance was recorded on 2026-10-22 after the spacing, signature-block, typography, and sample-data refinements. The accepted remote implementation ends at:
+
+`9e76390623739dbb9ec0e609baf6c78880d6edce`
+
+The implementation was published through two bounded commits:
+
+- `d06e7967f2212bd86a2a869e4ed1dcfd90c498db` — `feat(documents): add oral examination criteria renderer`
+- `9e76390623739dbb9ec0e609baf6c78880d6edce` — `fix(documents): refine oral examination criteria layout`
+
+Why TEMPLATE-1 was first:
 
 Why first:
 
@@ -198,7 +207,7 @@ Why first:
 
 The first package remains **static-template only**. The typed renderer, minimal shared helpers, three dummy-data samples, and focused tests are implemented. It has no system-data/API/UI/workflow integration. See `backend/src/documents/official-defense/oral-exam-criteria/README.md` for the contract, generation commands, visual QA iterations, and fidelity limits.
 
-The project owner has **not yet accepted** TEMPLATE-1. Do not start TEMPLATE-2 or any integration package.
+TEMPLATE-1 is accepted as the static renderer baseline. TEMPLATE-2 is now authorized as the next bounded static-template package. GS-IS integration remains deferred until the approved template sequence reaches its integration phase.
 
 ## Explicitly deferred
 
@@ -372,9 +381,9 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Review the reconstructed static template for:
+Proceed with the next bounded static-template package:
 
-**TEMPLATE-1 — Oral Examination Criteria**
+**TEMPLATE-2 — EARIST-QSF-GS-011 Rev. 01 (06.20.25) — Oral Examination Summary Sheet**
 
 Inputs:
 
@@ -385,15 +394,21 @@ Inputs:
 - detailed plan:
   `docs/superpowers/plans/2026-10-22-official-defense-document-forms.md`.
 
-Generated review output:
+TEMPLATE-2 inputs:
 
-- clean static A4 template;
+- GS-011 institutional reference photo;
+- accepted production logo assets from `backend/assets/official-forms/`;
+- accepted shared PDF helpers from TEMPLATE-1 where they genuinely apply;
+- this initiative overview;
+- detailed plan:
+  `docs/superpowers/plans/2026-10-22-official-defense-document-forms.md`.
+
+Expected TEMPLATE-2 output:
+
+- clean static A4 GS-011 template;
+- explicit typed render input;
 - dummy-data sample PDF;
 - render-and-compare visual QA evidence;
-- no GS-IS data/API integration yet.
+- no GS-IS data/API/UI integration yet.
 
-From `backend/`, run `npm run forms:sample:criteria -- --rasterize` to reproduce the blank, filled, and long-value PDFs/PNGs under the gitignored `backend/.tmp/official-form-samples/` directory. Neither those outputs nor `backend/.temp/` reference inputs belong in the commit.
-
-Validation: six focused renderer tests pass; backend TypeScript build passes. Three visual generation/review passes were completed against the supplied photograph. Project-owner visual approval is the next gate.
-
-Publication is pending: this execution session cannot write local Git metadata, and GitHub write calls were blocked because they require approval while the session approval policy is `never`. No implementation commit or remote branch update was created. The local implementation and QA files remain available for review and a normal authorized Git commit/push.
+TEMPLATE-1 acceptance notes remain in `backend/src/documents/official-defense/oral-exam-criteria/README.md`.
