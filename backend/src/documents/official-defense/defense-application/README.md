@@ -90,8 +90,11 @@ table and Prepared by position follow this extra height; approval spacing remain
 Excess individual or combined content throws a field-specific `RangeError`.
 Table geometry always retains every printed row. Committee names fit one bounded line above
 their rule; captions remain below it. Approval names have a bounded two-line region.
-Schedule cells have their own bounded widths. Nothing is ellipsized, silently truncated,
-allowed to overlap, or continued onto another page.
+The schedule block uses two bounded lines: Date of Defense and Time on the first line, and a
+full-width Link/Venue line beneath it. `defenseLink` is always the exact supplied display text;
+ordinary physical venues and meeting URLs may wrap onto multiple lines inside that measured
+area. Nothing is ellipsized, truncated, URL-rewritten, or continued onto another page, and
+truly excessive content still raises an explicit `RangeError` instead of clipping.
 
 The measured static selection line is drawn with intentional spaces preserved inside its
 parentheses; the shared wrapping helper normally normalizes repeated whitespace.
@@ -135,6 +138,9 @@ Ignored outputs under `backend/.tmp/official-form-samples/`:
 Filled examples use `MAEd` / `EdD` with fictitious identities. The Title samples exercise
 five Master's / six Doctoral printed Panelist rows without an Adviser. The Proposal samples
 and Final long samples exercise Adviser + four Master's / five Doctoral printed Panelist rows.
+Normal samples show a realistic physical venue, the Master's Proposal sample uses a Google Meet
+URL, the Doctoral Proposal sample uses a long Teams-style URL, and long samples use an extended
+physical venue; all are fictitious QA values.
 Long-value stress variants supply full printed capacities and long course, email, O.R.,
 schedule, committee, and approval-name values. Facilitator and Rapporteur remain separate
 identities. None of the dummy values defines an academic, payment, or signature rule.
@@ -220,3 +226,17 @@ Authoritative generated-form behavior:
 - the centralized `DefenseCommitteePolicy` remains the participant-count authority.
 
 This bounded renderer/layout correction was independently reviewed and merged to `main` via PR #38. Production integration now proceeds only through the separate FORM-INT-0 readiness audit and later bounded integration packages.
+
+## FORM-INT-3 FIX-1 — schedule Link/Venue capacity (2026-10-22)
+
+Production integration exposed that the original single-line Link box was too narrow for
+authoritative `venueOrLink` values (`Room 101, GS Building` already failed). The schedule block
+now renders Date of Defense and Time on the first line and Link/Venue on a measured full-width
+second line. Long physical venues and meeting URLs wrap inside that bounded row; committee,
+approval, and footer geometry shift only as needed and remain one-page A4.
+
+The exact supplied text is preserved: no truncation, ellipsis, abbreviation, URL rewriting, or
+domain mutation. A value that cannot fit the bounded row still fails explicitly with
+`RangeError`. Regression coverage includes realistic physical venues, Google Meet and long
+Teams-style URLs, geometry/bounds checks, unchanged GS-006/GS-007 committee structures, and the
+deliberate over-capacity failure.

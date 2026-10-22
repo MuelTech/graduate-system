@@ -76,7 +76,7 @@ function source(
     defenseType,
     defenseDate: "2026-09-28T00:00:00.000Z",
     defenseTime: "1970-01-01T13:30:00.000Z",
-    venueOrLink: "Room 101",
+    venueOrLink: "Room 101, GS Building",
     studentName: "Juan Dela Cruz",
     studentNumber: "2026-001",
     cellphone: "09171234567",
@@ -523,6 +523,29 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
       throw new Error("expected rejection");
     } catch (error) {
       expectAppError(error, 422, /cannot/i);
+    }
+  });
+
+  it("renders realistic physical venues and meeting URLs through the production path", async () => {
+    const links = [
+      "Room 101, GS Building",
+      "Graduate School Conference Room, Nudas Building",
+      "https://meet.google.com/abc-defg-hij",
+      "https://teams.microsoft.com/l/meetup-join/19%3ameeting_MTc0ZjQ2YjItOWQ4ZS00N2M5LThhYjgtZjY0ZTk2N2Q4YjIx%40thread.v2/0?context=%7b%22Tid%22%3a%228b3f5c2a-1d4e-4f6a-9c7b-2e1d0a9f8c6b%22%2c%22Oid%22%3a%224c2e6f1a-7b3d-4a8e-9f5c-1d2b3a4c5d6e%22%7d",
+    ];
+    for (const link of links) {
+      const service = new OfficialDefenseDocumentService({
+        records: {
+          getOfficialCriteria: vi.fn(),
+          getOfficialSummaryDocumentSource: vi.fn(),
+          getOfficialDefenseApplicationDocumentSource: vi
+            .fn()
+            .mockResolvedValue(source({ venueOrLink: link })),
+        },
+      });
+      const pdf = await service.generateDefenseApplicationPdf("sched-1", ADMIN);
+      expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe("%PDF-");
+      expect(pdf.length).toBeGreaterThan(1000);
     }
   });
 

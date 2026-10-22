@@ -359,12 +359,173 @@ describe.each(CASES)(
       );
       expect(scheduleItems).toHaveLength(2);
       for (const item of scheduleItems) {
-        const rightEdge = item.str === "meet.test/qa" ? 538 : 428;
-        expect(item.transform[4] + item.width).toBeLessThanOrEqual(rightEdge - 3);
+        expect(item.transform[4] + item.width).toBeLessThanOrEqual(538 - 3);
       }
     });
   },
 );
+
+const LONG_PHYSICAL_VENUE = "Graduate School Conference Room, Nudas Building";
+const GOOGLE_MEET_URL = "https://meet.google.com/abc-defg-hij";
+const TEAMS_URL =
+  "https://teams.microsoft.com/l/meetup-join/19%3ameeting_MTc0ZjQ2YjItOWQ4ZS00N2M5LThhYjgtZjY0ZTk2N2Q4YjIx%40thread.v2/0?context=%7b%22Tid%22%3a%228b3f5c2a-1d4e-4f6a-9c7b-2e1d0a9f8c6b%22%2c%22Oid%22%3a%224c2e6f1a-7b3d-4a8e-9f5c-1d2b3a4c5d6e%22%7d";
+
+const LINK_CASES = [
+  { variant: "masters", applicationType: "title", link: "Room 101, GS Building" },
+  { variant: "doctoral", applicationType: "title", link: "Room 101, GS Building" },
+  { variant: "masters", applicationType: "title", link: LONG_PHYSICAL_VENUE },
+  { variant: "masters", applicationType: "proposal", link: GOOGLE_MEET_URL },
+  { variant: "doctoral", applicationType: "proposal", link: TEAMS_URL },
+] as const;
+
+interface Box {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+function boxOf(item: TextItem): Box {
+  return {
+    left: item.transform[4],
+    right: item.transform[4] + item.width,
+    top: item.transform[5] + item.height,
+    bottom: item.transform[5],
+  };
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  return a.left < b.right && b.left < a.right && a.bottom < b.top && b.bottom < a.top;
+}
+
+describe("TEMPLATE-3 schedule link/venue capacity", () => {
+  it.each(LINK_CASES)(
+    "$variant $applicationType renders the complete link text: $link",
+    async ({ variant, applicationType, link }) => {
+      const input = { ...inputFor(variant, applicationType), defenseLink: link };
+      const bytes = await renderDefenseApplication(input);
+      expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe("%PDF-");
+
+      const doc = await PDFDocument.load(bytes);
+      expect(doc.getPageCount()).toBe(1);
+      expect(doc.getPage(0).getWidth()).toBeCloseTo(595.28, 2);
+      expect(doc.getPage(0).getHeight()).toBeCloseTo(841.89, 2);
+
+      const items = await inspect(bytes);
+      expect(compact(joined(items))).toContain(compact(link));
+
+      for (const item of items.filter((candidate) => candidate.str.trim())) {
+        expect(item.transform[4]).toBeGreaterThanOrEqual(36);
+        expect(item.transform[4] + item.width).toBeLessThanOrEqual(559.28);
+        expect(item.transform[5]).toBeGreaterThanOrEqual(36);
+        expect(item.transform[5] + item.height).toBeLessThanOrEqual(823.89);
+      }
+
+      const formCode =
+        "EARIST-QSF-GS-" +
+        (variant === "masters" ? "006" : "007") +
+        " Rev. 01 (06.20.25)";
+      const footer = items.find((item) => item.str.includes(formCode));
+      expect(footer).toBeDefined();
+      expect(footer!.transform[5]).toBeGreaterThanOrEqual(36);
+    },
+  );
+
+  it("keeps schedule fields separate and above the committee heading for a long Teams URL", async () => {
+    const input = {
+      ...inputFor("doctoral", "proposal"),
+      defenseLink: TEAMS_URL,
+    };
+    const items = await inspect(await renderDefenseApplication(input));
+
+    const dateLabel = items.find((item) => item.str === "Date of Defense:")!;
+    const dateValue = items.find((item) => item.str === "30 October 2026")!;
+    const timeLabel = items.find((item) => item.str === "Time:")!;
+    const timeValue = items.find((item) => item.str === "11:00 AM")!;
+    const linkLabel = items.find((item) => item.str === "Link:")!;
+    const heading = items.find((item) => item.str === "EXAMINATION COMMITTEE:")!;
+    expect(dateLabel && dateValue && timeLabel && timeValue && linkLabel && heading).toBeTruthy();
+
+    // Date and Time share the first schedule line; Link is on its own line below.
+    expect(dateLabel.transform[5]).toBeCloseTo(timeLabel.transform[5], 2);
+    expect(dateLabel.transform[4]).toBeLessThan(timeLabel.transform[4]);
+    expect(linkLabel.transform[5]).toBeLessThan(dateLabel.transform[5]);
+
+    // Every rendered line/fragment of the URL sits below the Link label and
+    // above the committee heading, inside the table's horizontal bounds.
+    const linkFragments = items.filter(
+      (item) =>
+        item.str.trim() &&
+        item.transform[4] >= linkLabel.transform[4] + linkLabel.width &&
+        item.transform[5] <= linkLabel.transform[5] &&
+        item.transform[5] > heading.transform[5] + heading.height,
+    );
+    expect(linkFragments.length).toBeGreaterThan(1);
+    for (const fragment of linkFragments) {
+      expect(fragment.transform[4]).toBeGreaterThanOrEqual(96);
+      expect(fragment.transform[4] + fragment.width).toBeLessThanOrEqual(538);
+      expect(fragment.transform[5]).toBeGreaterThan(
+        heading.transform[5] + heading.height,
+      );
+    }
+
+    // Schedule labels/values must not overlap each other or the URL fragments.
+    const scheduleBoxes = [
+      dateLabel,
+      dateValue,
+      timeLabel,
+      timeValue,
+      linkLabel,
+      ...linkFragments,
+    ].map(boxOf);
+    for (let i = 0; i < scheduleBoxes.length; i += 1) {
+      for (let j = i + 1; j < scheduleBoxes.length; j += 1) {
+        expect(overlaps(scheduleBoxes[i], scheduleBoxes[j])).toBe(false);
+      }
+    }
+
+    // Committee table and lower approval structure remain intact.
+    const labels = committeeLabels(items);
+    expect(labels.filter((label) => label === "Panelist")).toHaveLength(5);
+    expect(labels.filter((label) => label === "Adviser")).toHaveLength(1);
+    expect(labels.filter((label) => label === "Facilitator")).toHaveLength(1);
+    expect(labels.filter((label) => label === "Rapporteur")).toHaveLength(1);
+
+    const order = [
+      "Prepared by:",
+      "Dean, Graduate School",
+      "Recommending Approval:",
+      "Vice President for Academic Affairs",
+      "Approved:",
+      "President",
+    ];
+    const positions = order.map(
+      (text) => items.find((item) => item.str === text)!.transform[5],
+    );
+    for (let i = 0; i < positions.length - 1; i += 1) {
+      expect(positions[i]).toBeGreaterThan(positions[i + 1]);
+    }
+    expect(positions.at(-1)).toBeGreaterThan(
+      items.find((item) => item.str.includes("EARIST-QSF-GS-"))!.transform[5],
+    );
+  });
+
+  it("keeps the existing short link rendering unchanged semantically", async () => {
+    const input = { ...inputFor("masters", "title"), defenseLink: "GS Room 201" };
+    const items = await inspect(await renderDefenseApplication(input));
+    expect(compact(joined(items))).toContain("GSRoom201");
+    expect(items.filter((item) => item.str === "Link:")).toHaveLength(1);
+  });
+
+  it("still fails explicitly for an extreme value beyond bounded capacity", async () => {
+    await expect(
+      renderDefenseApplication({
+        ...inputFor("masters", "title"),
+        defenseLink: "https://example.com/" + "a".repeat(600),
+      }),
+    ).rejects.toThrow(/Defense link exceeds/);
+  });
+});
 
 describe("TEMPLATE-3 null application type", () => {
   it.each(["masters", "doctoral"] as const)(

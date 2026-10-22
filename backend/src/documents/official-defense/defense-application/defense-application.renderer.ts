@@ -171,8 +171,24 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     ["Energy and Venue Fee", "300", "300"],
     ["", "P 900.00", "P 900.00"],
   ] as const;
-  const warningHeight = 13, feeRowHeight = 12.5, scheduleHeight = 14, committeeHeadingHeight = 24;
+  const warningHeight = 13, feeRowHeight = 12.5, scheduleRowHeight = 14, committeeHeadingHeight = 24;
   const scheduleTop = tableTop + warningHeight + feeRows.length * feeRowHeight;
+  // Schedule fields use two bounded lines: Date/Time, then a full-width Link.
+  // Link/venue text keeps its exact value and may wrap inside a measured row.
+  const linkLabelWidth = 24;
+  const linkValueWidth = tableWidth - linkLabelWidth - 10;
+  const linkLayout = input.defenseLink
+    ? fitText(regular, input.defenseLink, { width: linkValueWidth, height: 28 }, {
+      size: 9.5, minSize: 8, field: "Defense link",
+    })
+    : undefined;
+  if (input.defenseLink && !linkLayout) {
+    throw new RangeError("Defense link exceeds the available space in the one-page form.");
+  }
+  const linkRowHeight = linkLayout
+    ? Math.max(scheduleRowHeight, linkLayout.height + 4)
+    : scheduleRowHeight;
+  const scheduleHeight = scheduleRowHeight + linkRowHeight;
   const committeeHeadingTop = scheduleTop + scheduleHeight;
   const committeeTop = committeeHeadingTop + committeeHeadingHeight;
   const committeeNames: { label: string; name: string; field: string }[] = [];
@@ -213,17 +229,25 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
       column > 0 ? "center" : "left"));
     rule(page, tableX, top + feeRowHeight, tableX + tableWidth, 0.6);
   });
-  for (const offset of feeOffsets.slice(1)) vertical(offset, tableTop + warningHeight, committeeHeadingTop);
+  for (const offset of feeOffsets.slice(1)) {
+    vertical(offset, tableTop + warningHeight, scheduleTop + scheduleRowHeight);
+  }
   const schedule = [
     { label: "Date of Defense:", value: input.defenseDate, x: tableX, width: 240, labelWidth: 76, field: "Defense date" },
-    { label: "Time:", value: input.defenseTime, x: tableX + 240, width: 120, labelWidth: 28, field: "Defense time" },
-    { label: "Link:", value: input.defenseLink, x: tableX + 360, width: 110, labelWidth: 24, field: "Defense link" },
+    { label: "Time:", value: input.defenseTime, x: tableX + 240, width: 230, labelWidth: 28, field: "Defense time" },
   ];
   for (const field of schedule) {
     text(field.label, field.x + 5, scheduleTop + 3, field.labelWidth, 11, 9.5, oblique);
     text(field.value, field.x + field.labelWidth + 5, scheduleTop + 2,
       field.width - field.labelWidth - 10, 11.5, 9.5, regular, "left", field.field);
   }
+  vertical(tableX + 240, scheduleTop, scheduleTop + scheduleRowHeight);
+  rule(page, tableX, scheduleTop + scheduleRowHeight, tableX + tableWidth, 0.6);
+  text("Link:", tableX + 5, scheduleTop + scheduleRowHeight + 3,
+    linkLabelWidth, 11, 9.5, oblique);
+  text(input.defenseLink, tableX + linkLabelWidth + 5,
+    scheduleTop + scheduleRowHeight + 2, linkValueWidth, linkRowHeight - 2,
+    9.5, regular, "left", "Defense link");
   rule(page, tableX, committeeHeadingTop, tableX + tableWidth, 0.6);
   text("EXAMINATION COMMITTEE:", tableX, committeeHeadingTop + 7, tableWidth, 15, 10, bold, "center");
   rule(page, tableX, committeeTop, tableX + tableWidth, 0.6);
@@ -246,7 +270,9 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     rule(page, 236, lineTop, 372);
     text(caption, 204, lineTop + 4, 200, 12, 9.5, regular, "center");
   };
-  const deanLine = variant.deanLine + identityExtra;
+  // Keep the approval block after the table; short values retain the accepted
+  // positions, while a wrapped Link shifts it only as far as needed.
+  const deanLine = Math.max(variant.deanLine + identityExtra, tableBottom + 30);
   const recommendationTop = Math.max(variant.recommendationTop, deanLine + 24);
   const vicePresidentLine = Math.max(variant.vicePresidentLine, recommendationTop + 29);
   const approvedTop = Math.max(variant.approvedTop, vicePresidentLine + 23);
