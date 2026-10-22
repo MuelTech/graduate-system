@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
+**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 ACCEPTED / PUBLISHED — FORM-DX-1 PENDING
 
 ## 1. Purpose
 
@@ -596,8 +596,7 @@ TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controll
 
 ## 15. TEMPLATE-3 implementation checkpoint (2026-10-22)
 
-**IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW.**
-TEMPLATE-1 and TEMPLATE-2 remain accepted/published. No integration package is authorized here.
+**ACCEPTED / PUBLISHED.** Project-owner visual approval was granted on 2026-10-22. TEMPLATE-1 and TEMPLATE-2 remain accepted/published. GS-IS integration is still gated by FORM-DX-1.
 
 - Branch: `feat/official-defense-document-forms`; starting local/remote HEAD:
   `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`; initial working tree clean.
@@ -640,5 +639,63 @@ Standard PDF fonts and supplied color logos are used; fine logo lettering retain
 Clean vector geometry removes scan defects; footer positions retain safe bottom margins.
 See the TEMPLATE-3 README for the contract, all sample paths, QA details, and remaining fidelity limits.
 
-Stop at project-owner visual review. Do not mark TEMPLATE-3 accepted, start GS-IS integration,
-or start GS Form No. 22 without a separately approved package.
+Accepted remote HEAD for TEMPLATE-3: `959233de1d9be7209a3792702fb392056b605613`.
+
+TEMPLATE-3 is closed as the accepted GS-006/GS-007 static renderer baseline. Do not start GS-IS integration or GS Form No. 22 until the bounded FORM-DX-1 developer-tooling issue below is resolved and verified.
+
+
+## 16. FORM-DX-1 — official-form sample-script TypeScript project coverage
+
+**PENDING / REQUIRED BEFORE INTEGRATION.**
+
+After TEMPLATE-3 publication, VS Code showed TypeScript diagnostics in
+`backend/scripts/generate-defense-application-samples.ts` for Node built-ins/globals, including:
+
+- `node:child_process`;
+- `node:fs/promises`;
+- `node:path`;
+- `process`;
+- `__dirname`;
+- the resulting implicit-`any` callback diagnostic.
+
+Repository inspection confirms:
+
+- `backend/package.json` already includes `@types/node`;
+- `backend/tsconfig.json` already declares `types: ["node"]`;
+- the production config has `rootDir: "./src"`;
+- the production config includes only `src/**/*`;
+- all three official-form QA generators live under `backend/scripts/`;
+- the sample commands execute with `ts-node --transpile-only`;
+- therefore the backend production `tsc` build does not type-check these scripts.
+
+This explains why renderer tests/build/sample generation could pass while VS Code still reports errors in the scripts: the files are outside the configured backend TypeScript project and are being analyzed with inferred/editor settings.
+
+### Required bounded correction
+
+Fix TypeScript/editor coverage for:
+
+- `generate-oral-exam-criteria-samples.ts`;
+- `generate-oral-exam-summary-samples.ts`;
+- `generate-defense-application-samples.ts`.
+
+The correction must not:
+
+- widen the production `rootDir` in a way that changes emitted `dist` structure;
+- change renderer behavior or accepted PDF output;
+- add application/domain logic;
+- change Prisma/API/UI/workflow code.
+
+Prefer a dedicated scripts TypeScript config and an explicit no-emit type-check command if that is the smallest clean solution.
+
+### Acceptance
+
+FORM-DX-1 is complete only when:
+
+- VS Code diagnostics for the three sample generators are resolved under the repository TypeScript project configuration;
+- a dedicated script type-check passes;
+- existing TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests pass;
+- backend production build still emits/behaves as before;
+- all three sample-generation commands still run;
+- `git diff --check` passes.
+
+Only after FORM-DX-1 should the static-template phase be marked fully closed and GS-IS integration / authenticated Download-Print be authorized.
