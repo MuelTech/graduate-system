@@ -6,7 +6,7 @@
 **Audit base:** `main` @ `401219c8c22f5b56247a79fa42f99bfe2ee8d41c`  
 **Status:** ACCEPTED AS INTEGRATION PLANNING BASELINE  
 **Runtime/schema changes:** none  
-**Next package:** FORM-INT-2
+**Next package:** FORM-INT-3
 
 ## Purpose
 
@@ -229,6 +229,34 @@ The loader resolves `backend/assets/official-forms/` relative to the service mod
 
 No frontend activation or generated-document persistence was added.
 
+## FORM-INT-2 accepted implementation
+
+Accepted implementation:
+
+`d16f2819df176a470e68bfd1301873fbee9ea119`
+
+Production route:
+
+`GET /thesis/defense/:scheduleId/records/summary/pdf`
+
+Accepted architecture:
+
+- ADMIN-only authenticated route;
+- ThesisController / ThesisService delegation;
+- existing `OfficialDefenseDocumentService` orchestration;
+- new narrow `OfficialDefenseRecordService.getOfficialSummaryDocumentSource(...)`;
+- exact persisted `OralExamSummary.snapshotData` as frozen GS-011 source;
+- exact schedule Adviser lookup for Proposal/Final only;
+- accepted TEMPLATE-2 renderer;
+- server-side logos from the existing asset loader;
+- PDF bytes only.
+
+No Summary regeneration, score recalculation, signature reuse, Dean inference, frontend activation, schema change, or generated-document persistence was added.
+
+The PDF mapper preserves persisted evaluator order and uses persisted `averageValue` directly rather than recomputing it.
+
+Minor hardening note: the exact `OralExamSummary` row is already schedule-bound by persistence. A later bounded hardening pass may additionally compare `snapshot.scheduleId` / `snapshot.defenseType` with the owning schedule metadata for corruption detection.
+
 ## Additional integration constraints
 
 - Validate evaluator signature image data before embedding; malformed evidence must fail closed.
@@ -243,8 +271,8 @@ No frontend activation or generated-document persistence was added.
 
 1. **FORM-INT-PRE1 — ACCEPTED** — corrected stale Title Defense record-status projection.
 2. **FORM-INT-1 — ACCEPTED** — shared official-document orchestration + Individual Criteria PDF endpoint (`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`).
-3. **FORM-INT-2 — NEXT** — GS-011 Summary PDF endpoint.
-4. **FORM-INT-3** — GS-006 / GS-007 Defense Application PDF endpoint.
+3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
+4. **FORM-INT-3 — NEXT** — GS-006 / GS-007 Defense Application PDF endpoint.
 5. **FORM-INT-4** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
 
 Optional later package only if institutionally required:
