@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATES PUBLISHED / MERGED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 REQUIRED BEFORE INTEGRATION
+**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
 
 ## 1. Purpose
 
@@ -701,7 +701,7 @@ FORM-DX-1 is complete. Integration remains gated only by the bounded TEMPLATE-3 
 
 ## 17. TEMPLATE-3 FIX-1 — Defense Application committee-role alignment
 
-**REQUIRED BEFORE GS-IS INTEGRATION.**
+**ACCEPTED / MERGED.** Implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`.
 
 This post-merge clarification changes presentation geometry only. It does not change GS-IS committee roles, evaluator authority, scoring, scheduling, or defense workflow.
 
@@ -791,4 +791,43 @@ Before GS-IS integration:
 - rerun TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests, `npm run forms:check`, backend build, sample generation, and `git diff --check`;
 - perform visual QA for all four stage/program combinations and confirm one-page A4 output plus safe signatory/footer clearance.
 
-Only after TEMPLATE-3 FIX-1 is accepted should the project begin authoritative GS-IS data mapping and authenticated Download / Print integration.
+TEMPLATE-3 FIX-1 is accepted. The next package is FORM-INT-0, an analysis-only integration readiness audit. Production integration must not begin until that audit is reviewed and accepted.
+
+## 18. FORM-INT-0 — Official Defense Document integration readiness audit
+
+**NEXT / ANALYSIS ONLY.**
+
+Create a fresh branch from accepted `main`:
+
+`feat/official-defense-document-integration`
+
+Expected base checkpoint at package start:
+
+`48e7e02f546de894d9591b0e4a271b9629f1bdbd`
+
+FORM-INT-0 must inspect the existing implementation and document the exact production integration path for the three accepted form families. It must not change runtime behavior.
+
+Required audit areas:
+
+- authoritative source records for Individual Evaluation, GS-011 Summary, and GS-006/GS-007 Defense Application;
+- exact defense attempt and schedule binding;
+- evaluator identity and finalized-state binding;
+- current Oral Examination Summary snapshot/service behavior;
+- existing Admin Defense Record sections and the correct ownership surface for Download / Print;
+- server-side authorization requirements;
+- raw signature evidence boundaries and which signatures may or may not be reused;
+- payment/O.R. and application data availability for GS-006/GS-007;
+- accepted stage-specific DefenseCommitteePolicy mapping for printed rows;
+- stale `defense-record-status.rules.ts` Title Defense assumption and whether it blocks document readiness;
+- existing repositories/services/controllers/routes that can be extended without creating a parallel workflow;
+- whether generated-document persistence/versioning is actually required for the first integration packages or can remain deferred.
+
+Deliverables:
+
+- concrete source-to-renderer field map per form;
+- recommended service/controller/API boundaries;
+- authorization matrix;
+- exact Admin UI action placement;
+- prerequisites/blockers ranked by package;
+- bounded implementation sequence (FORM-INT-1, FORM-INT-2, FORM-INT-3, FORM-INT-4 or equivalent);
+- no code behavior changes.
