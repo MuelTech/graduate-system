@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 NEXT
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -438,29 +438,21 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-0 audit record:
+FORM-INT-PRE1 is **ACCEPTED** at:
 
-`docs/superpowers/plans/2026-10-22-official-defense-document-integration-audit.md`
+`ae68d14b7af037e0570c21336de1ea7c43fb424c` — `fix(defense-records): align title completion with summary lifecycle`
+
+Accepted behavior:
+
+- Title, Proposal, and Final share the same official-record completion projection;
+- after conclusion, a ready Oral Examination Summary and FINALIZED RAP are both required for `COMPLETE`;
+- missing Summary remains `AWAITING_COMPLETION`;
+- the projection remains UI/readiness-only and does not infer academic outcome.
 
 Next bounded package:
 
-**FORM-INT-PRE1 — Defense Record status alignment**
+**FORM-INT-1 — Individual Oral Examination Criteria PDF integration**
 
-Scope:
+FORM-INT-1 should add the smallest production integration foundation needed to map the exact finalized evaluator record into the accepted TEMPLATE-1 renderer and return authenticated PDF bytes for Admin use.
 
-- correct the stale Title Defense completion projection in `backend/src/services/defense-record-status.rules.ts`;
-- update only its focused tests/comments as required;
-- align the projection with the current official-record runtime where Title, Proposal, and Final produce evaluator Criteria + Oral Examination Summary;
-- keep this package independent from PDF rendering/integration.
-
-Do not change:
-
-- renderers;
-- Prisma/schema;
-- controllers/routes;
-- Admin UI;
-- scoring/verdict logic;
-- committee policy;
-- GS Form No. 22.
-
-After PRE1 is independently reviewed, proceed to FORM-INT-1 for the first real production integration: finalized Individual Evaluation → authenticated Admin PDF endpoint.
+Do not start GS-011, GS-006/GS-007, frontend activation, generated-document persistence, GS Form No. 22, or unrelated workflow cleanup inside FORM-INT-1.
