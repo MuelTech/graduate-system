@@ -6,11 +6,9 @@
  * sessionStatus, and it never infers an academic result from scores, summary
  * readiness, session state, RAP status, or signature counts.
  *
- * Stage awareness:
- *   - Title Defense has no Group I/II numerical Oral Examination Criteria or
- *     numerical Oral Examination Summary, so those are NOT required.
- *   - Proposal/Final additionally require the applicable Oral Examination
- *     Summary before the record can be complete.
+ * Every defense stage (Title, Proposal, Final) uses the evaluator
+ * scoring/finalization lifecycle, so each stage requires a ready Oral
+ * Examination Summary and a FINALIZED RAP before the record can be complete.
  *
  * Exact evaluator/signature counts are intentionally NOT fabricated here; only
  * fields the list read model actually exposes are used.
@@ -33,10 +31,6 @@ export interface DefenseRecordStatusResult {
   status: DefenseRecordStatus;
   /** Short human-readable explanation (never an academic result). */
   detail: string;
-}
-
-function isTitleDefense(defenseType: string): boolean {
-  return String(defenseType ?? "").toUpperCase() === "TITLE_DEFENSE";
 }
 
 function sessionStatusPhrase(sessionStatus: string): string {
@@ -94,14 +88,7 @@ export function deriveDefenseRecordStatus(
   const rapFinalized =
     String(input.rapStatus ?? "").toUpperCase() === "FINALIZED";
 
-  // Title Defense: no numerical evaluation/summary requirement.
-  if (isTitleDefense(input.defenseType)) {
-    return rapFinalized
-      ? { status: "COMPLETE", detail: "Official record finalized" }
-      : { status: "AWAITING_COMPLETION", detail: rapStatusPhrase(input.rapStatus) };
-  }
-
-  // Proposal / Final: summary AND finalized RAP required.
+  // Every stage: summary ready AND finalized RAP required.
   const summaryReady = input.summaryReady === true;
   if (summaryReady && rapFinalized) {
     return { status: "COMPLETE", detail: "Official record finalized" };
