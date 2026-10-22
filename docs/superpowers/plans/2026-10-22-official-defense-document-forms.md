@@ -979,7 +979,11 @@ Minor hardening note: because the persisted `OralExamSummary` relation already b
 
 ## 22. FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration
 
-**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+**IMPLEMENTED — ACCEPTANCE BLOCKED BY FORM-INT-3 FIX-1.**
+
+Implementation:
+
+`8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
 
 Use the accepted TEMPLATE-3 FIX-1 committee presentation and exact schedule binding.
 
@@ -997,4 +1001,36 @@ Scope:
 - no signature inference/reuse;
 - focused tests for all stage/program combinations and fail-closed committee validation.
 
-Do not add frontend activation, schema changes, generated-document persistence/versioning, or GS Form No. 22.
+Implementation review result:
+
+- exact schedule-bound data source and ADMIN-only endpoint are correct;
+- GS-006/GS-007 variant and stage mappings are correct;
+- centralized committee policy is reused rather than duplicated;
+- Chairman-first printed presentation and deterministic Panelist ordering are correct;
+- unavailable application/payment/personal-Gmail/approval fields remain blank;
+- wall-clock defense time is preserved;
+- no signature reuse, schema change, frontend activation, or persistence/versioning was added.
+
+Acceptance blocker:
+
+The production mapping correctly passes the exact persisted `DefenseSchedule.venueOrLink`, but the accepted TEMPLATE-3 renderer currently gives the schedule-row `Link` value a narrow one-line box. A valid value such as `Room 101, GS Building` already raises `RangeError`, and ordinary meeting URLs are longer. Returning controlled 422 prevents clipping but does not make the official document usable for valid schedules.
+
+Therefore FORM-INT-3 remains implemented but not accepted until a bounded renderer correction is complete.
+
+## 23. FORM-INT-3 FIX-1 — Defense Application Link/Venue capacity hardening
+
+**NEXT / REQUIRED BEFORE FORM-INT-4.**
+
+Scope:
+
+- TEMPLATE-3 schedule-row layout only, plus directly affected tests/samples/docs;
+- preserve exact `venueOrLink` display text;
+- support realistic physical venues and normal meeting URLs without truncation/ellipsizing;
+- keep GS-006/GS-007 one-page A4;
+- preserve committee rows, approval blocks, footer, form codes, and accepted stage/program structures;
+- regression-check all six stage/program combinations plus long venue/URL fixtures;
+- visually inspect Master's and Doctoral output after geometry changes.
+
+Do not change schedule/domain data, committee policy, route/auth behavior, blank-field rules, schema, or frontend activation.
+
+FORM-INT-4 remains blocked until this fix is accepted.
