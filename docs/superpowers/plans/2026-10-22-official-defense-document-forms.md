@@ -194,19 +194,194 @@ Static template approval must happen before system-data integration.
 
 Current backend dependencies already include `pdf-lib`. The initial implementation should prefer the existing Node/backend environment and avoid introducing Chromium/Puppeteer unless exact fidelity proves impractical after a real prototype.
 
-Recommended separation:
+### 6.1 Responsibility boundaries
+
+Keep the existing document concerns separate:
+
+```text
+backend/src/
+├── extraction/            ← uploaded document → structured information
+├── storage/               ← private file persistence / managed uploads
+├── documents/
+│   └── official-defense/  ← structured information → official PDF
+└── services/
+    └── official-defense-document.service.ts
+                            ← later domain/auth/render orchestration
+```
+
+This distinction is intentional:
+
+- `extraction/` reads information from uploaded files;
+- `storage/` owns private file persistence and managed upload mechanics;
+- `documents/official-defense/` renders structured values into official documents;
+- the later service layer resolves authorization and authoritative domain data, maps it into form-specific render DTOs, selects the renderer, and returns/stores the result as approved by the package.
+
+### 6.2 Proposed renderer folder structure
+
+Use this as the target shape, but create folders/files only when the corresponding package needs them:
+
+```text
+backend/src/documents/official-defense/
+├── shared/
+│   ├── pdf-layout.ts
+│   ├── pdf-text.ts
+│   ├── pdf-table.ts
+│   └── institutional-header.ts
+│
+├── oral-exam-criteria/
+│   ├── oral-exam-criteria.types.ts
+│   └── oral-exam-criteria.renderer.ts
+│
+├── oral-exam-summary/
+│   ├── oral-exam-summary.types.ts
+│   └── oral-exam-summary.renderer.ts
+│
+├── defense-application/
+│   ├── defense-application.types.ts
+│   └── defense-application.renderer.ts
+│
+└── index.ts
+```
+
+TEMPLATE-1 must not create the TEMPLATE-2 or TEMPLATE-3 renderer files merely to fill out the tree. Start with:
+
+- the Oral Examination Criteria form-specific types/renderer;
+- A4/layout primitives that TEMPLATE-1 genuinely needs;
+- shared institutional-header logic because the confirmed form family uses the same two-logo EARIST header;
+- additional shared helpers only when they reduce real duplication.
+
+Do **not** pre-build:
+
+- a generic `FormRenderer` hierarchy;
+- a `FormTemplate` database model;
+- a template registry;
+- a document factory;
+- a generated-document manager;
+- arbitrary page-layout editing;
+- an Admin template-management UI.
+
+Those abstractions are deferred until multiple accepted templates prove they are necessary.
+
+### 6.3 Renderer contract
+
+Each renderer must be pure with respect to the application/domain layer:
 
 ```text
 authoritative defense record
         ↓
-document-specific render DTO
+later integration service
         ↓
-approved static renderer/template
+form-specific typed render input
         ↓
-server-generated PDF
+approved renderer
         ↓
-authenticated Admin download / print
+PDF bytes
 ```
+
+The renderer must not:
+
+- query Prisma;
+- call repositories;
+- determine authorization;
+- inspect an Express request;
+- write an Express response;
+- determine academic workflow state;
+- derive a verdict;
+- fetch the "latest" attempt/document as a fallback.
+
+For TEMPLATE-1, the render input should make dynamic fields explicit, including candidate/program/date, criterion values, Group I/II averages, recommendations, rating/remarks where applicable, evaluator printed name, and optional signature image bytes/placeholders. The exact type should follow the approved form semantics and must not introduce a new scoring formula.
+
+Later DeepSeek integration will map authoritative `OralExamScore`, `officialSnapshot`, exact `PanelAssignment`, schedule/student/program context, and authorized signature evidence into this DTO.
+
+### 6.4 Static assets
+
+Keep binary institutional assets outside TypeScript source, for example:
+
+```text
+backend/assets/official-forms/
+├── earist-logo.<approved-format>
+└── graduate-school-logo.<approved-format>
+```
+
+The project owner has supplied clean logo assets. Their final repository filenames/format may be chosen during TEMPLATE-1 implementation after checking print quality and aspect ratio.
+
+Reference photographs are visual QA inputs, not production page backgrounds.
+
+### 6.5 Existing PDF code is not the precedent
+
+`backend/src/controllers/waiver.controller.ts` contains an older one-off `pdf-lib` generator. It was independently created and must **not** be treated as the architecture for this initiative.
+
+Reusable from that area:
+
+- the fact that `pdf-lib` is already an installed backend dependency.
+
+Not reusable as an architectural pattern:
+
+- PDF drawing directly inside a controller;
+- mixing domain/data access, layout, and HTTP response handling;
+- its hard-coded page geometry;
+- its visual/form conventions.
+
+Do not refactor or alter the waiver flow during Official Defense Forms work.
+
+Likewise, `backend/src/extraction/`, PDF.js native PDF extraction, and the intentionally unavailable OCR fallback are separate document→data concerns. They remain valid for their own workflows but are not the data→PDF rendering architecture.
+
+### 6.6 TEMPLATE-1 QA support
+
+A bounded development/sample path may be added for TEMPLATE-1, for example:
+
+`backend/scripts/generate-official-form-samples.ts`
+
+Sample output should go to a gitignored temporary path such as:
+
+```text
+backend/.tmp/official-form-samples/
+├── oral-exam-criteria.pdf
+└── oral-exam-criteria.png
+```
+
+Generated samples are QA artifacts and should not be committed unless the project later explicitly adopts golden binary fixtures.
+
+Poppler or another available local PDF rasterizer may be used only to convert the generated PDF to an image for visual comparison. It is not production rendering infrastructure.
+
+### 6.7 Tests
+
+Unit tests should mirror the renderer responsibility, for example:
+
+```text
+backend/tests/unit/documents/official-defense/
+└── oral-exam-criteria.renderer.test.ts
+```
+
+Tests should verify deterministic structural behavior that is reasonable to automate, such as:
+
+- valid PDF bytes;
+- A4 dimensions;
+- expected page count;
+- required labels/text;
+- handling of realistic long placeholder values;
+- no clipping/overflow where measurable;
+- deterministic rendering inputs.
+
+Automated tests do not replace visual comparison and project-owner approval.
+
+### 6.8 Later integration layer
+
+After static visual acceptance, DeepSeek may add:
+
+`backend/src/services/official-defense-document.service.ts`
+
+That service may own:
+
+- role/authorization context;
+- authoritative exact-attempt reads;
+- secure server-side signature retrieval;
+- domain-record → renderer-DTO mapping;
+- renderer selection;
+- HTTP/controller-facing result metadata;
+- persistence/provenance only if separately approved.
+
+Controllers should remain thin and should not own institutional page drawing.
 
 Raw signature evidence must remain server-side. Do not expose base64 signature data through the general Admin Defense Record read model merely to generate PDFs in the browser.
 
