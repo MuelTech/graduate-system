@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 ACCEPTED / PUBLISHED — FORM-DX-1 PENDING
+**Status:** TEMPLATES PUBLISHED / MERGED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 REQUIRED BEFORE INTEGRATION
 
 ## 1. Purpose
 
@@ -596,7 +596,7 @@ TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controll
 
 ## 15. TEMPLATE-3 implementation checkpoint (2026-10-22)
 
-**ACCEPTED / PUBLISHED.** Project-owner visual approval was granted on 2026-10-22. TEMPLATE-1 and TEMPLATE-2 remain accepted/published. GS-IS integration is still gated by FORM-DX-1.
+**ACCEPTED / PUBLISHED.** Project-owner visual approval was granted on 2026-10-22. TEMPLATE-1 and TEMPLATE-2 remain accepted/published. The original TEMPLATE-3 visual baseline was later superseded only for the bounded committee-row presentation rules recorded in TEMPLATE-3 FIX-1 below.
 
 - Branch: `feat/official-defense-document-forms`; starting local/remote HEAD:
   `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`; initial working tree clean.
@@ -607,9 +607,8 @@ TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controll
   One discriminated typed input (`masters`/`doctoral`) and one renderer return PDF bytes.
   There is no file/DB/repository/API/auth/workflow lookup, payment validation, signature retrieval,
   scoring, academic rule, or latest-record fallback.
-- GS-006: `MASTERS PROGRAM`; Adviser + four Panelists + Facilitator + Rapporteur (seven printed rows).
-  GS-007: `DOCTORAL PROGRAM`; six Panelists + Facilitator + Rapporteur (eight printed rows), no Adviser.
-  Neither photograph prints Chairman. Unused slots stay blank; no member or evaluator authority is inferred.
+- Original reconstruction followed the photographed committee rows. Project-owner clarification after merge establishes the generated-form rule: GS-006 needs five printed `Panelist` rows (Chairman + four Panelists), while GS-007 keeps six printed `Panelist` rows (Chairman + five Panelists). Neither form prints a dedicated Chairman label. The Chairman remains `CHAIRMAN` in GS-IS; only the printed row label is `Panelist`.
+- GS-006 Adviser visibility is defense-type dependent: no Adviser for Title; Adviser shown for Proposal/Final. Printed labels never redefine evaluator authority or stored committee roles.
 - Program-specific masthead/application positioning, committee capacity, lower approval spacing,
   and the exact `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` /
   `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` footers are preserved.
@@ -641,12 +640,12 @@ See the TEMPLATE-3 README for the contract, all sample paths, QA details, and re
 
 Accepted remote HEAD for TEMPLATE-3: `959233de1d9be7209a3792702fb392056b605613`.
 
-TEMPLATE-3 is closed as the accepted GS-006/GS-007 static renderer baseline. Do not start GS-IS integration or GS Form No. 22 until the bounded FORM-DX-1 developer-tooling issue below is resolved and verified.
+The published TEMPLATE-3 visual baseline remains the source for the form's institutional styling, but committee-row behavior now requires TEMPLATE-3 FIX-1 before integration. The forms initiative was merged to `main` via PR #37 at `552d8fa9c1a584a17aca1492fc6ee32a5a9b537c`.
 
 
 ## 16. FORM-DX-1 — official-form sample-script TypeScript project coverage
 
-**PENDING / REQUIRED BEFORE INTEGRATION.**
+**COMPLETE / PASS.** Published as `299ca18a89e8fae54785326935fce966995302d8` and merged to `main` through PR #37.
 
 After TEMPLATE-3 publication, VS Code showed TypeScript diagnostics in
 `backend/scripts/generate-defense-application-samples.ts` for Node built-ins/globals, including:
@@ -698,4 +697,67 @@ FORM-DX-1 is complete only when:
 - all three sample-generation commands still run;
 - `git diff --check` passes.
 
-Only after FORM-DX-1 should the static-template phase be marked fully closed and GS-IS integration / authenticated Download-Print be authorized.
+FORM-DX-1 is complete. Integration remains gated only by the bounded TEMPLATE-3 FIX-1 committee-presentation correction documented below.
+
+## 17. TEMPLATE-3 FIX-1 — Defense Application committee-role alignment
+
+**REQUIRED BEFORE GS-IS INTEGRATION.**
+
+This post-merge clarification changes presentation geometry only. It does not change GS-IS committee roles, evaluator authority, scoring, scheduling, or defense workflow.
+
+### Authoritative printed-role mapping
+
+The Defense Application forms have no dedicated printed Chairman label. Therefore:
+
+- GS-IS `CHAIRMAN` remains `CHAIRMAN` in domain data and authorization;
+- the generated GS-006 / GS-007 Defense Application displays that person's name in a row labelled `Panelist`;
+- actual `PANELIST` members follow in the remaining printed Panelist rows;
+- the integration layer will later supply names in deterministic printed order;
+- the static renderer must not query committee data or infer who is Chairman.
+
+### GS-006 Master's required output
+
+For **Title Defense**:
+
+- no Adviser row;
+- five printed Panelist rows = Chairman + four Panelists;
+- Facilitator;
+- Rapporteur.
+
+For **Proposal Defense** and **Final Defense**:
+
+- Adviser row;
+- five printed Panelist rows = Chairman + four Panelists;
+- Facilitator;
+- Rapporteur.
+
+The current four-slot GS-006 Panelist capacity is therefore superseded and must be changed to five. Adviser visibility must be controlled by the explicit `applicationType`, not by database or workflow lookup inside the renderer.
+
+### GS-007 Doctoral required output
+
+- six printed Panelist rows = Chairman + five Panelists;
+- Facilitator;
+- Rapporteur;
+- no dedicated printed Chairman row.
+
+GS-007 six-slot Panelist capacity is already correct for the confirmed evaluator count; only its documented interpretation changes from six generic Panelists to Chairman + five Panelists.
+
+### Reference-form authority
+
+The supplied GS-006 / GS-007 photographs remain valid visual references for institutional style, typography, fields, fee table, approval blocks, and general geometry. Their photographed committee-row arrangement is not allowed to override the confirmed GS-IS workflow presentation rule above.
+
+### FIX-1 acceptance
+
+Before GS-IS integration:
+
+- update GS-006 to five printed Panelist rows;
+- omit Adviser for GS-006 Title;
+- show Adviser for GS-006 Proposal/Final;
+- keep GS-007 at six printed Panelist rows;
+- do not introduce a printed Chairman label;
+- do not mutate system committee roles;
+- update samples/tests/docs;
+- rerun TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests, `npm run forms:check`, backend build, sample generation, and `git diff --check`;
+- perform visual QA to confirm one-page A4 output and safe signatory/footer clearance.
+
+Only after TEMPLATE-3 FIX-1 is accepted should the project begin authoritative GS-IS data mapping and authenticated Download / Print integration.
