@@ -23,11 +23,14 @@ Photographs are never embedded. Only the existing clean production logo JPEGs ar
 | Printed detail | Master's GS-006 | Doctoral GS-007 |
 | --- | --- | --- |
 | Program heading | `MASTERS PROGRAM` | `DOCTORAL PROGRAM` |
-| Adviser slots | Title: none; Proposal/Final: 1 before the Panelist rows | Unchanged by FIX-1 |
-| Panelist slots | **5** = Chairman + 4 Panelists | **6** = Chairman + 5 Panelists |
+| Printed detail | Master's GS-006 | Doctoral GS-007 |
+| --- | --- | --- |
+| Adviser slots | Title: none; Proposal/Final: 1 | Title: none; Proposal/Final: 1 |
+| Printed `Panelist` rows — Title | **5** = Chairman + 4 Panelists | **6** = Chairman + 5 Panelists |
+| Printed `Panelist` rows — Proposal/Final | **4** = Chairman + 3 Panelists | **5** = Chairman + 4 Panelists |
 | Facilitator slots | 1 | 1 |
 | Rapporteur slots | 1 | 1 |
-| Total printed committee rows | Title: 7; Proposal/Final: 8 | 8 |
+| Session total | **7** at every stage | **8** at every stage |
 | Printed Chairman label | None; Chairman is displayed under a `Panelist` row | None; Chairman is displayed under a `Panelist` row |
 | Masthead/application section | Lower placement | 14 pt higher, following the photograph |
 | Approval blocks | More vertical separation | More compact arrangement |
@@ -35,7 +38,7 @@ Photographs are never embedded. Only the existing clean production logo JPEGs ar
 
 The printed labels are presentation only and do not change GS-IS committee membership or evaluator authority. The `CHAIRMAN` remains Chairman in system data, but because neither GS-006 nor GS-007 prints a dedicated Chairman label, the Chairman is rendered into a row labelled `Panelist`. Later integration must supply the printed Panelist names in deterministic order: Chairman first, then actual Panelists. The renderer must not infer roles from unordered data.
 
-For GS-006, Title Defense has no Adviser row. Proposal and Final Defense show the Adviser row. GS-006 therefore requires five printed Panelist rows for all defense types. GS-007 retains six printed Panelist rows. These post-merge rules supersede the original photographed-row interpretation where it conflicts with the confirmed generated-form workflow.
+The generated form follows the centralized stage/program committee policy used by Admin scheduling. Master's Title has no Adviser and prints five `Panelist` rows for Chairman + four Panelists; Master's Proposal/Final includes the active Adviser and prints four `Panelist` rows for Chairman + three Panelists. Doctoral Title has no Adviser and prints six `Panelist` rows for Chairman + five Panelists; Doctoral Proposal/Final includes the active Adviser and prints five `Panelist` rows for Chairman + four Panelists. These rules supersede the original photographed-row interpretation where it conflicts with the current GS-IS policy.
 
 Both photographs have the same printed fee table: Proposal and Final columns each show
 `300` for Defense Fee, Administrative and Technical Fee, and Energy and Venue Fee, followed
@@ -58,7 +61,7 @@ The unlabelled right committee column stays blank for the printed signing area.
 - explicit `deanName`, `vicePresidentName`, and `presidentName`.
 
 Empty strings and absent Panelist names leave printed slots blank.
-No missing identity is fabricated. After TEMPLATE-3 FIX-1, GS-006 must accept at most five printed Panelist names and GS-007 at most six. These are display slots; one supplied name may represent the authoritative Chairman while retaining the printed `Panelist` label.
+No missing identity is fabricated. After TEMPLATE-3 FIX-1, allowed printed Panelist-name capacity is stage-specific: GS-006 Title 5, GS-006 Proposal/Final 4, GS-007 Title 6, and GS-007 Proposal/Final 5. These are display slots; the first supplied name may represent the authoritative Chairman while retaining the printed `Panelist` label.
 All dates, amounts, O.R. identifiers, contact values, and schedule values are rendered as supplied.
 There is no O.R./Gmail validation, course specialization inference, approval state, scoring,
 payment-state determination, signature image, or automatic signing.
@@ -164,9 +167,9 @@ is slightly higher to retain a safe print margin. No photographed background is 
 
 Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
 
-A post-acceptance developer-tooling follow-up remains before integration: the QA generators live under `backend/scripts/`, outside the production `backend/tsconfig.json` project (`rootDir: "./src"`, `include: ["src/**/*"]`). VS Code therefore reports Node built-in/global typing diagnostics for those scripts even though the production backend build passes and the generators run through `ts-node --transpile-only`. See FORM-DX-1 in the initiative plan.
+FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. The remaining pre-integration blocker is TEMPLATE-3 FIX-1, which must align the generated committee rows with the centralized stage/program committee policy.
 
-Do not start GS-IS integration or GS Form No. 22 until FORM-DX-1 is verified.
+Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is verified.
 
 
 ## Acceptance record
@@ -192,15 +195,17 @@ The published renderer remains the accepted visual baseline. FORM-DX-1 is comple
 
 ## TEMPLATE-3 FIX-1 clarification (2026-10-22)
 
-The project owner clarified the generated Defense Application committee presentation after the original form branch was merged to `main`.
+The project owner clarified that the generated Defense Application must follow the actual Admin/backend committee policy rather than preserve the photographed committee-row count when the two differ.
 
-Required behavior:
+Authoritative generated-form behavior:
 
-- the system `CHAIRMAN` remains Chairman in GS-IS but is displayed under the form's printed `Panelist` label;
-- GS-006 Title: no Adviser + five printed Panelist rows + Facilitator + Rapporteur;
-- GS-006 Proposal/Final: Adviser + five printed Panelist rows + Facilitator + Rapporteur;
-- GS-007: six printed Panelist rows representing Chairman + five Panelists, plus Facilitator and Rapporteur;
+- `CHAIRMAN` remains Chairman in GS-IS but is displayed under the form's printed `Panelist` label;
+- GS-006 Master's Title: no Adviser + 5 printed Panelist rows = Chairman + 4 Panelists + Facilitator + Rapporteur = 7 participants;
+- GS-006 Master's Proposal/Final: Adviser + 4 printed Panelist rows = Chairman + 3 Panelists + Facilitator + Rapporteur = 7 participants;
+- GS-007 Doctoral Title: no Adviser + 6 printed Panelist rows = Chairman + 5 Panelists + Facilitator + Rapporteur = 8 participants;
+- GS-007 Doctoral Proposal/Final: Adviser + 5 printed Panelist rows = Chairman + 4 Panelists + Facilitator + Rapporteur = 8 participants;
 - no dedicated printed Chairman label is introduced;
-- renderer presentation must not mutate or reinterpret stored committee roles.
+- renderer presentation must not mutate or reinterpret stored committee roles;
+- the centralized `DefenseCommitteePolicy` remains the participant-count authority.
 
 This is a bounded renderer/layout correction. It must be completed and visually verified before authoritative GS-IS mapping or Download / Print integration begins.
