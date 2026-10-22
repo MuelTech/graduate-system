@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 NEXT
 
 ## 1. Purpose
 
@@ -881,7 +881,11 @@ The implementation was independently source/diff reviewed before acceptance.
 
 ## 20. FORM-INT-1 — Individual Oral Examination Criteria PDF integration
 
-**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca` — `feat(documents): integrate individual evaluation PDF`
 
 Use the accepted FORM-INT-0 mapping and PRE1 readiness baseline.
 
@@ -895,4 +899,49 @@ Scope should remain limited to the first official document:
 - authenticated Admin PDF endpoint;
 - focused authorization, exact-binding, V2-only, malformed-signature, and renderer-mapping tests.
 
-No frontend activation yet. Do not include GS-011, GS-006/GS-007, persistence/versioning, schema changes, or GS Form No. 22.
+Accepted result:
+
+- new `OfficialDefenseDocumentService` reuses `OfficialDefenseRecordService.getOfficialCriteria(...)`;
+- exact schedule + panel assignment binding remains authoritative;
+- only finalized `INSTITUTIONAL_MATRIX_V2` evaluator records render;
+- legacy scoring fails closed without conversion;
+- exact evaluator signature data is validated/decoded server-side;
+- accepted production logos are loaded from `backend/assets/official-forms/`;
+- new ADMIN-only PDF route:
+  `GET /thesis/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf`;
+- existing JSON Criteria route remains unchanged;
+- no frontend, schema, GS-011, GS-006/GS-007, workflow, or persistence changes were included.
+
+Agent-reported verification:
+
+- 40 new FORM-INT-1 tests PASS;
+- 86 renderer/official-record regression tests PASS;
+- 52 controller/route regression tests PASS;
+- `npm run forms:check` PASS;
+- backend TypeScript build PASS;
+- compiled `dist` asset loading PASS;
+- `git diff --check` PASS.
+
+Independent remote source/diff review found no blocking correctness or authorization defect.
+
+Operational requirement: production packaging must retain `backend/assets/official-forms/` alongside the compiled backend because the accepted loader resolves from module location rather than copying assets into `dist`.
+
+## 21. FORM-INT-2 — GS-011 Oral Examination Summary PDF integration
+
+**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+
+Reuse the accepted FORM-INT-1 orchestration/asset/route pattern where it genuinely applies.
+
+Scope:
+
+- exact `scheduleId` authority;
+- exact persisted `OralExamSummary.snapshotData`;
+- V2-only/mixed-version fail-closed validation;
+- examiner rows from the persisted snapshot only;
+- Chairman/Member display names from snapshot evaluator roles;
+- exact schedule Adviser seat for Proposal/Final only;
+- Dean/attestation blank unless an authoritative current source exists;
+- wet-signature-only GS-011 output for the first integration;
+- ADMIN-only PDF route and focused tests.
+
+Do not reuse evaluator signature images on GS-011. Do not add frontend activation, GS-006/GS-007, schema changes, persistence/versioning, or GS Form No. 22.
