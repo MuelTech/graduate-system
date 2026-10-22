@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** PLANNING CHECKPOINT — DOCUMENTATION ONLY; IMPLEMENTATION NOT STARTED
+**Status:** TEMPLATE-1 IMPLEMENTED LOCALLY - PUBLICATION AND VISUAL APPROVAL PENDING
 
 ## 1. Purpose
 
@@ -151,7 +151,7 @@ The official digital templates should be reconstructed cleanly using:
 
 Do not embed the photographed paper as the production template because it contains perspective distortion, scan noise, shadows, page holes, and non-digital artifacts.
 
-The two clean logo assets and the reference photos are project inputs. They are **not yet versioned in the repository** by this documentation-only checkpoint.
+The two clean logo assets have been copied into `backend/assets/official-forms/` for the pending TEMPLATE-1 commit. Reference photographs remain local-only inputs under `backend/.temp/official-form-inputs/` and must not be committed.
 
 ## 5. Agent/workflow allocation
 
@@ -470,9 +470,9 @@ Acceptance requires:
 - visual comparison against the supplied institutional reference;
 - project-owner visual approval.
 
-## 12. This checkpoint changes no runtime behavior
+## 12. Original documentation-only checkpoint
 
-This commit is documentation only.
+The original planning checkpoint was documentation only.
 
 It does not:
 
@@ -485,4 +485,26 @@ It does not:
 - alter RAP signatures;
 - enable any Download / Print button.
 
-Implementation starts only in the next approved bounded package.
+Implementation was subsequently authorized for TEMPLATE-1 only, as recorded below.
+
+## 13. TEMPLATE-1 implementation checkpoint (2026-10-22)
+
+**Implemented locally; publication and project-owner visual acceptance pending.** No TEMPLATE-2/3 or integration package is authorized by this checkpoint.
+
+- Starting branch HEAD: `74b09e8475d7767b3e573b70d3c7151c23c2241b`; verified against GitHub before implementation.
+- Both planning documents were re-read; the reference photograph and both clean logos were actually viewed locally before coding.
+- Renderer: `backend/src/documents/official-defense/oral-exam-criteria/oral-exam-criteria.renderer.ts`.
+- Explicit typed input: `oral-exam-criteria.types.ts`; logo/signature bytes, identity, date, nine criterion choices, both averages, recommendations, rating, remarks, and evaluator printed name. No averages, verdicts, or academic interpretation are computed.
+- Shared helpers are limited to A4/rules/image containment, bounded measured text, and the institutional masthead.
+- Production logo files are byte-identical copies of the supplied clean JPEGs. Their provenance, native dimensions, hashes, and print-resolution limitations are recorded in `backend/assets/official-forms/README.md`.
+- The renderer returns PDF bytes and has no filesystem, database, repository, HTTP, authorization, or workflow dependency.
+- Dev-only generation: `npm run forms:sample:criteria -- --rasterize` from `backend/` produces blank, filled, and long-value samples under `.tmp/official-form-samples/`. The command works without reference inputs or application bootstrap. Poppler is QA-only.
+- Six focused tests pass: valid/deterministic single-page A4 PDF, institutional labels/matrix, explicit supplied values, long-value completeness/print-safe bounds, blank cells/optional PNG signature embedding, overflow rejection, and malformed-matrix rejection.
+- `npm run build` passes. No new dependency, Prisma/schema, controller, route, UI, waiver, extraction, storage, scoring, verdict, or stale-status change is included.
+- Visual QA used three PDF/raster review passes over blank, filled, and long-value examples. The first pass caught default filled table rectangles; the second verified border-only tables and field placement; the final pass refined recommendation line spacing, summary-column dividers, and the signature area. Final PNGs were inspected for clipping and overlap.
+
+Known fidelity limits: the photograph does not establish exact typefaces or physical dimensions; these are reconstructed. Color logos are retained from the supplied clean assets, fine seal lettering remains limited by the 141/207 px originals, and photocopy noise/skew/shading are replaced by straight vector geometry and uniform gray bands. Matrix numbers use the requested consistent two-decimal notation. No form code or revision is invented.
+
+The detailed renderer contract, sample commands, limits, and QA notes are in `backend/src/documents/official-defense/oral-exam-criteria/README.md`. The next action is **project-owner visual review of TEMPLATE-1**, not TEMPLATE-2 implementation or system integration.
+
+Publication status: the local HEAD remains `74b09e8475d7767b3e573b70d3c7151c23c2241b`. Local Git metadata is read-only in this session. GitHub blob-creation calls were rejected with `MCP tool call requires approval, but approval policy is never`; no commit or remote ref update was created. The bounded local changes are ready for a normal authorized Git commit/push, excluding both temporary directories.
