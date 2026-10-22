@@ -2,10 +2,10 @@
 
 **System:** EARIST Graduate School Information System (GS-IS)  
 **Repository:** `MuelTech/graduate-system`  
-**Active initiative branch:** `feat/official-defense-document-forms`  
+**Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 ACCEPTED / PUBLISHED — FORM-DX-1 PENDING
+**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 PUBLISHED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 REQUIRED BEFORE INTEGRATION
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -233,10 +233,11 @@ on `feat/official-defense-document-forms` with a clean working tree. Both actual
 reference photographs were visually inspected before coding.
 
 The pure renderer under `backend/src/documents/official-defense/defense-application/`
-implements one controlled Master's/Doctoral family. GS-006 retains Adviser, four Panelist,
-Facilitator, and Rapporteur slots (seven rows). GS-007 retains six Panelist, Facilitator,
-and Rapporteur slots (eight rows), with no Adviser. Neither form prints a Chairman label.
-These are physical capacities, not committee policy.
+implements one controlled Master's/Doctoral family. The originally reconstructed committee rows
+followed the supplied reference photographs. A later project-owner clarification supersedes those
+row-capacity assumptions for generated output: the GS-IS `CHAIRMAN` remains Chairman in the system
+but is displayed in a printed row labelled `Panelist` because GS-006/GS-007 have no dedicated
+Chairman label. Printed labels do not redefine system roles or evaluator authority.
 
 Both confirmed GS-006/GS-007 code/revision footers remain visible. TEMPLATE-2's accepted
 GS-011 footer omission is unchanged and is not applied to this family.
@@ -253,11 +254,13 @@ Samples stay ignored under `backend/.tmp/official-form-samples/`.
 See the TEMPLATE-3 README for all six PDF/PNG paths, generation commands, variant differences,
 overflow behavior, policy boundaries, and fidelity limits.
 
-Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was published at `959233de1d9be7209a3792702fb392056b605613` and is closed as the accepted GS-006/GS-007 static renderer baseline.
+Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was published at `959233de1d9be7209a3792702fb392056b605613` and later merged to `main` via PR #37 at `552d8fa9c1a584a17aca1492fc6ee32a5a9b537c`.
 
-A bounded developer-tooling follow-up, **FORM-DX-1**, is required before GS-IS integration begins. VS Code reports Node/module typing errors in the development-only sample generators because `backend/tsconfig.json` has `rootDir: "./src"` and `include: ["src/**/*"]`, while the generators live under `backend/scripts/`. The existing backend build passes because those scripts are outside the production TypeScript project, and the sample commands currently run through `ts-node --transpile-only`. This is a tooling/type-check coverage issue, not a renderer/runtime failure.
+**FORM-DX-1 is COMPLETE / PASS** at `299ca18a89e8fae54785326935fce966995302d8`. A scripts-local TypeScript project now covers all three official-form QA generators without changing production `dist` output; all 32 renderer tests, backend build, sample generation, and PDF hash regression checks passed.
 
-Do not start GS-IS integration or GS Form No. 22 until FORM-DX-1 is fixed and verified.
+After merge, the project owner clarified the authoritative Defense Application presentation rule. A bounded **TEMPLATE-3 FIX-1** is required before GS-IS integration: GS-006 must expose five printed `Panelist` rows (Chairman + four Panelists), omit Adviser for Title Defense, and show Adviser for Proposal/Final Defense. GS-007 keeps six printed `Panelist` rows (Chairman + five Panelists). The renderer must not rename or mutate the underlying GS-IS roles.
+
+Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is implemented and verified.
 
 ## Explicitly deferred
 
@@ -431,27 +434,45 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Complete the bounded developer-tooling package:
+Implement the bounded post-merge renderer correction:
 
-**FORM-DX-1 — TypeScript project coverage for official-form QA scripts**
+**TEMPLATE-3 FIX-1 — Defense Application committee-role alignment**
 
-Observed after TEMPLATE-3 publication:
+Authoritative presentation rules confirmed by the project owner on 2026-10-22:
 
-- VS Code reports unresolved `node:child_process`, `node:fs/promises`, `node:path`, `process`, and `__dirname` in `backend/scripts/generate-defense-application-samples.ts`;
-- the same project-boundary applies to all three official-form sample generators under `backend/scripts/`;
-- `backend/tsconfig.json` intentionally targets production source only with `rootDir: "./src"` and `include: ["src/**/*"]`;
-- `@types/node` is already installed and `types: ["node"]` is already present for the configured backend project;
-- backend production build/tests and sample runtime generation remain separate concerns.
+- GS-IS remains authoritative for committee roles and evaluator authority.
+- The `CHAIRMAN` remains `CHAIRMAN` in GS-IS.
+- Because GS-006 and GS-007 do not print a dedicated Chairman label, the Chairman is displayed in a row labelled `Panelist`.
+- The renderer receives already ordered display values; it must not query, infer, rename, or persist committee roles.
 
-FORM-DX-1 should fix editor/type-check coverage without changing production build output paths or accepted renderer behavior. Prefer a dedicated scripts TypeScript config/check path over broadening the production `rootDir` in a way that would move emitted `dist` paths.
+### GS-006 — Master's
 
-After FORM-DX-1 passes:
-1. verify no VS Code TypeScript errors remain in all three sample generators;
-2. run the dedicated scripts type-check;
-3. rerun TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests;
-4. run backend build and sample commands;
-5. then close the static-template phase and prepare GS-IS integration / authenticated Download-Print.
+**Title Defense**
 
-Accepted TEMPLATE-3 publication checkpoint:
+- no Adviser row;
+- five printed `Panelist` rows = one Chairman + four Panelists;
+- one Facilitator row;
+- one Rapporteur row.
 
-`959233de1d9be7209a3792702fb392056b605613` — `feat(documents): add defense application renderers`
+**Proposal / Final Defense**
+
+- Adviser row is shown;
+- five printed `Panelist` rows = one Chairman + four Panelists;
+- one Facilitator row;
+- one Rapporteur row.
+
+Therefore GS-006 must change from the current four printed Panelist slots to five. Adviser visibility must depend only on the explicit `applicationType`: absent for `title`, present for `proposal` and `final`.
+
+### GS-007 — Doctoral
+
+- retain six printed `Panelist` rows = one Chairman + five Panelists;
+- retain Facilitator and Rapporteur rows;
+- no dedicated printed Chairman label.
+
+No GS-IS committee role, evaluator authority, scoring rule, or workflow state is changed by this presentation mapping.
+
+The supplied photographs remain visual/layout references. Where their committee slot arrangement conflicts with the confirmed generated-form rule above, the generated form must adapt to the confirmed GS-IS workflow presentation requirement.
+
+TEMPLATE-3 FIX-1 must include focused tests and visual QA for the resulting one-page layout before integration begins.
+
+After FIX-1 passes, proceed to a separate GS-IS integration/readiness package for authoritative data mapping and authenticated Download / Print.
