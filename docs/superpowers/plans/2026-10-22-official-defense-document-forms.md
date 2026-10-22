@@ -979,7 +979,7 @@ Minor hardening note: because the persisted `OralExamSummary` relation already b
 
 ## 22. FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration
 
-**IMPLEMENTED — ACCEPTANCE BLOCKED BY FORM-INT-3 FIX-1.**
+**ACCEPTED / COMPLETE.**
 
 Implementation:
 
@@ -1011,15 +1011,32 @@ Implementation review result:
 - wall-clock defense time is preserved;
 - no signature reuse, schema change, frontend activation, or persistence/versioning was added.
 
-Acceptance blocker:
+Acceptance closure:
 
-The production mapping correctly passes the exact persisted `DefenseSchedule.venueOrLink`, but the accepted TEMPLATE-3 renderer currently gives the schedule-row `Link` value a narrow one-line box. A valid value such as `Room 101, GS Building` already raises `RangeError`, and ordinary meeting URLs are longer. Returning controlled 422 prevents clipping but does not make the official document usable for valid schedules.
+FORM-INT-3 FIX-1 is accepted at `d387526ad153df54b674b7b4b9b7ef09478a7676`.
 
-Therefore FORM-INT-3 remains implemented but not accepted until a bounded renderer correction is complete.
+The schedule block now uses Date/Time on its first line and a bounded full-width Link/Venue row beneath it. Exact authoritative `venueOrLink` text is preserved and may wrap; realistic physical venues, Google Meet links, and a long Teams-style URL render completely without truncation or URL rewriting. The committee table and approval/footer blocks shift only as needed while remaining one-page A4. Deliberately extreme content still fails explicitly.
+
+Agent-reported FIX-1 verification:
+
+- TEMPLATE-3 renderer tests: 47 PASS;
+- FORM-INT-3 application service tests: 38 PASS;
+- required combined regression set: 172 PASS;
+- `npm run forms:check` PASS;
+- backend build PASS;
+- `git diff --check` PASS;
+- 10 Defense Application sample PDFs generated;
+- four representative Master's/Doctoral long venue/link outputs rasterized at 150 dpi and visually inspected with no observed clipping, overlap, broken borders, signatory/footer collision, or unsafe margins.
+
+Independent remote diff/source review confirmed the fix is renderer-scoped and found no blocking layout or integration defect.
 
 ## 23. FORM-INT-3 FIX-1 — Defense Application Link/Venue capacity hardening
 
-**NEXT / REQUIRED BEFORE FORM-INT-4.**
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`d387526ad153df54b674b7b4b9b7ef09478a7676` — `fix(documents): harden defense application venue layout`
 
 Scope:
 
@@ -1033,4 +1050,18 @@ Scope:
 
 Do not change schedule/domain data, committee policy, route/auth behavior, blank-field rules, schema, or frontend activation.
 
-FORM-INT-4 remains blocked until this fix is accepted.
+FORM-INT-4 is now unblocked.
+
+## 24. FORM-INT-4 — Admin Download / Print activation and hardening
+
+**NEXT / BOUNDED INTEGRATION.**
+
+Activate the three accepted official-document PDF endpoints in the schedule-scoped Admin Defense Record UI:
+
+- Defense Application → GS-006 / GS-007;
+- Evaluation Results → per-evaluator Individual Evaluation PDF;
+- Oral Examination Summary → GS-011.
+
+Add only the minimum availability metadata/read-model changes required to show correct enabled/disabled actions and reasons. Preserve authenticated blob download/open behavior, exact `scheduleId` / evaluator binding, and existing section ownership.
+
+Do not add a generic Defense Documents inventory, browser-page printing as the official form, schema changes, generated-document persistence/versioning, GS Form No. 22, or new Student/Panelist document access.
