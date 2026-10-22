@@ -288,6 +288,27 @@ The TEMPLATE-3 renderer's fixed schedule-row Link box is too narrow for realisti
 
 FORM-INT-3 FIX-1 was completed and accepted at `d387526ad153df54b674b7b4b9b7ef09478a7676`. The renderer now supports realistic physical venues and normal Meet/Teams URLs using a bounded full-width wrapped Link/Venue row while retaining exact text, one-page A4 geometry, committee structure, approval/signatory clearance, and explicit failure for extreme over-capacity input. FORM-INT-3 is accepted and FORM-INT-4 is unblocked.
 
+## FORM-INT-4 source review
+
+Implementation:
+
+`02043af2d8b99156046622438eb3635089417465`
+
+Verified frontend integration:
+
+- exact Defense Application endpoint owned by Defense Overview;
+- exact per-evaluator Criteria PDF path using each `panelAssignmentId`;
+- exact GS-011 Summary endpoint;
+- existing safe availability metadata reused;
+- Committee Report stays disabled;
+- centralized authenticated PDF/blob helper;
+- Authorization-header bearer token only;
+- PDF MIME/signature validation and filename sanitization;
+- scoped loading + Sonner failures;
+- no browser-page printing, public PDF URLs, schema changes, renderer changes, or broadened role access.
+
+FORM-INT-4 is source-accepted but not yet finally accepted because authenticated browser QA was not executed. The project owner should verify successful and unavailable/error states in the running system before this sequence is closed.
+
 ## Additional integration constraints
 
 - Validate evaluator signature image data before embedding; malformed evidence must fail closed.
@@ -305,7 +326,7 @@ FORM-INT-3 FIX-1 was completed and accepted at `d387526ad153df54b674b7b4b9b7ef09
 3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
 4. **FORM-INT-3 — ACCEPTED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`).
 5. **FORM-INT-3 FIX-1 — ACCEPTED** — schedule Link/Venue capacity hardening (`d387526ad153df54b674b7b4b9b7ef09478a7676`).
-6. **FORM-INT-4 — NEXT** — Admin Download / Print activation, availability metadata, frontend/security/regression hardening.
+6. **FORM-INT-4 — SOURCE-ACCEPTED / MANUAL QA PENDING** — Admin Download / Print activation and frontend/security/regression hardening (`02043af2d8b99156046622438eb3635089417465`).
 
 Optional later package only if institutionally required:
 
