@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 NEXT
 
 ## 1. Purpose
 
@@ -928,7 +928,11 @@ Operational requirement: production packaging must retain `backend/assets/offici
 
 ## 21. FORM-INT-2 — GS-011 Oral Examination Summary PDF integration
 
-**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`d16f2819df176a470e68bfd1301873fbee9ea119` — `feat(documents): integrate oral exam summary PDF`
 
 Reuse the accepted FORM-INT-1 orchestration/asset/route pattern where it genuinely applies.
 
@@ -944,4 +948,53 @@ Scope:
 - wet-signature-only GS-011 output for the first integration;
 - ADMIN-only PDF route and focused tests.
 
-Do not reuse evaluator signature images on GS-011. Do not add frontend activation, GS-006/GS-007, schema changes, persistence/versioning, or GS Form No. 22.
+Accepted result:
+
+- exact persisted `OralExamSummary.snapshotData` is the official GS-011 academic/identity source;
+- no Summary regeneration or live-score reconstruction occurs during PDF generation;
+- examiner rows preserve persisted snapshot order;
+- Group A / Group B / Average are read directly from persisted snapshot values;
+- exactly one Chairman is used for Submitted by; Panelists fill Member names;
+- Title renders no Adviser;
+- Proposal/Final require exactly one exact-schedule ADVISER assignment;
+- Dean remains blank;
+- no digital signature evidence is loaded or reused;
+- legacy/mixed/unknown scoring versions fail closed;
+- new ADMIN-only endpoint:
+  `GET /thesis/defense/:scheduleId/records/summary/pdf`;
+- no frontend, GS-006/GS-007, schema, workflow, or persistence changes were included.
+
+Agent-reported verification:
+
+- 82 focused FORM-INT-1/2 service/controller/route tests PASS;
+- 73 renderer/official-summary regression tests PASS;
+- 52 controller/route regression tests PASS;
+- `npm run forms:check` PASS;
+- backend TypeScript build PASS;
+- `git diff --check` PASS.
+
+Independent remote source/diff review found no blocking correctness, authorization, signature-reuse, or frozen-snapshot defect.
+
+Minor hardening note: because the persisted `OralExamSummary` relation already belongs to the exact schedule, the implementation is correctly attempt-bound. A future bounded hardening pass may additionally assert that the snapshot's own `scheduleId` and `defenseType` metadata match the owning schedule.
+
+## 22. FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration
+
+**NEXT / BOUNDED PRODUCTION INTEGRATION.**
+
+Use the accepted TEMPLATE-3 FIX-1 committee presentation and exact schedule binding.
+
+Scope:
+
+- exact `DefenseSchedule.id`;
+- exact schedule student/program/stage context;
+- program type → GS-006 Master's / GS-007 Doctoral variant;
+- exact schedule committee assignments;
+- Chairman first in printed `Panelist` rows, followed by actual Panelists;
+- Proposal/Final exact schedule Adviser; Title no Adviser;
+- Facilitator and Rapporteur exact schedule seats;
+- currently unavailable application/payment/approval identity fields remain blank;
+- ADMIN-only PDF endpoint;
+- no signature inference/reuse;
+- focused tests for all stage/program combinations and fail-closed committee validation.
+
+Do not add frontend activation, schema changes, generated-document persistence/versioning, or GS Form No. 22.
