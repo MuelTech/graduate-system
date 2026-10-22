@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 AUTHORIZED NEXT
+**Status:** TEMPLATE-1 ACCEPTED / PUBLISHED — TEMPLATE-2 AWAITING VISUAL REVIEW
 
 ## 1. Purpose
 
@@ -531,3 +531,42 @@ Final accepted visual refinements include:
 **TEMPLATE-2 — EARIST-QSF-GS-011 Rev. 01 (06.20.25) — Oral Examination Summary Sheet**
 
 TEMPLATE-2 remains static-template only. It may reuse accepted TEMPLATE-1 shared PDF/header helpers where appropriate, but it must not add database/API/UI integration, invent GS-011 signature policy, or start TEMPLATE-3.
+
+## 14. TEMPLATE-2 implementation checkpoint (2026-10-22)
+
+**IMPLEMENTED — AWAITING PROJECT-OWNER VISUAL REVIEW.** TEMPLATE-1 remains accepted/published.
+TEMPLATE-3 and all GS-IS integration remain deferred.
+
+- Verified branch: `feat/official-defense-document-forms`; starting local and GitHub remote HEAD: `84002a713e3c9a0342e6414e662793fcfa0308ed`.
+- Re-read both initiative documents and the accepted TEMPLATE-1 implementation/shared helpers.
+  Inspected the actual local GS-011 reference pixels before coding.
+- Renderer and typed contract: `backend/src/documents/official-defense/oral-exam-summary/`.
+  Explicit logo bytes, identity fields, six bounded examiner rows, independent Chairman/five Member
+  display-name slots, Adviser name, and Dean name. All ratings/Average are supplied strings.
+- Reuses accepted A4/rules, bounded measured text, image containment, and institutional masthead
+  without changing shared files or TEMPLATE-1. GS-011 geometry remains form-specific.
+- Preserves six printed examiner rows, one Chairman/five Member lines, Adviser/Dean areas,
+  and `EARIST-QSF-GS-011 Rev. 01 (06.20.25)`. Unused slots remain blank.
+- Pure typed input to PDF bytes: no I/O, DB/repository/API/auth/workflow, signature retrieval,
+  scorer-role inference, average calculation, or verdict inference.
+- Dev command: `npm run forms:sample:summary -- --rasterize` from `backend/`.
+  Blank, filled (`MAEd`), and long-value PDF/PNG pairs remain ignored under
+  `backend/.tmp/official-form-samples/`; no reference photographs or generated artifacts are committed.
+- Two visual QA passes inspected all three variants. The second centered table text and added
+  clearance beside long signatory names. Final samples show no observed clipping/overlap.
+- Eight TEMPLATE-2 tests plus nine existing TEMPLATE-1 tests pass; backend TypeScript build passes.
+  See the renderer README for sample paths, contract, overflow behavior, fidelity limits, and QA notes.
+- Existing production logos are reused; no new assets/dependencies, controller/waiver changes,
+  Prisma/schema, extraction/storage, scoring/workflow, API, or UI changes are included.
+
+The clean reconstruction uses standard PDF fonts and the supplied color logos.
+Exact original typefaces/physical measurements remain approximate because the source is a
+perspective photocopy photograph; existing logo resolution limits fine seal lettering.
+Project-owner visual approval is still required before proceeding.
+
+### TEMPLATE-2 footer refinement requested by project owner
+
+The visible `EARIST-QSF-GS-011 Rev. 01 (06.20.25)` footer is omitted from generated
+TEMPLATE-2 PDFs per the latest project-owner instruction. This supersedes the earlier
+footer reproduction requirement for the current output; the reference form identity remains
+unchanged. Field/table/signatory geometry is retained. Visual acceptance is still pending.
