@@ -1,6 +1,6 @@
 # TEMPLATE-3: Defense Application (GS-006 / GS-007)
 
-Status: **TEMPLATE-3 FIX-1 IMPLEMENTED / LOCAL VISUAL QA PASS — PENDING INDEPENDENT ACCEPTANCE** (2026-10-22).
+Status: **TEMPLATE-3 FIX-1 ACCEPTED / MERGED** (2026-10-22).
 Merged to `main` via PR #37.
 Starting implementation HEAD: `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`.
 Accepted remote HEAD: `959233de1d9be7209a3792702fb392056b605613`.
@@ -178,9 +178,9 @@ is slightly higher to retain a safe print margin. No photographed background is 
 
 Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
 
-FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 now aligns the generated committee rows with the centralized stage/program committee policy; independent acceptance remains pending.
+FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 was independently reviewed, accepted at `03cbc80c92b7a9cf538b82b96b920cb373f81a94`, and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`.
 
-Do not start GS-IS integration or GS Form No. 22 until TEMPLATE-3 FIX-1 is independently accepted.
+The renderer is now ready for the separate FORM-INT-0 integration readiness audit. Do not bypass that audit by wiring production routes/UI directly.
 
 
 ## Acceptance record
@@ -202,7 +202,7 @@ Accepted points:
 - fifteen TEMPLATE-3 tests plus existing TEMPLATE-1/TEMPLATE-2 tests, backend build, and diff checks passed;
 - accepted TEMPLATE-1/TEMPLATE-2/shared renderer files remained unchanged.
 
-The published renderer remains the accepted visual baseline. FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 applies the project-owner-confirmed stage-specific committee capacity and Adviser visibility described below; independent acceptance remains pending.
+The published renderer remains the accepted visual baseline. FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 applies the project-owner-confirmed stage-specific committee capacity and Adviser visibility described below and is now accepted/merged.
 
 ## TEMPLATE-3 FIX-1 clarification (2026-10-22)
 
@@ -219,4 +219,4 @@ Authoritative generated-form behavior:
 - renderer presentation must not mutate or reinterpret stored committee roles;
 - the centralized `DefenseCommitteePolicy` remains the participant-count authority.
 
-This is a bounded renderer/layout correction. It is implemented locally with focused tests and visual QA in this branch. Authoritative GS-IS mapping or Download / Print integration must not begin until independent acceptance is recorded.
+This bounded renderer/layout correction was independently reviewed and merged to `main` via PR #38. Production integration now proceeds only through the separate FORM-INT-0 readiness audit and later bounded integration packages.
