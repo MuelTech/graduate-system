@@ -244,6 +244,69 @@ authenticated Download / Print
 
 Do not introduce Chromium/Puppeteer before a real `pdf-lib` prototype proves that exact fidelity cannot be achieved reasonably.
 
+### Repository module boundary
+
+Use a dedicated rendering module rather than extending extraction, storage, or a legacy controller:
+
+```text
+backend/src/
+├── extraction/            ← uploaded document → structured information
+├── storage/               ← private file persistence / managed uploads
+├── documents/
+│   └── official-defense/  ← structured information → official PDF
+└── services/
+    └── official-defense-document.service.ts
+                            ← later orchestration/integration
+```
+
+The initial renderer structure should grow incrementally:
+
+```text
+backend/src/documents/official-defense/
+├── shared/
+│   ├── pdf-layout.ts
+│   ├── pdf-text.ts
+│   ├── pdf-table.ts
+│   └── institutional-header.ts
+├── oral-exam-criteria/
+│   ├── oral-exam-criteria.types.ts
+│   └── oral-exam-criteria.renderer.ts
+├── oral-exam-summary/
+│   ├── oral-exam-summary.types.ts
+│   └── oral-exam-summary.renderer.ts
+├── defense-application/
+│   ├── defense-application.types.ts
+│   └── defense-application.renderer.ts
+└── index.ts
+```
+
+For TEMPLATE-1, create only the form-specific renderer and the minimum genuinely reusable shared primitives. Do not pre-build a generic form engine, template registry, document factory, generated-document manager, or Admin template-management framework.
+
+Renderers must remain independent of Prisma, repositories, Express requests/responses, and authorization. They receive an explicit typed render input and return PDF bytes. Later integration maps authoritative domain records into those render inputs.
+
+Static binary assets should live outside TypeScript source, for example:
+
+`backend/assets/official-forms/`
+
+The exact asset filenames may be finalized when the supplied clean logos are added.
+
+### Existing PDF code is not the architectural precedent
+
+`backend/src/controllers/waiver.controller.ts` contains an older one-off `pdf-lib` PDF generator. It was independently created and is **not** the architectural model for Official Defense Forms.
+
+Treat only the installed `pdf-lib` dependency as reusable evidence.
+
+Do not copy from the waiver implementation:
+
+- controller-level PDF drawing;
+- mixed data fetching + PDF layout + HTTP response concerns;
+- its hard-coded page geometry;
+- its visual conventions.
+
+Do not refactor or modify the waiver flow as part of this initiative.
+
+The existing `extraction/` modules, PDF.js native text extraction, and the intentionally unavailable OCR fallback retain their current responsibilities. They are document→data infrastructure and are not the generation architecture for these official forms.
+
 ## Signature boundary
 
 Raw signature evidence must remain server-side.
