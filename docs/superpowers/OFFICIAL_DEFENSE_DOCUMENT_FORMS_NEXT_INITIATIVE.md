@@ -5,7 +5,7 @@
 **Active initiative branch:** `feat/official-defense-document-forms`  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** TEMPLATE-1 + TEMPLATE-2 ACCEPTED / PUBLISHED — TEMPLATE-3 IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
+**Status:** TEMPLATE-1 + TEMPLATE-2 + TEMPLATE-3 ACCEPTED / PUBLISHED — FORM-DX-1 PENDING
 **Last updated:** 2026-10-22
 
 ## Purpose
@@ -226,7 +226,7 @@ See the TEMPLATE-2 README and plan checkpoint for commands, QA details, and fide
 
 Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-2 was published at `5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` and is closed as the accepted GS-011 static renderer baseline. TEMPLATE-3 is now authorized as the next bounded static-template package.
 
-### TEMPLATE-3 — Defense Application — IMPLEMENTED / AWAITING PROJECT-OWNER VISUAL REVIEW
+### TEMPLATE-3 — Defense Application — ACCEPTED / PUBLISHED
 
 Starting local and remote HEAD were verified as `8ddb390980cd8537c30014c4e90c8dc0cb2d794d`
 on `feat/official-defense-document-forms` with a clean working tree. Both actual local
@@ -253,8 +253,11 @@ Samples stay ignored under `backend/.tmp/official-form-samples/`.
 See the TEMPLATE-3 README for all six PDF/PNG paths, generation commands, variant differences,
 overflow behavior, policy boundaries, and fidelity limits.
 
-**Implementation is complete; project-owner visual acceptance is pending.
-Do not start GS-IS integration, GS Form No. 22, or another package.**
+Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was published at `959233de1d9be7209a3792702fb392056b605613` and is closed as the accepted GS-006/GS-007 static renderer baseline.
+
+A bounded developer-tooling follow-up, **FORM-DX-1**, is required before GS-IS integration begins. VS Code reports Node/module typing errors in the development-only sample generators because `backend/tsconfig.json` has `rootDir: "./src"` and `include: ["src/**/*"]`, while the generators live under `backend/scripts/`. The existing backend build passes because those scripts are outside the production TypeScript project, and the sample commands currently run through `ts-node --transpile-only`. This is a tooling/type-check coverage issue, not a renderer/runtime failure.
+
+Do not start GS-IS integration or GS Form No. 22 until FORM-DX-1 is fixed and verified.
 
 ## Explicitly deferred
 
@@ -428,21 +431,27 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Review the completed final static-template family:
+Complete the bounded developer-tooling package:
 
-**TEMPLATE-3 — Defense Application**
+**FORM-DX-1 — TypeScript project coverage for official-form QA scripts**
 
-Confirmed institutional variants:
+Observed after TEMPLATE-3 publication:
 
-- **EARIST-QSF-GS-006 Rev. 01 (06.20.25)** — Master's Program;
-- **EARIST-QSF-GS-007 Rev. 01 (06.20.25)** — Doctoral Program.
+- VS Code reports unresolved `node:child_process`, `node:fs/promises`, `node:path`, `process`, and `__dirname` in `backend/scripts/generate-defense-application-samples.ts`;
+- the same project-boundary applies to all three official-form sample generators under `backend/scripts/`;
+- `backend/tsconfig.json` intentionally targets production source only with `rootDir: "./src"` and `include: ["src/**/*"]`;
+- `@types/node` is already installed and `types: ["node"]` is already present for the configured backend project;
+- backend production build/tests and sample runtime generation remain separate concerns.
 
-TEMPLATE-3 is implemented as one controlled-variant static renderer and awaits project-owner visual review. Shared helpers and accepted TEMPLATE-1/TEMPLATE-2 outputs remain unchanged. Do not begin an integration package or another renderer.
+FORM-DX-1 should fix editor/type-check coverage without changing production build output paths or accepted renderer behavior. Prefer a dedicated scripts TypeScript config/check path over broadening the production `rootDir` in a way that would move emitted `dist` paths.
 
-Do not start GS-IS data/API/UI integration, invent approval signatures, alter payment/workflow rules, or start GS Form No. 22 during TEMPLATE-3.
+After FORM-DX-1 passes:
+1. verify no VS Code TypeScript errors remain in all three sample generators;
+2. run the dedicated scripts type-check;
+3. rerun TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests;
+4. run backend build and sample commands;
+5. then close the static-template phase and prepare GS-IS integration / authenticated Download-Print.
 
-Accepted TEMPLATE-2 publication checkpoint:
+Accepted TEMPLATE-3 publication checkpoint:
 
-`5ffd5d5e03524ce12f0f65b0629e97d66e264b1d` — `feat(documents): add oral examination summary sheet renderer`
-
-The project-owner-approved TEMPLATE-2 output intentionally omits the visible GS-011 form-code/revision footer while retaining the confirmed reference identity in documentation.
+`959233de1d9be7209a3792702fb392056b605613` — `feat(documents): add defense application renderers`
