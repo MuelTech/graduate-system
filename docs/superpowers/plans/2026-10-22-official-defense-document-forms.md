@@ -607,8 +607,8 @@ TEMPLATE-3 remains static-template only. Implement GS-006 and GS-007 as controll
   One discriminated typed input (`masters`/`doctoral`) and one renderer return PDF bytes.
   There is no file/DB/repository/API/auth/workflow lookup, payment validation, signature retrieval,
   scoring, academic rule, or latest-record fallback.
-- Original reconstruction followed the photographed committee rows. Project-owner clarification after merge establishes the generated-form rule: GS-006 needs five printed `Panelist` rows (Chairman + four Panelists), while GS-007 keeps six printed `Panelist` rows (Chairman + five Panelists). Neither form prints a dedicated Chairman label. The Chairman remains `CHAIRMAN` in GS-IS; only the printed row label is `Panelist`.
-- GS-006 Adviser visibility is defense-type dependent: no Adviser for Title; Adviser shown for Proposal/Final. Printed labels never redefine evaluator authority or stored committee roles.
+- Original reconstruction followed the photographed committee rows. Post-merge verification against the centralized `DefenseCommitteePolicy` establishes that printed capacity is stage-specific, not fixed only by program: Master's Title = Chairman + 4 Panelists; Master's Proposal/Final = Adviser + Chairman + 3 Panelists; Doctoral Title = Chairman + 5 Panelists; Doctoral Proposal/Final = Adviser + Chairman + 4 Panelists. Neither form prints a dedicated Chairman label, so Chairman occupies a printed `Panelist` row while remaining `CHAIRMAN` in GS-IS.
+- Adviser visibility is stage-specific for both programs: no Adviser at Title; the active Adviser is automatically included at Proposal/Final. Printed labels never redefine evaluator authority or stored committee roles.
 - Program-specific masthead/application positioning, committee capacity, lower approval spacing,
   and the exact `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` /
   `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` footers are preserved.
@@ -705,7 +705,24 @@ FORM-DX-1 is complete. Integration remains gated only by the bounded TEMPLATE-3 
 
 This post-merge clarification changes presentation geometry only. It does not change GS-IS committee roles, evaluator authority, scoring, scheduling, or defense workflow.
 
-### Authoritative printed-role mapping
+### Authoritative source
+
+The generated Defense Application must follow the existing centralized policy used by Admin scheduling:
+
+`backend/src/services/defense-committee.policy.ts`
+
+The Admin committee builder consumes the same policy, so the PDF must not maintain a conflicting independent participant count.
+
+Current authoritative session rules:
+
+| Stage | Program | Adviser | Chairman | Panelists | Facilitator | Rapporteur | Session total | Printed `Panelist` rows |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Title | Master's | 0 | 1 | 4 | 1 | 1 | 7 | **5** |
+| Proposal / Final | Master's | 1 | 1 | 3 | 1 | 1 | 7 | **4** |
+| Title | Doctoral | 0 | 1 | 5 | 1 | 1 | 8 | **6** |
+| Proposal / Final | Doctoral | 1 | 1 | 4 | 1 | 1 | 8 | **5** |
+
+### Printed-role mapping
 
 The Defense Application forms have no dedicated printed Chairman label. Therefore:
 
@@ -722,42 +739,56 @@ For **Title Defense**:
 - no Adviser row;
 - five printed Panelist rows = Chairman + four Panelists;
 - Facilitator;
-- Rapporteur.
+- Rapporteur;
+- seven total participants.
+
+For **Proposal Defense** and **Final Defense**:
+
+- Adviser row;
+- four printed Panelist rows = Chairman + three Panelists;
+- Facilitator;
+- Rapporteur;
+- seven total participants.
+
+Therefore GS-006 printed Panelist capacity is stage-dependent: 5 for Title and 4 for Proposal/Final.
+
+### GS-007 Doctoral required output
+
+For **Title Defense**:
+
+- no Adviser row;
+- six printed Panelist rows = Chairman + five Panelists;
+- Facilitator;
+- Rapporteur;
+- eight total participants.
 
 For **Proposal Defense** and **Final Defense**:
 
 - Adviser row;
 - five printed Panelist rows = Chairman + four Panelists;
 - Facilitator;
-- Rapporteur.
-
-The current four-slot GS-006 Panelist capacity is therefore superseded and must be changed to five. Adviser visibility must be controlled by the explicit `applicationType`, not by database or workflow lookup inside the renderer.
-
-### GS-007 Doctoral required output
-
-- six printed Panelist rows = Chairman + five Panelists;
-- Facilitator;
 - Rapporteur;
-- no dedicated printed Chairman row.
+- eight total participants.
 
-GS-007 six-slot Panelist capacity is already correct for the confirmed evaluator count; only its documented interpretation changes from six generic Panelists to Chairman + five Panelists.
+Therefore GS-007 also needs stage-dependent Adviser visibility and printed Panelist capacity: 6 for Title and 5 for Proposal/Final.
 
 ### Reference-form authority
 
-The supplied GS-006 / GS-007 photographs remain valid visual references for institutional style, typography, fields, fee table, approval blocks, and general geometry. Their photographed committee-row arrangement is not allowed to override the confirmed GS-IS workflow presentation rule above.
+The supplied GS-006 / GS-007 photographs remain valid visual references for institutional style, typography, fields, fee table, approval blocks, and general geometry. Their photographed committee-row arrangement does not override the centralized GS-IS committee policy.
 
 ### FIX-1 acceptance
 
 Before GS-IS integration:
 
-- update GS-006 to five printed Panelist rows;
-- omit Adviser for GS-006 Title;
-- show Adviser for GS-006 Proposal/Final;
-- keep GS-007 at six printed Panelist rows;
-- do not introduce a printed Chairman label;
-- do not mutate system committee roles;
+- GS-006 Title: no Adviser + 5 printed Panelist rows;
+- GS-006 Proposal/Final: Adviser + 4 printed Panelist rows;
+- GS-007 Title: no Adviser + 6 printed Panelist rows;
+- GS-007 Proposal/Final: Adviser + 5 printed Panelist rows;
+- keep Chairman stored/authorized as `CHAIRMAN` while presenting the name under a printed `Panelist` label;
+- do not introduce a separate printed Chairman label;
+- do not mutate system committee roles or duplicate committee-count logic;
 - update samples/tests/docs;
 - rerun TEMPLATE-1/TEMPLATE-2/TEMPLATE-3 tests, `npm run forms:check`, backend build, sample generation, and `git diff --check`;
-- perform visual QA to confirm one-page A4 output and safe signatory/footer clearance.
+- perform visual QA for all four stage/program combinations and confirm one-page A4 output plus safe signatory/footer clearance.
 
 Only after TEMPLATE-3 FIX-1 is accepted should the project begin authoritative GS-IS data mapping and authenticated Download / Print integration.
