@@ -97,7 +97,8 @@ The accepted FORM-INT-2 GS-IS integration renders from the persisted Oral Examin
 
 GS-011 Adviser behavior is stage-aware and exact-schedule-bound:
 
-- Title Defense has no Adviser and leaves the Adviser concurrence name blank;
+- the official GS-011 layout always retains the printed `Concurred In:` area, signature rule, and `Thesis/Dissertation Adviser` label;
+- Title Defense has no Adviser assignment, so only the Adviser name/signature value remains blank; the printed Adviser section itself is not removed;
 - Proposal and Final require exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
 - a missing or ambiguous Adviser seat fails closed;
 - the renderer/service must never substitute the Student's current/live Adviser or an Adviser from another defense attempt.
@@ -267,7 +268,7 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-The static form phase is closed. **FORM-INT-0**, **FORM-INT-PRE1**, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** are accepted. **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration** is also accepted at `d16f2819df176a470e68bfd1301873fbee9ea119`, including exact stage-aware Adviser handling: Title has no Adviser; Proposal/Final use exactly one Adviser seat from the exact schedule and fail closed without an unambiguous seat.
+The static form phase is closed. **FORM-INT-0**, **FORM-INT-PRE1**, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** are accepted. **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration** is also accepted at `d16f2819df176a470e68bfd1301873fbee9ea119`, including exact stage-aware Adviser handling: GS-011 keeps its fixed printed Adviser section for every stage; Title leaves only the Adviser value blank, while Proposal/Final use exactly one Adviser seat from the exact schedule and fail closed without an unambiguous seat.
 
 
 ## Defense Application field-authority decisions — 2026-10-23
