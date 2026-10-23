@@ -185,7 +185,7 @@ Color logos retain their supplied colors and existing 141/207 px resolution limi
 vector geometry removes paper holes, skew, grain, shadows, and scan artifacts. Footer placement
 is slightly higher to retain a safe print margin. No photographed background is embedded.
 
-Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
+Project-owner visual acceptance was granted on 2026-10-22 for the original static TEMPLATE-3 baseline. Later integration QA intentionally superseded the visible footer/code treatment and stage marker presentation via FORM-INT-4 FIX-3 at `d00cf90f08c952f4981d6bebbf2b7be38cbd697e`.
 
 FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 was independently reviewed, accepted at `03cbc80c92b7a9cf538b82b96b920cb373f81a94`, and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`.
 
@@ -204,7 +204,7 @@ Accepted points:
 
 - one controlled `masters` / `doctoral` renderer family;
 - GS-006 and GS-007 printed capacities remain documented as layout facts, not committee policy;
-- exact confirmed GS-006/GS-007 footers retained;
+- visible GS-006/GS-007 form code/revision omitted by later project-owner decision;
 - explicit caller-supplied application/payment/schedule/committee/approval display values;
 - no DB/API/payment verification/signature/workflow inference;
 - three visual QA passes over six variants with no observed clipping or overlap;
