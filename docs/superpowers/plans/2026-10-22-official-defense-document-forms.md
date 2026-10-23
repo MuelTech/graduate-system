@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — DEFENSE APPLICATION FIELD-AUTHORITY FOLLOW-UP REQUIRED
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 
 ## 1. Purpose
 
@@ -1208,7 +1208,7 @@ Agent-reported verification:
 Final project-owner gate: regenerate/download one live Defense Application and visually confirm the check mark + code omission before marking FORM-INT-4 complete.
 
 
-## 28. Defense Application field-authority follow-up — DOCUMENTED / IMPLEMENTATION PENDING
+## 28. FORM-INT-4 FIX-4 — Defense Application field-authority follow-up — ACCEPTED / COMPLETE
 
 Project-owner manual QA after FORM-INT-4 FIX-3 identified remaining blank GS-006 / GS-007 fields whose authority must be explicit before the integration can close.
 
@@ -1232,7 +1232,13 @@ The current lifecycle reuses one ThesisRecord across Title → Proposal → Fina
 - `createdAt` can represent the original Title record rather than Proposal/Final application filing;
 - `updatedAt` can change for unrelated workflow mutations.
 
-A later bounded implementation must use an explicit server-owned, stage-aware application submission timestamp. The exact persistence shape is an implementation decision to be reviewed separately; do not broaden the workflow merely to populate a PDF.
+Implemented at `d931159d705b6f7466f2732e2162ce10e5a0dd45` with three nullable stage-specific `ThesisRecord` timestamps:
+
+- `titleApplicationSubmittedAt`
+- `proposalApplicationSubmittedAt`
+- `finalApplicationSubmittedAt`
+
+No historical backfill or schema default was added. Initial successful submissions write only their exact stage timestamp; successful rejected-application resubmissions update only the exact current stage timestamp.
 
 ### Still awaiting client confirmation
 
@@ -1246,15 +1252,22 @@ Until confirmed:
 - do not extract or fabricate an O.R. number from filename/upload metadata;
 - keep these fields blank in official output unless the client confirms an authoritative capture/verification source.
 
-### Acceptance impact
+### Acceptance result
 
-FORM-INT-4 remains open. A later bounded implementation package must:
+FIX-4 is accepted.
 
-1. wire Cellphone and Student Gmail;
-2. add/use exact stage-aware submission/resubmission timestamp authority;
-3. map Date and Time + Date of Application from that same event;
-4. remove the handwritten note;
-5. preserve Amount Paid / O.R. as unresolved until client policy is confirmed;
-6. repeat exact-schedule service tests and live Admin PDF QA.
+Confirmed behavior:
 
-This follow-up must not alter committee policy, scoring, evaluator bundles, GS-011 mapping, signatures, verdicts, or unrelated workflow behavior.
+1. Cellphone continues from exact `Student.cellphone`.
+2. Student Gmail now comes from exact Student `User.email`.
+3. exact stage-aware submission/resubmission timestamps are persisted server-side.
+4. `Date and Time` + `Date of Application` render from the same exact stage event in Asia/Manila.
+5. `Note: Please write legibly` is removed.
+6. legacy pre-migration applications with null timestamps intentionally render blank filing fields rather than guessed dates.
+7. Amount Paid / O.R. remain unresolved and blank pending client policy.
+
+Agent-reported checks: TEMPLATE-3 48/48, official Defense Application service/source 44/44, repository timestamp coverage including all three initial stages and all three resubmissions, bundle 26/26, TEMPLATE-1 11/11, Prisma validate/generate/migrate status, forms check, backend build, and diff check all passed.
+
+Independent remote review confirmed the additive migration and bounded mapping behavior.
+
+This follow-up did not alter committee policy, scoring, evaluator bundles, GS-011 mapping, signatures, verdicts, or unrelated workflow behavior.
