@@ -1,8 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument } from "pdf-lib";
-import { beforeAll, describe, expect, it } from "vitest";
-import { renderOralExamCriteria } from "../../../../src/documents/official-defense/oral-exam-criteria/oral-exam-criteria.renderer";
+import { PDFDocument, PDFPage } from "pdf-lib";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  CHECK_MARK_THICKNESS,
+  checkMarkSegments,
+  renderOralExamCriteria,
+} from "../../../../src/documents/official-defense/oral-exam-criteria/oral-exam-criteria.renderer";
 import type { OralExamCriteriaRenderInput } from "../../../../src/documents/official-defense/oral-exam-criteria/oral-exam-criteria.types";
 
 let input: OralExamCriteriaRenderInput;
@@ -70,15 +74,89 @@ describe("TEMPLATE-1 pure Oral Examination Criteria renderer", () => {
     expect(text).not.toMatch(/GS-\d+|Rev\.|PASSED|REDEFENSE/);
   });
 
-  it("places the unconfirmed dummy X marker only in columns selected by the explicit values", async () => {
-    const items = await inspect(await renderOralExamCriteria(input));
-    const marks = items.filter(item => item.str === "X");
-    expect(marks).toHaveLength(8);
-    // This checks the current QA presentation, not an institutional marking convention.
+  it("draws one vector check mark per selected criterion in the correct matrix columns", async () => {
+    const spy = vi.spyOn(PDFPage.prototype, "drawLine");
+    let segments: any[] = [];
+    try {
+      await renderOralExamCriteria(input);
+      segments = spy.mock.calls
+        .map(([options]) => options as any)
+        .filter((options) => options.thickness === CHECK_MARK_THICKNESS);
+    } finally {
+      spy.mockRestore();
+    }
+
+    // Each selected criterion is two vector segments.
+    expect(segments).toHaveLength(16);
+    const marks = [];
+    for (let i = 0; i < segments.length; i += 2) {
+      const first = segments[i];
+      const second = segments[i + 1];
+      expect(first.end).toEqual(second.start);
+      const xs = [first.start.x, first.end.x, second.end.x];
+      const tops = [first.start.y, first.end.y, second.end.y].map(y => 841.89 - y);
+      marks.push({
+        centerX: (Math.min(...xs) + Math.max(...xs)) / 2,
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...tops) - Math.min(...tops),
+      });
+    }
+
+    // Group I 0-4, Group II 2.50/null/1.25/1.50 -> columns 0,1,2,3,4,5,1,2.
     const selectedColumns = [0, 1, 2, 3, 4, 5, 1, 2];
     marks.forEach((mark, i) => {
-      expect(mark.transform[4] + mark.width / 2).toBeCloseTo(340 + 36 * selectedColumns[i], 1);
+      expect(mark.centerX).toBeCloseTo(340 + 36 * selectedColumns[i], 1);
+      expect(mark.width).toBeGreaterThan(6);
+      expect(mark.height).toBeGreaterThan(4);
+      expect(mark.width).toBeLessThanOrEqual(36 - 8);
+      expect(mark.height).toBeLessThanOrEqual(24 - 8);
     });
+  });
+
+  it("centers the vector check mark inside the selected rating cell", () => {
+    const cellX = 322;
+    const rowTop = 243;
+    const cellWidth = 36;
+    const cellHeight = 24;
+    const [first, second] = checkMarkSegments(cellX, rowTop, cellWidth, cellHeight);
+
+    const xs = [first.start.x, first.end.x, second.end.x];
+    const tops = [first.start.top, first.end.top, second.end.top];
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minTop = Math.min(...tops);
+    const maxTop = Math.max(...tops);
+
+    expect(first.end).toEqual(second.start);
+    expect(first.start.top).toBeLessThan(first.end.top);
+    expect(second.end.top).toBeLessThan(second.start.top);
+    expect(minX).toBeGreaterThan(cellX + 3);
+    expect(maxX).toBeLessThan(cellX + cellWidth - 3);
+    expect(minTop).toBeGreaterThan(rowTop + 3);
+    expect(maxTop).toBeLessThan(rowTop + cellHeight - 3);
+    expect((minX + maxX) / 2).toBeCloseTo(cellX + cellWidth / 2, 5);
+    expect((minTop + maxTop) / 2).toBeCloseTo(rowTop + cellHeight / 2, 5);
+  });
+
+  it("draws no mark for null criterion rows and no longer emits an X glyph", async () => {
+    const spy = vi.spyOn(PDFPage.prototype, "drawLine");
+    let checks = 0;
+    try {
+      const bytes = await renderOralExamCriteria({
+        ...input,
+        groupI: [null, null, null, null, null],
+        groupII: [null, null, null, null],
+      });
+      checks = spy.mock.calls
+        .map(([options]) => options as any)
+        .filter((options) => options.thickness === CHECK_MARK_THICKNESS).length;
+      const items = await inspect(bytes);
+      expect(items.some(item => item.str === "X")).toBe(false);
+      expect(items.some(item => item.str.includes("✓"))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(checks).toBe(0);
   });
 
   it("keeps normal identity values inline and the name near its rule, reserving extra height only for wrapping", async () => {
@@ -171,6 +249,7 @@ describe("TEMPLATE-1 pure Oral Examination Criteria renderer", () => {
       },
     }));
     expect(blank.some(item => item.str === "X")).toBe(false);
+    expect(blank.some(item => item.str.includes("✓"))).toBe(false);
     expect(blank.map(item => item.str).join(" ")).toContain(input.evaluatorPrintedName);
   });
 

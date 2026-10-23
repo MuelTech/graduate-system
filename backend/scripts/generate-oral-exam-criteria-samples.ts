@@ -24,7 +24,7 @@ async function main(): Promise<void> {
   };
   // All names and academic values below are fictitious, explicitly supplied layout examples.
   // Deliberately no calculated averages, interpreted remarks, verdicts, or real signatures.
-  // X marks are unconfirmed dummy QA glyphs; the blank reference prescribes no selected-cell symbol.
+  // Selected cells use the renderer's vector check mark; no scoring rule is inferred from it.
   const filled: OralExamCriteriaRenderInput = {
     ...blank,
     candidateName: "Alexandra M. Santos",

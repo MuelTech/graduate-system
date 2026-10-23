@@ -1,4 +1,4 @@
-import { grayscale, PDFDocument, PDFFont, StandardFonts } from "pdf-lib";
+import { grayscale, PDFDocument, PDFFont, PDFPage, StandardFonts } from "pdf-lib";
 import { institutionalHeader } from "../shared/institutional-header";
 import { A4, drawContainedImage, rule } from "../shared/pdf-layout";
 import { fitText, textBox } from "../shared/pdf-text";
@@ -27,9 +27,53 @@ const GROUP_II = [
   "Attitude (Receptive to suggestions)",
 ] as const;
 
-// Unconfirmed dummy QA presentation only: the blank reference establishes no completed-form symbol.
-// Keep the glyph in one place for later confirmation; input criterion values remain authoritative.
-const QA_SELECTED_RATING_MARKER = "X";
+/**
+ * Selected institutional matrix values are indicated with a vector check mark.
+ * Two line segments avoid any Unicode-glyph or font dependency. The input
+ * criterion value remains the sole authority for which cell is marked.
+ */
+export const CHECK_MARK_THICKNESS = 1.1;
+
+export interface CheckMarkSegment {
+  readonly start: { readonly x: number; readonly top: number };
+  readonly end: { readonly x: number; readonly top: number };
+}
+
+/** Pure, centered geometry in page-top coordinates for one selected rating cell. */
+export function checkMarkSegments(
+  cellX: number,
+  rowTop: number,
+  cellWidth: number,
+  cellHeight: number,
+): readonly [CheckMarkSegment, CheckMarkSegment] {
+  const width = Math.min(10, cellWidth - 8);
+  const height = Math.min(8, cellHeight - 8);
+  const left = cellX + (cellWidth - width) / 2;
+  const top = rowTop + (cellHeight - height) / 2;
+  const vertexX = left + width * 0.28;
+  const vertexTop = top + height;
+  return [
+    { start: { x: left, top: top + height * 0.25 }, end: { x: vertexX, top: vertexTop } },
+    { start: { x: vertexX, top: vertexTop }, end: { x: left + width, top } },
+  ];
+}
+
+export function drawCheckMark(
+  page: PDFPage,
+  cellX: number,
+  rowTop: number,
+  cellWidth: number,
+  cellHeight: number,
+): void {
+  for (const segment of checkMarkSegments(cellX, rowTop, cellWidth, cellHeight)) {
+    page.drawLine({
+      start: { x: segment.start.x, y: A4.height - segment.start.top },
+      end: { x: segment.end.x, y: A4.height - segment.end.top },
+      thickness: CHECK_MARK_THICKNESS,
+      color: grayscale(0),
+    });
+  }
+}
 
 /** Static, single-page rendering only. No file, domain, workflow, database, or HTTP access. */
 export async function renderOralExamCriteria(input: OralExamCriteriaRenderInput): Promise<Uint8Array> {
@@ -127,7 +171,13 @@ export async function renderOralExamCriteria(input: OralExamCriteriaRenderInput)
       text(label, tableX + numberWidth + 5, rowTop + 7, criteriaWidth - numberWidth - 10, 16, 9);
       if (values[i] !== null) {
         const column = SCALE.findIndex(([value]) => value === values[i]);
-        text(QA_SELECTED_RATING_MARKER, tableX + criteriaWidth + column * ratingWidth, rowTop + 7, ratingWidth, 14, 10, bold, "center");
+        drawCheckMark(
+          page,
+          tableX + criteriaWidth + column * ratingWidth,
+          rowTop,
+          ratingWidth,
+          rowHeight,
+        );
       }
     });
     return top + height;

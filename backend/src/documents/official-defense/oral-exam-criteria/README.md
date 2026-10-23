@@ -8,7 +8,7 @@ Status: **ACCEPTED / PUBLISHED** on 2026-10-22. Accepted remote HEAD: `9e7639062
 
 Text is measured, wrapped, and reduced only within bounded font sizes. Excess content throws a field-specific `RangeError` instead of being clipped, truncated, or moved to an unapproved continuation page. Identity fields first fit one compact inline line and allow a second line only when necessary; recommendations allow three ruled lines; rating/remarks and the printed name have bounded regions. Standard PDF Times and Helvetica fonts match the reference's serif masthead and sans-serif body without additional runtime dependencies. Their WinAnsi character set supports common Latin names (including accented Latin letters); other scripts require a future embedded-font decision.
 
-The supplied reference form is blank and does **not** confirm an official selected-rating symbol. `QA_SELECTED_RATING_MARKER` currently holds `X` solely as an unconfirmed dummy visual marker for QA. It is isolated in the renderer for later replacement after confirmation. The selected criterion value remains the authoritative input; changing the glyph does not change any score, average, or academic rule. No checkmark convention is assumed.
+The supplied reference form is blank and does **not** confirm a printed selected-rating symbol. Selected institutional matrix values are indicated by a renderer-local **vector check mark** drawn as two line segments; no Unicode glyph, embedded icon, or additional font is used. The selected criterion value remains the authoritative input. The mark is centered inside the selected cell, never touches the table borders, and does not change any score, average, or academic rule.
 
 ## Development samples
 
@@ -50,7 +50,7 @@ Starting checkout: `feat/official-defense-document-forms` at `d06e7967f2212bd86a
 - Identity values are bottom-aligned in measured 12 pt single-line boxes, with each rule 1 pt below the text box (about 3 pt below the text baseline), replacing the unconditional 25 pt reserve. Candidate/Course widths are rebalanced from 149/95 pt to 116/139 pt so the normal full program example fits inline. Each field reserves 24 pt only if one-line fitting down to 8 pt is insufficient. Explicit values are retained without truncation.
 - Group I and the following body content move upward together by the recovered height, preserving their internal spacing. The normal/blank table starts at 217 pt from the page top instead of 230 pt; the two-line long sample starts at 229 pt. This avoids creating a new gap between the tables.
 - The signature rule remains 749 pt from the page top and its caption remains at 753 pt. The evaluator name is bottom-aligned to end immediately above that rule, retaining two-line support. An optional image fits in a 140 x 23 pt box ending 3 pt above the actual name text, so it follows the name's measured height. The intentional lower-page whitespace remains.
-- The existing `X` is unchanged visually and explicitly documented as an unconfirmed QA glyph in the renderer, sample script, and test. Tests verify placement from selected values without defining an institutional symbol rule.
+- Selected cells use the confirmed vector check mark. Tests verify placement from selected values without defining an institutional scoring rule.
 - Blank, filled, and long-value PDFs/PNGs were regenerated and compared with the same reference. Compact identity baselines, safe long-value wrapping, lower-page whitespace, and name/rule/caption spacing were visually checked; no clipping or overlap was observed. Eight focused tests and the backend build pass, including new checks for inline baseline proximity, conditional wrapping, signature-name proximity, and dummy-marker column placement.
 
 This refinement was accepted and published. The accepted TEMPLATE-1 publication ends at `9e76390623739dbb9ec0e609baf6c78880d6edce`.
@@ -75,8 +75,17 @@ Accepted points:
 - the normal filled sample uses `Course: MAEd`;
 - long values remain bounded/wrappable without silent truncation;
 - evaluator printed name, optional signature area, rule, and caption form a compact unit while preserving the reference's lower-page whitespace;
-- the selected-cell `X` remains an unconfirmed QA glyph only and does not define institutional scoring policy;
+- the selected-cell check mark is vector-drawn and does not define institutional scoring policy;
 - blank, filled, and long-value samples were visually reviewed with no observed clipping or overlap;
 - focused renderer tests and backend build passed.
 
 TEMPLATE-1 is closed as the accepted static renderer baseline. TEMPLATE-2 / GS-011 is the next authorized static-template package.
+
+## FORM-INT-4 FIX-2 — selected-cell check mark (2026-10-23)
+
+The temporary `X` QA marker has been removed. Selected matrix values are drawn as a centered,
+two-segment vector check mark in the selected cell, using the existing grayscale stroke and no
+text glyph or new font. Geometry stays inside the cell with clear border clearance; `null` rows
+remain blank. Score selection, matrix labels, averages, Rating/Remarks, snapshot values, and
+signature rendering are unchanged. The bundled Individual Evaluations packet inherits the same
+marker automatically because it reuses this renderer.
