@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIXES IMPLEMENTED / FINAL OWNER VISUAL QA PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — DEFENSE APPLICATION FIELD-AUTHORITY FOLLOW-UP REQUIRED
 
 ## 1. Purpose
 
@@ -1206,3 +1206,55 @@ Agent-reported verification:
 - six stage/program samples rasterized and visually inspected as one-page A4.
 
 Final project-owner gate: regenerate/download one live Defense Application and visually confirm the check mark + code omission before marking FORM-INT-4 complete.
+
+
+## 28. Defense Application field-authority follow-up — DOCUMENTED / IMPLEMENTATION PENDING
+
+Project-owner manual QA after FORM-INT-4 FIX-3 identified remaining blank GS-006 / GS-007 fields whose authority must be explicit before the integration can close.
+
+### Resolved automatic mappings
+
+- `Cellphone No.` → exact Student's `Student.cellphone`.
+- `Email (Personal Gmail Only)` → exact Student user's `User.email`.
+  - Applicant registration already rejects non-`@gmail.com` email server-side.
+  - Development panelist `@earist.edu.ph` accounts do not affect this student field.
+- `Date and Time` → server-owned timestamp of the latest successful application submission/resubmission for the exact stage.
+- `Date of Application` → date portion of that same exact timestamp.
+- rejected → corrected → successfully resubmitted applications print the latest successful resubmission timestamp, because that current corrected application version is the one reviewed/scheduled.
+- remove `Note: Please write legibly` from generated digital output.
+
+### Timestamp authority constraint
+
+Do not map these fields from generic `ThesisRecord.createdAt` or `updatedAt`.
+
+The current lifecycle reuses one ThesisRecord across Title → Proposal → Final, so:
+
+- `createdAt` can represent the original Title record rather than Proposal/Final application filing;
+- `updatedAt` can change for unrelated workflow mutations.
+
+A later bounded implementation must use an explicit server-owned, stage-aware application submission timestamp. The exact persistence shape is an implementation decision to be reviewed separately; do not broaden the workflow merely to populate a PDF.
+
+### Still awaiting client confirmation
+
+- `Amount Paid`
+- `O.R. No.`
+
+Until confirmed:
+
+- do not derive Amount Paid from the pre-printed 300/900 fee table;
+- do not assume receipt upload means the amount is 900;
+- do not extract or fabricate an O.R. number from filename/upload metadata;
+- keep these fields blank in official output unless the client confirms an authoritative capture/verification source.
+
+### Acceptance impact
+
+FORM-INT-4 remains open. A later bounded implementation package must:
+
+1. wire Cellphone and Student Gmail;
+2. add/use exact stage-aware submission/resubmission timestamp authority;
+3. map Date and Time + Date of Application from that same event;
+4. remove the handwritten note;
+5. preserve Amount Paid / O.R. as unresolved until client policy is confirmed;
+6. repeat exact-schedule service tests and live Admin PDF QA.
+
+This follow-up must not alter committee policy, scoring, evaluator bundles, GS-011 mapping, signatures, verdicts, or unrelated workflow behavior.
