@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 MANUAL QA FAILED / FIX-1 REQUIRED
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIXES IMPLEMENTED / FINAL OWNER VISUAL QA PENDING
 
 ## 1. Purpose
 
@@ -1120,7 +1120,11 @@ Do not add a generic Defense Documents inventory, browser-page printing as the o
 
 ## 25. FORM-INT-4 FIX-1 — Bundled Individual Evaluation PDF + readable official filenames
 
-**NEXT / REQUIRED.**
+**IMPLEMENTED / SOURCE-REVIEWED.**
+
+Implementation:
+
+`53649871ff2690fa8450b2d884ae6497ffab4bb6` — `fix(documents): bundle evaluations and use readable filenames`
 
 Manual-QA-driven correction only.
 
@@ -1156,3 +1160,49 @@ The backend owns authoritative naming through Content-Disposition. Frontend cont
 - full Defense Packet across different document families;
 - Student/Panelist official PDF access;
 - unrelated workflow/UI redesign.
+
+
+## 26. FORM-INT-4 FIX-2 — Individual Evaluation vector check marks
+
+**IMPLEMENTED / SOURCE-REVIEWED.**
+
+Implementation:
+
+`9d1c9d494706725612685038f9fade913f2df387` — `fix(documents): render evaluation selections as check marks`
+
+The former dummy X marker was replaced with renderer-local vector check geometry. Score authority, snapshot mapping, signatures, page ordering, bundling, filenames, API behavior, and workflow semantics are unchanged.
+
+Agent-reported verification:
+
+- TEMPLATE-1 renderer: 11/11 PASS;
+- bundle service: 26/26 PASS;
+- FORM-INT-1 service: 31/31 PASS;
+- combined renderer/service slice: 68/68 PASS;
+- forms check/build/diff checks PASS;
+- standalone and bundled raster QA showed centered check marks with no X text or layout regression.
+
+## 27. FORM-INT-4 FIX-3 — Defense Application stage check + form-code omission
+
+**IMPLEMENTED / SOURCE-REVIEWED — FINAL OWNER VISUAL QA PENDING.**
+
+Implementation:
+
+`d00cf90f08c952f4981d6bebbf2b7be38cbd697e` — `fix(documents): refine defense application stage markers`
+
+Project-owner decisions applied:
+
+- selected Title / Proposal / Final stage is marked with a renderer-local vector check;
+- no X text and no Unicode check glyph dependency;
+- visible `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` / `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` text is omitted;
+- Master's/Doctoral variants remain distinct internally and continue to control accepted stage/program geometry.
+
+Agent-reported verification:
+
+- TEMPLATE-3: 48/48 PASS;
+- FORM-INT-3 service: 38/38 PASS;
+- bundle regression: 26/26 PASS;
+- TEMPLATE-1 check-mark regression: 11/11 PASS;
+- forms check/build/diff checks PASS;
+- six stage/program samples rasterized and visually inspected as one-page A4.
+
+Final project-owner gate: regenerate/download one live Defense Application and visually confirm the check mark + code omission before marking FORM-INT-4 complete.
