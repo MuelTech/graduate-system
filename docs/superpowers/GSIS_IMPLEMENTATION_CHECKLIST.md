@@ -40,7 +40,7 @@
 | ⏳ | Defense Application VPAA name | Same institutional office-holder configuration requirement. |
 | ⏳ | Defense Application President name | Same institutional office-holder configuration requirement. |
 | ⏳ | GS-011 Dean name | Must use authoritative institutional configuration. |
-| ⏳ | GS-011 Adviser stage behavior | Proposal/Final resolve exact schedule Adviser. Title Defense has no Adviser and must not fabricate one; renderer/display behavior must become explicitly stage-aware. |
+| ✅ | GS-011 Adviser stage behavior | Accepted integration is explicitly stage-aware: Title Defense prints no Adviser; Proposal/Final require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed, and no current/live Adviser fallback is allowed. |
 | ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
