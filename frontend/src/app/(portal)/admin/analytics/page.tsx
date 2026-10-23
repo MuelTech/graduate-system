@@ -18,6 +18,7 @@ import { AiAnalyticsAssistant } from "@/components/admin/analytics/ai-analytics-
 import { AdmissionsTab } from "@/components/admin/analytics/admissions-tab";
 import { ExaminationsTab } from "@/components/admin/analytics/examinations-tab";
 import { ThesisPipelineTab } from "@/components/admin/analytics/thesis-pipeline-tab";
+import { InstitutionalReportsTab } from "@/components/admin/analytics/institutional-reports-tab";
 
 // Mock Data Source
 import {
@@ -26,6 +27,7 @@ import {
   MOCK_ADMISSIONS_ANALYTICS,
   MOCK_EXAMINATION_ANALYTICS,
   MOCK_THESIS_PIPELINE_ANALYTICS,
+  MOCK_INSTITUTIONAL_REPORTS,
 } from "@/lib/mock/analytics-data";
 
 export default function AdminAnalyticsPage() {
@@ -94,9 +96,6 @@ export default function AdminAnalyticsPage() {
             >
               <FileText className="h-3.5 w-3.5" />
               Institutional Reports & Compliance
-              <Badge variant="outline" className="ml-1 text-[9px] py-0 px-1 border-gray-300">
-                Task 8
-              </Badge>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -116,24 +115,9 @@ export default function AdminAnalyticsPage() {
           <ThesisPipelineTab data={MOCK_THESIS_PIPELINE_ANALYTICS} />
         </TabsContent>
 
-        {/* Tab 4 Content: Institutional Reports Placeholder (Upcoming Task 8) */}
+        {/* Tab 4 Content: Institutional Reports */}
         <TabsContent value="institutional" className="m-0 focus-visible:outline-none">
-          <Card className="border-dashed border-2 border-emerald-200 bg-emerald-50/20">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                <FileText className="h-7 w-7" />
-              </div>
-              <Badge className="mb-2 bg-emerald-100 text-emerald-800 text-xs">
-                Upcoming Task 8
-              </Badge>
-              <h3 className="text-base font-bold text-gray-900">
-                Institutional Compliance & Official Exportable Reports
-              </h3>
-              <p className="mt-1 max-w-md text-xs text-gray-600">
-                Residency Risk Registry (students approaching maximum residency years), Faculty Adviser Load Matrix, and client-side consolidated CSV/PDF export triggers.
-              </p>
-            </CardContent>
-          </Card>
+          <InstitutionalReportsTab data={MOCK_INSTITUTIONAL_REPORTS} />
         </TabsContent>
       </Tabs>
     </div>
