@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 CORE INTEGRATION ACCEPTED / TITLE LAYOUT FIX PENDING — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 **Last updated:** 2026-10-24
 
 ## Purpose
@@ -95,13 +95,16 @@ Confirmed visible structure:
 
 The accepted FORM-INT-2 GS-IS integration renders from the persisted Oral Examination Summary snapshot and exact finalized evaluator identities/values.
 
-GS-011 Adviser behavior is stage-aware and exact-schedule-bound:
+GS-011 Adviser authority is stage-aware and exact-schedule-bound, but project-owner QA identified one remaining Title-layout defect:
 
-- the official GS-011 layout always retains the printed `Concurred In:` area, signature rule, and `Thesis/Dissertation Adviser` label;
-- Title Defense has no Adviser assignment, so only the Adviser name/signature value remains blank; the printed Adviser section itself is not removed;
-- Proposal and Final require exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
-- a missing or ambiguous Adviser seat fails closed;
+- Title Defense has no Adviser assignment;
+- therefore Title GS-011 must omit the entire Adviser concurrence block: `Concurred In:`, the Adviser name/signature rule, and the `Thesis/Dissertation Adviser` label;
+- the Dean `Attested` block remains;
+- Proposal and Final keep the Adviser concurrence block and require exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
+- a missing or ambiguous Proposal/Final Adviser seat fails closed;
 - the renderer/service must never substitute the Student's current/live Adviser or an Adviser from another defense attempt.
+
+Current source already maps Title to no Adviser value and binds Proposal/Final to the exact schedule Adviser. The remaining work is a bounded stage-aware renderer/layout correction for Title only.
 
 Do not infer or fabricate GS-011 signatures from other signature records. Dean/attestation remains blank until an authoritative institutional office-holder source is implemented.
 
@@ -268,8 +271,21 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-The static form phase is closed. **FORM-INT-0**, **FORM-INT-PRE1**, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** are accepted. **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration** is also accepted at `d16f2819df176a470e68bfd1301873fbee9ea119`, including exact stage-aware Adviser handling: GS-011 keeps its fixed printed Adviser section for every stage; Title leaves only the Adviser value blank, while Proposal/Final use exactly one Adviser seat from the exact schedule and fail closed without an unambiguous seat.
+The static form phase is closed. **FORM-INT-0**, **FORM-INT-PRE1**, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** are accepted. **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration** at `d16f2819df176a470e68bfd1301873fbee9ea119` has accepted exact snapshot and exact-schedule Adviser authority, but project-owner QA identified one remaining Title-only presentation defect: the renderer still draws the Adviser concurrence block with a blank value. **FORM-INT-2 FIX-1** must remove that entire block for Title Defense while preserving Proposal/Final behavior.
 
+
+## GS-011 Title Adviser-block correction — 2026-10-24
+
+Project-owner visual QA clarified that a blank Adviser value is not sufficient for Title Defense.
+
+Canonical target behavior:
+
+- **Title Defense:** do not render `Concurred In:`, the Adviser name/signature rule, or the `Thesis/Dissertation Adviser` label. Keep the Dean `Attested` area and all other accepted GS-011 content.
+- **Proposal Defense / Final Defense:** retain the Adviser concurrence block and populate it from exactly one `ADVISER` `PanelAssignment` on the exact defense schedule.
+- Never use the Student's current/live Adviser or another attempt as fallback.
+- Missing or ambiguous Proposal/Final Adviser assignment remains a fail-closed condition.
+
+This is a renderer/layout correction only. It must not alter Oral Examination Summary snapshot authority, evaluator rows, scoring, signatures, authorization, routes, or defense workflow semantics.
 
 ## Defense Application field-authority decisions — 2026-10-23
 
