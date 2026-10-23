@@ -282,7 +282,7 @@ Still unresolved:
 
 Those values remain blank until client policy confirms an authoritative structured source. The renderer itself remains a pure typed-input renderer and must not inspect database records, uploads, filenames, or receipt documents to infer them.
 
-## FORM-INT-4 FIX-4 — authoritative applicant fields (2026-10-24)
+## FORM-INT-4 FIX-4 — authoritative applicant fields — ACCEPTED (2026-10-24)
 
 Integration now supplies, without changing this renderer's pure contract:
 
@@ -296,3 +296,6 @@ Integration now supplies, without changing this renderer's pure contract:
 The paper-only `Note: Please write legibly` instruction has been removed from generated
 PDFs. Stage check marks, committee layout, venue/link wrapping, and one-page A4 geometry
 are unchanged.
+
+
+FIX-4 acceptance note: implementation `d931159d705b6f7466f2732e2162ce10e5a0dd45` was independently remote-reviewed after agent verification. Legacy applications created before the migration intentionally have null stage timestamps and therefore blank printed filing date/time fields; this is expected behavior, not a failed lookup. A new successful stage submission/resubmission supplies the authoritative timestamp. Amount Paid and O.R. remain intentionally blank pending client policy.
