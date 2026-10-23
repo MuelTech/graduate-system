@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 SOURCE-ACCEPTED / MANUAL QA PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 MANUAL QA FAILED / FIX-1 REQUIRED
 
 ## 1. Purpose
 
@@ -1054,7 +1054,7 @@ FORM-INT-4 is now unblocked.
 
 ## 24. FORM-INT-4 — Admin Download / Print activation and hardening
 
-**SOURCE-ACCEPTED / MANUAL QA PENDING.**
+**MANUAL QA FAILED / FIX-1 REQUIRED.**
 
 Implementation:
 
@@ -1093,8 +1093,66 @@ Agent-reported verification:
 
 Independent remote source/diff review found no blocking implementation or security defect.
 
-Remaining acceptance gate:
+Manual-QA result:
 
-Manual authenticated Admin QA must confirm the actual browser download/error behavior for application, finalized/unfinalized evaluator, ready/unready Summary, and disabled Committee Report states. Coding-agent browser QA was not executed because no running authenticated environment was available.
+Project-owner runtime inspection on 2026-10-23 rejected the current evaluator-download UX and UUID-oriented filenames.
+
+Observed product defects:
+
+1. Evaluation Results exposes one PDF button per evaluator. This is cumbersome for Admin printing and conflicts with the existing section-owned design precedent that Evaluation Results should produce a bundled evaluator packet.
+2. Downloaded official PDFs use internal UUIDs as the visible filename identifier, making files difficult for ordinary users to recognize.
+
+Required correction is FORM-INT-4 FIX-1:
+
+- replace per-row evaluator PDF actions with one section-level Download / Print action;
+- generate one exact-schedule, multi-page Individual Evaluations PDF containing Chairman + all Panelists, one accepted TEMPLATE-1 form per page;
+- bundle availability requires every required evaluator form to be finalized, signed, and renderable;
+- retain the single-evaluator endpoint only as an internal/exact-record capability if still useful;
+- change Admin-facing Content-Disposition filenames for Defense Application, bundled Individual Evaluations, and GS-011 Summary to sanitized `<Student>-<Defense-Stage>-<Document-Type>.pdf` naming;
+- internal UUIDs remain route identifiers but are not the normal visible filename;
+- backend schedule context is authoritative for student/stage naming;
+- no client-side PDF merge.
+
+Repeat manual QA after FIX-1 before FORM-INT-4 can be accepted.
 
 Do not add a generic Defense Documents inventory, browser-page printing as the official form, schema changes, generated-document persistence/versioning, GS Form No. 22, or new Student/Panelist document access.
+
+
+## 25. FORM-INT-4 FIX-1 — Bundled Individual Evaluation PDF + readable official filenames
+
+**NEXT / REQUIRED.**
+
+Manual-QA-driven correction only.
+
+### Bundled evaluator packet
+
+Admin Evaluation Results owns one section-level Download / Print action. The official output is one server-generated multi-page PDF for the exact defense schedule:
+
+- evaluator roles only: Chairman + Panelists;
+- Chairman first, then Panelists in deterministic schedule order;
+- one evaluator form per page;
+- each page uses the accepted TEMPLATE-1 renderer and exact finalized/signed evaluator source;
+- no partial packet: if any required evaluator is unavailable or invalid, fail closed;
+- no browser/client PDF merging.
+
+### Readable filename convention
+
+Normal user-facing filenames must omit opaque UUIDs and use authoritative student name + stage + document type.
+
+Examples:
+
+- `Juan-Dela-Cruz-Title-Defense-Application.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Oral-Examination-Summary.pdf`
+
+Equivalent Proposal Defense and Final Defense names follow the same convention.
+
+The backend owns authoritative naming through Content-Disposition. Frontend continues sanitizing header-derived filenames and keeps a safe fallback.
+
+### Still deferred
+
+- GS Form No. 22;
+- generated-document persistence/versioning;
+- full Defense Packet across different document families;
+- Student/Panelist official PDF access;
+- unrelated workflow/UI redesign.
