@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 MANUAL QA FAILED / FIX-1 REQUIRED
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — FINAL OWNER VISUAL QA PENDING
 **Last updated:** 2026-10-23
 
 ## Purpose
@@ -438,78 +438,44 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-4 implementation remains at:
+FORM-INT-4 correction chain is implemented:
 
-`02043af2d8b99156046622438eb3635089417465` — `feat(documents): activate admin official PDF actions`
+- base UI activation: `02043af2d8b99156046622438eb3635089417465`
+- FIX-1 bundled evaluator packet + readable filenames: `53649871ff2690fa8450b2d884ae6497ffab4bb6`
+- FIX-2 Individual Evaluation vector check marks: `9d1c9d494706725612685038f9fade913f2df387`
+- FIX-3 Defense Application stage vector check + visible form-code/revision removal: `d00cf90f08c952f4981d6bebbf2b7be38cbd697e`
 
-Source/security review passed, but project-owner manual QA on 2026-10-23 found two product-level defects. FORM-INT-4 is therefore **NOT ACCEPTED** and requires a bounded **FORM-INT-4 FIX-1**.
+Independent remote review confirms the latest FIX-3 is renderer-scoped only:
 
-### Manual-QA finding 1 — Evaluation Results must be a bundled print packet
+- no service/controller/route/frontend/schema change;
+- selected Title/Proposal/Final stage uses a vector check mark rather than X text;
+- no Unicode check glyph/font dependency;
+- the visible `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` and `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` identifiers are omitted by project-owner decision;
+- Master's/Doctoral renderer variants remain distinct internally;
+- committee, venue/link, fee, and approval geometry remain unchanged.
 
-The current per-row evaluator PDF buttons are operationally incorrect for the Admin printing workflow.
+Agent-reported FIX-3 verification:
 
-Canonical Admin behavior:
+- TEMPLATE-3 renderer: 48/48 PASS;
+- FORM-INT-3 service regressions: 38/38 PASS;
+- bundled evaluator regressions: 26/26 PASS;
+- TEMPLATE-1 check-mark regressions: 11/11 PASS;
+- `npm run forms:check`: PASS;
+- backend build: PASS;
+- `git diff --check`: PASS;
+- all six stage/program samples rasterized and visually inspected as one-page A4 with correct vector stage check and no visible form code/revision.
 
-```text
-Evaluation Results
-        ↓
-all required evaluator forms ready
-        ↓
-one section-level Download / Print action
-        ↓
-one multi-page PDF
-        ↓
-Chairman form
-Panelist form
-Panelist form
-...
-(one evaluator form per page)
-```
+Remaining acceptance gate:
 
-Requirements:
+**Project-owner visual QA of one freshly regenerated Defense Application PDF from the live Admin flow.**
 
-- remove the user-facing per-evaluator `Action` / `PDF` buttons from the Admin Evaluation Results table;
-- restore one section-owned `Download / Print` action in the Evaluation Results header;
-- bundle only evaluator roles: `CHAIRMAN` + `PANELIST`;
-- require every required evaluator form for the exact schedule to be FINALIZED and signed/renderable before enabling/generating the packet;
-- use exact schedule-bound evaluator records only;
-- preserve deterministic evaluator order: Chairman first, then Panelists using the canonical/stable schedule ordering;
-- render each evaluator with the already accepted TEMPLATE-1 renderer;
-- merge into one server-generated PDF, one evaluator form per page;
-- fail closed if any required evaluator record is unavailable, legacy/unsupported, malformed, or cross-schedule;
-- keep the accepted single-evaluator endpoint as an internal/exact-record capability if useful, but it is no longer the primary Admin print UX;
-- do not implement client-side PDF merging.
+Confirm only:
 
-### Manual-QA finding 2 — downloaded filenames must be human-readable
+1. selected stage displays a clear ✓ rather than X;
+2. only the correct stage is selected;
+3. the GS-006/GS-007 code/revision text is absent;
+4. no visual regression in identity, fee, schedule, committee, or approval areas.
 
-UUID-only filenames such as:
+If that passes, FORM-INT-4 and the current Official Defense Document Forms integration sequence can be marked **ACCEPTED / COMPLETE**.
 
-`oral-examination-summary-a1b47136-f383-423e-b431-ffeb615c3599.pdf`
-
-are not acceptable as the normal Admin-facing filename.
-
-Canonical naming should use the authoritative student name + exact defense stage + document type, sanitized for browser/filesystem safety.
-
-Examples:
-
-- `Juan-Dela-Cruz-Title-Defense-Application.pdf`
-- `Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf`
-- `Juan-Dela-Cruz-Title-Defense-Oral-Examination-Summary.pdf`
-- `Juan-Dela-Cruz-Proposal-Defense-Individual-Evaluations.pdf`
-- `Juan-Dela-Cruz-Final-Defense-Oral-Examination-Summary.pdf`
-
-Rules:
-
-- authoritative student identity and defense stage come from the exact server-side schedule context;
-- backend `Content-Disposition` should provide the canonical readable filename;
-- UUIDs remain valid internal route identifiers but should not appear in the normal user-facing filename;
-- do not derive authority from a frontend display string if the backend already owns the authoritative student/stage context;
-- preserve filename sanitization and safe deterministic fallback behavior.
-
-Next bounded package:
-
-**FORM-INT-4 FIX-1 — Bundled Individual Evaluation PDF + readable official filenames**
-
-After FIX-1 source review, repeat targeted manual QA before final acceptance.
-
-GS Form No. 22, generated-document persistence/versioning, and unrelated workflow changes remain deferred.
+GS Form No. 22 and generated-document persistence/versioning remain deferred.
