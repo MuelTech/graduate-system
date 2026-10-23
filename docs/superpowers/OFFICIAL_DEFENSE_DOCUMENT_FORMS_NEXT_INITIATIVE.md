@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 SOURCE-ACCEPTED / MANUAL QA PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 MANUAL QA FAILED / FIX-1 REQUIRED
 **Last updated:** 2026-10-23
 
 ## Purpose
@@ -438,48 +438,78 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-4 implementation is **SOURCE-ACCEPTED / MANUAL QA PENDING** at:
+FORM-INT-4 implementation remains at:
 
 `02043af2d8b99156046622438eb3635089417465` — `feat(documents): activate admin official PDF actions`
 
-Independent remote review confirmed:
+Source/security review passed, but project-owner manual QA on 2026-10-23 found two product-level defects. FORM-INT-4 is therefore **NOT ACCEPTED** and requires a bounded **FORM-INT-4 FIX-1**.
 
-- no backend production file changed;
-- Defense Overview activates the exact schedule Defense Application PDF;
-- Evaluation Results uses one exact `panelAssignmentId` PDF action per evaluator row;
-- evaluator actions enable only from existing safe `hasOfficialCriteria` metadata;
-- GS-011 action enables only from existing `oralExamSummary.ready` metadata;
-- Committee Report remains disabled because GS Form No. 22 is deferred;
-- PDF requests use the authenticated NextAuth bearer token only in the Authorization header;
-- absolute/query-string/protocol-relative document paths are rejected;
-- successful responses must be `application/pdf`, non-empty, and begin with `%PDF-`;
-- backend Content-Disposition filenames are sanitized with deterministic fallbacks;
-- temporary Blob URLs are revoked after the browser download action;
-- scoped loading prevents duplicate clicks without blocking the whole page;
-- controlled failures surface through Sonner;
-- no `window.print()`, client-side PDF generation, public PDF link, schema change, renderer change, or new Student/Panelist access was added;
-- stale FIX-4/FIX-5 verifier assertions were narrowly updated for the now-active official document actions.
+### Manual-QA finding 1 — Evaluation Results must be a bundled print packet
 
-Agent-reported verification:
+The current per-row evaluator PDF buttons are operationally incorrect for the Admin printing workflow.
 
-- FORM-INT-4 verifier: 18/18 PASS;
-- updated FIX-4 + FIX-5 verifiers: 27/27 PASS;
-- frontend TypeScript: PASS;
-- scoped frontend ESLint: PASS;
-- frontend build: PASS;
-- backend official-document regression slice: 172/172 PASS;
-- `npm run forms:check`: PASS;
-- backend build: PASS;
-- `git diff --check`: PASS.
+Canonical Admin behavior:
 
-Manual authenticated browser QA was **not executed** by the coding agent. Final acceptance requires project-owner targeted QA of:
+```text
+Evaluation Results
+        ↓
+all required evaluator forms ready
+        ↓
+one section-level Download / Print action
+        ↓
+one multi-page PDF
+        ↓
+Chairman form
+Panelist form
+Panelist form
+...
+(one evaluator form per page)
+```
 
-1. Defense Application PDF download;
-2. one finalized evaluator PDF;
-3. one unfinished evaluator disabled state;
-4. ready GS-011 Summary PDF;
-5. unready Summary disabled state;
-6. Committee Report document action remains disabled;
-7. controlled PDF failure surfaces a readable toast while the page remains usable.
+Requirements:
 
-Do not begin GS Form No. 22 or generated-document persistence/versioning until FORM-INT-4 manual QA is accepted.
+- remove the user-facing per-evaluator `Action` / `PDF` buttons from the Admin Evaluation Results table;
+- restore one section-owned `Download / Print` action in the Evaluation Results header;
+- bundle only evaluator roles: `CHAIRMAN` + `PANELIST`;
+- require every required evaluator form for the exact schedule to be FINALIZED and signed/renderable before enabling/generating the packet;
+- use exact schedule-bound evaluator records only;
+- preserve deterministic evaluator order: Chairman first, then Panelists using the canonical/stable schedule ordering;
+- render each evaluator with the already accepted TEMPLATE-1 renderer;
+- merge into one server-generated PDF, one evaluator form per page;
+- fail closed if any required evaluator record is unavailable, legacy/unsupported, malformed, or cross-schedule;
+- keep the accepted single-evaluator endpoint as an internal/exact-record capability if useful, but it is no longer the primary Admin print UX;
+- do not implement client-side PDF merging.
+
+### Manual-QA finding 2 — downloaded filenames must be human-readable
+
+UUID-only filenames such as:
+
+`oral-examination-summary-a1b47136-f383-423e-b431-ffeb615c3599.pdf`
+
+are not acceptable as the normal Admin-facing filename.
+
+Canonical naming should use the authoritative student name + exact defense stage + document type, sanitized for browser/filesystem safety.
+
+Examples:
+
+- `Juan-Dela-Cruz-Title-Defense-Application.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Oral-Examination-Summary.pdf`
+- `Juan-Dela-Cruz-Proposal-Defense-Individual-Evaluations.pdf`
+- `Juan-Dela-Cruz-Final-Defense-Oral-Examination-Summary.pdf`
+
+Rules:
+
+- authoritative student identity and defense stage come from the exact server-side schedule context;
+- backend `Content-Disposition` should provide the canonical readable filename;
+- UUIDs remain valid internal route identifiers but should not appear in the normal user-facing filename;
+- do not derive authority from a frontend display string if the backend already owns the authoritative student/stage context;
+- preserve filename sanitization and safe deterministic fallback behavior.
+
+Next bounded package:
+
+**FORM-INT-4 FIX-1 — Bundled Individual Evaluation PDF + readable official filenames**
+
+After FIX-1 source review, repeat targeted manual QA before final acceptance.
+
+GS Form No. 22, generated-document persistence/versioning, and unrelated workflow changes remain deferred.
