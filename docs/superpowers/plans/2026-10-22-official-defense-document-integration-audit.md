@@ -307,7 +307,24 @@ Verified frontend integration:
 - scoped loading + Sonner failures;
 - no browser-page printing, public PDF URLs, schema changes, renderer changes, or broadened role access.
 
-FORM-INT-4 is source-accepted but not yet finally accepted because authenticated browser QA was not executed. The project owner should verify successful and unavailable/error states in the running system before this sequence is closed.
+FORM-INT-4 passed source/security review, but project-owner manual QA on 2026-10-23 **failed product acceptance**.
+
+Observed defects:
+
+- Admin Evaluation Results exposes separate per-evaluator PDF buttons, creating a burdensome print workflow; the required Admin output is one bundled exact-schedule evaluator packet.
+- downloaded filenames expose opaque internal UUIDs instead of a readable student/stage/document naming convention.
+
+Required FORM-INT-4 FIX-1:
+
+- one Evaluation Results section-level Download / Print action;
+- one server-generated multi-page packet containing Chairman + all Panelists, one TEMPLATE-1 form per page;
+- all required evaluator records must be finalized, signed, and renderable before the bundle is available;
+- deterministic Chairman-first evaluator order;
+- existing single-evaluator endpoint may remain as an internal/exact-record capability but is not the primary Admin UX;
+- readable backend Content-Disposition filenames using authoritative student name + exact defense stage + document type for Application, bundled Evaluations, and Summary;
+- UUIDs remain internal route identifiers only.
+
+Repeat authenticated manual QA after FIX-1 before final acceptance.
 
 ## Additional integration constraints
 
@@ -326,7 +343,8 @@ FORM-INT-4 is source-accepted but not yet finally accepted because authenticated
 3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
 4. **FORM-INT-3 — ACCEPTED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`).
 5. **FORM-INT-3 FIX-1 — ACCEPTED** — schedule Link/Venue capacity hardening (`d387526ad153df54b674b7b4b9b7ef09478a7676`).
-6. **FORM-INT-4 — SOURCE-ACCEPTED / MANUAL QA PENDING** — Admin Download / Print activation and frontend/security/regression hardening (`02043af2d8b99156046622438eb3635089417465`).
+6. **FORM-INT-4 — MANUAL QA FAILED / FIX-1 REQUIRED** — source/security implementation at `02043af2d8b99156046622438eb3635089417465`; per-evaluator Admin download UX and UUID filenames rejected in project-owner manual QA.
+7. **FORM-INT-4 FIX-1 — NEXT** — bundled Individual Evaluation PDF + readable official filenames.
 
 Optional later package only if institutionally required:
 
