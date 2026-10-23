@@ -330,7 +330,8 @@ This list is intentionally orderable and may change.
 11. Revisit reusable signature profile architecture.
 12. Continue Chatbot/RAG implementation planning/audit.
 13. Resolve Defense Application Amount Paid / O.R. client policy when available.
-14. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
+14. Complete production-readiness/security/operations audit and convert blockers into bounded packages.
+15. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
 
 ---
 
@@ -488,3 +489,128 @@ Current repository facts:
 | ⏳ | Auth/status decoupling | Applicant/Student state should eventually belong to an academic application/career context rather than forcing one global User role to represent all simultaneous history/current states. |
 | 🕒 | Priority | Intentionally scheduled after higher-priority core features, but new work should avoid deepening the permanent assumption that one User can only ever have one academic journey. |
 
+
+---
+
+# 20. Production Readiness, Security, and Operations
+
+These items are not all end-user features, but they are required before the system should be treated as production-ready.
+
+## 20.1 Authentication and Account Recovery
+
+Current repository facts:
+
+- JWT/session lifetime is currently 24 hours;
+- the redesigned generic `mustChangePassword` rule is still pending;
+- no accepted self-service forgot-password/reset-token flow was found;
+- the canonical UI/UX documentation explicitly leaves Admin-assisted Student password recovery as unimplemented.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Secure account recovery | Implement a controlled password-recovery/reset flow. Separate self-service recovery policy from Admin-assisted recovery. |
+| ⏳ | Admin-assisted temporary password | Authorized Admin issues a secure random temporary password, sets `mustChangePassword = true`, records audit evidence, and does not expose/reuse a permanent default password. |
+| ⏳ | Password-reset session safeguards | Password reset/change should invalidate or otherwise protect against stale authenticated sessions/tokens according to the final auth architecture. |
+| ⏳ | Login abuse protection | Add server-side rate limiting/throttling and define lockout/backoff behavior for repeated failed authentication attempts without enabling trivial denial-of-service against legitimate users. |
+| ⏳ | Sensitive-action reauthentication | Decide whether high-impact actions such as permission grants, account recovery, or institutional signature changes require recent authentication. |
+| ⏳ | Auth audit events | Record security-relevant events such as successful/failed recovery, password changes, permission changes, account disable/enable, and high-privilege access changes. |
+
+## 20.2 Health, Reliability, and Background Jobs
+
+Current repository facts:
+
+- `GET /api/health` exists but currently reports process/API availability only;
+- email worker and cron startup imports/calls are currently commented out in `backend/src/index.ts`;
+- graceful shutdown handling was not found in the current server entrypoint.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| 🟡 | Basic health endpoint | `/api/health` exists. |
+| ⏳ | Dependency-aware readiness | Add readiness checks appropriate to production dependencies: database, persistent document storage, and any required Redis/queue/email/local-AI service. A process being alive must not imply the whole system is ready. |
+| ⏳ | Background worker production startup | Finalize how email queues/cron jobs start, retry, recover after reboot, and avoid duplicate processing. Current startup is not yet authoritative because worker/cron startup is commented out. |
+| ⏳ | Graceful shutdown | Handle SIGTERM/SIGINT so HTTP/realtime traffic drains safely and database/queue resources close cleanly during restart/deployment. |
+| ⏳ | Job retry/dead-letter behavior | Failed email/notification/background jobs need bounded retries, visible failure state, and Admin/operator recovery where appropriate. |
+| ⏳ | Service restart policy | Production services (web/backend/DB/Redis/Ollama if used) must recover after machine reboot without manual developer commands. |
+
+## 20.3 Monitoring, Logging, and Audit Operations
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| 🟡 | Domain audit infrastructure | `AuditLog` is already used in several workflows. |
+| ⏳ | Structured production logging | Replace reliance on ad-hoc `console.log/error` for operational diagnosis with structured logs and severity. |
+| ⏳ | Request/correlation IDs | Trace a user/API request across logs and background jobs without exposing sensitive data. |
+| ⏳ | Error monitoring/alerting | Operators need actionable alerts for application crashes, repeated 5xx responses, failed jobs, unavailable dependencies, storage pressure, and similar incidents. |
+| ⏳ | Metrics/dashboard | Track API health/latency/error rates, queue status, storage capacity, database health, and other operational signals. |
+| ⏳ | Admin/operator audit viewer | Define a restricted audit surface for security/operational investigations; current audit records should not be exposed as a misleading generic user activity feed. |
+| ❓ | Audit retention policy | Define how long security/domain audit records must be retained and who may access/export them. |
+
+## 20.4 Backup, Restore, and Disaster Recovery
+
+Current repository facts:
+
+- production documentation already requires consistent database + private document-storage backups;
+- the storage readiness guide explicitly says documentation is not proof that an actual restore rehearsal succeeded.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| 🟡 | Backup/restore procedure | Operational guidance exists for database + document storage. |
+| ⏳ | Automated scheduled backups | Establish production schedule, retention, encryption/access control, and off-host/off-machine copy as appropriate. |
+| ⏳ | Verified restore rehearsal | Restore database + private storage into an isolated environment and prove records/files are usable. Repeat periodically. |
+| ❓ | RPO / RTO | EARIST/project owner must define acceptable data-loss window and recovery-time objective. |
+| ⏳ | Deployment rollback runbook | Define safe rollback behavior for application releases and forward-only database migrations. |
+
+## 20.5 Deployment and Release Engineering
+
+Current repository facts:
+
+- GitHub Actions CI already runs frontend lint/build and backend build/tests on `main`;
+- the CI file explicitly states it performs no deployment, live database, Prisma migration, or production-secret handling.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ✅ / 🟡 | CI validation foundation | Build/test CI exists; continue expanding release gates deliberately. |
+| ⏳ | Staging environment | Maintain a production-like staging environment for migration, auth, email, file-storage, and multi-user acceptance before release. |
+| ⏳ | Production deployment pipeline | Define build/artifact/container strategy, deployment command, service restart, migrations, and rollback. |
+| ⏳ | Production migration gate | Use committed migrations with `prisma migrate deploy`; validate/rehearse migration chain before releases that change schema. |
+| ⏳ | Environment/secrets validation | Fail startup for missing/unsafe required secrets and production configuration; keep secrets outside repository/source. |
+| ⏳ | Release checklist/version record | Record deployed commit/version, migration state, backup prerequisite, readiness checks, and post-deploy smoke tests. |
+| ⏳ | Dependency/security update policy | Establish periodic dependency vulnerability review and controlled upgrades rather than only updating during feature work. |
+
+## 20.6 File Security, Storage, and Data Governance
+
+Current repository facts:
+
+- managed private storage, magic-byte validation for major managed flows, checksum/integrity metadata, direct `/uploads` blocking, and storage readiness tooling already exist;
+- canonical document-lifecycle documentation still lists malware/CDR and retention/deletion policy as unresolved;
+- several legacy path-based document models remain storage debt.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ✅ / 🟡 | Managed private storage foundation | Significant DL work is accepted; remaining legacy storage debt is already tracked. |
+| ⏳ | Malware scanning / CDR decision | Decide and implement the institution-approved file scanning/quarantine strategy before production exposure to untrusted uploads. |
+| ⏳ | Upload quarantine/failure handling | Unsafe/failed-scan files must never become authoritative workflow evidence. |
+| ⏳ | Storage capacity alerts | Configure capacity thresholds and operational alerts before disk pressure causes failed uploads or data loss. |
+| ⏳ | Integrity/orphan operations | Run and operationalize existing readiness/integrity tooling; define operator response to missing/orphan/mismatched objects. |
+| ❓ | Records retention/deletion policy | Define retention periods for applications, student records, defense documents, raw research data, logs, and generated official records. |
+| ❓ | Privacy/access policy | Confirm access/retention/publication rules for respondent/raw participant data, instruments, repository artifacts, and other sensitive records. |
+| ⏳ | Legacy storage migration plan | Prioritize remaining path-only models when they become production blockers; do not silently assume DL metadata covers every file-bearing model. |
+
+## 20.7 Production QA and Release Acceptance
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | End-to-end role journeys | Execute realistic Applicant → Student → Adviser → Defense → completion scenarios using production-like data and permissions. |
+| ⏳ | Multi-user defense QA | Perform real concurrent Chairman/Panelist/Rapporteur/Admin browser QA for defense collaboration/signing, not only unit/source verification. |
+| ⏳ | Authorization regression matrix | Verify every major route/action against unauthorized roles and cross-student/cross-defense access attempts. |
+| ⏳ | Browser/responsive/accessibility gate | Establish supported browser/device baseline and complete keyboard/accessibility/responsive checks for critical workflows. |
+| ⏳ | Performance/load test | Measure realistic concurrent use, large PDFs/files, defense polling/realtime, exam submissions, and Admin lists before production sizing. |
+| ⏳ | Production smoke test | After each release, verify authentication, database connectivity, representative document upload/download, email/notification path, and critical dashboard/defense flows. |
+
+---
+
+# 21. Additional Functional Gaps Found During Production Review
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| 🐞 / 🔍 | Comprehensive Exam history/strike behavior | Canonical UI/UX documentation records that Comprehensive Exam recording can overwrite the latest record, making full attempt history/strike counts unreliable; controls/eligibility also need server-side review. This requires a separate functional package. |
+| ⏳ | Account disable/reactivate policy | Define operational behavior when an Applicant/Student/Faculty account is disabled, including active sessions, assignments, scheduled defenses, and later reactivation. |
+| ⏳ | Operator/system configuration inventory | Identify which production values must be Admin-configurable versus environment-only: adviser caps, academic master data, institutional officials, schedules/windows, email settings, and other confirmed policy values. Avoid hardcoding institutional policy. |
