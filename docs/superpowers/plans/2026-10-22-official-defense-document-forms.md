@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 CORE INTEGRATION ACCEPTED / FIX-1 TITLE LAYOUT PENDING — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 
 ## 1. Purpose
 
@@ -928,7 +928,7 @@ Operational requirement: production packaging must retain `backend/assets/offici
 
 ## 21. FORM-INT-2 — GS-011 Oral Examination Summary PDF integration
 
-**ACCEPTED / COMPLETE.**
+**CORE INTEGRATION ACCEPTED — TITLE LAYOUT FIX REQUIRED.**
 
 Implementation:
 
@@ -955,8 +955,8 @@ Accepted result:
 - examiner rows preserve persisted snapshot order;
 - Group A / Group B / Average are read directly from persisted snapshot values;
 - exactly one Chairman is used for Submitted by; Panelists fill Member names;
-- Title renders no Adviser;
-- Proposal/Final require exactly one exact-schedule ADVISER assignment;
+- Title correctly resolves no Adviser value, but the accepted static renderer still draws the fixed Adviser concurrence block; project-owner QA now requires that entire block to be omitted for Title Defense;
+- Proposal/Final require exactly one exact-schedule ADVISER assignment and retain the Adviser concurrence block;
 - Dean remains blank;
 - no digital signature evidence is loaded or reused;
 - legacy/mixed/unknown scoring versions fail closed;
@@ -973,7 +973,7 @@ Agent-reported verification:
 - backend TypeScript build PASS;
 - `git diff --check` PASS.
 
-Independent remote source/diff review found no blocking correctness, authorization, signature-reuse, or frozen-snapshot defect.
+Independent remote source/diff review found no blocking correctness, authorization, signature-reuse, or frozen-snapshot defect in the data/source binding. Later project-owner visual QA identified a Title-only presentation defect: a blank Adviser value still leaves the printed Adviser concurrence block visible. FORM-INT-2 therefore remains open for the bounded FIX-1 below.
 
 Minor hardening note: because the persisted `OralExamSummary` relation already belongs to the exact schedule, the implementation is correctly attempt-bound. A future bounded hardening pass may additionally assert that the snapshot's own `scheduleId` and `defenseType` metadata match the owning schedule.
 
@@ -1271,3 +1271,66 @@ Agent-reported checks: TEMPLATE-3 48/48, official Defense Application service/so
 Independent remote review confirmed the additive migration and bounded mapping behavior.
 
 This follow-up did not alter committee policy, scoring, evaluator bundles, GS-011 mapping, signatures, verdicts, or unrelated workflow behavior.
+
+
+## 29. FORM-INT-2 FIX-1 — Title GS-011 Adviser-block omission
+
+**REQUIRED / NOT YET IMPLEMENTED.**
+
+Project-owner QA on 2026-10-24 clarified the stage-specific presentation contract for GS-011.
+
+### Problem
+
+The current source correctly sets Title Defense Adviser value to blank because Title has no Adviser assignment, but the static GS-011 renderer always draws:
+
+- `Concurred In:`;
+- the Adviser name/signature rule;
+- `Thesis/Dissertation Adviser`.
+
+That leaves a non-applicable Adviser section visible on Title Defense output.
+
+### Required behavior
+
+**Title Defense**
+
+- omit the entire Adviser concurrence block;
+- do not render `Concurred In:`;
+- do not render the Adviser name/signature rule;
+- do not render `Thesis/Dissertation Adviser`;
+- retain the Dean `Attested` block;
+- preserve all evaluator rows, Submitted by names, candidate/course/date/student number, and accepted page geometry;
+- keep the PDF one-page A4 and visually balanced.
+
+**Proposal Defense / Final Defense**
+
+- preserve the current Adviser concurrence block;
+- populate from exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
+- missing/ambiguous Adviser remains fail-closed;
+- never substitute the Student's current/live Adviser or another defense attempt.
+
+### Bounded implementation scope
+
+Expected files are limited to the GS-011 renderer/types or render mapping only if necessary, focused tests, sample generator/fixtures, and directly affected documentation.
+
+Do not change:
+
+- `OralExamSummary.snapshotData` authority;
+- scoring/version rules;
+- evaluator ordering or Chairman/Member authority;
+- routes or ADMIN authorization;
+- digital-signature policy;
+- Dean authority/source;
+- GS-006/GS-007 behavior;
+- defense workflow/session semantics;
+- database schema.
+
+### Acceptance gate
+
+Before closing FIX-1:
+
+1. focused tests cover Title omission and Proposal/Final preservation;
+2. generate/rasterize representative Title, Proposal, and Final GS-011 outputs;
+3. visually verify that Title contains no Adviser concurrence block and Proposal/Final still do;
+4. verify the Dean `Attested` area remains intact;
+5. run relevant GS-011/official-document regressions and backend build;
+6. project-owner visual QA accepts the Title output.
