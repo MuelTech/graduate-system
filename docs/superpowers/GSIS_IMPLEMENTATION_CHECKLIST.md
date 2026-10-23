@@ -330,8 +330,9 @@ This list is intentionally orderable and may change.
 11. Revisit reusable signature profile architecture.
 12. Continue Chatbot/RAG implementation planning/audit.
 13. Resolve Defense Application Amount Paid / O.R. client policy when available.
-14. Complete production-readiness/security/operations audit and convert blockers into bounded packages.
-15. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
+14. Run a system-wide wording/terminology audit as UI surfaces are redesigned and Faculty terminology is introduced.
+15. Complete production-readiness/security/operations audit and convert blockers into bounded packages.
+16. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
 
 ---
 
@@ -614,3 +615,58 @@ Current repository facts:
 | 🐞 / 🔍 | Comprehensive Exam history/strike behavior | Canonical UI/UX documentation records that Comprehensive Exam recording can overwrite the latest record, making full attempt history/strike counts unreliable; controls/eligibility also need server-side review. This requires a separate functional package. |
 | ⏳ | Account disable/reactivate policy | Define operational behavior when an Applicant/Student/Faculty account is disabled, including active sessions, assignments, scheduled defenses, and later reactivation. |
 | ⏳ | Operator/system configuration inventory | Identify which production values must be Admin-configurable versus environment-only: adviser caps, academic master data, institutional officials, schedules/windows, email settings, and other confirmed policy values. Avoid hardcoding institutional policy. |
+
+---
+
+# 22. System Wording, Terminology, and Content Consistency
+
+This is a cross-cutting UI/UX requirement. The system should not expose inconsistent, overly technical, stale, or role-confusing language even when the underlying workflow is correct.
+
+Canonical wording guidance already exists in the UI/UX playbook. This checklist tracks the remaining system-wide application of those rules.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | System terminology audit | Review visible labels, statuses, buttons, helper text, dialogs, empty states, errors, and navigation across Applicant, Student, Faculty, and Admin surfaces. |
+| ⏳ | Panelist → Faculty wording migration | Replace outdated account-level `Panelist` wording where it means the broader future Faculty identity, while preserving defense-specific `Panelist` when it refers to an actual committee assignment. |
+| ⏳ | User-facing vs implementation language | Keep API/model/internal lifecycle terms out of ordinary UI unless they serve a real administrative/audit need. |
+| ⏳ | Consistent action verbs | Use one accepted phrase for the same action across pages, dialogs, notifications, and emails. |
+| ⏳ | Consistent status labels | Map raw enums/internal states to clear user-facing wording without changing domain meaning. |
+| ⏳ | Role-aware wording | Copy must reflect the actor's actual responsibility and avoid describing permissions/actions that the actor does not own. |
+| ⏳ | Blocked-state explanations | When an action is unavailable, explain the authoritative reason and next responsible actor/action when useful. |
+| ⏳ | Irreversible-action copy | Confirmations for finalize/sign/conclude/reject/reactivate/permission-change actions must state the real consequence clearly. |
+| ⏳ | Error and recovery copy | Replace generic or technical errors with concise, actionable messages while preserving safe server-side detail handling. |
+| ⏳ | Email/notification wording consistency | Email subjects/bodies and in-app notifications should use the same approved terminology as the portal. |
+| ⏳ | Official-document wording boundary | Generated official forms follow the official EARIST template/approved exceptions; portal wording changes must not silently rewrite official form language. |
+| ⏳ | Accessibility/plain-language pass | Labels, instructions, and validation messages should remain concise, understandable, and compatible with accessible controls. |
+| ⏳ | Wording regression review | Every UI/UX package should include a terminology/copy check so fixed wording does not drift back on later pages. |
+
+## Wording guardrails
+
+Prefer:
+
+```text
+clear task label
++ authoritative status
++ available action
++ concise consequence / recovery guidance when needed
+```
+
+Avoid:
+
+```text
+raw enum names
+database/model terminology
+route/API language
+engineering implementation details
+duplicated explanatory paragraphs
+different names for the same system concept
+```
+
+Examples of already accepted direction include:
+
+- **Committee Report** instead of exposing internal `RapReport` terminology to ordinary Faculty users;
+- **Finalize Committee Report** instead of engineering wording such as “freeze”;
+- **Ready for Signatures / Awaiting Signatures** instead of exposing raw report-state enums;
+- technical hashes, snapshot versions, and internal version counters remain hidden unless an Admin/audit/debug context genuinely needs them.
+
+The wording audit must preserve institutional and academic terminology. It is a consistency/refinement task, not permission to rename confirmed EARIST concepts casually.
