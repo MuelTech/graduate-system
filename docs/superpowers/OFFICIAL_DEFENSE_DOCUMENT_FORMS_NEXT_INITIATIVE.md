@@ -5,8 +5,8 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — DEFENSE APPLICATION FIELD-AUTHORITY FOLLOW-UP REQUIRED
-**Last updated:** 2026-10-23
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Last updated:** 2026-10-24
 
 ## Purpose
 
@@ -291,9 +291,23 @@ Paper-only instruction cleanup:
 
 - remove the printed `Note: Please write legibly` from generated GS-006 / GS-007 PDFs because the application is system-generated rather than handwritten.
 
-Current code does not yet implement these mappings. This documentation decision does **not** authorize guessing a persistence design. The later bounded implementation package must first determine the minimum safe stage-aware timestamp persistence/change needed and must preserve existing defense workflow semantics.
+FORM-INT-4 FIX-4 now implements the resolved automatic mappings at `d931159d705b6f7466f2732e2162ce10e5a0dd45`.
 
-FORM-INT-4 must not be marked complete until the resolved automatic fields above are wired, the handwritten note is removed, and the Amount Paid / O.R. policy is confirmed or explicitly left blank by client decision.
+Accepted persistence/mapping behavior:
+
+- nullable stage-specific timestamps on `ThesisRecord`: Title, Proposal, and Final;
+- no historical backfill or default timestamp;
+- server-owned timestamp on successful initial filing;
+- latest successful resubmission replaces only that exact stage's timestamp;
+- exact schedule `defenseType` selects the stage timestamp when generating the PDF;
+- existing legacy records with null timestamps intentionally print blank filing date/time fields rather than fabricated history;
+- Student cellphone and Student user email are mapped from the exact schedule-bound student;
+- application date/time is formatted deterministically in Asia/Manila;
+- the paper-only `Note: Please write legibly` is removed.
+
+Independent remote diff/source review confirmed the implementation is bounded and the legacy-null behavior shown during owner QA is expected, not a detection failure.
+
+FIX-4 is accepted. The overall FORM-INT-4 initiative remains open only for the unresolved `Amount Paid` / `O.R. No.` client policy.
 
 ## Explicitly deferred
 
@@ -471,44 +485,29 @@ Proceed on:
 
 `feat/official-defense-document-integration`
 
-FORM-INT-4 correction chain is implemented:
+FORM-INT-4 correction chain now includes:
 
 - base UI activation: `02043af2d8b99156046622438eb3635089417465`
 - FIX-1 bundled evaluator packet + readable filenames: `53649871ff2690fa8450b2d884ae6497ffab4bb6`
 - FIX-2 Individual Evaluation vector check marks: `9d1c9d494706725612685038f9fade913f2df387`
 - FIX-3 Defense Application stage vector check + visible form-code/revision removal: `d00cf90f08c952f4981d6bebbf2b7be38cbd697e`
+- FIX-4 authoritative applicant fields + stage-aware filing timestamps: `d931159d705b6f7466f2732e2162ce10e5a0dd45`
 
-Independent remote review confirms the latest FIX-3 is renderer-scoped only:
+FIX-4 acceptance notes:
 
-- no service/controller/route/frontend/schema change;
-- selected Title/Proposal/Final stage uses a vector check mark rather than X text;
-- no Unicode check glyph/font dependency;
-- the visible `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` and `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` identifiers are omitted by project-owner decision;
-- Master's/Doctoral renderer variants remain distinct internally;
-- committee, venue/link, fee, and approval geometry remain unchanged.
+- Title / Proposal / Final filing timestamps are independently persisted and server-owned;
+- successful resubmission updates only the exact rejected stage's timestamp;
+- historical schedule printing resolves the timestamp by exact `DefenseSchedule.defenseType`, never by current mutable thesis stage;
+- legacy records created before the migration keep null timestamps and therefore blank printed filing date/time fields until a new successful submission/resubmission occurs;
+- Student cellphone/email mapping is correct; blank/development values reflect fixture data rather than renderer/source failure;
+- Amount Paid and O.R. remain intentionally blank pending client confirmation.
 
-Agent-reported FIX-3 verification:
+Agent-reported FIX-4 verification includes TEMPLATE-3 48/48, official Defense Application service/source 44/44, evaluator bundle 26/26, TEMPLATE-1 11/11, Prisma validation/generation, migration deploy/status, forms check, backend build, diff check, and synthetic raster QA.
 
-- TEMPLATE-3 renderer: 48/48 PASS;
-- FORM-INT-3 service regressions: 38/38 PASS;
-- bundled evaluator regressions: 26/26 PASS;
-- TEMPLATE-1 check-mark regressions: 11/11 PASS;
-- `npm run forms:check`: PASS;
-- backend build: PASS;
-- `git diff --check`: PASS;
-- all six stage/program samples rasterized and visually inspected as one-page A4 with correct vector stage check and no visible form code/revision.
+Independent remote review confirmed the additive nullable migration, exact-schedule timestamp selection, Student email mapping, blank payment/O.R. mapping, and intentional legacy-null behavior.
 
-Remaining acceptance gate:
+**FORM-INT-4 FIX-4 is ACCEPTED / COMPLETE.**
 
-**Defense Application field-authority follow-up before final FORM-INT-4 acceptance.**
+Do not implement Amount Paid / O.R. until the client confirms their authoritative capture/verification policy.
 
-Confirm only:
-
-1. selected stage displays a clear ✓ rather than X;
-2. only the correct stage is selected;
-3. the GS-006/GS-007 code/revision text is absent;
-4. no visual regression in identity, fee, schedule, committee, or approval areas.
-
-The previous visual-only acceptance gate is superseded by the field-authority follow-up documented above. After implementation, repeat live Admin PDF QA before FORM-INT-4 can be marked **ACCEPTED / COMPLETE**.
-
-GS Form No. 22 and generated-document persistence/versioning remain deferred.
+The overall Official Defense Document Forms integration remains open only for that payment/O.R. policy decision. GS Form No. 22 and generated-document persistence/versioning remain deferred.
