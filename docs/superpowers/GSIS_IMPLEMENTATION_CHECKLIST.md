@@ -319,14 +319,15 @@ This list is intentionally orderable and may change.
 1. Continue collecting missing-feature/process notes from the project owner.
 2. Audit Applicant Examination + Exam Scheduling to separate implemented vs incomplete behavior.
 3. Design Faculty identity / multi-permission architecture, taking existing `CustomRole` / `RoleFeatureAccess` into account.
-4. Redesign Adviser eligibility/capacity under the future Faculty model.
-5. Design institutional officials + academic master-data authority needed by official forms.
-6. Review collaborator work: email, notifications, announcement, memo, analytics.
-7. Fix Admin scheduling-stage requirement/document visibility.
-8. Design Admin Student document/submission overview and fallback matrix.
-9. Revisit reusable signature profile architecture.
-10. Continue Chatbot/RAG implementation planning/audit.
-11. Resolve Defense Application Amount Paid / O.R. client policy when available.
+4. Redesign public Landing / Login / Applicant Sign-up and credential-state routing around the future Faculty model.
+5. Redesign Adviser eligibility/capacity under the future Faculty model.
+6. Design institutional officials + academic master-data authority needed by official forms.
+7. Review collaborator work: email, notifications, announcement, memo, analytics.
+8. Fix Admin scheduling-stage requirement/document visibility.
+9. Design Admin Student document/submission overview and fallback matrix.
+10. Revisit reusable signature profile architecture.
+11. Continue Chatbot/RAG implementation planning/audit.
+12. Resolve Defense Application Amount Paid / O.R. client policy when available.
 
 ---
 
@@ -353,3 +354,57 @@ Mark ACCEPTED
 ```
 
 Do not mark a feature accepted because a page, model, or route merely exists. Acceptance should reflect the bounded feature contract, authoritative data source, authorization, tests, and project-owner QA appropriate to that feature.
+
+---
+
+# 17. Public Website, Login, Sign-up, and Credential UX
+
+Current repository facts:
+
+- the current Login page explicitly presents Applicant, Student, Administrator, Panelist, and Other Roles choices;
+- Applicant authenticates with Applicant ID + password;
+- Student authenticates with Student Number + existing password;
+- Admin/Panelist/other roles use email + password;
+- the current middleware forces first-login password change only when `role === "panelist"` and `mustChangePassword === true`;
+- the current Change Password page itself is generic, but route access/enforcement is Panelist-specific;
+- Applicant registration is the public sign-up flow and creates an Applicant account; Faculty/Admin account creation must not become public sign-up accidentally;
+- COR promotion currently preserves the Applicant's existing password when the account becomes a Student.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Graduate School landing-page redesign | Redesign the public Graduate School landing experience to match the final GS-IS visual identity and clearly guide Applicant / Student / Faculty users. |
+| ⏳ | Login-page redesign | Redesign visual hierarchy, credential guidance, responsive behavior, and error/success states. |
+| ⏳ | Sign-up / Applicant registration redesign | Refresh the public Applicant registration experience while preserving verified registration rules and program-selection authority. |
+| ⏳ | Panelist → Faculty terminology migration in auth UX | Login labels, redirects, routes, messages, session typing, guards, tests, and navigation must be reviewed when the account identity changes to Faculty. |
+| ❓ | Future login entry model | Decide whether Admin remains a visible login choice or Faculty signs in once and receives Admin/module access from permissions. Do not lock this until the Faculty permission architecture is finalized. |
+| ⏳ | Permission-aware post-login routing | Future Faculty users may have multiple capabilities. Redirect/navigation should not assume one mutually exclusive role maps to exactly one dashboard. |
+| 🐞 | Role-specific forced password gate | Current middleware hardcodes forced password change to Panelist only. This will be incorrect after the Faculty refactor and is too narrow even for other temporary-password accounts. |
+| ⏳ | Credential-state-based forced password change | Enforce `mustChangePassword` for any authenticated account that is explicitly flagged, regardless of Applicant/Student/Faculty/Admin identity, subject to safe exceptions for the change-password route itself. |
+| ✅ / 🟡 | Applicant-created password → Student promotion | Current Student promotion keeps the Applicant's existing password. A promoted Student should not be forced to change a password merely because the role changed if the password was self-created and `mustChangePassword` is false. |
+| ⏳ | Temporary/generated password policy | Faculty or any account provisioned with a temporary/default password should set `mustChangePassword = true` and be forced through the change-password flow before normal portal access. |
+| ⏳ | Student temporary/reset credential behavior | If a Student is ever issued a temporary/reset password by an authorized workflow, the same generic `mustChangePassword` gate should apply. |
+| ⏳ | Change-password UX redesign | Align the page visually with the redesigned auth surfaces and ensure safe return/login behavior after completion. |
+| ⏳ | Auth regression coverage | Update login, middleware, NextAuth/session, role/permission routing, forced-password, and COR credential-handoff tests when Faculty/auth redesign is implemented. |
+
+### Credential rule to preserve
+
+`mustChangePassword` should represent **credential state**, not a permanent user role.
+
+Conceptually:
+
+```text
+self-created trusted password
+        → mustChangePassword = false
+
+temporary/default/admin-issued password
+        → mustChangePassword = true
+        → authentication succeeds
+        → only Change Password is allowed
+        → successful password change
+        → mustChangePassword = false
+        → normal authorized portal access
+```
+
+Changing an account from Applicant to Student, or from the current Panelist concept to the future Faculty concept, must not by itself trigger password replacement unless the credential state actually requires it.
+
+Public Applicant sign-up and privileged Faculty/Admin provisioning must remain separate security boundaries.
