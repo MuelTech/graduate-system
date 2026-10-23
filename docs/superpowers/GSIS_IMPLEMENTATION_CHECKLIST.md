@@ -231,6 +231,7 @@ Track at least:
 | ✅ / 🟡 | Rejected application → corrected resubmission exists; continue auditing UX/history consistency. |
 | ⏳ | Wrong program/academic master-data assignment correction. |
 | ⏳ | Duplicate/stuck application recovery. |
+| ⏳ | Student inactivity/return/reactivation without destructive reset. |
 | ⏳ | Legacy record missing newer metadata. |
 | ⏳ | Mistaken Admin action: determine which actions can safely be corrected versus intentionally irreversible. |
 | ⏳ | Failed external communication/email delivery. |
@@ -325,9 +326,11 @@ This list is intentionally orderable and may change.
 7. Review collaborator work: email, notifications, announcement, memo, analytics.
 8. Fix Admin scheduling-stage requirement/document visibility.
 9. Design Admin Student document/submission overview and fallback matrix.
-10. Revisit reusable signature profile architecture.
-11. Continue Chatbot/RAG implementation planning/audit.
-12. Resolve Defense Application Amount Paid / O.R. client policy when available.
+10. Define Student inactivity/return/reactivation policy and Admin recovery flow.
+11. Revisit reusable signature profile architecture.
+12. Continue Chatbot/RAG implementation planning/audit.
+13. Resolve Defense Application Amount Paid / O.R. client policy when available.
+14. After core workflows stabilize, design returning-graduate / multiple-academic-career architecture.
 
 ---
 
@@ -408,3 +411,80 @@ temporary/default/admin-issued password
 Changing an account from Applicant to Student, or from the current Panelist concept to the future Faculty concept, must not by itself trigger password replacement unless the credential state actually requires it.
 
 Public Applicant sign-up and privileged Faculty/Admin provisioning must remain separate security boundaries.
+
+---
+
+# 18. Student Inactivity, Drop/Stop-Out, and Return/Reactivation
+
+Current repository facts:
+
+- `AdmissionStatus` currently supports `APPLICANT`, `ENROLLED`, `GRADUATED`, and `DISMISSED`;
+- there is no accepted first-class state yet for a Student who temporarily stops/drops but remains eligible to return;
+- `ResidencyTracking` is currently tied one-to-one to the Student;
+- thesis, adviser, COR, requirement, exam, and document history are already related to the same Student record and must not be deleted merely because the Student becomes inactive.
+
+## Target principle
+
+A returning Student must **resume from preserved authoritative history**. Admin reactivation must not be implemented as a destructive “reset student” action.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Temporary inactive / stopped-out lifecycle | Introduce an explicit non-destructive state or lifecycle representation for a Student who stops enrollment but may return. Exact terminology/policy must be confirmed with EARIST. |
+| ❓ | ON LEAVE vs STOPPED/INACTIVE semantics | Confirm whether Graduate School distinguishes approved leave from ordinary non-enrollment/stop-out, and whether both require separate states. |
+| ✅ | Preserve historical records principle | Existing thesis/defense/documents/COR/adviser/exam history must remain intact when the Student becomes inactive. |
+| ⏳ | Admin Reactivate / Return Student flow | Provide a controlled review/action instead of resetting Student data. |
+| ⏳ | Reactivation validation | Check current program validity, residency, curriculum, adviser status/capacity, thesis stage, pending requirements, and current enrollment/COR evidence as applicable. |
+| ⏳ | Resume authoritative thesis progress | Do not automatically restart Title/Proposal/Final. Resume from the existing authoritative stage unless Graduate School policy explicitly requires revalidation/reset. |
+| ⏳ | Adviser revalidation on return | If the existing Adviser is no longer eligible/active/available, use a controlled replacement workflow while preserving adviser history. |
+| ❓ | Residency counting during inactivity | Confirm whether inactive/leave periods count toward maximum residency or may suspend/extend the clock. Never silently reset `residencyStartDate`. |
+| ⏳ | Reactivation audit evidence | Record previous status, new status, actor, timestamp, and required reason/remarks. |
+| ⏳ | Returning-student notifications | Notify relevant Student/Admin/Faculty parties when reactivation is approved or additional action is required. |
+| 🔍 | Dismissed Student return policy | `DISMISSED` should not automatically be treated like ordinary stop-out. Confirm whether reinstatement/appeal is allowed and under what authority. |
+
+### Guardrail
+
+```text
+Student stops / becomes inactive
+        ↓
+preserve all records
+        ↓
+Admin reviews return eligibility
+        ↓
+reactivate / resume with audit trail
+```
+
+Never:
+
+```text
+Student stops
+        ↓
+Reset Student
+        ↓
+erase thesis / adviser / files / academic history
+```
+
+---
+
+# 19. Returning Graduate / Multiple Academic Careers
+
+This is a known architectural requirement but may be implemented **after the core GS-IS workflows stabilize**.
+
+Current repository facts:
+
+- `Student.userId` is currently unique, so one User maps to one Student row;
+- current Student fields such as `programId`, `studentNumber`, `admissionStatus`, `enrollmentDate`, and `residencyStartDate` represent one current academic journey;
+- the current model therefore does not cleanly represent one person who has a completed Master's career and a new Doctoral application at the same time.
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Same account for returning graduate | A Master's graduate applying for Doctoral should reuse the existing person/User account rather than create a duplicate identity. |
+| ⏳ | Multiple admission applications | Support a new Doctoral application without overwriting the completed Master's history. |
+| ⏳ | Multiple academic careers/program histories | Introduce a future AcademicCareer / StudentProgram-style layer so one Student/person can have separate Master's and Doctoral histories. Exact model naming/design is not yet locked. |
+| ⏳ | Preserve completed degree history | Previous program, thesis, defenses, documents, adviser history, and graduation status remain immutable/history-visible while a new application proceeds. |
+| ⏳ | Apply for Another Program workflow | Existing eligible graduates should be routed into a new application flow from their existing account. |
+| ⏳ | Duplicate-account prevention | Existing email/identity should prompt sign-in and new-program application rather than creation of a second User. |
+| ❓ | Student Number reuse vs new number | Confirm EARIST policy for returning graduates entering a higher degree. |
+| ⏳ | Multi-context dashboard | Future UI should distinguish completed academic history from current application/enrollment context. |
+| ⏳ | Auth/status decoupling | Applicant/Student state should eventually belong to an academic application/career context rather than forcing one global User role to represent all simultaneous history/current states. |
+| 🕒 | Priority | Intentionally scheduled after higher-priority core features, but new work should avoid deepening the permanent assumption that one User can only ever have one academic journey. |
+
