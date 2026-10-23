@@ -271,7 +271,7 @@ function between(source, start, end) {
   return source.slice(from, to);
 }
 
-test("page uses exact schedule/panel PDF paths and the shared helper", () => {
+test("page uses exact schedule PDF paths and the shared helper", () => {
   const admin = read(ADMIN);
 
   assert.match(admin, /@\/lib\/official-defense-documents\.client/);
@@ -283,33 +283,49 @@ test("page uses exact schedule/panel PDF paths and the shared helper", () => {
   assert.match(admin, /\/thesis\/defense\/\$\{scheduleId\}\/records\/summary\/pdf/);
   assert.match(
     admin,
-    /\/thesis\/defense\/\$\{scheduleId\}\/records\/criteria\/\$\{e\.panelAssignmentId\}\/pdf/,
+    /\/thesis\/defense\/\$\{scheduleId\}\/records\/evaluations\/pdf/,
   );
+  // The bundled packet supersedes the visible per-row evaluator workflow.
+  assert.doesNotMatch(admin, /criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
 });
 
-test("Evaluation Results has per-evaluator actions, not one bundled action", () => {
+test("Evaluation Results has one section-level bundled action and no per-row PDF buttons", () => {
   const admin = read(ADMIN);
   const header = between(admin, "Evaluation Results", "</CardHeader>");
 
-  assert.doesNotMatch(header, /DownloadPrintButton/);
-  assert.match(admin, />\s*Action\s*</);
-  assert.match(admin, /e\.hasOfficialCriteria/);
-  assert.match(admin, /individual-evaluation-\$\{scheduleId\}-\$\{e\.panelAssignmentId\}/);
+  assert.match(header, /OfficialPdfButton/);
+  assert.match(header, /evaluationsReady/);
+  assert.match(admin, /records\/evaluations\/pdf/);
+  assert.doesNotMatch(admin, />\s*Action\s*</);
+  assert.doesNotMatch(admin, /label="PDF"/);
+  assert.doesNotMatch(admin, /criteria:\$\{e\.panelAssignmentId\}/);
+  assert.doesNotMatch(admin, /individual-evaluation-\$\{scheduleId\}-\$\{e\.panelAssignmentId\}/);
 });
 
-test("availability gates use existing safe metadata only", () => {
+test("bundle availability uses existing safe metadata only", () => {
   const admin = read(ADMIN);
 
-  assert.match(admin, /disabled=\{!e\.hasOfficialCriteria\}/);
+  assert.match(admin, /data\.individualEvaluations\.length > 0/);
+  assert.match(admin, /data\.individualEvaluations\.every/);
+  assert.match(admin, /hasOfficialCriteria/);
   assert.match(admin, /!data\.oralExamSummary\.ready/);
   assert.match(
     admin,
-    /Available after the evaluator finalizes and signs the evaluation\./,
+    /Available after all evaluators finalize and sign their evaluations\./,
   );
   assert.match(
     admin,
     /Available after the official Oral Examination Summary is generated\./,
   );
+});
+
+test("frontend fallbacks stay readable and never expose a schedule UUID", () => {
+  const admin = read(ADMIN);
+
+  assert.match(admin, /Defense-Application\.pdf/);
+  assert.match(admin, /Individual-Evaluations\.pdf/);
+  assert.match(admin, /Oral-Examination-Summary\.pdf/);
+  assert.doesNotMatch(admin, /records\/application\/pdf`,\s*`[^`]*\$\{scheduleId\}/);
 });
 
 test("Committee Report stays disabled with accurate wording", () => {
@@ -335,6 +351,7 @@ test("loading is scoped and errors use Sonner", () => {
   assert.match(admin, /pending/);
   assert.match(admin, /Generating/);
   assert.match(admin, /toast\.error/);
+  assert.match(admin, /"evaluations"/);
   assert.doesNotMatch(admin, /\balert\(/);
 });
 

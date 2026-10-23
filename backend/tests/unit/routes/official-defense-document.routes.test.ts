@@ -22,6 +22,7 @@ const layers = routes(thesisRoutes);
 const CRITERIA_PDF_PATH = "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf";
 const SUMMARY_PDF_PATH = "/defense/:scheduleId/records/summary/pdf";
 const APPLICATION_PDF_PATH = "/defense/:scheduleId/records/application/pdf";
+const EVALUATIONS_PDF_PATH = "/defense/:scheduleId/records/evaluations/pdf";
 
 function findRoute(path: string, method: string): StackLayer["route"] {
   return layers.find(
@@ -118,6 +119,25 @@ describe("FORM-INT-3 Defense Application PDF route", () => {
 
   it("keeps Criteria and Summary PDF routes intact", () => {
     expect(findRoute(CRITERIA_PDF_PATH, "get")).toBeDefined();
+    expect(findRoute(SUMMARY_PDF_PATH, "get")).toBeDefined();
+  });
+});
+
+describe("FORM-INT-4 FIX-1 bundled Individual Evaluations PDF route", () => {
+  it("is an authenticated ADMIN-only GET route", () => {
+    expectAdminOnlyRoute(EVALUATIONS_PDF_PATH);
+  });
+
+  it("does not shadow the exact single-evaluator route", () => {
+    expect(findRoute(EVALUATIONS_PDF_PATH, "get")).toBeDefined();
+    expect(findRoute(CRITERIA_PDF_PATH, "get")).toBeDefined();
+    expect(findRoute(EVALUATIONS_PDF_PATH, "get")).not.toBe(
+      findRoute(CRITERIA_PDF_PATH, "get"),
+    );
+  });
+
+  it("keeps Application and Summary PDF routes intact", () => {
+    expect(findRoute(APPLICATION_PDF_PATH, "get")).toBeDefined();
     expect(findRoute(SUMMARY_PDF_PATH, "get")).toBeDefined();
   });
 });

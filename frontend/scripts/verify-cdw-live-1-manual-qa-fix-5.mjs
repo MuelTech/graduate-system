@@ -186,7 +186,8 @@ test("Admin official PDF actions are active; Committee Report stays deferred", (
   // FORM-INT-4 supersedes the earlier deferred-document placeholder.
   assert.match(admin, /records\/application\/pdf/);
   assert.match(admin, /records\/summary\/pdf/);
-  assert.match(admin, /records\/criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
+  assert.match(admin, /records\/evaluations\/pdf/);
+  assert.doesNotMatch(admin, /criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
   assert.match(admin, /e\.hasOfficialCriteria/);
   assert.match(admin, /!data\.oralExamSummary\.ready/);
   assert.match(admin, /Official Committee Report PDF is not available yet\./);

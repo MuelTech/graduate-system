@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   generateSummary: vi.fn(),
   generateApplication: vi.fn(),
+  generateBundle: vi.fn(),
+  filename: vi.fn(),
 }));
 
 vi.mock("../../../src/config/database", () => ({ default: {} }));
@@ -12,6 +14,8 @@ vi.mock("../../../src/services/thesis.service", () => ({
     generateOfficialCriteriaPdf = mocks.generate;
     generateOralExamSummaryPdf = mocks.generateSummary;
     generateDefenseApplicationPdf = mocks.generateApplication;
+    generateEvaluationBundlePdf = mocks.generateBundle;
+    getOfficialDocumentFilename = mocks.filename;
   },
 }));
 
@@ -127,9 +131,12 @@ describe("ThesisController.getOralExamSummaryPdf (FORM-INT-2)", () => {
 
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns the GS-011 PDF with a safe deterministic filename", async () => {
+  it("returns the GS-011 PDF with the canonical readable filename", async () => {
     const pdf = Buffer.from("%PDF-1.7\noral examination summary");
     mocks.generateSummary.mockResolvedValue(pdf);
+    mocks.filename.mockResolvedValue(
+      "Juan-Dela-Cruz-Proposal-Defense-Oral-Examination-Summary.pdf",
+    );
     const res = makeRes();
 
     await controller.getOralExamSummaryPdf(makeReq(), res);
@@ -138,11 +145,15 @@ describe("ThesisController.getOralExamSummaryPdf (FORM-INT-2)", () => {
       userId: "admin-1",
       role: "ADMIN",
     });
+    expect(mocks.filename).toHaveBeenCalledWith("sched-1", "summary", {
+      userId: "admin-1",
+      role: "ADMIN",
+    });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
     expect(res.setHeader).toHaveBeenCalledWith(
       "Content-Disposition",
-      'attachment; filename="oral-examination-summary-sched-1.pdf"',
+      'attachment; filename="Juan-Dela-Cruz-Proposal-Defense-Oral-Examination-Summary.pdf"',
     );
     expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
     expect(res.setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
@@ -154,19 +165,22 @@ describe("ThesisController.getOralExamSummaryPdf (FORM-INT-2)", () => {
     expect(String(body)).not.toContain("signatureData");
   });
 
-  it("sanitizes the scheduleId in the filename", async () => {
+  it("uses the backend-provided readable filename without exposing the schedule id", async () => {
     mocks.generateSummary.mockResolvedValue(Buffer.from("%PDF-1.7"));
+    mocks.filename.mockResolvedValue(
+      "María-José-Dela-Cruz-Final-Defense-Oral-Examination-Summary.pdf",
+    );
     const res = makeRes();
 
-    await controller.getOralExamSummaryPdf(
-      makeReq({ scheduleId: "../../etc" }),
-      res,
-    );
+    await controller.getOralExamSummaryPdf(makeReq(), res);
 
     const disposition = res.setHeader.mock.calls.find(
       ([name]: [string]) => name === "Content-Disposition",
     )?.[1] as string;
-    expect(disposition).toBe('attachment; filename="oral-examination-summary-etc.pdf"');
+    expect(disposition).toBe(
+      'attachment; filename="María-José-Dela-Cruz-Final-Defense-Oral-Examination-Summary.pdf"',
+    );
+    expect(disposition).not.toContain("sched-1");
   });
 
   it("rejects an unauthenticated request without generating a document", async () => {
@@ -200,9 +214,12 @@ describe("ThesisController.getDefenseApplicationPdf (FORM-INT-3)", () => {
 
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns the GS-006/GS-007 PDF with a safe deterministic filename", async () => {
+  it("returns the GS-006/GS-007 PDF with the canonical readable filename", async () => {
     const pdf = Buffer.from("%PDF-1.7\ndefense application");
     mocks.generateApplication.mockResolvedValue(pdf);
+    mocks.filename.mockResolvedValue(
+      "Juan-Dela-Cruz-Proposal-Defense-Application.pdf",
+    );
     const res = makeRes();
 
     await controller.getDefenseApplicationPdf(makeReq(), res);
@@ -211,11 +228,15 @@ describe("ThesisController.getDefenseApplicationPdf (FORM-INT-3)", () => {
       userId: "admin-1",
       role: "ADMIN",
     });
+    expect(mocks.filename).toHaveBeenCalledWith("sched-1", "application", {
+      userId: "admin-1",
+      role: "ADMIN",
+    });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
     expect(res.setHeader).toHaveBeenCalledWith(
       "Content-Disposition",
-      'attachment; filename="defense-application-sched-1.pdf"',
+      'attachment; filename="Juan-Dela-Cruz-Proposal-Defense-Application.pdf"',
     );
     expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
     expect(res.setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
@@ -248,6 +269,71 @@ describe("ThesisController.getDefenseApplicationPdf (FORM-INT-3)", () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
       error: "The defense application requires exactly one Chairman assignment.",
+    });
+    expect(res.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("ThesisController.getOfficialEvaluationBundlePdf (FORM-INT-4 FIX-1)", () => {
+  const controller = new ThesisController();
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns one merged evaluator PDF with a readable filename", async () => {
+    const pdf = Buffer.from("%PDF-1.7\nbundled evaluations");
+    mocks.generateBundle.mockResolvedValue(pdf);
+    mocks.filename.mockResolvedValue(
+      "Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf",
+    );
+    const res = makeRes();
+
+    await controller.getOfficialEvaluationBundlePdf(makeReq(), res);
+
+    expect(mocks.generateBundle).toHaveBeenCalledWith("sched-1", {
+      userId: "admin-1",
+      role: "ADMIN",
+    });
+    expect(mocks.filename).toHaveBeenCalledWith("sched-1", "evaluations", {
+      userId: "admin-1",
+      role: "ADMIN",
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
+    expect(res.setHeader).toHaveBeenCalledWith(
+      "Content-Disposition",
+      'attachment; filename="Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf"',
+    );
+    expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+    expect(res.setHeader).toHaveBeenCalledWith("X-Content-Type-Options", "nosniff");
+    expect(res.send).toHaveBeenCalledTimes(1);
+    const body = res.send.mock.calls[0][0];
+    expect(Buffer.isBuffer(body)).toBe(true);
+    expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unauthenticated request without generating a bundle", async () => {
+    const res = makeRes();
+    const req = { params: { scheduleId: "sched-1" } } as any;
+
+    await controller.getOfficialEvaluationBundlePdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mocks.generateBundle).not.toHaveBeenCalled();
+  });
+
+  it("preserves controlled all-or-nothing bundle errors", async () => {
+    mocks.generateBundle.mockRejectedValue(
+      new AppError("All required evaluator evaluations must be finalized before the printable packet can be generated.", 409),
+    );
+    const res = makeRes();
+
+    await controller.getOfficialEvaluationBundlePdf(makeReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      error:
+        "All required evaluator evaluations must be finalized before the printable packet can be generated.",
     });
     expect(res.send).not.toHaveBeenCalled();
   });

@@ -66,6 +66,17 @@ function assertInstitutionalGroupAverage(value: number, label: string): void {
   }
 }
 
+/** Stable evaluator packet order: createdAt ascending, then assignment id. */
+function compareBundleAssignments(
+  a: { id: string; createdAt: Date },
+  b: { id: string; createdAt: Date },
+): number {
+  const aTime = a.createdAt.getTime();
+  const bTime = b.createdAt.getTime();
+  if (aTime !== bTime) return aTime - bTime;
+  return a.id.localeCompare(b.id);
+}
+
 export interface SummaryEvaluatorRow {
   panelAssignmentId: string;
   userId: string;
@@ -137,6 +148,34 @@ export interface OfficialDefenseApplicationDocumentSource {
   programName: string | null;
   programType: string | null;
   assignments: DefenseApplicationAssignmentSource[];
+}
+
+export interface OfficialEvaluationBundleAssignment {
+  panelAssignmentId: string;
+  role: string;
+  userId: string;
+  createdAt: string;
+}
+
+/**
+ * FORM-INT-4 FIX-1: exact evaluator packet source. Only CHAIRMAN/PANELIST
+ * assignments become pages; Chairman is first, Panelists follow in stable
+ * schedule order. The document service still reads each evaluator through the
+ * accepted `getOfficialCriteria` authority.
+ */
+export interface OfficialEvaluationBundleSource {
+  scheduleId: string;
+  defenseType: string;
+  programType: string;
+  studentName: string | null;
+  evaluatorAssignments: OfficialEvaluationBundleAssignment[];
+}
+
+/** Narrow identity source for canonical readable filenames. */
+export interface OfficialDocumentIdentitySource {
+  scheduleId: string;
+  defenseType: string;
+  studentName: string | null;
 }
 
 export interface OfficialCriteriaDto {
@@ -694,6 +733,170 @@ export class OfficialDefenseRecordService {
         name: `${assignment.user.firstName} ${assignment.user.lastName}`.trim(),
         createdAt: assignment.createdAt.toISOString(),
       })),
+    };
+  }
+
+  /**
+   * FORM-INT-4 FIX-1: exact evaluator packet source for one schedule.
+   * ADMIN-only. Evaluator roles come from DefenseCommitteePolicy; non-evaluator
+   * committee seats never become pages. Raw DB ordering is never authoritative.
+   */
+  async getOfficialEvaluationBundleSource(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<OfficialEvaluationBundleSource> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+                program: { select: { programType: true } },
+              },
+            },
+          },
+        },
+        panelAssignments: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const defenseType = String(schedule.defenseType);
+    if (!["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"].includes(defenseType)) {
+      throw new AppError(
+        "This defense session does not generate evaluator forms.",
+        422,
+      );
+    }
+
+    const programType = String(schedule.thesis?.student?.program?.programType ?? "");
+    if (programType !== "MASTERS" && programType !== "DOCTORAL") {
+      throw new AppError(
+        "The defense schedule has an unsupported program type for evaluator forms.",
+        422,
+      );
+    }
+
+    const policy = committeePolicy.getPolicy(
+      defenseType as never,
+      programType as never,
+    );
+    const evaluatorRoles = committeePolicy
+      .getEvaluatorRoles(defenseType as never)
+      .map(String);
+    const assignments = Array.isArray(schedule.panelAssignments)
+      ? schedule.panelAssignments
+      : [];
+    const evaluators = assignments.filter((assignment) =>
+      evaluatorRoles.includes(String(assignment.role)),
+    );
+
+    const seenUsers = new Set<string>();
+    for (const evaluator of evaluators) {
+      if (seenUsers.has(evaluator.userId)) {
+        throw new AppError(
+          "The defense committee cannot assign the same evaluator to more than one seat.",
+          409,
+        );
+      }
+      seenUsers.add(evaluator.userId);
+    }
+
+    const chairmen = evaluators.filter(
+      (assignment) => String(assignment.role) === "CHAIRMAN",
+    );
+    if (chairmen.length !== 1) {
+      throw new AppError(
+        "The printable evaluator packet requires exactly one Chairman assignment.",
+        409,
+      );
+    }
+
+    const panelists = evaluators
+      .filter((assignment) => String(assignment.role) === "PANELIST")
+      .sort(compareBundleAssignments);
+    if (panelists.length !== policy.panelistCount) {
+      throw new AppError(
+        `The printable evaluator packet requires exactly ${policy.panelistCount} Panelist assignment(s) for this stage (got ${panelists.length}).`,
+        409,
+      );
+    }
+
+    const student = schedule.thesis?.student ?? null;
+    const studentName = student
+      ? `${student.user.firstName} ${student.user.lastName}`.trim()
+      : "";
+
+    return {
+      scheduleId: schedule.id,
+      defenseType,
+      programType,
+      studentName: studentName || null,
+      evaluatorAssignments: [chairmen[0], ...panelists].map((assignment) => ({
+        panelAssignmentId: assignment.id,
+        role: String(assignment.role),
+        userId: assignment.userId,
+        createdAt: assignment.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  /**
+   * FORM-INT-4 FIX-1: narrow exact-schedule identity for canonical readable
+   * filenames. This deliberately does not read the Admin detail/RAP read model.
+   */
+  async getOfficialDocumentIdentity(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<OfficialDocumentIdentitySource> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const schedule = await prisma.defenseSchedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        thesis: {
+          include: {
+            student: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    const student = schedule.thesis?.student ?? null;
+    const studentName = student
+      ? `${student.user.firstName} ${student.user.lastName}`.trim()
+      : "";
+
+    return {
+      scheduleId: schedule.id,
+      defenseType: String(schedule.defenseType),
+      studentName: studentName || null,
     };
   }
 

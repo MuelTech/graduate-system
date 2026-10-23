@@ -8,10 +8,16 @@
  * form, queries unrelated domain models, persists generated documents, or
  * determines academic state.
  */
+import { PDFDocument } from "pdf-lib";
+
 import { AppError } from "../utils/AppError";
 import {
   INSTITUTIONAL_MATRIX_V2,
 } from "./oral-evaluation.institutional.rules";
+import {
+  officialDefenseDocumentFilename,
+  type OfficialDefenseDocumentKind,
+} from "./official-defense-document-filename";
 import {
   OfficialDefenseRecordService,
   type OfficialCriteriaDto,
@@ -84,8 +90,21 @@ type RecordsReader = Pick<
   | "getOfficialDefenseApplicationDocumentSource"
 >;
 
+type BundleRecordsReader = Pick<
+  OfficialDefenseRecordService,
+  "getOfficialCriteria" | "getOfficialEvaluationBundleSource"
+>;
+type FilenameSourceReader = Pick<
+  OfficialDefenseRecordService,
+  "getOfficialDocumentIdentity"
+>;
+
 export interface OfficialDefenseDocumentDeps {
   readonly records?: RecordsReader;
+  /** Optional seam for the bundled evaluator packet. */
+  readonly bundleRecords?: BundleRecordsReader;
+  /** Optional seam for canonical readable filenames. */
+  readonly filenameSource?: FilenameSourceReader;
   readonly loadLogos?: () => Promise<InstitutionalLogos>;
   readonly render?: (input: OralExamCriteriaRenderInput) => Promise<Uint8Array>;
   readonly renderSummary?: (input: OralExamSummaryRenderInput) => Promise<Uint8Array>;
@@ -653,6 +672,8 @@ export function mapDefenseApplicationToRenderInput(
 
 export class OfficialDefenseDocumentService {
   private readonly records: RecordsReader;
+  private readonly bundleRecords: BundleRecordsReader;
+  private readonly filenameSource: FilenameSourceReader;
   private readonly loadLogos: () => Promise<InstitutionalLogos>;
   private readonly render: (input: OralExamCriteriaRenderInput) => Promise<Uint8Array>;
   private readonly renderSummary: (input: OralExamSummaryRenderInput) => Promise<Uint8Array>;
@@ -662,6 +683,9 @@ export class OfficialDefenseDocumentService {
 
   constructor(deps: OfficialDefenseDocumentDeps = {}) {
     this.records = deps.records ?? new OfficialDefenseRecordService();
+    this.bundleRecords = deps.bundleRecords ?? new OfficialDefenseRecordService();
+    this.filenameSource =
+      deps.filenameSource ?? new OfficialDefenseRecordService();
     this.loadLogos = deps.loadLogos ?? loadOfficialFormLogos;
     this.render = deps.render ?? renderOralExamCriteria;
     this.renderSummary = deps.renderSummary ?? renderOralExamSummary;
@@ -789,5 +813,116 @@ export class OfficialDefenseDocumentService {
         500,
       );
     }
+  }
+
+  /**
+   * FORM-INT-4 FIX-1: one server-generated evaluator packet for the exact
+   * schedule. Every required Chairman/Panelist page must be renderable; any
+   * failure aborts the whole packet (no partial output).
+   */
+  async generateEvaluationBundlePdf(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ): Promise<Uint8Array> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+
+    const source = await this.bundleRecords.getOfficialEvaluationBundleSource(
+      scheduleId,
+      actor,
+    );
+    if (source.evaluatorAssignments.length === 0) {
+      throw new AppError(
+        "The printable evaluator packet has no required evaluator assignments.",
+        409,
+      );
+    }
+
+    const logos = await this.loadLogos();
+    const merged = await PDFDocument.create();
+    merged.setCreationDate(new Date(0));
+    merged.setModificationDate(new Date(0));
+    merged.setTitle("EARIST Graduate School - Individual Evaluations");
+    merged.setAuthor("EARIST Graduate School");
+    merged.setProducer("EARIST Graduate School - Official Forms");
+
+    try {
+      for (const assignment of source.evaluatorAssignments) {
+        const record = await this.bundleRecords.getOfficialCriteria(
+          scheduleId,
+          assignment.panelAssignmentId,
+          actor,
+        );
+        if (
+          record.scheduleId !== scheduleId ||
+          record.panelAssignmentId !== assignment.panelAssignmentId
+        ) {
+          throw new AppError(
+            "The evaluator record does not belong to this exact defense schedule.",
+            409,
+          );
+        }
+
+        const input = mapOfficialCriteriaToRenderInput(record, logos);
+        const rendered = await this.render(input);
+        const pageDocument = await PDFDocument.load(rendered);
+        if (pageDocument.getPageCount() !== 1) {
+          throw new AppError(
+            "An individual evaluation did not render to exactly one page.",
+            500,
+          );
+        }
+        const [page] = await merged.copyPages(pageDocument, [0]);
+        merged.addPage(page);
+      }
+
+      if (merged.getPageCount() !== source.evaluatorAssignments.length) {
+        throw new AppError(
+          "The individual evaluation packet page count does not match the required evaluators.",
+          500,
+        );
+      }
+
+      return await merged.save();
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error instanceof RangeError) {
+        throw new AppError(
+          "The bundled individual evaluations cannot fit the official form.",
+          422,
+        );
+      }
+      throw new AppError(
+        "The official individual evaluation packet could not be generated.",
+        500,
+      );
+    }
+  }
+
+  /** Canonical readable filename from the exact schedule identity. */
+  async buildOfficialDocumentFilename(
+    scheduleId: string,
+    kind: OfficialDefenseDocumentKind,
+    actor: OfficialDefenseDocumentActor,
+  ): Promise<string> {
+    if (actor.role !== "ADMIN") {
+      throw new AppError(
+        "Official document generation is restricted to Admin.",
+        403,
+      );
+    }
+    const identity = await this.filenameSource.getOfficialDocumentIdentity(
+      scheduleId,
+      actor,
+    );
+    return officialDefenseDocumentFilename(
+      identity.studentName,
+      identity.defenseType,
+      kind,
+    );
   }
 }

@@ -33,6 +33,7 @@ import { AdviserRequestService } from './adviser-request.service';
 import { OralEvaluationService } from './oral-evaluation.service';
 import { OfficialDefenseRecordService } from './official-defense-record.service';
 import { OfficialDefenseDocumentService } from './official-defense-document.service';
+import type { OfficialDefenseDocumentKind } from './official-defense-document-filename';
 import { RapporteurFinalizationService } from './rapporteur-finalization.service';
 import { RapReportService } from './rap-report.service';
 
@@ -928,6 +929,27 @@ export class ThesisService {
     actor: { userId: string; role: string },
   ): Promise<Uint8Array> {
     return this.officialDocuments.generateDefenseApplicationPdf(scheduleId, actor);
+  }
+
+  /** FORM-INT-4 FIX-1: one merged Individual Evaluations packet (ADMIN-only). */
+  async generateEvaluationBundlePdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateEvaluationBundlePdf(scheduleId, actor);
+  }
+
+  /** FORM-INT-4 FIX-1: canonical readable Content-Disposition filename. */
+  async getOfficialDocumentFilename(
+    scheduleId: string,
+    kind: OfficialDefenseDocumentKind,
+    actor: { userId: string; role: string },
+  ): Promise<string> {
+    return this.officialDocuments.buildOfficialDocumentFilename(
+      scheduleId,
+      kind,
+      actor,
+    );
   }
 
   async getOralExamSummaryRecord(

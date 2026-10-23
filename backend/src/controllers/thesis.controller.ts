@@ -955,13 +955,16 @@ export class ThesisController {
         return;
       }
       const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
       const pdf = await this.thesisService.generateOralExamSummaryPdf(
         scheduleId,
-        { userId, role: accountRole },
+        actor,
       );
-      const fileName = `oral-examination-summary-${
-        safeFilenameToken(scheduleId) || "schedule"
-      }.pdf`;
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "summary",
+        actor,
+      );
       sendPdfResponse(res, pdf, fileName);
     } catch (error: any) {
       sendEligibilityError(res, error);
@@ -981,13 +984,45 @@ export class ThesisController {
         return;
       }
       const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
       const pdf = await this.thesisService.generateDefenseApplicationPdf(
         scheduleId,
-        { userId, role: accountRole },
+        actor,
       );
-      const fileName = `defense-application-${
-        safeFilenameToken(scheduleId) || "schedule"
-      }.pdf`;
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "application",
+        actor,
+      );
+      sendPdfResponse(res, pdf, fileName);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** FORM-INT-4 FIX-1: one merged Individual Evaluations packet (ADMIN-only). */
+  public getOfficialEvaluationBundlePdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
+      const pdf = await this.thesisService.generateEvaluationBundlePdf(
+        scheduleId,
+        actor,
+      );
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "evaluations",
+        actor,
+      );
       sendPdfResponse(res, pdf, fileName);
     } catch (error: any) {
       sendEligibilityError(res, error);

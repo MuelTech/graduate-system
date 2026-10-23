@@ -62,7 +62,8 @@ test("official PDF actions are active while Committee Report remains deferred", 
   // FORM-INT-4 supersedes the earlier "document output not available" state.
   assert.match(admin, /records\/application\/pdf/);
   assert.match(admin, /records\/summary\/pdf/);
-  assert.match(admin, /records\/criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
+  assert.match(admin, /records\/evaluations\/pdf/);
+  assert.doesNotMatch(admin, /criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
   assert.match(admin, /Official Committee Report PDF is not available yet\./);
   assert.doesNotMatch(admin, /window\.print\(\)/);
   assert.doesNotMatch(admin, /import .*jspdf|import .*pdf-lib/i);

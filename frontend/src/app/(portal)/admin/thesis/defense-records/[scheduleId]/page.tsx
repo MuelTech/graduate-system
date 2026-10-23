@@ -475,6 +475,10 @@ export default function AdminDefenseRecordDetailPage() {
   const recordedTitle = data.rapReport?.selectedTitle ?? null;
   const venue = parseVenueOrLink(o.venueOrLink);
   const summaryReady = data.oralExamSummary.ready;
+  // `[].every(...)` is true, so the non-empty guard is mandatory.
+  const evaluationsReady =
+    data.individualEvaluations.length > 0 &&
+    data.individualEvaluations.every((evaluator) => evaluator.hasOfficialCriteria);
 
   // RAP required-signature progress is derived from the signatory rows so it
   // can never over-count optional signers (exact §9 formula).
@@ -526,7 +530,7 @@ export default function AdminDefenseRecordDetailPage() {
                   void generateOfficialPdf(
                     "application",
                     `/thesis/defense/${scheduleId}/records/application/pdf`,
-                    `defense-application-${scheduleId}.pdf`,
+                    "Defense-Application.pdf",
                   )
                 }
               />
@@ -606,6 +610,24 @@ export default function AdminDefenseRecordDetailPage() {
                 <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
                   Evaluation Results
                 </CardTitle>
+                <OfficialPdfButton
+                  label="Download / Print"
+                  ariaLabel="Download / Print Individual Evaluations"
+                  title={
+                    evaluationsReady
+                      ? "Download / Print the bundled Individual Evaluations."
+                      : "Available after all evaluators finalize and sign their evaluations."
+                  }
+                  disabled={!evaluationsReady}
+                  loading={pendingPdfKeys.has("evaluations")}
+                  onClick={() =>
+                    void generateOfficialPdf(
+                      "evaluations",
+                      `/thesis/defense/${scheduleId}/records/evaluations/pdf`,
+                      "Individual-Evaluations.pdf",
+                    )
+                  }
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -615,7 +637,7 @@ export default function AdminDefenseRecordDetailPage() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[820px] text-left text-sm">
+                  <table className="w-full min-w-[720px] text-left text-sm">
                     <thead>
                       <tr className="border-b border-(--earist-border-gray) text-xs font-semibold text-(--earist-body-text)">
                         <th className="px-3 py-2">Evaluator</th>
@@ -623,7 +645,6 @@ export default function AdminDefenseRecordDetailPage() {
                         <th className="px-3 py-2">Evaluation Status</th>
                         <th className="px-3 py-2">Signature Status</th>
                         <th className="px-3 py-2">Signed At</th>
-                        <th className="px-3 py-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -667,28 +688,6 @@ export default function AdminDefenseRecordDetailPage() {
                               ? formatSignedAt(e.signedAt)
                               : "—"}
                           </td>
-                          <td className="px-3 py-2 text-right">
-                            <OfficialPdfButton
-                              label="PDF"
-                              ariaLabel={`Download / Print Individual Evaluation for ${e.evaluatorName}`}
-                              title={
-                                e.hasOfficialCriteria
-                                  ? "Download / Print Individual Evaluation"
-                                  : "Available after the evaluator finalizes and signs the evaluation."
-                              }
-                              disabled={!e.hasOfficialCriteria}
-                              loading={pendingPdfKeys.has(
-                                `criteria:${e.panelAssignmentId}`,
-                              )}
-                              onClick={() =>
-                                void generateOfficialPdf(
-                                  `criteria:${e.panelAssignmentId}`,
-                                  `/thesis/defense/${scheduleId}/records/criteria/${e.panelAssignmentId}/pdf`,
-                                  `individual-evaluation-${scheduleId}-${e.panelAssignmentId}.pdf`,
-                                )
-                              }
-                            />
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -719,7 +718,7 @@ export default function AdminDefenseRecordDetailPage() {
                     void generateOfficialPdf(
                       "summary",
                       `/thesis/defense/${scheduleId}/records/summary/pdf`,
-                      `oral-examination-summary-${scheduleId}.pdf`,
+                      "Oral-Examination-Summary.pdf",
                     )
                   }
                 />

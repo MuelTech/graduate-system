@@ -621,6 +621,14 @@ router.get(
   thesisController.getDefenseApplicationPdf,
 );
 
+// FORM-INT-4 FIX-1: exact-schedule bundled Individual Evaluations PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/evaluations/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOfficialEvaluationBundlePdf,
+);
+
 // CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
 // data. Committee accounts (incl. the session Chairman) are denied.
 router.get(
