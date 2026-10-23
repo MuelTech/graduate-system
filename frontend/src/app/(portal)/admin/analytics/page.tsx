@@ -98,11 +98,11 @@ export default function AdminAnalyticsPage() {
 
       {/* 4. Tabbed Analytics Modules */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="border-b border-gray-200 bg-white px-2 py-1.5 rounded-xl shadow-2xs">
+        <div className="border-b border-(--earist-border-gray) bg-white px-2 py-1.5 rounded-lg shadow-2xs">
           <TabsList className="h-10 bg-transparent p-0 gap-1.5">
             <TabsTrigger
               value="admissions"
-              className="h-9 gap-1.5 rounded-lg px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white data-[state=active]:shadow-xs"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
             >
               <GraduationCap className="h-3.5 w-3.5" />
               Admissions & Alignment
@@ -110,7 +110,7 @@ export default function AdminAnalyticsPage() {
 
             <TabsTrigger
               value="examinations"
-              className="h-9 gap-1.5 rounded-lg px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white data-[state=active]:shadow-xs"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
             >
               <FileCheck2 className="h-3.5 w-3.5" />
               Examination Performance
@@ -118,7 +118,7 @@ export default function AdminAnalyticsPage() {
 
             <TabsTrigger
               value="thesis"
-              className="h-9 gap-1.5 rounded-lg px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white data-[state=active]:shadow-xs"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
             >
               <BookOpen className="h-3.5 w-3.5" />
               Thesis & STRIKE Pipeline
@@ -126,7 +126,7 @@ export default function AdminAnalyticsPage() {
 
             <TabsTrigger
               value="institutional"
-              className="h-9 gap-1.5 rounded-lg px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white data-[state=active]:shadow-xs"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
             >
               <FileText className="h-3.5 w-3.5" />
               Institutional Reports & Compliance

@@ -4,21 +4,16 @@ import { useState, useMemo } from "react";
 import { Doughnut, Bar } from "react-chartjs-2";
 import {
   FileCheck2,
-  TrendingUp,
   Download,
-  AlertCircle,
+  FileSpreadsheet,
+  Layers,
   CheckCircle2,
   Clock,
-  Award,
-  Layers,
-  Search,
-  FileSpreadsheet,
-  HelpCircle,
+  AlertCircle,
+  Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   EARIST_CHART_COLORS,
   baseDoughnutOptions,
@@ -32,28 +27,26 @@ interface ExaminationsTabProps {
 
 export function ExaminationsTab({ data }: ExaminationsTabProps) {
   const [selectedCompProgram, setSelectedCompProgram] = useState<string>("ALL");
-  const [candidateSearch, setCandidateSearch] = useState("");
 
   // Doughnut Chart: ECAT Pass vs Fail
   const ecatChartData = useMemo(() => {
     return {
-      labels: ["Passed ECAT", "Did Not Meet Cutoff"],
+      labels: ["Passed ECAT", "Below Cut-Off"],
       datasets: [
         {
           data: [data.ecatPassFail.passed, data.ecatPassFail.failed],
           backgroundColor: [
             EARIST_CHART_COLORS.emeraldGreen,
-            EARIST_CHART_COLORS.dangerRed,
+            EARIST_CHART_COLORS.primaryMaroon,
           ],
-          borderWidth: 2,
+          borderWidth: 1,
           borderColor: "#FFFFFF",
-          hoverOffset: 6,
         },
       ],
     };
   }, [data.ecatPassFail]);
 
-  // Grouped Bar Chart: Program MCQ vs Essay Breakdown
+  // Grouped Bar Chart: Program Score Breakdown
   const scoreBreakdownChartData = useMemo(() => {
     return {
       labels: data.programScoreAverages.map((p) => p.programCode),
@@ -62,27 +55,25 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
           label: "MCQ Score (Max 50)",
           data: data.programScoreAverages.map((p) => p.mcqAverage),
           backgroundColor: EARIST_CHART_COLORS.primaryMaroon,
-          borderRadius: 6,
+          borderRadius: 4,
           barPercentage: 0.65,
         },
         {
           label: "Essay & Analytical (Max 50)",
           data: data.programScoreAverages.map((p) => p.essayAverage),
           backgroundColor: EARIST_CHART_COLORS.accentGold,
-          borderRadius: 6,
+          borderRadius: 4,
           barPercentage: 0.65,
         },
       ],
     };
   }, [data.programScoreAverages]);
 
-  // Filtered Comp Exam Programs
   const filteredCompPrograms = useMemo(() => {
     if (selectedCompProgram === "ALL") return data.compExamSummary.byProgram;
     return data.compExamSummary.byProgram.filter((p) => p.programName === selectedCompProgram);
   }, [data.compExamSummary.byProgram, selectedCompProgram]);
 
-  // CSV Exporters
   const exportEcatCsv = () => {
     const headers = [
       "Program Code",
@@ -90,7 +81,7 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
       "MCQ Average (/50)",
       "Essay Average (/50)",
       "Total Average (/100)",
-      "Passing Threshold",
+      "Passing Cut-Off",
     ];
     const rows = data.programScoreAverages.map((p) => [
       p.programCode,
@@ -115,15 +106,14 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Tab Header Banner */}
-      <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+      {/* Header Banner */}
+      <div className="flex flex-col gap-3 rounded-lg border border-(--earist-border-gray) bg-white p-3.5 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <FileCheck2 className="h-5 w-5 text-(--earist-primary)" />
+          <h2 className="text-base font-bold text-(--earist-primary)">
             Examination Performance & Institutional Evaluation
           </h2>
-          <p className="text-xs text-gray-600">
-            Comprehensive analytics of Entrance Examination (ECAT) results and FR15 Comprehensive Examination records.
+          <p className="text-xs text-(--earist-body-text)">
+            Entrance Examination (ECAT) results and FR15 Comprehensive Examination verification ledger.
           </p>
         </div>
 
@@ -132,7 +122,7 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
             variant="outline"
             size="sm"
             onClick={exportEcatCsv}
-            className="h-8 gap-1.5 border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
+            className="h-8 gap-1.5 border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
           >
             <Download className="h-3.5 w-3.5 text-gray-500" />
             Export ECAT Scores
@@ -141,141 +131,115 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
             variant="outline"
             size="sm"
             onClick={exportCompExamCsv}
-            className="h-8 gap-1.5 border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
+            className="h-8 gap-1.5 border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
           >
-            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+            <FileSpreadsheet className="h-3.5 w-3.5 text-gray-500" />
             Export Comp Exam Report
           </Button>
         </div>
       </div>
 
-      {/* Row 1: ECAT Pass/Fail Doughnut + Grouped Bar (MCQ vs Essay) */}
+      {/* Row 1: ECAT Pass/Fail Doughnut + Grouped Bar */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left: ECAT Pass vs Fail Doughnut (5 cols) */}
-        <Card className="border-gray-200 shadow-2xs lg:col-span-5 flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-gray-100">
+        <Card className="border-(--earist-border-gray) bg-white shadow-2xs lg:col-span-5 flex flex-col justify-between">
+          <CardHeader className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray) py-3 px-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-bold text-gray-900">
+                <CardTitle className="text-sm font-bold text-(--earist-primary)">
                   Entrance Examination (ECAT) Results
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500">
-                  Overall qualification rate for Current Cycle
+                <CardDescription className="text-xs text-(--earist-body-text)">
+                  Qualification rate for current intake cycle
                 </CardDescription>
               </div>
-              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-xs font-bold">
+              <span className="text-xs font-bold text-(--earist-success)">
                 {data.ecatPassFail.passingRate}% Pass Rate
-              </Badge>
+              </span>
             </div>
           </CardHeader>
 
           <CardContent className="pt-4">
-            <div className="h-64 w-full">
+            <div className="h-60 w-full">
               <Doughnut data={ecatChartData} options={baseDoughnutOptions} />
             </div>
 
-            {/* Metric Summary Cards */}
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
-                <div className="flex items-center justify-between text-emerald-900 font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    Passed
-                  </span>
-                  <span className="text-base font-bold text-emerald-700">{data.ecatPassFail.passed}</span>
-                </div>
-                <p className="text-[11px] text-emerald-800 mt-1">Qualified for graduate enrollment</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs border-t border-(--earist-border-gray) pt-3">
+              <div className="rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) p-2.5">
+                <span className="text-[11px] text-(--earist-body-text) block">Passed & Qualified</span>
+                <span className="text-lg font-bold text-(--earist-success)">{data.ecatPassFail.passed}</span>
+                <p className="text-[10px] text-gray-500">Eligible for matriculation</p>
               </div>
 
-              <div className="rounded-lg border border-red-100 bg-red-50/50 p-3">
-                <div className="flex items-center justify-between text-red-900 font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-                    Failed
-                  </span>
-                  <span className="text-base font-bold text-red-700">{data.ecatPassFail.failed}</span>
-                </div>
-                <p className="text-[11px] text-red-800 mt-1">Below passing cut-off score</p>
+              <div className="rounded border border-(--earist-border-gray) bg-(--earist-surface-gray) p-2.5">
+                <span className="text-[11px] text-(--earist-body-text) block">Below Cut-Off</span>
+                <span className="text-lg font-bold text-(--earist-primary)">{data.ecatPassFail.failed}</span>
+                <p className="text-[10px] text-gray-500">Below passing threshold</p>
               </div>
             </div>
 
-            <div className="mt-3 rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-600 flex items-center justify-between">
-              <span>Total Examinees Evaluated:</span>
-              <span className="font-bold text-gray-900">{data.ecatPassFail.totalExaminees} Candidates</span>
+            <div className="mt-2 text-center text-xs text-(--earist-body-text)">
+              Total Examinees: <strong>{data.ecatPassFail.totalExaminees}</strong>
             </div>
           </CardContent>
         </Card>
 
         {/* Right: Program Score Breakdown Grouped Bar (7 cols) */}
-        <Card className="border-gray-200 shadow-2xs lg:col-span-7 flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-gray-100">
+        <Card className="border-(--earist-border-gray) bg-white shadow-2xs lg:col-span-7 flex flex-col justify-between">
+          <CardHeader className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray) py-3 px-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-bold text-gray-900">
+                <CardTitle className="text-sm font-bold text-(--earist-primary)">
                   Program-by-Program Score Breakdown
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500">
-                  Multiple Choice Questions (MCQ) vs. Essay & Analytical writing performance
+                <CardDescription className="text-xs text-(--earist-body-text)">
+                  Objective Knowledge (MCQ) vs. Essay & Analytical writing performance
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="text-xs text-gray-600">
-                7 Programs
-              </Badge>
+              <span className="text-xs text-(--earist-body-text)">
+                {data.programScoreAverages.length} Programs
+              </span>
             </div>
           </CardHeader>
 
           <CardContent className="pt-4">
-            <div className="h-72 w-full">
+            <div className="h-68 w-full">
               <Bar data={scoreBreakdownChartData} options={baseBarOptions} />
             </div>
 
-            {/* Score Profile Observations */}
-            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-xs">
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-2.5">
-                <span className="font-bold text-gray-800 block mb-0.5">Objective Knowledge (MCQ):</span>
-                <p className="text-[11px] text-gray-600">
-                  Highest technical scores in <strong className="text-gray-900">MSIT (43.6/50)</strong> and Doctoral tracks, showing strong prerequisite foundational retention.
-                </p>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs border-t border-(--earist-border-gray) pt-3">
+              <div className="text-(--earist-body-text)">
+                <strong className="text-foreground">Objective Knowledge (MCQ):</strong> Highest scores in MSIT (43.6/50) and Doctoral tracks.
               </div>
-
-              <div className="rounded-lg border border-amber-100 bg-amber-50/50 p-2.5">
-                <span className="font-bold text-amber-900 block mb-0.5">Essay & Analytical Writing:</span>
-                <p className="text-[11px] text-amber-900">
-                  Doctoral applicants averaged <strong className="text-amber-950">44.0/50</strong> in qualitative discourse, satisfying institutional research writing readiness.
-                </p>
+              <div className="text-(--earist-body-text)">
+                <strong className="text-foreground">Essay Discourse:</strong> Doctoral examinees averaged 44.0/50 in research writing readiness.
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Row 2: Comprehensive Examination Tracking Matrix (FR15) */}
-      <Card className="border-gray-200 shadow-2xs">
-        <CardHeader className="border-b border-gray-100 pb-3">
+      {/* Row 2: FR15 Comprehensive Examination Tracking Matrix */}
+      <Card className="border-(--earist-border-gray) bg-white shadow-2xs">
+        <CardHeader className="border-b border-(--earist-border-gray) bg-(--earist-surface-gray) py-3 px-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-sm font-bold text-gray-900">
-                  Comprehensive Examination Tracking & Committee Verifications
-                </CardTitle>
-                <Badge className="bg-(--earist-primary)/10 text-(--earist-primary) hover:bg-(--earist-primary)/10 text-[10px] font-bold">
-                  FR15 Compliant
-                </Badge>
-              </div>
-              <CardDescription className="text-xs text-gray-500">
-                Admin-verified tracking of Written Comprehensive Examination and Oral Defense milestones
+              <CardTitle className="text-sm font-bold text-(--earist-primary)">
+                Comprehensive Examination Tracking & Committee Verifications (FR15)
+              </CardTitle>
+              <CardDescription className="text-xs text-(--earist-body-text)">
+                Manual Administrator verification ledger for Written Examination and Oral Defense milestones
               </CardDescription>
             </div>
 
-            {/* Program Filter Chips */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium hidden sm:inline">Filter:</span>
+              <span className="text-xs text-(--earist-body-text)">Filter Program:</span>
               <select
                 value={selectedCompProgram}
                 onChange={(e) => setSelectedCompProgram(e.target.value)}
-                className="h-8 rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus:border-indigo-500 focus:outline-none"
+                className="h-8 rounded-md border border-(--earist-border-gray) bg-white px-2.5 text-xs text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
               >
-                <option value="ALL">All Graduate Programs</option>
+                <option value="ALL">All Programs</option>
                 {data.compExamSummary.byProgram.map((p, idx) => (
                   <option key={idx} value={p.programName}>
                     {p.programName}
@@ -286,72 +250,60 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-5 pt-4">
-          {/* FR15 Top KPI Stat Cards */}
+        <CardContent className="space-y-4 pt-4">
+          {/* FR15 Top Metric Tiles */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
-                <span>Total Candidates</span>
-                <Layers className="h-4 w-4 text-gray-400" />
-              </div>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{data.compExamSummary.totalTracked}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Active examination registry</p>
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <p className="text-xs text-(--earist-body-text)">Total Candidates Tracked</p>
+              <p className="text-2xl font-bold text-(--earist-primary) mt-1">{data.compExamSummary.totalTracked}</p>
+              <p className="text-[10px] text-gray-500">Active examination roster</p>
             </div>
 
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-emerald-800 text-xs font-medium">
-                <span>Passed & Verified</span>
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              </div>
-              <p className="text-2xl font-bold text-emerald-700 mt-1">{data.compExamSummary.passed}</p>
-              <p className="text-[11px] text-emerald-800 mt-0.5">{data.compExamSummary.passRate}% Institutional Pass Rate</p>
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <p className="text-xs text-(--earist-body-text)">Passed & Verified</p>
+              <p className="text-2xl font-bold text-(--earist-success) mt-1">{data.compExamSummary.passed}</p>
+              <p className="text-[10px] text-(--earist-body-text)">{data.compExamSummary.passRate}% Pass Rate</p>
             </div>
 
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-amber-800 text-xs font-medium">
-                <span>Pending Verification</span>
-                <Clock className="h-4 w-4 text-amber-600" />
-              </div>
-              <p className="text-2xl font-bold text-amber-700 mt-1">{data.compExamSummary.pending}</p>
-              <p className="text-[11px] text-amber-800 mt-0.5">Awaiting committee signed forms</p>
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <p className="text-xs text-(--earist-body-text)">Pending Verification</p>
+              <p className="text-2xl font-bold text-(--earist-warning) mt-1">{data.compExamSummary.pending}</p>
+              <p className="text-[10px] text-gray-500">Awaiting committee signed forms</p>
             </div>
 
-            <div className="rounded-xl border border-red-200 bg-red-50/40 p-3.5 shadow-2xs">
-              <div className="flex items-center justify-between text-red-800 text-xs font-medium">
-                <span>Failed / Retake Required</span>
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              </div>
-              <p className="text-2xl font-bold text-red-700 mt-1">{data.compExamSummary.failed}</p>
-              <p className="text-[11px] text-red-800 mt-0.5">Eligible for re-examination</p>
+            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
+              <p className="text-xs text-(--earist-body-text)">Re-examination Required</p>
+              <p className="text-2xl font-bold text-(--earist-secondary) mt-1">{data.compExamSummary.failed}</p>
+              <p className="text-[10px] text-gray-500">Eligible for re-take</p>
             </div>
           </div>
 
           {/* Program Distribution Progress Bars */}
-          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4 space-y-3">
-            <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+          <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 space-y-3">
+            <p className="text-xs font-bold text-(--earist-primary) uppercase tracking-wider">
               Program-Level Comprehensive Exam Throughput
-            </h4>
+            </p>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredCompPrograms.map((prog, idx) => {
                 const total = prog.passed + prog.pending;
                 const percentage = total > 0 ? (prog.passed / total) * 100 : 0;
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-gray-800">{prog.programName}</span>
-                      <span className="text-gray-600 text-[11px]">
-                        <strong className="text-emerald-600">{prog.passed} Passed</strong> /{" "}
-                        <span className="text-amber-600">{prog.pending} Pending</span> ({percentage.toFixed(0)}%)
+                      <span className="font-semibold text-foreground">{prog.programName}</span>
+                      <span className="text-xs text-(--earist-body-text)">
+                        <strong className="text-(--earist-success)">{prog.passed} Passed</strong> /{" "}
+                        <span className="text-(--earist-warning)">{prog.pending} Pending</span> ({percentage.toFixed(0)}%)
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden flex">
                       <div
-                        className="bg-emerald-500 h-full rounded-l-full"
+                        className="bg-(--earist-success) h-full"
                         style={{ width: `${percentage}%` }}
                       />
                       <div
-                        className="bg-amber-400 h-full rounded-r-full"
+                        className="bg-(--earist-warning) h-full"
                         style={{ width: `${100 - percentage}%` }}
                       />
                     </div>
@@ -361,17 +313,12 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
             </div>
           </div>
 
-          {/* FR15 Institutional Regulatory Alert */}
-          <div className="flex items-start gap-2.5 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-indigo-950">
-            <Award className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-bold text-indigo-900">
-                FR15 Administrative Verification & Eligibility Rules:
-              </span>
-              <p className="text-[11px] leading-relaxed text-indigo-900/90">
-                Per EARIST Graduate School regulations, a graduate student is eligible to enroll in Thesis/Dissertation writing only after passing the Comprehensive Examination. Official completion requires the Administrator to manually verify that signed Form CE-02 (Written Examination) and Form CE-03 (Oral Panel Deliberation) have been physically deposited in the Dean&apos;s Office records.
-              </p>
-            </div>
+          {/* Policy Context */}
+          <div className="flex items-start gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
+            <Info className="h-4 w-4 text-(--earist-secondary) shrink-0 mt-0.5" />
+            <p className="text-[11px] leading-relaxed">
+              <strong>FR15 Institutional Verification Procedure:</strong> Per Graduate School regulations, candidate thesis registration requires prior verification of passed Comprehensive Examinations. Official clearance is recorded by the Administrator upon receipt of signed Form CE-02 (Written Result) and Form CE-03 (Oral Deliberation) filed in the Dean&apos;s Office.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -379,9 +326,6 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
   );
 }
 
-/**
- * Client-side CSV generation and instant browser download
- */
 function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
   const content = [
     headers.join(","),

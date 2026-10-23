@@ -31,64 +31,52 @@ ChartJS.register(
 
 /**
  * Official EARIST Color Palette & Design Tokens
+ * Matched strictly to globals.css and UI/UX Playbook:
+ * --earist-primary: #8B1A1A (Maroon)
+ * --earist-secondary: #A83240 (Crimson)
+ * --earist-accent: #D4A843 (Gold)
+ * --earist-success: #1E7E4E (Forest Green)
+ * --earist-warning: #9B5C00 (Ochre)
+ * --earist-border-gray: #D0D7E3
+ * --earist-body-text: #4A4A5A
  */
 export const EARIST_CHART_COLORS = {
   primaryMaroon: "#8B1A1A",
-  primaryMaroonSoft: "rgba(139, 26, 26, 0.15)",
+  primaryMaroonSoft: "rgba(139, 26, 26, 0.12)",
   primaryMaroonHover: "#701515",
+  secondaryCrimson: "#A83240",
+  secondaryCrimsonSoft: "rgba(168, 50, 64, 0.12)",
   secondaryNavy: "#1A365D",
-  secondaryNavySoft: "rgba(26, 54, 93, 0.15)",
-  accentGold: "#C5A028",
-  accentGoldSoft: "rgba(197, 160, 40, 0.2)",
-  emeraldGreen: "#10B981",
-  emeraldGreenSoft: "rgba(16, 185, 129, 0.15)",
-  amberWarning: "#F59E0B",
-  amberWarningSoft: "rgba(245, 158, 11, 0.15)",
-  dangerRed: "#DC2626",
-  dangerRedSoft: "rgba(220, 38, 38, 0.15)",
-  purpleIndigo: "#6366F1",
-  purpleIndigoSoft: "rgba(99, 102, 241, 0.15)",
-  cyanBlue: "#06B6D4",
-  cyanBlueSoft: "rgba(6, 182, 212, 0.15)",
-  slateNeutral: "#64748B",
-  slateNeutralSoft: "rgba(100, 116, 139, 0.12)",
-  gridBorder: "#E2E8F0",
+  secondaryNavySoft: "rgba(26, 54, 93, 0.12)",
+  accentGold: "#D4A843",
+  accentGoldSoft: "rgba(212, 168, 67, 0.18)",
+  emeraldGreen: "#1E7E4E",
+  emeraldGreenSoft: "rgba(30, 126, 78, 0.12)",
+  amberWarning: "#9B5C00",
+  amberWarningSoft: "rgba(155, 92, 0, 0.12)",
+  dangerRed: "#8B1A1A",
+  dangerRedSoft: "rgba(139, 26, 26, 0.12)",
+  purpleIndigo: "#5B4D82",
+  purpleIndigoSoft: "rgba(91, 77, 130, 0.12)",
+  cyanBlue: "#2B6CB0",
+  cyanBlueSoft: "rgba(43, 108, 176, 0.12)",
+  slateNeutral: "#4A4A5A",
+  slateNeutralSoft: "rgba(74, 74, 90, 0.10)",
+  gridBorder: "#E5E9F0",
 } as const;
 
-/**
- * Standard palette array for categorical distribution charts (pie, doughnut, multi-bars)
- */
 export const CATEGORICAL_PALETTE = [
   EARIST_CHART_COLORS.primaryMaroon,
   EARIST_CHART_COLORS.secondaryNavy,
   EARIST_CHART_COLORS.accentGold,
   EARIST_CHART_COLORS.emeraldGreen,
-  EARIST_CHART_COLORS.purpleIndigo,
+  EARIST_CHART_COLORS.secondaryCrimson,
   EARIST_CHART_COLORS.cyanBlue,
   EARIST_CHART_COLORS.amberWarning,
   EARIST_CHART_COLORS.slateNeutral,
 ];
 
-/**
- * Sparkline options preset (for top summary KPI metric cards)
- * Removes axes, gridlines, legends, and borders for a sleek inline mini-trend.
- */
-export const sparklineOptions: ChartOptions<"line"> = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false },
-    tooltip: { enabled: true },
-  },
-  scales: {
-    x: { display: false },
-    y: { display: false },
-  },
-  elements: {
-    point: { radius: 0, hoverRadius: 4 },
-    line: { tension: 0.4, borderWidth: 2 },
-  },
-};
+const FONT_FAMILY = '"Calibri", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 /**
  * Base configuration options for Bar charts
@@ -100,44 +88,45 @@ export const baseBarOptions: ChartOptions<"bar"> = {
     legend: {
       position: "top",
       labels: {
-        font: { family: "Calibri, sans-serif", size: 12 },
+        font: { family: FONT_FAMILY, size: 12 },
         usePointStyle: true,
         boxWidth: 8,
+        color: "#4A4A5A",
       },
     },
     tooltip: {
-      backgroundColor: "#1E293B",
+      backgroundColor: "#2B2B36",
       padding: 10,
-      cornerRadius: 8,
-      titleFont: { size: 13, weight: "bold" },
-      bodyFont: { size: 12 },
+      cornerRadius: 6,
+      titleFont: { family: FONT_FAMILY, size: 12, weight: "bold" },
+      bodyFont: { family: FONT_FAMILY, size: 11 },
     },
   },
   scales: {
     x: {
       grid: { display: false },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
     y: {
       grid: { color: EARIST_CHART_COLORS.gridBorder },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
   },
   elements: {
     bar: {
-      borderRadius: 6,
+      borderRadius: 4,
     },
   },
 };
 
 /**
- * Base configuration options for Horizontal Bar / Funnel charts
+ * Base configuration options for Horizontal Bar charts
  */
 export const horizontalBarOptions: ChartOptions<"bar"> = {
   ...baseBarOptions,
@@ -146,15 +135,15 @@ export const horizontalBarOptions: ChartOptions<"bar"> = {
     x: {
       grid: { color: EARIST_CHART_COLORS.gridBorder },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
     y: {
       grid: { display: false },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
   },
@@ -170,38 +159,39 @@ export const baseLineOptions: ChartOptions<"line"> = {
     legend: {
       position: "top",
       labels: {
-        font: { family: "Calibri, sans-serif", size: 12 },
+        font: { family: FONT_FAMILY, size: 12 },
         usePointStyle: true,
         boxWidth: 8,
+        color: "#4A4A5A",
       },
     },
     tooltip: {
-      backgroundColor: "#1E293B",
+      backgroundColor: "#2B2B36",
       padding: 10,
-      cornerRadius: 8,
-      titleFont: { size: 13, weight: "bold" },
-      bodyFont: { size: 12 },
+      cornerRadius: 6,
+      titleFont: { family: FONT_FAMILY, size: 12, weight: "bold" },
+      bodyFont: { family: FONT_FAMILY, size: 11 },
     },
   },
   scales: {
     x: {
       grid: { display: false },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
     y: {
       grid: { color: EARIST_CHART_COLORS.gridBorder },
       ticks: {
-        font: { family: "Calibri, sans-serif", size: 11 },
-        color: "#64748B",
+        font: { family: FONT_FAMILY, size: 11 },
+        color: "#4A4A5A",
       },
     },
   },
   elements: {
-    point: { radius: 3, hoverRadius: 6 },
-    line: { tension: 0.35, borderWidth: 2.5 },
+    point: { radius: 3, hoverRadius: 5 },
+    line: { tension: 0.3, borderWidth: 2 },
   },
 };
 
@@ -215,20 +205,21 @@ export const baseDoughnutOptions: ChartOptions<"doughnut"> = {
     legend: {
       position: "bottom",
       labels: {
-        font: { family: "Calibri, sans-serif", size: 12 },
+        font: { family: FONT_FAMILY, size: 11 },
         usePointStyle: true,
-        padding: 14,
+        padding: 12,
+        color: "#4A4A5A",
       },
     },
     tooltip: {
-      backgroundColor: "#1E293B",
+      backgroundColor: "#2B2B36",
       padding: 10,
-      cornerRadius: 8,
-      titleFont: { size: 13, weight: "bold" },
-      bodyFont: { size: 12 },
+      cornerRadius: 6,
+      titleFont: { family: FONT_FAMILY, size: 12, weight: "bold" },
+      bodyFont: { family: FONT_FAMILY, size: 11 },
     },
   },
-  cutout: "65%",
+  cutout: "60%",
 };
 
 export { ChartJS };

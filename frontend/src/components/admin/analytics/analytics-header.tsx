@@ -1,8 +1,7 @@
 "use client";
 
-import { Calendar, Download, Filter, GraduationCap, Printer, Sparkles } from "lucide-react";
+import { Calendar, Download, Filter, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 export interface AnalyticsHeaderProps {
   selectedAy: string;
@@ -56,22 +55,17 @@ export function AnalyticsHeader({
 }: AnalyticsHeaderProps) {
   return (
     <div className="space-y-4">
-      {/* Top Banner & Title */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Title & Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1
-              className="text-2xl font-bold tracking-tight text-(--earist-primary) sm:text-3xl"
-              style={{ fontFamily: '"Calibri", sans-serif' }}
-            >
-              Academic Analytics & Reports
-            </h1>
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[11px] font-semibold text-amber-800">
-              Institutional View
-            </Badge>
-          </div>
+          <h1
+            className="text-2xl font-bold tracking-tight text-(--earist-primary) sm:text-3xl"
+            style={{ fontFamily: '"Calibri", "Segoe UI", Roboto, sans-serif' }}
+          >
+            Academic Analytics & Reports
+          </h1>
           <p className="mt-1 text-sm text-(--earist-body-text)">
-            Visualize admissions pipeline, examination pass rates, thesis progression, STRIKE plagiarism trends, and institutional compliance.
+            Official institutional metrics for graduate admissions, examinations, thesis throughput, and compliance.
           </p>
         </div>
 
@@ -82,14 +76,14 @@ export function AnalyticsHeader({
               variant="outline"
               size="sm"
               onClick={onToggleAiAssistant}
-              className={`border-indigo-300 text-xs font-medium transition-all ${
+              className={`text-xs border-(--earist-border-gray) ${
                 isAiAssistantOpen
-                  ? "bg-indigo-50 text-indigo-700 ring-2 ring-indigo-400/30"
-                  : "bg-white text-indigo-700 hover:bg-indigo-50/70"
+                  ? "bg-(--earist-surface-light-red) text-(--earist-primary) border-(--earist-secondary)"
+                  : "bg-white text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
               }`}
             >
-              <Sparkles className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
-              AI Briefing Assistant
+              <FileText className="mr-1.5 h-3.5 w-3.5 text-(--earist-primary)" />
+              {isAiAssistantOpen ? "Hide Executive Briefing" : "Dean's Executive Briefing"}
             </Button>
           )}
 
@@ -98,7 +92,7 @@ export function AnalyticsHeader({
               variant="outline"
               size="sm"
               onClick={onExportCsv}
-              className="border-(--earist-border-gray) bg-white text-xs text-gray-700 hover:bg-gray-50"
+              className="border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
             >
               <Download className="mr-1.5 h-3.5 w-3.5 text-gray-500" />
               Export Summary (CSV)
@@ -110,7 +104,7 @@ export function AnalyticsHeader({
               variant="outline"
               size="sm"
               onClick={onPrint}
-              className="border-(--earist-border-gray) bg-white text-xs text-gray-700 hover:bg-gray-50"
+              className="border-(--earist-border-gray) bg-white text-xs text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
             >
               <Printer className="mr-1.5 h-3.5 w-3.5 text-gray-500" />
               Print View
@@ -120,10 +114,10 @@ export function AnalyticsHeader({
       </div>
 
       {/* Global Interactive Filter Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-(--earist-border-gray) bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border border-(--earist-border-gray) bg-white p-3 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-(--earist-secondary)">
-            <Filter className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-(--earist-primary)">
+            <Filter className="h-3.5 w-3.5 text-(--earist-secondary)" />
             <span>Scope Filters:</span>
           </div>
 
@@ -133,7 +127,7 @@ export function AnalyticsHeader({
               aria-label="Select Academic Year"
               value={selectedAy}
               onChange={(e) => onAyChange(e.target.value)}
-              className="h-8 rounded-lg border border-(--earist-border-gray) bg-white px-2.5 text-xs font-medium text-gray-800 transition-colors focus:border-(--earist-primary) focus:outline-none focus:ring-2 focus:ring-(--earist-primary)/20"
+              className="h-8 rounded-md border border-(--earist-border-gray) bg-white px-2.5 text-xs text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
             >
               {ACADEMIC_YEARS.map((ay) => (
                 <option key={ay.value} value={ay.value}>
@@ -149,7 +143,7 @@ export function AnalyticsHeader({
               aria-label="Select Semester"
               value={selectedSemester}
               onChange={(e) => onSemesterChange(e.target.value)}
-              className="h-8 rounded-lg border border-(--earist-border-gray) bg-white px-2.5 text-xs font-medium text-gray-800 transition-colors focus:border-(--earist-primary) focus:outline-none focus:ring-2 focus:ring-(--earist-primary)/20"
+              className="h-8 rounded-md border border-(--earist-border-gray) bg-white px-2.5 text-xs text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
             >
               {SEMESTERS.map((sem) => (
                 <option key={sem.value} value={sem.value}>
@@ -165,7 +159,7 @@ export function AnalyticsHeader({
               aria-label="Select Graduate Program"
               value={selectedProgram}
               onChange={(e) => onProgramChange(e.target.value)}
-              className="h-8 rounded-lg border border-(--earist-border-gray) bg-white px-2.5 text-xs font-medium text-gray-800 transition-colors focus:border-(--earist-primary) focus:outline-none focus:ring-2 focus:ring-(--earist-primary)/20"
+              className="h-8 rounded-md border border-(--earist-border-gray) bg-white px-2.5 text-xs text-(--earist-body-text) focus:border-(--earist-primary) focus:outline-none"
             >
               {PROGRAMS.map((prog) => (
                 <option key={prog.value} value={prog.value}>
@@ -176,17 +170,12 @@ export function AnalyticsHeader({
           </div>
         </div>
 
-        {/* Filter State Pill */}
+        {/* Filter State Note */}
         <div className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-          <span className="flex items-center gap-1 text-[11px] text-gray-500">
-            <Calendar className="h-3 w-3" />
-            Showing: <strong className="text-gray-800">{selectedAy}</strong> &middot; {selectedSemester}
+          <Calendar className="h-3.5 w-3.5 text-gray-400" />
+          <span>
+            Scope: <strong>{selectedAy}</strong> &middot; {selectedSemester}
           </span>
-          {selectedProgram !== "ALL" && (
-            <Badge variant="secondary" className="text-[10px] bg-(--earist-surface-light-red) text-(--earist-primary)">
-              {selectedProgram}
-            </Badge>
-          )}
         </div>
       </div>
     </div>
