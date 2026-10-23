@@ -80,8 +80,10 @@ function source(
     studentName: "Juan Dela Cruz",
     studentNumber: "2026-001",
     cellphone: "09171234567",
+    studentEmail: "student.qa@gmail.com",
     programName: "Master of Information Technology",
     programType,
+    applicationSubmittedAt: "2026-10-23T06:35:00.000Z",
     assignments: committeeFor(programType, defenseType),
     ...overrides,
   };
@@ -195,20 +197,32 @@ describe("mapDefenseApplicationToRenderInput — identity and display mapping", 
     expect(input.cellphoneNumber).toBe("");
   });
 
-  it("keeps every currently unavailable field blank", () => {
-    const input = mapDefenseApplicationToRenderInput(
-      // Even if a live email-style value is present in the source, it is not mapped.
-      { ...source(), userEmail: "student@gmail.com" } as OfficialDefenseApplicationDocumentSource,
-      LOGOS,
-    );
-    expect(input.applicantDateAndTime).toBe("");
+  it("populates the authoritative Student email and filing timestamp", () => {
+    const input = mapDefenseApplicationToRenderInput(source(), LOGOS);
+    expect(input.personalGmail).toBe("student.qa@gmail.com");
+    expect(input.applicantDateAndTime).toBe("23 October 2026, 2:35 PM");
+    expect(input.dateOfApplication).toBe("23 October 2026");
+  });
+
+  it("keeps client-pending payment and approval fields blank", () => {
+    const input = mapDefenseApplicationToRenderInput(source(), LOGOS);
     expect(input.amountPaid).toBe("");
     expect(input.officialReceiptNumber).toBe("");
-    expect(input.dateOfApplication).toBe("");
-    expect(input.personalGmail).toBe("");
     expect(input.deanName).toBe("");
     expect(input.vicePresidentName).toBe("");
     expect(input.presidentName).toBe("");
+  });
+
+  it("keeps both filing fields blank for a legacy record without a timestamp", () => {
+    const input = mapDefenseApplicationToRenderInput(
+      source({ studentEmail: null, applicationSubmittedAt: null }),
+      LOGOS,
+    );
+    expect(input.personalGmail).toBe("");
+    expect(input.applicantDateAndTime).toBe("");
+    expect(input.dateOfApplication).toBe("");
+    expect(input.amountPaid).toBe("");
+    expect(input.officialReceiptNumber).toBe("");
   });
 
   it("formats the exact defense date", () => {
@@ -573,6 +587,10 @@ describe("OfficialDefenseDocumentService.generateDefenseApplicationPdf", () => {
 describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSource", () => {
   const records = new OfficialDefenseRecordService();
 
+  const TITLE_SUBMITTED_AT = new Date("2026-10-01T01:00:00.000Z");
+  const PROPOSAL_SUBMITTED_AT = new Date("2026-10-10T02:00:00.000Z");
+  const FINAL_SUBMITTED_AT = new Date("2026-10-20T03:00:00.000Z");
+
   const scheduleRow = {
     id: "sched-1",
     defenseType: "PROPOSAL_DEFENSE",
@@ -580,6 +598,12 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
     defenseTime: new Date("1970-01-01T13:30:00.000Z"),
     venueOrLink: "Room 101",
     thesis: {
+      // The ThesisRecord may already be at FINAL; exact-schedule mapping must
+      // still select the timestamp for this schedule's own defense stage.
+      stage: "FINAL",
+      titleApplicationSubmittedAt: TITLE_SUBMITTED_AT,
+      proposalApplicationSubmittedAt: PROPOSAL_SUBMITTED_AT,
+      finalApplicationSubmittedAt: FINAL_SUBMITTED_AT,
       student: {
         studentNumber: "2026-001",
         cellphone: "09171234567",
@@ -599,6 +623,8 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
         id: a.userId,
         firstName: a.name.split(" ")[0],
         lastName: a.name.split(" ").slice(1).join(" "),
+        // Committee emails must never leak into the Student Gmail field.
+        email: `committee-${a.panelAssignmentId}@earist.edu.ph`,
       },
     })),
   };
@@ -653,15 +679,48 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
     const studentSelect = call.include.thesis.include.student.select;
     expect(studentSelect).toBeUndefined(); // uses include, not select
     const userSelect = call.include.thesis.include.student.include.user.select;
-    expect(userSelect).toEqual({ firstName: true, lastName: true });
-    expect(userSelect).not.toHaveProperty("email");
+    expect(userSelect).toEqual({ firstName: true, lastName: true, email: true });
     expect(call.include.panelAssignments.orderBy).toEqual([
       { createdAt: "asc" },
       { id: "asc" },
     ]);
   });
 
-  it("maps the real source through the document service without using email", async () => {
+  it.each([
+    ["TITLE_DEFENSE", "2026-10-01T01:00:00.000Z"],
+    ["PROPOSAL_DEFENSE", "2026-10-10T02:00:00.000Z"],
+    ["FINAL_DEFENSE", "2026-10-20T03:00:00.000Z"],
+  ] as const)(
+    "selects the %s timestamp from the exact schedule, not the current thesis stage",
+    async (defenseType, expected) => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleRow,
+        defenseType,
+      });
+
+      const result = await records.getOfficialDefenseApplicationDocumentSource(
+        "sched-1",
+        ADMIN,
+      );
+
+      expect(result.applicationSubmittedAt).toBe(expected);
+    },
+  );
+
+  it("uses the exact Student email, never a committee member email", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow);
+
+    const result = await records.getOfficialDefenseApplicationDocumentSource(
+      "sched-1",
+      ADMIN,
+    );
+
+    expect(result.studentEmail).toBe("student@gmail.com");
+    expect(result.studentEmail).not.toMatch(/committee/i);
+    expect(result.cellphone).toBe("09171234567");
+  });
+
+  it("maps the real source through the document service with authoritative Student email and filing time", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow);
     const renderApplication = vi.fn().mockResolvedValue(Buffer.from("%PDF-1.7"));
     const service = new OfficialDefenseDocumentService({
@@ -673,7 +732,9 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
     await service.generateDefenseApplicationPdf("sched-1", ADMIN);
 
     const input = renderApplication.mock.calls[0][0];
-    expect(input.personalGmail).toBe("");
+    expect(input.personalGmail).toBe("student@gmail.com");
+    expect(input.dateOfApplication).toBe("10 October 2026");
+    expect(input.applicantDateAndTime).toBe("10 October 2026, 10:00 AM");
     expect(input.studentName).toBe("Juan Dela Cruz");
     expect(input.courseAndMajor).toBe("Master of Information Technology");
     expect(input.committee.panelistNames).toHaveLength(4);

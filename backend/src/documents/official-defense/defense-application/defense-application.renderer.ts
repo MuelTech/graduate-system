@@ -207,7 +207,7 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     }
     rowTop += rowHeight + 2;
   }
-  text("Note: Please write legibly", 143, rowTop + 1, 190, 13, 9.5, oblique);
+  // System-generated application: the paper-only handwriting instruction is omitted.
   const tableTop = rowTop + 16;
   const tableX = 68, tableWidth = 470;
   const feeWidths = [240, 120, 110] as const;

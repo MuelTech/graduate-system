@@ -64,3 +64,54 @@ export function formatOfficialFormTime(
   const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
   return `${hours12}:${minutes} ${period}`;
 }
+
+/**
+ * Asia/Manila presentation for a real application-submission instant. The
+ * Philippines has a fixed UTC+8 offset and no daylight saving, so a fixed
+ * offset keeps output deterministic regardless of the server timezone.
+ */
+const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function manilaParts(value: Date | string): {
+  year: number;
+  month: number;
+  day: number;
+  hours: number;
+  minutes: number;
+} {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new AppError(
+      "The application submission timestamp on the official record is invalid.",
+      422,
+    );
+  }
+  const shifted = new Date(parsed.getTime() + MANILA_OFFSET_MS);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth(),
+    day: shifted.getUTCDate(),
+    hours: shifted.getUTCHours(),
+    minutes: shifted.getUTCMinutes(),
+  };
+}
+
+export function formatOfficialApplicationDate(
+  value: Date | string | null | undefined,
+): string {
+  if (!value) return "";
+  const parts = manilaParts(value);
+  return `${parts.day} ${MONTH_NAMES[parts.month]} ${parts.year}`;
+}
+
+export function formatOfficialApplicationDateTime(
+  value: Date | string | null | undefined,
+): string {
+  if (!value) return "";
+  const parts = manilaParts(value);
+  const period = parts.hours >= 12 ? "PM" : "AM";
+  const hours12 = parts.hours % 12 === 0 ? 12 : parts.hours % 12;
+  return `${formatOfficialApplicationDate(value)}, ${hours12}:${String(
+    parts.minutes,
+  ).padStart(2, "0")} ${period}`;
+}

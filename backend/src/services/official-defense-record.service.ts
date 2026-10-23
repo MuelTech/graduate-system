@@ -145,8 +145,12 @@ export interface OfficialDefenseApplicationDocumentSource {
   studentName: string | null;
   studentNumber: string | null;
   cellphone: string | null;
+  /** Exact Student user email (registration enforces the @gmail.com rule). */
+  studentEmail: string | null;
   programName: string | null;
   programType: string | null;
+  /** Latest successful submission/resubmission for the EXACT schedule stage. */
+  applicationSubmittedAt: string | null;
   assignments: DefenseApplicationAssignmentSource[];
 }
 
@@ -661,10 +665,11 @@ export class OfficialDefenseRecordService {
   }
 
   /**
-   * FORM-INT-3: exact current-record source for the GS-006/GS-007 Defense
-   * Application. ADMIN-only, read-only, and anchored to the exact schedule.
-   * The student's generic User.email is deliberately not selected because the
-   * form's personal-Gmail field has no approved authoritative source.
+   * FORM-INT-3 / FIX-4: exact current-record source for the GS-006/GS-007
+   * Defense Application. ADMIN-only, read-only, and anchored to the exact
+   * schedule. The Student's own User.email is authoritative for the printed
+   * personal-Gmail field; the application timestamp is selected by the exact
+   * schedule's defenseType, never by the mutable thesis.stage.
    */
   async getOfficialDefenseApplicationDocumentSource(
     scheduleId: string,
@@ -684,7 +689,9 @@ export class OfficialDefenseRecordService {
           include: {
             student: {
               include: {
-                user: { select: { firstName: true, lastName: true } },
+                user: {
+                  select: { firstName: true, lastName: true, email: true },
+                },
                 program: {
                   select: { programName: true, programType: true },
                 },
@@ -712,17 +719,30 @@ export class OfficialDefenseRecordService {
     const assignments = Array.isArray(schedule.panelAssignments)
       ? schedule.panelAssignments
       : [];
+    const defenseType = String(schedule.defenseType);
+    const applicationSubmittedAt =
+      defenseType === "TITLE_DEFENSE"
+        ? schedule.thesis?.titleApplicationSubmittedAt
+        : defenseType === "PROPOSAL_DEFENSE"
+          ? schedule.thesis?.proposalApplicationSubmittedAt
+          : defenseType === "FINAL_DEFENSE"
+            ? schedule.thesis?.finalApplicationSubmittedAt
+            : null;
 
     return {
       scheduleId: schedule.id,
-      defenseType: String(schedule.defenseType),
+      defenseType,
       defenseDate: schedule.defenseDate.toISOString(),
       defenseTime: schedule.defenseTime.toISOString(),
       venueOrLink: schedule.venueOrLink ?? null,
       studentName: studentName || null,
       studentNumber: student?.studentNumber ?? null,
       cellphone: student?.cellphone ?? null,
+      studentEmail: student?.user.email ?? null,
       programName: student?.program?.programName ?? null,
+      applicationSubmittedAt: applicationSubmittedAt
+        ? applicationSubmittedAt.toISOString()
+        : null,
       programType: student?.program?.programType
         ? String(student.program.programType)
         : null,

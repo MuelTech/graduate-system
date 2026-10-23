@@ -281,3 +281,18 @@ Still unresolved:
 - `officialReceiptNumber`.
 
 Those values remain blank until client policy confirms an authoritative structured source. The renderer itself remains a pure typed-input renderer and must not inspect database records, uploads, filenames, or receipt documents to infer them.
+
+## FORM-INT-4 FIX-4 — authoritative applicant fields (2026-10-24)
+
+Integration now supplies, without changing this renderer's pure contract:
+
+- `cellphoneNumber` from the exact Student record;
+- `personalGmail` from the exact Student user email;
+- `applicantDateAndTime` and `dateOfApplication` from the latest successful
+  application/resubmission timestamp for the exact schedule's defense stage,
+  formatted deterministically in Asia/Manila;
+- `amountPaid` and `officialReceiptNumber` remain blank pending client policy.
+
+The paper-only `Note: Please write legibly` instruction has been removed from generated
+PDFs. Stage check marks, committee layout, venue/link wrapping, and one-page A4 geometry
+are unchanged.

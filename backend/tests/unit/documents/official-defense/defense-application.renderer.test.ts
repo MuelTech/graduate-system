@@ -324,6 +324,8 @@ describe.each(CASES)(
       expect(text).toContain(
         variant === "masters" ? "MASTERS PROGRAM" : "DOCTORAL PROGRAM",
       );
+      // System-generated application: the paper-only handwriting instruction is omitted.
+      expect(text).not.toContain("Note: Please write legibly");
       expect(text).not.toMatch(/\bVERIFIED\b|PAID IN FULL|PASSED|REDEFENSE|APPROVED BY/);
     });
 

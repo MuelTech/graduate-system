@@ -24,6 +24,8 @@ import {
 } from "./official-defense-record.service";
 import { loadOfficialFormLogos } from "./official-form-assets";
 import {
+  formatOfficialApplicationDate,
+  formatOfficialApplicationDateTime,
   formatOfficialFormDate,
   formatOfficialFormTime,
 } from "./official-form-display";
@@ -649,12 +651,17 @@ export function mapDefenseApplicationToRenderInput(
     courseAndMajor: programName,
     studentNumber: source.studentNumber ?? "",
     cellphoneNumber: source.cellphone ?? "",
-    // No approved authoritative source exists for these fields.
-    applicantDateAndTime: "",
+    // Exact Student email + the latest successful filing for the exact stage.
+    applicantDateAndTime: formatOfficialApplicationDateTime(
+      source.applicationSubmittedAt,
+    ),
+    // Client policy for payment/O.R. remains unconfirmed; keep these blank.
     amountPaid: "",
     officialReceiptNumber: "",
-    dateOfApplication: "",
-    personalGmail: "",
+    dateOfApplication: formatOfficialApplicationDate(
+      source.applicationSubmittedAt,
+    ),
+    personalGmail: source.studentEmail ?? "",
     defenseDate: formatOfficialFormDate(source.defenseDate),
     defenseTime: formatOfficialFormTime(source.defenseTime),
     defenseLink: source.venueOrLink ?? "",
