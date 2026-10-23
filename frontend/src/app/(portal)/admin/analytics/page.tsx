@@ -38,6 +38,38 @@ export default function AdminAnalyticsPage() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("admissions");
 
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
+  const handleExportSummary = () => {
+    const headers = ["Metric ID", "Indicator Label", "Current Value", "Supporting Note", "YoY Change %"];
+    const rows = MOCK_ANALYTICS_KPIS.map((kpi) => [
+      kpi.id,
+      kpi.label,
+      kpi.value,
+      kpi.sublabel || "",
+      `${kpi.isPositiveTrend ? "+" : "-"}${kpi.changePercentage}%`,
+    ]);
+    const content = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\r\n");
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `EARIST_Executive_Analytics_Summary_${selectedAy.replace(/\s+/g, "_")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Global Filter Header */}
@@ -50,6 +82,8 @@ export default function AdminAnalyticsPage() {
         onProgramChange={setSelectedProgram}
         isAiAssistantOpen={isAiAssistantOpen}
         onToggleAiAssistant={() => setIsAiAssistantOpen((prev) => !prev)}
+        onPrint={handlePrint}
+        onExportCsv={handleExportSummary}
       />
 
       {/* 2. Top Summary KPI Row with Chart.js Sparklines */}
