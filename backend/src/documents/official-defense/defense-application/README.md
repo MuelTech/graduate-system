@@ -257,3 +257,27 @@ inside its parentheses. No `x`/`X` text or Unicode check glyph is drawn. The vis
 intentionally omitted by project-owner decision; the Master's/Doctoral variants remain distinct
 internally and continue to control heading, committee capacity, Adviser visibility, and geometry.
 Score/data mapping, committee/link layout, and one-page A4 output are unchanged.
+
+
+## Integration field-authority follow-up (2026-10-23)
+
+Later project-owner live PDF QA identified that several Defense Application fields were still blank because initial integration intentionally did not invent application/payment authority.
+
+Approved future integration mapping:
+
+- `cellphoneNumber` ← exact Student `cellphone`;
+- `personalGmail` ← exact Student User `email`; applicant registration is server-enforced as `@gmail.com`;
+- `applicantDateAndTime` ← exact stage application's latest successful submission/resubmission server timestamp;
+- `dateOfApplication` ← date portion of the same timestamp;
+- after Admin rejection and a successful corrected resubmission, the latest successful resubmission timestamp is the printed current application timestamp;
+- generated output should remove the paper-only `Note: Please write legibly`.
+
+Do not source application time from generic `ThesisRecord.createdAt` or `updatedAt`.
+The same ThesisRecord is reused across stages and generic updates are not application-submission authority. Integration must provide an explicit server-owned, stage-aware application-submission timestamp.
+
+Still unresolved:
+
+- `amountPaid`;
+- `officialReceiptNumber`.
+
+Those values remain blank until client policy confirms an authoritative structured source. The renderer itself remains a pure typed-input renderer and must not inspect database records, uploads, filenames, or receipt documents to infer them.
