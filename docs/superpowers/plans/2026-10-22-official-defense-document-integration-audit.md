@@ -352,7 +352,21 @@ Still unresolved and requiring client confirmation:
 
 Receipt presence by itself is not structured payment authority. No amount or receipt number may be fabricated or inferred.
 
-This is now an acceptance blocker for FORM-INT-4. FIX-1/FIX-2/FIX-3 remain source-reviewed; a later bounded field-authority package is required before the overall integration can close.
+FORM-INT-4 FIX-4 implemented and closed this field-authority blocker at `d931159d705b6f7466f2732e2162ce10e5a0dd45`.
+
+Accepted implementation:
+
+- additive nullable stage timestamps on `ThesisRecord`, no backfill/default;
+- server-owned initial filing timestamps for Title/Proposal/Final;
+- latest successful rejected-application resubmission updates only the exact stage timestamp;
+- official source chooses timestamp by exact schedule `defenseType`, so historical Title/Proposal prints remain correct after thesis progression;
+- exact Student `User.email` and `Student.cellphone` remain the applicant identity sources;
+- deterministic Asia/Manila formatting;
+- legacy pre-migration nulls intentionally print blank Date and Time / Date of Application;
+- paper-only handwritten note removed;
+- Amount Paid/O.R. remain blank pending client authority.
+
+Independent remote diff/source review found no blocking issue. FIX-4 is accepted.
 
 ## Additional integration constraints
 
@@ -362,7 +376,7 @@ This is now an acceptance blocker for FORM-INT-4. FIX-1/FIX-2/FIX-3 remain sourc
 - On-demand rendering is acceptable for the first Criteria/Summary integration because their authoritative source records are finalized/locked.
 - Generated-document persistence/versioning remains deferred.
 - Initial GS-006/007 output is a current-record print; immutable archival copy/versioning requires a separate approved package.
-- No Prisma migration is expected for FORM-INT-1 through FORM-INT-4.
+- FORM-INT-1 through FORM-INT-4 FIX-3 required no schema change. FIX-4 intentionally adds one bounded nullable migration for stage-specific application submission timestamps.
 
 ## Accepted bounded implementation sequence
 
@@ -371,11 +385,11 @@ This is now an acceptance blocker for FORM-INT-4. FIX-1/FIX-2/FIX-3 remain sourc
 3. **FORM-INT-2 — ACCEPTED** — GS-011 Summary PDF endpoint (`d16f2819df176a470e68bfd1301873fbee9ea119`).
 4. **FORM-INT-3 — ACCEPTED** — GS-006 / GS-007 Defense Application PDF endpoint (`8393a368dd56230e6669a85de42cc3880f60b2da`).
 5. **FORM-INT-3 FIX-1 — ACCEPTED** — schedule Link/Venue capacity hardening (`d387526ad153df54b674b7b4b9b7ef09478a7676`).
-6. **FORM-INT-4 — FIXES IMPLEMENTED / FIELD-AUTHORITY FOLLOW-UP REQUIRED** — base activation `02043af2d8b99156046622438eb3635089417465`.
+6. **FORM-INT-4 — FIX-1 THROUGH FIX-4 ACCEPTED / PAYMENT-O.R. POLICY PENDING** — base activation `02043af2d8b99156046622438eb3635089417465`.
 7. **FORM-INT-4 FIX-1 — IMPLEMENTED / SOURCE-REVIEWED** — bundled evaluator packet + readable filenames (`53649871ff2690fa8450b2d884ae6497ffab4bb6`).
 8. **FORM-INT-4 FIX-2 — IMPLEMENTED / SOURCE-REVIEWED** — evaluator selection vector check marks (`9d1c9d494706725612685038f9fade913f2df387`).
 9. **FORM-INT-4 FIX-3 — IMPLEMENTED / SOURCE-REVIEWED** — Defense Application stage vector check + visible form-code/revision omission (`d00cf90f08c952f4981d6bebbf2b7be38cbd697e`).
-10. **Defense Application field-authority follow-up — DOCUMENTED / IMPLEMENTATION PENDING** — Cellphone, Gmail, application submission/resubmission timestamp mapping, handwritten-note removal; Amount Paid/O.R. still client-confirmation pending.
+10. **FORM-INT-4 FIX-4 — ACCEPTED** — exact Student Gmail/cellphone mapping, stage-aware filing timestamps, latest successful resubmission semantics, Asia/Manila display, and handwritten-note removal (`d931159d705b6f7466f2732e2162ce10e5a0dd45`). Amount Paid/O.R. remain client-confirmation pending.
 
 Optional later package only if institutionally required:
 
