@@ -34,7 +34,7 @@ Photographs are never embedded. Only the existing clean production logo JPEGs ar
 | Printed Chairman label | None; Chairman is displayed under a `Panelist` row | None; Chairman is displayed under a `Panelist` row |
 | Masthead/application section | Lower placement | 14 pt higher, following the photograph |
 | Approval blocks | More vertical separation | More compact arrangement |
-| Footer | `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` | `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` |
+| Footer | Intentionally omitted (project-owner decision) | Intentionally omitted (project-owner decision) |
 
 The printed labels are presentation only and do not change GS-IS committee membership or evaluator authority. The `CHAIRMAN` remains Chairman in system data, but because neither GS-006 nor GS-007 prints a dedicated Chairman label, the Chairman is rendered into a row labelled `Panelist`. Later integration must supply the printed Panelist names in deterministic order: Chairman first, then actual Panelists. The renderer must not infer roles from unordered data.
 
@@ -68,9 +68,10 @@ All dates, amounts, O.R. identifiers, contact values, and schedule values are re
 There is no O.R./Gmail validation, course specialization inference, approval state, scoring,
 payment-state determination, signature image, or automatic signing.
 
-Selection marks only the explicit input. `QA_APPLICATION_MARKER` isolates the current dummy
-`X`; neither blank reference establishes an official X/check/circle convention.
-The marker is presentation only and can be changed after institutional confirmation.
+Selection marks only the explicit input. The selected application stage is indicated by a
+renderer-local **vector check mark** drawn inside the existing parentheses as two line
+segments; no Unicode glyph, X marker, or additional font is used. The mark is presentation
+only and does not change `applicationType` authority.
 
 ## Layout and bounded text
 
@@ -82,7 +83,8 @@ Accepted helpers are reused without modifying them:
 
 Variant-specific placement is applied with a page graphics translation, leaving accepted
 TEMPLATE-1/TEMPLATE-2 outputs unchanged. The nearest Doctoral logo box is 22 pt from the top;
-Master's is 36 pt. Footer text has more than 36 pt of bottom clearance.
+Master's is 36 pt. The visible form code/revision is intentionally omitted, leaving safe bottom
+clearance for the signatory blocks.
 
 Identity fields first try 12 pt single-line boxes at 10-8 pt text sizes. Genuine wrapping gets
 a bounded 20 pt region, up to 24 pt of additional space across the identity section. The
@@ -161,14 +163,15 @@ printed committee rows remain 7 for Master's and 8 for Doctoral at every stage, 
 lower-page Prepared by / approval blocks and footer did not require geometry changes.
 
 The corrected samples remain one-page A4 with no observed clipping or text/line overlap.
-Footer clearance and all signatory blocks remain intact. The blank/null samples use the
-neutral maximum blank layout and print no stage marker or Adviser row.
+All signatory blocks remain intact with safe bottom clearance. The blank/null samples use the
+neutral maximum blank layout and print no stage check mark or Adviser row.
 
 Thirty-nine TEMPLATE-3 tests pass, plus all eight TEMPLATE-2 and nine TEMPLATE-1 tests (56 total).
 Coverage includes deterministic valid one-page A4 bytes for all six stage/program combinations,
 stage-specific Adviser visibility and printed Panelist capacity, no Chairman label, no role
-inference from supplied names, blank and excessive slots, literal fee text, exact form codes,
-long-value bounds, overflow rejection, null behavior, and the production import boundary.
+inference from supplied names, blank and excessive slots, literal fee text, intentional
+omission of the visible form code, vector stage markers, long-value bounds, overflow rejection,
+null behavior, and the production import boundary.
 `npm run forms:check`, the backend TypeScript build, and `git diff --check` pass.
 
 Accepted TEMPLATE-1/TEMPLATE-2 files, shared helpers, sample scripts/tests, and all retained
@@ -245,3 +248,12 @@ deliberate over-capacity failure.
 
 
 Integration acceptance note: FORM-INT-3 is accepted with integration commit `8393a368dd56230e6669a85de42cc3880f60b2da` plus this renderer hardening commit. The next integration package is FORM-INT-4; no further TEMPLATE-3 domain mapping change is required for that handoff.
+
+## FORM-INT-4 FIX-3 — stage check mark + form-code omission (2026-10-23)
+
+The selected application stage is now indicated with a centered, two-segment vector check mark
+inside its parentheses. No `x`/`X` text or Unicode check glyph is drawn. The visible
+`EARIST-QSF-GS-006 Rev. 01 (06.20.25)` / `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` footer is
+intentionally omitted by project-owner decision; the Master's/Doctoral variants remain distinct
+internally and continue to control heading, committee capacity, Adviser visibility, and geometry.
+Score/data mapping, committee/link layout, and one-page A4 output are unchanged.

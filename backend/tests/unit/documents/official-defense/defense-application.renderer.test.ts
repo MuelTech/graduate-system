@@ -1,8 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument, StandardFonts } from "pdf-lib";
-import { beforeAll, describe, expect, it } from "vitest";
-import { renderDefenseApplication } from "../../../../src/documents/official-defense/defense-application/defense-application.renderer";
+import { PDFDocument, PDFPage, StandardFonts } from "pdf-lib";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  STAGE_CHECK_THICKNESS,
+  renderDefenseApplication,
+  stageCheckSegments,
+} from "../../../../src/documents/official-defense/defense-application/defense-application.renderer";
 import type {
   DefenseApplicationRenderInput,
   DefenseApplicationType,
@@ -187,6 +191,18 @@ async function inspect(bytes: Uint8Array): Promise<TextItem[]> {
 const joined = (items: TextItem[]) => items.map((item) => item.str).join(" ");
 const compact = (value: string) => value.replace(/\s/g, "");
 
+/** Committee underlines share the 1.1 thickness; check segments are short. */
+function isStageCheck(options: {
+  thickness?: number;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+}): boolean {
+  if (options.thickness !== STAGE_CHECK_THICKNESS) return false;
+  const dx = options.end.x - options.start.x;
+  const dy = options.end.y - options.start.y;
+  return Math.hypot(dx, dy) < 6;
+}
+
 function committeeLabels(items: TextItem[]): string[] {
   return items
     .filter((item) =>
@@ -301,12 +317,13 @@ describe.each(CASES)(
         expect(compact(text)).toContain(compact(value));
       expect(items.filter((item) => item.str === "300")).toHaveLength(6);
       expect(items.filter((item) => item.str === "P 900.00")).toHaveLength(2);
-      const formCode =
-        "EARIST-QSF-GS-" +
-        (variant === "masters" ? "006" : "007") +
-        " Rev. 01 (06.20.25)";
-      expect(text).toContain(formCode);
-      expect(text).not.toContain(variant === "masters" ? "GS-007" : "GS-006");
+      // FORM-INT-4 FIX-3: the visible form code/revision is intentionally omitted.
+      expect(text).not.toContain("EARIST-QSF-GS-006");
+      expect(text).not.toContain("EARIST-QSF-GS-007");
+      expect(text).not.toMatch(/Rev\.\s*01|06\.20\.25/);
+      expect(text).toContain(
+        variant === "masters" ? "MASTERS PROGRAM" : "DOCTORAL PROGRAM",
+      );
       expect(text).not.toMatch(/\bVERIFIED\b|PAID IN FULL|PASSED|REDEFENSE|APPROVED BY/);
     });
 
@@ -341,13 +358,8 @@ describe.each(CASES)(
         expect(item.transform[5]).toBeGreaterThanOrEqual(36);
         expect(item.transform[5] + item.height).toBeLessThanOrEqual(823.89);
       }
-      const formCode =
-        "EARIST-QSF-GS-" +
-        (variant === "masters" ? "006" : "007") +
-        " Rev. 01 (06.20.25)";
-      const footer = items.find((item) => item.str.includes(formCode));
-      expect(footer).toBeDefined();
-      expect(footer!.transform[5]).toBeGreaterThanOrEqual(36);
+      expect(fullText).not.toContain("EARIST-QSF-GS-");
+      expect(fullText).not.toMatch(/Rev\.\s*01|06\.20\.25/);
       for (const name of long.committee.panelistNames) {
         const item = items.find((candidate) => candidate.str.includes(name));
         expect(item, name).toBeDefined();
@@ -421,13 +433,8 @@ describe("TEMPLATE-3 schedule link/venue capacity", () => {
         expect(item.transform[5] + item.height).toBeLessThanOrEqual(823.89);
       }
 
-      const formCode =
-        "EARIST-QSF-GS-" +
-        (variant === "masters" ? "006" : "007") +
-        " Rev. 01 (06.20.25)";
-      const footer = items.find((item) => item.str.includes(formCode));
-      expect(footer).toBeDefined();
-      expect(footer!.transform[5]).toBeGreaterThanOrEqual(36);
+      expect(compact(joined(items))).not.toContain("EARIST-QSF-GS-");
+      expect(compact(joined(items))).not.toMatch(/Rev\.01|06\.20\.25/);
     },
   );
 
@@ -505,9 +512,7 @@ describe("TEMPLATE-3 schedule link/venue capacity", () => {
     for (let i = 0; i < positions.length - 1; i += 1) {
       expect(positions[i]).toBeGreaterThan(positions[i + 1]);
     }
-    expect(positions.at(-1)).toBeGreaterThan(
-      items.find((item) => item.str.includes("EARIST-QSF-GS-"))!.transform[5],
-    );
+    expect(compact(joined(items))).not.toContain("EARIST-QSF-GS-");
   });
 
   it("keeps the existing short link rendering unchanged semantically", async () => {
@@ -532,16 +537,27 @@ describe("TEMPLATE-3 null application type", () => {
     "%s uses the neutral maximum blank layout without a stage marker or Adviser",
     async (variant) => {
       const input = inputFor(variant, null, { blank: true });
-      const items = await inspect(await renderDefenseApplication(input));
-      const labels = committeeLabels(items);
-      expect(labels.filter((label) => label === "Panelist")).toHaveLength(
-        CAPACITY[variant].blank,
-      );
-      expect(labels.filter((label) => label === "Adviser")).toHaveLength(0);
-      expect(labels).toHaveLength(variant === "masters" ? 7 : 8);
-      expect(items.some((item) => item.str === "X")).toBe(false);
-      const doc = await PDFDocument.load(await renderDefenseApplication(input));
-      expect(doc.getPageCount()).toBe(1);
+      const spy = vi.spyOn(PDFPage.prototype, "drawLine");
+      try {
+        const items = await inspect(await renderDefenseApplication(input));
+        const labels = committeeLabels(items);
+        expect(labels.filter((label) => label === "Panelist")).toHaveLength(
+          CAPACITY[variant].blank,
+        );
+        expect(labels.filter((label) => label === "Adviser")).toHaveLength(0);
+        expect(labels).toHaveLength(variant === "masters" ? 7 : 8);
+        expect(items.some((item) => item.str === "X")).toBe(false);
+        expect(items.some((item) => item.str.includes("✓"))).toBe(false);
+        expect(
+          spy.mock.calls
+            .map(([options]) => options as any)
+            .filter(isStageCheck),
+        ).toHaveLength(0);
+        const doc = await PDFDocument.load(await renderDefenseApplication(input));
+        expect(doc.getPageCount()).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
     },
   );
 
@@ -563,34 +579,75 @@ describe("TEMPLATE-3 null application type", () => {
 });
 
 describe("TEMPLATE-3 presentation boundary", () => {
-  it("places only the explicit unconfirmed QA selection marker inside the corresponding parentheses", async () => {
+  it("draws exactly one vector stage check mark inside the selected parentheses", async () => {
     const measure = await PDFDocument.create(),
       font = await measure.embedFont(StandardFonts.TimesRomanBoldItalic);
     const selection = "(   ) Title / (   ) Proposal / (   ) Final Defense",
       size = 10.5;
     const start = 303 - font.widthOfTextAtSize(selection, size) / 2;
+    const prefixes = {
+      title: "",
+      proposal: "(   ) Title / ",
+      final: "(   ) Title / (   ) Proposal / ",
+    } as const;
+
     for (const variant of ["masters", "doctoral"] as const) {
-      for (const [applicationType, prefix] of [
-        ["title", ""],
-        ["proposal", "(   ) Title / "],
-        ["final", "(   ) Title / (   ) Proposal / "],
-      ] as const) {
-        const items = await inspect(
-          await renderDefenseApplication(
+      for (const applicationType of ["title", "proposal", "final"] as const) {
+        const spy = vi.spyOn(PDFPage.prototype, "drawLine");
+        let segments: any[] = [];
+        let items: TextItem[] = [];
+        try {
+          const bytes = await renderDefenseApplication(
             inputFor(variant, applicationType, { blank: true }),
-          ),
-        );
-        const markers = items.filter((item) => item.str === "X");
-        expect(markers).toHaveLength(1);
-        const left = start + font.widthOfTextAtSize(prefix + "(", size);
-        expect(markers[0].transform[4]).toBeGreaterThan(left);
-        expect(markers[0].transform[4] + markers[0].width).toBeLessThan(
-          left + font.widthOfTextAtSize("   ", size),
-        );
+          );
+          segments = spy.mock.calls
+            .map(([options]) => options as any)
+            .filter(isStageCheck);
+          items = await inspect(bytes);
+        } finally {
+          spy.mockRestore();
+        }
+
+        expect(segments).toHaveLength(2);
+        expect(segments[0].end).toEqual(segments[1].start);
+        const xs = [segments[0].start.x, segments[0].end.x, segments[1].end.x];
+        const ys = [segments[0].start.y, segments[0].end.y, segments[1].end.y];
+        const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const centerY = (Math.min(...ys) + Math.max(...ys)) / 2;
+        const left = start + font.widthOfTextAtSize(prefixes[applicationType] + "(", size);
+        const right = left + font.widthOfTextAtSize("   ", size);
+
+        expect(centerX).toBeGreaterThan(left + 0.5);
+        expect(centerX).toBeLessThan(right - 0.5);
+        expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(right - left - 1);
         const line = items.find((item) => item.str.includes("Title /"))!;
-        expect(markers[0].transform[5]).toBeCloseTo(line.transform[5], 2);
+        expect(centerY).toBeGreaterThan(line.transform[5] + 1);
+        expect(centerY).toBeLessThan(line.transform[5] + 7);
+        expect(items.some((item) => item.str === "X")).toBe(false);
+        expect(items.some((item) => item.str.includes("✓"))).toBe(false);
       }
     }
+  });
+
+  it("keeps the stage check mark centered and clear of the parentheses", () => {
+    const centerX = 300;
+    const centerY = 170;
+    const [first, second] = stageCheckSegments(centerX, centerY);
+    const xs = [first.start.x, first.end.x, second.end.x];
+    const ys = [first.start.y, first.end.y, second.end.y];
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    // Parenthesis interior is roughly 7.9 pt wide and 7.5 pt tall at 10.5 pt.
+    expect(first.end).toEqual(second.start);
+    expect((minX + maxX) / 2).toBeCloseTo(centerX, 5);
+    expect((minY + maxY) / 2).toBeCloseTo(centerY, 5);
+    expect(minX - (centerX - 7.875 / 2)).toBeGreaterThan(0.5);
+    expect(centerX + 7.875 / 2 - maxX).toBeGreaterThan(0.5);
+    expect(minY - (centerY - 7.5 / 2)).toBeGreaterThan(0.5);
+    expect(centerY + 7.5 / 2 - maxY).toBeGreaterThan(0.5);
   });
 
   it("rejects unknown presentation variants and application types", async () => {
