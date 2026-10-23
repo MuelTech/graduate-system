@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — FINAL OWNER VISUAL QA PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3 IMPLEMENTED — DEFENSE APPLICATION FIELD-AUTHORITY FOLLOW-UP REQUIRED
 **Last updated:** 2026-10-23
 
 ## Purpose
@@ -262,6 +262,39 @@ After merge, the project owner clarified that the generated Defense Application 
 
 The static form phase is closed. **FORM-INT-0** and **FORM-INT-PRE1** are accepted, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** is now accepted at `9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca`. The next bounded package is **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration**.
 
+
+## Defense Application field-authority decisions — 2026-10-23
+
+Project-owner manual QA found that the generated GS-006 / GS-007 Defense Application still leaves several application-identity fields blank even though some of them already have authoritative GS-IS sources.
+
+The following mappings are now canonical for future integration work:
+
+| Printed field | Authoritative source / rule |
+| --- | --- |
+| Cellphone No. | Auto-fill from the exact Student record's `Student.cellphone`. |
+| Email (Personal Gmail Only) | Auto-fill from the exact Student user's `User.email`. Applicant registration is already backend-enforced as `@gmail.com`; development-only `@earist.edu.ph` panelist accounts are unrelated to this student field. |
+| Date and Time | Server-owned timestamp of the latest successful Defense Application submission or resubmission for the exact defense stage. |
+| Date of Application | Date portion of the same exact latest successful submission/resubmission timestamp. |
+| Amount Paid | **Client confirmation pending.** Do not infer from the printed fee table or receipt presence. |
+| O.R. No. | **Client confirmation pending.** Do not infer from filename, upload metadata, or receipt presence. |
+
+Submission-time semantics are now explicit:
+
+- initial successful filing sets the stage application's submission timestamp;
+- if Admin rejects the application and the Student later corrects/reuploads and successfully resubmits, the latest successful resubmission timestamp becomes authoritative for the printed current application;
+- `Date and Time` and `Date of Application` are two presentations of that same authoritative event;
+- generic `ThesisRecord.createdAt` is not sufficient for Proposal/Final because the same ThesisRecord is reused across Title → Proposal → Final;
+- generic `ThesisRecord.updatedAt` must not be used because unrelated workflow changes can update it;
+- implementation should therefore use an explicit server-owned, stage-aware application submission timestamp rather than infer from mutable lifecycle timestamps.
+
+Paper-only instruction cleanup:
+
+- remove the printed `Note: Please write legibly` from generated GS-006 / GS-007 PDFs because the application is system-generated rather than handwritten.
+
+Current code does not yet implement these mappings. This documentation decision does **not** authorize guessing a persistence design. The later bounded implementation package must first determine the minimum safe stage-aware timestamp persistence/change needed and must preserve existing defense workflow semantics.
+
+FORM-INT-4 must not be marked complete until the resolved automatic fields above are wired, the handwritten note is removed, and the Amount Paid / O.R. policy is confirmed or explicitly left blank by client decision.
+
 ## Explicitly deferred
 
 ### GS Form No. 22 / Committee Report / Rapporteur Report
@@ -467,7 +500,7 @@ Agent-reported FIX-3 verification:
 
 Remaining acceptance gate:
 
-**Project-owner visual QA of one freshly regenerated Defense Application PDF from the live Admin flow.**
+**Defense Application field-authority follow-up before final FORM-INT-4 acceptance.**
 
 Confirm only:
 
@@ -476,6 +509,6 @@ Confirm only:
 3. the GS-006/GS-007 code/revision text is absent;
 4. no visual regression in identity, fee, schedule, committee, or approval areas.
 
-If that passes, FORM-INT-4 and the current Official Defense Document Forms integration sequence can be marked **ACCEPTED / COMPLETE**.
+The previous visual-only acceptance gate is superseded by the field-authority follow-up documented above. After implementation, repeat live Admin PDF QA before FORM-INT-4 can be marked **ACCEPTED / COMPLETE**.
 
 GS Form No. 22 and generated-document persistence/versioning remain deferred.
