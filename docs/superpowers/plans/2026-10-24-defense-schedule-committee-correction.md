@@ -29,6 +29,62 @@ The implementation must preserve:
 
 This package is a correction of the current scheduled state. It is **not** cancellation/rescheduling by creating another attempt.
 
+## 1.1 Implementation sequencing — one package, three checkpoints
+
+DEF-CORR-1 remains **one bounded feature on one branch**. The checkpoints below are implementation sequencing boundaries, not separate initiatives, branches, or acceptance packages.
+
+### Checkpoint A — Backend authority + assignment lifecycle
+
+Implement the domain/security foundation first:
+
+- add the backward-compatible active/inactive lifecycle for `PanelAssignment`;
+- add and validate any required Prisma migration;
+- make all current-roster/current-authority reads distinguish active assignments from historical inactive assignments;
+- preserve assignment-bound annotation/comment authorship;
+- add the Admin-only schedule/committee correction mutation;
+- enforce `SCHEDULED`-only correction;
+- preserve exact schedule/manuscript/attempt identity;
+- revalidate committee policy and automatic Adviser authority;
+- add canonical initial-schedule and correction AuditLog events;
+- add focused/proportional backend tests.
+
+**Stop after Checkpoint A.** Report exact changed files, migration, test evidence, remaining risks, and ending commit before starting frontend work. Do not begin Checkpoint B until Checkpoint A is reviewed/accepted for continuation.
+
+### Checkpoint B — Admin Manage Schedule & Committee UI
+
+After Checkpoint A is accepted for continuation:
+
+- add the deliberate **Manage Schedule & Committee** action to the accepted Scheduled master-detail workspace;
+- preload the exact current schedule and active roster;
+- edit date/time/Venue or Meeting Details and manually assigned committee roles;
+- keep Proposal/Final Adviser locked **Automatic** and omit Adviser for Title;
+- reuse canonical committee-policy/readiness validation;
+- provide Save/Cancel and focused confirmation;
+- refresh the exact authoritative schedule/roster after save;
+- keep audit history out of the operational detail UI;
+- add directly affected frontend verification.
+
+**Stop after Checkpoint B.** Report exact changed files, frontend verification, any backend contract adjustment, and ending commit before starting notification/consolidation work.
+
+### Checkpoint C — Bounded notifications + consolidated integrity verification
+
+After Checkpoint B is accepted for continuation:
+
+- reuse existing schedule/assignment notification/email behavior only where practical;
+- ensure newly assigned members receive appropriate bounded notice;
+- ensure removed members immediately lose active-session authority regardless of notification delivery;
+- avoid duplicate notices for unchanged members;
+- run the cross-cutting backend regressions required by the assignment lifecycle change;
+- run proportional frontend verification;
+- perform/prepare the documented manual/browser QA matrix;
+- update documentation with implementation evidence and final acceptance state.
+
+Checkpoint C must **not** redesign notifications/email or introduce a second audit/history UI.
+
+### Sequencing rule
+
+An agent may implement all three checkpoints on the same branch, but it must **not treat the package as one uninterrupted coding pass**. Each checkpoint has a review/report boundary. A defect discovered in an earlier checkpoint must be corrected before proceeding rather than deferred into a later layer.
+
 ## 2. Confirmed project decisions
 
 ### 2.1 Editable scope
@@ -452,13 +508,21 @@ Do not include:
 
 ## 12. Acceptance checkpoint
 
-DEF-CORR-1 may be marked accepted only after:
+Checkpoint completion is **not** overall feature acceptance:
 
-- bounded implementation on `feat/defense-schedule-committee-correction`;
-- focused/proportional automated verification;
-- migration validation if schema changes are introduced;
-- independent remote source review;
-- project-owner manual/browser review of the correction flow;
-- documentation updated with the final implementation commit/evidence.
+- **Checkpoint A complete** means backend/domain authority is implemented and reviewed enough to proceed to UI.
+- **Checkpoint B complete** means the Admin correction UI is implemented and reviewed enough to proceed to consolidation.
+- **Checkpoint C complete** means the bounded notification reuse and consolidated verification have been completed.
 
-Do not merge to `main` until the project owner explicitly approves the completed package.
+DEF-CORR-1 may be marked fully accepted only after:
+
+- Checkpoints A, B, and C are complete on `feat/defense-schedule-committee-correction`;
+- focused/proportional automated verification is complete;
+- migration validation is complete if schema changes are introduced;
+- independent remote source review is complete;
+- project-owner manual/browser review of the correction flow is accepted;
+- documentation records the final implementation commit/evidence.
+
+Do not create separate branches for A/B/C unless a later verified defect or scope change requires isolation.
+
+Do not merge to `main` until the project owner explicitly approves the completed DEF-CORR-1 package.
