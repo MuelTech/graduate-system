@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C ACCEPTED; PREDEF-2 IMPLEMENTED / INDEPENDENT REVIEW AND OWNER ACCEPTANCE PENDING
+**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C + PREDEF-2 ACCEPTED FOR DOCUMENTED SCOPE; PREDEF-3 DEFERRED; DEF-CORR-1 SEPARATE FUTURE PACKAGE
 
 ## 1. Goal
 
@@ -283,7 +283,7 @@ Admin rejection for COR/receipt/other supporting evidence must not invalidate th
 
 ## 4. PREDEF-2 — Defense Application / Scheduled Defense Submission Context
 
-### PREDEF-2 implementation evidence — 2026-10-24
+### PREDEF-2 acceptance evidence — 2026-10-24
 
 - Verified starting local/remote HEAD: `37bf309e60d71d521abb158936000d5a705c976a` on the existing `feat/pre-defense-document-integrity`; clean starting tree.
 - Admin Scheduled Defense embeds a read-only Defense Submission section backed by `GET /thesis/defense/schedules/:scheduleId/submission`. The existing schedule-detail and Admin official-document routes retain their Admin-only middleware and service guards.
@@ -292,6 +292,8 @@ Admin rejection for COR/receipt/other supporting evidence must not invalidate th
 - Student `GET /thesis/student/defense/:scheduleId/application` and `/application/pdf` independently require Student role and prove `schedule → thesis → Student.userId` ownership before mapping. Missing and non-owned schedules return the same safe 404. The Admin source remains explicitly Admin-only; a private exact-schedule loader, existing mapper, and existing GS-006/GS-007 renderer are shared. Availability runs the same mapper and renderer as download; incomplete/ambiguous committee data or renderer overflow cannot produce an official copy.
 - Existing Student scheduled status embeds View Official Application / Download Copy after availability succeeds. Its authenticated inline proxy forwards the exact schedule ID and does not cache PDFs. Query/preview state is scoped by authenticated identity and schedule. Guidance: “This is your official Defense Application record. No additional upload or submission is required unless instructed by the Graduate School.”
 - Existing schedule ID supplies attempt identity. No new attempt numbering, upload slot, print/fill/upload loop, committee correction, manuscript replacement/rebinding, or renderer redesign. PREDEF-3 and DEF-CORR-1 were not started.
+- Independent remote source review verified the exact `DefenseSchedule.manuscriptDocumentId` authority, Title/Proposal/Final type-stage validation, exact GS-017 match, stage-scoped evidence currentness/ambiguity handling, Student ownership proof, Admin-only route preservation, shared exact-schedule mapper/renderer, safe metadata, and read-only UI boundary. No blocker or PREDEF-3/DEF-CORR-1 scope leak was found.
+- Browser/manual QA: **NOT EXECUTED — intentionally deferred to integrated PREDEF QA.** Hosted CI: **NOT EXECUTED**. These are not represented as passed.
 - Focused backend: **103 passed / 3 files**, including actual authenticated HTTP routes, cross-Student denial, exact-source/render parity for all three stages, and byte-identical real Admin/Student PDFs for Master's and Doctoral fixtures. Focused frontend: **10 passed**.
 - Proportional regressions: **515 backend tests / 26 files**, covering scheduling, document authorization/history, official forms, certification/review, and Student journey; **92 frontend checks / 7 files**, covering scheduling, accepted title/certification integration, PDF retrieval, history, and viewer behavior. No whole-repository suite was run.
 - Backend build, frontend TypeScript/build, scoped frontend lint, Prisma validation, and `git diff --check` passed. Existing Vite CommonJS/config-loader, Next.js middleware convention, and Node module registration deprecation warnings remain outside this package. Hosted CI: not executed/verified by this implementation run; local verification is not hosted CI evidence.
