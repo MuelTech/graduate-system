@@ -350,6 +350,55 @@ Admin generation/printing remains available through the existing Admin authority
 
 Adviser access to GS-006/GS-007 is not required by default. Adviser transparency in this initiative centers on the Adviser-issued GS-017 and the exact manuscript they certified.
 
+## 4.1 PREDEF-UI-COPY — presentation-only wording alignment
+
+Before integrated manual/browser QA, perform one bounded UI-copy refinement across the PREDEF surfaces added in PREDEF-1B/1C and PREDEF-2.
+
+This is **presentation-only**. It must not change workflow, authorization, exact-document authority, route behavior, API contracts, Prisma schema, PDF renderers, storage, or data lifecycle.
+
+Use the existing **Defense Applications → Needs Review** vocabulary as the primary wording reference.
+
+Canonical user-facing wording direction:
+
+- `Defense Submission` → `Application Requirements`
+- `Exact Manuscript` / `Thesis/Dissertation Manuscript` → `Manuscript`
+- hide raw internal document IDs from ordinary UI
+- `Adviser Certification · GS-017` / `Issued Adviser Certifications` → `Adviser Certification`
+- `View certified manuscript` → `View Manuscript`
+- `View GS-017` → `View Certification`
+- GS-017 download action → `Download Certification`
+- `Supporting Evidence` → `Application Requirements`
+- `View evidence` / `View historical evidence` → `View`
+- `Replacement history` → `View document history`
+- `Superseded` → `Previous`
+- `Official Defense Application` → `Defense Application`
+- `View Official Application` → `View Application`
+- official-application download action → `Download Application`
+
+Remove developer/internal explanatory copy from ordinary user surfaces, including statements such as:
+
+`Current evidence and replacement history for this stage. Supporting evidence is not frozen at scheduling.`
+
+That lifecycle fact remains documented internally but should not be shown as primary UI copy.
+
+Form codes such as `GS-017`, `GS-006`, and `GS-007` may remain as secondary/reference text where useful, but primary headings and action buttons must use readable form names.
+
+For Application Requirements rows, prefer the same presentation rhythm already used in Needs Review:
+
+- formal requirement name;
+- filename and date where appropriate;
+- simple `View` action;
+- secondary collapsed `View document history` when history exists.
+
+Required scope:
+
+- Admin Scheduled Defense / Application Requirements context;
+- shared Adviser Certification record component used by Adviser, Student, and Admin;
+- Student Defense Application record surface;
+- only directly related labels/messages introduced by PREDEF-1B/1C and PREDEF-2.
+
+Do not redesign page layout or component architecture unless a minimal change is necessary to apply the wording consistently.
+
 ## 5. Expected code surfaces to audit before edits
 
 Backend:
