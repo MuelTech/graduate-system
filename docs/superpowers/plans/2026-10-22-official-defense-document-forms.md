@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 CORE INTEGRATION ACCEPTED / FIX-1 TITLE LAYOUT PENDING — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 + FIX-1 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 
 ## 1. Purpose
 
@@ -1275,7 +1275,7 @@ This follow-up did not alter committee policy, scoring, evaluator bundles, GS-01
 
 ## 29. FORM-INT-2 FIX-1 — Title GS-011 Adviser-block omission
 
-**IMPLEMENTED / VERIFIED — PROJECT-OWNER VISUAL ACCEPTANCE PENDING (2026-10-24).**
+**ACCEPTED / COMPLETE (2026-10-24).**
 
 Implementation commit: `a5e68a07b7d8c0403cb2b4f34456e031ce798148`.
 
@@ -1372,5 +1372,4 @@ Before closing FIX-1:
   concurrence block, keeps a correctly positioned Dean `Attested:` section
   without clipping/overlap, and Proposal/Final retain the Adviser block.
   A long-value Title variant was also inspected with no overlap.
-- Project-owner visual acceptance remains the final gate; this record does not
-  mark FIX-1 accepted or the overall initiative complete.
+- Project-owner visual acceptance was granted on 2026-10-24 after review of the corrected Title output. FIX-1 is accepted; the overall Official Defense Documents initiative remains open for separately tracked pending/deferred items.
