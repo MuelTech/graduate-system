@@ -1469,6 +1469,8 @@ The current operational state belongs in **Scheduling & Panels**. Historical act
 
 **Status:** DEF-CORR-1 is the active bounded implementation package. It does not expand scoring, conclusion, manuscript, GS-017, or Adviser-assignment authority.
 
+**Implementation sequencing:** DEF-CORR-1 remains one feature on one branch, executed through three internal checkpoints: **A — backend authority + assignment lifecycle**, **B — Admin Manage Schedule & Committee UI**, and **C — bounded notifications + consolidated integrity verification**. Each checkpoint has a stop/review boundary; checkpoint completion does not constitute full feature acceptance.
+
 ---
 
 ## 13. Oral Examination Scoring
