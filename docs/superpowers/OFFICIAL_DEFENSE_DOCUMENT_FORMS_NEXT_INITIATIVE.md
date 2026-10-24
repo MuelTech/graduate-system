@@ -5,7 +5,7 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 CORE INTEGRATION ACCEPTED / TITLE LAYOUT FIX-1 IMPLEMENTED — PROJECT-OWNER VISUAL ACCEPTANCE PENDING — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 + TITLE LAYOUT FIX-1 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 **Last updated:** 2026-10-24
 
 ## Purpose
@@ -287,7 +287,7 @@ Canonical target behavior:
 
 This is a renderer/layout correction only. It must not alter Oral Examination Summary snapshot authority, evaluator rows, scoring, signatures, authorization, routes, or defense workflow semantics.
 
-**Implementation state (2026-10-24):** FIX-1 is implemented at `a5e68a07b7d8c0403cb2b4f34456e031ce798148`. `OralExamSummaryRenderInput` now carries an explicit `stage` discriminator; Title omits the entire Adviser concurrence block and places the Dean `Attested:` block in the freed lower-page region; Proposal/Final keep the Adviser block and exact-schedule Adviser. The mapping still fails closed for missing/ambiguous Proposal/Final Adviser seats and never falls back to a current/live Adviser. Focused GS-011 tests (49/49), broader official-document regressions (262/262), `forms:check`, backend build, and raster inspection of Title/Proposal/Final passed. Project-owner visual acceptance remains pending.
+**Implementation state (2026-10-24):** FIX-1 is implemented at `a5e68a07b7d8c0403cb2b4f34456e031ce798148`. `OralExamSummaryRenderInput` now carries an explicit `stage` discriminator; Title omits the entire Adviser concurrence block and places the Dean `Attested:` block in the freed lower-page region; Proposal/Final keep the Adviser block and exact-schedule Adviser. The mapping still fails closed for missing/ambiguous Proposal/Final Adviser seats and never falls back to a current/live Adviser. Focused GS-011 tests (49/49), broader official-document regressions (262/262), `forms:check`, backend build, and raster inspection of Title/Proposal/Final passed. Project-owner visual acceptance was granted on 2026-10-24 after reviewing the corrected Title GS-011 output.
 
 ## Defense Application field-authority decisions — 2026-10-23
 
