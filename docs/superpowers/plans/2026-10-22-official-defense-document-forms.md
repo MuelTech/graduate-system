@@ -1275,7 +1275,9 @@ This follow-up did not alter committee policy, scoring, evaluator bundles, GS-01
 
 ## 29. FORM-INT-2 FIX-1 — Title GS-011 Adviser-block omission
 
-**REQUIRED / NOT YET IMPLEMENTED.**
+**IMPLEMENTED / VERIFIED — PROJECT-OWNER VISUAL ACCEPTANCE PENDING (2026-10-24).**
+
+Implementation commit: `a5e68a07b7d8c0403cb2b4f34456e031ce798148`.
 
 Project-owner QA on 2026-10-24 clarified the stage-specific presentation contract for GS-011.
 
@@ -1334,3 +1336,41 @@ Before closing FIX-1:
 4. verify the Dean `Attested` area remains intact;
 5. run relevant GS-011/official-document regressions and backend build;
 6. project-owner visual QA accepts the Title output.
+
+### Implementation result (2026-10-24)
+
+- `OralExamSummaryRenderInput.stage` is now an explicit required
+  `title` / `proposal` / `final` layout discriminator.
+- The mapping derives the discriminator from the exact schedule
+  `defenseType`; unsupported stage values fail closed. The source still does not
+  query an Adviser seat for Title and still requires exactly one exact-schedule
+  `ADVISER` assignment for Proposal/Final.
+- Title output omits `Concurred In:`, the Adviser name/signature rule, and
+  `Thesis/Dissertation Adviser`. The renderer rejects a non-blank Adviser name
+  for a Title input rather than silently hiding it.
+- Title moves the unchanged Dean `Attested:` block into the freed lower-page
+  region instead of leaving an empty Adviser-shaped gap. Proposal/Final retain
+  the previously accepted Adviser and Dean positions.
+- Evaluator rows, Submitted by lines, identity fields, Chairman/Member
+  authority, snapshot authority, scoring, routes, authorization, signatures,
+  and GS-006/GS-007 are unchanged.
+- The development sample generator now emits Title and Final variants in
+  addition to the existing blank/filled/long samples.
+
+### Verification performed
+
+- Focused GS-011 renderer + summary-service tests: **49/49 passed**.
+- Broader official-document regression run: **262/262 passed across 10 files**
+  (all official-defense renderer tests, document/summary/application/bundle/
+  filename services, controller, and routes).
+- `npm run forms:check` exit 0.
+- Backend `npm run build` exit 0.
+- `git diff --check` exit 0.
+- Raster QA at 150 dpi: `backend/.tmp/official-form-samples/oral-exam-summary-title.pdf`
+  (and `.png`), `oral-exam-summary.pdf` (Proposal), and
+  `oral-exam-summary-final.pdf` all render as one A4 page. Title has no Adviser
+  concurrence block, keeps a correctly positioned Dean `Attested:` section
+  without clipping/overlap, and Proposal/Final retain the Adviser block.
+  A long-value Title variant was also inspected with no overlap.
+- Project-owner visual acceptance remains the final gate; this record does not
+  mark FIX-1 accepted or the overall initiative complete.
