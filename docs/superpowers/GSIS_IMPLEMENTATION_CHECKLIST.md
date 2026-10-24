@@ -52,11 +52,26 @@ DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The f
 
 | Status | Checkpoint | Scope / stop condition |
 | --- | --- | --- |
-| 🚧 | A — Backend authority + assignment lifecycle | Add active/inactive `PanelAssignment` lifecycle, migration if required, active-authority filtering, Admin correction mutation, committee validation, exact schedule/manuscript preservation, schedule-created/correction AuditLog events, and focused/proportional backend verification. **Stop and report before frontend work.** |
-| ⏳ | B — Manage Schedule & Committee UI | After A review, add the deliberate Scheduled-state edit flow for date/time/Venue or Meeting Details + manually assigned committee. Adviser remains locked Automatic for Proposal/Final. Save/Cancel/confirmation + exact refresh + focused frontend verification. **Stop and report before notification/consolidation work.** |
+| ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. Browser/manual QA and hosted CI were not executed at this backend-only checkpoint. |
+| 🚧 | B — Manage Schedule & Committee UI | **Current checkpoint.** Add the deliberate Scheduled-state edit flow for date/time/Venue or Meeting Details + manually assigned committee. Adviser remains locked Automatic for Proposal/Final. Save/Cancel/confirmation + exact refresh + focused frontend verification. **Stop and report before notification/consolidation work.** |
 | ⏳ | C — Notifications + consolidated integrity verification | After B review, reuse existing notification/email behavior where practical, verify removed/new member authority, run cross-cutting regressions, execute/prepare manual/browser QA, and update final evidence/docs. No notification-system redesign. |
 
-Checkpoint completion does not equal full feature acceptance. DEF-CORR-1 becomes ✅ only after A + B + C, independent remote review, required manual/browser QA, and project-owner acceptance.
+Checkpoint A acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. DEF-CORR-1 becomes ✅ only after A + B + C, independent remote review, required manual/browser QA, and project-owner acceptance.
+
+### Checkpoint A implementation evidence
+
+- **Accepted-for-continuation ending HEAD:** `ed3d6c3e70231a67c045eead9b6609a8baceeac5`.
+- **Production/schema commit:** `c2cc59c54201c660a1144829d31655bd2520e236`.
+- **Follow-up test commit:** `ed3d6c3e70231a67c045eead9b6609a8baceeac5`.
+- **Migration:** `20261024230000_panel_assignment_active_lifecycle` adds `panel_assignments.is_active BOOLEAN NOT NULL DEFAULT true` without destructive rewrite/backfill.
+- **Authority behavior:** current roster/live authority filters to active assignments; replaced assignments remain preserved by exact ID for historical annotation/comment and official-record attribution; previously inactive users may be safely reactivated under the existing schedule/user uniqueness constraint.
+- **Correction API:** Admin-only `PATCH /defense/schedules/:scheduleId`, allowed only while the exact session remains `SCHEDULED`, with Proposal/Final Adviser resolved server-side and Title remaining Adviser-free.
+- **Audit:** `DEFENSE_SCHEDULE_CREATED` and `DEFENSE_SCHEDULE_CORRECTED`; correction before/after snapshots are written transactionally so audit failure rolls back the mutation.
+- **Verification evidence:** 27 focused tests passed / 0 failed; full backend suite 192 files passed / 2,473 tests passed / 5 conditional skips / 0 failures; `prisma generate`, `prisma validate`, `tsc --noEmit`, and backend build passed.
+- **Local database note:** migration status reported only the new `20261024230000_panel_assignment_active_lifecycle` migration pending locally. Apply it before runtime/UI testing against the updated backend.
+- **Not executed:** live multi-connection contention test, browser/manual QA, hosted CI.
+- **Deferred to C:** correction notification/email refinement.
+- **Scope confirmed:** frontend/UI work was not started in Checkpoint A.
 
 ### Active-package guardrail
 
