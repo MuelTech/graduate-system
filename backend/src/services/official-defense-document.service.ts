@@ -43,6 +43,7 @@ import { renderOralExamSummary } from "../documents/official-defense/oral-exam-s
 import type {
   OralExamSummaryExaminerRow,
   OralExamSummaryRenderInput,
+  OralExamSummaryStage,
 } from "../documents/official-defense/oral-exam-summary/oral-exam-summary.types";
 import type { InstitutionalLogos } from "../documents/official-defense/shared/institutional-header";
 import type { PdfImageInput } from "../documents/official-defense/shared/pdf-layout";
@@ -435,7 +436,8 @@ export function mapOfficialSummaryToRenderInput(
     });
   }
 
-  const isTitle = source.defenseType === "TITLE_DEFENSE";
+  const stage = summaryStage(source.defenseType);
+  const isTitle = stage === "title";
   const adviserName = isTitle ? "" : nonEmpty(source.adviserName);
   if (!isTitle && !adviserName) {
     throw new AppError(
@@ -446,6 +448,7 @@ export function mapOfficialSummaryToRenderInput(
 
   return {
     logos,
+    stage,
     candidateName,
     course,
     date: formatOfficialFormDate(snapshot.defenseDate),
@@ -462,14 +465,23 @@ export function mapOfficialSummaryToRenderInput(
   };
 }
 
-const APPLICATION_TYPES: Record<
-  string,
-  "title" | "proposal" | "final"
-> = {
+const APPLICATION_TYPES: Record<string, OralExamSummaryStage> = {
   TITLE_DEFENSE: "title",
   PROPOSAL_DEFENSE: "proposal",
   FINAL_DEFENSE: "final",
 };
+
+/** Explicit exact-schedule stage mapping; unsupported values fail closed. */
+function summaryStage(defenseType: string): OralExamSummaryStage {
+  const stage = APPLICATION_TYPES[defenseType];
+  if (!stage) {
+    throw new AppError(
+      "The Oral Examination Summary has an unsupported defense stage.",
+      422,
+    );
+  }
+  return stage;
+}
 
 /** Deterministic printed Panelist order: createdAt ascending, then id ascending. */
 function comparePanelists(

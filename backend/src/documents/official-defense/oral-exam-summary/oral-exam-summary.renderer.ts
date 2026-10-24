@@ -18,6 +18,14 @@ export async function renderOralExamSummary(input: OralExamSummaryRenderInput): 
   if (input.submittedBy.memberNames.length > ORAL_EXAM_SUMMARY_MEMBER_LINE_CAPACITY) {
     throw new RangeError("GS-011 has space for at most five Member lines.");
   }
+  if (!["title", "proposal", "final"].includes(input.stage)) {
+    throw new RangeError("GS-011 requires an explicit defense stage.");
+  }
+  if (input.stage === "title" && input.adviserName.trim()) {
+    throw new RangeError(
+      "GS-011 Title Defense does not print an Adviser concurrence block.",
+    );
+  }
   const doc = await PDFDocument.create();
   doc.setCreationDate(new Date(0));
   doc.setModificationDate(new Date(0));
@@ -136,12 +144,18 @@ export async function renderOralExamSummary(input: OralExamSummaryRenderInput): 
     });
   }
 
-  text("Concurred In:", 76, 610 + bodyShift, 150, 16, 11);
-  signatoryName(input.adviserName, 76, 660 + bodyShift, 140, "Adviser name");
-  text("Thesis/Dissertation Adviser", 76, 664 + bodyShift, 155, 14, 10.5);
-  // Attestation stays in its printed lower-page region for long top fields too.
-  text("Attested:", 76, 722, 130, 16, 11);
-  signatoryName(input.deanName, 76, 768, 140, "Dean name");
-  text("Dean, Graduate School", 76, 772, 160, 14, 10.5);
+  // Title Defense has no Adviser seat, so its entire concurrence block is absent.
+  if (input.stage !== "title") {
+    text("Concurred In:", 76, 610 + bodyShift, 150, 16, 11);
+    signatoryName(input.adviserName, 76, 660 + bodyShift, 140, "Adviser name");
+    text("Thesis/Dissertation Adviser", 76, 664 + bodyShift, 155, 14, 10.5);
+  }
+  // Proposal/Final keep Dean attestation in its printed lower-page region for
+  // long top fields too. Without the Adviser block, Title places the same Dean
+  // block in that freed region instead of leaving an accidental empty gap.
+  const deanTop = input.stage === "title" ? 610 + bodyShift : 722;
+  text("Attested:", 76, deanTop, 130, 16, 11);
+  signatoryName(input.deanName, 76, deanTop + 46, 140, "Dean name");
+  text("Dean, Graduate School", 76, deanTop + 50, 160, 14, 10.5);
   return doc.save();
 }

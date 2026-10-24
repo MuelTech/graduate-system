@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument } from "pdf-lib";
+import {
+  decodePDFRawStream,
+  PDFArray,
+  PDFDocument,
+  PDFRawStream,
+} from "pdf-lib";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   ORAL_EXAM_SUMMARY_ROW_CAPACITY, renderOralExamSummary,
@@ -15,6 +20,7 @@ beforeAll(async () => {
       earist: { mimeType: "image/jpeg", bytes: await readFile(path.join(assets, "earist-logo.jpg")) },
       graduateSchool: { mimeType: "image/jpeg", bytes: await readFile(path.join(assets, "graduate-school-logo.jpg")) },
     },
+    stage: "proposal",
     candidateName: "Alexandra M. Santos", course: "MAEd", date: "22 October 2026", studentNumber: "2026-00123",
     examiners: [{ examinerName: "Dr. Sample Examiner", groupARating: "1.00", groupBRating: "2.00", average: "9.99" }],
     submittedBy: { chairmanName: "Dr. Explicit Chairman", memberNames: ["Dr. Explicit Member"] },
@@ -38,6 +44,34 @@ async function inspect(bytes: Uint8Array): Promise<TextItem[]> {
 const joined = (items: TextItem[]) => items.map(item => item.str).join(" ");
 const compact = (value: string) => value.replace(/\s/g, "");
 const blankNames = { submittedBy: { chairmanName: "", memberNames: [] }, adviserName: "", deanName: "" };
+
+/** Decode the page content stream so absent rules can be asserted, not just absent text. */
+async function pageContent(bytes: Uint8Array): Promise<string> {
+  const doc = await PDFDocument.load(bytes);
+  const contents = doc.getPage(0).node.Contents();
+  const entries = contents instanceof PDFArray
+    ? contents.asArray()
+    : contents ? [contents] : [];
+  const parts: string[] = [];
+  for (const entry of entries) {
+    const stream = doc.context.lookup(entry);
+    if (stream instanceof PDFRawStream) {
+      parts.push(Buffer.from(decodePDFRawStream(stream).decode()).toString("latin1"));
+    }
+  }
+  return parts.join("\n");
+}
+
+function hasHorizontalRule(content: string, x1: number, x2: number, top: number): boolean {
+  const y = 841.89 - top;
+  const pattern = /(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+m\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+l/g;
+  for (const match of content.matchAll(pattern)) {
+    const [startX, startY, endX, endY] = match.slice(1).map(Number);
+    if (Math.abs(startX - x1) < 0.01 && Math.abs(endX - x2) < 0.01
+      && Math.abs(startY - y) < 0.01 && Math.abs(endY - y) < 0.01) return true;
+  }
+  return false;
+}
 
 describe("TEMPLATE-2 pure GS-011 Oral Examination Summary renderer", () => {
   it("returns valid deterministic one-page A4 bytes without changing its explicit input", async () => {
@@ -67,6 +101,55 @@ describe("TEMPLATE-2 pure GS-011 Oral Examination Summary renderer", () => {
     expect(items.filter(item => item.str.includes(", Chairman"))).toHaveLength(1);
     expect(items.filter(item => item.str.includes(", Member"))).toHaveLength(5);
   });
+
+  it("omits the entire Adviser concurrence block for Title Defense and keeps Dean attestation", async () => {
+    const titleInput: OralExamSummaryRenderInput = {
+      ...input,
+      stage: "title",
+      adviserName: "",
+    };
+    const bytes = await renderOralExamSummary(titleInput);
+    const doc = await PDFDocument.load(bytes);
+    expect(doc.getPageCount()).toBe(1);
+    expect(doc.getPage(0).getWidth()).toBeCloseTo(595.28, 2);
+    expect(doc.getPage(0).getHeight()).toBeCloseTo(841.89, 2);
+
+    const items = await inspect(bytes);
+    const text = joined(items);
+    expect(text).not.toContain("Concurred In:");
+    expect(text).not.toContain("Thesis/Dissertation Adviser");
+    expect(text).not.toContain("Dr. Explicit Adviser");
+    expect(text).toContain("Attested:");
+    expect(text).toContain(input.deanName);
+    expect(text).toContain("Dean, Graduate School");
+
+    // The Adviser name/signature rule is absent; the Dean rule moves into the
+    // freed lower-page region instead of leaving an accidental gap at 722.
+    const content = await pageContent(bytes);
+    expect(hasHorizontalRule(content, 76, 216, 660)).toBe(false);
+    expect(hasHorizontalRule(content, 76, 216, 656)).toBe(true);
+    const attested = items.find(item => item.str === "Attested:");
+    expect(attested).toBeDefined();
+    const attestedTop = 841.89 - attested!.transform[5];
+    expect(attestedTop).toBeGreaterThan(610);
+    expect(attestedTop).toBeLessThan(625);
+  });
+
+  it.each(["proposal", "final"] as const)(
+    "keeps the Adviser concurrence block and exact Adviser for %s",
+    async (stage) => {
+      const bytes = await renderOralExamSummary({ ...input, stage });
+      const text = joined(await inspect(bytes));
+      expect(text).toContain("Concurred In:");
+      expect(text).toContain("Thesis/Dissertation Adviser");
+      expect(text).toContain(input.adviserName);
+      expect(text).toContain("Attested:");
+      expect(text).toContain(input.deanName);
+      const content = await pageContent(bytes);
+      expect(hasHorizontalRule(content, 76, 216, 660)).toBe(true);
+      expect(hasHorizontalRule(content, 76, 216, 656)).toBe(false);
+    },
+  );
 
   it("renders supplied ratings and Average unchanged without deriving a score, verdict, or signers", async () => {
     const text = joined(await inspect(await renderOralExamSummary(input)));
@@ -189,6 +272,12 @@ describe("TEMPLATE-2 pure GS-011 Oral Examination Summary renderer", () => {
       [{ ...input, adviserName: oversized }, /Adviser name exceeds/],
       [{ ...input, deanName: oversized }, /Dean name exceeds/],
     ] as const) await expect(renderOralExamSummary(changed)).rejects.toThrow(message);
+    await expect(
+      renderOralExamSummary({ ...input, stage: "title" }),
+    ).rejects.toThrow(/Title Defense/);
+    await expect(
+      renderOralExamSummary({ ...input, stage: "other" as never }),
+    ).rejects.toThrow(/defense stage/);
   });
 
   it("keeps production imports limited to pdf-lib and the bounded renderer/shared modules", async () => {

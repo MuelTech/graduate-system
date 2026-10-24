@@ -164,22 +164,29 @@ describe("mapOfficialSummaryToRenderInput", () => {
     expect(input.submittedBy.memberNames).toEqual(["Member Two", "Member Three"]);
   });
 
-  it("leaves the Adviser blank for TITLE_DEFENSE", () => {
+  it("marks TITLE_DEFENSE as title and leaves the Adviser blank", () => {
     const input = mapOfficialSummaryToRenderInput(
       source({ defenseType: "TITLE_DEFENSE", adviserName: null }),
       LOGOS,
     );
+    expect(input.stage).toBe("title");
     expect(input.adviserName).toBe("");
   });
 
-  it("uses the exact schedule Adviser for Proposal Defense", () => {
+  it("marks Proposal Defense as proposal and uses the exact schedule Adviser", () => {
     const input = mapOfficialSummaryToRenderInput(source({ defenseType: "PROPOSAL_DEFENSE" }), LOGOS);
+    expect(input.stage).toBe("proposal");
     expect(input.adviserName).toBe("Exact Adviser");
   });
 
-  it("uses the exact schedule Adviser for Final Defense", () => {
+  it("marks Final Defense as final and uses the exact schedule Adviser", () => {
     const input = mapOfficialSummaryToRenderInput(source({ defenseType: "FINAL_DEFENSE" }), LOGOS);
+    expect(input.stage).toBe("final");
     expect(input.adviserName).toBe("Exact Adviser");
+  });
+
+  it("fails closed for an unsupported defense stage", () => {
+    expectMappingError(source({ defenseType: "MIDTERM_DEFENSE" }), 422, /stage/i);
   });
 
   it("fails closed when Proposal/Final has no exact Adviser name", () => {
@@ -404,6 +411,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
     expect(getOfficialSummaryDocumentSource).toHaveBeenCalledWith("sched-1", ADMIN);
     expect(renderSummary).toHaveBeenCalledWith(
       expect.objectContaining({
+        stage: "proposal",
         candidateName: "Frozen Student",
         course: "Frozen Program",
         studentNumber: "2026-999",
@@ -499,6 +507,7 @@ describe("OfficialDefenseDocumentService.generateOralExamSummaryPdf", () => {
 
     expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe("%PDF-");
     const input = renderSummary.mock.calls[0][0];
+    expect(input.stage).toBe("proposal");
     expect(input.candidateName).toBe("Frozen Student");
     expect(input.course).toBe("Frozen Program");
     expect(input.studentNumber).toBe("2026-999");
