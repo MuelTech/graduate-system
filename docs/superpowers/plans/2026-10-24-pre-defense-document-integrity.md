@@ -32,6 +32,61 @@ The initiative is prevention-first. It must make it difficult for an Adviser to 
 
 Before coding, reverify these invariants against the live branch and record the exact starting HEAD.
 
+## 2.1 Execution ownership and acceptance checkpoints
+
+This plan is intentionally split between document reconstruction and workflow integration so the official GS-017 visual contract can be accepted before it is connected to live business data.
+
+### PREDEF-1A — Codex: GS-017 renderer only
+
+Codex owns the first bounded implementation pass:
+
+- create/use `feat/pre-defense-document-integrity` from the verified current `main` HEAD;
+- reconstruct **EARIST-QSF-GS-017 Rev. 01 (06.20.25)** inside the existing official-defense document architecture;
+- implement the explicit typed renderer/input contract only;
+- reuse accepted shared PDF helpers/assets where appropriate;
+- add renderer-focused tests and a local sample-generation script for representative Proposal/Final data;
+- generate fresh Proposal and Final sample PDFs for project-owner visual review.
+
+PREDEF-1A must **not** add or change:
+
+- live Prisma/service mapping from `AdviserCertification`;
+- API/controller/route integration;
+- Student/Adviser/Admin authorization;
+- Adviser `Certify & Sign` workflow/guardrail;
+- Student/Admin portal visibility;
+- PREDEF-2 scheduled-submission behavior.
+
+The renderer must remain pure: explicit display input -> PDF bytes. It must not query Prisma, perform authorization, discover the current Adviser, or search for a latest manuscript.
+
+### PREDEF-1A visual acceptance gate
+
+After Codex produces the renderer:
+
+1. Generate representative Proposal and Final GS-017 samples.
+2. Compare them visually with the supplied official GS-017 reference.
+3. Correct spacing, typography, checkbox placement, rules/underlines, signature placement, masthead/footer identity, and page geometry as needed.
+4. Repeat until the project owner explicitly accepts the rendered form.
+
+Once accepted, the renderer layout and typed display contract become the **frozen presentation baseline** for the next phase. Later integration work must not casually redesign the PDF; changes require a verified renderer defect, a newly supplied official reference, or explicit project-owner approval.
+
+### PREDEF-1B / PREDEF-1C — DeepSeek: workflow and portal integration
+
+Only after PREDEF-1A visual acceptance should DeepSeek continue with live integration:
+
+- map the exact issued Proposal/Final `AdviserCertification` into the accepted renderer contract;
+- enforce exact `reviewedDocumentId` authority and no-latest fallback;
+- add the Adviser exact-manuscript confirmation guardrail before `Certify & Sign`;
+- implement bounded GS-017 PDF routes/service authorization for issuer Adviser, owning Student, and Admin;
+- surface the issued certification in Adviser, Student, and Admin contexts;
+- preserve the accepted record-mode/no-additional-upload wording;
+- add service/route/authorization/frontend tests without modifying the accepted renderer design unless a verified integration defect requires it.
+
+PREDEF-1B/1C must stop at the documented PREDEF-1 scope. PREDEF-2 begins only after PREDEF-1 integration is independently reviewed and accepted.
+
+### Handoff rule
+
+The Codex report for PREDEF-1A must include the branch/start/end HEAD, changed files, renderer tests, sample-generation command/results, and paths/names of generated Proposal/Final samples. The DeepSeek handoff must reference the accepted renderer commit/HEAD and treat that artifact as the visual baseline rather than rebuilding GS-017 independently.
+
 ## 3. PREDEF-1 — GS-017 Adviser Certification + guardrail
 
 ### 3.1 Official-form renderer
@@ -272,25 +327,26 @@ If browser/manual QA is not executed, report **NOT EXECUTED**; do not infer PASS
 
 ## 9. Suggested implementation sequence
 
-1. Verify branch/head/clean state; read canonical docs and this plan.
-2. Audit live GS-017 data availability and existing Adviser certification routes.
-3. Implement PREDEF-1 renderer + service/authorization + tests.
-4. Implement PREDEF-1 Adviser guardrail and Adviser/Student/Admin record visibility.
-5. Run focused verification and generate blank/representative GS-017 samples for visual QA.
-6. Implement PREDEF-2 Admin Scheduled Defense Submission Context.
-7. Implement Student-owned completed GS-006/GS-007 read-only access.
-8. Run focused + proportional regression checks.
-9. Perform project-owner visual/manual QA.
-10. Independently review the remote diff before acceptance.
-11. Update checklist/source-of-truth implementation status only after acceptance.
+1. Verify `main` HEAD, create/use `feat/pre-defense-document-integrity`, confirm clean/expected working state, and read the canonical docs plus this plan.
+2. **Codex / PREDEF-1A:** audit only the existing official-form renderer architecture and GS-017 reference needed to build the pure typed renderer.
+3. **Codex / PREDEF-1A:** implement GS-017 renderer + renderer-focused tests + Proposal/Final sample generator. Do not integrate live workflow/API/authorization.
+4. Generate fresh Proposal/Final GS-017 samples and perform project-owner visual QA; iterate until the PDF is explicitly accepted.
+5. Freeze the accepted renderer layout/contract and record the accepted PREDEF-1A commit/HEAD.
+6. **DeepSeek / PREDEF-1B/1C:** audit live AdviserCertification/service/route/UI authorities, then map exact issued certification data into the accepted renderer.
+7. Implement the Adviser exact-manuscript confirmation guardrail and bounded Adviser/Student/Admin GS-017 access/record visibility.
+8. Run PREDEF-1 focused authorization/regression checks and independently review the remote diff before marking PREDEF-1 accepted.
+9. **DeepSeek / PREDEF-2:** implement Admin Defense Application/Scheduled Defense Submission Context.
+10. Implement owning-Student read-only access to completed GS-006/GS-007 with no-additional-action guidance.
+11. Run PREDEF-2 focused + proportional regression checks and required browser/manual QA.
+12. Independently review the final remote diff and update checklist/source-of-truth implementation status only after project-owner acceptance.
 
 Suggested bounded commit progression:
 
-- `feat(documents): add adviser certification form`
-- `feat(adviser): confirm exact manuscript before certification`
-- `feat(defense): surface pre-defense document context`
+- Codex PREDEF-1A: `feat(documents): add adviser certification form`
+- DeepSeek PREDEF-1B/1C: `feat(adviser): integrate adviser certification record`
+- DeepSeek PREDEF-2: `feat(defense): surface pre-defense document context`
 
-The agent may combine commits when technically necessary, but the review report must preserve PREDEF-1 vs PREDEF-2 scope boundaries.
+Do not auto-continue from Codex PREDEF-1A into workflow integration. The visual acceptance checkpoint is a deliberate handoff boundary. Later agents may split/merge commits when technically necessary, but the review report must preserve PREDEF-1A, PREDEF-1B/1C, and PREDEF-2 scope boundaries.
 
 ## 10. Acceptance gate
 
