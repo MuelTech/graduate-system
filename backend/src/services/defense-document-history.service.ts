@@ -182,6 +182,13 @@ export class DefenseApplicationDocumentHistoryService {
     private readonly repo = new DefenseApplicationDocumentHistoryRepository(),
   ) {}
 
+  /** Read only stage evidence; does not resolve a latest schedule or mutable application. */
+  async getStageSupportingEvidence(thesisId: string, stage: DefenseHistoryStage) {
+    const docs = await this.repo.getStageDocuments(thesisId, stage);
+    return this.buildSupportingEvidence(stage, docs.filter(doc => doc.defenseStage === stage))
+      .filter(slot => slot.docType === "COR" || slot.docType === "RECEIPT");
+  }
+
   async getDocumentHistory(
     thesisId: string,
     rawStage: string,

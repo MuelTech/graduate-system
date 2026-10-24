@@ -617,6 +617,26 @@ router.get(
   thesisController.getOralExamSummaryPdf,
 );
 
+// PREDEF-2: independent Student ownership and Admin submission-context boundaries.
+router.get(
+  "/student/defense/:scheduleId/application",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentDefenseApplicationAvailability,
+);
+router.get(
+  "/student/defense/:scheduleId/application/pdf",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentDefenseApplicationPdf,
+);
+router.get(
+  "/defense/schedules/:scheduleId/submission",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getScheduledDefenseSubmission,
+);
+
 // FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only)
 router.get(
   "/defense/:scheduleId/records/application/pdf",

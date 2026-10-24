@@ -10,7 +10,7 @@ import { DocumentViewer } from "@/components/ui/document-viewer";
 
 export const adviserCertificationRecordsQueryKey = ["adviser-certification-records"] as const;
 
-interface CertificationRecord {
+export interface CertificationRecord {
   id: string; thesisId: string; stage: "PROPOSAL" | "FINAL"; status: "ISSUED";
   studentName: string; adviserName: string; issuedAt: string | null;
   manuscriptTitle: string | null; originalFilename: string | null; manuscriptDocumentId: string | null;
@@ -18,16 +18,16 @@ interface CertificationRecord {
 }
 
 /** Issued records are read-only references, separate from actionable review work. */
-type RecordProps = { thesisId?: string; stage?: "PROPOSAL" | "FINAL" };
+type RecordProps = { thesisId?: string; stage?: "PROPOSAL" | "FINAL"; exactRecords?: CertificationRecord[] };
 
 export function AdviserCertificationRecords(props: RecordProps) {
   const { data: session } = useSession();
   if (!session?.user?.id) return null;
   const viewerScope = `${session.user.id}:${session.user.role}`;
-  return <CertificationRecordList key={`${viewerScope}:${props.thesisId ?? "own"}:${props.stage ?? "all"}`} {...props} viewerScope={viewerScope} />;
+  return <CertificationRecordList key={`${viewerScope}:${props.thesisId ?? "own"}:${props.stage ?? "all"}:${props.exactRecords?.map(record => record.id).join(",") ?? "list"}`} {...props} viewerScope={viewerScope} />;
 }
 
-function CertificationRecordList({ thesisId, stage, viewerScope }: RecordProps & { viewerScope: string }) {
+function CertificationRecordList({ thesisId, stage, viewerScope, exactRecords }: RecordProps & { viewerScope: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,15 +38,17 @@ function CertificationRecordList({ thesisId, stage, viewerScope }: RecordProps &
     queryKey: [...adviserCertificationRecordsQueryKey, viewerScope, thesisId ?? "own", stage ?? "all"],
     queryFn: async () => await apiClientRequest(`/thesis/adviser-certifications?${query}`) as CertificationRecord[],
     retry: false,
+    enabled: exactRecords === undefined,
   });
-  if (records.isLoading) return <p className="text-sm" aria-live="polite">Loading certification records…</p>;
-  if (records.isError) return <div role="alert" className="text-sm">
+  if (exactRecords === undefined && records.isLoading) return <p className="text-sm" aria-live="polite">Loading certification records…</p>;
+  if (exactRecords === undefined && records.isError) return <div role="alert" className="text-sm">
     Certification records could not be loaded. <Button variant="outline" size="sm" onClick={() => records.refetch()}>Try again</Button>
   </div>;
-  if (!records.data?.length) return null;
+  const items = exactRecords ?? records.data;
+  if (!items?.length) return null;
   return <section className="space-y-3" aria-label="Issued Adviser certifications">
     <h3 className="text-sm font-semibold text-(--earist-secondary)">Issued Adviser Certifications</h3>
-    {records.data.map(record => <div key={record.id} className="space-y-2 rounded-lg border border-(--earist-border-gray) p-3 text-sm break-words">
+    {items.map(record => <div key={record.id} className="space-y-2 rounded-lg border border-(--earist-border-gray) p-3 text-sm break-words">
       <p className="font-medium">{record.stage === "PROPOSAL" ? "Proposal" : "Final"} certification issued · {record.studentName}</p>
       <p><span className="font-medium">Thesis/Dissertation Title: </span>{record.manuscriptTitle || "Title not recorded for this manuscript."}</p>
       <p>{record.originalFilename || "Filename unavailable"}</p>

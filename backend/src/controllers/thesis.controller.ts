@@ -996,6 +996,86 @@ export class ThesisController {
     }
   };
 
+  /** PREDEF-2: read-only exact scheduled submission (Admin only). */
+  public getScheduledDefenseSubmission = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result = await this.thesisService.getScheduledDefenseSubmission(
+        req.params.scheduleId as string,
+        req.user,
+      );
+      res.setHeader("Cache-Control", "no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "Scheduled submission context could not be retrieved.",
+          });
+    }
+  };
+
+  public getStudentDefenseApplicationAvailability = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result =
+        await this.thesisService.getStudentDefenseApplicationAvailability(
+          req.params.scheduleId as string,
+          req.user,
+        );
+      res.setHeader("Cache-Control", "no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "Official application availability could not be checked.",
+          });
+    }
+  };
+
+  public getStudentDefenseApplicationPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result =
+        await this.thesisService.generateStudentDefenseApplicationPdf(
+          req.params.scheduleId as string,
+          req.user,
+        );
+      sendPdfResponse(res, result.pdf, result.filename);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "The official application PDF could not be generated.",
+          });
+    }
+  };
+
   /** FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only). */
   public getDefenseApplicationPdf = async (
     req: AuthenticatedRequest,

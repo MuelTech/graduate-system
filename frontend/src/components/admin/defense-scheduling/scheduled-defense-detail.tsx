@@ -18,6 +18,7 @@ import {
 } from "@/components/admin/defense-applications/labels";
 import { ReadOnlyCommitteeRoster } from "./read-only-committee-roster";
 import { defenseTypeLabel, stageFromDefenseType } from "./types";
+import { ScheduledDefenseSubmission } from "./scheduled-defense-submission";
 
 const SESSION_BADGE_CLASS: Record<string, string> = {
   SCHEDULED: "text-(--earist-secondary)",
@@ -277,6 +278,8 @@ export function ScheduledDefenseDetail({
           />
         </CardContent>
       </Card>
+
+      <ScheduledDefenseSubmission scheduleId={detail.scheduleId} />
 
       <ReadOnlyCommitteeRoster
         committee={detail.committee}

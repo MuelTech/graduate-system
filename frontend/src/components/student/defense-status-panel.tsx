@@ -21,6 +21,7 @@ import type {
   JourneyStepView,
 } from "@/types/student-thesis-journey";
 import { StudentRapPanel } from "@/components/student/student-rap-panel";
+import { StudentOfficialApplicationRecord } from "@/components/student/official-defense-application-record";
 
 export function DefenseScheduleSummary({
   session,
@@ -61,7 +62,10 @@ export function DefenseScheduleSummary({
         </p>
       </div>
       {session.scheduleId && (
-        <StudentRapPanel scheduleId={session.scheduleId} />
+        <>
+          <StudentOfficialApplicationRecord scheduleId={session.scheduleId} />
+          <StudentRapPanel scheduleId={session.scheduleId} />
+        </>
       )}
     </div>
   );

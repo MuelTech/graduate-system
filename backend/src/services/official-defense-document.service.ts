@@ -106,6 +106,10 @@ type FilenameSourceReader = Pick<
 >;
 
 export interface OfficialDefenseDocumentDeps {
+  readonly studentApplications?: Pick<
+    OfficialDefenseRecordService,
+    "getStudentDefenseApplicationDocumentSource"
+  >;
   readonly certifications?: Pick<AdviserCertificationRecordService, "getSource" | "listSources">;
   readonly renderCertification?: (input: AdviserCertificationRenderInput) => Promise<Uint8Array>;
   readonly records?: RecordsReader;
@@ -632,6 +636,10 @@ export function mapDefenseApplicationToRenderInput(
 }
 
 export class OfficialDefenseDocumentService {
+  private readonly studentApplications: Pick<
+    OfficialDefenseRecordService,
+    "getStudentDefenseApplicationDocumentSource"
+  >;
   private readonly certifications: Pick<AdviserCertificationRecordService, "getSource" | "listSources">;
   private readonly renderCertification: (input: AdviserCertificationRenderInput) => Promise<Uint8Array>;
   private readonly records: RecordsReader;
@@ -645,6 +653,7 @@ export class OfficialDefenseDocumentService {
   ) => Promise<Uint8Array>;
 
   constructor(deps: OfficialDefenseDocumentDeps = {}) {
+    this.studentApplications = deps.studentApplications ?? new OfficialDefenseRecordService();
     this.certifications = deps.certifications ?? new AdviserCertificationRecordService();
     this.renderCertification = deps.renderCertification ?? renderAdviserCertification;
     this.records = deps.records ?? new OfficialDefenseRecordService();
@@ -803,6 +812,56 @@ export class OfficialDefenseDocumentService {
         scheduleId,
         actor,
       );
+    return this.renderExactApplication(scheduleId, source);
+  }
+
+  async generateStudentDefenseApplicationPdf(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ) {
+    if (actor.role !== "STUDENT" || !actor.userId) {
+      throw new AppError("Student access is required.", 403);
+    }
+    const source = await this.studentApplications.getStudentDefenseApplicationDocumentSource(
+      scheduleId,
+      actor,
+    );
+    const pdf = await this.renderExactApplication(scheduleId, source);
+    return {
+      pdf,
+      filename: officialDefenseDocumentFilename(source.studentName, source.defenseType, "application"),
+      defenseType: source.defenseType,
+    };
+  }
+
+  /** Availability uses the same validation and renderer as the eventual PDF. */
+  async getStudentDefenseApplicationAvailability(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ) {
+    try {
+      const result = await this.generateStudentDefenseApplicationPdf(scheduleId, actor);
+      return {
+        scheduleId,
+        defenseType: result.defenseType,
+        available: true,
+        unavailableReason: null,
+      };
+    } catch (error) {
+      if (error instanceof AppError && [409, 422].includes(error.statusCode)) {
+        return { scheduleId, available: false, unavailableReason: error.message };
+      }
+      throw error;
+    }
+  }
+
+  private async renderExactApplication(
+    scheduleId: string,
+    source: OfficialDefenseApplicationDocumentSource,
+  ) {
+    if (source.scheduleId !== scheduleId) {
+      throw new AppError("The application does not belong to this exact schedule.", 409);
+    }
     const logos = await this.loadLogos();
     const input = mapDefenseApplicationToRenderInput(source, logos);
 
