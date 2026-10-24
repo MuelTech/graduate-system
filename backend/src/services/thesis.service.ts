@@ -902,6 +902,15 @@ export class ThesisService {
     );
   }
 
+  /** PREDEF-1B/1C: issuer/owning-Student/Admin certification records. */
+  async listAdviserCertifications(actor: { userId: string; role: string }, thesisId?: string, stage?: string) {
+    return this.officialDocuments.listAdviserCertifications(actor, thesisId, stage);
+  }
+
+  async generateAdviserCertificationPdf(id: string, actor: { userId: string; role: string }) {
+    return this.officialDocuments.generateAdviserCertificationPdf(id, actor);
+  }
+
   /** FORM-INT-1: authenticated ADMIN individual evaluation PDF (exact attempt). */
   async generateOfficialCriteriaPdf(
     scheduleId: string,

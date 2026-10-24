@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
@@ -172,6 +173,8 @@ export function ProposalAdviserReviewPanel() {
             </p>
           </div>
         )}
+
+        {status === "ISSUED" && data?.thesisId && <AdviserCertificationRecords thesisId={data.thesisId} stage="PROPOSAL" />}
 
         {status === "AWAITING_REVIEW" && (
           <p className="text-(--earist-body-text)">

@@ -46,3 +46,12 @@ export function isFinalStrikeBlocked(
     task?.strikeEligible !== true
   );
 }
+
+/** Acknowledgement belongs to the exact document shown at confirmation time. */
+export function isCertificationConfirmationReady(input: {
+  documentId: string | null; manuscriptTitle: string | null; originalFilename: string | null;
+  confirmationDocumentId: string | null; acknowledgedDocumentId: string | null;
+}): boolean {
+  return Boolean(input.documentId && input.manuscriptTitle?.trim() && input.originalFilename?.trim()
+    && input.confirmationDocumentId === input.documentId && input.acknowledgedDocumentId === input.documentId);
+}

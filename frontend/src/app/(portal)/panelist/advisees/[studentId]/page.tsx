@@ -20,6 +20,7 @@ import type {
   AdviserWorkspaceReviewTaskDto,
 } from "@/types/adviser-workspace";
 import { AdviserReviewActionPanel } from "@/components/panelist/adviser-review-action-panel";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import type { AdviserReviewStageKey } from "@/lib/adviser-reviews";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -410,6 +411,8 @@ export default function AdviseeDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {data.research.thesisId && <AdviserCertificationRecords thesisId={data.research.thesisId} />}
 
       <Card>
         <CardHeader>

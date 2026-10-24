@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const PNG_SIGNATURE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ1kAAAAASUVORK5CYII=";
+
 const prismaMock = vi.hoisted(() => {
   const tx = {
     $queryRaw: vi.fn(async () => []),
@@ -70,6 +72,7 @@ function activeAssignment(
 /** DL-7: test documents carry real column identity so exact binding validates. */
 function proposalDoc<T extends Record<string, unknown>>(doc: T) {
   return {
+    manuscriptTitle: "Exact Reviewed Manuscript Title",
     thesisId: "thesis-1",
     docType: "PROPOSAL_CHAPTERS",
     defenseStage: "PROPOSAL",
@@ -153,6 +156,16 @@ function awaitingProposalThesis() {
 
 describe("ProposalAdviserReviewService (CP3)", () => {
   const svc = new ProposalAdviserReviewService();
+
+  it.each(["missing title", "typed signature"])("refuses to issue a new certification with %s", async failure => {
+    const thesis = awaitingProposalThesis();
+    if (failure === "missing title") thesis.thesisDocuments[0].manuscriptTitle = null;
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(thesis);
+    await expect(svc.certify("adviser-1", "thesis-1", {
+      expectedReviewedDocumentId: "doc-a", signatureData: failure === "typed signature" ? "Bob Adviser" : PNG_SIGNATURE,
+    })).rejects.toMatchObject({ isOperational: true });
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -279,7 +292,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       svc.requestChanges("other-panelist", "thesis-1", { remarks: "nope", expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/active adviser/i);
     await expect(
-      svc.certify("other-panelist", "thesis-1", { signatureData: "sig", expectedReviewedDocumentId: "doc-1" }),
+      svc.certify("other-panelist", "thesis-1", { signatureData: PNG_SIGNATURE, expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/active adviser/i);
   });
 
@@ -394,7 +407,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
           adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
           reviewedDocument: { id: "doc-1", uploadedAt: new Date() },
           reviewRemarks: null,
-          signatureData: "e-sign-blob",
+          signatureData: PNG_SIGNATURE,
           signedAt: new Date(),
         },
       ],
@@ -404,7 +417,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       .mockResolvedValue(issued);
 
     const dto = await svc.certify("adviser-1", "thesis-1", {
-      signatureData: "e-sign-blob",
+      signatureData: PNG_SIGNATURE,
       clientIssuedAt: "2000-01-01T00:00:00.000Z", // must be ignored
       expectedReviewedDocumentId: "doc-1",
     });
@@ -413,7 +426,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       prismaMock.__tx.adviserCertification.updateMany.mock.calls[0]?.[0];
     expect(updateArgs?.where?.status).toBe("AWAITING_REVIEW");
     expect(updateArgs?.data?.status).toBe("ISSUED");
-    expect(updateArgs?.data?.signatureData).toBe("e-sign-blob");
+    expect(updateArgs?.data?.signatureData).toBe(PNG_SIGNATURE);
     expect(updateArgs?.data?.signedAt).toBeInstanceOf(Date);
     // Server time, not client year 2000
     expect(updateArgs?.data?.signedAt.getTime()).toBeGreaterThanOrEqual(before);
@@ -443,7 +456,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       status: "ISSUED",
     });
     await expect(
-      svc.certify("adviser-1", "thesis-1", { signatureData: "sig", expectedReviewedDocumentId: "doc-1" }),
+      svc.certify("adviser-1", "thesis-1", { signatureData: PNG_SIGNATURE, expectedReviewedDocumentId: "doc-1" }),
     ).rejects.toThrow(/already issued/i);
   });
 
@@ -572,7 +585,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
 
     await expect(
       svc.certify("adviser-1", "thesis-1", {
-        signatureData: "sig",
+        signatureData: PNG_SIGNATURE,
         expectedReviewedDocumentId: "doc-a", // stale A
       }),
     ).rejects.toThrow(/no longer the current|review state changed/i);
@@ -610,7 +623,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
               adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" },
               reviewedDocument: { id: "doc-b", uploadedAt: new Date() },
               reviewRemarks: null,
-              signatureData: "sig",
+              signatureData: PNG_SIGNATURE,
               signedAt: new Date(),
             },
           ],
@@ -620,7 +633,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
 
     await svc.certify("adviser-1", "thesis-1", {
-      signatureData: "sig",
+      signatureData: PNG_SIGNATURE,
       expectedReviewedDocumentId: "doc-b",
     });
 
@@ -748,7 +761,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
 
     await expect(
       svc.certify("adviser-1", "thesis-1", {
-        signatureData: "sig",
+        signatureData: PNG_SIGNATURE,
         expectedReviewedDocumentId: "",
       }),
     ).rejects.toThrow(/Reviewed manuscript identifier is required/i);

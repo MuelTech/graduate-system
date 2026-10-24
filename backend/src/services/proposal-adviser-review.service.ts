@@ -24,6 +24,7 @@ import {
 } from "./proposal-adviser-review.rules";
 import { isTitleStageComplete } from "./stage-completion";
 import { normalizeManuscriptTitle } from "./manuscript-title.rules";
+import { validateAdviserCertificationSignature } from "./adviser-certification-signature";
 import {
   MULTIPLE_ACTIVE_ADVISERS_MESSAGE,
   requireSingleActiveAdviser,
@@ -573,6 +574,8 @@ export class ProposalAdviserReviewService {
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
+    if (!manuscript?.manuscriptTitle?.trim()) throw new AppError("The exact reviewed manuscript has no recorded title and cannot be certified.", 409);
+    await validateAdviserCertificationSignature(input.signatureData);
     const signedAt = new Date(); // server-authoritative
     const reviewRemarks = input.remarks?.trim() || cert?.reviewRemarks || null;
 

@@ -28,6 +28,7 @@ import {
 } from "./proposal-adviser-review.rules";
 import { isProposalStageComplete } from "./stage-completion";
 import { normalizeManuscriptTitle } from "./manuscript-title.rules";
+import { validateAdviserCertificationSignature } from "./adviser-certification-signature";
 import { getFinalOptionalGates, resolveStrikePolicy } from "./strike-policy";
 import {
   MULTIPLE_ACTIVE_ADVISERS_MESSAGE,
@@ -666,6 +667,8 @@ export class FinalAdviserReviewService {
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
+    if (!manuscript?.manuscriptTitle?.trim()) throw new AppError("The exact reviewed manuscript has no recorded title and cannot be certified.", 409);
+    await validateAdviserCertificationSignature(input.signatureData);
     const signedAt = new Date();
     await prisma.$transaction(async (tx) => {
       const issued = await tx.adviserCertification.findFirst({

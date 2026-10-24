@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A + PREDEF-1B0 ACCEPTED; PREDEF-1B/1C ACTIVE; PREDEF-2 NOT YET IMPLEMENTED
+**Status:** PREDEF-1A + PREDEF-1B0 ACCEPTED; PREDEF-1B/1C IMPLEMENTED / REVIEW PENDING; PREDEF-2 NOT YET IMPLEMENTED
 
 ## 1. Goal
 
@@ -136,6 +136,51 @@ After PREDEF-1B0 acceptance, Codex may continue with the bounded live integratio
 - add service/route/authorization/frontend tests without modifying the accepted renderer design unless a verified integration defect requires it.
 
 PREDEF-1B/1C must stop at the documented PREDEF-1 scope. PREDEF-2 begins only after PREDEF-1 integration is independently reviewed and accepted.
+
+#### PREDEF-1B/1C implementation evidence (2026-10-24; review pending)
+
+- Existing `OfficialDefenseDocumentService` now generates GS-017 through the
+  frozen renderer. `AdviserCertificationRecordService` loads only the exact
+  certification, issuer, owning Student/program, and `reviewedDocument` relation.
+  Issued state, same-thesis/type/stage/document binding, exact nonblank title,
+  issuer identity, server `signedAt`, and usable signature evidence are required.
+  Dates use the existing Asia/Manila instant formatter. No latest/current title
+  or manuscript fallback, schema migration, or generated-document persistence.
+- Authenticated `GET /thesis/adviser-certifications` returns explicit safe
+  issued-record metadata, with optional thesis/stage filters. Student ownership
+  and issuer-Adviser filters are applied in the query; Admin requires a thesis
+  filter. `GET /thesis/adviser-certifications/:certificationId/pdf` independently
+  proves owning Student, issuer Adviser, or Admin authority. Unrelated identities
+  receive the same not-found response; committee assignment alone grants none.
+- The accepted official signature decoder was extracted unchanged for reuse,
+  retaining its evaluator API export. New Adviser signing uses the existing
+  Type/Draw `ESignaturePad` to persist PNG image evidence. Adviser validation
+  additionally checks usable PNG/JPEG bytes and bounded image dimensions.
+  Missing titles or invalid evidence cannot produce a new issued certification.
+- Legacy issued typed-string signatures are not converted into invented image
+  evidence. Their records remain readable but official GS-017 printing is
+  unavailable. Exact legacy null titles also remain readable/unavailable with
+  no backfill or inference. This package does not re-sign or mutate issued rows.
+- Confirmation displays the Student, stage, exact title/file, an exact-document
+  View Manuscript action, and required acknowledgement. Acknowledgement belongs
+  to the displayed document ID; refreshed/replaced documents cannot reuse it.
+  Existing active-Adviser checks, expected-document CAS, stage gates, and issued
+  write-once protections remain intact.
+- Issued records are separate from workload: My Advisees review records/detail,
+  Student Proposal/Final issued-status panels, and Admin application review use
+  shared View GS-017 / Download Copy controls and no-extra-submission wording.
+  Record caches and preview state are isolated by authenticated identity/context.
+  Inline previews use an authenticated, non-caching bounded proxy. PDF/download
+  helpers and responses are reused; no raw signature/storage fields are exposed.
+- Focused backend verification: **129 passed across 5 files**. Proportional
+  Adviser/document/application regressions: **606 passed across 32 files**.
+  Frontend verifiers: **96 passed together**, plus the added session-isolation
+  check (**11/11** in the final focused GS-017 verifier). Backend build, Prisma
+  validation, frontend TypeScript/scoped lint/production build, and diff checks
+  passed. No full repository suite was required or run.
+- Browser/manual QA: **NOT EXECUTED — intentionally deferred to integrated
+  PREDEF QA.** Hosted CI: **NOT EXECUTED**. Independent review and project-owner
+  acceptance remain pending. PREDEF-2, PREDEF-3, and DEF-CORR-1 were not started.
 
 ### Handoff rule
 

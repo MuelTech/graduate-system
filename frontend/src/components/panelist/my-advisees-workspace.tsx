@@ -30,6 +30,7 @@ import {
   type AdviserRequestDecision,
 } from "@/components/panelist/adviser-request-action-dialog";
 import { AdviserReviewActionPanel } from "@/components/panelist/adviser-review-action-panel";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -586,6 +587,7 @@ export function MyAdviseesWorkspace() {
                 />
               ))
             )}
+            <AdviserCertificationRecords />
           </TabsContent>
         </Tabs>
       ) : null}

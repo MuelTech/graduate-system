@@ -16,6 +16,7 @@ import {
   adviserReviewTaskQueryKey,
   adviserReviewsQueueQueryKey,
   isFinalStrikeBlocked,
+  isCertificationConfirmationReady,
   type AdviserReviewStageKey,
   type AdviserReviewTaskDetail,
 } from "@/lib/adviser-reviews";
@@ -33,6 +34,8 @@ import {
 import { DocumentViewer } from "@/components/ui/document-viewer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
+import { AdviserCertificationRecords, adviserCertificationRecordsQueryKey } from "@/components/shared/adviser-certification-records";
 import {
   AlertCircle,
   CheckCircle2,
@@ -48,7 +51,7 @@ const STALE_REVIEW_MESSAGE =
  *
  * Existing stage-specific task/mutation endpoints remain authoritative. This
  * component owns only task fetching, exact manuscript concurrency, stale-409
- * refresh, and the accepted typed-signature certification UX.
+ * refresh, and the shared image-evidence signature input.
  */
 export function AdviserReviewActionPanel({
   open,
@@ -68,6 +71,8 @@ export function AdviserReviewActionPanel({
   const [signature, setSignature] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmCertify, setConfirmCertify] = useState(false);
+  const [confirmationDocumentId, setConfirmationDocumentId] = useState<string | null>(null);
+  const [acknowledgedDocumentId, setAcknowledgedDocumentId] = useState<string | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const taskQuery = useQuery<AdviserReviewTaskDetail>({
@@ -90,6 +95,7 @@ export function AdviserReviewActionPanel({
       }),
       queryClient.invalidateQueries({ queryKey: adviserWorkspaceQueryKey }),
       queryClient.invalidateQueries({ queryKey: adviserReviewsQueueQueryKey }),
+      queryClient.invalidateQueries({ queryKey: adviserCertificationRecordsQueryKey }),
       queryClient.invalidateQueries({ queryKey: panelistDashboardQueryKey }),
       ...(taskStudentId
         ? [
@@ -138,6 +144,11 @@ export function AdviserReviewActionPanel({
     mutationFn: async () => {
       const documentId = task?.manuscript?.documentId;
       if (!documentId) throw new Error("The exact manuscript is unavailable.");
+      if (!isCertificationConfirmationReady({
+        documentId, manuscriptTitle: task?.manuscript?.manuscriptTitle ?? null,
+        originalFilename: task?.manuscript?.originalFilename ?? null,
+        confirmationDocumentId, acknowledgedDocumentId,
+      })) throw new Error("Review and acknowledge the exact manuscript before certifying.");
       return apiClientRequest(
         `${adviserReviewBasePath(stage)}/${thesisId}/certify`,
         {
@@ -173,6 +184,11 @@ export function AdviserReviewActionPanel({
     task?.certification?.issued === true || reviewStatus === "ISSUED";
   const strikeBlocked = isFinalStrikeBlocked(stage, task);
   const manuscriptId = task?.manuscript?.documentId ?? null;
+  const confirmationReady = isCertificationConfirmationReady({
+    documentId: manuscriptId, manuscriptTitle: task?.manuscript?.manuscriptTitle ?? null,
+    originalFilename: task?.manuscript?.originalFilename ?? null,
+    confirmationDocumentId, acknowledgedDocumentId,
+  });
   const actionsAvailable =
     awaitingReview &&
     !!manuscriptId &&
@@ -313,7 +329,7 @@ export function AdviserReviewActionPanel({
               ) : null}
 
               {issued ? (
-                <Alert>
+                <div className="space-y-3"><Alert>
                   <CheckCircle2 className="h-4 w-4" />
                   <AlertTitle>Certification issued</AlertTitle>
                   <AlertDescription>
@@ -323,7 +339,7 @@ export function AdviserReviewActionPanel({
                       : ""}
                     .
                   </AlertDescription>
-                </Alert>
+                </Alert><AdviserCertificationRecords thesisId={thesisId} stage={stage} /></div>
               ) : changesRequested ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
@@ -343,6 +359,20 @@ export function AdviserReviewActionPanel({
                         Certification applies to the exact manuscript currently
                         under review and cannot be undone.
                       </p>
+                      <dl className="mt-3 space-y-2 text-sm break-words">
+                        <div><dt className="font-medium">Student</dt><dd>{task.student?.name}</dd></div>
+                        <div><dt className="font-medium">Stage</dt><dd>{workspaceStageLabel(stage)}</dd></div>
+                        <div><dt className="font-medium">Thesis/Dissertation Title</dt><dd>{task.manuscript?.manuscriptTitle || "Title not recorded for this manuscript."}</dd></div>
+                        <div><dt className="font-medium">Manuscript file</dt><dd>{task.manuscript?.originalFilename || "Filename unavailable"}</dd></div>
+                      </dl>
+                      <Button type="button" variant="outline" size="sm" className="mt-3" disabled={!manuscriptId} onClick={() => setViewerOpen(true)}>View Manuscript</Button>
+                      <label className="mt-3 flex items-start gap-2 text-sm">
+                        <input type="checkbox" checked={Boolean(manuscriptId && acknowledgedDocumentId === manuscriptId)}
+                          disabled={taskQuery.isFetching || confirmationDocumentId !== manuscriptId}
+                          onChange={event => setAcknowledgedDocumentId(event.target.checked ? manuscriptId : null)} />
+                        I confirm that I reviewed this exact manuscript and that it is the document I am certifying as ready for defense application.
+                      </label>
+                      {confirmationDocumentId !== manuscriptId && <p role="alert" className="mt-2 text-sm">The manuscript changed. Cancel and reopen confirmation to review it again.</p>}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -358,7 +388,7 @@ export function AdviserReviewActionPanel({
                         type="button"
                         size="sm"
                         onClick={() => certify.mutate()}
-                        disabled={certify.isPending || !signature.trim()}
+                        disabled={certify.isPending || !signature.trim() || !confirmationReady || !actionsAvailable}
                         className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
                       >
                         {certify.isPending
@@ -388,16 +418,14 @@ export function AdviserReviewActionPanel({
                     <div>
                       <label
                         className="mb-1 block text-xs font-medium text-(--earist-secondary)"
-                        htmlFor="adviser-review-signature"
                       >
                         E-signature (required to certify)
                       </label>
-                      <Textarea
-                        id="adviser-review-signature"
+                      <ESignaturePad
                         value={signature}
-                        onChange={(event) => setSignature(event.target.value)}
-                        placeholder="Type your full name as e-signature"
-                        rows={2}
+                        onChange={setSignature}
+                        readyText="Signature ready for Adviser certification."
+                        requiredText="Signature required before certification."
                         disabled={!actionsAvailable}
                       />
                     </div>
@@ -424,7 +452,7 @@ export function AdviserReviewActionPanel({
                           !signature.trim()
                         }
                         className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
-                        onClick={() => setConfirmCertify(true)}
+                        onClick={() => { setConfirmationDocumentId(manuscriptId); setAcknowledgedDocumentId(null); setConfirmCertify(true); }}
                       >
                         Certify &amp; Sign
                       </Button>
