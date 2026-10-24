@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** APPROVED DESIGN / NOT YET IMPLEMENTED
+**Status:** PREDEF-1A ACCEPTED; PREDEF-1B0 NEXT; PREDEF-1B/1C AND PREDEF-2 NOT YET IMPLEMENTED
 
 ## 1. Goal
 
@@ -29,6 +29,8 @@ The initiative is prevention-first. It must make it difficult for an Adviser to 
 - Scheduling must use the authoritative exact manuscript; no current/latest manuscript fallback is allowed.
 - GS-006/GS-007 generation is currently exact-schedule based and Admin-only.
 - Existing official defense PDF renderers are server-owned and must not expose raw signature evidence or storage paths.
+- PREDEF-1A GS-017 renderer is now the accepted/frozen presentation baseline; later packages must supply authoritative data into that contract rather than redesigning the PDF.
+- Current live Proposal/Final manuscript submission has no authoritative manuscript-title field; this is now a confirmed PREDEF gap rather than permission to derive a title from historical Title Defense text.
 
 Before coding, reverify these invariants against the live branch and record the exact starting HEAD.
 
@@ -69,11 +71,28 @@ After Codex produces the renderer:
 
 Once accepted, the renderer layout and typed display contract become the **frozen presentation baseline** for the next phase. Later integration work must not casually redesign the PDF; changes require a verified renderer defect, a newly supplied official reference, or explicit project-owner approval.
 
+### PREDEF-1B0 — Codex: exact manuscript-title authority
+
+After PREDEF-1A visual acceptance, Codex owns one additional bounded data-authority package before live GS-017 integration:
+
+- add a legacy-compatible nullable manuscript-title field to `ThesisDocument` (recommended name: `manuscriptTitle` / database `manuscript_title`);
+- require a non-blank Thesis/Dissertation Title on every new Proposal/Final manuscript submission;
+- persist title + uploaded manuscript as one exact versioned submission;
+- when Adviser Request Changes leads to a replacement manuscript, create/preserve the new manuscript version with its own title snapshot while keeping earlier title/file history intact;
+- update Student Proposal/Final submission UI to capture the required title;
+- update Adviser review/read models to display the exact title alongside the exact manuscript/file identity;
+- add focused migration/service/controller/frontend tests for title validation, persistence, version preservation, and safe DTO exposure.
+
+PREDEF-1B0 must **not** yet implement GS-017 HTTP routes, Student/Admin GS-017 visibility, or PREDEF-2. It may touch the existing Proposal/Final manuscript submission and Adviser review surfaces only as required to establish exact title authority.
+
+The additive schema migration is now expected because the live audit confirmed a missing authority field. The new column remains nullable for legacy compatibility, but new Proposal/Final submissions must fail validation when title is blank/missing.
+
 ### PREDEF-1B / PREDEF-1C — DeepSeek: workflow and portal integration
 
-Only after PREDEF-1A visual acceptance should DeepSeek continue with live integration:
+Only after PREDEF-1B0 is accepted should DeepSeek continue with live integration:
 
 - map the exact issued Proposal/Final `AdviserCertification` into the accepted renderer contract;
+- resolve `manuscriptTitle` only through the exact `AdviserCertification.reviewedDocumentId -> ThesisDocument` relation; fail closed if exact title metadata is unavailable rather than using historical Title Defense wording or a latest/current title;
 - enforce exact `reviewedDocumentId` authority and no-latest fallback;
 - add the Adviser exact-manuscript confirmation guardrail before `Certify & Sign`;
 - implement bounded GS-017 PDF routes/service authorization for issuer Adviser, owning Student, and Admin;
@@ -125,6 +144,7 @@ At minimum, the confirmation must show:
 
 - Student name;
 - Proposal or Final stage;
+- exact Thesis/Dissertation Title stored on the reviewed manuscript version;
 - exact manuscript filename/document identity;
 - a **View Manuscript** action using the existing authorized document path;
 - clear irreversible/exact-document copy stating that the certification will be bound to this exact manuscript.
@@ -233,7 +253,7 @@ Adviser access to GS-006/GS-007 is not required by default. Adviser transparency
 
 Backend:
 
-- `backend/prisma/schema.prisma` — verify existing AdviserCertification fields; no migration expected unless the live audit proves a real missing authority field.
+- `backend/prisma/schema.prisma` — add the now-confirmed legacy-compatible exact manuscript-title metadata field on `ThesisDocument`; an additive migration is expected for PREDEF-1B0.
 - `backend/src/services/proposal-adviser-review.service.ts`
 - `backend/src/services/final-adviser-review.service.ts`
 - `backend/src/services/official-defense-document.service.ts`
@@ -327,26 +347,28 @@ If browser/manual QA is not executed, report **NOT EXECUTED**; do not infer PASS
 
 ## 9. Suggested implementation sequence
 
-1. Verify `main` HEAD, create/use `feat/pre-defense-document-integrity`, confirm clean/expected working state, and read the canonical docs plus this plan.
-2. **Codex / PREDEF-1A:** audit only the existing official-form renderer architecture and GS-017 reference needed to build the pure typed renderer.
-3. **Codex / PREDEF-1A:** implement GS-017 renderer + renderer-focused tests + Proposal/Final sample generator. Do not integrate live workflow/API/authorization.
-4. Generate fresh Proposal/Final GS-017 samples and perform project-owner visual QA; iterate until the PDF is explicitly accepted.
-5. Freeze the accepted renderer layout/contract and record the accepted PREDEF-1A commit/HEAD.
-6. **DeepSeek / PREDEF-1B/1C:** audit live AdviserCertification/service/route/UI authorities, then map exact issued certification data into the accepted renderer.
-7. Implement the Adviser exact-manuscript confirmation guardrail and bounded Adviser/Student/Admin GS-017 access/record visibility.
-8. Run PREDEF-1 focused authorization/regression checks and independently review the remote diff before marking PREDEF-1 accepted.
-9. **DeepSeek / PREDEF-2:** implement Admin Defense Application/Scheduled Defense Submission Context.
-10. Implement owning-Student read-only access to completed GS-006/GS-007 with no-additional-action guidance.
-11. Run PREDEF-2 focused + proportional regression checks and required browser/manual QA.
-12. Independently review the final remote diff and update checklist/source-of-truth implementation status only after project-owner acceptance.
+1. Verify the current `feat/pre-defense-document-integrity` branch/head/clean state and read the canonical docs plus this plan.
+2. **PREDEF-1A is accepted:** preserve the existing GS-017 renderer/layout/typed contract as the frozen visual baseline.
+3. **Codex / PREDEF-1B0:** audit Proposal/Final manuscript submission, `ThesisDocument` versioning, and Adviser review DTOs/UI for the missing exact manuscript-title authority.
+4. Add the legacy-compatible `ThesisDocument` manuscript-title field + additive migration; require non-blank title for new Proposal/Final manuscript submissions.
+5. Persist title with each exact manuscript version; surface exact title + exact file in Adviser review; prove replacement manuscripts preserve independent title/file history.
+6. Run PREDEF-1B0 focused backend/frontend/migration/build verification and independent remote review. Stop for project-owner acceptance.
+7. **DeepSeek / PREDEF-1B/1C:** map the exact issued `AdviserCertification.reviewedDocumentId` document—including its exact manuscript title—into the accepted GS-017 renderer.
+8. Implement the Adviser exact-title/exact-manuscript confirmation guardrail and bounded Adviser/Student/Admin GS-017 access/record visibility.
+9. Run PREDEF-1 focused authorization/regression checks and independently review the remote diff before marking PREDEF-1 accepted.
+10. **DeepSeek / PREDEF-2:** implement Admin Defense Application/Scheduled Defense Submission Context.
+11. Implement owning-Student read-only access to completed GS-006/GS-007 with no-additional-action guidance.
+12. Run PREDEF-2 focused + proportional regression checks and required browser/manual QA.
+13. Independently review the final remote diff and update checklist/source-of-truth implementation status only after project-owner acceptance.
 
 Suggested bounded commit progression:
 
-- Codex PREDEF-1A: `feat(documents): add adviser certification form`
+- Codex PREDEF-1A: `feat(documents): add adviser certification form` — accepted baseline
+- Codex PREDEF-1B0: `feat(thesis): bind titles to manuscript versions`
 - DeepSeek PREDEF-1B/1C: `feat(adviser): integrate adviser certification record`
 - DeepSeek PREDEF-2: `feat(defense): surface pre-defense document context`
 
-Do not auto-continue from Codex PREDEF-1A into workflow integration. The visual acceptance checkpoint is a deliberate handoff boundary. Later agents may split/merge commits when technically necessary, but the review report must preserve PREDEF-1A, PREDEF-1B/1C, and PREDEF-2 scope boundaries.
+Codex may proceed from the accepted PREDEF-1A renderer into the separately bounded PREDEF-1B0 title-authority package, but must stop after PREDEF-1B0 verification/owner review. Do not auto-continue into GS-017 service/auth/portal integration. Later agents may split/merge commits when technically necessary, but the review report must preserve PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, and PREDEF-2 scope boundaries.
 
 ## 10. Acceptance gate
 
