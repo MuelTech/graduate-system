@@ -123,17 +123,21 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 ### Proposal
 
 - Student manuscript submission for Adviser review is distinct from final Defense application evidence.
-- Student may resubmit a new Proposal manuscript after Adviser Request Changes.
+- Every new Proposal manuscript submission includes a required Thesis/Dissertation Title plus the manuscript file.
+- The title is version-bound metadata of the exact Proposal `ThesisDocument`; it is not a mutable thesis-level fallback for historical certification.
+- Student may resubmit a new Proposal manuscript after Adviser Request Changes. Each replacement manuscript receives its own title snapshot while prior document/title history remains intact.
 - Once Proposal Adviser Certification is `ISSUED`, the exact `reviewedDocumentId` is authoritative and ordinary Student replacement is blocked.
-- The issued certification may be rendered as official GS-017 from that exact certification record; GS-017 is system-owned and is not a Student upload slot.
+- The issued certification may be rendered as official GS-017 from that exact certification record; the printed title is resolved from the exact reviewed document's stored manuscript-title metadata. GS-017 is system-owned and is not a Student upload slot.
 - Proposal Defense application supplies only the supporting evidence currently required by the accepted workflow (COR and receipt/proof); it must not ask for a second manuscript upload.
 
 ### Final
 
 - Same authority pattern as Proposal.
-- Final manuscript may be resubmitted during Adviser review until certification is issued.
+- Every new Final manuscript submission includes a required Thesis/Dissertation Title plus the manuscript file.
+- The title is version-bound metadata of the exact Final `ThesisDocument`; a Final revision may therefore preserve a title distinct from earlier Proposal or Final manuscript versions.
+- Final manuscript may be resubmitted during Adviser review until certification is issued. Each replacement document preserves its own title snapshot.
 - Exact Final `AdviserCertification.reviewedDocumentId` is authoritative.
-- The issued certification may be rendered as official GS-017 from that exact certification record; GS-017 is system-owned and is not a Student upload slot.
+- The issued certification may be rendered as official GS-017 from that exact certification record; the printed title is resolved from the exact reviewed document's stored manuscript-title metadata. GS-017 is system-owned and is not a Student upload slot.
 - Final application supplies supporting evidence without duplicating the certified manuscript.
 
 ### Supporting evidence resubmission
@@ -143,6 +147,21 @@ Rejected/corrected Title proposal package, COR, or receipt/proof evidence must s
 For Proposal/Final, Admin rejection because a stage-scoped supporting item such as COR or receipt/proof must be corrected does **not** invalidate an already issued Adviser Certification. The certified manuscript and its GS-017 remain bound to the exact `AdviserCertification.reviewedDocumentId`; only the affected supporting evidence is replaced/resubmitted. The Student must not re-upload the certified manuscript merely because the application was rejected for an unrelated supporting requirement.
 
 A genuinely wrong already-certified manuscript is not repaired through the ordinary evidence-resubmission path. Controlled re-certification/rebinding remains a deferred recovery feature; no actor may silently mutate an `ISSUED` certification to point at another document.
+
+### Exact manuscript-title metadata
+
+Proposal/Final manuscript title is academic metadata bound to the exact manuscript version. The accepted implementation direction is an additive nullable legacy-compatible field on `ThesisDocument` (for example `manuscriptTitle`), with non-blank title required for new Proposal/Final manuscript submissions.
+
+Rules:
+
+- the title is captured in the same Student submission action as the manuscript file;
+- a replacement manuscript creates a new document/version with its own title snapshot;
+- older manuscript/title combinations remain historical evidence;
+- Adviser review surfaces the exact title together with the exact file;
+- GS-017 resolves the title through `AdviserCertification.reviewedDocumentId -> ThesisDocument.manuscriptTitle`;
+- missing title on a new Proposal/Final submission is invalid;
+- legacy rows without title metadata must fail closed for new GS-017 integration rather than falling back to historical Title Defense text or a current/latest title;
+- a separate derived/read-model **Current title** may use authorized manuscript metadata later, but it is not a substitute for exact-version title authority.
 
 ## 6. System-owned records
 
