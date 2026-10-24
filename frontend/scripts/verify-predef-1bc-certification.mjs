@@ -33,14 +33,15 @@ test("new signing reuses shared PNG signature evidence without changing signatur
   assert.match(read("src/components/panelist/adviser-review-action-panel.tsx"), /<ESignaturePad/);
   assert.match(read("src/components/defense-workspace/e-signature-pad.tsx"), /canvas\.toDataURL\("image\/png"\)/);
 });
-test("issued record mode offers View/Download with no extra submission or upload slot", () => {
+test("issued record mode offers View/Download without redundant read-only narration or an upload slot", () => {
   const record = read("src/components/shared/adviser-certification-records.tsx");
-  for (const text of ["Adviser Certification", "View Manuscript", "View Certification", "Download Certification", "No additional upload or submission is required."]) assert.ok(record.includes(text));
+  for (const text of ["Adviser Certification", "View Manuscript", "View Certification", "Download Certification"]) assert.ok(record.includes(text));
   assert.match(record, /disabled=\{!record\.pdfAvailable\}/);
   assert.match(record, /downloadOfficialDefensePdf/);
   assert.match(record, /Proposal Defense/);
   assert.match(record, /Final Defense/);
   assert.match(record, /Adviser Certification is not available for this record\./);
+  assert.ok(!record.includes("This is an official record. No additional upload or submission is required."));
   assert.doesNotMatch(record, /Issued Adviser Certifications|View GS-017|Download Copy|View certified manuscript|GS-017 is unavailable|type="file"|signatureData|storageKey|checksum|filePath/);
 });
 test("owning Student Proposal and Final issued status embed the shared official record", () => {

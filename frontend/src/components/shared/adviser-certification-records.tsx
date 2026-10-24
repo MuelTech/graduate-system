@@ -54,7 +54,6 @@ function CertificationRecordList({ thesisId, stage, viewerScope, exactRecords }:
       <p><span className="font-medium">Thesis/Dissertation Title: </span>{record.manuscriptTitle || "Title not recorded for this manuscript."}</p>
       <p>{record.originalFilename || "Filename unavailable"}</p>
       <p className="text-xs">Certified by {record.adviserName}{record.issuedAt ? ` on ${new Date(record.issuedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}` : ""}</p>
-      <p className="text-xs">This is an official record. No additional upload or submission is required.</p>
       {!record.pdfAvailable && <p role="status" className="text-xs">Adviser Certification is not available for this record.</p>}
       <div className="flex flex-wrap gap-2">
         {record.manuscriptDocumentId && <Button size="sm" variant="outline" onClick={() => setPreview({ url: `/api/documents/thesis-document/${record.manuscriptDocumentId}/file`, title: "Manuscript" })}>View Manuscript</Button>}

@@ -74,10 +74,6 @@ function OwnedApplication({
       aria-label="Defense Application"
     >
       <h3 className="font-semibold">Defense Application</h3>
-      <p>
-        This is your official Defense Application. No additional submission is
-        required unless instructed by the Graduate School.
-      </p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => setPreview(true)}>
           View Application

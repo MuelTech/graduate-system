@@ -118,12 +118,12 @@ test("Student controls require backend-confirmed exact schedule availability", (
     /student-defense-applications\/\$\{encodeURIComponent\(scheduleId\)\}\/pdf/,
   );
 });
-test("Student guidance explicitly removes any extra paper or upload step", () => {
-  assert.ok(
-    student.includes(
-      "This is your official Defense Application. No additional submission is required unless instructed by the Graduate School.",
-    ),
-  );
+test("Student record relies on visible state and actions without redundant guidance", () => {
+  assert.ok(student.includes("<h3 className=\"font-semibold\">Defense Application</h3>"));
+  assert.ok(student.includes("View Application"));
+  assert.ok(student.includes("Download Application"));
+  assert.ok(!student.includes("This is your official Defense Application. No additional submission is required unless instructed by the Graduate School."));
+  assert.ok(!student.includes("No additional submission is required"));
   assert.ok(!student.includes("View Official Application"));
   assert.ok(!student.includes("Download Copy"));
   assert.ok(!student.includes("Official Defense Application"));
