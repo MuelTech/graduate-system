@@ -64,20 +64,33 @@ Names, programs, signatures, payment metadata, and institutional approvals must 
 
 # 3. Academic Structure / Program Master Data
 
-Current repository facts:
+Current repository and institutional-reference facts:
 
 - `Program` already stores `programName`, `programType`, and a nullable `department` string.
-- There is no accepted normalized Department → Program → Major/Specialization management architecture yet.
+- The project-owner-supplied Graduate School program reference explicitly shows Graduate School programs and Major/Specialization groupings, but does not establish a separate Department layer.
+- The project-owner-supplied MAT-Math curriculum reference identifies **Master of Arts in Teaching Major in Mathematics (MAT-Math)** with effective date **S.Y. 2024-2025**.
+- That MAT-Math reference organizes the curriculum into Foundation, Major, Cognate, and Thesis groups totaling **30 units**, and separately lists graduation requirements including Comprehensive Examination, Thesis, and at least one publication.
+- Therefore the current normalized direction is **Graduate School → optional Department (only if later verified) → Program → Major/Specialization → Curriculum Version → Curriculum Courses**. Department must not be invented merely because the current `Program.department` string exists.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | 🟡 | Program data | Program model exists; current data still needs an Admin-managed master-data direction. |
-| ⏳ | Department management | Admin CRUD / active-state authority for departments. |
+| ❓ | Department layer | Verify from an authoritative EARIST organizational/academic source before normalizing or requiring Department. The supplied Graduate School program reference does not establish a Department layer. |
 | ⏳ | Program management | Admin CRUD / active-state authority for Graduate School programs. |
-| ⏳ | Major / specialization management | Structured relationship where a program requires a major/specialization. |
-| ⏳ | Department → Program → Major hierarchy | Final normalized relationship to be designed before migration. |
-| ⏳ | Defense form Course & Major display | Derived from authoritative academic master data instead of renderer-specific string manipulation. |
-| ❓ | Historical academic labels | Decide whether renamed programs/majors require historical snapshots for previously generated records. |
+| ⏳ | Major / specialization management | Structured relationship where a program requires a major/specialization; the supplied Graduate School program reference confirms this concept for several programs. |
+| ⏳ | Graduate School → Program → Major/Specialization structure | Treat this as the currently evidenced academic hierarchy. Insert Department only if an authoritative institutional source later confirms it. |
+| ⏳ | Curriculum master / version | A Program + Major/Specialization may have one or more effective curriculum versions. The MAT-Math reference establishes an example effective version for S.Y. 2024-2025. |
+| ⏳ | Curriculum course groups | Support authoritative curriculum groupings such as Foundation, Major, Cognate, Thesis, and future institution-defined categories without hardcoding one program's structure globally. |
+| ⏳ | Curriculum course/unit requirements | Store course code, title, units, group, ordering, required/optional status, and group/overall unit requirements from the authoritative curriculum version. |
+| ⏳ | Student curriculum assignment | Bind each Student academic career to the applicable curriculum version rather than deriving the degree checklist from the latest COR. |
+| ⏳ | Curriculum Checklist / Academic Progress UI | Show the full assigned degree curriculum with Completed / In Progress / Remaining status and earned-vs-required units. This is broader than the Student's current-semester COR. |
+| ⏳ | COR ↔ curriculum reconciliation | COR remains current enrollment evidence; enrolled subjects may be matched to curriculum courses, but the latest COR must not become the curriculum authority. |
+| ⏳ | Comprehensive Exam eligibility integration | Future eligibility should consume authoritative academic progress plus the accepted institutional exam rules, not merely current enrollment state. |
+| ⏳ | Thesis / defense eligibility integration | Where institutional policy requires prerequisite course/unit completion, derive it from the assigned curriculum version and authoritative Student progress. |
+| ⏳ | Graduation requirement tracking | Track non-course requirements separately from course completion where applicable, including Comprehensive Examination, Thesis, publication, and future program-specific requirements. |
+| ⏳ | Curriculum history / version preservation | Existing Students remain bound to their applicable curriculum version when a newer curriculum is introduced; do not silently rewrite historical academic requirements. |
+| ⏳ | Defense form Course & Major display | Derive Course/Major from authoritative academic master data instead of renderer-specific string manipulation. |
+| ❓ | Historical academic labels | Decide whether renamed programs/majors require historical snapshots for previously generated records and completed academic careers. |
 
 ---
 
