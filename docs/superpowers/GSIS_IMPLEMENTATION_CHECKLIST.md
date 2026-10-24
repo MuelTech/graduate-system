@@ -266,8 +266,8 @@ The master checklist should retain visibility of major completed foundations so 
 | ✅ | Re-defense attempt support and prior-record preservation. |
 | ✅ | Adviser Certification exact-document binding for Proposal/Final. |
 | ✅ | Admin Defense Record detail and document-section ownership pattern. |
-| ⏳ | Historical manuscript comparison for prior vs current defense attempt. |
-| ⏳ | Post-scheduling committee correction workflow. |
+| ✅ | Historical manuscript comparison for prior vs current defense attempt — manual side-by-side `Compare with Current` is implemented using exact attempt-bound historical manuscripts; automatic text/visual/semantic diff and recommendation-compliance judgment remain deferred. |
+| ⏳ | Post-scheduling, pre-defense committee correction / member replacement workflow. |
 | 🚫 | CRDT/Yjs multi-author report editing remains deferred unless reprioritized. |
 
 ---
@@ -280,7 +280,7 @@ The master checklist should retain visibility of major completed foundations so 
 | ✅ | Exact reviewed-document binding for Adviser Certification. |
 | ✅ | Stage-scoped evidence for defense applications. |
 | ⏳ | Unified Admin Student document/submission visibility surface. |
-| ⏳ | Panelist prior/current manuscript comparison for re-defense/history. |
+| ✅ | Panelist prior/current manuscript comparison for re-defense/history — manual side-by-side comparison is implemented; historical manuscript remains read-only and exact-attempt bound. |
 | 🚫 | Generic generated-document archive/version manager remains deferred. |
 
 ---
