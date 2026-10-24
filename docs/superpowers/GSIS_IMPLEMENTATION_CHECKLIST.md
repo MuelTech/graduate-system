@@ -25,12 +25,13 @@
 
 **Current phase:** documentation/design checkpoint before coding.  
 **Target implementation branch:** `feat/pre-defense-document-integrity` (create from current `main` when implementation starts).  
+**Implementation plan:** `docs/superpowers/plans/2026-10-24-pre-defense-document-integrity.md`  
 **Goal:** strengthen exact manuscript authority and visibility from Adviser review through Defense Application and Scheduling, with prevention-first guardrails before certification rather than implementing a rare correction path prematurely.
 
 | Status | Package | Scope |
 | --- | --- | --- |
-| 🚧 | PREDEF-1 — GS-017 Adviser Certification + certification guardrail | Generate EARIST-QSF-GS-017 Rev. 01 (06.20.25) from the exact issued Proposal/Final `AdviserCertification`; Student does not upload this form. Before Certify & Sign, Adviser must be shown the exact manuscript identity and explicitly confirm that the reviewed document is the manuscript being certified as ready for defense application. |
-| 🚧 | PREDEF-2 — Scheduled Defense Submission Context | Keep the exact scheduled manuscript and relevant stage evidence visible to Admin after scheduling, including GS-017 for Proposal/Final. |
+| 🚧 | PREDEF-1 — GS-017 Adviser Certification + certification guardrail | Generate EARIST-QSF-GS-017 Rev. 01 (06.20.25) from the exact issued Proposal/Final `AdviserCertification`; Student does not upload this form. Before Certify & Sign, Adviser sees/views the exact manuscript and explicitly confirms that it is the document being certified as ready for defense application. Issuer Adviser, owning Student, and Admin receive bounded read-only GS-017 access; ordinary committee assignment alone does not. |
+| 🚧 | PREDEF-2 — Defense Application / Scheduled Defense Submission Context | Keep the exact scheduled manuscript and relevant stage evidence visible to Admin after scheduling, including GS-017 for Proposal/Final. Give the owning Student read-only View/Download access to the completed GS-006/GS-007 once schedule/committee data make the official form complete, with clear no-additional-action guidance. |
 | 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred as a rare recovery case. Current direction is prevention-first: exact Adviser review + explicit certification acknowledgement + Admin application review + exact schedule binding. Revisit only if operational experience shows a real need for controlled re-certification/rebinding. |
 | ⏳ | DEF-CORR-1 — Post-Scheduling Committee Correction / Member Replacement | Separate follow-up branch after PREDEF acceptance; correct confirmed committee/schedule details before defense start with audit evidence. |
 
@@ -48,6 +49,7 @@
 | ✅ | Bundled Individual Evaluations PDF | One Admin download/print packet for Chairman + Panelists, one evaluator form per page. |
 | ✅ | Oral Examination Summary PDF (GS-011) | Exact persisted summary/schedule-bound source; current integration accepted. |
 | ✅ | Defense Application PDF (GS-006 / GS-007 family) | Admin generation/download integrated for exact schedule. |
+| 🚧 | Student read-only completed Defense Application record | PREDEF-2: once the exact schedule/committee makes GS-006/GS-007 complete, the owning Student may view/download it as an official record. Do not imply that the Student must print, refill, or re-upload it unless a future EARIST policy explicitly requires that. |
 | ✅ | Readable official filenames | Student + defense stage + document type; UUID remains internal. |
 | ✅ | Vector check marks | Evaluator selection and Defense Application stage markers use vector checks, not text X. |
 | ✅ | Defense Application filing identity | Student cellphone, Student email, and exact stage filing/resubmission timestamps are mapped. |
@@ -61,7 +63,7 @@
 | ⏳ | Defense Application President name | Same institutional office-holder configuration requirement. |
 | ⏳ | GS-011 Dean name | Must use authoritative institutional configuration. |
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
-| 🚧 | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1: generate the official EARIST-QSF-GS-017 from the exact issued Proposal/Final `AdviserCertification`, including the exact `reviewedDocumentId`, authoritative Student/program/manuscript/stage data, server-owned issue/sign timestamp, and the Adviser certification signature. Before issuance, show the Adviser the exact manuscript identity with a view action and require explicit acknowledgement that this exact document is ready for defense application. This is system-owned output, not a Student upload requirement. |
+| 🚧 | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1: generate the official EARIST-QSF-GS-017 from the exact issued Proposal/Final `AdviserCertification`, including the exact `reviewedDocumentId`, authoritative Student/program/manuscript/stage data, server-owned issue/sign timestamp, and the Adviser certification signature. Before issuance, show the Adviser the exact manuscript identity with a view action and require explicit acknowledgement that this exact document is ready for defense application. After issuance, show GS-017 as a no-additional-action official record to the issuer Adviser and owning Student, and as application/scheduling evidence to Admin. This is system-owned output, not a Student upload requirement. |
 | ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
@@ -241,7 +243,7 @@ These areas include collaborator-owned/currently evolving work. Do not mark them
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | 🐞 | Ready for Scheduling requirement visibility | Continue auditing the exact Ready/Scheduling handoff so Admin has sufficient current-stage evidence context before confirming the schedule. |
-| 🚧 | Scheduled-defense submission context | PREDEF-2: after scheduling, the exact defense manuscript and relevant stage evidence remain visible in Scheduling & Panels → Scheduled; Proposal/Final includes the system-owned GS-017 bound to the certified manuscript. |
+| 🚧 | Scheduled-defense submission context | PREDEF-2: after scheduling, the exact defense manuscript and relevant stage evidence remain visible in Scheduling & Panels → Scheduled; Proposal/Final includes the system-owned GS-017 bound to the certified manuscript. This is read-only submission context and does not add committee-correction authority. |
 | ⏳ | Stage requirements panel | Scheduling workspace should expose the exact current-stage application requirements/documents needed for review without duplicating application authority. |
 | ⏳ | Admin view of all Student submissions | Provide an authoritative Student-/Thesis-centered document/submission view rather than forcing Admin to discover files through unrelated pages. |
 | ⏳ | Group documents by lifecycle | Suggested grouping: admission, COR/supporting evidence, Title, Proposal, Final, adviser/certification records, receipts, manuscripts, and relevant history. |
@@ -263,7 +265,7 @@ Track at least:
 | ⏳ | Faculty becomes unavailable after scheduling. |
 | ⏳ | Schedule cancellation / reschedule recovery. |
 | 🚫 | Certified-manuscript correction / post-scheduling exact-document rebinding (PREDEF-3) — deferred rare fallback; prefer prevention through Adviser exact-document confirmation and Admin review. |
-| ⏳ | Missing/corrupted/unreadable uploaded document outside the bounded PREDEF-3 wrong-manuscript scenario. |
+| ⏳ | Missing/corrupted/unreadable uploaded document recovery; treat this separately from the deferred certified-manuscript correction/rebinding fallback. |
 | ✅ / 🟡 | Rejected application → corrected resubmission exists; continue auditing UX/history consistency. |
 | ⏳ | Wrong program/academic master-data assignment correction. |
 | ⏳ | Duplicate/stuck application recovery. |
