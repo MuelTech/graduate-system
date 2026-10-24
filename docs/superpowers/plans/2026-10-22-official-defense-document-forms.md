@@ -5,7 +5,7 @@
 **Initiative branch:** `feat/official-defense-document-forms`  
 **Branch baseline:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Date:** 2026-10-22  
-**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 + FIX-1 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
 
 ## 1. Purpose
 
@@ -795,39 +795,581 @@ TEMPLATE-3 FIX-1 is accepted. The next package is FORM-INT-0, an analysis-only i
 
 ## 18. FORM-INT-0 — Official Defense Document integration readiness audit
 
-**NEXT / ANALYSIS ONLY.**
+**COMPLETE / ACCEPTED AS INTEGRATION PLANNING BASELINE.**
 
-Create a fresh branch from accepted `main`:
+Branch:
 
 `feat/official-defense-document-integration`
 
-Expected base checkpoint at package start:
+Actual audit base:
 
-`48e7e02f546de894d9591b0e4a271b9629f1bdbd`
+`401219c8c22f5b56247a79fa42f99bfe2ee8d41c`
 
-FORM-INT-0 must inspect the existing implementation and document the exact production integration path for the three accepted form families. It must not change runtime behavior.
+Dedicated audit record:
 
-Required audit areas:
+`docs/superpowers/plans/2026-10-22-official-defense-document-integration-audit.md`
 
-- authoritative source records for Individual Evaluation, GS-011 Summary, and GS-006/GS-007 Defense Application;
-- exact defense attempt and schedule binding;
-- evaluator identity and finalized-state binding;
-- current Oral Examination Summary snapshot/service behavior;
-- existing Admin Defense Record sections and the correct ownership surface for Download / Print;
-- server-side authorization requirements;
-- raw signature evidence boundaries and which signatures may or may not be reused;
-- payment/O.R. and application data availability for GS-006/GS-007;
-- accepted stage-specific DefenseCommitteePolicy mapping for printed rows;
-- stale `defense-record-status.rules.ts` Title Defense assumption and whether it blocks document readiness;
-- existing repositories/services/controllers/routes that can be extended without creating a parallel workflow;
-- whether generated-document persistence/versioning is actually required for the first integration packages or can remain deferred.
+FORM-INT-0 made no runtime, schema, API, renderer, or UI changes. Its accepted planning conclusions are:
 
-Deliverables:
+- Individual Evaluation uses the exact finalized evaluator `OralExamScore.officialSnapshot` plus that evaluator's exact signature evidence;
+- GS-011 uses the persisted `OralExamSummary.snapshotData` and does not reuse unrelated signatures;
+- GS-006/GS-007 is anchored to the exact `DefenseSchedule.id` plus exact committee assignments;
+- official generation must not use thesis-level latest/current schedule fallback;
+- the accepted TEMPLATE-3 FIX-1 committee presentation remains authoritative;
+- unavailable Defense Application fields remain blank rather than inferred;
+- first integration is on-demand rendering; generated-document persistence/versioning stays deferred;
+- Admin Defense Record detail remains the owning UI surface for official outputs;
+- the stale Title Defense record-status projection is a prerequisite correction before exposing document readiness.
 
-- concrete source-to-renderer field map per form;
-- recommended service/controller/API boundaries;
-- authorization matrix;
-- exact Admin UI action placement;
-- prerequisites/blockers ranked by package;
-- bounded implementation sequence (FORM-INT-1, FORM-INT-2, FORM-INT-3, FORM-INT-4 or equivalent);
-- no code behavior changes.
+The audit is a planning baseline, not permission to broaden scope. Each implementation package must still verify its exact repository dependencies.
+
+## 19. FORM-INT-PRE1 — Defense Record status alignment
+
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`ae68d14b7af037e0570c21336de1ea7c43fb424c` — `fix(defense-records): align title completion with summary lifecycle`
+
+Purpose:
+
+Correct the stale Title Defense completion projection before official-document readiness is activated.
+
+Current inconsistency:
+
+- `defense-record-status.rules.ts` still carries the old assumption that Title Defense has no numerical Criteria/Summary requirement;
+- current official-record runtime and source-of-truth now treat Title, Proposal, and Final as producing evaluator Criteria + Oral Examination Summary.
+
+Scope:
+
+- `backend/src/services/defense-record-status.rules.ts`;
+- `backend/tests/unit/services/defense-record-status.rules.test.ts`;
+- comments/documentation only if needed to describe the corrected projection.
+
+Required result:
+
+- Title, Proposal, and Final must not reach COMPLETE merely because conclusion/RAP state is complete when the required Oral Examination Summary is absent;
+- no academic result is inferred from scores;
+- this remains a UI/readiness projection only.
+
+Explicit exclusions:
+
+- no renderer changes;
+- no PDF endpoints;
+- no controller/route work;
+- no Admin UI;
+- no Prisma/schema/migration;
+- no scoring/verdict changes;
+- no committee-policy changes;
+- no GS Form No. 22 work.
+
+Accepted result:
+
+- the obsolete Title-specific Summary exemption was removed;
+- Title, Proposal, and Final now require Summary ready + FINALIZED RAP after conclusion before the record projection becomes `COMPLETE`;
+- focused status tests cover the corrected Title matrix;
+- no renderer, API, route, frontend, schema, scoring, verdict, RAP-lifecycle, or committee-policy change was included.
+
+Agent-reported verification for PRE1:
+
+- focused status tests: 12/12 PASS;
+- official-defense-record service tests: 41/41 PASS;
+- backend TypeScript build: PASS;
+- `git diff --check`: PASS.
+
+The implementation was independently source/diff reviewed before acceptance.
+
+## 20. FORM-INT-1 — Individual Oral Examination Criteria PDF integration
+
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`9e1a89d4de7ad5f78fe5aefc35027ca2de8e08ca` — `feat(documents): integrate individual evaluation PDF`
+
+Use the accepted FORM-INT-0 mapping and PRE1 readiness baseline.
+
+Scope should remain limited to the first official document:
+
+- exact schedule + evaluator assignment binding;
+- finalized `OralExamScore.officialSnapshot`;
+- evaluator signature image validation/decoding;
+- server-side production logo loading;
+- mapping to the accepted TEMPLATE-1 renderer;
+- authenticated Admin PDF endpoint;
+- focused authorization, exact-binding, V2-only, malformed-signature, and renderer-mapping tests.
+
+Accepted result:
+
+- new `OfficialDefenseDocumentService` reuses `OfficialDefenseRecordService.getOfficialCriteria(...)`;
+- exact schedule + panel assignment binding remains authoritative;
+- only finalized `INSTITUTIONAL_MATRIX_V2` evaluator records render;
+- legacy scoring fails closed without conversion;
+- exact evaluator signature data is validated/decoded server-side;
+- accepted production logos are loaded from `backend/assets/official-forms/`;
+- new ADMIN-only PDF route:
+  `GET /thesis/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf`;
+- existing JSON Criteria route remains unchanged;
+- no frontend, schema, GS-011, GS-006/GS-007, workflow, or persistence changes were included.
+
+Agent-reported verification:
+
+- 40 new FORM-INT-1 tests PASS;
+- 86 renderer/official-record regression tests PASS;
+- 52 controller/route regression tests PASS;
+- `npm run forms:check` PASS;
+- backend TypeScript build PASS;
+- compiled `dist` asset loading PASS;
+- `git diff --check` PASS.
+
+Independent remote source/diff review found no blocking correctness or authorization defect.
+
+Operational requirement: production packaging must retain `backend/assets/official-forms/` alongside the compiled backend because the accepted loader resolves from module location rather than copying assets into `dist`.
+
+## 21. FORM-INT-2 — GS-011 Oral Examination Summary PDF integration
+
+**CORE INTEGRATION ACCEPTED — TITLE LAYOUT FIX REQUIRED.**
+
+Implementation:
+
+`d16f2819df176a470e68bfd1301873fbee9ea119` — `feat(documents): integrate oral exam summary PDF`
+
+Reuse the accepted FORM-INT-1 orchestration/asset/route pattern where it genuinely applies.
+
+Scope:
+
+- exact `scheduleId` authority;
+- exact persisted `OralExamSummary.snapshotData`;
+- V2-only/mixed-version fail-closed validation;
+- examiner rows from the persisted snapshot only;
+- Chairman/Member display names from snapshot evaluator roles;
+- exact schedule Adviser seat for Proposal/Final only;
+- Dean/attestation blank unless an authoritative current source exists;
+- wet-signature-only GS-011 output for the first integration;
+- ADMIN-only PDF route and focused tests.
+
+Accepted result:
+
+- exact persisted `OralExamSummary.snapshotData` is the official GS-011 academic/identity source;
+- no Summary regeneration or live-score reconstruction occurs during PDF generation;
+- examiner rows preserve persisted snapshot order;
+- Group A / Group B / Average are read directly from persisted snapshot values;
+- exactly one Chairman is used for Submitted by; Panelists fill Member names;
+- Title correctly resolves no Adviser value, but the accepted static renderer still draws the fixed Adviser concurrence block; project-owner QA now requires that entire block to be omitted for Title Defense;
+- Proposal/Final require exactly one exact-schedule ADVISER assignment and retain the Adviser concurrence block;
+- Dean remains blank;
+- no digital signature evidence is loaded or reused;
+- legacy/mixed/unknown scoring versions fail closed;
+- new ADMIN-only endpoint:
+  `GET /thesis/defense/:scheduleId/records/summary/pdf`;
+- no frontend, GS-006/GS-007, schema, workflow, or persistence changes were included.
+
+Agent-reported verification:
+
+- 82 focused FORM-INT-1/2 service/controller/route tests PASS;
+- 73 renderer/official-summary regression tests PASS;
+- 52 controller/route regression tests PASS;
+- `npm run forms:check` PASS;
+- backend TypeScript build PASS;
+- `git diff --check` PASS.
+
+Independent remote source/diff review found no blocking correctness, authorization, signature-reuse, or frozen-snapshot defect in the data/source binding. Later project-owner visual QA identified a Title-only presentation defect: a blank Adviser value still leaves the printed Adviser concurrence block visible. FORM-INT-2 therefore remains open for the bounded FIX-1 below.
+
+Minor hardening note: because the persisted `OralExamSummary` relation already belongs to the exact schedule, the implementation is correctly attempt-bound. A future bounded hardening pass may additionally assert that the snapshot's own `scheduleId` and `defenseType` metadata match the owning schedule.
+
+## 22. FORM-INT-3 — GS-006 / GS-007 Defense Application PDF integration
+
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`8393a368dd56230e6669a85de42cc3880f60b2da` — `feat(documents): integrate defense application PDF`
+
+Use the accepted TEMPLATE-3 FIX-1 committee presentation and exact schedule binding.
+
+Scope:
+
+- exact `DefenseSchedule.id`;
+- exact schedule student/program/stage context;
+- program type → GS-006 Master's / GS-007 Doctoral variant;
+- exact schedule committee assignments;
+- Chairman first in printed `Panelist` rows, followed by actual Panelists;
+- Proposal/Final exact schedule Adviser; Title no Adviser;
+- Facilitator and Rapporteur exact schedule seats;
+- currently unavailable application/payment/approval identity fields remain blank;
+- ADMIN-only PDF endpoint;
+- no signature inference/reuse;
+- focused tests for all stage/program combinations and fail-closed committee validation.
+
+Implementation review result:
+
+- exact schedule-bound data source and ADMIN-only endpoint are correct;
+- GS-006/GS-007 variant and stage mappings are correct;
+- centralized committee policy is reused rather than duplicated;
+- Chairman-first printed presentation and deterministic Panelist ordering are correct;
+- unavailable application/payment/personal-Gmail/approval fields remain blank;
+- wall-clock defense time is preserved;
+- no signature reuse, schema change, frontend activation, or persistence/versioning was added.
+
+Acceptance closure:
+
+FORM-INT-3 FIX-1 is accepted at `d387526ad153df54b674b7b4b9b7ef09478a7676`.
+
+The schedule block now uses Date/Time on its first line and a bounded full-width Link/Venue row beneath it. Exact authoritative `venueOrLink` text is preserved and may wrap; realistic physical venues, Google Meet links, and a long Teams-style URL render completely without truncation or URL rewriting. The committee table and approval/footer blocks shift only as needed while remaining one-page A4. Deliberately extreme content still fails explicitly.
+
+Agent-reported FIX-1 verification:
+
+- TEMPLATE-3 renderer tests: 47 PASS;
+- FORM-INT-3 application service tests: 38 PASS;
+- required combined regression set: 172 PASS;
+- `npm run forms:check` PASS;
+- backend build PASS;
+- `git diff --check` PASS;
+- 10 Defense Application sample PDFs generated;
+- four representative Master's/Doctoral long venue/link outputs rasterized at 150 dpi and visually inspected with no observed clipping, overlap, broken borders, signatory/footer collision, or unsafe margins.
+
+Independent remote diff/source review confirmed the fix is renderer-scoped and found no blocking layout or integration defect.
+
+## 23. FORM-INT-3 FIX-1 — Defense Application Link/Venue capacity hardening
+
+**ACCEPTED / COMPLETE.**
+
+Implementation:
+
+`d387526ad153df54b674b7b4b9b7ef09478a7676` — `fix(documents): harden defense application venue layout`
+
+Scope:
+
+- TEMPLATE-3 schedule-row layout only, plus directly affected tests/samples/docs;
+- preserve exact `venueOrLink` display text;
+- support realistic physical venues and normal meeting URLs without truncation/ellipsizing;
+- keep GS-006/GS-007 one-page A4;
+- preserve committee rows, approval blocks, footer, form codes, and accepted stage/program structures;
+- regression-check all six stage/program combinations plus long venue/URL fixtures;
+- visually inspect Master's and Doctoral output after geometry changes.
+
+Do not change schedule/domain data, committee policy, route/auth behavior, blank-field rules, schema, or frontend activation.
+
+FORM-INT-4 is now unblocked.
+
+## 24. FORM-INT-4 — Admin Download / Print activation and hardening
+
+**MANUAL QA FAILED / FIX-1 REQUIRED.**
+
+Implementation:
+
+`02043af2d8b99156046622438eb3635089417465` — `feat(documents): activate admin official PDF actions`
+
+Activate the three accepted official-document PDF endpoints in the schedule-scoped Admin Defense Record UI:
+
+- Defense Application → GS-006 / GS-007;
+- Evaluation Results → per-evaluator Individual Evaluation PDF;
+- Oral Examination Summary → GS-011.
+
+Add only the minimum availability metadata/read-model changes required to show correct enabled/disabled actions and reasons. Preserve authenticated blob download/open behavior, exact `scheduleId` / evaluator binding, and existing section ownership.
+
+Implemented result:
+
+- Defense Overview now calls the exact schedule GS-006/GS-007 endpoint;
+- Evaluation Results has an exact per-evaluator PDF action using `panelAssignmentId`;
+- Individual actions enable only from `hasOfficialCriteria`;
+- GS-011 action enables only from `oralExamSummary.ready`;
+- Committee Report remains a disabled document placeholder;
+- authenticated PDF retrieval is centralized in `official-defense-documents.client.ts`;
+- bearer token is sent only in the Authorization header;
+- PDF MIME/signature/empty-response validation is enforced before download;
+- backend filenames are sanitized and deterministic fallbacks exist;
+- scoped loading and Sonner error feedback are implemented;
+- stale deferred-document assertions in the FIX-4/FIX-5 verifiers were narrowly superseded;
+- no backend production, renderer, schema, workflow, GS Form No. 22, or new role-access change was included.
+
+Agent-reported verification:
+
+- new FORM-INT-4 verifier: 18/18 PASS;
+- updated FIX-4/FIX-5 verifiers: 27/27 PASS;
+- frontend TypeScript, scoped ESLint, build, and `git diff --check`: PASS;
+- backend official-document regression slice: 172/172 PASS;
+- `npm run forms:check` and backend build: PASS.
+
+Independent remote source/diff review found no blocking implementation or security defect.
+
+Manual-QA result:
+
+Project-owner runtime inspection on 2026-10-23 rejected the current evaluator-download UX and UUID-oriented filenames.
+
+Observed product defects:
+
+1. Evaluation Results exposes one PDF button per evaluator. This is cumbersome for Admin printing and conflicts with the existing section-owned design precedent that Evaluation Results should produce a bundled evaluator packet.
+2. Downloaded official PDFs use internal UUIDs as the visible filename identifier, making files difficult for ordinary users to recognize.
+
+Required correction is FORM-INT-4 FIX-1:
+
+- replace per-row evaluator PDF actions with one section-level Download / Print action;
+- generate one exact-schedule, multi-page Individual Evaluations PDF containing Chairman + all Panelists, one accepted TEMPLATE-1 form per page;
+- bundle availability requires every required evaluator form to be finalized, signed, and renderable;
+- retain the single-evaluator endpoint only as an internal/exact-record capability if still useful;
+- change Admin-facing Content-Disposition filenames for Defense Application, bundled Individual Evaluations, and GS-011 Summary to sanitized `<Student>-<Defense-Stage>-<Document-Type>.pdf` naming;
+- internal UUIDs remain route identifiers but are not the normal visible filename;
+- backend schedule context is authoritative for student/stage naming;
+- no client-side PDF merge.
+
+Repeat manual QA after FIX-1 before FORM-INT-4 can be accepted.
+
+Do not add a generic Defense Documents inventory, browser-page printing as the official form, schema changes, generated-document persistence/versioning, GS Form No. 22, or new Student/Panelist document access.
+
+
+## 25. FORM-INT-4 FIX-1 — Bundled Individual Evaluation PDF + readable official filenames
+
+**IMPLEMENTED / SOURCE-REVIEWED.**
+
+Implementation:
+
+`53649871ff2690fa8450b2d884ae6497ffab4bb6` — `fix(documents): bundle evaluations and use readable filenames`
+
+Manual-QA-driven correction only.
+
+### Bundled evaluator packet
+
+Admin Evaluation Results owns one section-level Download / Print action. The official output is one server-generated multi-page PDF for the exact defense schedule:
+
+- evaluator roles only: Chairman + Panelists;
+- Chairman first, then Panelists in deterministic schedule order;
+- one evaluator form per page;
+- each page uses the accepted TEMPLATE-1 renderer and exact finalized/signed evaluator source;
+- no partial packet: if any required evaluator is unavailable or invalid, fail closed;
+- no browser/client PDF merging.
+
+### Readable filename convention
+
+Normal user-facing filenames must omit opaque UUIDs and use authoritative student name + stage + document type.
+
+Examples:
+
+- `Juan-Dela-Cruz-Title-Defense-Application.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Individual-Evaluations.pdf`
+- `Juan-Dela-Cruz-Title-Defense-Oral-Examination-Summary.pdf`
+
+Equivalent Proposal Defense and Final Defense names follow the same convention.
+
+The backend owns authoritative naming through Content-Disposition. Frontend continues sanitizing header-derived filenames and keeps a safe fallback.
+
+### Still deferred
+
+- GS Form No. 22;
+- generated-document persistence/versioning;
+- full Defense Packet across different document families;
+- Student/Panelist official PDF access;
+- unrelated workflow/UI redesign.
+
+
+## 26. FORM-INT-4 FIX-2 — Individual Evaluation vector check marks
+
+**IMPLEMENTED / SOURCE-REVIEWED.**
+
+Implementation:
+
+`9d1c9d494706725612685038f9fade913f2df387` — `fix(documents): render evaluation selections as check marks`
+
+The former dummy X marker was replaced with renderer-local vector check geometry. Score authority, snapshot mapping, signatures, page ordering, bundling, filenames, API behavior, and workflow semantics are unchanged.
+
+Agent-reported verification:
+
+- TEMPLATE-1 renderer: 11/11 PASS;
+- bundle service: 26/26 PASS;
+- FORM-INT-1 service: 31/31 PASS;
+- combined renderer/service slice: 68/68 PASS;
+- forms check/build/diff checks PASS;
+- standalone and bundled raster QA showed centered check marks with no X text or layout regression.
+
+## 27. FORM-INT-4 FIX-3 — Defense Application stage check + form-code omission
+
+**IMPLEMENTED / SOURCE-REVIEWED — FINAL OWNER VISUAL QA PENDING.**
+
+Implementation:
+
+`d00cf90f08c952f4981d6bebbf2b7be38cbd697e` — `fix(documents): refine defense application stage markers`
+
+Project-owner decisions applied:
+
+- selected Title / Proposal / Final stage is marked with a renderer-local vector check;
+- no X text and no Unicode check glyph dependency;
+- visible `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` / `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` text is omitted;
+- Master's/Doctoral variants remain distinct internally and continue to control accepted stage/program geometry.
+
+Agent-reported verification:
+
+- TEMPLATE-3: 48/48 PASS;
+- FORM-INT-3 service: 38/38 PASS;
+- bundle regression: 26/26 PASS;
+- TEMPLATE-1 check-mark regression: 11/11 PASS;
+- forms check/build/diff checks PASS;
+- six stage/program samples rasterized and visually inspected as one-page A4.
+
+Final project-owner gate: regenerate/download one live Defense Application and visually confirm the check mark + code omission before marking FORM-INT-4 complete.
+
+
+## 28. FORM-INT-4 FIX-4 — Defense Application field-authority follow-up — ACCEPTED / COMPLETE
+
+Project-owner manual QA after FORM-INT-4 FIX-3 identified remaining blank GS-006 / GS-007 fields whose authority must be explicit before the integration can close.
+
+### Resolved automatic mappings
+
+- `Cellphone No.` → exact Student's `Student.cellphone`.
+- `Email (Personal Gmail Only)` → exact Student user's `User.email`.
+  - Applicant registration already rejects non-`@gmail.com` email server-side.
+  - Development panelist `@earist.edu.ph` accounts do not affect this student field.
+- `Date and Time` → server-owned timestamp of the latest successful application submission/resubmission for the exact stage.
+- `Date of Application` → date portion of that same exact timestamp.
+- rejected → corrected → successfully resubmitted applications print the latest successful resubmission timestamp, because that current corrected application version is the one reviewed/scheduled.
+- remove `Note: Please write legibly` from generated digital output.
+
+### Timestamp authority constraint
+
+Do not map these fields from generic `ThesisRecord.createdAt` or `updatedAt`.
+
+The current lifecycle reuses one ThesisRecord across Title → Proposal → Final, so:
+
+- `createdAt` can represent the original Title record rather than Proposal/Final application filing;
+- `updatedAt` can change for unrelated workflow mutations.
+
+Implemented at `d931159d705b6f7466f2732e2162ce10e5a0dd45` with three nullable stage-specific `ThesisRecord` timestamps:
+
+- `titleApplicationSubmittedAt`
+- `proposalApplicationSubmittedAt`
+- `finalApplicationSubmittedAt`
+
+No historical backfill or schema default was added. Initial successful submissions write only their exact stage timestamp; successful rejected-application resubmissions update only the exact current stage timestamp.
+
+### Still awaiting client confirmation
+
+- `Amount Paid`
+- `O.R. No.`
+
+Until confirmed:
+
+- do not derive Amount Paid from the pre-printed 300/900 fee table;
+- do not assume receipt upload means the amount is 900;
+- do not extract or fabricate an O.R. number from filename/upload metadata;
+- keep these fields blank in official output unless the client confirms an authoritative capture/verification source.
+
+### Acceptance result
+
+FIX-4 is accepted.
+
+Confirmed behavior:
+
+1. Cellphone continues from exact `Student.cellphone`.
+2. Student Gmail now comes from exact Student `User.email`.
+3. exact stage-aware submission/resubmission timestamps are persisted server-side.
+4. `Date and Time` + `Date of Application` render from the same exact stage event in Asia/Manila.
+5. `Note: Please write legibly` is removed.
+6. legacy pre-migration applications with null timestamps intentionally render blank filing fields rather than guessed dates.
+7. Amount Paid / O.R. remain unresolved and blank pending client policy.
+
+Agent-reported checks: TEMPLATE-3 48/48, official Defense Application service/source 44/44, repository timestamp coverage including all three initial stages and all three resubmissions, bundle 26/26, TEMPLATE-1 11/11, Prisma validate/generate/migrate status, forms check, backend build, and diff check all passed.
+
+Independent remote review confirmed the additive migration and bounded mapping behavior.
+
+This follow-up did not alter committee policy, scoring, evaluator bundles, GS-011 mapping, signatures, verdicts, or unrelated workflow behavior.
+
+
+## 29. FORM-INT-2 FIX-1 — Title GS-011 Adviser-block omission
+
+**ACCEPTED / COMPLETE (2026-10-24).**
+
+Implementation commit: `a5e68a07b7d8c0403cb2b4f34456e031ce798148`.
+
+Project-owner QA on 2026-10-24 clarified the stage-specific presentation contract for GS-011.
+
+### Problem
+
+The current source correctly sets Title Defense Adviser value to blank because Title has no Adviser assignment, but the static GS-011 renderer always draws:
+
+- `Concurred In:`;
+- the Adviser name/signature rule;
+- `Thesis/Dissertation Adviser`.
+
+That leaves a non-applicable Adviser section visible on Title Defense output.
+
+### Required behavior
+
+**Title Defense**
+
+- omit the entire Adviser concurrence block;
+- do not render `Concurred In:`;
+- do not render the Adviser name/signature rule;
+- do not render `Thesis/Dissertation Adviser`;
+- retain the Dean `Attested` block;
+- preserve all evaluator rows, Submitted by names, candidate/course/date/student number, and accepted page geometry;
+- keep the PDF one-page A4 and visually balanced.
+
+**Proposal Defense / Final Defense**
+
+- preserve the current Adviser concurrence block;
+- populate from exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
+- missing/ambiguous Adviser remains fail-closed;
+- never substitute the Student's current/live Adviser or another defense attempt.
+
+### Bounded implementation scope
+
+Expected files are limited to the GS-011 renderer/types or render mapping only if necessary, focused tests, sample generator/fixtures, and directly affected documentation.
+
+Do not change:
+
+- `OralExamSummary.snapshotData` authority;
+- scoring/version rules;
+- evaluator ordering or Chairman/Member authority;
+- routes or ADMIN authorization;
+- digital-signature policy;
+- Dean authority/source;
+- GS-006/GS-007 behavior;
+- defense workflow/session semantics;
+- database schema.
+
+### Acceptance gate
+
+Before closing FIX-1:
+
+1. focused tests cover Title omission and Proposal/Final preservation;
+2. generate/rasterize representative Title, Proposal, and Final GS-011 outputs;
+3. visually verify that Title contains no Adviser concurrence block and Proposal/Final still do;
+4. verify the Dean `Attested` area remains intact;
+5. run relevant GS-011/official-document regressions and backend build;
+6. project-owner visual QA accepts the Title output.
+
+### Implementation result (2026-10-24)
+
+- `OralExamSummaryRenderInput.stage` is now an explicit required
+  `title` / `proposal` / `final` layout discriminator.
+- The mapping derives the discriminator from the exact schedule
+  `defenseType`; unsupported stage values fail closed. The source still does not
+  query an Adviser seat for Title and still requires exactly one exact-schedule
+  `ADVISER` assignment for Proposal/Final.
+- Title output omits `Concurred In:`, the Adviser name/signature rule, and
+  `Thesis/Dissertation Adviser`. The renderer rejects a non-blank Adviser name
+  for a Title input rather than silently hiding it.
+- Title moves the unchanged Dean `Attested:` block into the freed lower-page
+  region instead of leaving an empty Adviser-shaped gap. Proposal/Final retain
+  the previously accepted Adviser and Dean positions.
+- Evaluator rows, Submitted by lines, identity fields, Chairman/Member
+  authority, snapshot authority, scoring, routes, authorization, signatures,
+  and GS-006/GS-007 are unchanged.
+- The development sample generator now emits Title and Final variants in
+  addition to the existing blank/filled/long samples.
+
+### Verification performed
+
+- Focused GS-011 renderer + summary-service tests: **49/49 passed**.
+- Broader official-document regression run: **262/262 passed across 10 files**
+  (all official-defense renderer tests, document/summary/application/bundle/
+  filename services, controller, and routes).
+- `npm run forms:check` exit 0.
+- Backend `npm run build` exit 0.
+- `git diff --check` exit 0.
+- Raster QA at 150 dpi: `backend/.tmp/official-form-samples/oral-exam-summary-title.pdf`
+  (and `.png`), `oral-exam-summary.pdf` (Proposal), and
+  `oral-exam-summary-final.pdf` all render as one A4 page. Title has no Adviser
+  concurrence block, keeps a correctly positioned Dean `Attested:` section
+  without clipping/overlap, and Proposal/Final retain the Adviser block.
+  A long-value Title variant was also inspected with no overlap.
+- Project-owner visual acceptance was granted on 2026-10-24 after review of the corrected Title output. FIX-1 is accepted; the overall Official Defense Documents initiative remains open for separately tracked pending/deferred items.

@@ -18,6 +18,7 @@ It is never embedded. Only the two existing production logos are embedded as ras
 `OralExamSummaryRenderInput` supplies:
 
 - both logo images as bytes and MIME types;
+- explicit `stage` (`title`, `proposal`, or `final`) for stage-specific signatory layout;
 - candidate name, Course display value, date, and student number;
 - up to **six** examiner rows, each with `examinerName`, `groupARating`,
   `groupBRating`, and `average` strings, in caller-supplied order;
@@ -29,6 +30,11 @@ These capacities are physical slots observed in the reference, not committee mem
 or evaluator-authority rules. Missing rows/names stay blank. No member is fabricated.
 Examiner rows and signatory names are independent: the renderer never derives one from the other.
 There is no signature-image input and no new GS-011 signature policy.
+
+`stage` is a layout discriminator, not an adviser-data fallback. Title Defense has no
+Adviser seat, so the renderer rejects a non-blank `adviserName` at `title` and omits the
+entire Adviser concurrence block. Proposal/Final render the block from the caller-supplied
+exact-schedule Adviser name; their missing/ambiguous seat rules remain in the service source.
 
 Ratings and Average are display-ready strings. They are not converted, rounded, calculated,
 validated against a scoring scale, or used to infer a verdict.
@@ -46,12 +52,15 @@ GS-011 has its own table geometry and signatory layout. The shared masthead is t
 18 pt down on this page; TEMPLATE-1 output is unaffected.
 The printed table always contains six body rows and four columns.
 The Submitted by block retains one Chairman and five Member lines.
-Adviser concurrence and Dean attestation retain their printed areas.
+Proposal/Final retain the Adviser concurrence block and Dean attestation in their printed
+lower-page areas. Title omits the Adviser block entirely and places the Dean attestation
+in that freed region; no empty Adviser rule or label remains.
 The form-code/revision footer is omitted from generated PDFs at the project owner's request.
 
 Normal identity values occupy compact inline baselines just above their rules.
 Only fields requiring a second line reserve extra height; table/Submitted by/Adviser
-positions then shift together by at most 24 pt. The Dean position remains fixed.
+positions then shift together by at most 24 pt. The Proposal/Final Dean position remains
+fixed; the Title Dean block moves with the identity shift into the freed Adviser region.
 Names and values are measured, wrapped, and reduced within bounded sizes (body values down to 8 pt).
 Table text is vertically centered and padded from borders; signatory names end near their rules.
 Content that cannot fit throws a field-specific error instead of truncating, clipping,
@@ -81,10 +90,14 @@ Ignored outputs under `backend/.tmp/official-form-samples/`:
 
 | Variant | PDF | Raster |
 | --- | --- | --- |
-| Blank | `oral-exam-summary-blank.pdf` | `oral-exam-summary-blank.png` |
-| Filled | `oral-exam-summary.pdf` | `oral-exam-summary.png` |
+| Blank (Proposal layout) | `oral-exam-summary-blank.pdf` | `oral-exam-summary-blank.png` |
+| Title Defense | `oral-exam-summary-title.pdf` | `oral-exam-summary-title.png` |
+| Filled (Proposal layout) | `oral-exam-summary.pdf` | `oral-exam-summary.png` |
+| Final Defense | `oral-exam-summary-final.pdf` | `oral-exam-summary-final.png` |
 | Long values | `oral-exam-summary-long.pdf` | `oral-exam-summary-long.png` |
 
+The Title and Final variants share the filled fictitious values but use their stage layout:
+Title omits the Adviser block and keeps Dean attestation; Final keeps both Adviser and Dean.
 The filled fictitious example has five examiner rows and four Member names, leaving unused
 printed slots blank. The stress example exercises all six rows, all five Member lines,
 long candidate/course/student identifiers, and long signatory names.
@@ -146,3 +159,25 @@ Accepted points:
 - eight TEMPLATE-2 tests, nine TEMPLATE-1 tests, and backend build passed.
 
 TEMPLATE-2 is accepted and closed. TEMPLATE-3 / GS-006 + GS-007 is the next authorized static-template package.
+
+## FORM-INT-2 FIX-1 — Title Adviser-block omission (2026-10-24)
+
+The GS-011 integration source already resolved no Adviser for Title Defense, but the accepted
+static renderer still drew the fixed Adviser concurrence block. Project-owner QA required the
+entire block to be omitted for Title.
+
+Implemented:
+
+- `OralExamSummaryRenderInput.stage` is now required (`title` / `proposal` / `final`);
+- rendering a `title` input with a non-blank `adviserName` fails explicitly;
+- `title` output omits `Concurred In:`, the Adviser name/signature rule, and
+  `Thesis/Dissertation Adviser`;
+- `title` moves the unchanged Dean `Attested:` block into the freed lower-page region instead
+  of leaving an intentional-looking empty gap;
+- `proposal` and `final` retain the Adviser block, exact-schedule Adviser name, and the
+  previously accepted lower-page geometry;
+- evaluator rows, Submitted by lines, identity fields, and one-page A4 geometry are unchanged.
+
+Verification performed in this package: focused renderer and summary-service tests, canonical
+document regressions, TypeScript build, and raster inspection of Title/Proposal/Final samples.
+Project-owner visual acceptance was granted on 2026-10-24 after review of the corrected Title output. FORM-INT-2 FIX-1 is accepted.

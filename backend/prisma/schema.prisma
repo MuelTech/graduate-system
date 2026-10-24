@@ -531,6 +531,13 @@ model ThesisRecord {
   orNumber                  String?                    @map("or_number")
   amountPaid                Decimal?                   @map("amount_paid")
   createdAt                 DateTime                   @default(now()) @map("created_at")
+  /**
+   * Latest successful Defense Application submission/resubmission for each
+   * exact stage. Nullable for legacy records; never inferred/backfilled.
+   */
+  titleApplicationSubmittedAt    DateTime?              @map("title_application_submitted_at")
+  proposalApplicationSubmittedAt DateTime?              @map("proposal_application_submitted_at")
+  finalApplicationSubmittedAt    DateTime?              @map("final_application_submitted_at")
   adviserCertifications     AdviserCertification[]
   defenseSchedules          DefenseSchedule[]
   eLibrary                  ELibrary?

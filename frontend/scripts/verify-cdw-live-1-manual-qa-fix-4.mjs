@@ -56,12 +56,16 @@ test("legacy Group I / Group II / Overall presentation remains available", () =>
   assert.match(admin, /r\.overallValue/);
 });
 
-test("Download / Print remains disabled and has no fake print or PDF path", () => {
+test("official PDF actions are active while Committee Report remains deferred", () => {
   const admin = read(ADMIN);
 
-  assert.match(admin, /function DownloadPrintButton/);
-  assert.match(admin, /disabled/);
-  assert.doesNotMatch(admin, /window\.print\(\);/);
+  // FORM-INT-4 supersedes the earlier "document output not available" state.
+  assert.match(admin, /records\/application\/pdf/);
+  assert.match(admin, /records\/summary\/pdf/);
+  assert.match(admin, /records\/evaluations\/pdf/);
+  assert.doesNotMatch(admin, /criteria\/\$\{e\.panelAssignmentId\}\/pdf/);
+  assert.match(admin, /Official Committee Report PDF is not available yet\./);
+  assert.doesNotMatch(admin, /window\.print\(\)/);
   assert.doesNotMatch(admin, /import .*jspdf|import .*pdf-lib/i);
   assert.doesNotMatch(admin, /onClick=.*print/i);
 });

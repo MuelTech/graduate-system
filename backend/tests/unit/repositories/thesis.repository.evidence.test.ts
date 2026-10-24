@@ -245,7 +245,12 @@ describe("ThesisRepository.resubmitWithEvidence", () => {
     );
     expect(tx().thesisRecord.updateMany).toHaveBeenCalledWith({
       where: { id: "thesis-1", studentId: "student-1", status: "REJECTED", stage: "TITLE" },
-      data: { status: "PENDING", rejectionReason: null },
+      data: {
+        status: "PENDING",
+        rejectionReason: null,
+        // FORM-INT-4 FIX-4: the successful Title resubmission is timestamped.
+        titleApplicationSubmittedAt: expect.any(Date),
+      },
     });
     expect(tx().auditLog.create).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ createdIds: ["pkg-v2"], supersededIds: ["pkg-v1"] });

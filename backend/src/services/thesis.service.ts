@@ -32,6 +32,8 @@ import { canApplyReviewTransition } from './defense-workflow.rules';
 import { AdviserRequestService } from './adviser-request.service';
 import { OralEvaluationService } from './oral-evaluation.service';
 import { OfficialDefenseRecordService } from './official-defense-record.service';
+import { OfficialDefenseDocumentService } from './official-defense-document.service';
+import type { OfficialDefenseDocumentKind } from './official-defense-document-filename';
 import { RapporteurFinalizationService } from './rapporteur-finalization.service';
 import { RapReportService } from './rap-report.service';
 
@@ -53,6 +55,7 @@ export class ThesisService {
   private adviserRequestService = new AdviserRequestService();
   private conclusion = new DefenseConclusionService();
   private officialRecords = new OfficialDefenseRecordService();
+  private officialDocuments = new OfficialDefenseDocumentService();
   private rapporteurFinalization = new RapporteurFinalizationService();
   private rapReports = new RapReportService();
 
@@ -895,6 +898,56 @@ export class ThesisService {
     return this.officialRecords.getOfficialCriteria(
       scheduleId,
       panelAssignmentId,
+      actor,
+    );
+  }
+
+  /** FORM-INT-1: authenticated ADMIN individual evaluation PDF (exact attempt). */
+  async generateOfficialCriteriaPdf(
+    scheduleId: string,
+    panelAssignmentId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateIndividualEvaluationPdf(
+      scheduleId,
+      panelAssignmentId,
+      actor,
+    );
+  }
+
+  /** FORM-INT-2: authenticated ADMIN GS-011 Oral Examination Summary PDF. */
+  async generateOralExamSummaryPdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateOralExamSummaryPdf(scheduleId, actor);
+  }
+
+  /** FORM-INT-3: authenticated ADMIN GS-006/GS-007 Defense Application PDF. */
+  async generateDefenseApplicationPdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateDefenseApplicationPdf(scheduleId, actor);
+  }
+
+  /** FORM-INT-4 FIX-1: one merged Individual Evaluations packet (ADMIN-only). */
+  async generateEvaluationBundlePdf(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<Uint8Array> {
+    return this.officialDocuments.generateEvaluationBundlePdf(scheduleId, actor);
+  }
+
+  /** FORM-INT-4 FIX-1: canonical readable Content-Disposition filename. */
+  async getOfficialDocumentFilename(
+    scheduleId: string,
+    kind: OfficialDefenseDocumentKind,
+    actor: { userId: string; role: string },
+  ): Promise<string> {
+    return this.officialDocuments.buildOfficialDocumentFilename(
+      scheduleId,
+      kind,
       actor,
     );
   }

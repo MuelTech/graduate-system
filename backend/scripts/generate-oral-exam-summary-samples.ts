@@ -16,6 +16,7 @@ async function main(): Promise<void> {
       earist: { mimeType: "image/jpeg", bytes: await readFile(path.join(assets, "earist-logo.jpg")) },
       graduateSchool: { mimeType: "image/jpeg", bytes: await readFile(path.join(assets, "graduate-school-logo.jpg")) },
     },
+    stage: "proposal",
     candidateName: "", course: "", date: "", studentNumber: "", examiners: [],
     submittedBy: { chairmanName: "", memberNames: [] }, adviserName: "", deanName: "",
   };
@@ -36,6 +37,9 @@ async function main(): Promise<void> {
     },
     adviserName: "Dr. Andrea V. Flores", deanName: "Dr. Gabriel L. Cruz",
   };
+  // Stage layouts: Title has no Adviser seat; Proposal/Final retain the block.
+  const title: OralExamSummaryRenderInput = { ...filled, stage: "title", adviserName: "" };
+  const final: OralExamSummaryRenderInput = { ...filled, stage: "final" };
   const longNames = [
     "Dr. Maria Esperanza de la Cruz-Villanueva", "Dr. Juan Miguel de los Santos-Mendoza",
     "Dr. Alexandra Ysabel Santiago-Rodriguez", "Dr. Jose Antonio Garcia-de la Fuente",
@@ -51,7 +55,11 @@ async function main(): Promise<void> {
   };
   await mkdir(output, { recursive: true });
   for (const [name, input] of [
-    ["oral-exam-summary-blank", blank], ["oral-exam-summary", filled], ["oral-exam-summary-long", long],
+    ["oral-exam-summary-blank", blank],
+    ["oral-exam-summary-title", title],
+    ["oral-exam-summary", filled],
+    ["oral-exam-summary-final", final],
+    ["oral-exam-summary-long", long],
   ] as const) {
     const prefix = path.join(output, name);
     await writeFile(prefix + ".pdf", await renderOralExamSummary(input));

@@ -17,6 +17,10 @@ const LONG_FACILITATOR = "Prof. Maria Consuelo Fernandez-Ramos";
 const LONG_RAPPORTEUR = "Prof. Christopher Emmanuel del Rosario";
 const NORMAL_ADVISER = "Dr. Andrea V. Flores";
 const LONG_ADVISER = "Dr. Maria Andrea Fernandez-Villanueva";
+const LONG_PHYSICAL_VENUE = "Graduate School Conference Room, Nudas Building";
+const GOOGLE_MEET_URL = "https://meet.google.com/abc-defg-hij";
+const TEAMS_URL =
+  "https://teams.microsoft.com/l/meetup-join/19%3ameeting_MTc0ZjQ2YjItOWQ4ZS00N2M5LThhYjgtZjY0ZTk2N2Q4YjIx%40thread.v2/0?context=%7b%22Tid%22%3a%228b3f5c2a-1d4e-4f6a-9c7b-2e1d0a9f8c6b%22%2c%22Oid%22%3a%224c2e6f1a-7b3d-4a8e-9f5c-1d2b3a4c5d6e%22%7d";
 
 /** The first printed Panelist name may later be supplied from the Chairman assignment. */
 const MASTERS_PANELISTS = [
@@ -96,7 +100,7 @@ async function main(): Promise<void> {
         personalGmail: "maria.villanueva.qa@gmail.com",
         defenseDate: "30 September 2026",
         defenseTime: "10:00-11:30 AM",
-        defenseLink: "meet.test/qa",
+        defenseLink: LONG_PHYSICAL_VENUE,
         deanName: "Dr. Jose Emmanuel de los Santos-Cruz",
         vicePresidentName: "Dr. Maria Alexandra Fernandez-Villanueva",
         presidentName: "Dr. Juan Miguel Santiago-Rodriguez",
@@ -114,7 +118,7 @@ async function main(): Promise<void> {
       personalGmail: "alex.qa@gmail.com",
       defenseDate: "30 October 2026",
       defenseTime: "10:00 AM",
-      defenseLink: "GS Room 201",
+      defenseLink: "Room 101, GS Building",
       deanName: "Dr. Gabriel L. Cruz",
       vicePresidentName: "Dr. Elena M. Mercado",
       presidentName: "Dr. Samuel R. Villanueva",
@@ -171,13 +175,16 @@ async function main(): Promise<void> {
     },
     {
       name: "defense-application-gs006-proposal",
-      input: application(
-        "masters",
-        "proposal",
-        "normal",
-        NORMAL_ADVISER,
-        MASTERS_PANELISTS.slice(0, 4),
-      ),
+      input: {
+        ...application(
+          "masters",
+          "proposal",
+          "normal",
+          NORMAL_ADVISER,
+          MASTERS_PANELISTS.slice(0, 4),
+        ),
+        defenseLink: GOOGLE_MEET_URL,
+      },
     },
     {
       name: "defense-application-gs006-final-long",
@@ -209,13 +216,16 @@ async function main(): Promise<void> {
     },
     {
       name: "defense-application-gs007-proposal",
-      input: application(
-        "doctoral",
-        "proposal",
-        "normal",
-        NORMAL_ADVISER,
-        DOCTORAL_PANELISTS.slice(0, 5),
-      ),
+      input: {
+        ...application(
+          "doctoral",
+          "proposal",
+          "normal",
+          NORMAL_ADVISER,
+          DOCTORAL_PANELISTS.slice(0, 5),
+        ),
+        defenseLink: TEAMS_URL,
+      },
     },
     {
       name: "defense-application-gs007-final-long",

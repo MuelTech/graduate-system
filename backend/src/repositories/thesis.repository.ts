@@ -432,6 +432,7 @@ export class ThesisRepository {
           assignmentId,
           stage: "TITLE",
           status: "PENDING",
+          titleApplicationSubmittedAt: new Date(),
         },
       });
 
@@ -495,7 +496,12 @@ export class ThesisRepository {
       // so Title PASSED cannot be mistaken for Proposal PASSED.
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
-        data: { stage: "PROPOSAL", status: "PENDING", outcome: null },
+        data: {
+          stage: "PROPOSAL",
+          status: "PENDING",
+          outcome: null,
+          proposalApplicationSubmittedAt: new Date(),
+        },
       });
 
       // CP3-FIX1: do NOT create another PROPOSAL_CHAPTERS — the Adviser-certified
@@ -546,7 +552,12 @@ export class ThesisRepository {
 
       const thesis = await tx.thesisRecord.update({
         where: { id: thesisId },
-        data: { stage: "FINAL", status: "PENDING", outcome: null },
+        data: {
+          stage: "FINAL",
+          status: "PENDING",
+          outcome: null,
+          finalApplicationSubmittedAt: new Date(),
+        },
       });
 
       // CP4: do NOT create another FINAL_MANUSCRIPT — certified manuscript is authoritative.
@@ -678,9 +689,21 @@ export class ThesisRepository {
       }
 
       // Finalize the transition only after the evidence shape is authoritative.
+      // One server-owned timestamp records this successful stage resubmission.
+      const submittedAt = new Date();
+      const stageSubmittedAt =
+        stage === "TITLE"
+          ? { titleApplicationSubmittedAt: submittedAt }
+          : stage === "PROPOSAL"
+            ? { proposalApplicationSubmittedAt: submittedAt }
+            : { finalApplicationSubmittedAt: submittedAt };
       const claimed = await tx.thesisRecord.updateMany({
         where: { id: thesisId, studentId, status: "REJECTED", stage },
-        data: { status: "PENDING", rejectionReason: null },
+        data: {
+          status: "PENDING",
+          rejectionReason: null,
+          ...stageSubmittedAt,
+        },
       });
       if (claimed.count !== 1) {
         throw new AppError(

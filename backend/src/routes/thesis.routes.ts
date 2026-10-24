@@ -597,6 +597,38 @@ router.get(
   thesisController.getOfficialCriteria,
 );
 
+// FORM-INT-1: exact-attempt Individual Evaluation PDF (ADMIN-only, no public URL)
+router.get(
+  "/defense/:scheduleId/records/criteria/:panelAssignmentId/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOfficialCriteriaPdf,
+);
+
+// FORM-INT-2: exact-attempt GS-011 Oral Examination Summary PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/summary/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOralExamSummaryPdf,
+);
+
+// FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/application/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getDefenseApplicationPdf,
+);
+
+// FORM-INT-4 FIX-1: exact-schedule bundled Individual Evaluations PDF (ADMIN-only)
+router.get(
+  "/defense/:scheduleId/records/evaluations/pdf",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getOfficialEvaluationBundlePdf,
+);
+
 // CDW-4 FIX: the detailed Oral Examination Summary is ADMIN-side official-record
 // data. Committee accounts (incl. the session Chairman) are denied.
 router.get(

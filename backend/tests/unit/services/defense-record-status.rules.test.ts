@@ -5,6 +5,10 @@ import { deriveDefenseRecordStatus } from "../../../src/services/defense-record-
  * UIUX-2M: Admin Defense Records Record Status is a stage-aware UI completion
  * projection derived ONLY from existing authoritative fields. It never infers a
  * result from scores/session state and never rewrites sessionStatus.
+ *
+ * Title, Proposal, and Final Defense all use the evaluator scoring/finalization
+ * lifecycle, so every stage requires a ready Oral Examination Summary and a
+ * FINALIZED RAP before the official record can be complete.
  */
 describe("deriveDefenseRecordStatus", () => {
   it("active session (not concluded) -> In Progress", () => {
@@ -29,7 +33,7 @@ describe("deriveDefenseRecordStatus", () => {
     expect(r.status).toBe("AWAITING_COMPLETION");
   });
 
-  it("Title concluded + RAP finalized -> Complete (no numerical summary needed)", () => {
+  it("Title concluded + summary not ready + RAP finalized -> Awaiting Completion", () => {
     const r = deriveDefenseRecordStatus({
       defenseType: "TITLE_DEFENSE",
       sessionStatus: "CONCLUDED",
@@ -37,10 +41,35 @@ describe("deriveDefenseRecordStatus", () => {
       summaryReady: false,
       rapStatus: "FINALIZED",
     });
-    expect(r.status).toBe("COMPLETE");
+    expect(r.status).toBe("AWAITING_COMPLETION");
+    expect(r.detail.toLowerCase()).toContain("summary");
   });
 
-  it("Title concluded + RAP not finalized -> Awaiting Completion", () => {
+  it("Title concluded + summary ready + RAP finalized -> Complete", () => {
+    const r = deriveDefenseRecordStatus({
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "CONCLUDED",
+      formalResult: "PASSED",
+      summaryReady: true,
+      rapStatus: "FINALIZED",
+    });
+    expect(r.status).toBe("COMPLETE");
+    expect(r.detail).toBe("Official record finalized");
+  });
+
+  it("Title concluded + summary ready + RAP awaiting signatures -> Awaiting Completion", () => {
+    const r = deriveDefenseRecordStatus({
+      defenseType: "TITLE_DEFENSE",
+      sessionStatus: "CONCLUDED",
+      formalResult: "PASSED",
+      summaryReady: true,
+      rapStatus: "FOR_SIGNATURE",
+    });
+    expect(r.status).toBe("AWAITING_COMPLETION");
+    expect(r.detail.toLowerCase()).toContain("rap");
+  });
+
+  it("Title concluded + summary not ready + RAP not finalized -> Awaiting Completion", () => {
     const r = deriveDefenseRecordStatus({
       defenseType: "TITLE_DEFENSE",
       sessionStatus: "CONCLUDED",
@@ -49,6 +78,8 @@ describe("deriveDefenseRecordStatus", () => {
       rapStatus: "FOR_SIGNATURE",
     });
     expect(r.status).toBe("AWAITING_COMPLETION");
+    expect(r.detail.toLowerCase()).toContain("summary");
+    expect(r.detail.toLowerCase()).toContain("rap");
   });
 
   it("Proposal concluded + summary ready + RAP finalized -> Complete", () => {

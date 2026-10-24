@@ -34,7 +34,7 @@ Photographs are never embedded. Only the existing clean production logo JPEGs ar
 | Printed Chairman label | None; Chairman is displayed under a `Panelist` row | None; Chairman is displayed under a `Panelist` row |
 | Masthead/application section | Lower placement | 14 pt higher, following the photograph |
 | Approval blocks | More vertical separation | More compact arrangement |
-| Footer | `EARIST-QSF-GS-006 Rev. 01 (06.20.25)` | `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` |
+| Footer | Intentionally omitted (project-owner decision) | Intentionally omitted (project-owner decision) |
 
 The printed labels are presentation only and do not change GS-IS committee membership or evaluator authority. The `CHAIRMAN` remains Chairman in system data, but because neither GS-006 nor GS-007 prints a dedicated Chairman label, the Chairman is rendered into a row labelled `Panelist`. Later integration must supply the printed Panelist names in deterministic order: Chairman first, then actual Panelists. The renderer must not infer roles from unordered data.
 
@@ -68,9 +68,10 @@ All dates, amounts, O.R. identifiers, contact values, and schedule values are re
 There is no O.R./Gmail validation, course specialization inference, approval state, scoring,
 payment-state determination, signature image, or automatic signing.
 
-Selection marks only the explicit input. `QA_APPLICATION_MARKER` isolates the current dummy
-`X`; neither blank reference establishes an official X/check/circle convention.
-The marker is presentation only and can be changed after institutional confirmation.
+Selection marks only the explicit input. The selected application stage is indicated by a
+renderer-local **vector check mark** drawn inside the existing parentheses as two line
+segments; no Unicode glyph, X marker, or additional font is used. The mark is presentation
+only and does not change `applicationType` authority.
 
 ## Layout and bounded text
 
@@ -82,7 +83,8 @@ Accepted helpers are reused without modifying them:
 
 Variant-specific placement is applied with a page graphics translation, leaving accepted
 TEMPLATE-1/TEMPLATE-2 outputs unchanged. The nearest Doctoral logo box is 22 pt from the top;
-Master's is 36 pt. Footer text has more than 36 pt of bottom clearance.
+Master's is 36 pt. The visible form code/revision is intentionally omitted, leaving safe bottom
+clearance for the signatory blocks.
 
 Identity fields first try 12 pt single-line boxes at 10-8 pt text sizes. Genuine wrapping gets
 a bounded 20 pt region, up to 24 pt of additional space across the identity section. The
@@ -90,8 +92,11 @@ table and Prepared by position follow this extra height; approval spacing remain
 Excess individual or combined content throws a field-specific `RangeError`.
 Table geometry always retains every printed row. Committee names fit one bounded line above
 their rule; captions remain below it. Approval names have a bounded two-line region.
-Schedule cells have their own bounded widths. Nothing is ellipsized, silently truncated,
-allowed to overlap, or continued onto another page.
+The schedule block uses two bounded lines: Date of Defense and Time on the first line, and a
+full-width Link/Venue line beneath it. `defenseLink` is always the exact supplied display text;
+ordinary physical venues and meeting URLs may wrap onto multiple lines inside that measured
+area. Nothing is ellipsized, truncated, URL-rewritten, or continued onto another page, and
+truly excessive content still raises an explicit `RangeError` instead of clipping.
 
 The measured static selection line is drawn with intentional spaces preserved inside its
 parentheses; the shared wrapping helper normally normalizes repeated whitespace.
@@ -135,6 +140,9 @@ Ignored outputs under `backend/.tmp/official-form-samples/`:
 Filled examples use `MAEd` / `EdD` with fictitious identities. The Title samples exercise
 five Master's / six Doctoral printed Panelist rows without an Adviser. The Proposal samples
 and Final long samples exercise Adviser + four Master's / five Doctoral printed Panelist rows.
+Normal samples show a realistic physical venue, the Master's Proposal sample uses a Google Meet
+URL, the Doctoral Proposal sample uses a long Teams-style URL, and long samples use an extended
+physical venue; all are fictitious QA values.
 Long-value stress variants supply full printed capacities and long course, email, O.R.,
 schedule, committee, and approval-name values. Facilitator and Rapporteur remain separate
 identities. None of the dummy values defines an academic, payment, or signature rule.
@@ -155,14 +163,15 @@ printed committee rows remain 7 for Master's and 8 for Doctoral at every stage, 
 lower-page Prepared by / approval blocks and footer did not require geometry changes.
 
 The corrected samples remain one-page A4 with no observed clipping or text/line overlap.
-Footer clearance and all signatory blocks remain intact. The blank/null samples use the
-neutral maximum blank layout and print no stage marker or Adviser row.
+All signatory blocks remain intact with safe bottom clearance. The blank/null samples use the
+neutral maximum blank layout and print no stage check mark or Adviser row.
 
 Thirty-nine TEMPLATE-3 tests pass, plus all eight TEMPLATE-2 and nine TEMPLATE-1 tests (56 total).
 Coverage includes deterministic valid one-page A4 bytes for all six stage/program combinations,
 stage-specific Adviser visibility and printed Panelist capacity, no Chairman label, no role
-inference from supplied names, blank and excessive slots, literal fee text, exact form codes,
-long-value bounds, overflow rejection, null behavior, and the production import boundary.
+inference from supplied names, blank and excessive slots, literal fee text, intentional
+omission of the visible form code, vector stage markers, long-value bounds, overflow rejection,
+null behavior, and the production import boundary.
 `npm run forms:check`, the backend TypeScript build, and `git diff --check` pass.
 
 Accepted TEMPLATE-1/TEMPLATE-2 files, shared helpers, sample scripts/tests, and all retained
@@ -176,7 +185,7 @@ Color logos retain their supplied colors and existing 141/207 px resolution limi
 vector geometry removes paper holes, skew, grain, shadows, and scan artifacts. Footer placement
 is slightly higher to retain a safe print margin. No photographed background is embedded.
 
-Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 is accepted and published at `959233de1d9be7209a3792702fb392056b605613`.
+Project-owner visual acceptance was granted on 2026-10-22 for the original static TEMPLATE-3 baseline. Later integration QA intentionally superseded the visible footer/code treatment and stage marker presentation via FORM-INT-4 FIX-3 at `d00cf90f08c952f4981d6bebbf2b7be38cbd697e`.
 
 FORM-DX-1 is complete at `299ca18a89e8fae54785326935fce966995302d8`. TEMPLATE-3 FIX-1 was independently reviewed, accepted at `03cbc80c92b7a9cf538b82b96b920cb373f81a94`, and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`.
 
@@ -195,7 +204,7 @@ Accepted points:
 
 - one controlled `masters` / `doctoral` renderer family;
 - GS-006 and GS-007 printed capacities remain documented as layout facts, not committee policy;
-- exact confirmed GS-006/GS-007 footers retained;
+- visible GS-006/GS-007 form code/revision omitted by later project-owner decision;
 - explicit caller-supplied application/payment/schedule/committee/approval display values;
 - no DB/API/payment verification/signature/workflow inference;
 - three visual QA passes over six variants with no observed clipping or overlap;
@@ -220,3 +229,73 @@ Authoritative generated-form behavior:
 - the centralized `DefenseCommitteePolicy` remains the participant-count authority.
 
 This bounded renderer/layout correction was independently reviewed and merged to `main` via PR #38. Production integration now proceeds only through the separate FORM-INT-0 readiness audit and later bounded integration packages.
+
+## FORM-INT-3 FIX-1 — schedule Link/Venue capacity (2026-10-22)
+
+Status: **ACCEPTED** at `d387526ad153df54b674b7b4b9b7ef09478a7676`.
+
+Production integration exposed that the original single-line Link box was too narrow for
+authoritative `venueOrLink` values (`Room 101, GS Building` already failed). The schedule block
+now renders Date of Defense and Time on the first line and Link/Venue on a measured full-width
+second line. Long physical venues and meeting URLs wrap inside that bounded row; committee,
+approval, and footer geometry shift only as needed and remain one-page A4.
+
+The exact supplied text is preserved: no truncation, ellipsis, abbreviation, URL rewriting, or
+domain mutation. A value that cannot fit the bounded row still fails explicitly with
+`RangeError`. Regression coverage includes realistic physical venues, Google Meet and long
+Teams-style URLs, geometry/bounds checks, unchanged GS-006/GS-007 committee structures, and the
+deliberate over-capacity failure.
+
+
+Integration acceptance note: FORM-INT-3 is accepted with integration commit `8393a368dd56230e6669a85de42cc3880f60b2da` plus this renderer hardening commit. The next integration package is FORM-INT-4; no further TEMPLATE-3 domain mapping change is required for that handoff.
+
+## FORM-INT-4 FIX-3 — stage check mark + form-code omission (2026-10-23)
+
+The selected application stage is now indicated with a centered, two-segment vector check mark
+inside its parentheses. No `x`/`X` text or Unicode check glyph is drawn. The visible
+`EARIST-QSF-GS-006 Rev. 01 (06.20.25)` / `EARIST-QSF-GS-007 Rev. 01 (06.20.25)` footer is
+intentionally omitted by project-owner decision; the Master's/Doctoral variants remain distinct
+internally and continue to control heading, committee capacity, Adviser visibility, and geometry.
+Score/data mapping, committee/link layout, and one-page A4 output are unchanged.
+
+
+## Integration field-authority follow-up (2026-10-23)
+
+Later project-owner live PDF QA identified that several Defense Application fields were still blank because initial integration intentionally did not invent application/payment authority.
+
+Approved future integration mapping:
+
+- `cellphoneNumber` ← exact Student `cellphone`;
+- `personalGmail` ← exact Student User `email`; applicant registration is server-enforced as `@gmail.com`;
+- `applicantDateAndTime` ← exact stage application's latest successful submission/resubmission server timestamp;
+- `dateOfApplication` ← date portion of the same timestamp;
+- after Admin rejection and a successful corrected resubmission, the latest successful resubmission timestamp is the printed current application timestamp;
+- generated output should remove the paper-only `Note: Please write legibly`.
+
+Do not source application time from generic `ThesisRecord.createdAt` or `updatedAt`.
+The same ThesisRecord is reused across stages and generic updates are not application-submission authority. Integration must provide an explicit server-owned, stage-aware application-submission timestamp.
+
+Still unresolved:
+
+- `amountPaid`;
+- `officialReceiptNumber`.
+
+Those values remain blank until client policy confirms an authoritative structured source. The renderer itself remains a pure typed-input renderer and must not inspect database records, uploads, filenames, or receipt documents to infer them.
+
+## FORM-INT-4 FIX-4 — authoritative applicant fields — ACCEPTED (2026-10-24)
+
+Integration now supplies, without changing this renderer's pure contract:
+
+- `cellphoneNumber` from the exact Student record;
+- `personalGmail` from the exact Student user email;
+- `applicantDateAndTime` and `dateOfApplication` from the latest successful
+  application/resubmission timestamp for the exact schedule's defense stage,
+  formatted deterministically in Asia/Manila;
+- `amountPaid` and `officialReceiptNumber` remain blank pending client policy.
+
+The paper-only `Note: Please write legibly` instruction has been removed from generated
+PDFs. Stage check marks, committee layout, venue/link wrapping, and one-page A4 geometry
+are unchanged.
+
+
+FIX-4 acceptance note: implementation `d931159d705b6f7466f2732e2162ce10e5a0dd45` was independently remote-reviewed after agent verification. Legacy applications created before the migration intentionally have null stage timestamps and therefore blank printed filing date/time fields; this is expected behavior, not a failed lookup. A new successful stage submission/resubmission supplies the authoritative timestamp. Amount Paid and O.R. remain intentionally blank pending client policy.

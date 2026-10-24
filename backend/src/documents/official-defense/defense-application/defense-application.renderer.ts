@@ -1,23 +1,71 @@
 import {
-  grayscale, PDFDocument, PDFFont, popGraphicsState, pushGraphicsState, StandardFonts, translate,
+  grayscale, PDFDocument, PDFFont, PDFPage, popGraphicsState, pushGraphicsState, StandardFonts, translate,
 } from "pdf-lib";
 import { institutionalHeader } from "../shared/institutional-header";
 import { A4, rule } from "../shared/pdf-layout";
 import { fitText, textBox } from "../shared/pdf-text";
 import type { DefenseApplicationRenderInput } from "./defense-application.types";
 
-// Blank references establish no official completed-form marking convention.
-const QA_APPLICATION_MARKER = "X";
+/**
+ * Selected application stage is indicated by a vector check mark drawn inside
+ * the existing parentheses. Two line segments avoid any Unicode-glyph or font
+ * dependency. `applicationType` remains the sole selection authority.
+ */
+export const STAGE_CHECK_THICKNESS = 1.1;
+
+export interface StageCheckSegment {
+  readonly start: { readonly x: number; readonly y: number };
+  readonly end: { readonly x: number; readonly y: number };
+}
+
+/** Pure, centered geometry in PDF coordinates for one stage parentheses pair. */
+export function stageCheckSegments(
+  centerX: number,
+  centerY: number,
+): readonly [StageCheckSegment, StageCheckSegment] {
+  // PDF coordinates: y increases upward. Start high-left, dip to the vertex,
+  // then rise to the higher right tip, producing a recognizable check mark.
+  const halfWidth = 2.95;
+  const halfHeight = 2.3;
+  const vertexX = centerX - 0.9;
+  const vertexY = centerY - halfHeight;
+  return [
+    {
+      start: { x: centerX - halfWidth, y: centerY + 0.2 },
+      end: { x: vertexX, y: vertexY },
+    },
+    {
+      start: { x: vertexX, y: vertexY },
+      end: { x: centerX + halfWidth, y: centerY + halfHeight },
+    },
+  ];
+}
+
+export function drawStageCheck(
+  page: PDFPage,
+  centerX: number,
+  centerY: number,
+): void {
+  for (const segment of stageCheckSegments(centerX, centerY)) {
+    page.drawLine({
+      start: segment.start,
+      end: segment.end,
+      thickness: STAGE_CHECK_THICKNESS,
+      color: grayscale(0),
+    });
+  }
+}
 
 // Only observed form-family differences: these are physical layout facts, not workflow rules.
+// The visible EARIST-QSF-GS-006/007 code/revision is intentionally omitted.
 const VARIANTS = {
   masters: {
-    heading: "MASTERS PROGRAM", code: "EARIST-QSF-GS-006 Rev. 01 (06.20.25)",
+    heading: "MASTERS PROGRAM",
     mastheadUp: 2, schoolTop: 132, applicationTop: 154, selectionTop: 168, programTop: 194, identityTop: 218,
     deanLine: 650, recommendationTop: 686, vicePresidentLine: 724, approvedTop: 750, presidentLine: 776,
   },
   doctoral: {
-    heading: "DOCTORAL PROGRAM", code: "EARIST-QSF-GS-007 Rev. 01 (06.20.25)",
+    heading: "DOCTORAL PROGRAM",
     mastheadUp: 16, schoolTop: 118, applicationTop: 140, selectionTop: 154, programTop: 180, identityTop: 204,
     deanLine: 656, recommendationTop: 672, vicePresidentLine: 710, approvedTop: 732, presidentLine: 758,
   },
@@ -105,10 +153,10 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
   if (input.applicationType !== null) {
     const prefix = input.applicationType === "title" ? "" : input.applicationType === "proposal"
       ? "(   ) Title / " : "(   ) Title / (   ) Proposal / ";
-    const markX = selectionX + serifBoldItalic.widthOfTextAtSize(prefix + "(", selectionSize);
-    const markerTop = variant.selectionTop + selectionAscent - serifBoldItalic.heightAtSize(9, { descender: false });
-    text(QA_APPLICATION_MARKER, markX, markerTop, serifBoldItalic.widthOfTextAtSize("   ", selectionSize),
-      14, 9, serifBoldItalic, "center", "Unconfirmed QA application marker");
+    const markerLeft = selectionX + serifBoldItalic.widthOfTextAtSize(prefix + "(", selectionSize);
+    const markerWidth = serifBoldItalic.widthOfTextAtSize("   ", selectionSize);
+    const baselineY = A4.height - variant.selectionTop - selectionAscent;
+    drawStageCheck(page, markerLeft + markerWidth / 2, baselineY + selectionAscent / 2);
   }
   text(variant.heading, 68, variant.programTop, 470, 18, 13, serifBold, "center");
 
@@ -159,7 +207,7 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     }
     rowTop += rowHeight + 2;
   }
-  text("Note: Please write legibly", 143, rowTop + 1, 190, 13, 9.5, oblique);
+  // System-generated application: the paper-only handwriting instruction is omitted.
   const tableTop = rowTop + 16;
   const tableX = 68, tableWidth = 470;
   const feeWidths = [240, 120, 110] as const;
@@ -171,8 +219,24 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     ["Energy and Venue Fee", "300", "300"],
     ["", "P 900.00", "P 900.00"],
   ] as const;
-  const warningHeight = 13, feeRowHeight = 12.5, scheduleHeight = 14, committeeHeadingHeight = 24;
+  const warningHeight = 13, feeRowHeight = 12.5, scheduleRowHeight = 14, committeeHeadingHeight = 24;
   const scheduleTop = tableTop + warningHeight + feeRows.length * feeRowHeight;
+  // Schedule fields use two bounded lines: Date/Time, then a full-width Link.
+  // Link/venue text keeps its exact value and may wrap inside a measured row.
+  const linkLabelWidth = 24;
+  const linkValueWidth = tableWidth - linkLabelWidth - 10;
+  const linkLayout = input.defenseLink
+    ? fitText(regular, input.defenseLink, { width: linkValueWidth, height: 28 }, {
+      size: 9.5, minSize: 8, field: "Defense link",
+    })
+    : undefined;
+  if (input.defenseLink && !linkLayout) {
+    throw new RangeError("Defense link exceeds the available space in the one-page form.");
+  }
+  const linkRowHeight = linkLayout
+    ? Math.max(scheduleRowHeight, linkLayout.height + 4)
+    : scheduleRowHeight;
+  const scheduleHeight = scheduleRowHeight + linkRowHeight;
   const committeeHeadingTop = scheduleTop + scheduleHeight;
   const committeeTop = committeeHeadingTop + committeeHeadingHeight;
   const committeeNames: { label: string; name: string; field: string }[] = [];
@@ -213,17 +277,25 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
       column > 0 ? "center" : "left"));
     rule(page, tableX, top + feeRowHeight, tableX + tableWidth, 0.6);
   });
-  for (const offset of feeOffsets.slice(1)) vertical(offset, tableTop + warningHeight, committeeHeadingTop);
+  for (const offset of feeOffsets.slice(1)) {
+    vertical(offset, tableTop + warningHeight, scheduleTop + scheduleRowHeight);
+  }
   const schedule = [
     { label: "Date of Defense:", value: input.defenseDate, x: tableX, width: 240, labelWidth: 76, field: "Defense date" },
-    { label: "Time:", value: input.defenseTime, x: tableX + 240, width: 120, labelWidth: 28, field: "Defense time" },
-    { label: "Link:", value: input.defenseLink, x: tableX + 360, width: 110, labelWidth: 24, field: "Defense link" },
+    { label: "Time:", value: input.defenseTime, x: tableX + 240, width: 230, labelWidth: 28, field: "Defense time" },
   ];
   for (const field of schedule) {
     text(field.label, field.x + 5, scheduleTop + 3, field.labelWidth, 11, 9.5, oblique);
     text(field.value, field.x + field.labelWidth + 5, scheduleTop + 2,
       field.width - field.labelWidth - 10, 11.5, 9.5, regular, "left", field.field);
   }
+  vertical(tableX + 240, scheduleTop, scheduleTop + scheduleRowHeight);
+  rule(page, tableX, scheduleTop + scheduleRowHeight, tableX + tableWidth, 0.6);
+  text("Link:", tableX + 5, scheduleTop + scheduleRowHeight + 3,
+    linkLabelWidth, 11, 9.5, oblique);
+  text(input.defenseLink, tableX + linkLabelWidth + 5,
+    scheduleTop + scheduleRowHeight + 2, linkValueWidth, linkRowHeight - 2,
+    9.5, regular, "left", "Defense link");
   rule(page, tableX, committeeHeadingTop, tableX + tableWidth, 0.6);
   text("EXAMINATION COMMITTEE:", tableX, committeeHeadingTop + 7, tableWidth, 15, 10, bold, "center");
   rule(page, tableX, committeeTop, tableX + tableWidth, 0.6);
@@ -246,7 +318,9 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
     rule(page, 236, lineTop, 372);
     text(caption, 204, lineTop + 4, 200, 12, 9.5, regular, "center");
   };
-  const deanLine = variant.deanLine + identityExtra;
+  // Keep the approval block after the table; short values retain the accepted
+  // positions, while a wrapped Link shifts it only as far as needed.
+  const deanLine = Math.max(variant.deanLine + identityExtra, tableBottom + 30);
   const recommendationTop = Math.max(variant.recommendationTop, deanLine + 24);
   const vicePresidentLine = Math.max(variant.vicePresidentLine, recommendationTop + 29);
   const approvedTop = Math.max(variant.approvedTop, vicePresidentLine + 23);
@@ -257,6 +331,5 @@ export async function renderDefenseApplication(input: DefenseApplicationRenderIn
   signature(input.vicePresidentName, vicePresidentLine, "Vice President for Academic Affairs", "Vice President name");
   text("Approved:", 68, approvedTop, 130, 13, 9.5, oblique);
   signature(input.presidentName, presidentLine, "President", "President name");
-  text(variant.code, 76, 795, 460, 13, 10, oblique);
   return doc.save();
 }

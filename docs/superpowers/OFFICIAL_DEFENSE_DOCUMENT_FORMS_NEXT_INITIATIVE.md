@@ -5,8 +5,8 @@
 **Initiative state:** merged to `main` via PR #37  
 **Branch base:** `main` @ `d8ac8479fd34226dc837cba9048a1db5a1f72776`  
 **Documentation checkpoint:** `81c9d29b5cb6f7b6b2c7d5e454850d438eeb491f`  
-**Status:** STATIC FORM PHASE CLOSED — FORM-DX-1 COMPLETE — TEMPLATE-3 FIX-1 ACCEPTED / MERGED — FORM-INT-0 NEXT
-**Last updated:** 2026-10-22
+**Status:** STATIC FORM PHASE CLOSED — FORM-INT-0 ACCEPTED — FORM-INT-PRE1 ACCEPTED — FORM-INT-1 ACCEPTED — FORM-INT-2 + TITLE LAYOUT FIX-1 ACCEPTED — FORM-INT-3 ACCEPTED — FORM-INT-4 FIX-1/FIX-2/FIX-3/FIX-4 ACCEPTED — PAYMENT/O.R. POLICY PENDING
+**Last updated:** 2026-10-24
 
 ## Purpose
 
@@ -93,9 +93,20 @@ Confirmed visible structure:
   - Dean, Graduate School;
 - official footer code and revision.
 
-Later GS-IS integration must render from the persisted Oral Examination Summary snapshot and exact finalized evaluator identities/values.
+The accepted FORM-INT-2 GS-IS integration renders from the persisted Oral Examination Summary snapshot and exact finalized evaluator identities/values.
 
-Do not infer or fabricate GS-011 signatures from other signature records.
+GS-011 Adviser authority is stage-aware and exact-schedule-bound, but project-owner QA identified one remaining Title-layout defect:
+
+- Title Defense has no Adviser assignment;
+- therefore Title GS-011 must omit the entire Adviser concurrence block: `Concurred In:`, the Adviser name/signature rule, and the `Thesis/Dissertation Adviser` label;
+- the Dean `Attested` block remains;
+- Proposal and Final keep the Adviser concurrence block and require exactly one `ADVISER` `PanelAssignment` on the exact `DefenseSchedule`;
+- a missing or ambiguous Proposal/Final Adviser seat fails closed;
+- the renderer/service must never substitute the Student's current/live Adviser or an Adviser from another defense attempt.
+
+Current source already maps Title to no Adviser value and binds Proposal/Final to the exact schedule Adviser. The remaining work is a bounded stage-aware renderer/layout correction for Title only.
+
+Do not infer or fabricate GS-011 signatures from other signature records. Dean/attestation remains blank until an authoritative institutional office-holder source is implemented.
 
 ### 3. Defense Application
 
@@ -260,7 +271,69 @@ Project-owner visual acceptance was granted on 2026-10-22. TEMPLATE-3 was publis
 
 After merge, the project owner clarified that the generated Defense Application must follow the existing Admin/backend `DefenseCommitteePolicy`, not a fixed committee count copied from the reference photograph. **TEMPLATE-3 FIX-1 is ACCEPTED / MERGED**: implementation `03cbc80c92b7a9cf538b82b96b920cb373f81a94` was independently reviewed and merged to `main` via PR #38 at `48e7e02f546de894d9591b0e4a271b9629f1bdbd`. Printed `Panelist` rows now represent the authoritative Chairman plus the stage-specific Panelist quota while keeping `CHAIRMAN` unchanged in GS-IS.
 
-The static form phase is now closed. The next package is **FORM-INT-0 — integration readiness audit** on a new branch before any production integration code is written.
+The static form phase is closed. **FORM-INT-0**, **FORM-INT-PRE1**, and **FORM-INT-1 — Individual Oral Examination Criteria PDF integration** are accepted. **FORM-INT-2 — GS-011 Oral Examination Summary PDF integration** at `d16f2819df176a470e68bfd1301873fbee9ea119` has accepted exact snapshot and exact-schedule Adviser authority, but project-owner QA identified one remaining Title-only presentation defect: the renderer still draws the Adviser concurrence block with a blank value. **FORM-INT-2 FIX-1** must remove that entire block for Title Defense while preserving Proposal/Final behavior.
+
+
+## GS-011 Title Adviser-block correction — 2026-10-24
+
+Project-owner visual QA clarified that a blank Adviser value is not sufficient for Title Defense.
+
+Canonical target behavior:
+
+- **Title Defense:** do not render `Concurred In:`, the Adviser name/signature rule, or the `Thesis/Dissertation Adviser` label. Keep the Dean `Attested` area and all other accepted GS-011 content.
+- **Proposal Defense / Final Defense:** retain the Adviser concurrence block and populate it from exactly one `ADVISER` `PanelAssignment` on the exact defense schedule.
+- Never use the Student's current/live Adviser or another attempt as fallback.
+- Missing or ambiguous Proposal/Final Adviser assignment remains a fail-closed condition.
+
+This is a renderer/layout correction only. It must not alter Oral Examination Summary snapshot authority, evaluator rows, scoring, signatures, authorization, routes, or defense workflow semantics.
+
+**Implementation state (2026-10-24):** FIX-1 is implemented at `a5e68a07b7d8c0403cb2b4f34456e031ce798148`. `OralExamSummaryRenderInput` now carries an explicit `stage` discriminator; Title omits the entire Adviser concurrence block and places the Dean `Attested:` block in the freed lower-page region; Proposal/Final keep the Adviser block and exact-schedule Adviser. The mapping still fails closed for missing/ambiguous Proposal/Final Adviser seats and never falls back to a current/live Adviser. Focused GS-011 tests (49/49), broader official-document regressions (262/262), `forms:check`, backend build, and raster inspection of Title/Proposal/Final passed. Project-owner visual acceptance was granted on 2026-10-24 after reviewing the corrected Title GS-011 output.
+
+## Defense Application field-authority decisions — 2026-10-23
+
+Project-owner manual QA found that the generated GS-006 / GS-007 Defense Application still leaves several application-identity fields blank even though some of them already have authoritative GS-IS sources.
+
+The following mappings are now canonical for future integration work:
+
+| Printed field | Authoritative source / rule |
+| --- | --- |
+| Cellphone No. | Auto-fill from the exact Student record's `Student.cellphone`. |
+| Email (Personal Gmail Only) | Auto-fill from the exact Student user's `User.email`. Applicant registration is already backend-enforced as `@gmail.com`; development-only `@earist.edu.ph` panelist accounts are unrelated to this student field. |
+| Date and Time | Server-owned timestamp of the latest successful Defense Application submission or resubmission for the exact defense stage. |
+| Date of Application | Date portion of the same exact latest successful submission/resubmission timestamp. |
+| Amount Paid | **Client confirmation pending.** Do not infer from the printed fee table or receipt presence. |
+| O.R. No. | **Client confirmation pending.** Do not infer from filename, upload metadata, or receipt presence. |
+
+Submission-time semantics are now explicit:
+
+- initial successful filing sets the stage application's submission timestamp;
+- if Admin rejects the application and the Student later corrects/reuploads and successfully resubmits, the latest successful resubmission timestamp becomes authoritative for the printed current application;
+- `Date and Time` and `Date of Application` are two presentations of that same authoritative event;
+- generic `ThesisRecord.createdAt` is not sufficient for Proposal/Final because the same ThesisRecord is reused across Title → Proposal → Final;
+- generic `ThesisRecord.updatedAt` must not be used because unrelated workflow changes can update it;
+- implementation should therefore use an explicit server-owned, stage-aware application submission timestamp rather than infer from mutable lifecycle timestamps.
+
+Paper-only instruction cleanup:
+
+- remove the printed `Note: Please write legibly` from generated GS-006 / GS-007 PDFs because the application is system-generated rather than handwritten.
+
+FORM-INT-4 FIX-4 now implements the resolved automatic mappings at `d931159d705b6f7466f2732e2162ce10e5a0dd45`.
+
+Accepted persistence/mapping behavior:
+
+- nullable stage-specific timestamps on `ThesisRecord`: Title, Proposal, and Final;
+- no historical backfill or default timestamp;
+- server-owned timestamp on successful initial filing;
+- latest successful resubmission replaces only that exact stage's timestamp;
+- exact schedule `defenseType` selects the stage timestamp when generating the PDF;
+- existing legacy records with null timestamps intentionally print blank filing date/time fields rather than fabricated history;
+- Student cellphone and Student user email are mapped from the exact schedule-bound student;
+- application date/time is formatted deterministically in Asia/Manila;
+- the paper-only `Note: Please write legibly` is removed.
+
+Independent remote diff/source review confirmed the implementation is bounded and the legacy-null behavior shown during owner QA is expected, not a detection failure.
+
+FIX-4 is accepted. The overall FORM-INT-4 initiative remains open only for the unresolved `Amount Paid` / `O.R. No.` client policy.
 
 ## Explicitly deferred
 
@@ -434,27 +507,33 @@ No runtime implementation was included in that commit.
 
 ## Next action
 
-Create a new integration branch from the accepted `main` checkpoint:
+Proceed on:
 
 `feat/official-defense-document-integration`
 
-Then run:
+FORM-INT-4 correction chain now includes:
 
-**FORM-INT-0 — Official Defense Document integration readiness audit**
+- base UI activation: `02043af2d8b99156046622438eb3635089417465`
+- FIX-1 bundled evaluator packet + readable filenames: `53649871ff2690fa8450b2d884ae6497ffab4bb6`
+- FIX-2 Individual Evaluation vector check marks: `9d1c9d494706725612685038f9fade913f2df387`
+- FIX-3 Defense Application stage vector check + visible form-code/revision removal: `d00cf90f08c952f4981d6bebbf2b7be38cbd697e`
+- FIX-4 authoritative applicant fields + stage-aware filing timestamps: `d931159d705b6f7466f2732e2162ce10e5a0dd45`
 
-FORM-INT-0 is analysis/documentation only. It must inspect the current repository and produce the exact integration map for:
+FIX-4 acceptance notes:
 
-- Individual Oral Examination Criteria / evaluator PDF;
-- GS-011 Oral Examination Summary;
-- GS-006 / GS-007 Defense Application;
-- authenticated Admin Download / Print placement and authorization;
-- exact defense-attempt/document/evaluator binding;
-- signature evidence boundaries;
-- existing services/repositories/controllers that should be reused;
-- known stale Title Defense status projection;
-- payment/O.R. data availability for Defense Application;
-- the accepted stage-specific committee mapping from TEMPLATE-3 FIX-1.
+- Title / Proposal / Final filing timestamps are independently persisted and server-owned;
+- successful resubmission updates only the exact rejected stage's timestamp;
+- historical schedule printing resolves the timestamp by exact `DefenseSchedule.defenseType`, never by current mutable thesis stage;
+- legacy records created before the migration keep null timestamps and therefore blank printed filing date/time fields until a new successful submission/resubmission occurs;
+- Student cellphone/email mapping is correct; blank/development values reflect fixture data rather than renderer/source failure;
+- Amount Paid and O.R. remain intentionally blank pending client confirmation.
 
-Do not implement routes, services, UI actions, Prisma changes, or document persistence in FORM-INT-0.
+Agent-reported FIX-4 verification includes TEMPLATE-3 48/48, official Defense Application service/source 44/44, evaluator bundle 26/26, TEMPLATE-1 11/11, Prisma validation/generation, migration deploy/status, forms check, backend build, diff check, and synthetic raster QA.
 
-After the audit is independently reviewed and accepted, split implementation into bounded FORM-INT packages.
+Independent remote review confirmed the additive nullable migration, exact-schedule timestamp selection, Student email mapping, blank payment/O.R. mapping, and intentional legacy-null behavior.
+
+**FORM-INT-4 FIX-4 is ACCEPTED / COMPLETE.**
+
+Do not implement Amount Paid / O.R. until the client confirms their authoritative capture/verification policy.
+
+The overall Official Defense Document Forms integration remains open only for that payment/O.R. policy decision. GS Form No. 22 and generated-document persistence/versioning remain deferred.

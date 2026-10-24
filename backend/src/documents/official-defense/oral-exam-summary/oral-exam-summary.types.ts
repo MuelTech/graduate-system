@@ -8,9 +8,17 @@ export interface OralExamSummaryExaminerRow {
   readonly average: string;
 }
 
+/**
+ * Explicit print-stage discriminator. Title Defense has no Adviser seat and
+ * omits the entire Adviser concurrence block; Proposal/Final retain it.
+ */
+export type OralExamSummaryStage = "title" | "proposal" | "final";
+
 /** Empty strings/lists leave the corresponding printed slots blank. */
 export interface OralExamSummaryRenderInput {
   readonly logos: InstitutionalLogos;
+  /** Selects stage-specific signatory layout, never a data-fallback rule. */
+  readonly stage: OralExamSummaryStage;
   readonly candidateName: string;
   readonly course: string;
   readonly date: string;

@@ -49,6 +49,24 @@ function pickOptionalPatchFields(
   return out;
 }
 
+/** FORM-INT-1: keep generated-document filenames deterministic and path-safe. */
+function safeFilenameToken(value: string): string {
+  return String(value ?? "").replace(/[^A-Za-z0-9_-]/g, "");
+}
+
+/** FORM-INT-1/2: official documents return PDF bytes only. */
+function sendPdfResponse(
+  res: Response,
+  pdf: Uint8Array,
+  fileName: string,
+): void {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.status(200).send(Buffer.from(pdf));
+}
+
 export class ThesisController {
   private thesisService = new ThesisService();
   private journeyService = new StudentThesisJourneyService();
@@ -891,6 +909,121 @@ export class ThesisController {
         { userId, role: accountRole },
       );
       res.status(200).json(criteria);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** FORM-INT-1: exact-attempt Individual Evaluation PDF (ADMIN-only). */
+  public getOfficialCriteriaPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const panelAssignmentId = req.params.panelAssignmentId as string;
+      const pdf = await this.thesisService.generateOfficialCriteriaPdf(
+        scheduleId,
+        panelAssignmentId,
+        { userId, role: accountRole },
+      );
+      const fileName = `individual-evaluation-${
+        safeFilenameToken(scheduleId) || "schedule"
+      }-${safeFilenameToken(panelAssignmentId) || "evaluator"}.pdf`;
+      sendPdfResponse(res, pdf, fileName);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** FORM-INT-2: exact-attempt GS-011 Oral Examination Summary PDF (ADMIN-only). */
+  public getOralExamSummaryPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
+      const pdf = await this.thesisService.generateOralExamSummaryPdf(
+        scheduleId,
+        actor,
+      );
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "summary",
+        actor,
+      );
+      sendPdfResponse(res, pdf, fileName);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only). */
+  public getDefenseApplicationPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
+      const pdf = await this.thesisService.generateDefenseApplicationPdf(
+        scheduleId,
+        actor,
+      );
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "application",
+        actor,
+      );
+      sendPdfResponse(res, pdf, fileName);
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
+  /** FORM-INT-4 FIX-1: one merged Individual Evaluations packet (ADMIN-only). */
+  public getOfficialEvaluationBundlePdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const accountRole = String(req.user?.role ?? "");
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const scheduleId = req.params.scheduleId as string;
+      const actor = { userId, role: accountRole };
+      const pdf = await this.thesisService.generateEvaluationBundlePdf(
+        scheduleId,
+        actor,
+      );
+      const fileName = await this.thesisService.getOfficialDocumentFilename(
+        scheduleId,
+        "evaluations",
+        actor,
+      );
+      sendPdfResponse(res, pdf, fileName);
     } catch (error: any) {
       sendEligibilityError(res, error);
     }
