@@ -356,6 +356,8 @@ Before integrated manual/browser QA, perform one bounded UI-copy refinement acro
 
 This is **presentation-only**. It must not change workflow, authorization, exact-document authority, route behavior, API contracts, Prisma schema, PDF renderers, storage, or data lifecycle.
 
+Read and follow `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md` before editing this package. Its canonical rule **Do not explain what the UI already demonstrates** is authoritative for all PREDEF user-facing copy.
+
 Use the existing **Defense Applications → Needs Review** vocabulary as the primary wording reference.
 
 Canonical user-facing wording direction:
@@ -380,6 +382,15 @@ Remove developer/internal explanatory copy from ordinary user surfaces, includin
 `Current evidence and replacement history for this stage. Supporting evidence is not frozen at scheduling.`
 
 That lifecycle fact remains documented internally but should not be shown as primary UI copy.
+
+Also remove redundant narration that merely explains an already-visible read-only state. In particular, do not display copy such as:
+
+- `This is an official record. No additional upload or submission is required.`
+- `This is your official Defense Application. No additional submission is required unless instructed by the Graduate School.`
+
+If the page already presents a record with read-only View/Download actions and no upload/mutation control, the interface already communicates that state.
+
+Keep explanatory copy only when it is needed to communicate an irreversible/high-impact consequence, why an action is blocked, recovery from an error/conflict, a genuinely ambiguous choice, or an institutional rule that cannot be inferred from the interface.
 
 Form codes such as `GS-017`, `GS-006`, and `GS-007` may remain as secondary/reference text where useful, but primary headings and action buttons must use readable form names.
 
@@ -475,10 +486,10 @@ Required before final acceptance:
 1. Compare freshly generated Proposal GS-017 against the supplied official reference.
 2. Compare freshly generated Final GS-017 against the supplied official reference.
 3. Adviser review: open exact manuscript -> acknowledgement -> Certify & Sign -> issued record view.
-4. Student Proposal/Final: issued GS-017 appears as read-only official record with no-upload guidance.
+4. Student Proposal/Final: issued GS-017 appears as a read-only certification record with concise state/actions and no redundant workflow narration.
 5. Admin Defense Application: exact certified manuscript + GS-017 visible together.
 6. Admin Scheduled detail: manuscript/evidence context remains visible after scheduling.
-7. Student scheduled state: completed GS-006/GS-007 is viewable as a read-only official record with no-action guidance.
+7. Student scheduled state: completed GS-006/GS-007 is viewable as a read-only Defense Application using concise state/actions and no redundant workflow narration.
 8. Negative authorization checks for cross-Student/unrelated-Adviser access.
 
 If browser/manual QA is not executed, report **NOT EXECUTED**; do not infer PASS from tests.
