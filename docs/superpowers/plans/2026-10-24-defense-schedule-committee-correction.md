@@ -7,7 +7,7 @@
 **Parent authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **UI authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
-**Status:** ACTIVE DOCUMENTED PACKAGE — IMPLEMENTATION NOT YET ACCEPTED
+**Status:** ACTIVE — Checkpoint A accepted for continuation; Checkpoint B is the current implementation checkpoint. Overall DEF-CORR-1 is not yet accepted.
 
 ## 1. Goal
 
@@ -33,22 +33,26 @@ This package is a correction of the current scheduled state. It is **not** cance
 
 DEF-CORR-1 remains **one bounded feature on one branch**. The checkpoints below are implementation sequencing boundaries, not separate initiatives, branches, or acceptance packages.
 
-### Checkpoint A — Backend authority + assignment lifecycle
+### Checkpoint A — Backend authority + assignment lifecycle — COMPLETE FOR CONTINUATION
 
-Implement the domain/security foundation first:
+Checkpoint A was implemented and independently reviewed at ending HEAD:
 
-- add the backward-compatible active/inactive lifecycle for `PanelAssignment`;
-- add and validate any required Prisma migration;
-- make all current-roster/current-authority reads distinguish active assignments from historical inactive assignments;
-- preserve assignment-bound annotation/comment authorship;
-- add the Admin-only schedule/committee correction mutation;
-- enforce `SCHEDULED`-only correction;
-- preserve exact schedule/manuscript/attempt identity;
-- revalidate committee policy and automatic Adviser authority;
-- add canonical initial-schedule and correction AuditLog events;
-- add focused/proportional backend tests.
+`ed3d6c3e70231a67c045eead9b6609a8baceeac5`
 
-**Stop after Checkpoint A.** Report exact changed files, migration, test evidence, remaining risks, and ending commit before starting frontend work. Do not begin Checkpoint B until Checkpoint A is reviewed/accepted for continuation.
+Implemented foundation:
+
+- backward-compatible active/inactive lifecycle for `PanelAssignment`;
+- additive Prisma migration `20261024230000_panel_assignment_active_lifecycle`;
+- current-roster/current-authority filtering to active assignments;
+- preservation of assignment-bound annotation/comment and exact historical assignment attribution;
+- Admin-only schedule/committee correction mutation;
+- `SCHEDULED`-only correction guard;
+- exact schedule/manuscript/attempt preservation;
+- canonical committee revalidation and automatic Adviser authority;
+- canonical initial-schedule and correction AuditLog events;
+- focused and full-backend verification.
+
+Checkpoint A is accepted **for continuation to Checkpoint B only**. Overall DEF-CORR-1 remains active/not accepted.
 
 ### Checkpoint B — Admin Manage Schedule & Committee UI
 
@@ -80,6 +84,27 @@ After Checkpoint B is accepted for continuation:
 - update documentation with implementation evidence and final acceptance state.
 
 Checkpoint C must **not** redesign notifications/email or introduce a second audit/history UI.
+
+### Checkpoint A evidence
+
+- Starting documented checkpoint HEAD: `cae4540c0774f1a589fd999d192fa14dbe5dd725`.
+- Production/schema commit: `c2cc59c54201c660a1144829d31655bd2520e236`.
+- Checkpoint A ending/test commit: `ed3d6c3e70231a67c045eead9b6609a8baceeac5`.
+- Migration: `20261024230000_panel_assignment_active_lifecycle`.
+- Focused checkpoint tests: **27 passed / 0 failed**.
+- Full backend suite: **192 test files passed / 2,473 tests passed / 5 environment-conditional skips / 0 failures**.
+- `npx prisma generate`: passed.
+- `npx prisma validate`: passed.
+- `npx tsc --noEmit`: passed.
+- backend build: passed.
+- `npx prisma migrate status`: 40 migrations found; only the new DEF-CORR-1 migration was pending on the local database at report time.
+- Live multi-connection contention test: **NOT EXECUTED**.
+- Browser/manual QA: **NOT EXECUTED — backend/domain checkpoint only**.
+- Hosted CI: **NOT EXECUTED**.
+- Notifications/email refinement: deferred to Checkpoint C.
+- Frontend/UI work: not started in Checkpoint A.
+
+**Continuation requirement:** apply the pending migration to the local runtime database before exercising Checkpoint B against the updated backend.
 
 ### Sequencing rule
 
@@ -128,7 +153,7 @@ Reuse existing notification/email capability where practical.
 
 This package may notify newly assigned/affected participants but must not redesign the notification or email subsystem. Audit success must not depend on email delivery success.
 
-## 3. Current implementation audit
+## 3. Checkpoint A implemented baseline
 
 ### 3.1 Application approval already has canonical actor audit
 
@@ -142,73 +167,64 @@ This package may notify newly assigned/affected participants but must not redesi
 
 Preserve this behavior unchanged.
 
-### 3.2 Initial scheduling has actor provenance but no canonical schedule audit event
+### 3.2 Initial scheduling now has canonical schedule audit evidence
 
-Current initial scheduling:
+Initial scheduling continues to:
 
-- uses `POST /defense/:id/schedule`;
-- persists `DefenseSchedule.setById = adminId`;
-- creates the initial `PanelAssignment` roster in the same transaction;
-- moves the session to `SCHEDULED`;
-- sends scheduling email after the transaction.
+- use `POST /defense/:id/schedule`;
+- persist `DefenseSchedule.setById = adminId`;
+- create the initial active `PanelAssignment` roster in the same transaction;
+- move the session to `SCHEDULED`.
 
-Therefore the original roster is attributable to the scheduling Admin, but the roster/schedule snapshot is not currently represented as a dedicated `AuditLog` event.
+Checkpoint A additionally writes `DEFENSE_SCHEDULE_CREATED` for new schedules with the exact schedule + initial active roster snapshot. `DefenseSchedule.setById` remains intact. No historical audit backfill was introduced.
 
-DEF-CORR-1 should add a canonical schedule-created audit event for new schedules going forward. Do not remove `setById`, and do not fabricate/backfill historical audit rows.
+### 3.3 PanelAssignment active/inactive lifecycle is implemented
 
-### 3.3 PanelAssignment currently has no active/inactive lifecycle
-
-Current `PanelAssignment` stores:
+`PanelAssignment` now includes:
 
 - `scheduleId`;
 - `userId`;
 - `role`;
+- `isActive Boolean @default(true)`;
 - `createdAt`.
 
-There is no current assignment-lifecycle marker.
+The additive migration preserves existing rows as active.
 
-This matters because `DefenseAnnotation` and `DefenseAnnotationComment` store `authorAssignmentId` foreign keys. A replaced member may already have pre-defense annotations/comments while the session is still `SCHEDULED`.
+Because `DefenseAnnotation` and `DefenseAnnotationComment` store exact `authorAssignmentId` foreign keys, replaced members are deactivated rather than deleted/reassigned. Historical exact-assignment identity remains available for attribution.
 
-Therefore DEF-CORR-1 must **not** solve replacement by deleting a referenced assignment or by rewriting its `userId` to the replacement person.
+### 3.4 Implemented assignment-lifecycle behavior
 
-### 3.4 Recommended assignment-lifecycle change
-
-Add a backward-compatible active-state marker to `PanelAssignment`, preferably:
-
-```text
-isActive Boolean @default(true)
-```
-
-Existing rows migrate as active.
-
-Canonical behavior:
+Canonical behavior after Checkpoint A:
 
 - current roster/authorization uses only `isActive = true`;
 - replacing a member deactivates the old assignment rather than deleting/reassigning it;
 - the replacement receives a new active assignment;
-- if the same user already has an inactive row for the same schedule, reactivate that row rather than violating the existing `scheduleId + userId` uniqueness rule;
-- role correction for the same active user may update that assignment's role, with the immutable AuditLog before/after snapshot preserving the change;
-- inactive assignment rows remain available to resolve historical annotation/comment authorship.
+- if the same user already has an inactive row for the same schedule, that row is reactivated under the existing `scheduleId + userId` uniqueness rule;
+- safe role correction for the same active user updates the assignment role;
+- immutable AuditLog before/after snapshots preserve the correction history;
+- inactive assignment rows remain available for historical annotation/comment and exact official-record attribution.
 
-Do not add per-assignment `assignedById` merely to duplicate the Audit Log actor. AuditLog remains the canonical change history.
+No per-assignment `assignedById` was added; AuditLog remains the canonical change history.
 
-### 3.5 Active-assignment filtering is security-critical
+### 3.5 Active-assignment filtering was audited in Checkpoint A
 
-The implementation must audit every current-roster or authorization read that treats any `PanelAssignment` row as current authority.
-
-Known high-risk examples include:
+Checkpoint A updated current-roster/current-authority reads to require active assignments across the high-risk defense surfaces, including:
 
 - defense workspace assignment resolution;
-- oral evaluation ownership;
+- oral evaluation ownership/completion counts;
 - Rapporteur/finalization authority;
-- collaborative annotation/comment write authority;
-- defense realtime membership;
-- current defense-history access checks;
-- current panelist assignment/dashboard lists;
-- RAP signer/current participant derivation;
-- current official-record/current committee projections.
+- collaborative annotation/comment/report write authority;
+- defense realtime/report-preview membership;
+- current defense-history access;
+- panelist dashboard and assignment lists;
+- RAP participant/signature derivation;
+- scheduled-defense/current committee projections;
+- official Summary/evaluation bundle/Defense Application/Admin Defense Record committee projections;
+- Adviser candidate derivation from the passed Title committee;
+- thesis document authorization;
+- conclusion/Chairman/evaluator authority.
 
-Historical annotation/comment author relations must continue resolving inactive assignment rows by exact assignment ID.
+Historical exact-assignment author/record reads intentionally remain unfiltered by `isActive` where exact attribution is required.
 
 ## 4. Server mutation design
 
