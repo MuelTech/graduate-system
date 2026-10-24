@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C + PREDEF-2 ACCEPTED FOR DOCUMENTED SCOPE; PREDEF-3 DEFERRED; DEF-CORR-1 SEPARATE FUTURE PACKAGE
+**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C + PREDEF-2 + PREDEF-UI-COPY ACCEPTED FOR DOCUMENTED SCOPE; CONSOLIDATED INTEGRATED PREDEF MANUAL/BROWSER QA PENDING; PREDEF-3 DEFERRED; DEF-CORR-1 SEPARATE FUTURE PACKAGE
 
 ## 1. Goal
 
@@ -409,6 +409,24 @@ Required scope:
 - only directly related labels/messages introduced by PREDEF-1B/1C and PREDEF-2.
 
 Do not redesign page layout or component architecture unless a minimal change is necessary to apply the wording consistently.
+
+### 4.1.1 PREDEF-UI-COPY acceptance evidence
+
+Accepted after the project owner reviewed the corrected visible result and confirmed the wording is satisfactory.
+
+Implementation endpoint:
+
+- commit `67056f50fafbc92486c27b3e77be90896ca73a36`;
+- frontend-only corrective scope;
+- redundant Adviser Certification copy removed: `This is an official record. No additional upload or submission is required.`;
+- redundant Student Defense Application copy removed: `This is your official Defense Application. No additional submission is required unless instructed by the Graduate School.`;
+- useful unavailable/error/ambiguity states retained;
+- focused verifier report: 21 passed / 0 failed;
+- scoped ESLint passed;
+- `git diff --check` passed;
+- full build/full TypeScript/backend tests intentionally not rerun because the correction was copy-only;
+- independent remote review confirmed one commit, four frontend-only changed files, and no backend/schema/PDF/workflow scope leak;
+- browser/manual integrated PREDEF QA remains separate and is not represented as complete.
 
 ## 5. Expected code surfaces to audit before edits
 
