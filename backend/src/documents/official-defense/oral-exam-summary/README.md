@@ -180,5 +180,4 @@ Implemented:
 
 Verification performed in this package: focused renderer and summary-service tests, canonical
 document regressions, TypeScript build, and raster inspection of Title/Proposal/Final samples.
-Project-owner visual acceptance is still pending; this section records implementation, not
-acceptance of the integration package.
+Project-owner visual acceptance was granted on 2026-10-24 after review of the corrected Title output. FORM-INT-2 FIX-1 is accepted.
