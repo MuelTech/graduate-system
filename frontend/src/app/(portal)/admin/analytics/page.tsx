@@ -1,57 +1,159 @@
 "use client";
 
+import { useState } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  GraduationCap,
+  FileCheck2,
+  BookOpen,
+  FileText,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, PieChart, TrendingUp, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+// Analytics Sub-Components
+import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { AnalyticsKpiRow } from "@/components/admin/analytics/analytics-kpi-row";
+import { AiAnalyticsAssistant } from "@/components/admin/analytics/ai-analytics-assistant";
+import { AdmissionsTab } from "@/components/admin/analytics/admissions-tab";
+import { ExaminationsTab } from "@/components/admin/analytics/examinations-tab";
+import { ThesisPipelineTab } from "@/components/admin/analytics/thesis-pipeline-tab";
+import { InstitutionalReportsTab } from "@/components/admin/analytics/institutional-reports-tab";
+
+// Mock Data Source
+import {
+  MOCK_ANALYTICS_KPIS,
+  MOCK_AI_ANALYTICS_BRIEFING,
+  MOCK_ADMISSIONS_ANALYTICS,
+  MOCK_EXAMINATION_ANALYTICS,
+  MOCK_THESIS_PIPELINE_ANALYTICS,
+  MOCK_INSTITUTIONAL_REPORTS,
+} from "@/lib/mock/analytics-data";
 
 export default function AdminAnalyticsPage() {
+  // Global Filter States
+  const [selectedAy, setSelectedAy] = useState("AY 2025–2026");
+  const [selectedSemester, setSelectedSemester] = useState("1st Semester");
+  const [selectedProgram, setSelectedProgram] = useState("ALL");
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("admissions");
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
+  const handleExportSummary = () => {
+    const headers = ["Metric ID", "Indicator Label", "Current Value", "Supporting Note", "YoY Change %"];
+    const rows = MOCK_ANALYTICS_KPIS.map((kpi) => [
+      kpi.id,
+      kpi.label,
+      kpi.value,
+      kpi.sublabel || "",
+      `${kpi.isPositiveTrend ? "+" : "-"}${kpi.changePercentage}%`,
+    ]);
+    const content = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")),
+    ].join("\r\n");
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `EARIST_Executive_Analytics_Summary_${selectedAy.replace(/\s+/g, "_")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2
-          className="text-2xl font-bold text-(--earist-primary)"
-          style={{ fontFamily: '"Calibri", sans-serif' }}
-        >
-          Academic Analytics
-        </h2>
-        <p className="text-sm text-(--earist-body-text)">
-          Visualize system data, tracking rates, and thesis stage completion.
-        </p>
-      </div>
+    <div className="space-y-6 pb-12">
+      {/* 1. Global Filter Header */}
+      <AnalyticsHeader
+        selectedAy={selectedAy}
+        onAyChange={setSelectedAy}
+        selectedSemester={selectedSemester}
+        onSemesterChange={setSelectedSemester}
+        selectedProgram={selectedProgram}
+        onProgramChange={setSelectedProgram}
+        isAiAssistantOpen={isAiAssistantOpen}
+        onToggleAiAssistant={() => setIsAiAssistantOpen((prev) => !prev)}
+        onPrint={handlePrint}
+        onExportCsv={handleExportSummary}
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { icon: Users, label: "Total Students", bg: "bg-blue-50", text: "text-blue-600" },
-          { icon: TrendingUp, label: "Entrance Pass Rate", bg: "bg-green-50", text: "text-green-600" },
-          { icon: PieChart, label: "Thesis Completion", bg: "bg-purple-50", text: "text-purple-600" },
-          { icon: BarChart3, label: "Repository Uploads", bg: "bg-orange-50", text: "text-orange-600" },
-        ].map((stat, i) => (
-          <Card key={i} className="opacity-60 grayscale transition-all hover:grayscale-0">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${stat.bg}`}>
-                <stat.icon className={`h-6 w-6 ${stat.text}`} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-(--earist-secondary)">{stat.label}</p>
-                <p className="text-2xl font-bold text-(--earist-primary)">--</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* 2. Top Summary KPI Row with Chart.js Sparklines */}
+      <AnalyticsKpiRow kpis={MOCK_ANALYTICS_KPIS} />
 
-      <Card className="border-dashed border-2 border-(--earist-border-gray) bg-gray-50/50">
-        <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-(--earist-surface-gray)">
-            <BarChart3 className="h-10 w-10 text-(--earist-primary)/50" />
-          </div>
-          <h3 className="mb-2 text-xl font-bold text-(--earist-primary)">
-            Module Coming Soon
-          </h3>
-          <p className="max-w-md text-sm text-(--earist-body-text)">
-            The Academic Analytics dashboard using Chart.js is scheduled for development in <strong>Phase 6</strong>. This module will provide visual dashboards and exportable reports for the Administrator.
-          </p>
-        </CardContent>
-      </Card>
+      {/* 3. AI-Powered Analytics Assistant Drawer / Panel */}
+      <AiAnalyticsAssistant
+        briefing={MOCK_AI_ANALYTICS_BRIEFING}
+        isOpen={isAiAssistantOpen}
+        onToggle={() => setIsAiAssistantOpen((prev) => !prev)}
+      />
+
+      {/* 4. Tabbed Analytics Modules */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="border-b border-(--earist-border-gray) bg-white px-2 py-1.5 rounded-lg shadow-2xs">
+          <TabsList className="h-10 bg-transparent p-0 gap-1.5">
+            <TabsTrigger
+              value="admissions"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
+            >
+              <GraduationCap className="h-3.5 w-3.5" />
+              Admissions & Alignment
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="examinations"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
+            >
+              <FileCheck2 className="h-3.5 w-3.5" />
+              Examination Performance
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="thesis"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Thesis & STRIKE Pipeline
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="institutional"
+              className="h-9 gap-1.5 rounded-md px-3.5 text-xs font-semibold data-[state=active]:bg-(--earist-primary) data-[state=active]:text-white"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Institutional Reports & Compliance
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Tab 1 Content: Admissions & Program Alignment */}
+        <TabsContent value="admissions" className="m-0 focus-visible:outline-none">
+          <AdmissionsTab data={MOCK_ADMISSIONS_ANALYTICS} />
+        </TabsContent>
+
+        {/* Tab 2 Content: Examination Performance */}
+        <TabsContent value="examinations" className="m-0 focus-visible:outline-none">
+          <ExaminationsTab data={MOCK_EXAMINATION_ANALYTICS} />
+        </TabsContent>
+
+        {/* Tab 3 Content: Thesis & STRIKE Pipeline */}
+        <TabsContent value="thesis" className="m-0 focus-visible:outline-none">
+          <ThesisPipelineTab data={MOCK_THESIS_PIPELINE_ANALYTICS} />
+        </TabsContent>
+
+        {/* Tab 4 Content: Institutional Reports */}
+        <TabsContent value="institutional" className="m-0 focus-visible:outline-none">
+          <InstitutionalReportsTab data={MOCK_INSTITUTIONAL_REPORTS} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
