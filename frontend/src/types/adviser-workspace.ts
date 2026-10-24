@@ -45,6 +45,8 @@ export interface AdviserWorkspaceReviewTaskDto {
   reviewStatus: string;
   reviewRemarks: string | null;
   manuscriptDocumentId: string | null;
+  manuscriptTitle: string | null;
+  originalFilename: string | null;
   manuscriptUploadedAt: string | null;
 }
 

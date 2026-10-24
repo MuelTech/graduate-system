@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DocumentViewer } from "@/components/ui/document-viewer";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import type { DefenseApplicationDto } from "@/components/admin/defense-applications/application-row";
 import {
   STAGE_LABELS,
@@ -415,6 +416,8 @@ export default function DefenseApplicationDetailPage() {
           </section>
 
           {/* Application Requirements — dominant review surface */}
+          {(stage === "PROPOSAL" || stage === "FINAL") && <AdviserCertificationRecords thesisId={thesisId} stage={stage} />}
+
           <section className="rounded-lg border border-(--earist-border-gray) bg-white p-4">
             <h2 className="text-sm font-semibold text-(--earist-secondary)">
               Application Requirements

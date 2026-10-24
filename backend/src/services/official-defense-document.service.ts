@@ -9,6 +9,11 @@
  * determines academic state.
  */
 import { PDFDocument } from "pdf-lib";
+import { AdviserCertificationRecordService, assertIssuedCertificationSource, exactCertificationDocument, personName } from "./adviser-certification-record.service";
+import { validateAdviserCertificationSignature } from "./adviser-certification-signature";
+import { renderAdviserCertification } from "../documents/official-defense/adviser-certification/adviser-certification.renderer";
+import type { AdviserCertificationRenderInput } from "../documents/official-defense/adviser-certification/adviser-certification.types";
+import { sanitizeOfficialNamePart, defenseStageFilenameLabel } from "./official-defense-document-filename";
 
 import { AppError } from "../utils/AppError";
 import {
@@ -54,11 +59,9 @@ import type {
   OfficialSummaryDocumentSource,
 } from "./official-defense-record.service";
 
-/** Conservative scoped limit for one evaluator signature image. */
-export const MAX_SIGNATURE_BYTES = 1024 * 1024;
+import { decodeOfficialFormSignature as decodeEvaluatorSignature } from "./official-form-signature";
+export { decodeOfficialFormSignature as decodeEvaluatorSignature, MAX_SIGNATURE_BYTES } from "./official-form-signature";
 
-const SIGNATURE_DATA_URL = /^data:(image\/png|image\/jpeg);base64,([A-Za-z0-9+/]+={0,2})$/;
-const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const GROUP_I_FIELDS = [
   "timelinessRelevance",
   "organization",
@@ -103,6 +106,12 @@ type FilenameSourceReader = Pick<
 >;
 
 export interface OfficialDefenseDocumentDeps {
+  readonly studentApplications?: Pick<
+    OfficialDefenseRecordService,
+    "getStudentDefenseApplicationDocumentSource"
+  >;
+  readonly certifications?: Pick<AdviserCertificationRecordService, "getSource" | "listSources">;
+  readonly renderCertification?: (input: AdviserCertificationRenderInput) => Promise<Uint8Array>;
   readonly records?: RecordsReader;
   /** Optional seam for the bundled evaluator packet. */
   readonly bundleRecords?: BundleRecordsReader;
@@ -153,69 +162,6 @@ function printedAverage(value: unknown, label: string): string {
     );
   }
   return parsed.toFixed(2);
-}
-
-function matchesMagic(bytes: Uint8Array, mimeType: "image/png" | "image/jpeg"): boolean {
-  if (mimeType === "image/png") {
-    return bytes.length >= PNG_MAGIC.length && PNG_MAGIC.every((byte, i) => bytes[i] === byte);
-  }
-  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-}
-
-/**
- * Decode the exact evaluator's stored signature evidence. The data URL prefix is
- * authoritative; unsupported MIME, malformed base64, mismatched image bytes,
- * missing evidence, and oversized payloads all fail closed.
- */
-export function decodeEvaluatorSignature(
-  signatureData: string | null | undefined,
-): PdfImageInput {
-  const evidence = typeof signatureData === "string" ? signatureData.trim() : "";
-  if (!evidence) {
-    throw new AppError(
-      "The finalized evaluation has no required evaluator signature evidence.",
-      409,
-    );
-  }
-
-  const match = SIGNATURE_DATA_URL.exec(evidence);
-  if (!match) {
-    throw new AppError(
-      "The evaluator signature evidence is malformed or uses an unsupported image type.",
-      422,
-    );
-  }
-
-  const mimeType = match[1] as "image/png" | "image/jpeg";
-  const payload = match[2];
-  if (!payload || payload.length % 4 !== 0) {
-    throw new AppError(
-      "The evaluator signature evidence contains invalid base64 data.",
-      422,
-    );
-  }
-
-  const bytes = Buffer.from(payload, "base64");
-  if (bytes.length === 0) {
-    throw new AppError(
-      "The evaluator signature evidence contains invalid base64 data.",
-      422,
-    );
-  }
-  if (bytes.length > MAX_SIGNATURE_BYTES) {
-    throw new AppError(
-      `The evaluator signature evidence exceeds the ${MAX_SIGNATURE_BYTES}-byte official-form limit.`,
-      413,
-    );
-  }
-  if (!matchesMagic(bytes, mimeType)) {
-    throw new AppError(
-      "The evaluator signature image data does not match its declared image type.",
-      422,
-    );
-  }
-
-  return { bytes, mimeType };
 }
 
 /**
@@ -690,6 +636,12 @@ export function mapDefenseApplicationToRenderInput(
 }
 
 export class OfficialDefenseDocumentService {
+  private readonly studentApplications: Pick<
+    OfficialDefenseRecordService,
+    "getStudentDefenseApplicationDocumentSource"
+  >;
+  private readonly certifications: Pick<AdviserCertificationRecordService, "getSource" | "listSources">;
+  private readonly renderCertification: (input: AdviserCertificationRenderInput) => Promise<Uint8Array>;
   private readonly records: RecordsReader;
   private readonly bundleRecords: BundleRecordsReader;
   private readonly filenameSource: FilenameSourceReader;
@@ -701,6 +653,9 @@ export class OfficialDefenseDocumentService {
   ) => Promise<Uint8Array>;
 
   constructor(deps: OfficialDefenseDocumentDeps = {}) {
+    this.studentApplications = deps.studentApplications ?? new OfficialDefenseRecordService();
+    this.certifications = deps.certifications ?? new AdviserCertificationRecordService();
+    this.renderCertification = deps.renderCertification ?? renderAdviserCertification;
     this.records = deps.records ?? new OfficialDefenseRecordService();
     this.bundleRecords = deps.bundleRecords ?? new OfficialDefenseRecordService();
     this.filenameSource =
@@ -709,6 +664,49 @@ export class OfficialDefenseDocumentService {
     this.render = deps.render ?? renderOralExamCriteria;
     this.renderSummary = deps.renderSummary ?? renderOralExamSummary;
     this.renderApplication = deps.renderApplication ?? renderDefenseApplication;
+  }
+
+  async listAdviserCertifications(actor: OfficialDefenseDocumentActor, thesisId?: string, stage?: string) {
+    const rows = await this.certifications.listSources(actor, thesisId, stage);
+    return Promise.all(rows.map(async row => {
+      let unavailableReason: string | null = null;
+      try {
+        assertIssuedCertificationSource(row);
+        await validateAdviserCertificationSignature(row.signatureData);
+      } catch (error) {
+        unavailableReason = error instanceof AppError ? error.message : "GS-017 is unavailable for this record.";
+      }
+      // Never expose an invalid cross-thesis/stage document through metadata either.
+      const safeDocument = exactCertificationDocument(row);
+      return {
+        id: row.id, thesisId: row.thesisId, stage: row.defenseStage === "PROPOSAL_DEFENSE" ? "PROPOSAL" : "FINAL",
+        status: "ISSUED" as const, studentName: personName(row.thesis.student.user), adviserName: personName(row.adviser),
+        issuedAt: row.signedAt && Number.isFinite(new Date(row.signedAt).getTime()) ? row.signedAt.toISOString() : null,
+        manuscriptDocumentId: safeDocument?.id ?? null,
+        manuscriptTitle: safeDocument?.manuscriptTitle ?? null, originalFilename: safeDocument?.originalFilename ?? null,
+        pdfAvailable: unavailableReason === null, unavailableReason,
+      };
+    }));
+  }
+
+  async generateAdviserCertificationPdf(id: string, actor: OfficialDefenseDocumentActor) {
+    const row = await this.certifications.getSource(id, actor);
+    const stage = assertIssuedCertificationSource(row);
+    const date = formatOfficialApplicationDate(row.signedAt).split(" ");
+    const input: AdviserCertificationRenderInput = {
+      logos: await this.loadLogos(), stage: stage === "PROPOSAL" ? "proposal" : "final",
+      manuscriptTitle: row.reviewedDocument!.manuscriptTitle!,
+      studentName: personName(row.thesis.student.user), programName: row.thesis.student.program!.programName,
+      issuedDay: date[0], issuedMonthYear: date.slice(1).join(" "),
+      adviserPrintedName: personName(row.adviser), adviserSignature: await validateAdviserCertificationSignature(row.signatureData),
+    };
+    try {
+      const pdf = await this.renderCertification(input);
+      const filename = `${sanitizeOfficialNamePart(input.studentName)}-${defenseStageFilenameLabel(row.defenseStage)}-Adviser-Certification-GS-017.pdf`;
+      return { pdf, filename };
+    } catch (error) {
+      throw new AppError("The exact certification cannot be rendered on the official GS-017 form.", error instanceof RangeError ? 422 : 500);
+    }
   }
 
   /**
@@ -814,6 +812,56 @@ export class OfficialDefenseDocumentService {
         scheduleId,
         actor,
       );
+    return this.renderExactApplication(scheduleId, source);
+  }
+
+  async generateStudentDefenseApplicationPdf(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ) {
+    if (actor.role !== "STUDENT" || !actor.userId) {
+      throw new AppError("Student access is required.", 403);
+    }
+    const source = await this.studentApplications.getStudentDefenseApplicationDocumentSource(
+      scheduleId,
+      actor,
+    );
+    const pdf = await this.renderExactApplication(scheduleId, source);
+    return {
+      pdf,
+      filename: officialDefenseDocumentFilename(source.studentName, source.defenseType, "application"),
+      defenseType: source.defenseType,
+    };
+  }
+
+  /** Availability uses the same validation and renderer as the eventual PDF. */
+  async getStudentDefenseApplicationAvailability(
+    scheduleId: string,
+    actor: OfficialDefenseDocumentActor,
+  ) {
+    try {
+      const result = await this.generateStudentDefenseApplicationPdf(scheduleId, actor);
+      return {
+        scheduleId,
+        defenseType: result.defenseType,
+        available: true,
+        unavailableReason: null,
+      };
+    } catch (error) {
+      if (error instanceof AppError && [409, 422].includes(error.statusCode)) {
+        return { scheduleId, available: false, unavailableReason: error.message };
+      }
+      throw error;
+    }
+  }
+
+  private async renderExactApplication(
+    scheduleId: string,
+    source: OfficialDefenseApplicationDocumentSource,
+  ) {
+    if (source.scheduleId !== scheduleId) {
+      throw new AppError("The application does not belong to this exact schedule.", 409);
+    }
     const logos = await this.loadLogos();
     const input = mapDefenseApplicationToRenderInput(source, logos);
 

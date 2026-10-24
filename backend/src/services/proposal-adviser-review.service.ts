@@ -23,6 +23,8 @@ import {
   type ProposalReviewStatus,
 } from "./proposal-adviser-review.rules";
 import { isTitleStageComplete } from "./stage-completion";
+import { normalizeManuscriptTitle } from "./manuscript-title.rules";
+import { validateAdviserCertificationSignature } from "./adviser-certification-signature";
 import {
   MULTIPLE_ACTIVE_ADVISERS_MESSAGE,
   requireSingleActiveAdviser,
@@ -54,12 +56,14 @@ function callerIsSoleActiveAdviser(
 export interface ProposalAdviserReviewDto {
   thesisId: string | null;
   student: { id: string; name: string; studentNumber: string | null } | null;
+  /** Compatibility alias for the exact bound manuscript title; never historical Title text. */
   officialTitle: string | null;
   activeAdviser: { userId: string; name: string } | null;
   reviewStatus: ProposalReviewStatus;
   reviewRemarks: string | null;
   manuscript: {
     documentId: string;
+    manuscriptTitle: string | null;
     uploadedAt: string | null;
     originalFilename: string | null;
     verifiedMimeType: string | null;
@@ -82,6 +86,8 @@ export interface AdviserReviewQueueItem {
   reviewStatus: ProposalReviewStatus;
   reviewRemarks: string | null;
   manuscriptDocumentId: string | null;
+  manuscriptTitle: string | null;
+  originalFilename: string | null;
   manuscriptUploadedAt: string | null;
 }
 
@@ -130,24 +136,6 @@ export class ProposalAdviserReviewService {
               },
             },
           },
-        },
-        thesisTitles: {
-          where: { isSelected: true },
-          select: { titleText: true },
-          take: 1,
-        },
-        defenseSchedules: {
-          where: { defenseType: "TITLE_DEFENSE" },
-          include: {
-            conclusion: {
-              where: { outcome: "PASSED" },
-              include: {
-                selectedTitle: { select: { titleText: true } },
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 1,
         },
         thesisDocuments: {
           where: {
@@ -204,10 +192,8 @@ export class ProposalAdviserReviewService {
     const reviewStatus = effectiveCert
       ? mapCertStatusToReviewStatus(effectiveCert.status)
       : "NONE";
-    const officialTitle =
-      thesis.defenseSchedules[0]?.conclusion?.selectedTitle?.titleText ??
-      thesis.thesisTitles[0]?.titleText ??
-      null;
+    // Compatibility display field follows the same exact version; never Title Defense text.
+    const officialTitle = manuscript?.manuscriptTitle ?? null;
 
     return {
       thesisId: thesis.id,
@@ -228,6 +214,7 @@ export class ProposalAdviserReviewService {
       manuscript: manuscript
         ? {
             documentId: manuscript.id,
+            manuscriptTitle: manuscript.manuscriptTitle ?? null,
             uploadedAt: manuscript.uploadedAt.toISOString(),
             originalFilename: manuscript.originalFilename ?? null,
             verifiedMimeType: manuscript.verifiedMimeType ?? null,
@@ -285,7 +272,9 @@ export class ProposalAdviserReviewService {
   async submitManuscriptForReview(
     userId: string,
     upload: ManagedUploadInput,
+    title: unknown,
   ): Promise<void> {
+    const manuscriptTitle = normalizeManuscriptTitle(title);
     const { student, thesis } = await this.findThesisForStudent(userId);
     if (!thesis) {
       throw new AppError(
@@ -357,6 +346,7 @@ export class ProposalAdviserReviewService {
     await submitManuscriptVersion({
       thesisId: thesis.id,
       adviserId: assignment!.adviserId,
+      manuscriptTitle,
       upload: { ...upload, uploadedById: upload.uploadedById ?? userId },
       binding: PROPOSAL_MANUSCRIPT_BINDING,
     });
@@ -389,16 +379,6 @@ export class ProposalAdviserReviewService {
         where: { studentId: assignment.studentId },
         orderBy: { createdAt: "desc" },
         include: {
-          defenseSchedules: {
-            where: { defenseType: "TITLE_DEFENSE" },
-            include: {
-              conclusion: {
-                where: { outcome: "PASSED" },
-                include: { selectedTitle: { select: { titleText: true } } },
-              },
-            },
-            take: 1,
-          },
           thesisDocuments: {
             where: { docType: MANUSCRIPT_DOC_TYPE, defenseStage: "PROPOSAL" },
             orderBy: { uploadedAt: "desc" },
@@ -440,8 +420,9 @@ export class ProposalAdviserReviewService {
           name: `${assignment.student.user.firstName} ${assignment.student.user.lastName}`,
           studentNumber: assignment.student.studentNumber,
         },
-        officialTitle:
-          thesis.defenseSchedules[0]?.conclusion?.selectedTitle?.titleText ?? null,
+        officialTitle: manuscript.manuscriptTitle ?? null,
+        manuscriptTitle: manuscript.manuscriptTitle ?? null,
+        originalFilename: manuscript.originalFilename ?? null,
         reviewStatus: status === "NONE" ? "AWAITING_REVIEW" : status,
         reviewRemarks: cert?.reviewRemarks ?? null,
         manuscriptDocumentId: manuscript?.id ?? cert?.reviewedDocumentId ?? null,
@@ -593,6 +574,8 @@ export class ProposalAdviserReviewService {
     });
     if (!gate.allowed) throw new AppError(gate.reason, gate.statusCode);
 
+    if (!manuscript?.manuscriptTitle?.trim()) throw new AppError("The exact reviewed manuscript has no recorded title and cannot be certified.", 409);
+    await validateAdviserCertificationSignature(input.signatureData);
     const signedAt = new Date(); // server-authoritative
     const reviewRemarks = input.remarks?.trim() || cert?.reviewRemarks || null;
 

@@ -69,10 +69,11 @@ export interface SubmitManuscriptVersionResult {
 export async function submitManuscriptVersion(params: {
   thesisId: string;
   adviserId: string;
+  manuscriptTitle: string;
   upload: ManagedUploadInput;
   binding: ManuscriptStageBinding;
 }): Promise<SubmitManuscriptVersionResult> {
-  const { thesisId, adviserId, upload, binding } = params;
+  const { thesisId, adviserId, manuscriptTitle, upload, binding } = params;
 
   return prisma.$transaction(async (tx) => {
     // Serialize competing manuscript submissions for this thesis.
@@ -152,6 +153,7 @@ export async function submitManuscriptVersion(params: {
         docType: binding.docType,
         defenseStage: binding.docStage,
         filePath: upload.filePath,
+        manuscriptTitle,
         storageKey: upload.storageKey,
         storageProvider: upload.storageProvider,
         originalFilename: upload.originalFilename,

@@ -132,7 +132,7 @@ test("exact task status gates all review controls and requested changes wait for
   );
   assert.match(
     panel,
-    /\) : actionsAvailable \? \([\s\S]*?Certify this manuscript\?[\s\S]*?id="adviser-review-remarks"[\s\S]*?id="adviser-review-signature"[\s\S]*?Request Changes[\s\S]*?Certify &amp; Sign/,
+    /\) : actionsAvailable \? \([\s\S]*?Certify this manuscript\?[\s\S]*?id="adviser-review-remarks"[\s\S]*?<ESignaturePad[\s\S]*?Request Changes[\s\S]*?Certify &amp; Sign/,
   );
   assert.match(panel, /\{task\.reviewRemarks \? \([\s\S]*?Review remarks/);
 });

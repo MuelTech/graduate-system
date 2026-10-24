@@ -30,6 +30,7 @@ import {
   type AdviserRequestDecision,
 } from "@/components/panelist/adviser-request-action-dialog";
 import { AdviserReviewActionPanel } from "@/components/panelist/adviser-review-action-panel";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -294,6 +295,14 @@ function ReviewTaskCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="grid gap-3 sm:grid-cols-2">
+          <Meta
+            label="Thesis/Dissertation Title"
+            value={task.manuscriptTitle || "Title not recorded for this manuscript."}
+          />
+          <Meta
+            label="Manuscript file"
+            value={task.originalFilename || "Filename unavailable"}
+          />
           <Meta
             label="Manuscript updated"
             value={formatWorkspaceDate(task.manuscriptUploadedAt)}
@@ -578,6 +587,7 @@ export function MyAdviseesWorkspace() {
                 />
               ))
             )}
+            <AdviserCertificationRecords />
           </TabsContent>
         </Tabs>
       ) : null}

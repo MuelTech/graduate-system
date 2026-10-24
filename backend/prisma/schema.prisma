@@ -581,6 +581,8 @@ model ThesisDocument {
    * Stage this evidence belongs to. Null = legacy unscoped row.
    */
   defenseStage       ThesisStage?           @map("defense_stage")
+  /** Exact Proposal/Final manuscript-version title; null for legacy/unrelated evidence. */
+  manuscriptTitle    String?                @map("manuscript_title") @db.Text
   filePath           String                 @map("file_path")
   /**
    * DL-1: stable managed-storage identifier/provider + integrity metadata.

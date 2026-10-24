@@ -43,10 +43,12 @@ function proposalTask(overrides: Record<string, unknown> = {}) {
   return {
     thesisId: "thesis-1",
     student: { id: "student-1", name: "Ana Cruz", studentNumber: "2026-001" },
-    officialTitle: "Historical Title Wording",
+    officialTitle: "Exact Proposal Manuscript Title",
     reviewStatus: "AWAITING_REVIEW",
     reviewRemarks: null,
     manuscriptDocumentId: "doc-proposal",
+    manuscriptTitle: "Exact Proposal Manuscript Title",
+    originalFilename: "proposal.pdf",
     manuscriptUploadedAt: "2026-10-02T00:00:00.000Z",
     ...overrides,
   };
@@ -56,6 +58,8 @@ function finalTask(overrides: Record<string, unknown> = {}) {
   return {
     ...proposalTask(),
     manuscriptDocumentId: "doc-final",
+    manuscriptTitle: "Independent Final Manuscript Title",
+    originalFilename: "final.pdf",
     stage: "FINAL" as const,
     ...overrides,
   };
@@ -240,6 +244,10 @@ describe("AdviserWorkspaceService", () => {
       "PROPOSAL",
       "FINAL",
     ]);
+    expect(result.reviewTasks.map(task => [task.manuscriptDocumentId, task.manuscriptTitle, task.originalFilename])).toEqual([
+      ["doc-proposal", "Exact Proposal Manuscript Title", "proposal.pdf"],
+      ["doc-final", "Independent Final Manuscript Title", "final.pdf"],
+    ]);
     expect(result.activeAdvisees[0].review).toEqual({
       hasOpenTask: true,
       stages: ["PROPOSAL", "FINAL"],
@@ -270,6 +278,8 @@ describe("AdviserWorkspaceService", () => {
     expect(result.reviewContext.tasks[0].manuscriptDocumentId).toBe(
       "doc-proposal",
     );
+    expect(result.reviewContext.tasks[0].manuscriptTitle).toBe("Exact Proposal Manuscript Title");
+    expect(result.reviewContext.tasks[0].originalFilename).toBe("proposal.pdf");
   });
 
   it("denies a cross-Adviser detail lookup with the same not-found response", async () => {

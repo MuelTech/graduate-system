@@ -682,6 +682,24 @@ export class OfficialDefenseRecordService {
       );
     }
 
+    return this.loadExactDefenseApplicationSource(scheduleId);
+  }
+
+  /** Separate Student boundary: ownership is proved before any source is mapped. */
+  async getStudentDefenseApplicationDocumentSource(
+    scheduleId: string,
+    actor: { userId: string; role: string },
+  ): Promise<OfficialDefenseApplicationDocumentSource> {
+    if (actor.role !== "STUDENT" || !actor.userId) {
+      throw new AppError("Student access is required.", 403);
+    }
+    return this.loadExactDefenseApplicationSource(scheduleId, actor.userId);
+  }
+
+  private async loadExactDefenseApplicationSource(
+    scheduleId: string,
+    studentUserId?: string,
+  ): Promise<OfficialDefenseApplicationDocumentSource> {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
@@ -711,6 +729,10 @@ export class OfficialDefenseRecordService {
       },
     });
     if (!schedule) throw new AppError("Defense session not found.", 404);
+
+    if (studentUserId !== undefined && schedule.thesis?.student?.userId !== studentUserId) {
+      throw new AppError("Defense session not found.", 404);
+    }
 
     const student = schedule.thesis?.student ?? null;
     const studentName = student

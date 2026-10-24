@@ -10,6 +10,10 @@ const thesisController = new ThesisController();
 const defenseCollaborationController = new DefenseCollaborationController();
 const defenseHistoryController = new DefenseHistoryController();
 
+// GS-017: role gates are coarse; the service proves issuer/Student ownership.
+router.get("/adviser-certifications", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.listAdviserCertifications);
+router.get("/adviser-certifications/:certificationId/pdf", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.getAdviserCertificationPdf);
+
 // STUDENT ONLY: Title Defense — one combined Title Defense Proposal Package +
 // Current Semester COR + Defense-fee Proof of Payment. Structured proposed titles
 // are optional legacy input, not required (2026-10-15 correction).
@@ -611,6 +615,26 @@ router.get(
   authenticateJWT,
   requireRole(["ADMIN"]),
   thesisController.getOralExamSummaryPdf,
+);
+
+// PREDEF-2: independent Student ownership and Admin submission-context boundaries.
+router.get(
+  "/student/defense/:scheduleId/application",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentDefenseApplicationAvailability,
+);
+router.get(
+  "/student/defense/:scheduleId/application/pdf",
+  authenticateJWT,
+  requireRole(["STUDENT"]),
+  thesisController.getStudentDefenseApplicationPdf,
+);
+router.get(
+  "/defense/schedules/:scheduleId/submission",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.getScheduledDefenseSubmission,
 );
 
 // FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only)

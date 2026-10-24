@@ -20,6 +20,7 @@ import type {
   AdviserWorkspaceReviewTaskDto,
 } from "@/types/adviser-workspace";
 import { AdviserReviewActionPanel } from "@/components/panelist/adviser-review-action-panel";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import type { AdviserReviewStageKey } from "@/lib/adviser-reviews";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -127,6 +128,14 @@ function ReviewTaskRow({
         </Badge>
       </div>
       <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Meta
+          label="Thesis/Dissertation Title"
+          value={task.manuscriptTitle || "Title not recorded for this manuscript."}
+        />
+        <Meta
+          label="Manuscript file"
+          value={task.originalFilename || "Filename unavailable"}
+        />
         <Meta
           label="Manuscript updated"
           value={formatWorkspaceDate(task.manuscriptUploadedAt)}
@@ -402,6 +411,8 @@ export default function AdviseeDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {data.research.thesisId && <AdviserCertificationRecords thesisId={data.research.thesisId} />}
 
       <Card>
         <CardHeader>

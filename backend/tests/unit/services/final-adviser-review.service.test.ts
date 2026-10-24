@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const PNG_SIGNATURE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ1kAAAAASUVORK5CYII=";
+
 const prismaMock = vi.hoisted(() => {
   const tx = {
     $queryRaw: vi.fn(async () => []),
@@ -71,6 +73,7 @@ function activeAssignment(
 /** DL-7: test documents carry real column identity so exact binding validates. */
 function finalDoc<T extends Record<string, unknown>>(doc: T) {
   return {
+    manuscriptTitle: "Exact Reviewed Manuscript Title",
     thesisId: "thesis-1",
     docType: "FINAL_MANUSCRIPT",
     defenseStage: "FINAL",
@@ -135,6 +138,18 @@ function managed(overrides: Record<string, unknown> = {}) {
 describe("FinalAdviserReviewService (CP4)", () => {
   const svc = new FinalAdviserReviewService();
 
+  it.each(["missing title", "typed signature"])("refuses to issue a new certification with %s", async failure => {
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(thesisRow({
+      thesisDocuments: [{ id: "doc-1", uploadedAt: new Date(), manuscriptTitle: failure === "missing title" ? null : "Exact Final Title" }],
+      adviserCertifications: [{ id: "cert-1", status: "AWAITING_REVIEW", defenseStage: "FINAL_DEFENSE", reviewedDocumentId: "doc-1",
+        adviser: { id: "adviser-1", firstName: "Bob", lastName: "Adviser" } }],
+    }));
+    await expect(svc.certify("adviser-1", "thesis-1", {
+      expectedReviewedDocumentId: "doc-1", signatureData: failure === "typed signature" ? "Bob Adviser" : PNG_SIGNATURE,
+    })).rejects.toMatchObject({ isOperational: true });
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.student.findUnique.mockResolvedValue(studentRow());
@@ -196,7 +211,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
         ],
       }),
     );
-    await svc.submitManuscriptForReview("student-user", managed());
+    await svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title");
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -212,7 +227,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
   it("Test 3: no active Adviser rejects Final manuscript submit", async () => {
     prismaMock.adviserAssignment.findMany.mockResolvedValue([]);
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/active Thesis Adviser/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
   });
@@ -260,7 +275,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
   it("Test 13/15: certify requires expected token and uses atomic predicate", async () => {
     await expect(
       svc.certify("adviser-1", "thesis-1", {
-        signatureData: "sig",
+        signatureData: PNG_SIGNATURE,
         expectedReviewedDocumentId: "",
       }),
     ).rejects.toThrow(/Reviewed manuscript identifier/i);
@@ -285,7 +300,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
     );
     prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 1 });
     await svc.certify("adviser-1", "thesis-1", {
-      signatureData: "sig",
+      signatureData: PNG_SIGNATURE,
       expectedReviewedDocumentId: "doc-b",
     });
     const call = prismaMock.__tx.adviserCertification.updateMany.mock.calls[0]?.[0];
@@ -352,7 +367,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
 
       await expect(
         svc.certify("adviser-1", "thesis-1", {
-          signatureData: "sig",
+          signatureData: PNG_SIGNATURE,
           expectedReviewedDocumentId: "doc-a",
         }),
       ).rejects.toThrow(/STRIKE/i);
@@ -389,7 +404,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
     ).rejects.toThrow(/Proposal Defense must be formally PASSED/i);
     await expect(
       svc.certify("adviser-1", "thesis-1", {
-        signatureData: "sig",
+        signatureData: PNG_SIGNATURE,
         expectedReviewedDocumentId: "doc-a",
       }),
     ).rejects.toThrow(/Proposal Defense must be formally PASSED/i);
@@ -436,7 +451,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
 
       const cert = await captureError(() =>
         svc.certify("other-panelist", "thesis-1", {
-          signatureData: "sig",
+          signatureData: PNG_SIGNATURE,
           expectedReviewedDocumentId: "doc-a",
         }),
       );
@@ -485,7 +500,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
     try {
       const strikeErr = await captureError(() =>
         svc.certify("adviser-1", "thesis-1", {
-          signatureData: "sig",
+          signatureData: PNG_SIGNATURE,
           expectedReviewedDocumentId: "doc-a",
         }),
       );
@@ -577,7 +592,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
     ]);
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toMatchObject({ statusCode: 409 });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
     expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();

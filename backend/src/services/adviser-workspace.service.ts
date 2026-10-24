@@ -61,8 +61,9 @@ export interface AdviserResearchContextDto {
   currentStage: string | null;
   currentStatus: string | null;
   /**
-   * No separately-authorized current working-title source exists in the present
-   * model. Historical Title Defense selected/suggested titles are not reused.
+   * PREDEF-1B0 exposes exact version titles on review tasks. Selecting a single
+   * longitudinal working title remains deferred; historical Title Defense
+   * selected/suggested titles are not reused.
    */
   workingTitle: string | null;
 }
@@ -84,6 +85,8 @@ export interface AdviserWorkspaceReviewTaskDto {
   reviewStatus: string;
   reviewRemarks: string | null;
   manuscriptDocumentId: string | null;
+  manuscriptTitle: string | null;
+  originalFilename: string | null;
   manuscriptUploadedAt: string | null;
 }
 
@@ -197,6 +200,8 @@ function reviewTaskDto(
     reviewStatus: task.reviewStatus,
     reviewRemarks: task.reviewRemarks,
     manuscriptDocumentId: task.manuscriptDocumentId,
+    manuscriptTitle: task.manuscriptTitle,
+    originalFilename: task.originalFilename,
     manuscriptUploadedAt: task.manuscriptUploadedAt,
   };
 }

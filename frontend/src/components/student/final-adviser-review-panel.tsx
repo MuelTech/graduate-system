@@ -4,8 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
+import {
+  createManuscriptSubmission,
+  MANUSCRIPT_TITLE_MAX_LENGTH,
+} from "@/lib/manuscript-submission";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { AdviserCertificationRecords } from "@/components/shared/adviser-certification-records";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, Clock, FileText, Send, Upload } from "lucide-react";
 
@@ -19,7 +25,12 @@ type FinalAdviserReview = {
   thesisId: string | null;
   reviewStatus: FinalReviewStatus;
   reviewRemarks: string | null;
-  manuscript: { documentId: string; uploadedAt: string | null } | null;
+  manuscript: {
+    documentId: string;
+    manuscriptTitle: string | null;
+    originalFilename: string | null;
+    uploadedAt: string | null;
+  } | null;
   certification: {
     issued: boolean;
     adviserName: string | null;
@@ -48,6 +59,7 @@ function statusLabel(status: FinalReviewStatus): string {
 export function FinalAdviserReviewPanel() {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
+  const [manuscriptTitle, setManuscriptTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const prevStatusRef = useRef<FinalReviewStatus | null>(null);
@@ -80,8 +92,7 @@ export function FinalAdviserReviewPanel() {
 
   const submitManuscript = useMutation({
     mutationFn: async () => {
-      const formData = new FormData();
-      formData.append("document", file!);
+      const formData = createManuscriptSubmission(manuscriptTitle, file);
       return apiClientRequest("/thesis/final-adviser-review/manuscript", {
         method: "POST",
         body: formData,
@@ -90,6 +101,7 @@ export function FinalAdviserReviewPanel() {
     onSuccess: async () => {
       setError(null);
       setFile(null);
+      setManuscriptTitle("");
       if (inputRef.current) inputRef.current.value = "";
       await queryClient.invalidateQueries({ queryKey: reviewQueryKey });
       await queryClient.invalidateQueries({
@@ -186,6 +198,8 @@ export function FinalAdviserReviewPanel() {
           </div>
         )}
 
+        {status === "ISSUED" && data?.thesisId && <AdviserCertificationRecords thesisId={data.thesisId} stage="FINAL" />}
+
         {status === "AWAITING_REVIEW" && (
           <p className="text-(--earist-body-text)">
             Final manuscript submitted for Adviser review. This is not the Final
@@ -194,13 +208,22 @@ export function FinalAdviserReviewPanel() {
         )}
 
         {data?.manuscript && (
-          <p className="flex items-center gap-2 text-xs text-(--earist-body-text)">
-            <FileText className="h-4 w-4" />
-            Current Final manuscript uploaded
-            {data.manuscript.uploadedAt
-              ? ` ${new Date(data.manuscript.uploadedAt).toLocaleDateString()}`
-              : ""}
-          </p>
+          <div className="space-y-1 break-words">
+            <p className="font-medium text-(--earist-secondary)">
+              Thesis/Dissertation Title
+            </p>
+            <p>{data.manuscript.manuscriptTitle || "Title not recorded for this manuscript."}</p>
+            <p className="text-xs text-(--earist-body-text)">
+              {data.manuscript.originalFilename || "Filename unavailable"}
+            </p>
+            <p className="flex items-center gap-2 text-xs text-(--earist-body-text)">
+              <FileText className="h-4 w-4" />
+              Current Final manuscript uploaded
+              {data.manuscript.uploadedAt
+                ? ` ${new Date(data.manuscript.uploadedAt).toLocaleDateString()}`
+                : ""}
+            </p>
+          </div>
         )}
 
         {error && (
@@ -213,6 +236,25 @@ export function FinalAdviserReviewPanel() {
 
         {canUpload && !blockedByProposal && !blockedByStrike && (
           <div className="space-y-2">
+            <label
+              htmlFor="final-manuscript-title"
+              className="block font-medium text-(--earist-secondary)"
+            >
+              Thesis/Dissertation Title <span aria-hidden="true">*</span>
+            </label>
+            <Textarea
+              id="final-manuscript-title"
+              required
+              value={manuscriptTitle}
+              onChange={(event) => setManuscriptTitle(event.target.value)}
+              maxLength={MANUSCRIPT_TITLE_MAX_LENGTH}
+              disabled={submitManuscript.isPending}
+              aria-describedby="final-manuscript-title-help"
+              rows={3}
+            />
+            <p id="final-manuscript-title-help" className="text-xs text-(--earist-body-text)">
+              Enter the title for this manuscript. Include the title again with each revision.
+            </p>
             {!file ? (
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-(--earist-border-gray) p-4 hover:border-(--earist-primary)">
                 <Upload className="mb-1 h-6 w-6 text-(--earist-body-text)/40" />
@@ -249,7 +291,7 @@ export function FinalAdviserReviewPanel() {
             )}
             <Button
               type="button"
-              disabled={!file || submitManuscript.isPending}
+              disabled={!file || !manuscriptTitle.trim() || submitManuscript.isPending}
               onClick={() => submitManuscript.mutate()}
               className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
             >

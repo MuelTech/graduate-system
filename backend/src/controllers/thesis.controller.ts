@@ -68,6 +68,31 @@ function sendPdfResponse(
 }
 
 export class ThesisController {
+  listAdviserCertifications = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized." }); return; }
+    try {
+      if ((req.query.thesisId !== undefined && typeof req.query.thesisId !== "string")
+        || (req.query.stage !== undefined && typeof req.query.stage !== "string")) {
+        throw new AppError("Invalid certification query.", 400);
+      }
+      res.status(200).json(await this.thesisService.listAdviserCertifications(req.user, req.query.thesisId as string | undefined, req.query.stage as string | undefined));
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else res.status(500).json({ error: "Certification records could not be retrieved." });
+    }
+  };
+
+  getAdviserCertificationPdf = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized." }); return; }
+    try {
+      const { pdf, filename } = await this.thesisService.generateAdviserCertificationPdf(req.params.certificationId as string, req.user);
+      sendPdfResponse(res, pdf, filename);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else res.status(500).json({ error: "The certification PDF could not be generated." });
+    }
+  };
+
   private thesisService = new ThesisService();
   private journeyService = new StudentThesisJourneyService();
   private proposalAdviserReview = new ProposalAdviserReviewService();
@@ -971,6 +996,86 @@ export class ThesisController {
     }
   };
 
+  /** PREDEF-2: read-only exact scheduled submission (Admin only). */
+  public getScheduledDefenseSubmission = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result = await this.thesisService.getScheduledDefenseSubmission(
+        req.params.scheduleId as string,
+        req.user,
+      );
+      res.setHeader("Cache-Control", "no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "Scheduled submission context could not be retrieved.",
+          });
+    }
+  };
+
+  public getStudentDefenseApplicationAvailability = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result =
+        await this.thesisService.getStudentDefenseApplicationAvailability(
+          req.params.scheduleId as string,
+          req.user,
+        );
+      res.setHeader("Cache-Control", "no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "Official application availability could not be checked.",
+          });
+    }
+  };
+
+  public getStudentDefenseApplicationPdf = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user?.userId) {
+        res.status(401).json({ error: "Unauthorized." });
+        return;
+      }
+      const result =
+        await this.thesisService.generateStudentDefenseApplicationPdf(
+          req.params.scheduleId as string,
+          req.user,
+        );
+      sendPdfResponse(res, result.pdf, result.filename);
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else
+        res
+          .status(500)
+          .json({
+            error: "The official application PDF could not be generated.",
+          });
+    }
+  };
+
   /** FORM-INT-3: exact-schedule GS-006/GS-007 Defense Application PDF (ADMIN-only). */
   public getDefenseApplicationPdf = async (
     req: AuthenticatedRequest,
@@ -1298,6 +1403,7 @@ export class ThesisController {
       await this.proposalAdviserReview.submitManuscriptForReview(
         userId,
         managedUploadFromMulter(file, userId),
+        req.body?.manuscriptTitle,
       );
       // DL-2 FIX1: the authoritative transaction has committed — protect the
       // managed file before any fallible post-commit read.
@@ -1448,6 +1554,7 @@ export class ThesisController {
       await this.finalAdviserReview.submitManuscriptForReview(
         userId,
         managedUploadFromMulter(file, userId),
+        req.body?.manuscriptTitle,
       );
       // DL-2 FIX1: protect the committed managed file before any post-commit read.
       commitRequestUploads(req);

@@ -605,6 +605,7 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
       proposalApplicationSubmittedAt: PROPOSAL_SUBMITTED_AT,
       finalApplicationSubmittedAt: FINAL_SUBMITTED_AT,
       student: {
+        userId: "student-owner",
         studentNumber: "2026-001",
         cellphone: "09171234567",
         user: { firstName: "Juan", lastName: "Dela Cruz", email: "student@gmail.com" },
@@ -630,6 +631,222 @@ describe("OfficialDefenseRecordService.getOfficialDefenseApplicationDocumentSour
   };
 
   beforeEach(() => vi.clearAllMocks());
+
+  it.each(["TITLE_DEFENSE", "PROPOSAL_DEFENSE", "FINAL_DEFENSE"])(
+    "Student and Admin use identical exact %s source and render input",
+    async (defenseType) => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleRow,
+        defenseType,
+        panelAssignments: committeeFor("MASTERS", defenseType).map((a) => ({
+          id: a.panelAssignmentId,
+          userId: a.userId,
+          role: a.role,
+          createdAt: new Date(a.createdAt),
+          user: { firstName: a.name, lastName: "" },
+        })),
+      });
+      const student = { userId: "student-owner", role: "STUDENT" };
+      const adminSource =
+        await records.getOfficialDefenseApplicationDocumentSource(
+          "sched-1",
+          ADMIN,
+        );
+      const studentSource =
+        await records.getStudentDefenseApplicationDocumentSource(
+          "sched-1",
+          student,
+        );
+      expect(studentSource).toEqual(adminSource);
+      const renderApplication = vi
+        .fn()
+        .mockResolvedValue(Buffer.from("%PDF-1.7"));
+      const service = new OfficialDefenseDocumentService({
+        records,
+        studentApplications: records,
+        loadLogos: async () => LOGOS,
+        renderApplication,
+      });
+      await service.generateDefenseApplicationPdf("sched-1", ADMIN);
+      const copy = await service.generateStudentDefenseApplicationPdf(
+        "sched-1",
+        student,
+      );
+      expect(renderApplication.mock.calls[0][0]).toEqual(
+        renderApplication.mock.calls[1][0],
+      );
+      expect(copy.filename).toContain("Juan-Dela-Cruz-");
+      expect(
+        (
+          await service.getStudentDefenseApplicationAvailability(
+            "sched-1",
+            student,
+          )
+        ).available,
+      ).toBe(true);
+      expect(
+        prismaMock.defenseSchedule.findUnique.mock.calls.every(
+          ([arg]) => arg.where.id === "sched-1",
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it.each(["another-student", "", "student-without-profile"])(
+    "denies unowned schedule for %s before rendering",
+    async (userId) => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow);
+      const renderApplication = vi.fn();
+      const service = new OfficialDefenseDocumentService({
+        studentApplications: records,
+        renderApplication,
+      });
+      await expect(
+        service.generateStudentDefenseApplicationPdf("sched-1", {
+          userId,
+          role: "STUDENT",
+        }),
+      ).rejects.toMatchObject({ statusCode: userId ? 404 : 403 });
+      expect(renderApplication).not.toHaveBeenCalled();
+    },
+  );
+
+  it("denies missing or profile-less exact schedules without falling back", async () => {
+    for (const row of [
+      null,
+      { ...scheduleRow, thesis: { ...scheduleRow.thesis, student: null } },
+    ]) {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue(row);
+      await expect(
+        records.getStudentDefenseApplicationDocumentSource("missing", {
+          userId: "student-owner",
+          role: "STUDENT",
+        }),
+      ).rejects.toMatchObject({ statusCode: 404 });
+    }
+  });
+
+  it.each(["MASTERS", "DOCTORAL"])(
+    "renders byte-identical real Admin and Student application PDFs for %s",
+    async (programType) => {
+      prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+        ...scheduleRow,
+        thesis: {
+          ...scheduleRow.thesis,
+          student: {
+            ...scheduleRow.thesis.student,
+            program: { programName: "Graduate Program", programType },
+          },
+        },
+        panelAssignments: committeeFor(programType, "PROPOSAL_DEFENSE").map(
+          (a) => ({
+            id: a.panelAssignmentId,
+            userId: a.userId,
+            role: a.role,
+            createdAt: new Date(a.createdAt),
+            user: { firstName: a.name, lastName: "" },
+          }),
+        ),
+      });
+      const service = new OfficialDefenseDocumentService({
+        records,
+        studentApplications: records,
+      });
+      const admin = await service.generateDefenseApplicationPdf(
+        "sched-1",
+        ADMIN,
+      );
+      const student = await service.generateStudentDefenseApplicationPdf(
+        "sched-1",
+        { userId: "student-owner", role: "STUDENT" },
+      );
+      expect(Buffer.from(student.pdf)).toEqual(Buffer.from(admin));
+      expect(Buffer.from(student.pdf).subarray(0, 5).toString()).toBe("%PDF-");
+      expect(student.pdf.length).toBeGreaterThan(1000);
+    },
+  );
+
+  it.each(["ADMIN", "PANELIST", "APPLICANT", ""])(
+    "rejects %s at the Student source boundary before querying",
+    async (role) => {
+      await expect(
+        records.getStudentDefenseApplicationDocumentSource("sched-1", {
+          userId: "student-owner",
+          role,
+        }),
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(prismaMock.defenseSchedule.findUnique).not.toHaveBeenCalled();
+    },
+  );
+
+  it("withholds Student availability and PDF for an incomplete committee", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue({
+      ...scheduleRow,
+      panelAssignments: [],
+    });
+    const renderApplication = vi.fn();
+    const service = new OfficialDefenseDocumentService({
+      studentApplications: records,
+      loadLogos: async () => LOGOS,
+      renderApplication,
+    });
+    const actor = { userId: "student-owner", role: "STUDENT" };
+    expect(
+      await service.getStudentDefenseApplicationAvailability("sched-1", actor),
+    ).toMatchObject({ available: false });
+    await expect(
+      service.generateStudentDefenseApplicationPdf("sched-1", actor),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(renderApplication).not.toHaveBeenCalled();
+  });
+
+  it("withholds Student availability for renderer overflow and never bypasses validation on download", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow);
+    const renderApplication = vi
+      .fn()
+      .mockRejectedValue(new RangeError("too long"));
+    const service = new OfficialDefenseDocumentService({
+      studentApplications: records,
+      loadLogos: async () => LOGOS,
+      renderApplication,
+    });
+    const actor = { userId: "student-owner", role: "STUDENT" };
+    expect(
+      await service.getStudentDefenseApplicationAvailability("sched-1", actor),
+    ).toMatchObject({ available: false });
+    await expect(
+      service.generateStudentDefenseApplicationPdf("sched-1", actor),
+    ).rejects.toMatchObject({ statusCode: 422 });
+  });
+
+  it("does not convert ownership failures to availability metadata", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleRow);
+    const service = new OfficialDefenseDocumentService({
+      studentApplications: records,
+    });
+    await expect(
+      service.getStudentDefenseApplicationAvailability("sched-1", {
+        userId: "other",
+        role: "STUDENT",
+      }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("refuses a mismatched exact schedule from the Student source", async () => {
+    const service = new OfficialDefenseDocumentService({
+      studentApplications: {
+        getStudentDefenseApplicationDocumentSource: vi
+          .fn()
+          .mockResolvedValue(source({ scheduleId: "other" })),
+      },
+    });
+    await expect(
+      service.generateStudentDefenseApplicationPdf("sched-1", {
+        userId: "student-owner",
+        role: "STUDENT",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
 
   it("rejects non-Admin actors before reading the schedule", async () => {
     try {

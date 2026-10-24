@@ -36,6 +36,7 @@ import { OfficialDefenseDocumentService } from './official-defense-document.serv
 import type { OfficialDefenseDocumentKind } from './official-defense-document-filename';
 import { RapporteurFinalizationService } from './rapporteur-finalization.service';
 import { RapReportService } from './rap-report.service';
+import { ScheduledDefenseSubmissionService } from './scheduled-defense-submission.service';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -46,6 +47,19 @@ export interface ScheduleDefenseInput {
 }
 
 export class ThesisService {
+  private scheduledSubmission = new ScheduledDefenseSubmissionService();
+
+  getScheduledDefenseSubmission(scheduleId: string, actor: { userId: string; role: string }) {
+    return this.scheduledSubmission.getSubmission(scheduleId, actor);
+  }
+
+  getStudentDefenseApplicationAvailability(scheduleId: string, actor: { userId: string; role: string }) {
+    return this.officialDocuments.getStudentDefenseApplicationAvailability(scheduleId, actor);
+  }
+
+  generateStudentDefenseApplicationPdf(scheduleId: string, actor: { userId: string; role: string }) {
+    return this.officialDocuments.generateStudentDefenseApplicationPdf(scheduleId, actor);
+  }
   private thesisRepo = new ThesisRepository();
   private oralEvaluation = new OralEvaluationService();
   private defenseAppsRepo = new DefenseApplicationsRepository();
@@ -900,6 +914,15 @@ export class ThesisService {
       panelAssignmentId,
       actor,
     );
+  }
+
+  /** PREDEF-1B/1C: issuer/owning-Student/Admin certification records. */
+  async listAdviserCertifications(actor: { userId: string; role: string }, thesisId?: string, stage?: string) {
+    return this.officialDocuments.listAdviserCertifications(actor, thesisId, stage);
+  }
+
+  async generateAdviserCertificationPdf(id: string, actor: { userId: string; role: string }) {
+    return this.officialDocuments.generateAdviserCertificationPdf(id, actor);
   }
 
   /** FORM-INT-1: authenticated ADMIN individual evaluation PDF (exact attempt). */
