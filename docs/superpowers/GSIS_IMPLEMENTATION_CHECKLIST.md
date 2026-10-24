@@ -23,7 +23,7 @@
 
 ## Current implementation focus — Pre-Defense Document Integrity & Visibility
 
-**Current phase:** PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY accepted for the documented scope. Consolidated integrated PREDEF manual/browser QA remains the final pre-merge gate. PREDEF-3 remains deferred; DEF-CORR-1 remains a separate future package.
+**Current phase:** PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY accepted for the documented scope. Project-owner manual flow review is accepted; automated verification and independent remote review cover the bounded negative/integrity paths. The branch is merge-ready. PREDEF-3 remains deferred; DEF-CORR-1 remains a separate future package.
 **Target implementation branch:** existing `feat/pre-defense-document-integrity`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-24-pre-defense-document-integrity.md`  
 **Goal:** strengthen exact manuscript authority and visibility from Adviser review through Defense Application and Scheduling, with prevention-first guardrails before certification rather than implementing a rare correction path prematurely.
