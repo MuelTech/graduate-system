@@ -23,7 +23,7 @@ Scope: all user-uploaded and system-owned documents that participate in Applican
 | Applicant evidence | Certificate of Registration (COR) | Applicant | Admin | No |
 | Defense supporting evidence | COR, receipt/proof image/file, Title package | Student | Admin/workflow gate as currently defined | No |
 | Proposal/Final manuscripts | Proposal chapters, Final manuscript | Student | Active Adviser | No |
-| Official defense records | Criteria, Oral Examination Summary, RAP, conclusion | System / assigned defense actors | Existing Defense authority | No |
+| Official defense records | Adviser Certification (GS-017), Criteria, Oral Examination Summary, RAP, conclusion | System / assigned defense actors | Existing Defense authority | No |
 | Research Databank archive | Approved archival metadata/files | Determined by archival workflow | Admin/archive authority | No |
 | Research Repository publication | approved metadata and permitted publication artifact | Derived from approved archive | publication/Admin authority | Only explicitly published content |
 
@@ -125,6 +125,7 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 - Student manuscript submission for Adviser review is distinct from final Defense application evidence.
 - Student may resubmit a new Proposal manuscript after Adviser Request Changes.
 - Once Proposal Adviser Certification is `ISSUED`, the exact `reviewedDocumentId` is authoritative and ordinary Student replacement is blocked.
+- The issued certification may be rendered as official GS-017 from that exact certification record; GS-017 is system-owned and is not a Student upload slot.
 - Proposal Defense application supplies only the supporting evidence currently required by the accepted workflow (COR and receipt/proof); it must not ask for a second manuscript upload.
 
 ### Final
@@ -132,15 +133,24 @@ The current working assumption about mapping Thesis 1/Thesis 2 to Title/Proposal
 - Same authority pattern as Proposal.
 - Final manuscript may be resubmitted during Adviser review until certification is issued.
 - Exact Final `AdviserCertification.reviewedDocumentId` is authoritative.
+- The issued certification may be rendered as official GS-017 from that exact certification record; GS-017 is system-owned and is not a Student upload slot.
 - Final application supplies supporting evidence without duplicating the certified manuscript.
 
 ### Supporting evidence resubmission
 
-Rejected/corrected Title proposal package, COR, or receipt/proof evidence must support replacement by a new version without requiring unrelated accepted/certified documents to be reuploaded. In the accepted Title flow, active Admin review does not permit silent Student replacement: the application is returned/rejected first, then only the necessary stage-scoped slots are versioned/replaced while unchanged current evidence and prior versions remain intact. Proposal/Final correction behavior remains governed by their existing authoritative workflow.
+Rejected/corrected Title proposal package, COR, or receipt/proof evidence must support replacement by a new version without requiring unrelated accepted/certified documents to be reuploaded. In the accepted Title flow, active Admin review does not permit silent Student replacement: the application is returned/rejected first, then only the necessary stage-scoped slots are versioned/replaced while unchanged current evidence and prior versions remain intact.
+
+For Proposal/Final, Admin rejection because a stage-scoped supporting item such as COR or receipt/proof must be corrected does **not** invalidate an already issued Adviser Certification. The certified manuscript and its GS-017 remain bound to the exact `AdviserCertification.reviewedDocumentId`; only the affected supporting evidence is replaced/resubmitted. The Student must not re-upload the certified manuscript merely because the application was rejected for an unrelated supporting requirement.
+
+A genuinely wrong already-certified manuscript is not repaired through the ordinary evidence-resubmission path. Controlled re-certification/rebinding remains a deferred recovery feature; no actor may silently mutate an `ISSUED` certification to point at another document.
 
 ## 6. System-owned records
 
 Adviser Certification, evaluator Criteria, Oral Examination Summary, RAP, signatures, and formal Defense conclusions are not Student uploads. They must remain generated/persisted by their authoritative workflows. Admin does not gain a generic replace/delete override through document management.
+
+GS-017 is a generated official representation of an exact issued Adviser Certification. Its authority comes from the certification record and exact `reviewedDocumentId`, not from the existence of a separately uploaded PDF. The issued certification is immutable under the ordinary workflow; on-demand PDF generation does not create a new manuscript authority or a replacement certification.
+
+Completed GS-006/GS-007 Defense Application PDFs are likewise system-generated records. Student read-only access to their own completed application is for transparency/reference and must not create a print-fill-upload loop or grant editing authority over Admin-controlled schedule, committee, approval, or signatory data.
 
 Each conducted defense attempt owns its own official evaluation records, signatures, RAP / Suggestions of the Evaluation Committee, and formal conclusion. A later re-defense creates a new attempt and new official records; it must never overwrite, silently replace, or reopen the finalized artifacts of a prior concluded attempt.
 
