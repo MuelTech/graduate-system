@@ -46,6 +46,18 @@
 | Post-scheduling schedule/committee correction | Not implemented | Add one transactional correction mutation with automatic immutable before/after audit. |
 | Historical pre-defense annotations/comments | Assignment-bound author identity exists | Never rewrite author identity when a member is replaced; preserve referenced historical assignment rows while removing future active-session authority. |
 
+### DEF-CORR-1 implementation checkpoints
+
+DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The following are sequential review boundaries so the coding agent does not attempt the entire cross-cutting change in one pass.
+
+| Status | Checkpoint | Scope / stop condition |
+| --- | --- | --- |
+| 🚧 | A — Backend authority + assignment lifecycle | Add active/inactive `PanelAssignment` lifecycle, migration if required, active-authority filtering, Admin correction mutation, committee validation, exact schedule/manuscript preservation, schedule-created/correction AuditLog events, and focused/proportional backend verification. **Stop and report before frontend work.** |
+| ⏳ | B — Manage Schedule & Committee UI | After A review, add the deliberate Scheduled-state edit flow for date/time/Venue or Meeting Details + manually assigned committee. Adviser remains locked Automatic for Proposal/Final. Save/Cancel/confirmation + exact refresh + focused frontend verification. **Stop and report before notification/consolidation work.** |
+| ⏳ | C — Notifications + consolidated integrity verification | After B review, reuse existing notification/email behavior where practical, verify removed/new member authority, run cross-cutting regressions, execute/prepare manual/browser QA, and update final evidence/docs. No notification-system redesign. |
+
+Checkpoint completion does not equal full feature acceptance. DEF-CORR-1 becomes ✅ only after A + B + C, independent remote review, required manual/browser QA, and project-owner acceptance.
+
 ### Active-package guardrail
 
 `🚧` means the feature is approved for implementation but is **not yet accepted**. DEF-CORR-1 moves to ✅ only after bounded implementation, focused/proportional automated verification, independent remote source review, required manual/browser QA, and project-owner acceptance. Do not broaden this package into post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, or notification-system redesign.
