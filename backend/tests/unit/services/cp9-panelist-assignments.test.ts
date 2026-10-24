@@ -159,6 +159,7 @@ describe("CP9 getPanelistAssignments evaluationStatus", () => {
       .mockResolvedValue([]);
     await repo.getPanelistAssignments("u1");
     const args = spy.mock.calls[0][0] as Record<string, any>;
+    expect(args.where).toEqual({ userId: "u1", isActive: true });
     expect(args.include.oralExamScores.select).toEqual({
       panelId: true,
       status: true,

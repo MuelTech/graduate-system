@@ -32,7 +32,7 @@ export class PanelistDashboardRepository {
   /** Own PanelAssignment rows enriched with authoritative session state. */
   async getAssignments(userId: string): Promise<DashboardAssignmentInput[]> {
     const rows = await prisma.panelAssignment.findMany({
-      where: { userId },
+      where: { userId, isActive: true },
       include: {
         // Own evaluation status only — scoped to this PanelAssignment.
         oralExamScores: { select: { panelId: true, status: true } },

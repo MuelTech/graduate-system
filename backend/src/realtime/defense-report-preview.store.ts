@@ -26,7 +26,7 @@ export function createPrismaDefenseReportPreviewStore(
         select: {
           sessionStatus: true,
           panelAssignments: {
-            where: { userId },
+            where: { userId, isActive: true },
             select: { role: true },
             take: 1,
           },

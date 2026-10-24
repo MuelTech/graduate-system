@@ -37,6 +37,10 @@ import type { OfficialDefenseDocumentKind } from './official-defense-document-fi
 import { RapporteurFinalizationService } from './rapporteur-finalization.service';
 import { RapReportService } from './rap-report.service';
 import { ScheduledDefenseSubmissionService } from './scheduled-defense-submission.service';
+import {
+  DefenseScheduleCorrectionService,
+  type CorrectScheduledDefenseInput,
+} from './defense-schedule-correction.service';
 
 export interface ScheduleDefenseInput {
   defenseDate: string;
@@ -72,6 +76,7 @@ export class ThesisService {
   private officialDocuments = new OfficialDefenseDocumentService();
   private rapporteurFinalization = new RapporteurFinalizationService();
   private rapReports = new RapReportService();
+  private scheduleCorrection = new DefenseScheduleCorrectionService();
 
   async getPendingDefenses() {
     return this.thesisRepo.getPendingDefenses();
@@ -725,6 +730,14 @@ export class ThesisService {
       defenseType,
       assignments,
     });
+  }
+
+  async correctScheduledDefense(
+    scheduleId: string,
+    adminId: string,
+    input: CorrectScheduledDefenseInput,
+  ) {
+    return this.scheduleCorrection.correctSchedule(scheduleId, adminId, input);
   }
 
   async getPanelistAssignments(userId: string) {

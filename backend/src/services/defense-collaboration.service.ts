@@ -345,6 +345,7 @@ export class DefenseCollaborationService {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: { user: { select: { firstName: true, lastName: true } } },
         },
         oralExamScores: { select: { panelId: true, status: true } },
@@ -379,6 +380,7 @@ export class DefenseCollaborationService {
       where: { id: scheduleId },
       include: {
         panelAssignments: {
+          where: { isActive: true },
           include: { user: { select: { id: true, firstName: true, lastName: true } } },
         },
         thesis: {
@@ -422,7 +424,7 @@ export class DefenseCollaborationService {
   /** Authority comes from the caller's own assignment for the exact schedule. */
   private async resolveAssignment(scheduleId: string, userId: string, db: DbClient = prisma) {
     const assignment = await db.panelAssignment.findFirst({
-      where: { scheduleId, userId },
+      where: { scheduleId, userId, isActive: true },
     });
     if (!assignment) {
       throw new AppError("You are not assigned to this defense session.", 403);
@@ -1391,7 +1393,10 @@ export class DefenseCollaborationService {
     const schedule = await prisma.defenseSchedule.findUnique({
       where: { id: scheduleId },
       include: {
-        panelAssignments: { select: { id: true, userId: true, role: true } },
+        panelAssignments: {
+          where: { isActive: true },
+          select: { id: true, userId: true, role: true },
+        },
         oralExamScores: { select: { panelId: true, status: true } },
         oralExamSummary: { select: { id: true } },
         conclusion: { select: { id: true } },

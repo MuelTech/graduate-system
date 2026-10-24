@@ -173,6 +173,19 @@ describe("DefenseCollaborationService (CDW-1)", () => {
     await expect(svc.listAnnotations("sched-1", "u-x", "doc-1")).rejects.toMatchObject({ statusCode: 403 });
   });
 
+  it("uses active assignments for collaboration authority and roster reads", async () => {
+    await svc.createAnnotation("sched-1", "u-PANELIST", {
+      thesisDocumentId: "doc-1",
+      anchor: VALID_ANCHOR,
+    });
+
+    expect(prismaMock.panelAssignment.findFirst).toHaveBeenCalledWith({
+      where: { scheduleId: "sched-1", userId: "u-PANELIST", isActive: true },
+    });
+    const include = prismaMock.defenseSchedule.findUnique.mock.calls[0][0].include;
+    expect(include.panelAssignments.where).toEqual({ isActive: true });
+  });
+
   it("allows a Chairman to create an annotation", async () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignmentRow("CHAIRMAN"));
     await expect(

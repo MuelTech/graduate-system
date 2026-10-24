@@ -117,6 +117,23 @@ describe("OralEvaluationService (CP5)", () => {
     prismaMock.defenseSchedule.updateMany.mockResolvedValue({ count: 1 });
   });
 
+  it("resolves evaluator ownership and completion from active assignments only", async () => {
+    await svc.saveDraft("sched-1", "user-a", {
+      criteria: { organization: 1 },
+    });
+
+    expect(prismaMock.panelAssignment.findFirst).toHaveBeenCalledWith({
+      where: { scheduleId: "sched-1", userId: "user-a", isActive: true },
+    });
+
+    await svc.recomputeEvaluationSessionStatus("sched-1");
+    expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ isActive: true }),
+      }),
+    );
+  });
+
   it("Test 1: evaluator can save own partial draft", async () => {
     const dto = await svc.saveDraft("sched-1", "user-a", {
       criteria: { organization: 1.5 },

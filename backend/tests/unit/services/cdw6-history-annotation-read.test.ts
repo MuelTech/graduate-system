@@ -34,6 +34,7 @@ describe("CDW-6 shared attempt-annotation read (used by current + history)", () 
           id: "pa-old",
           userId: "old-user",
           role: "PANELIST",
+          isActive: false,
           user: { firstName: "Old", lastName: "Role" },
         },
         comments: [],
@@ -48,8 +49,10 @@ describe("CDW-6 shared attempt-annotation read (used by current + history)", () 
     expect(result).toHaveLength(1);
     expect(result[0].scheduleId).toBe("sched-a");
     expect(result[0].thesisDocumentId).toBe("doc-a");
-    // The author role is read from the historical assignment, never remapped.
+    // The author role is read from the historical assignment, never remapped,
+    // even after that exact assignment has been retired from current authority.
     expect(result[0].author.role).toBe("PANELIST");
+    expect(result[0].author.assignmentId).toBe("pa-old");
     expect(prismaMock.defenseSchedule.findUnique).not.toHaveBeenCalled();
   });
 });

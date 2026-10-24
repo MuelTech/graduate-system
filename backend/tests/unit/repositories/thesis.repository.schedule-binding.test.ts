@@ -7,8 +7,9 @@ const tx = {
     update: vi.fn(),
     findUnique: vi.fn(),
   },
-  panelAssignment: { createMany: vi.fn() },
+  panelAssignment: { createMany: vi.fn(), findMany: vi.fn() },
   thesisRecord: { findUnique: vi.fn(), update: vi.fn() },
+  auditLog: { create: vi.fn() },
 };
 
 const prismaMock = vi.hoisted(() => ({
@@ -48,6 +49,15 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
     tx.defenseSchedule.update.mockResolvedValue({});
     tx.defenseSchedule.findUnique.mockResolvedValue({ id: "sched-1", panelAssignments: [] });
     tx.panelAssignment.createMany.mockResolvedValue({ count: 1 });
+    tx.panelAssignment.findMany.mockResolvedValue([
+      {
+        id: "pa-1",
+        userId: "u1",
+        role: "CHAIRMAN",
+        user: { firstName: "One", lastName: "Chair" },
+      },
+    ]);
+    tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
     tx.thesisRecord.update.mockResolvedValue({});
     tx.thesisRecord.findUnique.mockResolvedValue(thesisWithDocs([]));
   });
@@ -160,5 +170,57 @@ describe("ThesisRepository.scheduleDefense — exact attempt manuscript binding"
       repo.scheduleDefense("thesis-1", "admin-1", { ...baseArgs[2], defenseType: "PROPOSAL_DEFENSE" }),
     ).rejects.toMatchObject({ statusCode: 409 });
     expectNoPartialPersistence();
+  });
+
+  it("creates the initial active roster and writes the canonical schedule-created audit in the same transaction", async () => {
+    tx.thesisRecord.findUnique.mockResolvedValue(
+      thesisWithDocs([
+        { id: "title-1", docType: "TITLE_PROPOSAL", defenseStage: "TITLE" },
+      ]),
+    );
+
+    await repo.scheduleDefense(...baseArgs);
+
+    expect(tx.panelAssignment.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          scheduleId: "sched-1",
+          userId: "u1",
+          role: "CHAIRMAN",
+          isActive: true,
+        },
+      ],
+    });
+    expect(tx.panelAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { scheduleId: "sched-1", isActive: true },
+      }),
+    );
+    expect(tx.auditLog.create).toHaveBeenCalledTimes(1);
+    const data = tx.auditLog.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({
+      actorId: "admin-1",
+      actionType: "DEFENSE_SCHEDULE_CREATED",
+      targetTable: "defense_schedules",
+      targetId: "sched-1",
+      oldValue: null,
+    });
+    expect(JSON.parse(data.newValue)).toMatchObject({
+      scheduleId: "sched-1",
+      thesisId: "thesis-1",
+      defenseType: "TITLE_DEFENSE",
+      schedule: {
+        defenseDate: "2026-10-20T00:00:00.000Z",
+        defenseTime: "1970-01-01T09:00:00.000Z",
+        venueOrLink: "Room 201",
+      },
+      committee: [
+        {
+          assignmentId: "pa-1",
+          userId: "u1",
+          role: "CHAIRMAN",
+        },
+      ],
+    });
   });
 });

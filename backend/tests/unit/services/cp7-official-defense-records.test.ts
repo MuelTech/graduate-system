@@ -121,6 +121,22 @@ describe("CP7 Oral Examination Summary", () => {
     vi.clearAllMocks();
   });
 
+  it("counts only active evaluator assignments for Summary readiness", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findMany.mockResolvedValue([
+      { id: "p1", userId: "u1", role: "CHAIRMAN", user: { id: "u1", firstName: "A", lastName: "B" } },
+    ]);
+    prismaMock.oralExamScore.findMany.mockResolvedValue([]);
+    await expect(svc.ensureOralExamSummary("sched-1")).rejects.toThrow(
+      /must be finalized/i,
+    );
+    expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ isActive: true }),
+      }),
+    );
+  });
+
   it("Test 1: Summary absent while one required evaluator remains DRAFT", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
     prismaMock.panelAssignment.findMany.mockResolvedValue([
@@ -373,6 +389,30 @@ describe("CP7 Rapporteur notes finalization", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("resolves Rapporteur and evaluator completion from active assignments only", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(scheduleBase);
+    prismaMock.panelAssignment.findFirst.mockResolvedValue({
+      id: "pr",
+      scheduleId: "sched-1",
+      userId: "user-r",
+      role: "RAPPORTEUR",
+    });
+    prismaMock.panelAssignment.findMany.mockResolvedValue([]);
+
+    await expect(
+      svc.finalizeDefenseNotes("sched-1", "user-r"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(prismaMock.panelAssignment.findFirst).toHaveBeenCalledWith({
+      where: { scheduleId: "sched-1", userId: "user-r", isActive: true },
+    });
+    expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ isActive: true }),
+      }),
+    );
   });
 
   it("Test 6: non-Rapporteur cannot finalize notes (403)", async () => {

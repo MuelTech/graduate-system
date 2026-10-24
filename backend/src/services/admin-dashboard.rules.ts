@@ -171,6 +171,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   defense_application_approve: "Approved a defense application",
   defense_application_reject: "Rejected a defense application",
   defense_resubmit: "Resubmitted a defense application",
+  defense_schedule_created: "Created a defense schedule",
+  defense_schedule_corrected: "Corrected a defense schedule and committee",
   document_view: "Viewed a document",
   document_access_denied: "Denied access to a document",
   waiver_validated: "Validated a bridging waiver",

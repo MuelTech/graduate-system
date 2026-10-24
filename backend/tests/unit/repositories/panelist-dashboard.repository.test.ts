@@ -47,6 +47,16 @@ describe("WF-C1b PanelistDashboardRepository evaluator status", () => {
     vi.clearAllMocks();
   });
 
+  it("lists only current active assignments", async () => {
+    prismaMock.panelAssignment.findMany.mockResolvedValue([]);
+    await repo.getAssignments("u1");
+    expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "u1", isActive: true },
+      }),
+    );
+  });
+
   it("Title Chairman/Panelist surface own status; Rapporteur/Facilitator → NONE", async () => {
     prismaMock.panelAssignment.findMany.mockResolvedValue([
       assignmentRow({

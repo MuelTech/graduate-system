@@ -681,6 +681,26 @@ export class ThesisController {
     }
   };
 
+  correctScheduledDefense = async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError("Unauthorized.", 401);
+      const result = await this.thesisService.correctScheduledDefense(
+        req.params.scheduleId as string,
+        req.user.userId,
+        req.body,
+      );
+      res.status(200).json({
+        message: "Defense schedule and committee corrected.",
+        result,
+      });
+    } catch (error: any) {
+      sendEligibilityError(res, error);
+    }
+  };
+
   getPanelistAssignments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) throw new Error('Unauthorized');

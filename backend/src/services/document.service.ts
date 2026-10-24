@@ -260,7 +260,7 @@ const MODEL_REGISTRY: Record<string, ModelConfig> = {
                     },
                     defenseSchedules: {
                         include: {
-                            panelAssignments: true,
+                            panelAssignments: { where: { isActive: true } },
                             conclusion: { select: { outcome: true } },
                         },
                     },

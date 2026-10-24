@@ -547,6 +547,16 @@ describe("RAP-C1 report read model (no raw signature leakage)", () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(assignment("PANELIST"));
   });
 
+  it("derives report participants from active assignments only", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ rapReports: [draftRap()] }),
+    );
+    await svc.getReportReadModel("sched-1", "u-PANELIST");
+
+    const include = prismaMock.defenseSchedule.findUnique.mock.calls[0][0].include;
+    expect(include.panelAssignments.where).toEqual({ isActive: true });
+  });
+
   it("exposes signer status + readiness but never signatureData", async () => {
     prismaMock.defenseSchedule.findUnique.mockResolvedValue(
       scheduleRow({

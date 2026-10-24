@@ -218,6 +218,7 @@ const SCHEDULE_SELECT = {
     },
   },
   panelAssignments: {
+    where: { isActive: true },
     select: {
       userId: true,
       role: true,
@@ -397,7 +398,7 @@ export class DefenseHistoryService {
 
   private async assertAssignedToCurrent(scheduleId: string, userId: string): Promise<void> {
     const assignment = await prisma.panelAssignment.findFirst({
-      where: { scheduleId, userId },
+      where: { scheduleId, userId, isActive: true },
       select: { id: true },
     });
     if (!assignment) {

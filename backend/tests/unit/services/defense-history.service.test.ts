@@ -241,7 +241,11 @@ describe("CDW-6 DefenseHistoryService — current schedule history resolution", 
     expect(history.items).toHaveLength(1);
     expect(prismaMock.panelAssignment.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { scheduleId: CURRENT_ID, userId: "new-panelist" },
+        where: {
+          scheduleId: CURRENT_ID,
+          userId: "new-panelist",
+          isActive: true,
+        },
       }),
     );
   });

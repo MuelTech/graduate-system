@@ -13,7 +13,9 @@ import { selectAuthoritativeAttemptManuscript } from "../services/defense-attemp
 import {
   DEFENSE_AUDIT_ACTIONS,
   DEFENSE_AUDIT_TARGETS,
+  buildDefenseScheduleAuditSnapshot,
   writeDefenseAudit,
+  writeDefenseScheduleAudit,
 } from "../services/defense-audit";
 import { requireSingleActiveAdviser } from "../services/active-adviser.rules";
 
@@ -74,7 +76,7 @@ export class ThesisRepository {
   /** Read model for formal conclusion preconditions (scores complete, not already concluded). */
   async getSessionPanelAssignments(scheduleId: string, userId: string) {
     return prisma.panelAssignment.findMany({
-      where: { scheduleId },
+      where: { scheduleId, isActive: true },
       select: { id: true, userId: true, role: true },
     });
   }
@@ -90,6 +92,7 @@ export class ThesisRepository {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           select: { id: true, role: true, userId: true },
         },
         oralExamScores: { select: { id: true, status: true, panelId: true } },
@@ -985,6 +988,7 @@ export class ThesisRepository {
             | "ADVISER"
             | "RAPPORTEUR"
             | "FACILITATOR",
+          isActive: true,
         })),
       });
 
@@ -998,10 +1002,28 @@ export class ThesisRepository {
         data: { sessionStatus: "SCHEDULED" },
       });
 
+      const activeRoster = await tx.panelAssignment.findMany({
+        where: { scheduleId: schedule.id, isActive: true },
+        include: {
+          user: { select: { firstName: true, lastName: true } },
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      await writeDefenseScheduleAudit(tx, {
+        actorId: adminId,
+        actionType: DEFENSE_AUDIT_ACTIONS.SCHEDULE_CREATED,
+        before: null,
+        after: buildDefenseScheduleAuditSnapshot({
+          ...schedule,
+          panelAssignments: activeRoster,
+        }),
+      });
+
       return tx.defenseSchedule.findUnique({
         where: { id: schedule.id },
         include: {
           panelAssignments: {
+            where: { isActive: true },
             include: { user: true },
           },
         },
@@ -1011,7 +1033,7 @@ export class ThesisRepository {
 
   async getPanelistAssignments(userId: string) {
     const rows = await prisma.panelAssignment.findMany({
-      where: { userId },
+      where: { userId, isActive: true },
       include: {
         schedule: {
           include: {
@@ -1103,7 +1125,7 @@ export class ThesisRepository {
       const panel = await tx.panelAssignment.findUnique({
         where: { id: panelId },
       });
-      if (!panel || panel.scheduleId !== scheduleId) {
+      if (!panel || panel.scheduleId !== scheduleId || !panel.isActive) {
         throw new Error("Panel assignment not found for this defense.");
       }
       if (!evaluatorRoles.includes(panel.role)) {
@@ -1137,7 +1159,11 @@ export class ThesisRepository {
 
       // Completion is evaluator-only — Adviser/Facilitator/Rapporteur never block.
       const assignedCount = await tx.panelAssignment.count({
-        where: { scheduleId, role: { in: evaluatorRoles as any } },
+        where: {
+          scheduleId,
+          role: { in: evaluatorRoles as any },
+          isActive: true,
+        },
       });
       const submittedCount = await tx.oralExamScore.count({
         where: { scheduleId },
@@ -1217,6 +1243,7 @@ export class ThesisRepository {
       where: { id: scheduleId },
       include: {
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: true,
           }
@@ -1300,7 +1327,7 @@ export class ThesisRepository {
         where: { id: scheduleId },
         include: {
           oralExamScores: true,
-          panelAssignments: true,
+          panelAssignments: { where: { isActive: true } },
           conclusion: true,
           oralExamSummary: true,
           rapReports: { select: { id: true, status: true, generatedAt: true } },
@@ -1492,6 +1519,7 @@ export class ThesisRepository {
             defenseDate: true,
             defenseType: true,
             panelAssignments: {
+              where: { isActive: true },
               select: { userId: true, role: true },
             },
           },
