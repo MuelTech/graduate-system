@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C + PREDEF-2 + PREDEF-UI-COPY ACCEPTED FOR DOCUMENTED SCOPE; CONSOLIDATED INTEGRATED PREDEF MANUAL/BROWSER QA PENDING; PREDEF-3 DEFERRED; DEF-CORR-1 SEPARATE FUTURE PACKAGE
+**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C + PREDEF-2 + PREDEF-UI-COPY ACCEPTED FOR DOCUMENTED SCOPE; PROJECT-OWNER MANUAL FLOW REVIEW ACCEPTED; MERGE-READY; PREDEF-3 DEFERRED; DEF-CORR-1 SEPARATE FUTURE PACKAGE
 
 ## 1. Goal
 
@@ -511,6 +511,20 @@ Required before final acceptance:
 8. Negative authorization checks for cross-Student/unrelated-Adviser access.
 
 If browser/manual QA is not executed, report **NOT EXECUTED**; do not infer PASS from tests.
+
+### 7.1 Final pre-merge acceptance
+
+On 2026-10-24, the project owner reviewed the integrated PREDEF flow and confirmed the flow/result is acceptable.
+
+This acceptance is recorded together with the existing verification evidence:
+
+- focused and proportional automated checks for PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY;
+- independent remote source review of the implementation commits;
+- project-owner visual acceptance of GS-017 and the final PREDEF UI wording/flow;
+- negative authorization, exact-binding, ambiguity, and fail-closed cases remain evidenced primarily by automated tests rather than claimed as separately manual browser checks;
+- hosted CI was not executed and is not represented as passed.
+
+At this point the branch is considered merge-ready for the documented PREDEF scope.
 
 ## 8. Out of scope
 
