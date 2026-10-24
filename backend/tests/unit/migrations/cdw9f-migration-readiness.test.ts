@@ -54,9 +54,9 @@ describe("CDW-9F migration chain integrity", () => {
         true,
       );
     }
-    expect(names[names.length - 1]).toBe(
-      "20261018090000_oral_evaluation_scoring_version",
-    );
+    // Later product migrations are allowed after the CDW chain. This guard
+    // verifies the required historical migrations remain present rather than
+    // assuming a CDW migration must stay the repository's latest migration.
   });
 
   it("keeps the CDW additions additive: no drops, deletes, truncation, or backfill writes", () => {
