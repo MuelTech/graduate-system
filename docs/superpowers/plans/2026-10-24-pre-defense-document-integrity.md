@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A ACCEPTED; PREDEF-1B0 NEXT; PREDEF-1B/1C AND PREDEF-2 NOT YET IMPLEMENTED
+**Status:** PREDEF-1A ACCEPTED; PREDEF-1B0 IMPLEMENTED / REVIEW PENDING; PREDEF-1B/1C AND PREDEF-2 NOT YET IMPLEMENTED
 
 ## 1. Goal
 
@@ -30,7 +30,7 @@ The initiative is prevention-first. It must make it difficult for an Adviser to 
 - GS-006/GS-007 generation is currently exact-schedule based and Admin-only.
 - Existing official defense PDF renderers are server-owned and must not expose raw signature evidence or storage paths.
 - PREDEF-1A GS-017 renderer is now the accepted/frozen presentation baseline; later packages must supply authoritative data into that contract rather than redesigning the PDF.
-- Current live Proposal/Final manuscript submission has no authoritative manuscript-title field; this is now a confirmed PREDEF gap rather than permission to derive a title from historical Title Defense text.
+- PREDEF-1B0 adds exact manuscript-title metadata; rollout requires its additive migration. Legacy rows remain null rather than receiving titles inferred from historical Title Defense text.
 
 Before coding, reverify these invariants against the live branch and record the exact starting HEAD.
 
@@ -86,6 +86,41 @@ After PREDEF-1A visual acceptance, Codex owns one additional bounded data-author
 PREDEF-1B0 must **not** yet implement GS-017 HTTP routes, Student/Admin GS-017 visibility, or PREDEF-2. It may touch the existing Proposal/Final manuscript submission and Adviser review surfaces only as required to establish exact title authority.
 
 The additive schema migration is now expected because the live audit confirmed a missing authority field. The new column remains nullable for legacy compatibility, but new Proposal/Final submissions must fail validation when title is blank/missing.
+
+#### PREDEF-1B0 implementation evidence (2026-10-24; owner acceptance pending)
+
+- Migration `20261024120000_manuscript_version_title` adds nullable
+  `ThesisDocument.manuscriptTitle` / `manuscript_title` as `TEXT`, without a
+  default or backfill. Apply it before deploying the updated backend.
+- Each new Proposal/Final upload requires a string title, trimmed at the edges,
+  with a 2,000 UTF-16-code-unit maximum. Academic capitalization and internal
+  content remain intact; missing/blank/non-string/oversized values fail server
+  validation. There is no silent truncation or title inference.
+- The existing shared manuscript transaction inserts the title with the exact
+  file/storage metadata and rebinds the review atomically. Replacement versions
+  keep separate title/file snapshots; earlier rows only lose `isCurrent`.
+- Student submission panels capture title + file together. Adviser task details,
+  review queues, and My Advisees review cards show the bound title and filename.
+  Review DTO `officialTitle` is retained only as a compatibility alias of the
+  exact bound manuscript title; historical Title Defense lookups are removed
+  from these review projections. Legacy null titles remain readable and display
+  as not recorded.
+- Longitudinal `workingTitle` selection is deferred. Exact title authority is
+  available on the manuscript/review DTO, with no second current-title policy.
+- Prisma validate/generate, backend build, frontend TypeScript/scoped ESLint/
+  production build, and diff checks passed. Related backend regressions:
+  **775 passed / 5 environment-conditional skips across 59 files**. Frontend
+  manuscript-title + accepted Adviser verifiers: **86 passed**.
+- Prisma's schema diff matches the additive migration. The exact SQL was
+  rehearsed on a session-only MariaDB temporary table, verifying legacy nulls,
+  independent Proposal/Final title/file history, and transaction rollback.
+  Permanent local tables were not migrated; migration status lists this package
+  as the sole pending migration.
+- Browser/manual role-flow QA: **NOT EXECUTED**. Hosted CI: **NOT EXECUTED**.
+  Independent review and owner acceptance remain pending.
+- The accepted GS-017 renderer, certification actions/guardrail, GS-017 routes,
+  access policy, and PREDEF-2 behavior are unchanged. PREDEF-1B/1C and PREDEF-2
+  have not been started.
 
 ### PREDEF-1B / PREDEF-1C — DeepSeek: workflow and portal integration
 

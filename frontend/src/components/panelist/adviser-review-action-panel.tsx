@@ -261,6 +261,13 @@ export function AdviserReviewActionPanel({
                   <p className="text-sm font-medium text-(--earist-primary)">
                     {workspaceStageLabel(stage)} manuscript
                   </p>
+                  <p className="mt-2 text-xs font-medium text-(--earist-body-text)">Thesis/Dissertation Title</p>
+                  <p className="text-sm break-words text-(--earist-secondary)">
+                    {task.manuscript?.manuscriptTitle || "Title not recorded for this manuscript."}
+                  </p>
+                  <p className="mt-1 text-xs break-words text-(--earist-body-text)">
+                    {task.manuscript?.originalFilename || "Filename unavailable"}
+                  </p>
                   <p className="text-xs text-(--earist-body-text)">
                     Updated {formatWorkspaceDate(task.manuscript?.uploadedAt)}
                   </p>

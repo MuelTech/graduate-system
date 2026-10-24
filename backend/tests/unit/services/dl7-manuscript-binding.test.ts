@@ -371,7 +371,7 @@ describe("DL-7 ambiguous legacy manuscript heads fail closed", () => {
     ]);
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toThrow(/multiple current manuscript|reconcile/i);
 
     expect(prismaMock.__tx.thesisDocument.updateMany).not.toHaveBeenCalled();
@@ -390,7 +390,7 @@ describe("DL-7 ambiguous legacy manuscript heads fail closed", () => {
     ]);
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toThrow(/multiple current manuscript|reconcile/i);
 
     expect(prismaMock.__tx.thesisDocument.updateMany).not.toHaveBeenCalled();

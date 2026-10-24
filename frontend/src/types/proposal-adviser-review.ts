@@ -13,7 +13,12 @@ export interface ProposalAdviserReview {
   activeAdviser: { userId: string; name: string } | null;
   reviewStatus: ProposalReviewStatus;
   reviewRemarks: string | null;
-  manuscript: { documentId: string; uploadedAt: string | null } | null;
+  manuscript: {
+    documentId: string;
+    manuscriptTitle: string | null;
+    originalFilename: string | null;
+    uploadedAt: string | null;
+  } | null;
   certification: {
     issued: boolean;
     adviserName: string | null;
@@ -30,5 +35,7 @@ export interface AdviserReviewQueueItem {
   reviewStatus: ProposalReviewStatus;
   reviewRemarks: string | null;
   manuscriptDocumentId: string | null;
+  manuscriptTitle: string | null;
+  originalFilename: string | null;
   manuscriptUploadedAt: string | null;
 }

@@ -47,6 +47,7 @@ vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
 import { ProposalAdviserReviewService } from "../../../src/services/proposal-adviser-review.service";
 import { FinalAdviserReviewService } from "../../../src/services/final-adviser-review.service";
 import type { ManagedUploadInput } from "../../../src/storage/managed-upload";
+import { MANUSCRIPT_TITLE_MAX_LENGTH } from "../../../src/services/manuscript-title.rules";
 
 function managed(overrides: Partial<ManagedUploadInput> = {}): ManagedUploadInput {
   return {
@@ -181,7 +182,7 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
   const svc = new ProposalAdviserReviewService();
 
   it("persists full DL-1/DL-2 metadata + stage/slot + version head", async () => {
-    await svc.submitManuscriptForReview("student-user", managed());
+    await svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title");
 
     const createArgs = prismaMock.__tx.thesisDocument.create.mock.calls[0]?.[0];
     expect(createArgs.data).toEqual(
@@ -208,7 +209,7 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
   });
 
   it("serializes the review cycle on the thesis row (FOR UPDATE lock)", async () => {
-    await svc.submitManuscriptForReview("student-user", managed());
+    await svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title");
     expect(prismaMock.__tx.$queryRaw).toHaveBeenCalled();
     // Single current head: current rows are demoted before the new head.
     expect(prismaMock.__tx.thesisDocument.updateMany).toHaveBeenCalledWith(
@@ -243,7 +244,7 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
       proposalDoc({ id: "doc-1" }),
     );
 
-    await svc.submitManuscriptForReview("student-user", managed({ storageKey: "manuscripts/v2" }));
+    await svc.submitManuscriptForReview("student-user", managed({ storageKey: "manuscripts/v2" }), "Explicit manuscript title");
 
     const createArgs = prismaMock.__tx.thesisDocument.create.mock.calls[0]?.[0];
     expect(createArgs.data.supersedesDocumentId).toBe("doc-1");
@@ -268,7 +269,7 @@ describe("DL-7 Proposal manuscript managed persistence", () => {
       status: "ISSUED",
     });
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
     expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
@@ -316,7 +317,7 @@ describe("DL-7 Final manuscript managed persistence", () => {
   const svc = new FinalAdviserReviewService();
 
   it("persists FINAL_MANUSCRIPT / FINAL with managed metadata and version head", async () => {
-    await svc.submitManuscriptForReview("student-user", managed({ originalFilename: "final.pdf" }));
+    await svc.submitManuscriptForReview("student-user", managed({ originalFilename: "final.pdf" }), "Explicit manuscript title");
 
     const createArgs = prismaMock.__tx.thesisDocument.create.mock.calls[0]?.[0];
     expect(createArgs.data).toEqual(
@@ -358,8 +359,99 @@ describe("DL-7 Final manuscript managed persistence", () => {
       defenseStage: "FINAL_DEFENSE",
     });
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe.each([
+  ["Proposal", new ProposalAdviserReviewService(), "PROPOSAL_CHAPTERS", "PROPOSAL", "PROPOSAL_DEFENSE"],
+  ["Final", new FinalAdviserReviewService(), "FINAL_MANUSCRIPT", "FINAL", "FINAL_DEFENSE"],
+] as const)("PREDEF-1B0 %s exact-version title authority", (_label, svc, docType, defenseStage, certStage) => {
+  it.each([undefined, null, "", " \r\n\t ", 123, ["title"], { title: "title" }, "x".repeat(2001)])(
+    "rejects missing, non-string, blank, or oversized title %# before persistence", async title => {
+      await expect(svc.submitManuscriptForReview("student-user", managed(), title)).rejects.toMatchObject({ statusCode: 400 });
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("trims edges and persists academic content unchanged on the exact managed row", async () => {
+    const title = "Digital LEARNING: A Mixed-Methods Study\nAcross Graduate Schools";
+    await svc.submitManuscriptForReview("student-user", managed(), `  ${title}  `);
+    expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ manuscriptTitle: title, docType, defenseStage, storageKey: "manuscripts/abc" }),
+    }));
+    expect(prismaMock.__tx.adviserCertification.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ reviewedDocumentId: "doc-1", defenseStage: certStage }),
+    }));
+    expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts the full bounded title without truncation", async () => {
+    const title = "A".repeat(MANUSCRIPT_TITLE_MAX_LENGTH);
+    await svc.submitManuscriptForReview("student-user", managed(), title);
+    expect(prismaMock.__tx.thesisDocument.create.mock.calls[0][0].data.manuscriptTitle).toBe(title);
+  });
+
+  it.each(["Revised Working Title", "Original Working Title"])(
+    "resubmits a new version with title '%s' while preserving the previous title/file", async title => {
+      const previous = {
+        id: "doc-v1", thesisId: "thesis-1", docType, defenseStage, isCurrent: true,
+        manuscriptTitle: "Original Working Title", storageKey: "manuscripts/v1", originalFilename: "v1.pdf",
+      };
+      prismaMock.__tx.adviserCertification.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "cert-1", status: "CHANGES_REQUESTED", defenseStage: certStage, reviewedDocumentId: previous.id, reviewRemarks: "Revise" });
+      prismaMock.__tx.thesisDocument.findUnique.mockResolvedValue(previous);
+      prismaMock.__tx.thesisDocument.updateMany.mockImplementation(async args => {
+        Object.assign(previous, args.data);
+        return { count: 1 };
+      });
+      await svc.submitManuscriptForReview("student-user", managed({ storageKey: "manuscripts/v2", originalFilename: "v2.pdf" }), title);
+      expect(previous).toMatchObject({ manuscriptTitle: "Original Working Title", storageKey: "manuscripts/v1", originalFilename: "v1.pdf", isCurrent: false });
+      expect(prismaMock.__tx.thesisDocument.updateMany.mock.calls[0][0].data).toEqual({ isCurrent: false });
+      expect(prismaMock.__tx.thesisDocument.create.mock.calls[0][0].data).toMatchObject({
+        manuscriptTitle: title, supersedesDocumentId: previous.id, storageKey: "manuscripts/v2", originalFilename: "v2.pdf", docType, defenseStage,
+      });
+    },
+  );
+
+  it.each(["Exact Reviewed Title", null])("returns the exact bound title %s, never a newer or historical title", async manuscriptTitle => {
+    const bound = {
+      id: "doc-bound", thesisId: "thesis-1", docType, defenseStage, manuscriptTitle,
+      uploadedAt: new Date("2026-09-01"), originalFilename: "reviewed.pdf",
+      filePath: "private/path", storageKey: "private/key", checksum: "private-hash",
+    };
+    const cert = {
+      ...proposalCertifiedRow(), defenseStage: certStage, reviewedDocumentId: bound.id,
+      reviewedDocument: bound, signatureData: "private-signature",
+    };
+    const thesis = makeThesis({
+      // A newer current row is not the exact reviewed manuscript.
+      thesisDocuments: [{ ...bound, id: "doc-newer", manuscriptTitle: "Wrong Newer Title", originalFilename: "newer.pdf", isCurrent: true }],
+      adviserCertifications: [cert],
+    });
+    prismaMock.thesisRecord.findUnique.mockResolvedValue(thesis);
+    prismaMock.thesisRecord.findFirst.mockResolvedValue(thesis);
+    const dto = await svc.getReviewTask("adviser-1", "thesis-1");
+    expect(dto.manuscript).toMatchObject({ documentId: bound.id, manuscriptTitle, originalFilename: "reviewed.pdf" });
+    expect(dto.officialTitle).toBe(manuscriptTitle);
+    prismaMock.adviserAssignment.findMany.mockResolvedValue([{
+      id: "assign-1", studentId: "student-1", adviserId: "adviser-1", isActive: true, student: makeStudent(),
+    }]);
+    const queue = await svc.listReviewTasks("adviser-1");
+    expect(queue[0]).toMatchObject({ manuscriptDocumentId: bound.id, manuscriptTitle, originalFilename: "reviewed.pdf" });
+    for (const safe of [dto, queue]) {
+      expect(JSON.stringify(safe)).not.toMatch(/Wrong Newer Title|Official Title|private|storageKey|filePath|checksum|signatureData/);
+    }
+  });
+
+  it("rolls back through the transaction rejection when manuscript persistence fails", async () => {
+    prismaMock.__tx.thesisDocument.create.mockRejectedValueOnce(new Error("insert failed"));
+    await expect(svc.submitManuscriptForReview("student-user", managed(), "Explicit Title")).rejects.toThrow("insert failed");
+    expect(prismaMock.__tx.adviserCertification.create).not.toHaveBeenCalled();
+    expect(prismaMock.__tx.adviserCertification.updateMany).not.toHaveBeenCalled();
   });
 });

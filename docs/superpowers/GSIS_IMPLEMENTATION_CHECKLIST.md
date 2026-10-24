@@ -23,15 +23,15 @@
 
 ## Current implementation focus — Pre-Defense Document Integrity & Visibility
 
-**Current phase:** PREDEF-1A renderer accepted; PREDEF-1B0 exact manuscript-title authority is the next bounded implementation package.  
-**Target implementation branch:** `feat/pre-defense-document-integrity` (create from current `main` when implementation starts).  
+**Current phase:** PREDEF-1A renderer accepted; PREDEF-1B0 exact manuscript-title authority implemented, pending independent review and project-owner acceptance.
+**Target implementation branch:** existing `feat/pre-defense-document-integrity`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-24-pre-defense-document-integrity.md`  
 **Goal:** strengthen exact manuscript authority and visibility from Adviser review through Defense Application and Scheduling, with prevention-first guardrails before certification rather than implementing a rare correction path prematurely.
 
 | Status | Package | Scope |
 | --- | --- | --- |
 | ✅ | PREDEF-1A — GS-017 renderer | Accepted pure EARIST-QSF-GS-017 Rev. 01 renderer baseline on `feat/pre-defense-document-integrity`: Proposal/Final-only typed display contract, optional explicit Adviser signature image, sample generator, focused renderer tests, and project-owner visual acceptance. No Prisma/API/auth/frontend/workflow integration. |
-| 🚧 | PREDEF-1B0 — Exact manuscript-title authority | Next Codex package: require Thesis/Dissertation Title together with each new Proposal/Final manuscript submission; persist the title on the exact manuscript `ThesisDocument` version (legacy-compatible nullable schema field, required for new submissions); preserve title snapshots across manuscript revisions; expose exact title + exact file to Adviser review. |
+| 🔍 | PREDEF-1B0 — Exact manuscript-title authority | Implemented; review/acceptance pending. New Proposal/Final submissions require title + file, with edge trimming and a 2,000-character bound; nullable `ThesisDocument.manuscriptTitle` preserves legacy rows and version title/file history. Exact title + filename appear in Student/Adviser review and My Advisees review cards. Migration `20261024120000_manuscript_version_title` must be applied before backend rollout. Working-title selection and GS-017 integration remain deferred; see implementation-plan evidence. |
 | 🚧 | PREDEF-1B/1C — GS-017 workflow + portal integration | After PREDEF-1B0 acceptance, map the exact issued Proposal/Final `AdviserCertification.reviewedDocumentId` into the accepted GS-017 renderer; printed title must come from that exact document's manuscript-title metadata. Add the Adviser exact-title/file certification guardrail and bounded issuer-Adviser/owning-Student/Admin read-only visibility. |
 | 🚧 | PREDEF-2 — Defense Application / Scheduled Defense Submission Context | Keep the exact scheduled manuscript and relevant stage evidence visible to Admin after scheduling, including GS-017 for Proposal/Final. Give the owning Student read-only View/Download access to the completed GS-006/GS-007 once schedule/committee data make the official form complete, with clear no-additional-action guidance. |
 | 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred as a rare recovery case. Current direction is prevention-first: exact Adviser review + explicit certification acknowledgement + Admin application review + exact schedule binding. Revisit only if operational experience shows a real need for controlled re-certification/rebinding. |

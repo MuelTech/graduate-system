@@ -128,6 +128,14 @@ function ReviewTaskRow({
       </div>
       <dl className="mt-3 grid gap-2 sm:grid-cols-2">
         <Meta
+          label="Thesis/Dissertation Title"
+          value={task.manuscriptTitle || "Title not recorded for this manuscript."}
+        />
+        <Meta
+          label="Manuscript file"
+          value={task.originalFilename || "Filename unavailable"}
+        />
+        <Meta
           label="Manuscript updated"
           value={formatWorkspaceDate(task.manuscriptUploadedAt)}
         />

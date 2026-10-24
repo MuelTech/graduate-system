@@ -219,7 +219,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       }),
     );
     const file = managed();
-    await svc.submitManuscriptForReview("student-user", file);
+    await svc.submitManuscriptForReview("student-user", file, "Explicit manuscript title");
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,7 +238,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
   it("Test 2: no active Adviser rejects manuscript submit", async () => {
     prismaMock.adviserAssignment.findMany.mockResolvedValue([]);
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/active Thesis Adviser/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
   });
@@ -347,7 +347,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     await svc.submitManuscriptForReview("student-user", managed({
       filePath: "uploads/revised.pdf",
       originalFilename: "revised.pdf",
-    }));
+    }), "Explicit manuscript title");
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalled();
     expect(prismaMock.__tx.adviserCertification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -454,7 +454,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
       defenseStage: "PROPOSAL_DEFENSE",
     });
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/late.pdf", originalFilename: "late.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/late.pdf", originalFilename: "late.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
@@ -475,7 +475,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race.pdf", originalFilename: "race.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race.pdf", originalFilename: "race.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
 
     // No manuscript committed; no downgrade update.
@@ -502,7 +502,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     prismaMock.__tx.adviserCertification.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race2.pdf", originalFilename: "race2.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/race2.pdf", originalFilename: "race2.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
   });
 
@@ -783,7 +783,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     });
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/already issued/i);
 
     await expect(
@@ -881,7 +881,7 @@ describe("ProposalAdviserReviewService (CP3)", () => {
     ]);
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toMatchObject({ statusCode: 409 });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
     expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();

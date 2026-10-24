@@ -196,7 +196,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
         ],
       }),
     );
-    await svc.submitManuscriptForReview("student-user", managed());
+    await svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title");
     expect(prismaMock.__tx.thesisDocument.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -212,7 +212,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
   it("Test 3: no active Adviser rejects Final manuscript submit", async () => {
     prismaMock.adviserAssignment.findMany.mockResolvedValue([]);
     await expect(
-      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" })),
+      svc.submitManuscriptForReview("student-user", managed({ filePath: "uploads/x.pdf", originalFilename: "x.pdf" }), "Explicit manuscript title"),
     ).rejects.toThrow(/active Thesis Adviser/i);
     expect(prismaMock.thesisDocument.create).not.toHaveBeenCalled();
   });
@@ -577,7 +577,7 @@ describe("FinalAdviserReviewService (CP4)", () => {
     ]);
 
     await expect(
-      svc.submitManuscriptForReview("student-user", managed()),
+      svc.submitManuscriptForReview("student-user", managed(), "Explicit manuscript title"),
     ).rejects.toMatchObject({ statusCode: 409 });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
     expect(prismaMock.__tx.thesisDocument.create).not.toHaveBeenCalled();
