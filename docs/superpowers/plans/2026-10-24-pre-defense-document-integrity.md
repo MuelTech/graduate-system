@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A ACCEPTED; PREDEF-1B0 IMPLEMENTED / REVIEW PENDING; PREDEF-1B/1C AND PREDEF-2 NOT YET IMPLEMENTED
+**Status:** PREDEF-1A + PREDEF-1B0 ACCEPTED; PREDEF-1B/1C ACTIVE; PREDEF-2 NOT YET IMPLEMENTED
 
 ## 1. Goal
 
@@ -87,7 +87,7 @@ PREDEF-1B0 must **not** yet implement GS-017 HTTP routes, Student/Admin GS-017 v
 
 The additive schema migration is now expected because the live audit confirmed a missing authority field. The new column remains nullable for legacy compatibility, but new Proposal/Final submissions must fail validation when title is blank/missing.
 
-#### PREDEF-1B0 implementation evidence (2026-10-24; owner acceptance pending)
+#### PREDEF-1B0 acceptance evidence (2026-10-24; accepted for continuation)
 
 - Migration `20261024120000_manuscript_version_title` adds nullable
   `ThesisDocument.manuscriptTitle` / `manuscript_title` as `TEXT`, without a
@@ -117,14 +117,14 @@ The additive schema migration is now expected because the live audit confirmed a
   Permanent local tables were not migrated; migration status lists this package
   as the sole pending migration.
 - Browser/manual role-flow QA: **NOT EXECUTED**. Hosted CI: **NOT EXECUTED**.
-  Independent review and owner acceptance remain pending.
+  The project owner intentionally deferred browser/manual QA to the larger PREDEF workflow. Independent remote source review found no blocker or scope violation, so PREDEF-1B0 is accepted for continuation without representing unexecuted QA as passed.
 - The accepted GS-017 renderer, certification actions/guardrail, GS-017 routes,
   access policy, and PREDEF-2 behavior are unchanged. PREDEF-1B/1C and PREDEF-2
   have not been started.
 
-### PREDEF-1B / PREDEF-1C — DeepSeek: workflow and portal integration
+### PREDEF-1B / PREDEF-1C — Codex: workflow and portal integration
 
-Only after PREDEF-1B0 is accepted should DeepSeek continue with live integration:
+After PREDEF-1B0 acceptance, Codex may continue with the bounded live integration package:
 
 - map the exact issued Proposal/Final `AdviserCertification` into the accepted renderer contract;
 - resolve `manuscriptTitle` only through the exact `AdviserCertification.reviewedDocumentId -> ThesisDocument` relation; fail closed if exact title metadata is unavailable rather than using historical Title Defense wording or a latest/current title;
@@ -388,7 +388,7 @@ If browser/manual QA is not executed, report **NOT EXECUTED**; do not infer PASS
 4. Add the legacy-compatible `ThesisDocument` manuscript-title field + additive migration; require non-blank title for new Proposal/Final manuscript submissions.
 5. Persist title with each exact manuscript version; surface exact title + exact file in Adviser review; prove replacement manuscripts preserve independent title/file history.
 6. Run PREDEF-1B0 focused backend/frontend/migration/build verification and independent remote review. Stop for project-owner acceptance.
-7. **DeepSeek / PREDEF-1B/1C:** map the exact issued `AdviserCertification.reviewedDocumentId` document—including its exact manuscript title—into the accepted GS-017 renderer.
+7. **Codex / PREDEF-1B/1C:** map the exact issued `AdviserCertification.reviewedDocumentId` document—including its exact manuscript title—into the accepted GS-017 renderer.
 8. Implement the Adviser exact-title/exact-manuscript confirmation guardrail and bounded Adviser/Student/Admin GS-017 access/record visibility.
 9. Run PREDEF-1 focused authorization/regression checks and independently review the remote diff before marking PREDEF-1 accepted.
 10. **DeepSeek / PREDEF-2:** implement Admin Defense Application/Scheduled Defense Submission Context.
@@ -400,10 +400,10 @@ Suggested bounded commit progression:
 
 - Codex PREDEF-1A: `feat(documents): add adviser certification form` — accepted baseline
 - Codex PREDEF-1B0: `feat(thesis): bind titles to manuscript versions`
-- DeepSeek PREDEF-1B/1C: `feat(adviser): integrate adviser certification record`
+- Codex PREDEF-1B/1C: `feat(adviser): integrate adviser certification record`
 - DeepSeek PREDEF-2: `feat(defense): surface pre-defense document context`
 
-Codex may proceed from the accepted PREDEF-1A renderer into the separately bounded PREDEF-1B0 title-authority package, but must stop after PREDEF-1B0 verification/owner review. Do not auto-continue into GS-017 service/auth/portal integration. Later agents may split/merge commits when technically necessary, but the review report must preserve PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, and PREDEF-2 scope boundaries.
+Codex may proceed through the accepted PREDEF-1A and PREDEF-1B0 baselines into the separately bounded PREDEF-1B/1C GS-017 integration package, but must stop after PREDEF-1B/1C verification/owner review. Do not auto-continue into PREDEF-2. Later agents may split/merge commits when technically necessary, but the review report must preserve PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, and PREDEF-2 scope boundaries.
 
 ## 10. Acceptance gate
 
