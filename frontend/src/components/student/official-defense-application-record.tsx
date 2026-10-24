@@ -50,12 +50,12 @@ function OwnedApplication({
   });
   if (query.isLoading)
     return (
-      <p aria-live="polite">Checking official application availability…</p>
+      <p aria-live="polite">Checking Defense Application availability…</p>
     );
   if (query.isError)
     return (
       <p role="status">
-        Official application availability could not be checked.{" "}
+        Defense Application availability could not be checked.{" "}
         <Button size="sm" variant="outline" onClick={() => query.refetch()}>
           Try again
         </Button>
@@ -65,25 +65,22 @@ function OwnedApplication({
   if (!record?.available || record.scheduleId !== scheduleId)
     return (
       <p role="status">
-        The official application is not yet available for this schedule.
+        The Defense Application is not yet available for this schedule.
       </p>
     );
   return (
     <section
       className="space-y-2 border-t pt-3"
-      aria-label="Official Defense Application"
+      aria-label="Defense Application"
     >
-      <h3 className="font-semibold">
-        Official Defense Application ·{" "}
-        {record.defenseType?.replaceAll("_", " ")}
-      </h3>
+      <h3 className="font-semibold">Defense Application</h3>
       <p>
-        This is your official Defense Application record. No additional upload
-        or submission is required unless instructed by the Graduate School.
+        This is your official Defense Application. No additional submission is
+        required unless instructed by the Graduate School.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => setPreview(true)}>
-          View Official Application
+          View Application
         </Button>
         <Button
           size="sm"
@@ -101,14 +98,14 @@ function OwnedApplication({
               setError(
                 failure instanceof Error
                   ? failure.message
-                  : "The official application could not be downloaded.",
+                  : "The Defense Application could not be downloaded.",
               );
             } finally {
               setBusy(false);
             }
           }}
         >
-          {busy ? "Downloading…" : "Download Copy"}
+          {busy ? "Downloading…" : "Download Application"}
         </Button>
       </div>
       {error && (
@@ -121,7 +118,7 @@ function OwnedApplication({
           open
           onOpenChange={setPreview}
           fetchUrl={`/api/student-defense-applications/${encodeURIComponent(scheduleId)}/pdf`}
-          title="Official Defense Application"
+          title="Defense Application"
         />
       )}
     </section>

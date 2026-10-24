@@ -35,10 +35,13 @@ test("new signing reuses shared PNG signature evidence without changing signatur
 });
 test("issued record mode offers View/Download with no extra submission or upload slot", () => {
   const record = read("src/components/shared/adviser-certification-records.tsx");
-  for (const text of ["Issued Adviser Certifications", "View GS-017", "Download Copy", "No additional upload or submission is required.", "unavailableReason"]) assert.ok(record.includes(text));
+  for (const text of ["Adviser Certification", "View Manuscript", "View Certification", "Download Certification", "No additional upload or submission is required."]) assert.ok(record.includes(text));
   assert.match(record, /disabled=\{!record\.pdfAvailable\}/);
   assert.match(record, /downloadOfficialDefensePdf/);
-  assert.doesNotMatch(record, /type="file"|signatureData|storageKey|checksum|filePath/);
+  assert.match(record, /Proposal Defense/);
+  assert.match(record, /Final Defense/);
+  assert.match(record, /Adviser Certification is not available for this record\./);
+  assert.doesNotMatch(record, /Issued Adviser Certifications|View GS-017|Download Copy|View certified manuscript|GS-017 is unavailable|type="file"|signatureData|storageKey|checksum|filePath/);
 });
 test("owning Student Proposal and Final issued status embed the shared official record", () => {
   for (const stage of ["proposal", "final"]) {

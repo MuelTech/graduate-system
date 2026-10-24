@@ -28,7 +28,7 @@ export function AdviserCertificationRecords(props: RecordProps) {
 }
 
 function CertificationRecordList({ thesisId, stage, viewerScope, exactRecords }: RecordProps & { viewerScope: string }) {
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const query = new URLSearchParams();
@@ -46,27 +46,28 @@ function CertificationRecordList({ thesisId, stage, viewerScope, exactRecords }:
   </div>;
   const items = exactRecords ?? records.data;
   if (!items?.length) return null;
-  return <section className="space-y-3" aria-label="Issued Adviser certifications">
-    <h3 className="text-sm font-semibold text-(--earist-secondary)">Issued Adviser Certifications</h3>
+  return <section className="space-y-3" aria-label="Adviser Certification">
+    <h3 className="text-sm font-semibold text-(--earist-secondary)">Adviser Certification</h3>
     {items.map(record => <div key={record.id} className="space-y-2 rounded-lg border border-(--earist-border-gray) p-3 text-sm break-words">
-      <p className="font-medium">{record.stage === "PROPOSAL" ? "Proposal" : "Final"} certification issued · {record.studentName}</p>
+      <p className="font-medium">{record.stage === "PROPOSAL" ? "Proposal Defense" : "Final Defense"} — Certified</p>
+      <p className="text-(--earist-body-text)">{record.studentName}</p>
       <p><span className="font-medium">Thesis/Dissertation Title: </span>{record.manuscriptTitle || "Title not recorded for this manuscript."}</p>
       <p>{record.originalFilename || "Filename unavailable"}</p>
       <p className="text-xs">Certified by {record.adviserName}{record.issuedAt ? ` on ${new Date(record.issuedAt).toLocaleDateString("en-PH", { timeZone: "Asia/Manila" })}` : ""}</p>
       <p className="text-xs">This is an official record. No additional upload or submission is required.</p>
-      {!record.pdfAvailable && <p role="status" className="text-xs">{record.unavailableReason || "GS-017 is unavailable for this record."}</p>}
+      {!record.pdfAvailable && <p role="status" className="text-xs">Adviser Certification is not available for this record.</p>}
       <div className="flex flex-wrap gap-2">
-        {record.manuscriptDocumentId && <Button size="sm" variant="outline" onClick={() => setPreview(`/api/documents/thesis-document/${record.manuscriptDocumentId}/file`)}>View certified manuscript</Button>}
-        <Button size="sm" variant="outline" disabled={!record.pdfAvailable} onClick={() => setPreview(`/api/adviser-certifications/${record.id}/pdf`)}>View GS-017</Button>
+        {record.manuscriptDocumentId && <Button size="sm" variant="outline" onClick={() => setPreview({ url: `/api/documents/thesis-document/${record.manuscriptDocumentId}/file`, title: "Manuscript" })}>View Manuscript</Button>}
+        <Button size="sm" variant="outline" disabled={!record.pdfAvailable} onClick={() => setPreview({ url: `/api/adviser-certifications/${record.id}/pdf`, title: "Adviser Certification" })}>View Certification</Button>
         <Button size="sm" variant="outline" disabled={!record.pdfAvailable || busyId !== null} onClick={async () => {
           setBusyId(record.id); setError(null);
-          try { await downloadOfficialDefensePdf(`/thesis/adviser-certifications/${record.id}/pdf`, "Adviser-Certification-GS-017.pdf"); }
+          try { await downloadOfficialDefensePdf(`/thesis/adviser-certifications/${record.id}/pdf`, "Adviser-Certification.pdf"); }
           catch (failure) { setError(failure instanceof Error ? failure.message : "The certification could not be downloaded."); }
           finally { setBusyId(null); }
-        }}>{busyId === record.id ? "Downloading…" : "Download Copy"}</Button>
+        }}>{busyId === record.id ? "Downloading…" : "Download Certification"}</Button>
       </div>
     </div>)}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {preview && <DocumentViewer key={preview} open onOpenChange={open => { if (!open) setPreview(null); }} fetchUrl={preview} title="Official certification record" />}
+    {preview && <DocumentViewer key={preview.url} open onOpenChange={open => { if (!open) setPreview(null); }} fetchUrl={preview.url} title={preview.title} />}
   </section>;
 }

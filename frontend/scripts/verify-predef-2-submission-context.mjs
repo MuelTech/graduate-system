@@ -25,20 +25,26 @@ test("Admin selected schedule embeds submission context using the exact schedule
     /\/thesis\/defense\/schedules\/\$\{encodeURIComponent\(scheduleId\)\}\/submission/,
   );
   for (const label of [
-    "Defense Submission",
-    "Exact Manuscript",
+    "Application Requirements",
+    "Manuscript",
     "Thesis/Dissertation Title",
     "manuscriptTitle",
     "originalFilename",
-    "data.scheduleId",
     "data.stage",
   ])
     assert.ok(admin.includes(label));
+  assert.ok(admin.includes("Adviser Certification"));
+  assert.ok(!admin.includes("Defense Submission"));
+  assert.ok(!admin.includes("Exact Manuscript"));
+  assert.ok(!admin.includes("Adviser Certification · GS-017"));
 });
 test("manuscript and evidence viewers use authorized exact document IDs", () => {
   assert.match(admin, /thesis-document\/\$\{encodeURIComponent\(id\)\}\/file/);
   assert.match(admin, /viewDocument\(data.manuscript!.id\)/);
   assert.match(admin, /manuscriptIntegrityError.*role="alert"/);
+  assert.ok(
+    admin.includes("The scheduled manuscript could not be verified."),
+  );
   assert.doesNotMatch(admin, /latest|newest|currentManuscript/);
 });
 test("only Proposal/Final render the exact GS-017 records supplied by the schedule service", () => {
@@ -49,23 +55,42 @@ test("only Proposal/Final render the exact GS-017 records supplied by the schedu
   );
   assert.match(record, /enabled: exactRecords === undefined/);
   assert.match(record, /const items = exactRecords \?\? records.data/);
-  assert.match(record, /View GS-017/);
-  assert.match(record, /Download Copy/);
+  assert.match(record, /View Certification/);
+  assert.match(record, /Download Certification/);
 });
-test("supporting evidence distinguishes current, ambiguity and read-only history", () => {
+test("application requirements distinguish current, ambiguity and read-only history", () => {
   for (const label of [
-    "Supporting Evidence",
+    "Application Requirements",
     "Certificate of Registration (COR)",
-    "Receipt / Proof of Payment",
+    "Multiple current versions recorded — review required.",
+    "View document history",
+    "Previous:",
+  ])
+    assert.ok(admin.includes(label));
+  assert.match(admin, /DEFENSE_REQUIREMENT_LABELS\[docType\]/);
+  assert.match(admin, /docType === "COR"/);
+  assert.match(
+    read("src/components/admin/defense-applications/labels.ts"),
+    /TITLE_PROPOSAL: "Title Defense Proposal Package"/,
+  );
+  assert.match(
+    read("src/components/admin/defense-applications/labels.ts"),
+    /RECEIPT: "Proof of Payment"/,
+  );
+  assert.match(admin, />\s*View\s*<\/Button>/);
+  assert.match(admin, /viewDocument\(slot.current!.id\)/);
+  assert.match(admin, /viewDocument\(doc.id\)/);
+  for (const removed of [
+    "Supporting Evidence",
     "Current:",
     "Replacement history",
     "Superseded:",
-    "AMBIGUOUS",
     "View historical evidence",
+    "View evidence",
+    "Document: ",
+    "exact schedule-bound manuscript",
   ])
-    assert.ok(admin.includes(label));
-  assert.match(admin, /viewDocument\(slot.current!.id\)/);
-  assert.match(admin, /viewDocument\(doc.id\)/);
+    assert.ok(!admin.includes(removed));
 });
 test("Student record lives only within an existing exact schedule summary", () => {
   const surface = read("src/components/student/defense-status-panel.tsx");
@@ -84,9 +109,9 @@ test("Student controls require backend-confirmed exact schedule availability", (
   const gate = student.indexOf(
     "if (!record?.available || record.scheduleId !== scheduleId) return",
   );
-  assert.ok(gate > -1 && gate < student.indexOf("View Official Application"));
+  assert.ok(gate > -1 && gate < student.indexOf("View Application"));
   assert.match(student, /query.isError\) return/);
-  assert.match(student, /Download Copy/);
+  assert.match(student, /Download Application/);
   assert.match(student, /downloadOfficialDefensePdf\(\s*`\$\{path\}\/pdf`/);
   assert.match(
     student,
@@ -96,9 +121,12 @@ test("Student controls require backend-confirmed exact schedule availability", (
 test("Student guidance explicitly removes any extra paper or upload step", () => {
   assert.ok(
     student.includes(
-      "This is your official Defense Application record. No additional upload or submission is required unless instructed by the Graduate School.",
+      "This is your official Defense Application. No additional submission is required unless instructed by the Graduate School.",
     ),
   );
+  assert.ok(!student.includes("View Official Application"));
+  assert.ok(!student.includes("Download Copy"));
+  assert.ok(!student.includes("Official Defense Application"));
 });
 test("new surfaces introduce no upload, committee edit, replacement or scheduling mutations", () => {
   for (const source of [admin, student])
