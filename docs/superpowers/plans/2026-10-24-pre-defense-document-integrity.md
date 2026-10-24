@@ -7,7 +7,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Verification authority:** `docs/superpowers/ENGINEERING_VERIFICATION_POLICY.md`  
-**Status:** PREDEF-1A + PREDEF-1B0 ACCEPTED; PREDEF-1B/1C IMPLEMENTED / REVIEW PENDING; PREDEF-2 NOT YET IMPLEMENTED
+**Status:** PREDEF-1A + PREDEF-1B0 + PREDEF-1B/1C ACCEPTED; PREDEF-2 NEXT / NOT YET IMPLEMENTED
 
 ## 1. Goal
 
@@ -137,7 +137,7 @@ After PREDEF-1B0 acceptance, Codex may continue with the bounded live integratio
 
 PREDEF-1B/1C must stop at the documented PREDEF-1 scope. PREDEF-2 begins only after PREDEF-1 integration is independently reviewed and accepted.
 
-#### PREDEF-1B/1C implementation evidence (2026-10-24; review pending)
+#### PREDEF-1B/1C acceptance evidence (2026-10-24; accepted for continuation)
 
 - Existing `OfficialDefenseDocumentService` now generates GS-017 through the
   frozen renderer. `AdviserCertificationRecordService` loads only the exact
@@ -179,8 +179,12 @@ PREDEF-1B/1C must stop at the documented PREDEF-1 scope. PREDEF-2 begins only af
   validation, frontend TypeScript/scoped lint/production build, and diff checks
   passed. No full repository suite was required or run.
 - Browser/manual QA: **NOT EXECUTED — intentionally deferred to integrated
-  PREDEF QA.** Hosted CI: **NOT EXECUTED**. Independent review and project-owner
-  acceptance remain pending. PREDEF-2, PREDEF-3, and DEF-CORR-1 were not started.
+  PREDEF QA.** Hosted CI: **NOT EXECUTED**. Independent remote source review
+  verified the exact issued binding, authorization matrix, signature/date mapping,
+  document-bound acknowledgement, safe metadata exposure, and PREDEF-1 scope
+  boundary with no blocker found. PREDEF-1B/1C is accepted for continuation
+  without representing unexecuted QA as passed. PREDEF-2, PREDEF-3, and
+  DEF-CORR-1 were not started.
 
 ### Handoff rule
 
