@@ -7,7 +7,7 @@
 **Parent authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **UI authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
-**Status:** ACTIVE — Checkpoints A and B accepted for continuation; Checkpoint C implemented. Awaiting independent remote review and project-owner acceptance. Overall DEF-CORR-1 is not yet accepted.
+**Status:** ACCEPTED ON FEATURE BRANCH — Checkpoints A/B/C complete; independent remote review passed; project-owner manual UI result accepted on 2026-10-25. Final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`. Not yet merged to `main`.
 
 ## 1. Goal
 
@@ -76,7 +76,7 @@ Implemented UI integration:
 
 Checkpoint B is accepted **for continuation to Checkpoint C only**. Overall DEF-CORR-1 remains active/not accepted.
 
-### Checkpoint C — Bounded notifications + consolidated integrity verification — IMPLEMENTED, AWAITING REVIEW
+### Checkpoint C — Bounded notifications + consolidated integrity verification — COMPLETE / ACCEPTED
 
 Checkpoint C implementation commit:
 
@@ -95,7 +95,7 @@ Implemented behavior:
 - correction email templates were intentionally not expanded because no compatible assignment/removal template exists;
 - consolidated backend/frontend verification and final browser QA were completed.
 
-Checkpoint C must **not** redesign notifications/email or introduce a second audit/history UI.
+Checkpoint C was accepted without redesigning notifications/email or introducing a second audit/history UI.
 
 The known complete-state PATCH / simultaneous-Admin last-write-wins risk is a **future hardening item**, not an implicit Checkpoint C scope expansion. Do not add optimistic concurrency/version-token semantics unless separately approved.
 
@@ -160,7 +160,10 @@ The known complete-state PATCH / simultaneous-Admin last-write-wins risk is a **
 - Browser/manual QA: **EXECUTED — PASS**. Verified Admin correction, in-app notification effects, removed-member `403`, added-member `200` as `PANELIST`, unchanged-member single schedule notice, and non-`SCHEDULED` Manage lock. The test fixture was restored afterward.
 - Hosted CI: **NOT EXECUTED**.
 - Remaining risks: simultaneous Admin last-write-wins remains a future hardening item; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
-- **Checkpoint C implemented — awaiting independent remote review and project-owner acceptance.** Overall DEF-CORR-1 is not yet accepted or merged.
+- **Independent remote review:** PASS. The final review found one inaccurate initial-scheduling success claim, corrected at `b356a0891523da0c1bca399f6cb1e2198127b61b`; the redundant lifecycle suffix was then removed at `9615af591d47e4d004fb74926031a9192770886d` after project-owner feedback.
+- **Project-owner manual UI acceptance:** PASS on 2026-10-25.
+- **Final accepted pre-documentation implementation HEAD:** `9615af591d47e4d004fb74926031a9192770886d`.
+- **Status:** DEF-CORR-1 is fully accepted on the feature branch and ready for PR/merge preparation; it is not yet merged to `main`.
 
 ### Sequencing rule
 
@@ -580,21 +583,21 @@ Do not include:
 
 ## 12. Acceptance checkpoint
 
-Checkpoint completion is **not** overall feature acceptance:
+Checkpoint completion was used as the staged acceptance path:
 
 - **Checkpoint A complete** means backend/domain authority is implemented and reviewed enough to proceed to UI.
 - **Checkpoint B complete** means the Admin correction UI is implemented and reviewed enough to proceed to consolidation.
 - **Checkpoint C complete** means the bounded notification reuse and consolidated verification have been completed.
 
-DEF-CORR-1 may be marked fully accepted only after:
+DEF-CORR-1 acceptance gates are now satisfied:
 
-- Checkpoints A, B, and C are complete on `feat/defense-schedule-committee-correction`;
-- focused/proportional automated verification is complete;
-- migration validation is complete if schema changes are introduced;
-- independent remote source review is complete;
-- project-owner manual/browser review of the correction flow is accepted;
-- documentation records the final implementation commit/evidence.
+- ✅ Checkpoints A, B, and C complete on `feat/defense-schedule-committee-correction`;
+- ✅ focused/proportional automated verification complete;
+- ✅ migration validation complete;
+- ✅ independent remote source review complete;
+- ✅ project-owner manual/browser review accepted on 2026-10-25;
+- ✅ documentation records the final implementation commit/evidence.
 
 Do not create separate branches for A/B/C unless a later verified defect or scope change requires isolation.
 
-Do not merge to `main` until the project owner explicitly approves the completed DEF-CORR-1 package.
+The project owner has accepted the completed DEF-CORR-1 package. Merge to `main` remains a separate explicit repository action; this document update does not perform the merge.
