@@ -23,7 +23,7 @@ Scope: all user-uploaded and system-owned documents that participate in Applican
 | Applicant evidence | Certificate of Registration (COR) | Applicant | Admin | No |
 | Defense supporting evidence | COR, receipt/proof image/file, Title package | Student | Admin/workflow gate as currently defined | No |
 | Proposal/Final manuscripts | Proposal chapters, Final manuscript | Student | Active Adviser | No |
-| Official defense records | Adviser Certification (GS-017), Criteria, Oral Examination Summary, RAP, conclusion | System / assigned defense actors | Existing Defense authority | No |
+| Official thesis/defense records | Adviser Request (GS-020), Adviser Certification (GS-017), Criteria, Oral Examination Summary, RAP, conclusion | System / authorized thesis-defense actors | Existing GS-020 / Defense authority | No |
 | Research Databank archive | Approved archival metadata/files | Determined by archival workflow | Admin/archive authority | No |
 | Research Repository publication | approved metadata and permitted publication artifact | Derived from approved archive | publication/Admin authority | Only explicitly published content |
 
@@ -168,6 +168,14 @@ Rules:
 Adviser Certification, evaluator Criteria, Oral Examination Summary, RAP, signatures, and formal Defense conclusions are not Student uploads. They must remain generated/persisted by their authoritative workflows. Admin does not gain a generic replace/delete override through document management.
 
 GS-017 is a generated official representation of an exact issued Adviser Certification. Its authority comes from the certification record and exact `reviewedDocumentId`, not from the existence of a separately uploaded PDF. The issued certification is immutable under the ordinary workflow; on-demand PDF generation does not create a new manuscript authority or a replacement certification.
+
+Finalized GS-020 is a system-owned official representation of one exact Adviser Request. It is not a Student upload and must not become a print-fill-upload loop. Before submission, the Student explicitly e-signs the exact request; that signature evidence is bound to the requested Adviser and request content/reason. The official GS-020 finalizes only after the same request reaches Adviser `CONFORMED` and Dean `APPROVED`.
+
+The finalized GS-020 authority is an immutable data snapshot, not the existence of a permanently stored PDF binary. The first implementation should render View/Download PDF bytes reproducibly on demand from that snapshot. The snapshot must preserve the applicable form code/revision and exact display/signature/workflow values at finalization so later Student/Adviser profile changes, Adviser replacement, Program-label changes, or institutional-office-holder configuration cannot silently rewrite the historical record.
+
+For the initial GS-020 implementation, the printed Dean identity/signature remains blank because no approved institutional office-holder source exists yet. The actual Dean/Admin reviewer identity and timestamp remain authoritative workflow/audit evidence. A future Institutional Officials setting may populate newly finalized snapshots only; it must not retroactively change older GS-020 records.
+
+Owning Student, the requested Adviser for the exact request, and authorized Admin/Dean users may View/Download the same finalized GS-020 record read-only. Other defense participants do not gain access merely from committee membership.
 
 Completed GS-006/GS-007 Defense Application PDFs are likewise system-generated records. Student read-only access to their own completed application is for transparency/reference and must not create a print-fill-upload loop or grant editing authority over Admin-controlled schedule, committee, approval, or signatory data.
 

@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../../src/utils/AppError";
+import { REVIEW_CONTEXT, STUDENT_SIGNATURE, signedRequestEvidence } from "../../fixtures/adviser-request-signed";
 
 const prismaMock = vi.hoisted(() => {
   const tx = {
     adviserRequest: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
+      findFirst: vi.fn(), create: vi.fn(),
     },
     adviserAssignment: {
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    adviserRequestSignedState: { findUnique: vi.fn() },
+    adviserRequestOfficialRecord: { create: vi.fn() },
     $queryRaw: vi.fn(),
   };
   return {
@@ -184,9 +188,13 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     prismaMock.student.findUnique.mockResolvedValue({
       id: "student-1",
       userId: "user-1",
+      studentNumber: "2026-001", user: { firstName: "Sam", lastName: "Student" }, program: { programName: "MIT" },
     });
     prismaMock.adviserAssignment.findFirst.mockResolvedValue(null);
     prismaMock.adviserRequest.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserRequest.findFirst.mockResolvedValue(null);
+    prismaMock.__tx.adviserRequest.create = prismaMock.adviserRequest.create;
+    prismaMock.__tx.adviserAssignment.findFirst.mockResolvedValue(null);
     prismaMock.adviserRequest.create.mockImplementation(async (args: any) => ({
       id: "req-1",
       ...args.data,
@@ -262,7 +270,8 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
       return rows.filter((r) => !where.scheduleId || r.scheduleId === where.scheduleId);
     });
     await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user", signatureData: STUDENT_SIGNATURE,
+        reviewedContext: { ...REVIEW_CONTEXT, sourceDefenseScheduleId: "session-b" } }),
     ).resolves.toBeTruthy();
   });
 
@@ -327,6 +336,7 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     await svc.createRequest("user-1", {
       requestedAdviserId: "chair-user",
       reason: "Please advise",
+      signatureData: STUDENT_SIGNATURE, reviewedContext: REVIEW_CONTEXT,
     });
     expect(prismaMock.adviserRequest.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -358,7 +368,7 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
       deanStatus: "PENDING",
     });
     await expect(
-      svc.createRequest("user-1", { requestedAdviserId: "chair-user" }),
+      svc.createRequest("user-1", { requestedAdviserId: "chair-user", signatureData: STUDENT_SIGNATURE, reviewedContext: REVIEW_CONTEXT }),
     ).resolves.toBeTruthy();
   });
 });
@@ -550,6 +560,8 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
       status: "PENDING",
       adviserStatus: "CONFORMED",
       deanStatus: "PENDING",
+      reason: "Please advise", sourceDefenseScheduleId: "schedule-1", requestDate: new Date("2026-09-25"),
+      adviserRespondedAt: new Date("2026-09-26T08:00:00Z"),
       ...overrides,
     };
   }
@@ -561,6 +573,8 @@ describe("AdviserRequestService (WP4 Dean decision)", () => {
     prismaMock.adviserRequest.findUnique.mockResolvedValue(conformedRequest());
     tx.adviserRequest.findUnique.mockResolvedValue(conformedRequest());
     tx.adviserRequest.updateMany.mockResolvedValue({ count: 1 });
+    tx.adviserRequestSignedState.findUnique.mockImplementation(async () => signedRequestEvidence(await tx.adviserRequest.findUnique.mock.results.at(-1)!.value));
+    tx.adviserRequestOfficialRecord.create.mockResolvedValue({ requestId: "req-1" });
     tx.adviserAssignment.findFirst.mockResolvedValue(null);
     tx.adviserAssignment.create.mockResolvedValue({ id: "asg-1" });
     (tx as any).panelist = {

@@ -12,7 +12,7 @@
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.17-draft  
+**Version:** 1.18-draft  
 **Last Updated:** 2026-10-25  
 
 ---
@@ -1017,7 +1017,11 @@ Adviser Selection unlocked
       ↓
 Student views eligible Title Defense ODP members
       ↓
-Student selects one candidate and submits GS-020 Adviser Request
+Student selects one candidate + reviews exact request/reason
+      ↓
+Student e-signs the exact GS-020 Adviser Request
+      ↓
+Signed request is submitted
       ↓
 Requested Adviser reviews request
       ├── DECLINES / returns → student may select another eligible ODP member
@@ -1038,32 +1042,118 @@ The Dean/Admin approval step must not silently substitute for Adviser CONFORME. 
 
 **Internal-only adviser invariant:** an external panelist may remain a defense participant and may retain access to the Panelist portal, but the system must not create new GS-020 adviser requests for an external panelist and must never create an active `AdviserAssignment` to one. The Adviser Requests inbox does not need to be hidden solely because the current Panelist is external or currently unavailable as adviser, because historical/already-addressed requests may still need to be viewed.
 
-### 9.5 GS-020 as system-native workflow + generated official document
+### 9.5 GS-020 as system-native workflow + finalized official record
 
-GS-020 should be implemented as structured system workflow data first, with an official generated/downloadable form as its document output.
+**CONFIRMED_PROJECT_DESIGN — 2026-10-25**
+
+The current GS-020 business workflow already exists in GS-IS. The official-form package must extend that workflow rather than create a parallel paper/upload process.
+
+The supplied current form is **EARIST-QSF-GS-020 Rev. 00 (06.20.25) — Adviser Request**. Its observed workflow meaning remains:
 
 ```text
-Student request data
+Student chooses/requests one eligible Adviser
       ↓
-Adviser CONFORME / decline
+Student reviews the exact request + reason
       ↓
-Dean approval / rejection
+Student e-signs and submits the exact request
       ↓
-Final adviser-request record
-      ↓
-Generate current GS-020 from authoritative system data
-      ↓
-Preview / Download / Print official copy
+Requested Adviser
+      ├── DECLINES
+      └── CONFORMES
+                ↓
+Dean, Graduate School
+      ├── REJECTS
+      └── APPROVES
+                ↓
+AdviserAssignment becomes ACTIVE
+                ↓
+Freeze finalized GS-020 snapshot
+                ↓
+Authorized View / Download
 ```
 
-Recommended behavior:
+#### 9.5.1 Finalized-only official output
 
-- The student should not be required to download a blank GS-020, fill it manually, and re-upload it as the primary workflow.
-- GS-IS should prefill the official GS-020 from authoritative records: student identity, program, current working title/research context when available, requested adviser, request date, Adviser CONFORME status/date, Dean approval status/date, and other confirmed form fields. Absence of a structured title immediately after Title Defense must not block the Adviser Request workflow.
-- A draft/pending preview may be shown while the request is incomplete.
-- After final approval, the system should provide a finalized downloadable/printable GS-020 snapshot.
-- Wet, digital, or mixed signature handling should follow the cross-cutting official-document architecture in Section 34 and the signature mode approved by EARIST.
-- Finalized generated copies must remain immutable/reproducible for audit.
+GS-IS must not treat a pending request as a finalized official GS-020.
+
+The official GS-020 becomes available only when the exact request has:
+
+1. a valid Student e-signature bound to that exact request;
+2. Adviser status = `CONFORMED`; and
+3. Dean status = `APPROVED`.
+
+Before those conditions are complete, the portal may show workflow/status information, but it must not expose a finalized official GS-020 download.
+
+#### 9.5.2 Student e-signature
+
+The supplied form explicitly provides **Graduate Student — Signature Over Printed Name**. The accepted GS-IS design therefore requires an explicit Student signing step before request submission.
+
+The Student signing action must be bound to the exact request being submitted, including at minimum the exact requested Adviser and request content/reason. Preserve signer identity, signature evidence, and `signedAt`. After the signed request is submitted, the requested Adviser or reason must not be silently changed underneath that signature. A materially different later request requires a new request and new Student signature.
+
+Authentication alone must not be rendered as a fabricated signature image.
+
+#### 9.5.3 Adviser CONFORME is required; separate signature image is not currently established
+
+Student selection is a request/nomination, not unilateral Adviser assignment.
+
+The requested Adviser must still explicitly CONFORME or decline through the existing GS-020 workflow before Dean approval can create an active `AdviserAssignment`.
+
+The supplied GS-020 shows a **CONFORME: Adviser** area but does not establish a separate **Signature Over Printed Name** requirement for the Adviser. Therefore the current package must preserve the explicit Adviser CONFORME action/date but must not invent a mandatory Adviser signature-image field unless later EARIST evidence confirms one.
+
+#### 9.5.4 Dean approval versus printed Dean identity
+
+Existing Dean/Admin approval remains authoritative workflow evidence and must continue to preserve the reviewing actor and review timestamp.
+
+However, GS-IS does not yet have an approved authoritative institutional-office-holder source for the printed **Dean, Graduate School** identity/signature. For the first GS-020 implementation:
+
+- keep the printed Dean name/signature area blank;
+- do not hard-code or infer a Dean name from arbitrary Admin accounts;
+- do not fabricate a Dean signature;
+- preserve the actual Dean/Admin approval actor internally for audit/workflow authority.
+
+A future **System Settings / Institutional Officials** package may provide the authoritative Dean display identity for newly finalized records. It must not retroactively rewrite older finalized GS-020 snapshots that were created while the printed Dean identity was blank.
+
+#### 9.5.5 Immutable finalized snapshot + on-demand PDF
+
+The first GS-020 implementation should preserve an immutable finalized **data snapshot**, not permanently store a generated PDF binary merely because the form was downloaded.
+
+At final approval, preserve the exact display data required to reproduce the official record, including the applicable GS-020 form code/revision, Student identity/display values, Student Number, Program, requested Adviser display identity, exact request reason/content, request date, Student signature evidence and signing timestamp, Adviser CONFORME state/date, Dean approval state/date, and the blank-or-configured institutional display values applicable at that time.
+
+After finalization:
+
+- View/Download renders PDF bytes from that immutable snapshot;
+- do not rebuild historical GS-020 from mutable current/latest Student, Adviser, Program, or institutional-office-holder data;
+- later Adviser replacement or profile changes must not rewrite the old snapshot;
+- future GS-020 form revisions must not silently re-render an old Rev. 00 snapshot using a newer form contract.
+
+Permanent generated-PDF archival/version storage remains a separate future records-management package unless EARIST later requires stored binary copies.
+
+#### 9.5.6 Authorized visibility
+
+After finalization, the **same authoritative GS-020 record** is read-only and may be viewed/downloaded by:
+
+- the owning Student;
+- the requested Adviser for that exact request; and
+- authorized Admin/Dean users.
+
+Other Chairman/Panelist/Rapporteur/Facilitator users do not receive GS-020 access merely because they participated in a defense.
+
+Primary product placement:
+
+- **Student:** existing `/student/thesis/adviser-request` surface, where the approved request exposes **View GS-020** / **Download GS-020**;
+- **Adviser:** My Advisees / Adviser Request record/history;
+- **Admin:** Adviser Request review/history and later any accepted unified Student-document record surface.
+
+GS-020 remains system-owned. No actor should be instructed to download the finalized form only to upload it back into GS-IS.
+
+#### 9.5.7 Official-form fidelity
+
+The renderer must reconstruct the supplied EARIST-QSF-GS-020 Rev. 00 form from explicit typed display input.
+
+Do not add fields solely because related data exists elsewhere in GS-IS. In particular, the supplied form does not establish a separate Thesis/Dissertation Title field, so the renderer must not invent one.
+
+The pure renderer must not query Prisma, select an Adviser, resolve workflow status, discover current institutional officials, or infer signature authority. Live services must provide only the authoritative finalized snapshot values.
+
 
 ### 9.6 Critical modeling rules
 

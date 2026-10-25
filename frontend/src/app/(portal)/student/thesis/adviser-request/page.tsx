@@ -2,8 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { ESignaturePad } from "@/components/defense-workspace/e-signature-pad";
+import { AdviserRequestRecords, adviserRequestRecordsQueryKey } from "@/components/shared/adviser-request-records";
+import { captureAdviserRequestReview, adviserRequestSigningReady, signedAdviserRequestSubmission,
+  type AdviserRequestReview, type AdviserRequestReviewContext } from "@/lib/adviser-request-signing";
 import { useStudentThesisJourney } from "@/hooks/use-student-thesis-journey";
 import { studentThesisJourneyQueryKey } from "@/lib/student-thesis-journey";
 import {
@@ -58,9 +63,17 @@ type CandidatesResponse = {
   /** Historical context only — nullable; not required to list candidates. */
   selectedTitle: { id: string; titleText: string } | null;
   candidates: OdpCandidate[];
+  student: Omit<AdviserRequestReviewContext, "requestedAdviserName" | "sourceDefenseScheduleId">;
 };
 
 export default function AdviserRequestPage() {
+  const { data: session } = useSession();
+  if (!session?.user?.id) return null;
+  const viewerScope = `${session.user.id}:${session.user.role}`;
+  return <AdviserRequestContent key={viewerScope} viewerScope={viewerScope} />;
+}
+
+function AdviserRequestContent({ viewerScope }: { viewerScope: string }) {
   const queryClient = useQueryClient();
   const {
     data: journey,
@@ -77,6 +90,8 @@ export default function AdviserRequestPage() {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [review, setReview] = useState<AdviserRequestReview | null>(null);
+  const [signature, setSignature] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const needCandidates =
@@ -90,25 +105,25 @@ export default function AdviserRequestPage() {
     isError: candidatesError,
     refetch: refetchCandidates,
   } = useQuery({
-    queryKey: studentAdviserCandidatesQueryKey,
+    queryKey: [...studentAdviserCandidatesQueryKey, viewerScope],
     enabled: needCandidates,
     queryFn: async () =>
       (await apiClientRequest("/thesis/adviser/candidates")) as CandidatesResponse,
   });
 
   const createRequest = useMutation({
+    retry: false,
     mutationFn: async () => {
       return apiClientRequest("/thesis/adviser/request", {
         method: "POST",
-        body: JSON.stringify({
-          requestedAdviserId: selectedUserId,
-          reason: remarks.trim() ? remarks.trim() : undefined,
-        }),
+        body: JSON.stringify(signedAdviserRequestSubmission(review, signature)),
       });
     },
     onSuccess: async () => {
       setSubmitError(null);
       setConfirmOpen(false);
+      setReview(null);
+      setSignature("");
       setSelectedUserId("");
       setRemarks("");
       await queryClient.invalidateQueries({
@@ -117,10 +132,13 @@ export default function AdviserRequestPage() {
       await queryClient.invalidateQueries({
         queryKey: studentAdviserCandidatesQueryKey,
       });
+      await queryClient.invalidateQueries({ queryKey: adviserRequestRecordsQueryKey });
     },
     onError: (error: Error) => {
       setSubmitError(error.message || "Unable to send adviser request.");
       setConfirmOpen(false);
+      setReview(null);
+      setSignature("");
       void queryClient.invalidateQueries({
         queryKey: studentThesisJourneyQueryKey,
       });
@@ -143,6 +161,23 @@ export default function AdviserRequestPage() {
   const adviserStep = journey?.steps.find((s) => s.key === "ADVISER_REQUEST");
   const req = journey?.adviserRequest;
   const activeAdviser = journey?.activeAdviser;
+  const closeSigning = () => {
+    if (createRequest.isPending) return;
+    setConfirmOpen(false);
+    setReview(null);
+    setSignature("");
+  };
+  const openSigning = () => {
+    if (!selectedCandidate || !candidatesData?.student) return;
+    setSignature("");
+    setSubmitError(null);
+    setReview(captureAdviserRequestReview({
+      requestedAdviserId: selectedCandidate.userId, reason: remarks,
+      reviewedContext: { ...candidatesData.student, requestedAdviserName: selectedCandidate.name,
+        sourceDefenseScheduleId: candidatesData.sourceDefenseScheduleId },
+    }));
+    setConfirmOpen(true);
+  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -151,8 +186,7 @@ export default function AdviserRequestPage() {
           Adviser Request
         </h2>
         <p className="text-sm text-(--earist-body-text)">
-          Select an eligible member of your Title Defense panel (GS-020). Flow:
-          Request → Adviser CONFORME → Dean approval → active adviser.
+          Choose an eligible adviser from your Title Defense panel.
         </p>
       </div>
 
@@ -421,7 +455,7 @@ export default function AdviserRequestPage() {
                 className="text-xs font-medium text-(--earist-body-text)"
                 htmlFor="request-remarks"
               >
-                Request Remarks (Optional)
+                Request Reason (Optional)
               </label>
               <Textarea
                 id="request-remarks"
@@ -435,69 +469,69 @@ export default function AdviserRequestPage() {
             <Button
               type="button"
               disabled={!selectedUserId || createRequest.isPending}
-              onClick={() => setConfirmOpen(true)}
+              onClick={openSigning}
               className="w-full bg-(--earist-primary) hover:bg-(--earist-primary)/90 sm:w-auto"
             >
               <Send className="mr-2 h-4 w-4" />
-              Review &amp; Send Adviser Request
+              Review &amp; Sign Adviser Request
             </Button>
           </CardContent>
         </Card>
       )}
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+      {uiState !== "LOADING" && uiState !== "ERROR" && <AdviserRequestRecords audience="student" />}
+
+      <Dialog open={confirmOpen} onOpenChange={open => { if (!open) closeSigning(); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Confirm Adviser Request</DialogTitle>
+            <DialogTitle>Review &amp; Sign Adviser Request</DialogTitle>
             <DialogDescription>
-              Review the details before sending your GS-020 adviser request.
+              Your signature confirms this exact adviser request. Once submitted, these details cannot be changed.
             </DialogDescription>
           </DialogHeader>
-          {selectedCandidate && (
+          {review && (
             <div className="space-y-2 text-sm">
               <p>
-                <span className="text-(--earist-body-text)">Official title: </span>
-                <span className="font-medium">{officialTitle || "—"}</span>
+                <span className="text-(--earist-body-text)">Student: </span>
+                <span className="font-medium">{review.reviewedContext.studentName}</span>
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Selected adviser: </span>
-                <span className="font-medium">{selectedCandidate.name}</span>
+                <span className="text-(--earist-body-text)">Student Number: </span>
+                {review.reviewedContext.studentNumber}
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Title Defense role: </span>
-                {roleLabel(selectedCandidate.defenseRole)}
+                <span className="text-(--earist-body-text)">Program: </span>
+                {review.reviewedContext.programName}
               </p>
               <p>
-                <span className="text-(--earist-body-text)">Specialization: </span>
-                {selectedCandidate.specialization || "—"}
+                <span className="text-(--earist-body-text)">Requested Adviser: </span>
+                <span className="font-medium">{review.reviewedContext.requestedAdviserName}</span>
               </p>
-              <p>
-                <span className="text-(--earist-body-text)">Office: </span>
-                {selectedCandidate.officeAffiliation || "—"}
-              </p>
-              <p>
-                <span className="text-(--earist-body-text)">Remarks: </span>
-                {remarks.trim() || "—"}
+              <p className="whitespace-pre-wrap break-words">
+                <span className="text-(--earist-body-text)">Reason: </span>
+                {review.reason || "No reason provided."}
               </p>
             </div>
           )}
+          {confirmOpen && review && <ESignaturePad value={signature} onChange={setSignature} disabled={createRequest.isPending}
+            autoFocus readyText="Signature ready for this adviser request." requiredText="Sign before submitting your adviser request." />}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmOpen(false)}
+              onClick={closeSigning}
               disabled={createRequest.isPending}
             >
               Go Back
             </Button>
             <Button
               type="button"
-              disabled={createRequest.isPending}
+              disabled={createRequest.isPending || !adviserRequestSigningReady(review, signature)}
               onClick={() => createRequest.mutate()}
               className="bg-(--earist-primary) hover:bg-(--earist-primary)/90"
             >
               <Send className="mr-2 h-4 w-4" />
-              {createRequest.isPending ? "Sending…" : "Send Adviser Request"}
+              {createRequest.isPending ? "Submitting…" : "Sign & Submit Adviser Request"}
             </Button>
           </DialogFooter>
         </DialogContent>

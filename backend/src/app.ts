@@ -22,6 +22,13 @@ export function createApp() {
   );
 
   app.use(cookieParser());
+  // Only this signing endpoint accepts the bounded base64 envelope for a 1 MiB image.
+  app.use("/api/thesis/adviser/request", (req, res, next) => {
+    express.json({ limit: "1500kb" })(req, res, (error) => {
+      if (error?.type === "entity.too.large") { res.status(413).json({ error: "The Student signature submission is too large." }); return; }
+      next(error);
+    });
+  });
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest } from "@/lib/api.client";
+import { AdviserRequestRecords, adviserRequestRecordsQueryKey } from "@/components/shared/adviser-request-records";
 import {
   adminDeanReviewQueryKey,
   titleDefenseRoleLabel,
@@ -87,6 +88,7 @@ export default function AdminAdviserRequestReviewPage() {
       await queryClient.invalidateQueries({
         queryKey: adminDeanReviewQueryKey,
       });
+      await queryClient.invalidateQueries({ queryKey: adviserRequestRecordsQueryKey });
     },
     onError: (error: Error) => {
       setActionError(error.message || "Unable to record the Dean decision.");
@@ -269,6 +271,8 @@ export default function AdminAdviserRequestReviewPage() {
           </Card>
         ))}
       </div>
+
+      <AdviserRequestRecords audience="admin" />
 
       <Dialog
         open={pendingDecision !== null}

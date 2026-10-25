@@ -462,7 +462,7 @@ model AdviserRequest {
   id                      String                @id @default(uuid()) @map("adviser_req_id")
   studentId               String                @map("student_id")
   requestedAdviserId      String                @map("requested_adviser_id")
-  reason                  String?
+  reason                  String?               @db.Text
   status                  RequestStatus         @default(PENDING)
   /**
    * GS-020: passed Title Defense session that produced the ODP candidate pool.
@@ -495,6 +495,8 @@ model AdviserRequest {
   deanReviewedBy          User?                 @relation("AdviserRequestDean", fields: [deanReviewedById], references: [id])
   student                 Student               @relation(fields: [studentId], references: [id])
   sourceDefenseSchedule   DefenseSchedule?      @relation(fields: [sourceDefenseScheduleId], references: [id])
+  signedState             AdviserRequestSignedState?
+  officialRecord          AdviserRequestOfficialRecord?
 
   @@index([approvedById], map: "adviser_requests_approved_by_fkey")
   @@index([deanReviewedById], map: "adviser_requests_dean_reviewed_by_id_fkey")
@@ -502,6 +504,34 @@ model AdviserRequest {
   @@index([sourceDefenseScheduleId], map: "adviser_requests_source_defense_schedule_id_fkey")
   @@index([studentId], map: "adviser_requests_student_id_fkey")
   @@map("adviser_requests")
+}
+
+/** Write-once evidence for the exact request reviewed and signed by the Student. */
+model AdviserRequestSignedState {
+  requestId     String   @id @map("request_id")
+  payload       Json
+  signatureData String   @map("signature_data") @db.LongText
+  evidenceHash  String   @map("evidence_hash") @db.VarChar(64)
+  signedAt      DateTime @map("signed_at") @db.DateTime(3)
+  request       AdviserRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+
+  @@map("adviser_request_signed_states")
+}
+
+/** One immutable official record per request; no persisted PDF binary. */
+model AdviserRequestOfficialRecord {
+  requestId          String   @id @map("request_id")
+  studentUserId      String   @map("student_user_id")
+  requestedAdviserId String   @map("requested_adviser_id")
+  snapshot           Json
+  signatureData      String   @map("signature_data") @db.LongText
+  evidenceHash       String   @map("evidence_hash") @db.VarChar(64)
+  finalizedAt        DateTime @map("finalized_at") @db.DateTime(3)
+  request            AdviserRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+
+  @@index([studentUserId])
+  @@index([requestedAdviserId])
+  @@map("adviser_request_official_records")
 }
 
 model AdviserAssignment {

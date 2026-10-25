@@ -21,6 +21,51 @@
 
 ---
 
+## Current implementation focus — Official Adviser Request Form (GS-020)
+
+**Current phase:** GS020-1A renderer is accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`, and GS020-1B Student signing / immutable finalized record / authorized View-Download integration is accepted at `0b3c9f756d66d16b9a27a680264780599bca9242` after automated verification, independent remote source review, and project-owner acceptance on 2026-10-25. Full end-to-end manual/browser QA was explicitly waived rather than reported as passed. The underlying Student request → Adviser CONFORME/DECLINE → Dean APPROVE/REJECT → active AdviserAssignment workflow remains authoritative.
+**Target implementation branch:** `feat/official-adviser-request-form`.
+**Starting `main` / branch HEAD:** `17d7953f40c6c26833f451cea395f3333a220be2`.
+**Implementation plan:** `docs/superpowers/plans/2026-10-25-gs020-adviser-request-official-form.md`
+**Goal:** reconstruct the current official GS-020 form, require an explicit Student e-signature for the exact Adviser Request before submission, freeze an immutable finalized GS-020 snapshot only after Adviser `CONFORMED` + Dean `APPROVED`, and provide authorized read-only View/Download access without storing a permanent PDF binary in the first implementation.
+
+| Status | Package | Scope |
+| --- | --- | --- |
+| ✅ | GS020-1A — Official GS-020 renderer | Accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`. Pure typed-input → PDF-bytes renderer, representative normal/long/signature/blank samples, focused renderer verification, independent remote source review, and project-owner visual acceptance completed. No live workflow/API/frontend/schema integration was included. |
+| ✅ | GS020-1B — Finalized record integration | Accepted at `0b3c9f756d66d16b9a27a680264780599bca9242`. Exact-request Student e-signature, write-once signed state, atomic Dean approval + immutable official snapshot + AdviserAssignment, on-demand PDF generation, and ownership/role-scoped Adviser Request View/Download are implemented. Legacy unsigned requests are not backfilled/fabricated. Full manual/browser QA was waived by the project owner. |
+| ⏳ | Institutional Dean display integration | For this package, keep the printed Dean identity/signature area blank because no authoritative institutional office-holder source is configured yet. A future System Settings / Institutional Officials package may populate new snapshots only; it must not rewrite older finalized GS-020 snapshots. |
+
+### GS020-1A acceptance evidence
+
+- Implementation commit: `76bdd3c4f3c4525e528679009a1a93e123b81d26`.
+- Focused renderer verification reported: **22 passed / 0 failed**; forms script typecheck, backend build, and rasterized sample generation passed.
+- Independent remote source review found the implementation bounded to renderer/types/tests/sample tooling/package-local documentation only, with no Prisma/API/workflow/frontend/schema/snapshot integration.
+- Project owner reviewed the generated form and accepted the visual result on 2026-10-25.
+- GS020-1B subsequently proceeded only after explicit authorization and is now accepted as recorded below.
+
+### GS020-1B acceptance evidence
+
+- Implementation commit: `0b3c9f756d66d16b9a27a680264780599bca9242`.
+- Automated verification reported: **255 focused backend checks passed**; full backend suite **2,571 passed / 5 skipped / 0 failed** across 198 files; new frontend verifier **18 passed**; combined affected frontend verifiers **118 passed**; Prisma generate/validate and backend/frontend build/type/lint checks passed.
+- Migration `20261025180000_adviser_request_signed_records` was reported applied successfully to local MySQL; no legacy signatures or snapshots were backfilled.
+- Independent remote review confirmed exact signed-state preservation, one finalized record per request, atomic approval/snapshot/assignment, fail-closed legacy behavior, role/ownership authorization, raw-signature privacy, and reuse of the accepted renderer.
+- Project owner accepted GS020-1B on 2026-10-25 and explicitly waived further full manual/browser QA. A legacy-account spot check confirmed that older active AdviserAssignments without authoritative new signing/snapshot evidence do not receive a fabricated finalized record.
+- Hosted CI was not present/verified for the implementation commit at review time.
+- User-facing record wording remains **Adviser Request** with **View Adviser Request** / **Download Adviser Request**; form code/revision stays inside the official PDF.
+
+### GS-020 accepted design boundaries
+
+- **Finalized-only official document:** no official downloadable GS-020 before Adviser `CONFORMED` + Dean `APPROVED`.
+- **Student e-signature:** after choosing an eligible Adviser and reviewing the exact request, the Student must explicitly sign the request before submission; the signature evidence and `signedAt` belong to that exact request.
+- **Adviser authority:** Student selection is a request/nomination only. The requested Adviser must still explicitly CONFORME or decline. The supplied form does not establish a separate Adviser signature-image requirement, so do not invent one.
+- **Dean authority:** existing Dean/Admin approval remains authoritative workflow evidence, but printed Dean name/signature remain blank until an approved institutional-office-holder source exists.
+- **Immutable snapshot, not stored PDF:** after final approval, preserve the exact GS-020 display data/signature evidence/form revision as an immutable snapshot and render the PDF reproducibly on demand. Do not rebuild an old GS-020 from mutable current/latest profile or office-holder data.
+- **Visibility:** owning Student, the requested Adviser for that request, and authorized Admin may View/Download the same finalized GS-020 record. Other defense participants do not gain access merely from committee membership.
+- **Student placement:** the primary Student surface remains `/student/thesis/adviser-request`; the finalized record appears there after approval rather than on a separate mandatory-upload page.
+- **No upload loop:** GS-020 is system-owned output. The Student must never download it merely to upload it back.
+- **Historical preservation:** later Adviser replacement/relationship changes must not rewrite or delete the old finalized GS-020.
+- **Official-form fidelity:** do not add fields that are not supported by the supplied form solely because related data exists elsewhere in GS-IS.
+
 ## Recently completed implementation — Defense Schedule & Committee Correction
 
 **Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is accepted and merged to `main` through PR #42 at merge commit `5a6131a7da997019b1d31e1387789bd75ec9f26e` after Checkpoints A/B/C, independent remote review, and project-owner manual UI acceptance on 2026-10-25. PREDEF-3 remains deferred.
@@ -136,6 +181,7 @@ DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptanc
 | ⏳ | GS-011 Dean name | Must use authoritative institutional configuration. |
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
 | ✅ | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer, PREDEF-1B0 exact manuscript-title authority, and PREDEF-1B/1C live certification/visibility integration are accepted and merged through PR #41. GS-017 is generated from the exact issued `reviewedDocumentId`, the Adviser sees the exact title/file before Certify & Sign, and Adviser/Student/Admin receive the accepted bounded read-only record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
+| 🚧 | Adviser Request PDF (GS-020) | Existing GS-020 request/CONFORME/Dean-approval workflow remains authoritative. Active package adds the official EARIST-QSF-GS-020 Rev. 00 renderer, exact-request Student e-signature, immutable finalized snapshot after Adviser `CONFORMED` + Dean `APPROVED`, and on-demand read-only View/Download for Student/requested Adviser/Admin. Dean printed identity/signature stays blank until authoritative Institutional Officials configuration exists. |
 | ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
@@ -428,6 +474,7 @@ For each review, record:
 
 This list is intentionally orderable and may change.
 
+0. Complete the active GS020-FORM package: renderer visual acceptance first, then finalized-record/e-signature integration.
 1. Continue collecting missing-feature/process notes from the project owner.
 2. Audit Applicant Examination + Exam Scheduling to separate implemented vs incomplete behavior.
 3. Design Faculty identity / multi-permission architecture, taking existing `CustomRole` / `RoleFeatureAccess` into account.

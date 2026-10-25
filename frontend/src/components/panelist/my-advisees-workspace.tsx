@@ -1,4 +1,5 @@
 "use client";
+import { AdviserRequestRecords } from "@/components/shared/adviser-request-records";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -542,6 +543,7 @@ export function MyAdviseesWorkspace() {
           </TabsContent>
 
           <TabsContent value="requests" className="space-y-3">
+            <AdviserRequestRecords audience="adviser" />
             {staleRequestLink ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
