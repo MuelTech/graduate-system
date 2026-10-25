@@ -540,6 +540,9 @@ export class ThesisService {
     return this.adviserRequestService.createRequest(userId, {
       requestedAdviserId: data.requestedAdviserId,
       reason: data.reason,
+      signatureData: data.signatureData,
+      reviewedContext: data.reviewedContext,
+      studentId: data.studentId,
     });
   }
 

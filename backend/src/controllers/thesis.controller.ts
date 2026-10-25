@@ -11,6 +11,7 @@ import { PanelistDashboardService } from '../services/panelist-dashboard.service
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import type { MissingRequirement } from '../interfaces/defense-eligibility.interfaces';
 import { AppError } from '../utils/AppError';
+import { AdviserRequestRecordService } from '../services/adviser-request-record.service';
 import {
   cleanupRequestUploads,
   commitRequestUploads,
@@ -59,15 +60,40 @@ function sendPdfResponse(
   res: Response,
   pdf: Uint8Array,
   fileName: string,
+  cacheControl = "no-store",
 ): void {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", cacheControl);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.status(200).send(Buffer.from(pdf));
 }
 
 export class ThesisController {
+  private adviserRequestRecords = new AdviserRequestRecordService();
+
+  listAdviserRequestRecords = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized." }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    try { res.status(200).json(await this.adviserRequestRecords.list(req.user)); }
+    catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else res.status(500).json({ error: "Adviser Request records could not be retrieved." });
+    }
+  };
+
+  getAdviserRequestPdf = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized." }); return; }
+    res.setHeader("Cache-Control", "private, no-store");
+    try {
+      const { pdf, filename } = await this.adviserRequestRecords.generatePdf(String(req.params.id), req.user);
+      sendPdfResponse(res, pdf, filename, "private, no-store");
+    } catch (error) {
+      if (error instanceof AppError) sendEligibilityError(res, error);
+      else res.status(500).json({ error: "The Adviser Request PDF could not be generated." });
+    }
+  };
+
   listAdviserCertifications = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     if (!req.user?.userId) { res.status(401).json({ error: "Unauthorized." }); return; }
     try {
@@ -326,6 +352,9 @@ export class ThesisController {
       const result = await this.thesisService.requestAdviser(req.user.userId, {
         requestedAdviserId: req.body?.requestedAdviserId,
         reason: req.body?.reason,
+        signatureData: req.body?.signatureData,
+        reviewedContext: req.body?.reviewedContext,
+        studentId: req.body?.studentId,
       });
       res.status(201).json({ message: 'Adviser request submitted', result });
     } catch (error: any) {

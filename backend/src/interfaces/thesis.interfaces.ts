@@ -13,6 +13,10 @@ export interface ApplyTitleDefenseInput {
 export interface RequestAdviserInput {
   requestedAdviserId: string;
   reason?: string;
+  signatureData?: string;
+  reviewedContext?: import("../services/adviser-request-signed-state").AdviserRequestReviewContext;
+  /** Never an authority; a mismatched supplied Student is rejected. */
+  studentId?: string;
 }
 
 export type AdviserResponseDecision = "CONFORMED" | "DECLINED";

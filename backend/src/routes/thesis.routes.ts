@@ -174,6 +174,10 @@ router.post(
   thesisController.requestAdviser,
 );
 
+// Finalized official records: exact ownership is also checked inside the record service.
+router.get("/adviser/requests/records", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.listAdviserRequestRecords);
+router.get("/adviser/requests/:id/pdf", authenticateJWT, requireRole(["STUDENT", "PANELIST", "ADMIN"]), thesisController.getAdviserRequestPdf);
+
 // ADMIN: Get all adviser requests
 router.get(
   "/adviser/requests",

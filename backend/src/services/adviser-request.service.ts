@@ -26,6 +26,23 @@ import {
   mapDeanDecisionToOverallStatus,
 } from "./adviser-request.rules";
 import { isRapStatusComplete } from "./stage-completion";
+import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
+import { adviserRequestEvidenceHash, assertSignedAdviserRequest, validateStudentRequestSignature,
+  ADVISER_REQUEST_CONTRACT, type SignedAdviserRequestState } from "./adviser-request-signed-state";
+import { finalizedAdviserRequestSnapshot } from "./adviser-request-record.service";
+import { formatOfficialApplicationDate } from "./official-form-display";
+import { loadOfficialFormLogos } from "./official-form-assets";
+import { renderAdviserRequest } from "../documents/official-defense/adviser-request/adviser-request.renderer";
+
+function signingStudent(student: { id: string; studentNumber: string | null; user: { firstName: string; lastName: string }; program: { programName: string } | null }) {
+  if (!student.studentNumber?.trim() || !student.program?.programName?.trim()
+    || !`${student.user.firstName} ${student.user.lastName}`.trim()) {
+    throw new AppError("Your Student name, Student Number, and Program must be complete before signing an adviser request.", 409);
+  }
+  return { studentId: student.id, studentName: `${student.user.firstName} ${student.user.lastName}`.trim(),
+    studentNumber: student.studentNumber, programName: student.program.programName };
+}
 
 export interface OdpCandidateDto {
   userId: string;
@@ -188,8 +205,9 @@ export class AdviserRequestService {
     /** Historical context only — nullable; not required to list candidates. */
     selectedTitle: { id: string; titleText: string } | null;
     candidates: OdpCandidateDto[];
+    student: { studentId: string; studentName: string; studentNumber: string; programName: string };
   }> {
-    const student = await prisma.student.findUnique({ where: { userId } });
+    const student = await prisma.student.findUnique({ where: { userId }, include: { user: true, program: true } });
     if (!student) throw new AppError("Student profile not found.", 404);
 
     const ctx = await this.getPassedTitleDefenseContext(student.id);
@@ -200,6 +218,7 @@ export class AdviserRequestService {
           ? { id: ctx.selectedTitleId, titleText: ctx.selectedTitleText }
           : null,
       candidates: ctx.candidates,
+      student: signingStudent(student),
     };
   }
 
@@ -209,8 +228,12 @@ export class AdviserRequestService {
       throw new AppError("requestedAdviserId is required.", 400);
     }
 
-    const student = await prisma.student.findUnique({ where: { userId } });
+    const student = await prisma.student.findUnique({ where: { userId }, include: { user: true, program: true } });
     if (!student) throw new AppError("Student profile not found.", 404);
+    if (input.studentId !== undefined && input.studentId !== student.id) {
+      throw new AppError("You can submit only your own adviser request.", 403);
+    }
+    if (input.reason !== undefined && typeof input.reason !== "string") throw new AppError("Request reason must be text.", 400);
 
     const activeAssignment = await prisma.adviserAssignment.findFirst({
       where: { studentId: student.id, isActive: true },
@@ -251,19 +274,58 @@ export class AdviserRequestService {
       );
     }
 
-    // Persist the same passed Title Defense schedule that produced the pool.
-    return prisma.adviserRequest.create({
-      data: {
-        studentId: student.id,
-        requestedAdviserId,
-        reason: input.reason ?? null,
-        sourceDefenseScheduleId: ctx.scheduleId,
-        status: "PENDING",
-        adviserStatus: "PENDING",
-        deanStatus: "PENDING",
-        approvedById: null,
-        requestDate: new Date(),
-      },
+    const review = { ...signingStudent(student), requestedAdviserName: candidate.name, sourceDefenseScheduleId: ctx.scheduleId };
+    if (!input.reviewedContext || Object.entries(review).some(([key, value]) =>
+      input.reviewedContext?.[key as keyof typeof review] !== value)) {
+      throw new AppError("The request details have changed. Review the latest Student and Adviser details and sign again.", 409);
+    }
+    const signature = await validateStudentRequestSignature(input.signatureData);
+    const signatureData = input.signatureData!.trim();
+    const now = new Date();
+    const requestDate = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const signed: SignedAdviserRequestState = {
+      ...review, contractVersion: ADVISER_REQUEST_CONTRACT, requestId: randomUUID(), studentUserId: userId,
+      requestedAdviserId, sourceConclusionId: ctx.conclusionId, reason: input.reason ?? "",
+      requestDate, requestDateDisplay: formatOfficialApplicationDate(now), signedAt: now.toISOString(),
+    };
+    try {
+      // Fail before persisting a signed request whose authoritative content cannot fit the accepted form.
+      await renderAdviserRequest({ logos: await loadOfficialFormLogos(), requestDate: signed.requestDateDisplay,
+        requestedAdviserName: signed.requestedAdviserName, reason: signed.reason, studentName: signed.studentName,
+        studentNumber: signed.studentNumber, programName: signed.programName, studentSignature: signature });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(error instanceof RangeError ? error.message : "The request contains unsupported display text.", 422);
+    }
+
+    // Serialize duplicate submissions using the same per-Student lock as final approval.
+    return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${student.id} FOR UPDATE`;
+      if (await tx.adviserAssignment.findFirst({ where: { studentId: student.id, isActive: true } })) {
+        throw new AppError("An active adviser assignment already exists.", 409);
+      }
+      const pending = await tx.adviserRequest.findFirst({ where: { studentId: student.id, status: "PENDING",
+        OR: [{ adviserStatus: "PENDING" }, { adviserStatus: "CONFORMED", deanStatus: "PENDING" }] } });
+      if (pending && isOpenAdviserRequest(pending)) {
+        throw new AppError("An adviser request is already waiting for Adviser response or Dean review.", 409);
+      }
+      // Nested create atomically binds the request to its immutable signing evidence.
+      return tx.adviserRequest.create({
+        data: {
+          id: signed.requestId,
+          studentId: student.id,
+          requestedAdviserId,
+          reason: input.reason ?? null,
+          sourceDefenseScheduleId: ctx.scheduleId,
+          status: "PENDING",
+          adviserStatus: "PENDING",
+          deanStatus: "PENDING",
+          approvedById: null,
+          requestDate: new Date(`${requestDate}T00:00:00.000Z`),
+          signedState: { create: { payload: signed as unknown as Prisma.InputJsonObject, signatureData,
+            evidenceHash: adviserRequestEvidenceHash(signed, signatureData), signedAt: now } },
+        },
+      });
     });
   }
 
@@ -529,6 +591,9 @@ export class AdviserRequestService {
 
     try {
       return await prisma.$transaction(async (tx) => {
+        // Lock before any consistent read so MySQL's transaction snapshot sees
+        // an earlier decision's assignment after waiting for this Student lock.
+        await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${existing.studentId} FOR UPDATE`;
         // Re-read + conditional state protection inside the transaction.
         const current = await tx.adviserRequest.findUnique({
           where: { id: requestId },
@@ -546,11 +611,6 @@ export class AdviserRequestService {
             409,
           );
         }
-
-        // Serialize per Student before active-assignment check + create.
-        // Prevents two different CONFORMED requests from both inserting
-        // an active AdviserAssignment (check-then-insert race).
-        await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${current.studentId} FOR UPDATE`;
 
         if (gate.decision === "APPROVED") {
           const active = await tx.adviserAssignment.findFirst({
@@ -616,6 +676,16 @@ export class AdviserRequestService {
 
         // Assignment only after CONFORME + Dean APPROVED, same transaction.
         if (gate.decision === "APPROVED") {
+          const evidence = await tx.adviserRequestSignedState.findUnique({ where: { requestId } });
+          const signed = assertSignedAdviserRequest(current, evidence);
+          await validateStudentRequestSignature(evidence!.signatureData);
+          const snapshot = finalizedAdviserRequestSnapshot(signed, current.adviserRespondedAt, deanUserId, now);
+          // A primary key on requestId prevents duplicate official records. Failure rolls back approval and assignment.
+          await tx.adviserRequestOfficialRecord.create({ data: {
+            requestId, studentUserId: signed.studentUserId, requestedAdviserId: signed.requestedAdviserId,
+            snapshot: snapshot as unknown as Prisma.InputJsonObject, signatureData: evidence!.signatureData,
+            evidenceHash: adviserRequestEvidenceHash(snapshot, evidence!.signatureData), finalizedAt: now,
+          } });
           await tx.adviserAssignment.create({
             data: {
               studentId: current.studentId,
