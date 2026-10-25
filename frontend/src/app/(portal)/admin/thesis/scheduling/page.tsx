@@ -40,6 +40,7 @@ import {
   personToMember,
   programTypeLabel,
   stageFromDefenseType,
+  validateScheduleForm,
   type CommitteeMember,
   type PickerPerson,
   type ScheduleFormState,
@@ -264,25 +265,10 @@ function AdminSchedulingPageInner() {
     [policy, committee, adviser],
   );
 
-  const scheduleErrors = useMemo(() => {
-    const errors: { date?: string; time?: string; venue?: string } = {};
-    if (!schedule.defenseDate) errors.date = "Defense date is required.";
-    if (!schedule.defenseTime) errors.time = "Defense time is required.";
-    const value = schedule.venueOrLink.trim();
-    if (!value) {
-      errors.venue = "Enter a venue or meeting link.";
-    } else if (/^https?:\/\//i.test(value)) {
-      try {
-        const url = new URL(value);
-        if (!/^https?:$/.test(url.protocol)) {
-          errors.venue = "Enter a valid http/https meeting link.";
-        }
-      } catch {
-        errors.venue = "Enter a valid http/https meeting link.";
-      }
-    }
-    return errors;
-  }, [schedule]);
+  const scheduleErrors = useMemo(
+    () => validateScheduleForm(schedule),
+    [schedule],
+  );
 
   const scheduleOk =
     !scheduleErrors.date && !scheduleErrors.time && !scheduleErrors.venue;
@@ -558,6 +544,7 @@ function AdminSchedulingPageInner() {
             </div>
           ) : (
             <ScheduledDefenseDetail
+              key={selectedScheduleId}
               scheduleId={selectedScheduleId}
               onBack={clearScheduledSelection}
             />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, apiClientRequest } from "@/lib/api.client";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { AlertCircle, ExternalLink, RefreshCw, Settings2 } from "lucide-react";
 import type { CommitteePolicyDto, ScheduledDefenseDetailDto } from "@/types";
 import {
   defenseRecordHref,
@@ -18,6 +19,7 @@ import {
 } from "@/components/admin/defense-applications/labels";
 import { ReadOnlyCommitteeRoster } from "./read-only-committee-roster";
 import { defenseTypeLabel, stageFromDefenseType } from "./types";
+import { ScheduledDefenseCorrectionEditor } from "./scheduled-defense-correction-editor";
 import { ScheduledDefenseSubmission } from "./scheduled-defense-submission";
 
 const SESSION_BADGE_CLASS: Record<string, string> = {
@@ -99,8 +101,9 @@ function DetailSkeleton() {
 }
 
 /**
- * UIUX-2L FIX-3: read-only exact scheduled-defense detail (scheduleId mode).
- * Answers WHEN / WHERE / WHO only; no editing and no academic authority.
+ * UIUX-2L FIX-3: exact scheduled-defense detail (scheduleId mode). The default
+ * presentation is read-only; the bounded correction editor opens in place while
+ * the exact session remains SCHEDULED.
  */
 export function ScheduledDefenseDetail({
   scheduleId,
@@ -110,6 +113,13 @@ export function ScheduledDefenseDetail({
   /** Optional: clear the selected schedule without leaving the workspace. */
   onBack?: () => void;
 }) {
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
+    null,
+  );
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const detailQuery = useQuery<ScheduledDefenseDetailDto>({
     queryKey: ["scheduledDefenseDetail", scheduleId],
     queryFn: async () =>
@@ -207,9 +217,43 @@ export function ScheduledDefenseDetail({
   const stage = stageFromDefenseType(detail.defenseType);
   const meetingLink = safeMeetingLink(detail.venueOrLink);
   const venueText = detail.venueOrLink?.trim() ?? "";
+  const canCorrect =
+    detail.sessionStatus.toUpperCase() === "SCHEDULED";
+  const editing = editingScheduleId === detail.scheduleId;
+
+  const handleLifecycleConflict = async (): Promise<boolean> => {
+    const refreshed = await detailQuery.refetch();
+    if (
+      refreshed.data &&
+      refreshed.data.sessionStatus.toUpperCase() !== "SCHEDULED"
+    ) {
+      setEditingScheduleId(null);
+      setFeedback({
+        type: "error",
+        message:
+          "This defense is no longer available for correction. The latest schedule has been loaded.",
+      });
+      return true;
+    }
+    return false;
+  };
 
   return (
     <div className="space-y-4">
+      {feedback && (
+        <div
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={cn(
+            "rounded-lg border px-4 py-3 text-sm",
+            feedback.type === "success"
+              ? "border-(--earist-success)/30 bg-(--earist-surface-gray) text-(--earist-success)"
+              : "border-destructive/30 bg-destructive/5 text-destructive",
+          )}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -229,6 +273,32 @@ export function ScheduledDefenseDetail({
               >
                 {sessionStatusLabel(detail.sessionStatus)}
               </Badge>
+              {canCorrect && !editing && (
+                <Button
+                  size="sm"
+                  disabled={detailQuery.isFetching}
+                  onClick={async () => {
+                    setFeedback(null);
+                    const refreshed = await detailQuery.refetch();
+                    if (
+                      !refreshed.data ||
+                      refreshed.data.sessionStatus.toUpperCase() !== "SCHEDULED"
+                    ) {
+                      setFeedback({
+                        type: "error",
+                        message:
+                          "This defense is no longer available for correction. The latest schedule has been loaded.",
+                      });
+                      return;
+                    }
+                    setEditingScheduleId(refreshed.data.scheduleId);
+                  }}
+                  className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90"
+                >
+                  <Settings2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Manage Schedule &amp; Committee
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -243,66 +313,90 @@ export function ScheduledDefenseDetail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-            Defense Schedule
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <ContextItem label="Date" value={formatDefenseDate(detail.defenseDate)} />
-          <ContextItem label="Time" value={formatDefenseTime(detail.defenseTime)} />
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-(--earist-body-text)">
-              Venue / Meeting Details
-            </p>
-            {meetingLink ? (
-              <a
-                href={meetingLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm break-words text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
-              >
-                Open Meeting Link
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-            ) : (
-              <p className="text-sm break-words text-foreground">
-                {venueText || "Not recorded"}
-              </p>
-            )}
-          </div>
-          <ContextItem
-            label="Session Status"
-            value={sessionStatusLabel(detail.sessionStatus)}
+      {editing ? (
+        <ScheduledDefenseCorrectionEditor
+          key={detail.scheduleId}
+          detail={detail}
+          policy={policyQuery.data}
+          policyLoading={policyQuery.isLoading}
+          policyError={policyQuery.isError}
+          onCancel={() => {
+            setEditingScheduleId(null);
+            setFeedback(null);
+          }}
+          onSaved={() => {
+            setEditingScheduleId(null);
+            setFeedback({
+              type: "success",
+              message: "Schedule and committee updated.",
+            });
+          }}
+          onLifecycleConflict={handleLifecycleConflict}
+        />
+      ) : (
+        <>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
+                Defense Schedule
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <ContextItem
+                label="Date"
+                value={formatDefenseDate(detail.defenseDate)}
+              />
+              <ContextItem
+                label="Time"
+                value={formatDefenseTime(detail.defenseTime)}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-(--earist-body-text)">
+                  Venue / Meeting Details
+                </p>
+                {meetingLink ? (
+                  <a
+                    href={meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm break-words text-(--earist-primary) underline underline-offset-2 hover:text-(--earist-secondary)"
+                  >
+                    Open Meeting Link
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  </a>
+                ) : (
+                  <p className="text-sm break-words text-foreground">
+                    {venueText || "Not recorded"}
+                  </p>
+                )}
+              </div>
+              <ContextItem
+                label="Session Status"
+                value={sessionStatusLabel(detail.sessionStatus)}
+              />
+            </CardContent>
+          </Card>
+
+          <ScheduledDefenseSubmission scheduleId={detail.scheduleId} />
+
+          <ReadOnlyCommitteeRoster
+            committee={detail.committee}
+            defenseType={detail.defenseType}
+            defenseStageLabel={defenseTypeLabel(stage)}
+            programType={programType}
+            policy={policyQuery.data}
           />
-        </CardContent>
-      </Card>
 
-      <ScheduledDefenseSubmission scheduleId={detail.scheduleId} />
-
-      <ReadOnlyCommitteeRoster
-        committee={detail.committee}
-        defenseType={detail.defenseType}
-        defenseStageLabel={defenseTypeLabel(stage)}
-        programType={programType}
-        policy={policyQuery.data}
-      />
-
-      <div className="flex flex-wrap justify-end gap-2">
-        <Link
-          href={defenseRecordHref(detail.scheduleId)}
-          className={buttonVariants({ variant: "outline" })}
-        >
-          View Defense Record
-        </Link>
-      </div>
-
-      <p className="text-xs text-(--earist-body-text)">
-        Read-only view of the confirmed schedule and committee. Editing is not
-        available here; scheduling changes are handled through a separate
-        audited process.
-      </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              href={defenseRecordHref(detail.scheduleId)}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              View Defense Record
+            </Link>
+          </div>
+        </>
+      )}
     </div>
   );
 }
