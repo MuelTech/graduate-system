@@ -331,7 +331,7 @@ function AdminSchedulingPageInner() {
           : "Defense scheduled.";
       setFeedback({
         type: "success",
-        message: `${when} The session is SCHEDULED — not passed or concluded.`,
+        message: when,
       });
     },
     onError: (error: Error & { missing?: MissingRequirement[] }) => {
