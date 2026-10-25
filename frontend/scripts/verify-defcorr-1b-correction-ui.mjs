@@ -18,6 +18,15 @@ const REVIEW =
 const TYPES = "src/components/admin/defense-scheduling/types.ts";
 const PAGE = "src/app/(portal)/admin/thesis/scheduling/page.tsx";
 
+test("initial scheduling success retains lifecycle semantics without claiming participant notification", () => {
+  const page = read(PAGE);
+  assert.doesNotMatch(page, /participants have been notified/);
+  assert.match(
+    page,
+    /message: `\$\{when\} The session is SCHEDULED — not passed or concluded\.`/,
+  );
+});
+
 test("Manage Schedule & Committee is visible only for the SCHEDULED lifecycle", () => {
   const detail = read(DETAIL);
   const page = read(PAGE);
