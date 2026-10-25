@@ -12,8 +12,8 @@
 **Accepted Collaborative production HEAD through CDW-8:** `a9a179446284ea928faca8991de34deadc856e1b`  
 **CDW-8C acceptance package HEAD:** `f6011c1eaa73706cce0fb950ceea2a64dad80fc7`  
 **Document Status:** Draft for client validation; authoritative for refactor where marked **CONFIRMED**  
-**Version:** 1.16-draft  
-**Last Updated:** 2026-10-24  
+**Version:** 1.17-draft  
+**Last Updated:** 2026-10-25  
 
 ---
 
@@ -319,14 +319,12 @@ The physical EARIST workflow treats the Defense Application as part of the Stude
 
 The Pre-Defense Document Integrity initiative (PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY) is accepted and merged to `main` through PR #41.
 
-Current active implementation scope:
+DEF-CORR-1 — Admin-only post-scheduling, pre-defense **Manage Schedule & Committee** correction — is also accepted and merged to `main` through PR #42 at `5a6131a7da997019b1d31e1387789bd75ec9f26e`. The accepted flow may correct date/time/Venue or Meeting Details plus manually assigned Chairman, Panelists, Rapporteur, and Facilitator only while the exact session remains `SCHEDULED`; Proposal/Final Adviser remains automatic from the authoritative active AdviserAssignment. Exact schedule/manuscript identity, historical assignment attribution, and immutable audit evidence are preserved.
 
-- **DEF-CORR-1:** Admin-only post-scheduling, pre-defense **Manage Schedule & Committee** correction for schedule details and manually assigned committee members, with automatic immutable audit logging and bounded reuse of the existing notification system.
-
-Explicitly outside this branch:
+Explicitly outside the accepted PREDEF / DEF-CORR scope:
 
 - **PREDEF-3:** certified-manuscript correction / exact-document rebinding fallback — deferred because the expected case is rare and the current direction is prevention-first.
-- post-start or post-conclusion emergency committee substitution/amendment;
+- post-start or post-conclusion emergency committee substitution/amendment, including evaluator excusal/quorum handling;
 - any correction of the authoritative Adviser from Scheduling;
 - any change to scoring, conclusion, exact manuscript binding, GS-017 authority, or official-document lifecycle;
 - any notification/email subsystem redesign;
