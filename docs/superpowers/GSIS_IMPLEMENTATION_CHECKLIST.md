@@ -52,11 +52,11 @@ DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The f
 
 | Status | Checkpoint | Scope / stop condition |
 | --- | --- | --- |
-| ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. Browser/manual QA and hosted CI were not executed at this backend-only checkpoint. |
-| 🚧 | B — Manage Schedule & Committee UI | **Current checkpoint.** Add the deliberate Scheduled-state edit flow for date/time/Venue or Meeting Details + manually assigned committee. Adviser remains locked Automatic for Proposal/Final. Save/Cancel/confirmation + exact refresh + focused frontend verification. **Stop and report before notification/consolidation work.** |
-| ⏳ | C — Notifications + consolidated integrity verification | After B review, reuse existing notification/email behavior where practical, verify removed/new member authority, run cross-cutting regressions, execute/prepare manual/browser QA, and update final evidence/docs. No notification-system redesign. |
+| ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. |
+| ✅ | B — Manage Schedule & Committee UI | Implemented and accepted for continuation at `c408488ddbac186b167961086512d8d143d4d01f`. Scheduled detail remains read-only by default; `Manage Schedule & Committee` is available only while the exact session is `SCHEDULED`; correction preloads the exact schedule/current active roster, reuses the accepted schedule/committee/review components, keeps Proposal/Final Adviser Automatic and out of the PATCH payload, confirms changes, refreshes the exact schedule after save, and preserves Cancel/no-op behavior. Verification: frontend typecheck passed, scoped ESLint passed, Checkpoint B verifier 11/11 passed, combined scheduling/adviser verification 18/18 passed, production build passed, and local browser/manual QA passed with the QA record restored afterward. No backend contract change or new migration was introduced. |
+| 🚧 | C — Notifications + consolidated integrity verification | **Current checkpoint.** Reuse existing notification/email behavior where practical, verify removed/new member authority, run consolidated cross-cutting regressions, execute final manual/browser QA, and update final evidence/docs. No notification-system redesign. |
 
-Checkpoint A acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. DEF-CORR-1 becomes ✅ only after A + B + C, independent remote review, required manual/browser QA, and project-owner acceptance.
+Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. DEF-CORR-1 becomes ✅ only after Checkpoint C, final independent remote review, required final manual/browser QA, and project-owner acceptance.
 
 ### Checkpoint A implementation evidence
 
@@ -68,10 +68,24 @@ Checkpoint A acceptance is for continuation only; it does not equal full DEF-COR
 - **Correction API:** Admin-only `PATCH /defense/schedules/:scheduleId`, allowed only while the exact session remains `SCHEDULED`, with Proposal/Final Adviser resolved server-side and Title remaining Adviser-free.
 - **Audit:** `DEFENSE_SCHEDULE_CREATED` and `DEFENSE_SCHEDULE_CORRECTED`; correction before/after snapshots are written transactionally so audit failure rolls back the mutation.
 - **Verification evidence:** 27 focused tests passed / 0 failed; full backend suite 192 files passed / 2,473 tests passed / 5 conditional skips / 0 failures; `prisma generate`, `prisma validate`, `tsc --noEmit`, and backend build passed.
-- **Local database note:** migration status reported only the new `20261024230000_panel_assignment_active_lifecycle` migration pending locally. Apply it before runtime/UI testing against the updated backend.
+- **Local database note:** the new `20261024230000_panel_assignment_active_lifecycle` migration was subsequently applied before Checkpoint B runtime/browser QA.
 - **Not executed:** live multi-connection contention test, browser/manual QA, hosted CI.
 - **Deferred to C:** correction notification/email refinement.
 - **Scope confirmed:** frontend/UI work was not started in Checkpoint A.
+
+### Checkpoint B implementation evidence
+
+- **Accepted-for-continuation ending HEAD:** `c408488ddbac186b167961086512d8d143d4d01f`.
+- **Files changed:** Scheduling page + shared review/types + Scheduled detail + new bounded correction editor + focused verifier; no backend source/schema/migration changes.
+- **Interaction:** Scheduled detail remains read-only until Admin deliberately chooses **Manage Schedule & Committee**; edit mode exists only for `SCHEDULED`.
+- **Payload:** exact schedule-scoped PATCH sends date/time/venue + manual Chairman/Panelist/Rapporteur/Facilitator assignments only. Proposal/Final Adviser is displayed as Automatic and excluded from the payload; Title has no Adviser seat.
+- **Refresh behavior:** successful save invalidates/refetches the exact scheduled detail and affected Scheduling/Application caches, keeps the same selected schedule, and exits edit mode.
+- **Conflict behavior:** backend `409` triggers authoritative refresh; if the session has left `SCHEDULED`, correction closes and the latest state is shown.
+- **Verification:** frontend `tsc --noEmit` passed; scoped ESLint passed; Checkpoint B verifier **11/11** passed; combined Adviser/scheduling verification **18/18** passed; production build passed.
+- **Manual/browser QA:** executed locally and passed for Proposal correction, member replacement, Automatic Adviser, persisted re-entry, Cancel discard, no-op Save guard, and non-`SCHEDULED` lock; QA record restored afterward.
+- **Not executed:** hosted CI / production-runtime validation.
+- **Future hardening note:** the complete-state PATCH has no optimistic concurrency/version token, so simultaneous Admin edits can still produce last-write-wins behavior. This is not part of DEF-CORR-1 Checkpoint C unless separately approved.
+- **Scope confirmed:** no notification/email refinement, Audit Log UI, post-start substitution, Adviser correction, scoring/RAP/conclusion/PDF change, schema change, or migration was introduced in Checkpoint B.
 
 ### Active-package guardrail
 
