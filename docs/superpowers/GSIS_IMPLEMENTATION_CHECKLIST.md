@@ -23,7 +23,7 @@
 
 ## Current implementation focus — Defense Schedule & Committee Correction
 
-**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 Checkpoint C is implemented but remains an active package awaiting independent remote review and project-owner acceptance. PREDEF-3 remains deferred.
+**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is fully accepted on `feat/defense-schedule-committee-correction` after Checkpoints A/B/C, independent remote review, and project-owner manual UI acceptance on 2026-10-25. It remains unmerged until the project owner explicitly merges it to `main`. PREDEF-3 remains deferred.
 **Target implementation branch:** `feat/defense-schedule-committee-correction`.
 **Starting HEAD:** `3aa00efb6264a5f92dd09d4f9feade143682a68f`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-24-defense-schedule-committee-correction.md`  
@@ -32,7 +32,7 @@
 | Status | Package | Scope |
 | --- | --- | --- |
 | ✅ | PREDEF — Pre-Defense Document Integrity & Visibility | PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY are accepted and merged through PR #41. Exact manuscript authority, GS-017 integration, scheduled submission context, Student Defense Application visibility, and the accepted PREDEF wording/flow are now part of `main`. |
-| 🚧 | DEF-CORR-1 — Manage Schedule & Committee | Active package: Admin-only correction while the exact session remains `SCHEDULED`. Editable scope is defense date, time, Venue / Meeting Details, Chairman, Panelists, Rapporteur, and Facilitator. Proposal/Final Adviser remains automatic from the authoritative AdviserAssignment. No mandatory reason field. Every successful correction must atomically write actor + exact schedule + before/after state to AuditLog and revalidate the canonical committee policy. |
+| ✅ | DEF-CORR-1 — Manage Schedule & Committee | Accepted on the feature branch after backend authority/lifecycle work, the in-place Admin correction UI, bounded notification reuse, consolidated regressions, independent remote review, and project-owner manual UI acceptance. Admin correction remains limited to exact `SCHEDULED` sessions; Proposal/Final Adviser stays automatic; exact attempt/manuscript identity and historical assignment attribution are preserved; AuditLog records immutable before/after state. Not yet merged to `main`. |
 | 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred rare recovery case. Do not mix it into DEF-CORR-1. |
 | ⏳ | Post-start committee amendment | Separate future recovery package for exceptional substitution after the session has left `SCHEDULED`; normal DEF-CORR-1 editing must lock from `IN_PROGRESS` onward. |
 
@@ -41,9 +41,9 @@
 | Action | Current actor/history coverage | DEF-CORR-1 direction |
 | --- | --- | --- |
 | Defense Application approval/rejection | Existing `AuditLog.actorId` + canonical defense-review action | Preserve unchanged. |
-| Initial defense scheduling | `DefenseSchedule.setById` + `createdAt` identify the scheduling Admin | Add a canonical schedule-created AuditLog event going forward; do not remove `setById`. |
-| Initial committee assignment | Created in the same scheduling transaction, therefore attributable to the scheduler, but no dedicated roster audit event exists | Include the initial roster in the schedule-created audit snapshot. |
-| Post-scheduling schedule/committee correction | Not implemented | Add one transactional correction mutation with automatic immutable before/after audit. |
+| Initial defense scheduling | `DefenseSchedule.setById` remains preserved and `DEFENSE_SCHEDULE_CREATED` now records the authenticated Admin plus exact initial schedule/active-roster snapshot | Accepted DEF-CORR-1 behavior; no legacy backfill. |
+| Initial committee assignment | Initial active roster is included in the same transactional `DEFENSE_SCHEDULE_CREATED` audit snapshot | Accepted DEF-CORR-1 behavior. |
+| Post-scheduling schedule/committee correction | Admin-only transactional correction is implemented for exact `SCHEDULED` sessions with immutable `DEFENSE_SCHEDULE_CORRECTED` before/after audit | Accepted DEF-CORR-1 behavior. |
 | Historical pre-defense annotations/comments | Assignment-bound author identity exists | Never rewrite author identity when a member is replaced; preserve referenced historical assignment rows while removing future active-session authority. |
 
 ### DEF-CORR-1 implementation checkpoints
@@ -54,9 +54,9 @@ DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The f
 | --- | --- | --- |
 | ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. |
 | ✅ | B — Manage Schedule & Committee UI | Implemented and accepted for continuation at `c408488ddbac186b167961086512d8d143d4d01f`. Scheduled detail remains read-only by default; `Manage Schedule & Committee` is available only while the exact session is `SCHEDULED`; correction preloads the exact schedule/current active roster, reuses the accepted schedule/committee/review components, keeps Proposal/Final Adviser Automatic and out of the PATCH payload, confirms changes, refreshes the exact schedule after save, and preserves Cancel/no-op behavior. Verification: frontend typecheck passed, scoped ESLint passed, Checkpoint B verifier 11/11 passed, combined scheduling/adviser verification 18/18 passed, production build passed, and local browser/manual QA passed with the QA record restored afterward. No backend contract change or new migration was introduced. |
-| 🔍 | C — Notifications + consolidated integrity verification | Implemented at `0403144`; awaiting independent remote review and project-owner acceptance. Reused existing `NotificationType.DEFENSE_SCHEDULE` / `DEFENSE_ASSIGNMENT` for best-effort correction notices; fixed initial scheduling to use the actual `defense_schedule` template; verified removed-member denial and added-member authority; ran full backend/frontend verification and final browser QA. No notification-system redesign or schema change. |
+| ✅ | C — Notifications + consolidated integrity verification | Implemented at `0403144` and accepted after independent remote review + project-owner manual UI acceptance. Reused existing `NotificationType.DEFENSE_SCHEDULE` / `DEFENSE_ASSIGNMENT` for best-effort correction notices; fixed initial scheduling to use the actual `defense_schedule` template; verified removed-member denial and added-member authority; ran full backend/frontend verification and final browser QA. No notification-system redesign or schema change. |
 
-Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. Checkpoint C is implemented, but DEF-CORR-1 becomes ✅ only after final independent remote review and project-owner acceptance.
+DEF-CORR-1 is now ✅ **ACCEPTED on the feature branch**. Final independent remote review passed, and the project owner manually verified/accepted the UI result on 2026-10-25. The accepted pre-documentation implementation HEAD is `9615af591d47e4d004fb74926031a9192770886d`. The feature remains unmerged until the project owner explicitly merges it to `main`.
 
 ### Checkpoint A implementation evidence
 
@@ -103,11 +103,13 @@ Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-C
 - **Browser/manual QA:** executed locally and passed for correction, notifications, removed-member `403`, added-member `200` as `PANELIST`, unchanged-member single notice, and non-`SCHEDULED` lock. Test fixture restored afterward.
 - **Not executed:** hosted CI.
 - **Remaining risk:** simultaneous Admin edits remain last-write-wins; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
-- **Status:** Checkpoint C implemented — awaiting independent remote review and project-owner acceptance. Overall DEF-CORR-1 is not yet accepted or merged.
+- **Final review:** independent remote review passed. Follow-up copy corrections removed inaccurate/redundant scheduling-success wording; final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`.
+- **Project-owner acceptance:** manual UI result reviewed and accepted on 2026-10-25.
+- **Status:** DEF-CORR-1 is fully accepted on the feature branch and ready for PR/merge preparation. It is not yet merged to `main`.
 
-### Active-package guardrail
+### Accepted-package guardrail
 
-`🚧` means the feature is approved for implementation but is **not yet accepted**. DEF-CORR-1 moves to ✅ only after bounded implementation, focused/proportional automated verification, independent remote source review, required manual/browser QA, and project-owner acceptance. Do not broaden this package into post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, or notification-system redesign.
+DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptance does **not** broaden the feature: post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, notification-system redesign, and optimistic-concurrency/version-token hardening remain separate future work. Do not treat the feature as part of `main` until the merge is completed.
 
 ---
 
