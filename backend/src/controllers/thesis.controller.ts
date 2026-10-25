@@ -655,27 +655,36 @@ export class ThesisController {
     try {
       if (!req.user) throw new Error('Unauthorized');
       const id = req.params.id as string; // thesisId
-      const schedule = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);      
-      // Email each panelist asynchronously via BullMQ
-      if (schedule && schedule.panelAssignments) {
-        for (const panel of schedule.panelAssignments) {
-          if (panel.user && panel.user.email) {
-            await import("../services/email.service").then(module => {
-              module.EmailService.sendTemplateEmail(
-                panel.user.email,
-                "defense_scheduled",
-                {
-                  panelist_name: `${panel.user.firstName} ${panel.user.lastName}`,
-                  defense_date: schedule.defenseDate.toDateString(),
-                  lobby_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/defense-lobby/${schedule.id}`
-                }
-              ).catch(err => console.error("Failed to queue email:", err));
-            });
-          }
-        }
+      const schedule = await this.thesisService.scheduleDefense(id, req.user.userId, req.body);
+      if (!schedule) {
+        throw new AppError("Defense schedule could not be created.", 500);
+      }
+      const studentUser = schedule.thesis?.student?.user ?? null;
+      if (studentUser?.email) {
+        await import("../services/email.service").then(module => {
+          module.EmailService.sendTemplateEmail(
+            studentUser.email,
+            "defense_schedule",
+            {
+              student_name: `${studentUser.firstName} ${studentUser.lastName}`,
+              defense_date: schedule.defenseDate.toLocaleDateString("en-PH", {
+                timeZone: "UTC",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }),
+              defense_time: schedule.defenseTime.toLocaleTimeString("en-PH", {
+                timeZone: "UTC",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+              venue: schedule.venueOrLink?.trim() || "To be announced",
+            }
+          ).catch(err => console.error("Failed to queue email:", err));
+        });
       }
 
-      res.status(201).json({ message: 'Defense scheduled and panelists notified', result: schedule });
+      res.status(201).json({ message: "Defense scheduled.", result: schedule });
     } catch (error: any) {
       sendEligibilityError(res, error);
     }

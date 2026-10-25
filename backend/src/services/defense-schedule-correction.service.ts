@@ -14,6 +14,7 @@ import {
   type DefenseScheduleAuditSnapshot,
 } from "./defense-audit";
 import { DefenseCommitteePolicy } from "./defense-committee.policy";
+import { NotificationService } from "./notification.service";
 
 export interface CorrectScheduledDefenseInput {
   defenseDate: string;
@@ -86,6 +87,7 @@ function normalizeAssignments(value: unknown): CommitteeAssignmentInput[] {
 
 export class DefenseScheduleCorrectionService {
   private readonly committeePolicy = new DefenseCommitteePolicy();
+  private readonly notifications = new NotificationService();
 
   async correctSchedule(
     scheduleId: string,
@@ -100,7 +102,7 @@ export class DefenseScheduleCorrectionService {
     const venueOrLink = requireVenue(input?.venueOrLink);
     const submitted = normalizeAssignments(input?.assignments);
 
-    return prisma.$transaction(async (tx) => {
+    const committed = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT schedule_id FROM defense_schedules WHERE schedule_id = ${scheduleId} FOR UPDATE`;
 
       const schedule = await tx.defenseSchedule.findUnique({
@@ -112,6 +114,7 @@ export class DefenseScheduleCorrectionService {
               student: {
                 select: {
                   id: true,
+                  userId: true,
                   program: { select: { programType: true } },
                 },
               },
@@ -259,7 +262,34 @@ export class DefenseScheduleCorrectionService {
         after,
       });
 
-      return after;
+      return {
+        before,
+        after,
+        studentUserId: schedule.thesis?.student?.userId ?? null,
+      };
     });
+
+    const {
+      before: auditBefore,
+      after: auditAfter,
+      studentUserId,
+    } = committed;
+
+    if (studentUserId) {
+      try {
+        await this.notifications.notifyDefenseCorrection({
+          studentUserId,
+          before: auditBefore,
+          after: auditAfter,
+        });
+      } catch (error) {
+        console.error(
+          "Failed to create defense correction notifications:",
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+
+    return auditAfter;
   }
 }

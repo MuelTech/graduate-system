@@ -1022,6 +1022,21 @@ export class ThesisRepository {
       return tx.defenseSchedule.findUnique({
         where: { id: schedule.id },
         include: {
+          thesis: {
+            select: {
+              student: {
+                select: {
+                  user: {
+                    select: {
+                      email: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           panelAssignments: {
             where: { isActive: true },
             include: { user: true },

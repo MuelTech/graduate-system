@@ -14,7 +14,14 @@ const prismaMock = vi.hoisted(() => ({
   auditLog: { create: vi.fn() },
 }));
 
+const notificationMock = vi.hoisted(() => vi.fn());
+
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+vi.mock("../../../src/services/notification.service", () => ({
+  NotificationService: class {
+    notifyDefenseCorrection = notificationMock;
+  },
+}));
 
 import { DefenseScheduleCorrectionService } from "../../../src/services/defense-schedule-correction.service";
 import { AppError } from "../../../src/utils/AppError";
@@ -86,6 +93,7 @@ function scheduleRow(overrides: Record<string, unknown> = {}) {
     thesis: {
       student: {
         id: "student-1",
+        userId: "student-user-1",
         program: { programType: "MASTERS" },
       },
     },
@@ -128,6 +136,7 @@ describe("DEF-CORR-1 DefenseScheduleCorrectionService", () => {
       { id: "adv-asg-1", adviserId: "adviser-1", isActive: true },
     ]);
     prismaMock.auditLog.create.mockResolvedValue({ id: "audit-1" });
+    notificationMock.mockResolvedValue(2);
   });
 
   it("rejects a missing schedule", async () => {
@@ -482,5 +491,59 @@ describe("DEF-CORR-1 DefenseScheduleCorrectionService", () => {
       }),
     ).rejects.toThrow("audit unavailable");
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(notificationMock).not.toHaveBeenCalled();
+  });
+
+  it("notifies after commit with the authoritative before/after snapshots", async () => {
+    await service.correctSchedule("sched-1", "admin-1", {
+      defenseDate: "2026-11-20",
+      defenseTime: "09:00",
+      venueOrLink: "Room 201",
+      assignments: manual(proposalMasters()),
+    });
+
+    expect(notificationMock).toHaveBeenCalledWith({
+      studentUserId: "student-user-1",
+      before: expect.objectContaining({
+        scheduleId: "sched-1",
+        committee: expect.arrayContaining([
+          expect.objectContaining({ userId: "chair-1", role: "CHAIRMAN" }),
+        ]),
+      }),
+      after: expect.objectContaining({
+        scheduleId: "sched-1",
+        schedule: expect.objectContaining({
+          defenseDate: "2026-11-20T00:00:00.000Z",
+        }),
+      }),
+    });
+  });
+
+  it("keeps correction success when notification creation fails", async () => {
+    notificationMock.mockRejectedValue(new Error("notification store down"));
+    await expect(
+      service.correctSchedule("sched-1", "admin-1", {
+        defenseDate: "2026-11-20",
+        defenseTime: "09:00",
+        venueOrLink: "Room 201",
+        assignments: manual(proposalMasters()),
+      }),
+    ).resolves.toMatchObject({ scheduleId: "sched-1" });
+    expect(prismaMock.auditLog.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not attempt notifications when correction authority rejects", async () => {
+    prismaMock.defenseSchedule.findUnique.mockResolvedValue(
+      scheduleRow({ sessionStatus: "IN_PROGRESS" }),
+    );
+    await expect(
+      service.correctSchedule("sched-1", "admin-1", {
+        defenseDate: "2026-11-20",
+        defenseTime: "09:00",
+        venueOrLink: "Room 201",
+        assignments: manual(proposalMasters()),
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(notificationMock).not.toHaveBeenCalled();
   });
 });
