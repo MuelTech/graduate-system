@@ -7,7 +7,7 @@
 **Parent authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **UI authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
-**Status:** ACCEPTED ON FEATURE BRANCH — Checkpoints A/B/C complete; independent remote review passed; project-owner manual UI result accepted on 2026-10-25. Final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`. Not yet merged to `main`.
+**Status:** ACCEPTED AND MERGED — Checkpoints A/B/C complete; independent remote review passed; project-owner manual UI result accepted on 2026-10-25; merged to `main` through PR #42 at merge commit `5a6131a7da997019b1d31e1387789bd75ec9f26e`. Final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`.
 
 ## 1. Goal
 
@@ -163,7 +163,7 @@ The known complete-state PATCH / simultaneous-Admin last-write-wins risk is a **
 - **Independent remote review:** PASS. The final review found one inaccurate initial-scheduling success claim, corrected at `b356a0891523da0c1bca399f6cb1e2198127b61b`; the redundant lifecycle suffix was then removed at `9615af591d47e4d004fb74926031a9192770886d` after project-owner feedback.
 - **Project-owner manual UI acceptance:** PASS on 2026-10-25.
 - **Final accepted pre-documentation implementation HEAD:** `9615af591d47e4d004fb74926031a9192770886d`.
-- **Status:** DEF-CORR-1 is fully accepted on the feature branch and ready for PR/merge preparation; it is not yet merged to `main`.
+- **Status:** DEF-CORR-1 is fully accepted and merged to `main` through PR #42 at `5a6131a7da997019b1d31e1387789bd75ec9f26e`.
 
 ### Sequencing rule
 
@@ -600,4 +600,4 @@ DEF-CORR-1 acceptance gates are now satisfied:
 
 Do not create separate branches for A/B/C unless a later verified defect or scope change requires isolation.
 
-The project owner has accepted the completed DEF-CORR-1 package. Merge to `main` remains a separate explicit repository action; this document update does not perform the merge.
+The project owner accepted the completed DEF-CORR-1 package, and PR #42 subsequently merged it to `main` at `5a6131a7da997019b1d31e1387789bd75ec9f26e`.
