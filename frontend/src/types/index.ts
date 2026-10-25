@@ -450,6 +450,12 @@ export interface RepositoryPublication {
   abstract: string | null;
   keywords: string[];
   publishedAt: string | null;
+  hasManuscript?: boolean;
+  hasRespondentData?: boolean;
+  downloadUrl?: string | null;
+  respondentDataUrl?: string | null;
+  canDownloadManuscript?: boolean;
+  canDownloadRespondentData?: boolean;
   artifact: RepositoryArtifactPolicy;
 }
 
@@ -463,6 +469,16 @@ export interface RepositoryAdminEntry {
   abstract: string | null;
   keywords: string[];
   archiveRegisteredAt: string;
+  hasManuscript?: boolean;
+  hasRespondentData?: boolean;
+  documents?: Array<{
+    id: string;
+    docType: string;
+    defenseStage: string | null;
+    originalFilename: string | null;
+    verifiedMimeType: string | null;
+    sizeBytes: number | null;
+  }>;
   publication: {
     isPublished: boolean;
     publishedAt: string | null;

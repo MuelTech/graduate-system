@@ -33,10 +33,20 @@ export class DatabankController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      const result = await this.archiveService.registerArchive(userId, {
-        abstract: req.body?.abstract,
-        keywords: req.body?.keywords,
-      });
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const result = await this.archiveService.registerArchive(
+        userId,
+        {
+          abstract: req.body?.abstract,
+          keywords: req.body?.keywords,
+        },
+        {
+          manuscript: files?.manuscript?.[0],
+          certifications: files?.certifications?.[0],
+          instruments: files?.instruments?.[0],
+          respondentData: files?.respondentData?.[0],
+        },
+      );
       res.status(201).json(result);
     } catch (error: any) {
       sendDatabankError(res, error);
@@ -66,10 +76,20 @@ export class DatabankController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      const result = await this.archiveService.registerArchive(userId, {
-        abstract: req.body?.abstract,
-        keywords: req.body?.keywords,
-      });
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const result = await this.archiveService.registerArchive(
+        userId,
+        {
+          abstract: req.body?.abstract,
+          keywords: req.body?.keywords,
+        },
+        {
+          manuscript: files?.manuscript?.[0],
+          certifications: files?.certifications?.[0],
+          instruments: files?.instruments?.[0],
+          respondentData: files?.respondentData?.[0],
+        },
+      );
       res.status(201).json(result);
     } catch (error: any) {
       sendDatabankError(res, error);

@@ -62,6 +62,7 @@ describe("LocalStorageDiagnostics managed objects", () => {
     expect(MANAGED_STORAGE_PREFIXES).toContain("manuscripts");
     expect(MANAGED_STORAGE_PREFIXES).toContain("evidence");
     expect(MANAGED_STORAGE_PREFIXES).toContain("instruments");
+    expect(MANAGED_STORAGE_PREFIXES).toContain("databank");
     expect(new Set(MANAGED_STORAGE_PREFIXES).size).toBe(
       MANAGED_STORAGE_PREFIXES.length,
     );
@@ -96,8 +97,8 @@ describe("LocalStorageDiagnostics managed objects", () => {
     await mkdir(path.join(root, "cor"), { recursive: true });
     await writeFile(path.join(root, "cor", "managed"), "12345");
     await writeFile(path.join(root, "legacy-random-name"), "legacy-bytes");
-    await mkdir(path.join(root, "databank"), { recursive: true });
-    await writeFile(path.join(root, "databank", "old"), "xx");
+    await mkdir(path.join(root, "legacy-archive"), { recursive: true });
+    await writeFile(path.join(root, "legacy-archive", "old"), "xx");
 
     const listing = await diagnostics.listManagedObjects(MANAGED_STORAGE_PREFIXES);
     const legacy = await diagnostics.legacyOrUnclassifiedSummary(

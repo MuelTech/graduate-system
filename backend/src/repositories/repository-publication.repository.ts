@@ -14,22 +14,25 @@ import prisma from "../config/database";
  * publication state.
  */
 
-/** Row shape for the public projection (no student number, no paths). */
+/** Row shape for the public projection (paths are projected to the service layer for role sanitization). */
 export interface PublishedEntryRow {
   id: string;
   title: string;
   abstract: string | null;
   keywords: string | null;
   publishedAt: Date | null;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
   thesis: {
     student: {
+      userId?: string;
       user: { firstName: string; lastName: string } | null;
       program: { programName: string } | null;
     } | null;
   } | null;
 }
 
-/** Row shape for the ADMIN-only publication queue (adds student number). */
+/** Row shape for the ADMIN-only publication queue (adds student number and documents). */
 export interface AdminEntryRow {
   id: string;
   title: string;
@@ -38,12 +41,24 @@ export interface AdminEntryRow {
   isPublic: boolean;
   publishedAt: Date | null;
   createdAt: Date;
+  fullPaperPath?: string | null;
+  respondentDataPath?: string | null;
   thesis: {
+    id: string;
     student: {
       studentNumber: string | null;
       user: { firstName: string; lastName: string } | null;
       program: { programName: string } | null;
     } | null;
+    thesisDocuments?: Array<{
+      id: string;
+      docType: string;
+      defenseStage: string | null;
+      filePath: string;
+      originalFilename: string | null;
+      verifiedMimeType: string | null;
+      sizeBytes: number | null;
+    }>;
   } | null;
 }
 
@@ -58,10 +73,13 @@ const PUBLISHED_SELECT = {
   abstract: true,
   keywords: true,
   publishedAt: true,
+  fullPaperPath: true,
+  respondentDataPath: true,
   thesis: {
     select: {
       student: {
         select: {
+          userId: true,
           user: { select: { firstName: true, lastName: true } },
           program: { select: { programName: true } },
         },
@@ -78,13 +96,28 @@ const ADMIN_SELECT = {
   isPublic: true,
   publishedAt: true,
   createdAt: true,
+  fullPaperPath: true,
+  respondentDataPath: true,
   thesis: {
     select: {
+      id: true,
       student: {
         select: {
           studentNumber: true,
           user: { select: { firstName: true, lastName: true } },
           program: { select: { programName: true } },
+        },
+      },
+      thesisDocuments: {
+        where: { isCurrent: true },
+        select: {
+          id: true,
+          docType: true,
+          defenseStage: true,
+          filePath: true,
+          originalFilename: true,
+          verifiedMimeType: true,
+          sizeBytes: true,
         },
       },
     },
@@ -197,5 +230,27 @@ export class RepositoryPublicationRepository {
       data: { isPublic: false },
     });
     return result.count;
+  }
+
+  /**
+   * Admin updates metadata (title, abstract, keywords) for a databank / repository entry.
+   */
+  async updateMetadata(
+    id: string,
+    data: {
+      title?: string;
+      abstract?: string | null;
+      keywords?: string | null;
+    },
+  ): Promise<AdminEntryRow | null> {
+    await prisma.eLibrary.update({
+      where: { id },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.abstract !== undefined ? { abstract: data.abstract } : {}),
+        ...(data.keywords !== undefined ? { keywords: data.keywords } : {}),
+      },
+    });
+    return this.findAdminById(id);
   }
 }

@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 describe("DL-10 RepositoryPublicationRepository", () => {
-  it("public search always filters isPublic:true and never selects raw paths", async () => {
+  it("public search filters isPublic:true and selects internal path inputs for the service projection", async () => {
     prismaMock.eLibrary.findMany.mockResolvedValue([]);
     const repo = new RepositoryPublicationRepository();
 
@@ -26,10 +26,12 @@ describe("DL-10 RepositoryPublicationRepository", () => {
 
     const args = prismaMock.eLibrary.findMany.mock.calls[0][0];
     expect(args.where.isPublic).toBe(true);
-    expect(args.select).not.toHaveProperty("fullPaperPath");
-    expect(args.select).not.toHaveProperty("respondentDataPath");
+    expect(args.select).toMatchObject({
+      fullPaperPath: true,
+      respondentDataPath: true,
+    });
     expect(args.select).not.toHaveProperty("approvedById");
-    // Student number is internal and must not be part of the public projection.
+    // Student number is internal and must not be selected for the public projection.
     expect(args.select.thesis.select.student.select).not.toHaveProperty(
       "studentNumber",
     );
@@ -45,11 +47,13 @@ describe("DL-10 RepositoryPublicationRepository", () => {
 
     const args = prismaMock.eLibrary.findFirst.mock.calls[0][0];
     expect(args.where).toEqual({ id: "elib-1", isPublic: true });
-    expect(args.select).not.toHaveProperty("fullPaperPath");
-    expect(args.select).not.toHaveProperty("respondentDataPath");
+    expect(args.select).toMatchObject({
+      fullPaperPath: true,
+      respondentDataPath: true,
+    });
   });
 
-  it("admin list selects publication state + student number but never raw paths", async () => {
+  it("admin list selects the service projection inputs including internal file metadata", async () => {
     prismaMock.eLibrary.findMany.mockResolvedValue([]);
     const repo = new RepositoryPublicationRepository();
 
@@ -64,11 +68,20 @@ describe("DL-10 RepositoryPublicationRepository", () => {
       isPublic: true,
       publishedAt: true,
       createdAt: true,
+      fullPaperPath: true,
+      respondentDataPath: true,
     });
-    expect(select).not.toHaveProperty("fullPaperPath");
-    expect(select).not.toHaveProperty("respondentDataPath");
     expect(select).not.toHaveProperty("approvedById");
     expect(select.thesis.select.student.select.studentNumber).toBe(true);
+    expect(select.thesis.select.thesisDocuments.select).toMatchObject({
+      id: true,
+      docType: true,
+      defenseStage: true,
+      filePath: true,
+      originalFilename: true,
+      verifiedMimeType: true,
+      sizeBytes: true,
+    });
   });
 
   it("publish is a conditional update from private to public with server timestamp + admin actor", async () => {
@@ -112,15 +125,17 @@ describe("DL-10 RepositoryPublicationRepository", () => {
     });
   });
 
-  it("findAdminById uses a safe admin select", async () => {
+  it("findAdminById selects the admin projection inputs without the approval actor", async () => {
     prismaMock.eLibrary.findUnique.mockResolvedValue(null);
     const repo = new RepositoryPublicationRepository();
 
     await repo.findAdminById("elib-1");
 
     const select = prismaMock.eLibrary.findUnique.mock.calls[0][0].select;
-    expect(select).not.toHaveProperty("fullPaperPath");
-    expect(select).not.toHaveProperty("respondentDataPath");
+    expect(select).toMatchObject({
+      fullPaperPath: true,
+      respondentDataPath: true,
+    });
     expect(select).not.toHaveProperty("approvedById");
   });
 });

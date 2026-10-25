@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { RepositoryController } from "../controllers/repository.controller";
-import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
+import { authenticateJWT, optionalAuthenticateJWT, requireRole } from "../middlewares/auth.middleware";
 
 /**
  * DL-10: canonical Research Repository API.
@@ -40,9 +40,15 @@ router.put(
   requireRole(["ADMIN"]),
   controller.unpublish,
 );
+router.put(
+  "/admin/entries/:id/metadata",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  controller.updateMetadata,
+);
 
-// Public publication routes (auth is deliberately not applied).
-router.get("/", controller.listPublic);
-router.get("/:id", controller.getPublic);
+// Public publication routes with optional JWT authentication.
+router.get("/", optionalAuthenticateJWT, controller.listPublic);
+router.get("/:id", optionalAuthenticateJWT, controller.getPublic);
 
 export default router;

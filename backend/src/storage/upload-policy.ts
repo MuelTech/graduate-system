@@ -78,6 +78,14 @@ export const UPLOAD_POLICIES = {
     allowedMimeTypes: null,
     fallbackExtensionsWhenUndetected: [],
   }),
+    "databank-archive": policy({
+    name: "databank-archive",
+    storagePrefix: "databank",
+    maxFiles: 4,
+    maxBytes: 52428800, // 50MB
+    allowedMimeTypes: null, // PDF, Word, ZIP, Excel, CSV
+    fallbackExtensionsWhenUndetected: ["pdf", "doc", "docx", "zip", "xlsx", "csv"],
+  }),
 } as const;
 
 export type UploadPolicyName = keyof typeof UPLOAD_POLICIES;

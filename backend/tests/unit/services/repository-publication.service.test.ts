@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => ({
+  auditLog: { create: vi.fn() },
+}));
+
+vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+
 import { RepositoryPublicationService } from "../../../src/services/repository-publication.service";
 
 /**
@@ -58,7 +65,10 @@ function adminRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  prismaMock.auditLog.create.mockResolvedValue({ id: "audit-1" });
+});
 
 describe("DL-10 public projection", () => {
   it("projects only safe public fields and normalizes keywords to an array", async () => {
@@ -76,20 +86,30 @@ describe("DL-10 public projection", () => {
       abstract: "An abstract",
       keywords: ["ai", "education", "machine learning"],
       publishedAt: "2026-05-01T00:00:00.000Z",
+      hasManuscript: false,
+      hasRespondentData: false,
+      downloadUrl: null,
+      respondentDataUrl: null,
+      canDownloadManuscript: false,
+      canDownloadRespondentData: false,
       artifact: { available: false, policyResolved: false },
     });
   });
 
-  it("passes the search query through and never inspects a caller role", async () => {
+  it("passes only the search query to the repository and keeps caller context out of the query", async () => {
     const repo = makeRepo();
     repo.searchPublished.mockResolvedValue([]);
     const svc = new RepositoryPublicationService(repo as never);
 
-    await svc.listPublished("machine");
+    await svc.listPublished("machine", {
+      userId: "student-1",
+      role: "STUDENT",
+    });
 
     expect(repo.searchPublished).toHaveBeenCalledWith("machine");
-    // No role parameter exists on the public surface at all.
-    expect(svc.listPublished.length).toBeLessThanOrEqual(1);
+    expect(repo.searchPublished.mock.calls[0]).toHaveLength(1);
+    // The caller context is a separate projection input used for download gating.
+    expect(svc.listPublished.length).toBe(2);
   });
 
   it("returns null publication date and empty keywords safely", async () => {
@@ -189,6 +209,8 @@ describe("DL-10 admin publication list", () => {
       abstract: "An abstract",
       keywords: ["ai", "education"],
       archiveRegisteredAt: "2026-04-01T00:00:00.000Z",
+      hasManuscript: false,
+      hasRespondentData: false,
       publication: { isPublished: false, publishedAt: null },
       artifact: { available: false, policyResolved: false },
     });
