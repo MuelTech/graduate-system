@@ -21,10 +21,10 @@
 
 ---
 
-## Current implementation focus — Defense Schedule & Committee Correction
+## Recently completed implementation — Defense Schedule & Committee Correction
 
-**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is fully accepted on `feat/defense-schedule-committee-correction` after Checkpoints A/B/C, independent remote review, and project-owner manual UI acceptance on 2026-10-25. It remains unmerged until the project owner explicitly merges it to `main`. PREDEF-3 remains deferred.
-**Target implementation branch:** `feat/defense-schedule-committee-correction`.
+**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is accepted and merged to `main` through PR #42 at merge commit `5a6131a7da997019b1d31e1387789bd75ec9f26e` after Checkpoints A/B/C, independent remote review, and project-owner manual UI acceptance on 2026-10-25. PREDEF-3 remains deferred.
+**Accepted implementation branch:** `feat/defense-schedule-committee-correction` (merged through PR #42).
 **Starting HEAD:** `3aa00efb6264a5f92dd09d4f9feade143682a68f`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-24-defense-schedule-committee-correction.md`  
 **Goal:** allow authorized Admins to correct an already-scheduled defense's date/time/venue and manually assigned committee before the defense starts, while preserving committee policy, historical attribution, and an automatic immutable audit trail.
@@ -32,7 +32,7 @@
 | Status | Package | Scope |
 | --- | --- | --- |
 | ✅ | PREDEF — Pre-Defense Document Integrity & Visibility | PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY are accepted and merged through PR #41. Exact manuscript authority, GS-017 integration, scheduled submission context, Student Defense Application visibility, and the accepted PREDEF wording/flow are now part of `main`. |
-| ✅ | DEF-CORR-1 — Manage Schedule & Committee | Accepted on the feature branch after backend authority/lifecycle work, the in-place Admin correction UI, bounded notification reuse, consolidated regressions, independent remote review, and project-owner manual UI acceptance. Admin correction remains limited to exact `SCHEDULED` sessions; Proposal/Final Adviser stays automatic; exact attempt/manuscript identity and historical assignment attribution are preserved; AuditLog records immutable before/after state. Not yet merged to `main`. |
+| ✅ | DEF-CORR-1 — Manage Schedule & Committee | Accepted and merged through PR #42 at `5a6131a7da997019b1d31e1387789bd75ec9f26e`. Admin correction remains limited to exact `SCHEDULED` sessions; Proposal/Final Adviser stays automatic; exact attempt/manuscript identity and historical assignment attribution are preserved; AuditLog records immutable before/after state. |
 | 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred rare recovery case. Do not mix it into DEF-CORR-1. |
 | ⏳ | Post-start committee amendment | Separate future recovery package for exceptional substitution after the session has left `SCHEDULED`; normal DEF-CORR-1 editing must lock from `IN_PROGRESS` onward. |
 
@@ -56,7 +56,7 @@ DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The f
 | ✅ | B — Manage Schedule & Committee UI | Implemented and accepted for continuation at `c408488ddbac186b167961086512d8d143d4d01f`. Scheduled detail remains read-only by default; `Manage Schedule & Committee` is available only while the exact session is `SCHEDULED`; correction preloads the exact schedule/current active roster, reuses the accepted schedule/committee/review components, keeps Proposal/Final Adviser Automatic and out of the PATCH payload, confirms changes, refreshes the exact schedule after save, and preserves Cancel/no-op behavior. Verification: frontend typecheck passed, scoped ESLint passed, Checkpoint B verifier 11/11 passed, combined scheduling/adviser verification 18/18 passed, production build passed, and local browser/manual QA passed with the QA record restored afterward. No backend contract change or new migration was introduced. |
 | ✅ | C — Notifications + consolidated integrity verification | Implemented at `0403144` and accepted after independent remote review + project-owner manual UI acceptance. Reused existing `NotificationType.DEFENSE_SCHEDULE` / `DEFENSE_ASSIGNMENT` for best-effort correction notices; fixed initial scheduling to use the actual `defense_schedule` template; verified removed-member denial and added-member authority; ran full backend/frontend verification and final browser QA. No notification-system redesign or schema change. |
 
-DEF-CORR-1 is now ✅ **ACCEPTED on the feature branch**. Final independent remote review passed, and the project owner manually verified/accepted the UI result on 2026-10-25. The accepted pre-documentation implementation HEAD is `9615af591d47e4d004fb74926031a9192770886d`. The feature remains unmerged until the project owner explicitly merges it to `main`.
+DEF-CORR-1 is now ✅ **ACCEPTED on the feature branch**. Final independent remote review passed, and the project owner manually verified/accepted the UI result on 2026-10-25. The accepted pre-documentation implementation HEAD is `9615af591d47e4d004fb74926031a9192770886d`. The feature is merged to `main` through PR #42.
 
 ### Checkpoint A implementation evidence
 
@@ -105,11 +105,11 @@ DEF-CORR-1 is now ✅ **ACCEPTED on the feature branch**. Final independent remo
 - **Remaining risk:** simultaneous Admin edits remain last-write-wins; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
 - **Final review:** independent remote review passed. Follow-up copy corrections removed inaccurate/redundant scheduling-success wording; final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`.
 - **Project-owner acceptance:** manual UI result reviewed and accepted on 2026-10-25.
-- **Status:** DEF-CORR-1 is fully accepted on the feature branch and ready for PR/merge preparation. It is not yet merged to `main`.
+- **Status:** DEF-CORR-1 is fully accepted and merged to `main` through PR #42 at `5a6131a7da997019b1d31e1387789bd75ec9f26e`.
 
 ### Accepted-package guardrail
 
-DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptance does **not** broaden the feature: post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, notification-system redesign, and optimistic-concurrency/version-token hardening remain separate future work. Do not treat the feature as part of `main` until the merge is completed.
+DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptance does **not** broaden the feature: post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, notification-system redesign, and optimistic-concurrency/version-token hardening remain separate future work. The accepted feature is now part of `main`; future changes must preserve the documented scope boundaries.
 
 ---
 
@@ -135,7 +135,7 @@ DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptanc
 | ⏳ | Defense Application President name | Same institutional office-holder configuration requirement. |
 | ⏳ | GS-011 Dean name | Must use authoritative institutional configuration. |
 | ✅ | GS-011 stage-aware Adviser layout | Accepted after implementation, independent remote source review, and project-owner visual QA: explicit `stage` contract; Title omits the entire `Concurred In` / Adviser signature rule / `Thesis/Dissertation Adviser` block and moves Dean `Attested` into the freed lower-page region; Proposal/Final keep the block and require exactly one ADVISER `PanelAssignment` on the exact defense schedule. Missing/ambiguous Adviser seats fail closed; no current/live Adviser fallback. |
-| 🟡 | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer is accepted, but live integration remains incomplete. PREDEF-1B0 first establishes exact version-bound manuscript-title authority; PREDEF-1B/1C then maps the issued `reviewedDocumentId` document into the accepted renderer, shows exact title + file before Certify & Sign, and provides bounded Adviser/Student/Admin record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
+| ✅ | Adviser Certification PDF (GS-017) + Adviser certification guardrail | PREDEF-1A renderer, PREDEF-1B0 exact manuscript-title authority, and PREDEF-1B/1C live certification/visibility integration are accepted and merged through PR #41. GS-017 is generated from the exact issued `reviewedDocumentId`, the Adviser sees the exact title/file before Certify & Sign, and Adviser/Student/Admin receive the accepted bounded read-only record visibility. GS-017 remains system-owned and is never a Student upload requirement. |
 | ⏳ | Course & Major authoritative formatting | Replace dependence on one static/freeform program string with future academic master-data authority where applicable. |
 | 🚫 | GS Form No. 22 / Committee Report official PDF | Deferred document renderer/integration package. |
 | 🚫 | Generated official-document persistence/versioning | Current accepted forms are primarily on-demand; immutable generated-copy/version lifecycle remains separate work. |
@@ -333,7 +333,7 @@ Track at least:
 | Status | Scenario to analyze |
 | --- | --- |
 | ✅ / 🟡 | Re-defense / prior-attempt preservation already has substantial workflow support; continue history/comparison improvements separately. |
-| 🚧 | Post-scheduling, pre-defense committee correction / member replacement (DEF-CORR-1; active on `feat/defense-schedule-committee-correction`). |
+| ✅ | Post-scheduling, pre-defense committee correction / member replacement (DEF-CORR-1) — accepted and merged through PR #42; correction is allowed only while the exact session remains `SCHEDULED`. |
 | ⏳ | Faculty becomes unavailable after scheduling. |
 | ⏳ | Schedule cancellation / reschedule recovery. |
 | 🚫 | Certified-manuscript correction / post-scheduling exact-document rebinding (PREDEF-3) — deferred rare fallback; prefer prevention through Adviser exact-document confirmation and Admin review. |
@@ -364,7 +364,7 @@ The master checklist should retain visibility of major completed foundations so 
 | ✅ | Adviser Certification exact-document binding for Proposal/Final. |
 | ✅ | Admin Defense Record detail and document-section ownership pattern. |
 | ✅ | Historical manuscript comparison for prior vs current defense attempt — manual side-by-side `Compare with Current` is implemented using exact attempt-bound historical manuscripts; automatic text/visual/semantic diff and recommendation-compliance judgment remain deferred. |
-| 🚧 | Post-scheduling, pre-defense committee correction / member replacement workflow (DEF-CORR-1 active). |
+| ✅ | Post-scheduling, pre-defense committee correction / member replacement workflow (DEF-CORR-1) — accepted and merged through PR #42. |
 | 🚫 | CRDT/Yjs multi-author report editing remains deferred unless reprioritized. |
 
 ---
