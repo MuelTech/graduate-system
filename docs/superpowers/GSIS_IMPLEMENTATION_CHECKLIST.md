@@ -335,6 +335,7 @@ Track at least:
 | ✅ / 🟡 | Re-defense / prior-attempt preservation already has substantial workflow support; continue history/comparison improvements separately. |
 | ✅ | Post-scheduling, pre-defense committee correction / member replacement (DEF-CORR-1) — accepted and merged through PR #42; correction is allowed only while the exact session remains `SCHEDULED`. |
 | ⏳ | Faculty becomes unavailable after scheduling. |
+| ❓ | Evaluator non-participation / excusal and quorum handling | Future policy package distinct from member replacement: define who may formally excuse an assigned Chairman/Panelist who did not evaluate, the minimum evaluator quorum, how the completion denominator/average changes, and how official records show the missing score/signature without fabricating evidence. Not part of DEF-CORR-1. |
 | ⏳ | Schedule cancellation / reschedule recovery. |
 | 🚫 | Certified-manuscript correction / post-scheduling exact-document rebinding (PREDEF-3) — deferred rare fallback; prefer prevention through Adviser exact-document confirmation and Admin review. |
 | ⏳ | Missing/corrupted/unreadable uploaded document recovery; treat this separately from the deferred certified-manuscript correction/rebinding fallback. |
