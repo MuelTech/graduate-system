@@ -7,7 +7,7 @@
 **Parent authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **UI authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
-**Status:** ACTIVE — Checkpoints A and B accepted for continuation; Checkpoint C is the current implementation checkpoint. Overall DEF-CORR-1 is not yet accepted.
+**Status:** ACTIVE — Checkpoints A and B accepted for continuation; Checkpoint C implemented. Awaiting independent remote review and project-owner acceptance. Overall DEF-CORR-1 is not yet accepted.
 
 ## 1. Goal
 
@@ -76,18 +76,24 @@ Implemented UI integration:
 
 Checkpoint B is accepted **for continuation to Checkpoint C only**. Overall DEF-CORR-1 remains active/not accepted.
 
-### Checkpoint C — Bounded notifications + consolidated integrity verification — CURRENT
+### Checkpoint C — Bounded notifications + consolidated integrity verification — IMPLEMENTED, AWAITING REVIEW
 
-Checkpoint C is now the active implementation checkpoint:
+Checkpoint C implementation commit:
 
-- reuse existing schedule/assignment notification/email behavior only where practical;
-- ensure newly assigned members receive appropriate bounded notice;
-- ensure removed members immediately lose active-session authority regardless of notification delivery;
-- avoid duplicate notices for unchanged members;
-- run the consolidated cross-cutting backend regressions required by the assignment lifecycle change;
-- run proportional frontend verification;
-- execute final manual/browser QA for the complete DEF-CORR-1 flow;
-- update documentation with final implementation evidence.
+`0403144`
+
+Implemented behavior:
+
+- reused the existing `Notification` model with `DEFENSE_SCHEDULE` and `DEFENSE_ASSIGNMENT`; no new notification type or schema change;
+- schedule changes notify the Student and current active committee;
+- added/re-added members receive one assignment notice;
+- removed members receive one removal notice;
+- unchanged members receive no assignment notice;
+- schedule+roster corrections deduplicate notices by recipient and event purpose;
+- notification creation is best-effort after the authoritative correction transaction;
+- initial scheduling now uses the actual seeded `defense_schedule` template and supported student variables;
+- correction email templates were intentionally not expanded because no compatible assignment/removal template exists;
+- consolidated backend/frontend verification and final browser QA were completed.
 
 Checkpoint C must **not** redesign notifications/email or introduce a second audit/history UI.
 
@@ -132,6 +138,29 @@ The known complete-state PATCH / simultaneous-Admin last-write-wins risk is a **
 - Hosted CI / production-runtime validation: **NOT EXECUTED**.
 - Concurrency hardening: simultaneous Admin edits remain last-write-wins because the complete-state PATCH has no version token; explicitly deferred unless separately approved.
 - Notification/email refinement: not started in Checkpoint B and remains for Checkpoint C.
+
+### Checkpoint C evidence
+
+- Starting HEAD: `28881d53ec85e248ebd7e0bf28b6084b37dcfc27`.
+- Checkpoint C implementation commit: `0403144`.
+- Notification audit confirmed the initial controller called nonexistent `defense_scheduled` with panelist-oriented tags while the seeded template is `defense_schedule` with `student_name`, `defense_date`, `defense_time`, and `venue`. The initial email path now uses that seeded template and sends to the Student; email remains best-effort after scheduling.
+- In-app notifications reuse existing `NotificationType.DEFENSE_SCHEDULE` and `DEFENSE_ASSIGNMENT`; no enum, template family, preference UI, or notification architecture redesign was introduced.
+- Correction notices are derived only from authoritative before/after snapshots: schedule changes notify the Student and current active committee; added/re-added members receive one assignment notice; removed members receive one removal notice; role changes use one assignment notice; unchanged members do not receive assignment notices.
+- Notices deduplicate by recipient. A schedule+roster correction produces one intentional notice per affected user, with `relatedRecordType = DEFENSE_SCHEDULE` and `relatedRecordId = scheduleId`.
+- Notification creation is outside the correction transaction and failures are caught/logged. Correction, AuditLog, active roster, and authority changes remain committed if notification creation fails.
+- Removed-member authority: browser/runtime verification returned `403 You are not assigned to this defense session` for the exact Defense Workspace.
+- Added-member authority: browser/runtime verification returned `200` with the new `PANELIST` role for the exact Defense Workspace.
+- Historical attribution and unchanged-member dedup remain covered by the automated rules/authority tests.
+- Adviser invariant: Proposal/Final Adviser remains the server-derived active Adviser and automatic seat; Title remains Adviser-free.
+- Full backend suite: **194 test files / 2,483 passed / 5 environment-conditional skips / 0 failures**.
+- Checkpoint C focused notification/email/correction tests: **31 passed / 0 failed**.
+- Prisma generate/validate: passed. Migration status: database schema up to date at 40 migrations.
+- Backend TypeScript/build and frontend TypeScript/scoped ESLint/build: passed.
+- Frontend Checkpoint B + Adviser/scheduling verifiers: **18/18 passed**.
+- Browser/manual QA: **EXECUTED — PASS**. Verified Admin correction, in-app notification effects, removed-member `403`, added-member `200` as `PANELIST`, unchanged-member single schedule notice, and non-`SCHEDULED` Manage lock. The test fixture was restored afterward.
+- Hosted CI: **NOT EXECUTED**.
+- Remaining risks: simultaneous Admin last-write-wins remains a future hardening item; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
+- **Checkpoint C implemented — awaiting independent remote review and project-owner acceptance.** Overall DEF-CORR-1 is not yet accepted or merged.
 
 ### Sequencing rule
 

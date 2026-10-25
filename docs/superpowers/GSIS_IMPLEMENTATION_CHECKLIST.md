@@ -23,7 +23,7 @@
 
 ## Current implementation focus — Defense Schedule & Committee Correction
 
-**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is now the active bounded package. PREDEF-3 remains deferred.
+**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 Checkpoint C is implemented but remains an active package awaiting independent remote review and project-owner acceptance. PREDEF-3 remains deferred.
 **Target implementation branch:** `feat/defense-schedule-committee-correction`.
 **Starting HEAD:** `3aa00efb6264a5f92dd09d4f9feade143682a68f`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-24-defense-schedule-committee-correction.md`  
@@ -54,9 +54,9 @@ DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The f
 | --- | --- | --- |
 | ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. |
 | ✅ | B — Manage Schedule & Committee UI | Implemented and accepted for continuation at `c408488ddbac186b167961086512d8d143d4d01f`. Scheduled detail remains read-only by default; `Manage Schedule & Committee` is available only while the exact session is `SCHEDULED`; correction preloads the exact schedule/current active roster, reuses the accepted schedule/committee/review components, keeps Proposal/Final Adviser Automatic and out of the PATCH payload, confirms changes, refreshes the exact schedule after save, and preserves Cancel/no-op behavior. Verification: frontend typecheck passed, scoped ESLint passed, Checkpoint B verifier 11/11 passed, combined scheduling/adviser verification 18/18 passed, production build passed, and local browser/manual QA passed with the QA record restored afterward. No backend contract change or new migration was introduced. |
-| 🚧 | C — Notifications + consolidated integrity verification | **Current checkpoint.** Reuse existing notification/email behavior where practical, verify removed/new member authority, run consolidated cross-cutting regressions, execute final manual/browser QA, and update final evidence/docs. No notification-system redesign. |
+| 🔍 | C — Notifications + consolidated integrity verification | Implemented at `0403144`; awaiting independent remote review and project-owner acceptance. Reused existing `NotificationType.DEFENSE_SCHEDULE` / `DEFENSE_ASSIGNMENT` for best-effort correction notices; fixed initial scheduling to use the actual `defense_schedule` template; verified removed-member denial and added-member authority; ran full backend/frontend verification and final browser QA. No notification-system redesign or schema change. |
 
-Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. DEF-CORR-1 becomes ✅ only after Checkpoint C, final independent remote review, required final manual/browser QA, and project-owner acceptance.
+Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-CORR-1 acceptance. Checkpoint C is implemented, but DEF-CORR-1 becomes ✅ only after final independent remote review and project-owner acceptance.
 
 ### Checkpoint A implementation evidence
 
@@ -86,6 +86,24 @@ Checkpoint A/B acceptance is for continuation only; it does not equal full DEF-C
 - **Not executed:** hosted CI / production-runtime validation.
 - **Future hardening note:** the complete-state PATCH has no optimistic concurrency/version token, so simultaneous Admin edits can still produce last-write-wins behavior. This is not part of DEF-CORR-1 Checkpoint C unless separately approved.
 - **Scope confirmed:** no notification/email refinement, Audit Log UI, post-start substitution, Adviser correction, scoring/RAP/conclusion/PDF change, schema change, or migration was introduced in Checkpoint B.
+
+### Checkpoint C implementation evidence
+
+- **Implementation commit:** `0403144`.
+- **Notification audit:** the initial scheduling path called nonexistent `defense_scheduled` with panelist-oriented tags; the seeded template is `defense_schedule` with `student_name`, `defense_date`, `defense_time`, and `venue`. The initial path now uses that template and sends to the Student.
+- **In-app behavior:** correction notifications reuse existing `NotificationType.DEFENSE_SCHEDULE` and `DEFENSE_ASSIGNMENT`.
+- **Effects:** schedule changes notify the Student/current active committee; added members receive one assignment notice; removed members receive one removal notice; role changes use one assignment notice; unchanged members receive no assignment notice.
+- **Deduplication:** one intentional notice per affected user; schedule+roster corrections do not duplicate assignment and schedule messages.
+- **Failure boundary:** notifications are best-effort after the committed transaction. Notification failure cannot roll back correction, AuditLog, or roster authority.
+- **Email decision:** correction email was intentionally not expanded because no compatible assignment/removal template exists. Initial scheduling email was corrected to the real seeded student template.
+- **Authority verification:** removed member returned `403` from the exact Defense Workspace; added member returned `200` with the new `PANELIST` role; historical attribution and unchanged-member dedup remain test-covered.
+- **Adviser invariant:** Proposal/Final Adviser remains automatic/server-derived and excluded from client correction; Title remains Adviser-free.
+- **Backend verification:** full suite 194 files / 2,483 tests passed / 5 environment-conditional skips / 0 failures; Checkpoint C focused tests 31/31 passed; Prisma generate/validate passed; migration status up to date; TypeScript/build passed.
+- **Frontend verification:** TypeScript, scoped ESLint, Checkpoint B + Adviser/scheduling verifiers 18/18, and production build passed.
+- **Browser/manual QA:** executed locally and passed for correction, notifications, removed-member `403`, added-member `200` as `PANELIST`, unchanged-member single notice, and non-`SCHEDULED` lock. Test fixture restored afterward.
+- **Not executed:** hosted CI.
+- **Remaining risk:** simultaneous Admin edits remain last-write-wins; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
+- **Status:** Checkpoint C implemented — awaiting independent remote review and project-owner acceptance. Overall DEF-CORR-1 is not yet accepted or merged.
 
 ### Active-package guardrail
 
