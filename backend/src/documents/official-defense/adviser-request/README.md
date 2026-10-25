@@ -67,6 +67,7 @@ Fidelity limits: photograph perspective and the original condensed print font
 cannot be reproduced exactly with standard PDF fonts. The clean logo assets have
 the same resolution limits documented in `backend/assets/official-forms/README.md`.
 Bounded wrapping reserves extra space for long identities while retaining the
-form's intentional whitespace and lower signature regions. Project-owner manual
-visual QA/acceptance is pending; automated geometry checks do not establish visual
-acceptance. Canonical status remains unchanged. GS020-1B is not implemented here.
+form's intentional whitespace and lower signature regions. Project-owner visual
+QA was completed and accepted on 2026-10-25 after comparison with the supplied
+official reference photograph. The accepted implementation baseline is
+`76bdd3c4f3c4525e528679009a1a93e123b81d26`. GS020-1B is not implemented here.

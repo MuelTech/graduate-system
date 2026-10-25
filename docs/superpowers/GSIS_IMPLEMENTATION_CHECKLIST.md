@@ -23,7 +23,7 @@
 
 ## Current implementation focus — Official Adviser Request Form (GS-020)
 
-**Current phase:** Documentation/design package is active for the official **EARIST-QSF-GS-020 Rev. 00 (06.20.25) — Adviser Request** output. The underlying Student request → Adviser CONFORME/DECLINE → Dean APPROVE/REJECT → active AdviserAssignment workflow already exists; this package must not recreate or bypass that authority.
+**Current phase:** GS020-1A official renderer is implemented and accepted on `feat/official-adviser-request-form` at `76bdd3c4f3c4525e528679009a1a93e123b81d26` after focused automated verification, independent remote source review, and project-owner visual acceptance on 2026-10-25. GS020-1B live Student signing/snapshot/View-Download integration remains planned and has not started. The underlying Student request → Adviser CONFORME/DECLINE → Dean APPROVE/REJECT → active AdviserAssignment workflow remains authoritative and must not be recreated or bypassed.
 **Target implementation branch:** `feat/official-adviser-request-form`.
 **Starting `main` / branch HEAD:** `17d7953f40c6c26833f451cea395f3333a220be2`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-25-gs020-adviser-request-official-form.md`
@@ -31,9 +31,17 @@
 
 | Status | Package | Scope |
 | --- | --- | --- |
-| 🚧 | GS020-1A — Official GS-020 renderer | Reconstruct the supplied EARIST-QSF-GS-020 Rev. 00 form as a pure typed-input → PDF-bytes renderer; add focused renderer tests and representative sample generation; stop for project-owner visual QA before live integration. |
+| ✅ | GS020-1A — Official GS-020 renderer | Accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`. Pure typed-input → PDF-bytes renderer, representative normal/long/signature/blank samples, focused renderer verification, independent remote source review, and project-owner visual acceptance completed. No live workflow/API/frontend/schema integration was included. |
 | ⏳ | GS020-1B — Finalized record integration | Add exact-request Student e-signature before submission, immutable finalized snapshot after Adviser CONFORME + Dean approval, on-demand PDF generation from that snapshot, and ownership/role-scoped View/Download for Student, requested Adviser, and Admin. |
 | ⏳ | Institutional Dean display integration | For this package, keep the printed Dean identity/signature area blank because no authoritative institutional office-holder source is configured yet. A future System Settings / Institutional Officials package may populate new snapshots only; it must not rewrite older finalized GS-020 snapshots. |
+
+### GS020-1A acceptance evidence
+
+- Implementation commit: `76bdd3c4f3c4525e528679009a1a93e123b81d26`.
+- Focused renderer verification reported: **22 passed / 0 failed**; forms script typecheck, backend build, and rasterized sample generation passed.
+- Independent remote source review found the implementation bounded to renderer/types/tests/sample tooling/package-local documentation only, with no Prisma/API/workflow/frontend/schema/snapshot integration.
+- Project owner reviewed the generated form and accepted the visual result on 2026-10-25.
+- GS020-1B is **not started** and remains a separately authorized integration checkpoint.
 
 ### GS-020 accepted design boundaries
 

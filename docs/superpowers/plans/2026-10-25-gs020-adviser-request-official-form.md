@@ -8,7 +8,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Official form:** **EARIST-QSF-GS-020 Rev. 00 (06.20.25) — Adviser Request**  
-**Status:** DESIGN / DOCUMENTATION ACCEPTED FOR IMPLEMENTATION PREPARATION; NO GS-020 RENDERER OR LIVE FORM INTEGRATION IMPLEMENTED YET
+**Status:** GS020-1A OFFICIAL RENDERER ACCEPTED ON `feat/official-adviser-request-form` AT `76bdd3c4f3c4525e528679009a1a93e123b81d26`; GS020-1B LIVE SIGNING/SNAPSHOT/ACCESS INTEGRATION NOT STARTED
 
 ## 1. Goal
 
@@ -279,6 +279,17 @@ After fresh sample PDFs are generated:
 4. **STOP**.
 
 Do not continue automatically to GS020-1B.
+
+### GS020-1A acceptance evidence — 2026-10-25
+
+- **Implementation commit:** `76bdd3c4f3c4525e528679009a1a93e123b81d26` — `feat(documents): add adviser request renderer`.
+- **Renderer contract:** explicit display-only input → deterministic one-page A4 PDF bytes; accepted clean institutional logos/shared presentation helpers reused; no photograph background.
+- **Authority boundaries:** requested Adviser is supplied explicitly and reused in the request/CONFORME areas; Student signature is optional explicit PNG/JPEG presentation input; Dean identity/signature remain deliberately blank; no title/stage/verdict/score/workflow inference exists in the renderer.
+- **Focused automated evidence reported by the implementation agent:** 22 renderer tests passed / 0 failed; `npm run forms:check` passed; backend build passed; sample generation with rasterization passed for normal, long-value, synthetic Student-signature, and blank samples. Poppler emitted font-configuration warnings but completed successfully.
+- **Independent remote source review:** passed against the pushed `73c09a1...76bdd3c` diff. No API, workflow, frontend, schema, Prisma, authorization, snapshot, or permanent-PDF-storage integration was introduced.
+- **Project-owner visual QA:** accepted on 2026-10-25 after reviewing the generated GS-020 sample against the supplied official reference photograph.
+- **Accepted baseline:** the GS020-1A renderer/layout is now the presentation baseline. Later work must supply authoritative finalized data into this contract rather than casually redesigning the PDF.
+- **Next checkpoint:** GS020-1B remains not started and requires explicit authorization before implementation.
 
 ## GS020-1B — Student e-signature + finalized record integration
 
