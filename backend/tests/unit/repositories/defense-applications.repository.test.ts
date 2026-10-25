@@ -48,6 +48,9 @@ describe("DefenseApplicationsRepository.getDefenseApplicationById", () => {
     });
     // Certifications remain stage-scoped + ISSUED-only: no policy duplication.
     expect(arg.include.adviserCertifications.where.status).toBe("ISSUED");
+    expect(arg.include.defenseSchedules.select.panelAssignments.where).toEqual({
+      isActive: true,
+    });
     // ADV-1: current Adviser comes from the Student's active AdviserAssignment,
     // not from the legacy ThesisRecord.assignment relation.
     expect(arg.include.student.include.adviserAssignments).toEqual({

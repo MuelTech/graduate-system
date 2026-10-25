@@ -569,7 +569,7 @@ describe("OfficialDefenseRecordService.getOfficialSummaryDocumentSource", () => 
       expect(result.adviserName).toBe("Exact Adviser");
       expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { scheduleId: "sched-1", role: "ADVISER" },
+          where: { scheduleId: "sched-1", role: "ADVISER", isActive: true },
         }),
       );
     }
@@ -608,7 +608,9 @@ describe("OfficialDefenseRecordService.getOfficialSummaryDocumentSource", () => 
 
     expect(result.adviserName).toBe("Historical Adviser");
     expect(prismaMock.panelAssignment.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { scheduleId: "sched-1", role: "ADVISER" } }),
+      expect.objectContaining({
+        where: { scheduleId: "sched-1", role: "ADVISER", isActive: true },
+      }),
     );
   });
 

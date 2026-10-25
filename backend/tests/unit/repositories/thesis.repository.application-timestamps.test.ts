@@ -25,7 +25,7 @@ const prismaMock = vi.hoisted(() => {
       update: vi.fn(),
       findUnique: vi.fn(),
     },
-    panelAssignment: { createMany: vi.fn() },
+    panelAssignment: { createMany: vi.fn(), findMany: vi.fn() },
     auditLog: { create: vi.fn() },
   };
   return {
@@ -108,6 +108,7 @@ beforeEach(() => {
   tx().defenseSchedule.findMany.mockResolvedValue([]);
   tx().defenseSchedule.create.mockResolvedValue({ id: "sched-1" });
   tx().defenseSchedule.findUnique.mockResolvedValue({ id: "sched-1" });
+  tx().panelAssignment.findMany.mockResolvedValue([]);
   tx().auditLog.create.mockResolvedValue({ id: "log-1" });
 });
 

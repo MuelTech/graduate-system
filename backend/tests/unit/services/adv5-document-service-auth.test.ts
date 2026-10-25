@@ -61,6 +61,24 @@ describe("ADV-5 DocumentService authority regression", () => {
     );
   });
 
+  it("loads only active panel assignments for document authorization", async () => {
+    prismaMock.thesisDocument.findUnique.mockResolvedValue(thesisDocument());
+    await expect(
+      service.resolveDocument(
+        "thesis-document",
+        "doc-1",
+        "panelist-1",
+        "PANELIST",
+      ),
+    ).rejects.toBeDefined();
+
+    const arg = prismaMock.thesisDocument.findUnique.mock.calls[0][0];
+    expect(
+      arg.include.thesis.include.defenseSchedules.include.panelAssignments
+        .where,
+    ).toEqual({ isActive: true });
+  });
+
   it("keeps owner access unchanged", async () => {
     prismaMock.thesisDocument.findUnique.mockResolvedValue(
       thesisDocument({

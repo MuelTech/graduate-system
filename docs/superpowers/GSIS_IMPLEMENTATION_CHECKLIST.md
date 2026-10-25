@@ -21,26 +21,95 @@
 
 ---
 
-## Current implementation focus — Pre-Defense Document Integrity & Visibility
+## Current implementation focus — Defense Schedule & Committee Correction
 
-**Current phase:** PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY accepted for the documented scope. Project-owner manual flow review is accepted; automated verification and independent remote review cover the bounded negative/integrity paths. The branch is merge-ready. PREDEF-3 remains deferred; DEF-CORR-1 remains a separate future package.
-**Target implementation branch:** existing `feat/pre-defense-document-integrity`.
-**Implementation plan:** `docs/superpowers/plans/2026-10-24-pre-defense-document-integrity.md`  
-**Goal:** strengthen exact manuscript authority and visibility from Adviser review through Defense Application and Scheduling, with prevention-first guardrails before certification rather than implementing a rare correction path prematurely.
+**Current phase:** The Pre-Defense Document Integrity initiative is accepted and merged to `main` through PR #41 at merge commit `3aa00efb6264a5f92dd09d4f9feade143682a68f`. DEF-CORR-1 is fully accepted on `feat/defense-schedule-committee-correction` after Checkpoints A/B/C, independent remote review, and project-owner manual UI acceptance on 2026-10-25. It remains unmerged until the project owner explicitly merges it to `main`. PREDEF-3 remains deferred.
+**Target implementation branch:** `feat/defense-schedule-committee-correction`.
+**Starting HEAD:** `3aa00efb6264a5f92dd09d4f9feade143682a68f`.
+**Implementation plan:** `docs/superpowers/plans/2026-10-24-defense-schedule-committee-correction.md`  
+**Goal:** allow authorized Admins to correct an already-scheduled defense's date/time/venue and manually assigned committee before the defense starts, while preserving committee policy, historical attribution, and an automatic immutable audit trail.
 
 | Status | Package | Scope |
 | --- | --- | --- |
-| ✅ | PREDEF-1A — GS-017 renderer | Accepted pure EARIST-QSF-GS-017 Rev. 01 renderer baseline on `feat/pre-defense-document-integrity`: Proposal/Final-only typed display contract, optional explicit Adviser signature image, sample generator, focused renderer tests, and project-owner visual acceptance. No Prisma/API/auth/frontend/workflow integration. |
-| ✅ | PREDEF-1B0 — Exact manuscript-title authority | Accepted for the documented scope after implementation, automated verification, and independent remote source review. New Proposal/Final submissions require title + file; nullable `ThesisDocument.manuscriptTitle` preserves legacy compatibility and exact version title/file history. Exact title + filename appear in Student/Adviser review and My Advisees review cards. Migration `20261024120000_manuscript_version_title` must be applied before backend rollout. Browser/manual QA is intentionally deferred to the larger PREDEF flow and was not represented as passed. |
-| ✅ | PREDEF-1B/1C — GS-017 workflow + portal integration | Accepted for the documented scope after implementation, automated verification, and independent remote source review. Exact issued certification/document/title/signature/date mapping feeds the frozen renderer; document-bound acknowledgement protects Certify & Sign; issuer Adviser, owning Student, and Admin have bounded read-only View/Download access while unrelated committee membership grants none. Legacy missing-title or typed-only signature records remain readable but fail closed for official GS-017 printing. Browser/manual integrated PREDEF QA remains intentionally deferred and was not represented as passed. |
-| ✅ | PREDEF-2 — Defense Application / Scheduled Defense Submission Context | Accepted for the documented scope after implementation, automated verification, and independent remote source review. Admin Scheduled Defense shows the exact schedule-bound manuscript, matching Proposal/Final GS-017, and stage-current COR/receipt with replacement history; invalid/ambiguous bindings fail closed without latest-document fallback. The owning Student receives read-only GS-006/GS-007 View/Download access through a dedicated ownership-proving route while Admin behavior remains Admin-only. Supporting evidence is intentionally stage-current rather than frozen at scheduling. Browser/manual integrated PREDEF QA remains deferred and was not represented as passed. |
-| ✅ | PREDEF-UI-COPY — Pre-defense wording alignment | Accepted presentation-only refinement after project-owner visual approval, focused frontend verification, and independent remote source review. `SYSTEM_UI_UX_PLAYBOOK.md` remains authoritative: **Do not explain what the UI already demonstrates.** PREDEF surfaces now use concise Needs Review-aligned labels/actions (`Application Requirements`, `Manuscript`, `Adviser Certification`, `View Certification`, `Download Certification`, `Defense Application`, `View Application`, `Download Application`) and remove redundant read-only/workflow narration, raw internal IDs, technical evidence wording, and form-code-first actions. Useful unavailable/error/ambiguity messages remain. No backend, workflow, auth, schema, API, renderer, storage, committee, or scheduling behavior changed. Consolidated integrated PREDEF manual/browser QA remains pending. |
-| 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred as a rare recovery case. Current direction is prevention-first: exact Adviser review + explicit certification acknowledgement + Admin application review + exact schedule binding. Revisit only if operational experience shows a real need for controlled re-certification/rebinding. |
-| ⏳ | DEF-CORR-1 — Post-Scheduling Committee Correction / Member Replacement | Separate follow-up branch after PREDEF acceptance; correct confirmed committee/schedule details before defense start with audit evidence. |
+| ✅ | PREDEF — Pre-Defense Document Integrity & Visibility | PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY are accepted and merged through PR #41. Exact manuscript authority, GS-017 integration, scheduled submission context, Student Defense Application visibility, and the accepted PREDEF wording/flow are now part of `main`. |
+| ✅ | DEF-CORR-1 — Manage Schedule & Committee | Accepted on the feature branch after backend authority/lifecycle work, the in-place Admin correction UI, bounded notification reuse, consolidated regressions, independent remote review, and project-owner manual UI acceptance. Admin correction remains limited to exact `SCHEDULED` sessions; Proposal/Final Adviser stays automatic; exact attempt/manuscript identity and historical assignment attribution are preserved; AuditLog records immutable before/after state. Not yet merged to `main`. |
+| 🚫 | PREDEF-3 — Certified-manuscript correction / exact-document rebinding fallback | Deferred rare recovery case. Do not mix it into DEF-CORR-1. |
+| ⏳ | Post-start committee amendment | Separate future recovery package for exceptional substitution after the session has left `SCHEDULED`; normal DEF-CORR-1 editing must lock from `IN_PROGRESS` onward. |
 
-### Active-package guardrail
+### DEF-CORR-1 current audit baseline
 
-`🚧` means this is the **current work package**, not that the feature already exists in production. Each active PREDEF package moves to ✅ only after bounded implementation, independent verification, required manual QA, and project-owner acceptance. `🚫` PREDEF-3 is intentionally outside the current implementation scope.
+| Action | Current actor/history coverage | DEF-CORR-1 direction |
+| --- | --- | --- |
+| Defense Application approval/rejection | Existing `AuditLog.actorId` + canonical defense-review action | Preserve unchanged. |
+| Initial defense scheduling | `DefenseSchedule.setById` remains preserved and `DEFENSE_SCHEDULE_CREATED` now records the authenticated Admin plus exact initial schedule/active-roster snapshot | Accepted DEF-CORR-1 behavior; no legacy backfill. |
+| Initial committee assignment | Initial active roster is included in the same transactional `DEFENSE_SCHEDULE_CREATED` audit snapshot | Accepted DEF-CORR-1 behavior. |
+| Post-scheduling schedule/committee correction | Admin-only transactional correction is implemented for exact `SCHEDULED` sessions with immutable `DEFENSE_SCHEDULE_CORRECTED` before/after audit | Accepted DEF-CORR-1 behavior. |
+| Historical pre-defense annotations/comments | Assignment-bound author identity exists | Never rewrite author identity when a member is replaced; preserve referenced historical assignment rows while removing future active-session authority. |
+
+### DEF-CORR-1 implementation checkpoints
+
+DEF-CORR-1 stays on **one branch** and remains **one acceptance package**. The following are sequential review boundaries so the coding agent does not attempt the entire cross-cutting change in one pass.
+
+| Status | Checkpoint | Scope / stop condition |
+| --- | --- | --- |
+| ✅ | A — Backend authority + assignment lifecycle | Implemented and accepted for continuation at `ed3d6c3e70231a67c045eead9b6609a8baceeac5`. Added `PanelAssignment.isActive` + additive migration `20261024230000_panel_assignment_active_lifecycle`, active-authority filtering, Admin-only `PATCH /defense/schedules/:scheduleId`, canonical committee revalidation, exact schedule/manuscript preservation, initial-schedule + correction AuditLog events, and historical-assignment preservation. Verification: 27 focused tests passed; full backend 192 files / 2,473 tests passed / 5 conditional skips / 0 failures; Prisma generate/validate, TypeScript, and backend build passed. |
+| ✅ | B — Manage Schedule & Committee UI | Implemented and accepted for continuation at `c408488ddbac186b167961086512d8d143d4d01f`. Scheduled detail remains read-only by default; `Manage Schedule & Committee` is available only while the exact session is `SCHEDULED`; correction preloads the exact schedule/current active roster, reuses the accepted schedule/committee/review components, keeps Proposal/Final Adviser Automatic and out of the PATCH payload, confirms changes, refreshes the exact schedule after save, and preserves Cancel/no-op behavior. Verification: frontend typecheck passed, scoped ESLint passed, Checkpoint B verifier 11/11 passed, combined scheduling/adviser verification 18/18 passed, production build passed, and local browser/manual QA passed with the QA record restored afterward. No backend contract change or new migration was introduced. |
+| ✅ | C — Notifications + consolidated integrity verification | Implemented at `0403144` and accepted after independent remote review + project-owner manual UI acceptance. Reused existing `NotificationType.DEFENSE_SCHEDULE` / `DEFENSE_ASSIGNMENT` for best-effort correction notices; fixed initial scheduling to use the actual `defense_schedule` template; verified removed-member denial and added-member authority; ran full backend/frontend verification and final browser QA. No notification-system redesign or schema change. |
+
+DEF-CORR-1 is now ✅ **ACCEPTED on the feature branch**. Final independent remote review passed, and the project owner manually verified/accepted the UI result on 2026-10-25. The accepted pre-documentation implementation HEAD is `9615af591d47e4d004fb74926031a9192770886d`. The feature remains unmerged until the project owner explicitly merges it to `main`.
+
+### Checkpoint A implementation evidence
+
+- **Accepted-for-continuation ending HEAD:** `ed3d6c3e70231a67c045eead9b6609a8baceeac5`.
+- **Production/schema commit:** `c2cc59c54201c660a1144829d31655bd2520e236`.
+- **Follow-up test commit:** `ed3d6c3e70231a67c045eead9b6609a8baceeac5`.
+- **Migration:** `20261024230000_panel_assignment_active_lifecycle` adds `panel_assignments.is_active BOOLEAN NOT NULL DEFAULT true` without destructive rewrite/backfill.
+- **Authority behavior:** current roster/live authority filters to active assignments; replaced assignments remain preserved by exact ID for historical annotation/comment and official-record attribution; previously inactive users may be safely reactivated under the existing schedule/user uniqueness constraint.
+- **Correction API:** Admin-only `PATCH /defense/schedules/:scheduleId`, allowed only while the exact session remains `SCHEDULED`, with Proposal/Final Adviser resolved server-side and Title remaining Adviser-free.
+- **Audit:** `DEFENSE_SCHEDULE_CREATED` and `DEFENSE_SCHEDULE_CORRECTED`; correction before/after snapshots are written transactionally so audit failure rolls back the mutation.
+- **Verification evidence:** 27 focused tests passed / 0 failed; full backend suite 192 files passed / 2,473 tests passed / 5 conditional skips / 0 failures; `prisma generate`, `prisma validate`, `tsc --noEmit`, and backend build passed.
+- **Local database note:** the new `20261024230000_panel_assignment_active_lifecycle` migration was subsequently applied before Checkpoint B runtime/browser QA.
+- **Not executed:** live multi-connection contention test, browser/manual QA, hosted CI.
+- **Deferred to C:** correction notification/email refinement.
+- **Scope confirmed:** frontend/UI work was not started in Checkpoint A.
+
+### Checkpoint B implementation evidence
+
+- **Accepted-for-continuation ending HEAD:** `c408488ddbac186b167961086512d8d143d4d01f`.
+- **Files changed:** Scheduling page + shared review/types + Scheduled detail + new bounded correction editor + focused verifier; no backend source/schema/migration changes.
+- **Interaction:** Scheduled detail remains read-only until Admin deliberately chooses **Manage Schedule & Committee**; edit mode exists only for `SCHEDULED`.
+- **Payload:** exact schedule-scoped PATCH sends date/time/venue + manual Chairman/Panelist/Rapporteur/Facilitator assignments only. Proposal/Final Adviser is displayed as Automatic and excluded from the payload; Title has no Adviser seat.
+- **Refresh behavior:** successful save invalidates/refetches the exact scheduled detail and affected Scheduling/Application caches, keeps the same selected schedule, and exits edit mode.
+- **Conflict behavior:** backend `409` triggers authoritative refresh; if the session has left `SCHEDULED`, correction closes and the latest state is shown.
+- **Verification:** frontend `tsc --noEmit` passed; scoped ESLint passed; Checkpoint B verifier **11/11** passed; combined Adviser/scheduling verification **18/18** passed; production build passed.
+- **Manual/browser QA:** executed locally and passed for Proposal correction, member replacement, Automatic Adviser, persisted re-entry, Cancel discard, no-op Save guard, and non-`SCHEDULED` lock; QA record restored afterward.
+- **Not executed:** hosted CI / production-runtime validation.
+- **Future hardening note:** the complete-state PATCH has no optimistic concurrency/version token, so simultaneous Admin edits can still produce last-write-wins behavior. This is not part of DEF-CORR-1 Checkpoint C unless separately approved.
+- **Scope confirmed:** no notification/email refinement, Audit Log UI, post-start substitution, Adviser correction, scoring/RAP/conclusion/PDF change, schema change, or migration was introduced in Checkpoint B.
+
+### Checkpoint C implementation evidence
+
+- **Implementation commit:** `0403144`.
+- **Notification audit:** the initial scheduling path called nonexistent `defense_scheduled` with panelist-oriented tags; the seeded template is `defense_schedule` with `student_name`, `defense_date`, `defense_time`, and `venue`. The initial path now uses that template and sends to the Student.
+- **In-app behavior:** correction notifications reuse existing `NotificationType.DEFENSE_SCHEDULE` and `DEFENSE_ASSIGNMENT`.
+- **Effects:** schedule changes notify the Student/current active committee; added members receive one assignment notice; removed members receive one removal notice; role changes use one assignment notice; unchanged members receive no assignment notice.
+- **Deduplication:** one intentional notice per affected user; schedule+roster corrections do not duplicate assignment and schedule messages.
+- **Failure boundary:** notifications are best-effort after the committed transaction. Notification failure cannot roll back correction, AuditLog, or roster authority.
+- **Email decision:** correction email was intentionally not expanded because no compatible assignment/removal template exists. Initial scheduling email was corrected to the real seeded student template.
+- **Authority verification:** removed member returned `403` from the exact Defense Workspace; added member returned `200` with the new `PANELIST` role; historical attribution and unchanged-member dedup remain test-covered.
+- **Adviser invariant:** Proposal/Final Adviser remains automatic/server-derived and excluded from client correction; Title remains Adviser-free.
+- **Backend verification:** full suite 194 files / 2,483 tests passed / 5 environment-conditional skips / 0 failures; Checkpoint C focused tests 31/31 passed; Prisma generate/validate passed; migration status up to date; TypeScript/build passed.
+- **Frontend verification:** TypeScript, scoped ESLint, Checkpoint B + Adviser/scheduling verifiers 18/18, and production build passed.
+- **Browser/manual QA:** executed locally and passed for correction, notifications, removed-member `403`, added-member `200` as `PANELIST`, unchanged-member single notice, and non-`SCHEDULED` lock. Test fixture restored afterward.
+- **Not executed:** hosted CI.
+- **Remaining risk:** simultaneous Admin edits remain last-write-wins; initial-scheduling committee email is not expanded because only a student-facing seeded schedule template exists.
+- **Final review:** independent remote review passed. Follow-up copy corrections removed inaccurate/redundant scheduling-success wording; final pre-documentation implementation HEAD: `9615af591d47e4d004fb74926031a9192770886d`.
+- **Project-owner acceptance:** manual UI result reviewed and accepted on 2026-10-25.
+- **Status:** DEF-CORR-1 is fully accepted on the feature branch and ready for PR/merge preparation. It is not yet merged to `main`.
+
+### Accepted-package guardrail
+
+DEF-CORR-1 is accepted for its documented scope on the feature branch. Acceptance does **not** broaden the feature: post-start substitution, Adviser correction, PREDEF-3 rebinding, scoring/conclusion changes, notification-system redesign, and optimistic-concurrency/version-token hardening remain separate future work. Do not treat the feature as part of `main` until the merge is completed.
 
 ---
 
@@ -52,7 +121,7 @@
 | ✅ | Bundled Individual Evaluations PDF | One Admin download/print packet for Chairman + Panelists, one evaluator form per page. |
 | ✅ | Oral Examination Summary PDF (GS-011) | Exact persisted summary/schedule-bound source; current integration accepted. |
 | ✅ | Defense Application PDF (GS-006 / GS-007 family) | Admin generation/download integrated for exact schedule. |
-| 🔍 | Student read-only completed Defense Application record | PREDEF-2 implemented, pending final integrated QA: owning Student can View/Download the completed Defense Application in the existing scheduled status surface; dedicated ownership-checked availability/PDF routes use the accepted exact application source/mapper/renderer. No upload control is introduced. Do not add redundant prose explaining that no upload/submission is required when the visible read-only actions already communicate that state. Incomplete forms withhold controls. |
+| ✅ | Student read-only completed Defense Application record | PREDEF-2 accepted and merged: owning Student can View/Download the completed Defense Application in the existing scheduled status surface; dedicated ownership-checked availability/PDF routes use the accepted exact application source/mapper/renderer. No upload control is introduced. Do not add redundant prose explaining that no upload/submission is required when the visible read-only actions already communicate that state. Incomplete forms withhold controls. |
 | ✅ | Readable official filenames | Student + defense stage + document type; UUID remains internal. |
 | ✅ | Vector check marks | Evaluator selection and Defense Application stage markers use vector checks, not text X. |
 | ✅ | Defense Application filing identity | Student cellphone, Student email, and exact stage filing/resubmission timestamps are mapped. |
@@ -246,7 +315,7 @@ These areas include collaborator-owned/currently evolving work. Do not mark them
 | Status | Item | Current / target state |
 | --- | --- | --- |
 | 🐞 | Ready for Scheduling requirement visibility | Continue auditing the exact Ready/Scheduling handoff so Admin has sufficient current-stage evidence context before confirming the schedule. |
-| 🔍 | Scheduled-defense submission context | PREDEF-2 implemented, pending review: Scheduling & Panels → Scheduled retains exact schedule manuscript/title/file identity, exact matching Proposal/Final GS-017, and stage-current COR/receipt with read-only replacement history. Missing/invalid manuscript bindings and ambiguous evidence/certifications fail closed. Title shows the exact Title package and no GS-017. Schedule ID supplies existing attempt identity; no new attempt-number policy or committee-correction authority. |
+| ✅ | Scheduled-defense submission context | PREDEF-2 accepted and merged: Scheduling & Panels → Scheduled retains exact schedule manuscript/title/file identity, exact matching Proposal/Final GS-017, and stage-current COR/receipt with read-only replacement history. Missing/invalid manuscript bindings and ambiguous evidence/certifications fail closed. Title shows the exact Title package and no GS-017. Schedule ID supplies existing attempt identity; no new attempt-number policy or committee-correction authority. |
 | ⏳ | Stage requirements panel | Scheduling workspace should expose the exact current-stage application requirements/documents needed for review without duplicating application authority. |
 | ⏳ | Admin view of all Student submissions | Provide an authoritative Student-/Thesis-centered document/submission view rather than forcing Admin to discover files through unrelated pages. |
 | ⏳ | Group documents by lifecycle | Suggested grouping: admission, COR/supporting evidence, Title, Proposal, Final, adviser/certification records, receipts, manuscripts, and relevant history. |
@@ -264,7 +333,7 @@ Track at least:
 | Status | Scenario to analyze |
 | --- | --- |
 | ✅ / 🟡 | Re-defense / prior-attempt preservation already has substantial workflow support; continue history/comparison improvements separately. |
-| ⏳ | Post-scheduling, pre-defense committee correction / member replacement (DEF-CORR-1; separate follow-up after PREDEF). |
+| 🚧 | Post-scheduling, pre-defense committee correction / member replacement (DEF-CORR-1; active on `feat/defense-schedule-committee-correction`). |
 | ⏳ | Faculty becomes unavailable after scheduling. |
 | ⏳ | Schedule cancellation / reschedule recovery. |
 | 🚫 | Certified-manuscript correction / post-scheduling exact-document rebinding (PREDEF-3) — deferred rare fallback; prefer prevention through Adviser exact-document confirmation and Admin review. |
@@ -295,7 +364,7 @@ The master checklist should retain visibility of major completed foundations so 
 | ✅ | Adviser Certification exact-document binding for Proposal/Final. |
 | ✅ | Admin Defense Record detail and document-section ownership pattern. |
 | ✅ | Historical manuscript comparison for prior vs current defense attempt — manual side-by-side `Compare with Current` is implemented using exact attempt-bound historical manuscripts; automatic text/visual/semantic diff and recommendation-compliance judgment remain deferred. |
-| ⏳ | Post-scheduling, pre-defense committee correction / member replacement workflow. |
+| 🚧 | Post-scheduling, pre-defense committee correction / member replacement workflow (DEF-CORR-1 active). |
 | 🚫 | CRDT/Yjs multi-author report editing remains deferred unless reprioritized. |
 
 ---

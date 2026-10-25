@@ -231,7 +231,7 @@ export interface ThesisScheduleAccessInput {
   defenseDate?: Date | string | null;
   createdAt?: Date | string | null;
   conclusion?: { outcome?: string | null } | null;
-  panelAssignments?: Array<{ userId: string }> | null;
+  panelAssignments?: Array<{ userId: string; isActive?: boolean }> | null;
 }
 
 function toAttempt(schedule: ThesisScheduleAccessInput): HistoryAttemptInput {
@@ -285,7 +285,8 @@ export function canReadHistoricalBoundManuscript(input: {
     for (const current of schedules) {
       if (current.id === historical.id) continue;
       const assigned = (current.panelAssignments ?? []).some(
-        (assignment) => assignment.userId === userId,
+        (assignment) =>
+          assignment.userId === userId && assignment.isActive !== false,
       );
       if (!assigned) continue;
       // The historical attempt must be genuinely PRIOR to the current one. The

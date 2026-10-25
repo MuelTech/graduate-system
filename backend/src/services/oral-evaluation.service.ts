@@ -85,7 +85,7 @@ export interface OralEvaluationDto {
 export class OralEvaluationService {
   private async resolveOwnAssignment(scheduleId: string, userId: string) {
     const assignment = await prisma.panelAssignment.findFirst({
-      where: { scheduleId, userId },
+      where: { scheduleId, userId, isActive: true },
     });
     if (!assignment) {
       throw new AppError(
@@ -208,7 +208,11 @@ export class OralEvaluationService {
     }
     const evaluatorRoles = evaluatorRoleList(schedule.defenseType);
     const assignments = await prisma.panelAssignment.findMany({
-      where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+      where: {
+        scheduleId,
+        role: { in: evaluatorRoles as never[] },
+        isActive: true,
+      },
       select: { id: true },
     });
     const finalized = await prisma.oralExamScore.count({
@@ -734,7 +738,11 @@ export class OralEvaluationService {
   }> {
     const evaluatorRoles = evaluatorRoleList(defenseType);
     const assignments = await prisma.panelAssignment.findMany({
-      where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+      where: {
+        scheduleId,
+        role: { in: evaluatorRoles as never[] },
+        isActive: true,
+      },
       select: { id: true },
     });
     const finalized = await prisma.oralExamScore.count({

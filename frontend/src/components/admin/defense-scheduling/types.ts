@@ -4,6 +4,7 @@ import type {
   CommitteeAssignment,
   CommitteePolicyDto,
   DefensePanelRole,
+  ScheduledDefenseDetailDto,
 } from "@/types";
 
 export type CommitteeMember = CommitteeAssignment & {
@@ -19,6 +20,53 @@ export type ScheduleFormState = {
   /** Venue text or meeting link (backend `venueOrLink`). */
   venueOrLink: string;
 };
+
+/** Preload wall-clock schedule fields from the authoritative scheduled detail. */
+export function scheduleFormFromDetail(
+  detail: Pick<
+    ScheduledDefenseDetailDto,
+    "defenseDate" | "defenseTime" | "venueOrLink"
+  >,
+): ScheduleFormState {
+  const date = detail.defenseDate ? new Date(detail.defenseDate) : null;
+  const time = detail.defenseTime ? new Date(detail.defenseTime) : null;
+  return {
+    defenseDate:
+      date && !Number.isNaN(date.getTime())
+        ? date.toISOString().slice(0, 10)
+        : "",
+    defenseTime:
+      time && !Number.isNaN(time.getTime())
+        ? time.toISOString().slice(11, 16)
+        : "",
+    venueOrLink: detail.venueOrLink ?? "",
+  };
+}
+
+/** Shared client-side schedule validation for initial scheduling and correction. */
+export function validateScheduleForm(value: ScheduleFormState): {
+  date?: string;
+  time?: string;
+  venue?: string;
+} {
+  const errors: { date?: string; time?: string; venue?: string } = {};
+  if (!value.defenseDate) errors.date = "Defense date is required.";
+  if (!value.defenseTime) errors.time = "Defense time is required.";
+  const venue = value.venueOrLink.trim();
+  if (!venue) {
+    errors.venue = "Enter a venue or meeting link.";
+  } else if (/^https?:\/\//i.test(venue)) {
+    try {
+      const url = new URL(venue);
+      if (!/^https?:$/.test(url.protocol)) {
+        errors.venue = "Enter a valid http/https meeting link.";
+      }
+    } catch {
+      errors.venue = "Enter a valid http/https meeting link.";
+    }
+  }
+  return errors;
+}
 
 export const ROLE_LABELS: Record<DefensePanelRole, string> = {
   CHAIRMAN: "Chairman",

@@ -111,6 +111,12 @@ describe("DefenseWorkspaceService (CP6)", () => {
     });
   });
 
+  it("loads the current workspace roster from active assignments only", async () => {
+    await svc.getWorkspace("sched-1", "u-eval");
+    const include = prismaMock.defenseSchedule.findUnique.mock.calls[0][0].include;
+    expect(include.panelAssignments.where).toEqual({ isActive: true });
+  });
+
   it("Test 1: unassigned caller gets 403", async () => {
     prismaMock.panelAssignment.findFirst.mockResolvedValue(null);
     await expect(svc.getWorkspace("sched-1", "u-x")).rejects.toThrow(

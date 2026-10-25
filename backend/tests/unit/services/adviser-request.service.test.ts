@@ -205,6 +205,14 @@ describe("AdviserRequestService (WP2 candidates/request)", () => {
     ).rejects.toThrow(/formally PASSED Title Defense/i);
   });
 
+  it("derives adviser candidates from the active Title committee only", async () => {
+    await svc.listOdpCandidates("user-1");
+    const arg = prismaMock.defenseConclusion.findFirst.mock.calls[0][0];
+    expect(
+      arg.include.schedule.include.panelAssignments.where,
+    ).toEqual({ isActive: true });
+  });
+
   it("allows a passed conclusion with no selected title (2026-10-15)", async () => {
     prismaMock.defenseConclusion.findFirst.mockResolvedValue(
       titleConclusion({ selectedTitleId: null, selectedTitle: null }),

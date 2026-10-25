@@ -164,6 +164,12 @@ describe("humanizeAuditAction", () => {
     expect(humanizeAuditAction("DEFENSE_RESUBMIT").action).toBe(
       "Resubmitted a defense application",
     );
+    expect(humanizeAuditAction("DEFENSE_SCHEDULE_CREATED").action).toBe(
+      "Created a defense schedule",
+    );
+    expect(humanizeAuditAction("DEFENSE_SCHEDULE_CORRECTED").action).toBe(
+      "Corrected a defense schedule and committee",
+    );
     expect(humanizeAuditAction("waiver_validated").action).toBe(
       "Validated a bridging waiver",
     );

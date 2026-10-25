@@ -317,15 +317,19 @@ The physical EARIST workflow treats the Defense Application as part of the Stude
 
 ### 0.4.6 Scope boundary
 
+The Pre-Defense Document Integrity initiative (PREDEF-1A, PREDEF-1B0, PREDEF-1B/1C, PREDEF-2, and PREDEF-UI-COPY) is accepted and merged to `main` through PR #41.
+
 Current active implementation scope:
 
-- **PREDEF-1:** GS-017 Adviser Certification official document + exact-manuscript certification guardrail + authorized record visibility.
-- **PREDEF-2:** Defense Application / Scheduled Defense Submission Context, including Student read-only visibility of their completed GS-006/GS-007 record.
+- **DEF-CORR-1:** Admin-only post-scheduling, pre-defense **Manage Schedule & Committee** correction for schedule details and manually assigned committee members, with automatic immutable audit logging and bounded reuse of the existing notification system.
 
 Explicitly outside this branch:
 
 - **PREDEF-3:** certified-manuscript correction / exact-document rebinding fallback — deferred because the expected case is rare and the current direction is prevention-first.
-- **DEF-CORR-1:** post-scheduling committee correction/member replacement — separate future branch and authority surface.
+- post-start or post-conclusion emergency committee substitution/amendment;
+- any correction of the authoritative Adviser from Scheduling;
+- any change to scoring, conclusion, exact manuscript binding, GS-017 authority, or official-document lifecycle;
+- any notification/email subsystem redesign;
 - any unconfirmed physical-print/submission requirement;
 - any latest-manuscript fallback;
 - any generic Admin override of issued Adviser Certification.
@@ -1438,17 +1442,34 @@ Rules:
 
 Adviser relationship/certification and defense participation remain separate domain concepts even though current Proposal/Final policy derives the latter from the former.
 
-### 12.7 Committee correction lifecycle — bounded project design
+### 12.7 Committee correction lifecycle — DEF-CORR-1
 
-Scheduling must support correction of genuine Admin assignment mistakes without rewriting academic history:
+**CONFIRMED_PROJECT_SCOPE:** Scheduling supports correction of genuine Admin assignment/schedule mistakes before the defense starts without rewriting academic history.
 
-- **Before schedule confirmation:** the roster is draft. Admin may remove, replace, or change manually assigned roles freely; no notification/audit event is needed beyond normal draft state.
-- **After scheduling, before the defense starts:** authorized Admin may replace a manually assigned member, correct a role, or update schedule details through a deliberate **Manage Schedule & Committee** flow. Persist an audit record/reason and notify affected participants as appropriate.
-- **The automatic Adviser is not corrected from Scheduling.** Adviser identity comes from the authoritative AdviserAssignment.
-- **Once the defense is `IN_PROGRESS`, `AWAITING_CONCLUSION`, or concluded:** normal roster editing is locked because participant identity may already own scores, signatures, RAP/minutes attribution, and audit history.
-- Any exceptional post-start substitution must use a separate explicit administrative amendment workflow; it must not silently mutate historical participant ownership.
+- **Before schedule confirmation:** the roster and schedule fields are draft. Admin may change them freely as part of the ordinary scheduling form.
+- **After scheduling, while the exact session remains `SCHEDULED`:** an authorized Admin may use a deliberate **Manage Schedule & Committee** flow to:
+  - correct the defense date;
+  - correct the defense time;
+  - correct Venue / Meeting Details;
+  - replace or correct the manually assigned Chairman;
+  - replace or correct Panelist assignments;
+  - replace or correct the Rapporteur;
+  - replace or correct the Facilitator.
+- **The automatic Adviser is not editable from this flow.** Proposal/Final Adviser identity continues to come from the authoritative active `AdviserAssignment`. If the Adviser relationship is wrong, it must be corrected through the Adviser-owning workflow rather than Scheduling.
+- Every submitted correction must be revalidated against the same canonical stage/program committee policy used for initial scheduling. A correction may not leave the session with an invalid committee composition.
+- **No mandatory reason field is required.** Normal correction should not impose avoidable Admin friction.
+- Every successful correction must write an immutable `AuditLog` record in the same transaction as the mutation. The audit must identify the Admin actor, exact schedule, timestamp, action, and machine-readable before/after schedule + committee state.
+- Initial schedule creation should also write a canonical schedule-created audit event going forward so the trail reads consistently from application approval → scheduling/initial roster → later corrections. Existing `DefenseSchedule.setById` remains valid provenance and is not removed.
+- Historical attribution must never be reassigned to a replacement member. If a pre-defense participant has already authored annotations/comments or other assignment-bound records, those records must retain the original author identity. Implementation must preserve referenced assignment history while revoking the replaced member's future active-session authority.
+- Existing notification capability may be reused for affected participants where practical: newly assigned members should receive the appropriate assignment/schedule notice, and removed members should not continue receiving future assignment authority. This package must not redesign the notification/email subsystem.
+- **Once the defense leaves `SCHEDULED`** — including `IN_PROGRESS`, `AWAITING_CONCLUSION`, or concluded history — normal schedule/roster editing is locked because participant identity may already own scores, signatures, RAP/minutes attribution, and audit history.
+- Any exceptional post-start substitution requires a separate explicit administrative amendment/recovery workflow and must not silently mutate historical participant ownership.
 
-**Status:** pre-start correction/audit behavior is **PROPOSED_SYSTEM_DESIGN** supporting the confirmed committee policy; it does not expand scoring or conclusion authority.
+The current operational state belongs in **Scheduling & Panels**. Historical actor/change detail belongs in the system **Audit Log**, not as a verbose change timeline inside Defense Application details.
+
+**Status:** DEF-CORR-1 is the active bounded implementation package. It does not expand scoring, conclusion, manuscript, GS-017, or Adviser-assignment authority.
+
+**Implementation sequencing:** DEF-CORR-1 remains one feature on one branch, executed through three internal checkpoints: **A — backend authority + assignment lifecycle**, **B — Admin Manage Schedule & Committee UI**, and **C — bounded notifications + consolidated integrity verification**. Each checkpoint has a stop/review boundary; checkpoint completion does not constitute full feature acceptance.
 
 ---
 

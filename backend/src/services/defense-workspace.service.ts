@@ -110,7 +110,7 @@ function wallTime(v: Date | null | undefined): string | null {
 export class DefenseWorkspaceService {
   private async resolveOwnAssignment(scheduleId: string, userId: string) {
     const assignment = await prisma.panelAssignment.findFirst({
-      where: { scheduleId, userId },
+      where: { scheduleId, userId, isActive: true },
     });
     if (!assignment) {
       throw new AppError("You are not assigned to this defense session.", 403);
@@ -171,6 +171,7 @@ export class DefenseWorkspaceService {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true },

@@ -9,14 +9,15 @@ const migrationPath = resolve(MIGRATION_DIR, "migration.sql");
 const schemaPath = resolve(process.cwd(), "prisma/schema.prisma");
 
 describe("FORM-INT-4 FIX-4 stage application submission timestamps migration", () => {
-  it("is a new migration after the accepted migration history", () => {
+  it("preserves the accepted stage-submission migration in migration history", () => {
     const names = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
     expect(names).toContain(MIGRATION_NAME);
-    expect(names.at(-1)).toBe(MIGRATION_NAME);
     expect(existsSync(migrationPath)).toBe(true);
+    // Later product migrations are valid. This test guards the accepted
+    // migration itself rather than assuming it must remain the repository's latest.
   });
 
   it("adds exactly three nullable DATETIME(3) columns with no defaults", () => {

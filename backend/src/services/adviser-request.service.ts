@@ -82,6 +82,7 @@ export class AdviserRequestService {
         schedule: {
           include: {
             panelAssignments: {
+              where: { isActive: true },
               include: {
                 user: {
                   select: {

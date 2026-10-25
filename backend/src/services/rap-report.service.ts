@@ -149,7 +149,7 @@ export class RapReportService {
     }
 
     const participants = await tx.panelAssignment.findMany({
-      where: { scheduleId: input.scheduleId },
+      where: { scheduleId: input.scheduleId, isActive: true },
       select: { userId: true, role: true },
     });
 
@@ -241,6 +241,7 @@ export class RapReportService {
             scheduleId,
             userId: schedule.rapporteurNotesFinalizedById,
             role: "RAPPORTEUR",
+            isActive: true,
           },
           select: { id: true },
         });
@@ -620,7 +621,7 @@ export class RapReportService {
 
     const defenseType = String(schedule.defenseType);
     const participants = await prisma.panelAssignment.findMany({
-      where: { scheduleId },
+      where: { scheduleId, isActive: true },
       select: { userId: true, role: true },
     });
     const requirements = resolveRapSignatureRequirements(

@@ -333,6 +333,7 @@ function applicationInclude() {
         venueOrLink: true,
         createdAt: true,
         panelAssignments: {
+          where: { isActive: true },
           select: {
             role: true,
             user: {
@@ -540,6 +541,7 @@ export class DefenseApplicationsRepository {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true },
@@ -608,6 +610,7 @@ export class DefenseApplicationsRepository {
         schedule: {
           include: {
             panelAssignments: {
+              where: { isActive: true },
               include: {
                 user: {
                   select: {

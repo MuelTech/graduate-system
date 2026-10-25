@@ -350,6 +350,15 @@ router.post(
   thesisController.scheduleDefense,
 );
 
+// ADMIN: Correct schedule details and the manually assigned committee while
+// the exact session remains SCHEDULED. The Adviser remains server-derived.
+router.patch(
+  "/defense/schedules/:scheduleId",
+  authenticateJWT,
+  requireRole(["ADMIN"]),
+  thesisController.correctScheduledDefense,
+);
+
 // ADMIN: Get pending applications
 router.get(
   "/defense/pending",

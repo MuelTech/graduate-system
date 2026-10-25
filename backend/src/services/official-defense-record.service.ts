@@ -288,7 +288,11 @@ export class OfficialDefenseRecordService {
       .map(String);
 
     const assignments = await db.panelAssignment.findMany({
-      where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+      where: {
+        scheduleId,
+        role: { in: evaluatorRoles as never[] },
+        isActive: true,
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
       },
@@ -560,7 +564,11 @@ export class OfficialDefenseRecordService {
       .getEvaluatorRoles(schedule.defenseType as never)
       .map(String);
     const assignments = await prisma.panelAssignment.findMany({
-      where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+      where: {
+        scheduleId,
+        role: { in: evaluatorRoles as never[] },
+        isActive: true,
+      },
       select: { id: true },
     });
     const finalized = await prisma.oralExamScore.count({
@@ -633,7 +641,7 @@ export class OfficialDefenseRecordService {
     let adviserName: string | null = null;
     if (defenseType !== "TITLE_DEFENSE") {
       const advisers = await prisma.panelAssignment.findMany({
-        where: { scheduleId, role: "ADVISER" },
+        where: { scheduleId, role: "ADVISER", isActive: true },
         include: {
           user: { select: { firstName: true, lastName: true } },
         },
@@ -718,6 +726,7 @@ export class OfficialDefenseRecordService {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true },
@@ -808,6 +817,7 @@ export class OfficialDefenseRecordService {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: {
               select: { id: true, firstName: true, lastName: true },
@@ -1393,6 +1403,7 @@ export class OfficialDefenseRecordService {
           },
         },
         panelAssignments: {
+          where: { isActive: true },
           include: {
             user: { select: { id: true, firstName: true, lastName: true } },
           },

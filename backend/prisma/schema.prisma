@@ -667,6 +667,11 @@ model PanelAssignment {
   scheduleId     String          @map("schedule_id")
   userId         String          @map("user_id")
   role           PanelRole
+  /**
+   * Current-authority lifecycle marker. Inactive rows remain resolvable for
+   * historical annotation/comment attribution by exact assignment id.
+   */
+  isActive       Boolean         @default(true) @map("is_active")
   createdAt      DateTime        @default(now()) @map("created_at")
   oralExamScores OralExamScore[]
   schedule       DefenseSchedule @relation(fields: [scheduleId], references: [id])

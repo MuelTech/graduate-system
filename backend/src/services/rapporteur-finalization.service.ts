@@ -23,7 +23,7 @@ export interface FinalizeNotesResult {
 export class RapporteurFinalizationService {
   private async resolveRapporteur(scheduleId: string, userId: string) {
     const assignment = await prisma.panelAssignment.findFirst({
-      where: { scheduleId, userId },
+      where: { scheduleId, userId, isActive: true },
     });
     if (!assignment) {
       throw new AppError("You are not assigned to this defense session.", 403);
@@ -100,7 +100,11 @@ export class RapporteurFinalizationService {
         .getEvaluatorRoles(defenseType as never)
         .map(String);
       const assignments = await prisma.panelAssignment.findMany({
-        where: { scheduleId, role: { in: evaluatorRoles as never[] } },
+        where: {
+          scheduleId,
+          role: { in: evaluatorRoles as never[] },
+          isActive: true,
+        },
         select: { id: true },
       });
       const finalized = await prisma.oralExamScore.count({

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Send, Mail, AlertTriangle } from "lucide-react";
@@ -11,8 +12,13 @@ type Props = {
   schedule: ScheduleFormState;
   isValid: boolean;
   isSubmitting: boolean;
-  onPreviewEmail: () => void;
+  onPreviewEmail?: () => void;
   onSubmit: () => void;
+  onCancel?: () => void;
+  title?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
+  submitIcon?: ReactNode;
 };
 
 function ChecklistRow({ ok, label }: { ok: boolean; label: string }) {
@@ -53,6 +59,11 @@ export function DefenseReviewSummary({
   isSubmitting,
   onPreviewEmail,
   onSubmit,
+  onCancel,
+  title = "Final Readiness",
+  submitLabel = "Schedule Defense",
+  submittingLabel = "Scheduling…",
+  submitIcon,
 }: Props) {
   const panelistsMissing = readiness
     ? Math.max(0, readiness.panelistQuota - readiness.panelists)
@@ -62,7 +73,7 @@ export function DefenseReviewSummary({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-(--earist-secondary)">
-          Final Readiness
+          {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -143,23 +154,37 @@ export function DefenseReviewSummary({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onPreviewEmail}
-            className="sm:flex-1"
-          >
-            <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
-            Preview Notification
-          </Button>
+          {onPreviewEmail && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onPreviewEmail}
+              className="sm:flex-1"
+            >
+              <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
+              Preview Notification
+            </Button>
+          )}
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          )}
           <Button
             type="button"
             onClick={onSubmit}
             disabled={!isValid || isSubmitting}
             className="bg-(--earist-primary) text-white hover:bg-(--earist-primary)/90 sm:flex-1"
           >
-            <Send className="mr-2 h-4 w-4" aria-hidden="true" />
-            {isSubmitting ? "Scheduling…" : "Schedule Defense"}
+            {submitIcon ?? (
+              <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+            )}
+            {isSubmitting ? submittingLabel : submitLabel}
           </Button>
         </div>
       </CardContent>

@@ -8,6 +8,8 @@ import type { Prisma } from "@prisma/client";
  * manuscript content, storage paths, credentials, or tokens.
  */
 export const DEFENSE_AUDIT_ACTIONS = {
+  SCHEDULE_CREATED: "DEFENSE_SCHEDULE_CREATED",
+  SCHEDULE_CORRECTED: "DEFENSE_SCHEDULE_CORRECTED",
   SESSION_STARTED: "DEFENSE_SESSION_STARTED",
   EVALUATION_FINALIZED: "DEFENSE_EVALUATION_FINALIZED",
   REPORT_FINALIZED: "DEFENSE_REPORT_FINALIZED",
@@ -58,6 +60,8 @@ const ALLOWED_METADATA_KEYS = new Set<keyof DefenseAuditMetadata>([
 ]);
 
 const AUDIT_DESCRIPTION: Record<DefenseAuditAction, string> = {
+  DEFENSE_SCHEDULE_CREATED: "Defense schedule and committee created.",
+  DEFENSE_SCHEDULE_CORRECTED: "Defense schedule and committee corrected.",
   DEFENSE_SESSION_STARTED: "Defense session started.",
   DEFENSE_EVALUATION_FINALIZED: "Oral evaluation finalized.",
   DEFENSE_REPORT_FINALIZED: "Committee Report finalized for signatures.",
@@ -102,6 +106,90 @@ export async function writeDefenseAudit(
       targetId: input.targetId,
       oldValue: null,
       newValue: JSON.stringify(safeMetadata),
+      description: AUDIT_DESCRIPTION[input.actionType],
+      ipAddress: null,
+    },
+  });
+}
+
+export type DefenseScheduleAuditAction =
+  | typeof DEFENSE_AUDIT_ACTIONS.SCHEDULE_CREATED
+  | typeof DEFENSE_AUDIT_ACTIONS.SCHEDULE_CORRECTED;
+
+export interface DefenseScheduleAuditSnapshot {
+  scheduleId: string;
+  thesisId: string;
+  defenseType: string;
+  schedule: {
+    defenseDate: string;
+    defenseTime: string;
+    venueOrLink: string | null;
+  };
+  committee: Array<{
+    assignmentId: string;
+    userId: string;
+    displayName: string;
+    role: string;
+  }>;
+}
+
+function auditInstant(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+export function buildDefenseScheduleAuditSnapshot(input: {
+  id: string;
+  thesisId: string;
+  defenseType: unknown;
+  defenseDate: Date | string;
+  defenseTime: Date | string;
+  venueOrLink: string | null;
+  panelAssignments: Array<{
+    id: string;
+    userId: string;
+    role: unknown;
+    user: { firstName: string | null; lastName: string | null } | null;
+  }>;
+}): DefenseScheduleAuditSnapshot {
+  return {
+    scheduleId: input.id,
+    thesisId: input.thesisId,
+    defenseType: String(input.defenseType),
+    schedule: {
+      defenseDate: auditInstant(input.defenseDate),
+      defenseTime: auditInstant(input.defenseTime),
+      venueOrLink: input.venueOrLink ?? null,
+    },
+    committee: input.panelAssignments.map((assignment) => ({
+      assignmentId: assignment.id,
+      userId: assignment.userId,
+      displayName:
+        `${assignment.user?.firstName ?? ""} ${assignment.user?.lastName ?? ""}`.trim() ||
+        assignment.userId,
+      role: String(assignment.role),
+    })),
+  };
+}
+
+export async function writeDefenseScheduleAudit(
+  db: AuditDb,
+  input: {
+    actorId: string;
+    actionType: DefenseScheduleAuditAction;
+    before: DefenseScheduleAuditSnapshot | null;
+    after: DefenseScheduleAuditSnapshot;
+  },
+): Promise<void> {
+  await db.auditLog.create({
+    data: {
+      actorId: input.actorId,
+      actionType: input.actionType,
+      targetTable: DEFENSE_AUDIT_TARGETS.SESSION,
+      targetId: input.after.scheduleId,
+      oldValue: input.before ? JSON.stringify(input.before) : null,
+      newValue: JSON.stringify(input.after),
       description: AUDIT_DESCRIPTION[input.actionType],
       ipAddress: null,
     },

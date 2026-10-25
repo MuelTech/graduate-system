@@ -268,7 +268,7 @@ describe("CDW-6 defense history rules — historical bound-manuscript access", (
     defenseDate?: string | null;
     createdAt?: string | null;
     conclusion?: { outcome?: string | null } | null;
-    panelAssignments?: Array<{ userId: string }>;
+    panelAssignments?: Array<{ userId: string; isActive?: boolean }>;
   };
 
   function schedule(overrides: Partial<Schedule> & { id: string }): Schedule {
@@ -309,6 +309,31 @@ describe("CDW-6 defense history rules — historical bound-manuscript access", (
         userId: "new-panelist",
       }),
     ).toBe(true);
+  });
+
+  it("denies an INACTIVE current assignment", () => {
+    const schedules: Schedule[] = [
+      schedule({
+        id: "prop-1",
+        manuscriptDocumentId: "doc-prop-1",
+        conclusion: { outcome: "REDEFENSE_REQUIRED" },
+        panelAssignments: [{ userId: "old-panelist" }],
+      }),
+      schedule({
+        id: "prop-2",
+        defenseDate: "2026-09-15",
+        panelAssignments: [{ userId: "new-panelist", isActive: false }],
+      }),
+    ];
+    expect(
+      canReadHistoricalBoundManuscript({
+        documentId: "doc-prop-1",
+        documentStage: "PROPOSAL",
+        documentDocType: "PROPOSAL_CHAPTERS",
+        schedules,
+        userId: "new-panelist",
+      }),
+    ).toBe(false);
   });
 
   it("denies a user not assigned to the CURRENT attempt", () => {

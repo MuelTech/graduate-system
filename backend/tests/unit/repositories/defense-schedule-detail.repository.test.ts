@@ -43,6 +43,7 @@ describe("DefenseApplicationsRepository.getScheduledDefenseById", () => {
       programName: true,
       programType: true,
     });
+    expect(arg.include.panelAssignments.where).toEqual({ isActive: true });
     expect(arg.include.panelAssignments.include.user.select).toEqual({
       id: true,
       firstName: true,
