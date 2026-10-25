@@ -7,7 +7,7 @@
 **Parent authority:** `docs/superpowers/DEFENSE_WORKFLOW_SOURCE_OF_TRUTH.md`  
 **UI authority:** `docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
-**Status:** ACTIVE — Checkpoint A accepted for continuation; Checkpoint B is the current implementation checkpoint. Overall DEF-CORR-1 is not yet accepted.
+**Status:** ACTIVE — Checkpoints A and B accepted for continuation; Checkpoint C is the current implementation checkpoint. Overall DEF-CORR-1 is not yet accepted.
 
 ## 1. Goal
 
@@ -54,36 +54,44 @@ Implemented foundation:
 
 Checkpoint A is accepted **for continuation to Checkpoint B only**. Overall DEF-CORR-1 remains active/not accepted.
 
-### Checkpoint B — Admin Manage Schedule & Committee UI
+### Checkpoint B — Admin Manage Schedule & Committee UI — COMPLETE FOR CONTINUATION
 
-After Checkpoint A is accepted for continuation:
+Checkpoint B was implemented and independently reviewed at ending HEAD:
 
-- add the deliberate **Manage Schedule & Committee** action to the accepted Scheduled master-detail workspace;
-- preload the exact current schedule and active roster;
-- edit date/time/Venue or Meeting Details and manually assigned committee roles;
-- keep Proposal/Final Adviser locked **Automatic** and omit Adviser for Title;
-- reuse canonical committee-policy/readiness validation;
-- provide Save/Cancel and focused confirmation;
-- refresh the exact authoritative schedule/roster after save;
-- keep audit history out of the operational detail UI;
-- add directly affected frontend verification.
+`c408488ddbac186b167961086512d8d143d4d01f`
 
-**Stop after Checkpoint B.** Report exact changed files, frontend verification, any backend contract adjustment, and ending commit before starting notification/consolidation work.
+Implemented UI integration:
 
-### Checkpoint C — Bounded notifications + consolidated integrity verification
+- Scheduled detail remains read-only by default;
+- **Manage Schedule & Committee** is shown only for the exact `SCHEDULED` session;
+- entering edit mode refreshes the exact authoritative detail first;
+- exact current date/time/Venue or Meeting Details and active committee are preloaded;
+- existing `DefenseScheduleForm`, `DefenseCommitteeBuilder`, and `DefenseReviewSummary` are reused;
+- Proposal/Final Adviser is displayed as **Automatic**, cannot be edited, and is omitted from the correction payload;
+- Title renders no Adviser seat;
+- Save/Cancel/no-op guard + focused confirmation are implemented;
+- successful correction refreshes the exact schedule and affected list/count caches while keeping the same selected schedule;
+- lifecycle `409` refreshes authoritative state and exits correction if the session is no longer `SCHEDULED`;
+- no audit-history UI or notification refinement was introduced.
 
-After Checkpoint B is accepted for continuation:
+Checkpoint B is accepted **for continuation to Checkpoint C only**. Overall DEF-CORR-1 remains active/not accepted.
+
+### Checkpoint C — Bounded notifications + consolidated integrity verification — CURRENT
+
+Checkpoint C is now the active implementation checkpoint:
 
 - reuse existing schedule/assignment notification/email behavior only where practical;
 - ensure newly assigned members receive appropriate bounded notice;
 - ensure removed members immediately lose active-session authority regardless of notification delivery;
 - avoid duplicate notices for unchanged members;
-- run the cross-cutting backend regressions required by the assignment lifecycle change;
+- run the consolidated cross-cutting backend regressions required by the assignment lifecycle change;
 - run proportional frontend verification;
-- perform/prepare the documented manual/browser QA matrix;
-- update documentation with implementation evidence and final acceptance state.
+- execute final manual/browser QA for the complete DEF-CORR-1 flow;
+- update documentation with final implementation evidence.
 
 Checkpoint C must **not** redesign notifications/email or introduce a second audit/history UI.
+
+The known complete-state PATCH / simultaneous-Admin last-write-wins risk is a **future hardening item**, not an implicit Checkpoint C scope expansion. Do not add optimistic concurrency/version-token semantics unless separately approved.
 
 ### Checkpoint A evidence
 
@@ -104,7 +112,26 @@ Checkpoint C must **not** redesign notifications/email or introduce a second aud
 - Notifications/email refinement: deferred to Checkpoint C.
 - Frontend/UI work: not started in Checkpoint A.
 
-**Continuation requirement:** apply the pending migration to the local runtime database before exercising Checkpoint B against the updated backend.
+**Checkpoint B runtime note:** the pending DEF-CORR-1 migration was applied locally before Checkpoint B browser QA.
+
+### Checkpoint B evidence
+
+- Starting HEAD: `767a32d4d62f88bef7aad3016951f8a82c080d75`.
+- Checkpoint B ending commit: `c408488ddbac186b167961086512d8d143d4d01f`.
+- Local migration `20261024230000_panel_assignment_active_lifecycle` was applied before runtime QA.
+- Changed files were limited to the Admin Scheduling frontend/shared scheduling components and a focused verifier; no backend contract/schema/migration change was required.
+- Correction endpoint used: `PATCH /thesis/defense/schedules/:scheduleId`.
+- Payload includes date/time/venue + manual committee roles only; Adviser is excluded and remains server-derived.
+- Frontend typecheck: passed.
+- Scoped ESLint: passed.
+- Checkpoint B verifier: **11/11 passed**.
+- Combined Adviser/scheduling verification: **18/18 passed**.
+- Frontend production build: passed; existing Next.js middleware-deprecation and Node module-registration warnings remain.
+- Browser/manual QA: **EXECUTED — PASS** against a real seeded `SCHEDULED` Proposal defense; verified read-only default, Manage flow, exact preload, schedule change, Panelist replacement, Automatic Adviser, confirmation, persisted save/re-entry, Cancel discard, no-op Save guard, and non-`SCHEDULED` lock. Test record restored afterward.
+- Full backend suite was not rerun because Checkpoint B changed no backend source and Checkpoint A's backend suite remained accepted.
+- Hosted CI / production-runtime validation: **NOT EXECUTED**.
+- Concurrency hardening: simultaneous Admin edits remain last-write-wins because the complete-state PATCH has no version token; explicitly deferred unless separately approved.
+- Notification/email refinement: not started in Checkpoint B and remains for Checkpoint C.
 
 ### Sequencing rule
 
