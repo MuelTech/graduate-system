@@ -92,8 +92,19 @@ cd frontend
 node --test scripts/verify-gs020-1b-adviser-request.mjs
 ```
 
-Run the directly affected Adviser/Journey checks, Prisma generate/validate, backend
-build/full suite, frontend TypeScript/scoped ESLint, and frontend production build.
-Automated transaction tests are separate from real database migration/runtime tests.
-Project-owner manual/browser QA, independent remote review, and canonical acceptance
-are separate gates. GS020-1B is not marked accepted by this implementation.
+The implementation agent reported 255 focused backend checks passed; the full
+backend suite passed 2,571 tests with 5 skipped and 0 failed across 198 files; the
+new frontend verifier passed 18 checks and the combined affected frontend verifiers
+passed 118 checks. Prisma generate/validate, backend build, frontend TypeScript,
+scoped ESLint, production build, and diff checks passed. The agent also reported
+migration `20261025180000_adviser_request_signed_records` applied successfully to
+local MySQL with all 41 migrations up to date; that local runtime claim was not
+independently reproduced by remote review.
+
+Independent remote source review passed on 2026-10-25 against implementation commit
+`0b3c9f756d66d16b9a27a680264780599bca9242`. Project-owner acceptance followed the
+same day. Full end-to-end manual/browser QA was explicitly waived by the project
+owner rather than reported as passed; a legacy-account spot check confirmed that
+older active AdviserAssignments without authoritative new signing/snapshot evidence
+do not receive a fabricated finalized Adviser Request record. No hosted GitHub
+workflow/status run was present for the implementation commit at review time.

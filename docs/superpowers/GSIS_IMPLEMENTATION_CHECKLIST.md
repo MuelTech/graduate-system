@@ -23,7 +23,7 @@
 
 ## Current implementation focus — Official Adviser Request Form (GS-020)
 
-**Current phase:** GS020-1A official renderer is implemented and accepted on `feat/official-adviser-request-form` at `76bdd3c4f3c4525e528679009a1a93e123b81d26` after focused automated verification, independent remote source review, and project-owner visual acceptance on 2026-10-25. GS020-1B live Student signing/snapshot/View-Download integration remains planned and has not started. The underlying Student request → Adviser CONFORME/DECLINE → Dean APPROVE/REJECT → active AdviserAssignment workflow remains authoritative and must not be recreated or bypassed.
+**Current phase:** GS020-1A renderer is accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`, and GS020-1B Student signing / immutable finalized record / authorized View-Download integration is accepted at `0b3c9f756d66d16b9a27a680264780599bca9242` after automated verification, independent remote source review, and project-owner acceptance on 2026-10-25. Full end-to-end manual/browser QA was explicitly waived rather than reported as passed. The underlying Student request → Adviser CONFORME/DECLINE → Dean APPROVE/REJECT → active AdviserAssignment workflow remains authoritative.
 **Target implementation branch:** `feat/official-adviser-request-form`.
 **Starting `main` / branch HEAD:** `17d7953f40c6c26833f451cea395f3333a220be2`.
 **Implementation plan:** `docs/superpowers/plans/2026-10-25-gs020-adviser-request-official-form.md`
@@ -32,7 +32,7 @@
 | Status | Package | Scope |
 | --- | --- | --- |
 | ✅ | GS020-1A — Official GS-020 renderer | Accepted at `76bdd3c4f3c4525e528679009a1a93e123b81d26`. Pure typed-input → PDF-bytes renderer, representative normal/long/signature/blank samples, focused renderer verification, independent remote source review, and project-owner visual acceptance completed. No live workflow/API/frontend/schema integration was included. |
-| ⏳ | GS020-1B — Finalized record integration | Add exact-request Student e-signature before submission, immutable finalized snapshot after Adviser CONFORME + Dean approval, on-demand PDF generation from that snapshot, and ownership/role-scoped View/Download for Student, requested Adviser, and Admin. |
+| ✅ | GS020-1B — Finalized record integration | Accepted at `0b3c9f756d66d16b9a27a680264780599bca9242`. Exact-request Student e-signature, write-once signed state, atomic Dean approval + immutable official snapshot + AdviserAssignment, on-demand PDF generation, and ownership/role-scoped Adviser Request View/Download are implemented. Legacy unsigned requests are not backfilled/fabricated. Full manual/browser QA was waived by the project owner. |
 | ⏳ | Institutional Dean display integration | For this package, keep the printed Dean identity/signature area blank because no authoritative institutional office-holder source is configured yet. A future System Settings / Institutional Officials package may populate new snapshots only; it must not rewrite older finalized GS-020 snapshots. |
 
 ### GS020-1A acceptance evidence
@@ -41,7 +41,17 @@
 - Focused renderer verification reported: **22 passed / 0 failed**; forms script typecheck, backend build, and rasterized sample generation passed.
 - Independent remote source review found the implementation bounded to renderer/types/tests/sample tooling/package-local documentation only, with no Prisma/API/workflow/frontend/schema/snapshot integration.
 - Project owner reviewed the generated form and accepted the visual result on 2026-10-25.
-- GS020-1B is **not started** and remains a separately authorized integration checkpoint.
+- GS020-1B subsequently proceeded only after explicit authorization and is now accepted as recorded below.
+
+### GS020-1B acceptance evidence
+
+- Implementation commit: `0b3c9f756d66d16b9a27a680264780599bca9242`.
+- Automated verification reported: **255 focused backend checks passed**; full backend suite **2,571 passed / 5 skipped / 0 failed** across 198 files; new frontend verifier **18 passed**; combined affected frontend verifiers **118 passed**; Prisma generate/validate and backend/frontend build/type/lint checks passed.
+- Migration `20261025180000_adviser_request_signed_records` was reported applied successfully to local MySQL; no legacy signatures or snapshots were backfilled.
+- Independent remote review confirmed exact signed-state preservation, one finalized record per request, atomic approval/snapshot/assignment, fail-closed legacy behavior, role/ownership authorization, raw-signature privacy, and reuse of the accepted renderer.
+- Project owner accepted GS020-1B on 2026-10-25 and explicitly waived further full manual/browser QA. A legacy-account spot check confirmed that older active AdviserAssignments without authoritative new signing/snapshot evidence do not receive a fabricated finalized record.
+- Hosted CI was not present/verified for the implementation commit at review time.
+- User-facing record wording remains **Adviser Request** with **View Adviser Request** / **Download Adviser Request**; form code/revision stays inside the official PDF.
 
 ### GS-020 accepted design boundaries
 

@@ -8,7 +8,7 @@
 **Document authority:** `docs/superpowers/DOCUMENT_LIFECYCLE_SOURCE_OF_TRUTH.md`  
 **Tracking index:** `docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md`  
 **Official form:** **EARIST-QSF-GS-020 Rev. 00 (06.20.25) — Adviser Request**  
-**Status:** GS020-1A OFFICIAL RENDERER ACCEPTED ON `feat/official-adviser-request-form` AT `76bdd3c4f3c4525e528679009a1a93e123b81d26`; GS020-1B LIVE SIGNING/SNAPSHOT/ACCESS INTEGRATION NOT STARTED
+**Status:** GS020-1A RENDERER ACCEPTED AT `76bdd3c4f3c4525e528679009a1a93e123b81d26`; GS020-1B SIGNING/SNAPSHOT/ACCESS INTEGRATION ACCEPTED AT `0b3c9f756d66d16b9a27a680264780599bca9242` AFTER AUTOMATED VERIFICATION, INDEPENDENT REMOTE REVIEW, AND PROJECT-OWNER ACCEPTANCE WITH FULL MANUAL/BROWSER QA WAIVED
 
 ## 1. Goal
 
@@ -345,7 +345,7 @@ On existing `/student/thesis/adviser-request`:
 
 - keep the existing request workflow;
 - add the Review & Sign step before final request submission;
-- after final approval, show the finalized record with **View GS-020** / **Download GS-020**;
+- after final approval, show the finalized record with **View Adviser Request** / **Download Adviser Request**;
 - do not add an upload control for GS-020.
 
 #### Adviser
@@ -353,7 +353,7 @@ On existing `/student/thesis/adviser-request`:
 In My Advisees / Adviser Request context:
 
 - retain existing CONFORME/DECLINE behavior;
-- after the request is finalized, expose read-only **View/Download GS-020** for the requested Adviser;
+- after the request is finalized, expose read-only **View Adviser Request** / **Download Adviser Request** for the requested Adviser;
 - do not introduce an Adviser signature pad unless separately approved.
 
 #### Admin
@@ -361,8 +361,25 @@ In My Advisees / Adviser Request context:
 In Adviser Request review/history:
 
 - retain existing Dean Approve/Reject behavior;
-- after approval/finalization, expose read-only **View/Download GS-020**;
+- after approval/finalization, expose read-only **View Adviser Request** / **Download Adviser Request**;
 - printed Dean identity/signature remains blank in the form for this package.
+
+### GS020-1B acceptance evidence — 2026-10-25
+
+- **Implementation commit:** `0b3c9f756d66d16b9a27a680264780599bca9242` — `feat(thesis): integrate adviser request signing and record`.
+- **Persistence:** additive migration `20261025180000_adviser_request_signed_records` adds one-to-one signed-state and finalized official-record tables keyed by exact Adviser Request ID and widens optional request reason storage to `TEXT`. No legacy signature/snapshot backfill is performed.
+- **Exact signing:** Student Review & Sign reuses the shared `ESignaturePad`; server revalidates authenticated Student ownership, candidate eligibility, reviewed Student/Program/Adviser context, signature evidence, and server-owned signing time before atomically creating the signed request/evidence.
+- **Immutability:** signed Student identity, Student Number, Program, requested Adviser, reason, source Title context, request date, signature evidence, and `signedAt` are preserved at submission and integrity-checked before later transitions.
+- **Atomic finalization:** Dean APPROVE validates the exact signed evidence and creates the approved request state, immutable finalized official snapshot, and active `AdviserAssignment` in the same transaction. Validation/snapshot/assignment failures roll back; DECLINE/REJECT create neither snapshot nor assignment.
+- **Historical safety:** legacy approved/assigned requests remain valid workflow history but receive no fabricated official Adviser Request PDF when authoritative Student signing evidence/snapshot is absent.
+- **Authorized access:** finalized read-only records/PDFs are scoped to the owning Student, exact requested Adviser, and Admin. Committee membership alone grants no access; raw Student signature evidence/snapshot JSON is not exposed through ordinary DTOs.
+- **Accepted UI wording:** ordinary portal UI uses **Adviser Request**, **View Adviser Request**, and **Download Adviser Request** rather than exposing the form code/revision. The official PDF retains `EARIST-QSF-GS-020 Rev. 00 (06.20.25)`.
+- **Automated evidence reported by the implementation agent:** 255 focused backend checks passed; full backend suite 198 files / 2,571 passed / 5 skipped / 0 failed; new frontend verifier 18 passed; combined affected frontend verifiers 118 passed; Prisma generate/validate, backend build, frontend typecheck/scoped ESLint/production build, and diff checks passed.
+- **Migration runtime evidence:** implementation agent reported the migration applied successfully to local MySQL with all 41 migrations up to date. This local runtime claim was not independently reproduced through remote source review.
+- **Independent remote source review:** passed against the pushed `4f16e282...0b3c9f75` diff. Review confirmed signed-state/snapshot separation, transaction atomicity, authorization boundaries, raw-signature privacy, accepted renderer reuse, legacy fail-closed behavior, and no unrelated workflow authority changes.
+- **Project-owner acceptance:** accepted on 2026-10-25. Full end-to-end manual/browser QA was explicitly waived by the project owner rather than reported as passed. A legacy-account spot check confirmed that an existing active AdviserAssignment without authoritative new signing/snapshot evidence does not display a fabricated finalized Adviser Request record.
+- **Hosted CI:** no GitHub workflow/status run was present for the implementation commit at independent review time; hosted CI remains unverified.
+- **Accepted baseline:** GS020-1A + GS020-1B now form the accepted Adviser Request official-record implementation on this feature branch. Remaining work is branch/PR/merge handling unless a later issue is discovered.
 
 ## 6. Authorization and integrity invariants
 
