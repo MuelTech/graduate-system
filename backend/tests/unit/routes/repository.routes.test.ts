@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { authenticateJWT, requireRole, type AuthenticatedRequest } from "../../../src/middlewares/auth.middleware";
+import {
+  authenticateJWT,
+  optionalAuthenticateJWT,
+  requireRole,
+  type AuthenticatedRequest,
+} from "../../../src/middlewares/auth.middleware";
 import repositoryRoutes from "../../../src/routes/repository.routes";
 
 /**
@@ -33,17 +38,19 @@ function findRoute(
 
 const layers = routes(repositoryRoutes);
 
-describe("DL-10 public Repository routes are auth-free", () => {
-  it("GET / has exactly one handler (no auth middleware)", () => {
+describe("DL-10 public Repository routes use optional authentication", () => {
+  it("GET / starts with optional auth followed by the public handler", () => {
     const route = findRoute(layers, "/", "get");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(1);
+    expect(route?.stack.length).toBe(2);
+    expect(route?.stack[0]?.handle).toBe(optionalAuthenticateJWT);
   });
 
-  it("GET /:id has exactly one handler (no auth middleware)", () => {
+  it("GET /:id starts with optional auth followed by the public handler", () => {
     const route = findRoute(layers, "/:id", "get");
     expect(route).toBeDefined();
-    expect(route?.stack.length).toBe(1);
+    expect(route?.stack.length).toBe(2);
+    expect(route?.stack[0]?.handle).toBe(optionalAuthenticateJWT);
   });
 });
 

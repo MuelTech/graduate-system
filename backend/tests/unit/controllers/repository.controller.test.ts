@@ -31,7 +31,7 @@ describe("DL-10 RepositoryController", () => {
 
   beforeEach(() => vi.clearAllMocks());
 
-  it("public list forwards the q query and never inspects a role", async () => {
+  it("public list forwards q and the optional caller context", async () => {
     listPublished.mockResolvedValue([{ id: "pub-1" }]);
     const res = makeRes();
 
@@ -40,7 +40,7 @@ describe("DL-10 RepositoryController", () => {
       res,
     );
 
-    expect(listPublished).toHaveBeenCalledWith("machine");
+    expect(listPublished).toHaveBeenCalledWith("machine", undefined);
     expect(res.json).toHaveBeenCalledWith([{ id: "pub-1" }]);
   });
 
@@ -99,11 +99,17 @@ describe("DL-10 RepositoryController", () => {
     }
   });
 
-  it("unpublish transitions by id and preserves conflicts", async () => {
+  it("unpublish transitions by id with the JWT actor and preserves conflicts", async () => {
     unpublishMetadata.mockRejectedValueOnce(new AppError("already private", 409));
     const res = makeRes();
-    await controller.unpublish({ params: { id: "elib-1" } } as any, res);
-    expect(unpublishMetadata).toHaveBeenCalledWith("elib-1");
+    await controller.unpublish(
+      {
+        params: { id: "elib-1" },
+        user: { userId: "admin-9", role: "ADMIN" },
+      } as any,
+      res,
+    );
+    expect(unpublishMetadata).toHaveBeenCalledWith("elib-1", "admin-9");
     expect(res.status).toHaveBeenCalledWith(409);
   });
 

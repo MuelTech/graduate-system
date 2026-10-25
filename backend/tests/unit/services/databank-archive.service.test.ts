@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => ({
+  auditLog: { create: vi.fn() },
+}));
+
+vi.mock("../../../src/config/database", () => ({ default: prismaMock }));
+
 import {
   DatabankArchiveService,
   DATABANK_ELIGIBILITY_REASONS,
@@ -73,6 +80,7 @@ function eligibleRepo(repo: ReturnType<typeof makeRepo>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  prismaMock.auditLog.create.mockResolvedValue({ id: "audit-1" });
 });
 
 describe("DL-9 archive eligibility (context)", () => {
@@ -324,8 +332,21 @@ describe("DL-9 private archive registration", () => {
       title: "Server Official Title",
       abstract: "My abstract",
       keywords: "ai, education",
+      fullPaperPath: null,
+      respondentDataPath: null,
+      documents: [],
+      certificationsPath: null,
     });
     expect(dto.officialTitle).toBe("Server Official Title");
+    expect(prismaMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorId: "user-1",
+          actionType: "DATABANK_ARCHIVE_SUBMITTED",
+          targetId: "elib-1",
+        }),
+      }),
+    );
   });
 
   it("ignores client-supplied authority fields and paths", async () => {
@@ -350,8 +371,19 @@ describe("DL-9 private archive registration", () => {
     expect(data.thesisId).toBe("thesis-1");
     expect(data.title).toBe("Server Official Title");
     expect(Object.keys(data).sort()).toEqual(
-      ["abstract", "keywords", "thesisId", "title"].sort(),
+      [
+        "abstract",
+        "certificationsPath",
+        "documents",
+        "fullPaperPath",
+        "keywords",
+        "respondentDataPath",
+        "thesisId",
+        "title",
+      ].sort(),
     );
+    expect(data.fullPaperPath).toBeNull();
+    expect(data.respondentDataPath).toBeNull();
     const serialized = JSON.stringify(data);
     for (const forbidden of [
       "secret.pdf",
