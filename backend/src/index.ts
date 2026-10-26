@@ -2,8 +2,8 @@ import { createServer } from "http";
 import { createApp } from "./app";
 import prisma from "./config/database";
 import { initializeDefenseRealtime } from "./realtime/defense-realtime.server";
-// import "./workers/email.worker";
-// import { startCronJobs } from "./workers/cron.worker";
+import "./workers/email.worker";
+import { startCronJobs } from "./workers/cron.worker";
 
 const app = createApp();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +18,6 @@ httpServer.listen(PORT, () => {
   console.log(`Health check: http://localhost:${PORT}/api/health`);
 });
 
-// startCronJobs();
+startCronJobs();
 
 export { app, httpServer, prisma };

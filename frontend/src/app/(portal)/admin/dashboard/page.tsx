@@ -6,11 +6,12 @@ import { apiClientRequest } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertCircle,
+  BarChart3,
   CalendarClock,
   ChevronRight,
   ClipboardList,
@@ -320,6 +321,18 @@ export default function AdminDashboard() {
       <PageHeader
         title="Administrator Dashboard"
         description="Overview of Graduate School operations and items requiring attention."
+        actions={
+          <Link
+            href="/admin/analytics"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "gap-1.5 border-(--earist-border-gray) bg-white text-xs font-semibold text-(--earist-primary) hover:bg-gray-50 shadow-2xs"
+            )}
+          >
+            <BarChart3 className="h-4 w-4 text-(--earist-primary)" />
+            Academic Analytics & Reports
+          </Link>
+        }
       />
 
       {/* 1. Primary operational KPIs */}
