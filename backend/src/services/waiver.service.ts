@@ -1,4 +1,5 @@
 import { WaiverRepository } from '../repositories/waiver.repository';
+import { EmailService } from './email.service';
 
 export class WaiverService {
     private waiverRepository = new WaiverRepository();
@@ -21,10 +22,42 @@ export class WaiverService {
     }
 
     async validateWaiver(waiverId: string, adminId: string) {
-        return this.waiverRepository.validateWaiver(waiverId, adminId);
+        const waiver = await this.waiverRepository.validateWaiver(waiverId, adminId);
+
+        if ((waiver as any).student?.user?.email) {
+            const studentUser = (waiver as any).student.user;
+            EmailService.sendTemplateEmail(
+                studentUser.email,
+                "bridging_waiver_validated",
+                {
+                    student_name: `${studentUser.firstName} ${studentUser.lastName}`,
+                    portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+                }
+            ).catch((err) =>
+                console.error("[EmailService] Failed to queue bridging_waiver_validated email:", err.message)
+            );
+        }
+
+        return waiver;
     }
 
     async rejectWaiver(waiverId: string, adminId: string, notes: string) {
-        return this.waiverRepository.rejectWaiver(waiverId, adminId, notes);
+        const waiver = await this.waiverRepository.rejectWaiver(waiverId, adminId, notes);
+
+        if ((waiver as any).student?.user?.email) {
+            const studentUser = (waiver as any).student.user;
+            EmailService.sendTemplateEmail(
+                studentUser.email,
+                "bridging_waiver_rejected",
+                {
+                    student_name: `${studentUser.firstName} ${studentUser.lastName}`,
+                    portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+                }
+            ).catch((err) =>
+                console.error("[EmailService] Failed to queue bridging_waiver_rejected email:", err.message)
+            );
+        }
+
+        return waiver;
     }
 }

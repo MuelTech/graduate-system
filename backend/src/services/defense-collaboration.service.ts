@@ -20,6 +20,7 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { EmailService } from "./email.service";
 import {
   type AnchorPayload,
   validateAnchorPayload,
@@ -1357,6 +1358,37 @@ export class DefenseCollaborationService {
     });
     const requiredSlots = slots.filter((s) => s.required !== false);
     const signedSlots = requiredSlots.filter((s) => s.isSigned === true);
+
+    if (recompute.transitionedToFinalized) {
+      prisma.defenseSchedule
+        .findUnique({
+          where: { id: scheduleId },
+          include: {
+            thesis: {
+              include: {
+                student: {
+                  include: { user: true },
+                },
+              },
+            },
+          },
+        })
+        .then((schedule) => {
+          const studentUser = schedule?.thesis?.student?.user;
+          if (!studentUser?.email) return;
+
+          EmailService.sendTemplateEmail(studentUser.email, "rap_finalized", {
+            student_name: `${studentUser.firstName} ${studentUser.lastName}`,
+            rap_link: `${process.env.FRONTEND_URL || "http://localhost:3000"}/student/defense`,
+          }).catch((err) =>
+            console.error("[EmailService] Failed to queue rap_finalized email:", err.message)
+          );
+        })
+        .catch((err) =>
+          console.error("[EmailService] Error resolving student for rap_finalized email:", err.message)
+        );
+    }
+
     return {
       signed: true,
       status,

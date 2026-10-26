@@ -59,6 +59,13 @@ export class WaiverRepository {
                     validatedAt: new Date(),
                     adminNotes: "Validated by Admin",
                 },
+                include: {
+                    student: {
+                        include: {
+                            user: true,
+                        },
+                    },
+                },
             });
 
             await tx.student.update({
@@ -80,6 +87,13 @@ export class WaiverRepository {
                 validatedById: adminId,
                 validatedAt: new Date(),
                 adminNotes: notes,
+            },
+            include: {
+                student: {
+                    include: {
+                        user: true,
+                    },
+                },
             },
         });
     }

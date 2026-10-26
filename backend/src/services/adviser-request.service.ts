@@ -11,6 +11,7 @@
  */
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { EmailService } from "./email.service";
 import type {
   DeanResponseInput,
   RequestAdviserInput,
@@ -523,11 +524,12 @@ export class AdviserRequestService {
       throw new AppError(gate.reason, gate.statusCode);
     }
 
+    const decision = gate.decision;
     const now = new Date();
     const remarks = input.remarks?.trim() ? input.remarks.trim() : null;
 
     try {
-      return await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         // Re-read + conditional state protection inside the transaction.
         const current = await tx.adviserRequest.findUnique({
           where: { id: requestId },
@@ -551,7 +553,7 @@ export class AdviserRequestService {
         // an active AdviserAssignment (check-then-insert race).
         await tx.$queryRaw`SELECT student_id FROM students WHERE student_id = ${current.studentId} FOR UPDATE`;
 
-        if (gate.decision === "APPROVED") {
+        if (decision === "APPROVED") {
           const active = await tx.adviserAssignment.findFirst({
             where: { studentId: current.studentId, isActive: true },
           });
@@ -584,22 +586,22 @@ export class AdviserRequestService {
 
         // approvedById is approval-only compatibility. Never written on REJECT.
         const updateData =
-          gate.decision === "APPROVED"
+          decision === "APPROVED"
             ? {
-                deanStatus: gate.decision,
+                deanStatus: decision,
                 deanReviewedById: deanUserId,
                 deanReviewedAt: now,
                 deanRemarks: remarks,
-                status: mapDeanDecisionToOverallStatus(gate.decision),
+                status: mapDeanDecisionToOverallStatus(decision),
                 // Compatibility mirror only — not authoritative for GS-020.
                 approvedById: deanUserId,
               }
             : {
-                deanStatus: gate.decision,
+                deanStatus: decision,
                 deanReviewedById: deanUserId,
                 deanReviewedAt: now,
                 deanRemarks: remarks,
-                status: mapDeanDecisionToOverallStatus(gate.decision),
+                status: mapDeanDecisionToOverallStatus(decision),
               };
 
         const updated = await tx.adviserRequest.updateMany({
@@ -614,7 +616,7 @@ export class AdviserRequestService {
         }
 
         // Assignment only after CONFORME + Dean APPROVED, same transaction.
-        if (gate.decision === "APPROVED") {
+        if (decision === "APPROVED") {
           await tx.adviserAssignment.create({
             data: {
               studentId: current.studentId,
@@ -627,6 +629,36 @@ export class AdviserRequestService {
 
         return tx.adviserRequest.findUnique({ where: { id: requestId } });
       });
+
+      // Dispatch notification to student when Dean approves the assignment
+      if (decision === "APPROVED" && result) {
+        prisma.student
+          .findUnique({
+            where: { id: result.studentId },
+            include: { user: true },
+          })
+          .then(async (student) => {
+            if (!student?.user?.email) return;
+            const adviserUser = await prisma.user.findUnique({
+              where: { id: result.requestedAdviserId },
+              select: { firstName: true, lastName: true },
+            });
+            if (!adviserUser) return;
+
+            EmailService.sendTemplateEmail(student.user.email, "adviser_assigned", {
+              student_name: `${student.user.firstName} ${student.user.lastName}`,
+              adviser_name: `${adviserUser.firstName} ${adviserUser.lastName}`,
+              portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+            }).catch((err) =>
+              console.error("[EmailService] Failed to queue adviser_assigned email:", err.message)
+            );
+          })
+          .catch((err) =>
+            console.error("[EmailService] Error resolving student for adviser email:", err.message)
+          );
+      }
+
+      return result;
     } catch (error: unknown) {
       // Map lock/deadlock/serialization conflicts to domain 409.
       const message = error instanceof Error ? error.message : String(error);
