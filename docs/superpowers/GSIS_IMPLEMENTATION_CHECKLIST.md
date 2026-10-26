@@ -574,7 +574,94 @@ Public Applicant sign-up and privileged Faculty/Admin provisioning must remain s
 
 ---
 
-# 18. Student Inactivity, Drop/Stop-Out, and Return/Reactivation
+# 18. Continuing Student / Pre-GSIS Onboarding and Legacy Academic Baseline
+
+This package exists for Graduate School students who are already enrolled or already partway through thesis/dissertation when GS-IS is introduced and therefore may have no Applicant, Entrance Examination, Adviser Request, or prior-defense history inside GS-IS.
+
+Current repository facts:
+
+- `Student.pinnacleApplicantId` is nullable, and a Student can exist without an `EntranceExamApplication`; the data model can therefore represent a legitimate Student whose admission/exam history predates GS-IS.
+- the current COR flow cannot be reused unchanged for this case because COR upload/verification is attached to an existing Student and the current promotion path requires Applicant state plus a passed Entrance Examination;
+- the centralized Thesis Journey must not infer formal progression from `ThesisRecord.stage/status` alone;
+- the normal GS-020 flow creates a new Adviser relationship through Student request → Adviser `CONFORMED` → Dean `APPROVED`, but a continuing Student may already have an officially assigned Adviser before entering GS-IS.
+
+## Target principle
+
+**Do not fabricate historical workflows merely to satisfy the current database.** Establish a controlled, auditable pre-GSIS baseline, then use the normal authoritative GS-IS workflows for all activity from the onboarding/cutover point forward.
+
+## CONT-STUDENT-1 — Continuing Student COR-Based Direct Onboarding
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Public continuing-student entry page | Provide a dedicated public/static onboarding surface for an already-enrolled Graduate School Student who was never processed as an Applicant in GS-IS. This is separate from normal Applicant registration. |
+| ⏳ | Basic submission data | Collect the minimum identity/contact data needed for review, including email and the COR upload. OCR/extraction may suggest Student Number, name, program, academic year/semester, and other supported COR fields, but extracted values are never automatically authoritative. |
+| ⏳ | Pending onboarding record | A public submission must create a pending/staging onboarding record, not an authoritative Student account immediately. Rejected or abusive submissions must not pollute the Student registry. Exact model naming is not yet locked. |
+| ⏳ | Public-upload protection | Apply throttling/rate limiting, strict file type/content validation, bounded file size, private managed storage, and normal upload-security controls. CAPTCHA and pre-upload email verification may be added if needed; exact rate limits are implementation details, not academic policy. |
+| ⏳ | Admin verification authority | Admin reviews the submitted COR and confirms/corrects Student Number, identity, email, and Program before approval. OCR is assistive only. |
+| ⏳ | Duplicate prevention | Before approval, detect existing Student Number/account/email conflicts and route them to controlled recovery rather than creating duplicate Student identities. |
+| ⏳ | Direct Student creation | After Admin approval, create/link the authoritative User + Student directly as the enrolled Student identity. Do not fabricate an Applicant ID, Entrance Examination application, score, or PASSED result merely because the normal new-applicant path contains those records. |
+| ⏳ | Honest absent admission history | For a continuing Student whose admission/exam history predates GS-IS, display the absent history as **not recorded in GS-IS / predates GS-IS**, never as failed, pending, or not taken unless such a state is actually authoritative. |
+| ⏳ | Account-access handoff | After approval, provide the Student a controlled account-access/password setup path consistent with the credential-state rules in §17. Do not use predictable default credentials. |
+| ⏳ | Onboarding audit trail | Preserve submission, Admin reviewer, approval/rejection, timestamps, and relevant reason/remarks. |
+
+### CONT-STUDENT-1 boundary
+
+```text
+Normal new Applicant
+Applicant → Entrance Exam → COR verification → Student
+
+Continuing / existing Student
+Public continuing-student submission → COR → Admin verification → Student
+```
+
+Both paths converge on the same Student portal and downstream academic workflows. The continuing-student path is a migration/adoption path, not a second permanent Student portal.
+
+## CONT-STUDENT-2 — Legacy Academic / Thesis Standing Initialization
+
+| Status | Item | Current / target state |
+| --- | --- | --- |
+| ⏳ | Admin-only baseline initialization | After continuing-student approval, authorized Admin may initialize the Student's real current academic/thesis standing when that standing predates GS-IS. |
+| ⏳ | Current thesis/defense stage | Support initialization at the real current stage, including Title, Proposal, or Final as applicable. A Student already at Proposal/Final must not be forced back to Title solely because earlier GS-IS records do not exist. |
+| ⏳ | Prior-stage legacy completion | Earlier completed stages may be represented as **completed before GS-IS / legacy baseline**. Do not create fake `DefenseSchedule`, evaluator records, Committee Reports, signatures, or `DefenseConclusion` rows for defenses that did not occur inside GS-IS. |
+| ⏳ | Thesis Journey legacy authority | Extend the centralized Thesis Journey so an Admin-verified pre-GSIS baseline can satisfy the appropriate prior-stage progression requirement without treating mutable `ThesisRecord.stage/status` alone as formal proof. |
+| ⏳ | Historical artifact treatment | Past defense artifacts do not need to be digitally reconstructed merely to onboard the Student. Where legacy documents are available they may be referenced/attached as supporting history, but the system must remain explicit that the actual defense occurred before GS-IS. |
+| ⏳ | Existing Adviser initialization | If the continuing Student already has an Adviser, Admin may select the existing Faculty account and establish the active AdviserAssignment as a pre-GSIS/Admin-initialized relationship. |
+| ✅ / ⏳ | No fabricated GS-020 for legacy Adviser | Do not manufacture a GS-020, Student request signature, Adviser `CONFORMED` event, or Dean approval for an Adviser relationship that already existed before GS-IS. The relationship should instead show that it was assigned before GS-IS. Implementation is still pending. |
+| ⏳ | No-Adviser path | If the continuing Student has no existing Adviser, use the normal GS-020 Adviser Request workflow rather than the legacy initialization shortcut. |
+| ⏳ | Current/future GS-017 remains normal | A Proposal/Final Student with a legacy Adviser can still use the normal GS-017 exact-manuscript certification workflow for manuscripts reviewed after onboarding. Legacy adviser origin does not weaken current manuscript certification requirements. |
+| ⏳ | Student-owned current requirements | From the initialized current stage forward, the Student uploads the normal current-stage requirements/manuscript and follows the ordinary GS-IS workflow. |
+| ⏳ | Legacy shortcut scope | Pre-GSIS initialization is only for the initial migration/onboarding baseline. New Adviser designations/replacements and future defense progression after onboarding must use the normal approved workflows rather than repeatedly invoking the legacy shortcut. |
+| ⏳ | Controlled correction + audit | Baseline/adviser initialization must record Admin actor, timestamp, source/provenance, and reason/remarks. Later correction must be controlled and auditable, especially once dependent GS-IS activity exists. |
+
+### Continuing Student example
+
+```text
+Student is already at FINAL before GS-IS adoption
+        ↓
+COR verified / Student account approved
+        ↓
+Admin initializes:
+  Title    = completed before GS-IS
+  Proposal = completed before GS-IS
+  Current  = FINAL
+  Adviser  = existing pre-GSIS Faculty assignment
+        ↓
+No fake Title/Proposal defense history
+No fake GS-020
+        ↓
+Student uploads current Final requirements/manuscript
+        ↓
+Adviser performs current GS-017 certification
+        ↓
+Normal Final Defense application/scheduling/evaluation/report/verdict flow
+```
+
+### Guardrail
+
+Missing pre-GSIS workflow artifacts are **not incomplete current requirements** when Admin has initialized the legitimate continuing-student baseline. The UI/read models must distinguish **not recorded in GS-IS / completed before GS-IS** from normal in-system pending/failed states.
+
+---
+# 19. Student Inactivity, Drop/Stop-Out, and Return/Reactivation
 
 Current repository facts:
 
@@ -625,7 +712,7 @@ erase thesis / adviser / files / academic history
 
 ---
 
-# 19. Returning Graduate / Multiple Academic Careers
+# 20. Returning Graduate / Multiple Academic Careers
 
 This is a known architectural requirement but may be implemented **after the core GS-IS workflows stabilize**.
 
@@ -651,11 +738,11 @@ Current repository facts:
 
 ---
 
-# 20. Production Readiness, Security, and Operations
+# 21. Production Readiness, Security, and Operations
 
 These items are not all end-user features, but they are required before the system should be treated as production-ready.
 
-## 20.1 Authentication and Account Recovery
+## 21.1 Authentication and Account Recovery
 
 Current repository facts:
 
@@ -673,7 +760,7 @@ Current repository facts:
 | ⏳ | Sensitive-action reauthentication | Decide whether high-impact actions such as permission grants, account recovery, or institutional signature changes require recent authentication. |
 | ⏳ | Auth audit events | Record security-relevant events such as successful/failed recovery, password changes, permission changes, account disable/enable, and high-privilege access changes. |
 
-## 20.2 Health, Reliability, and Background Jobs
+## 21.2 Health, Reliability, and Background Jobs
 
 Current repository facts:
 
@@ -690,7 +777,7 @@ Current repository facts:
 | ⏳ | Job retry/dead-letter behavior | Failed email/notification/background jobs need bounded retries, visible failure state, and Admin/operator recovery where appropriate. |
 | ⏳ | Service restart policy | Production services (web/backend/DB/Redis/Ollama if used) must recover after machine reboot without manual developer commands. |
 
-## 20.3 Monitoring, Logging, and Audit Operations
+## 21.3 Monitoring, Logging, and Audit Operations
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
@@ -702,7 +789,7 @@ Current repository facts:
 | ⏳ | Admin/operator audit viewer | Define a restricted audit surface for security/operational investigations; current audit records should not be exposed as a misleading generic user activity feed. |
 | ❓ | Audit retention policy | Define how long security/domain audit records must be retained and who may access/export them. |
 
-## 20.4 Backup, Restore, and Disaster Recovery
+## 21.4 Backup, Restore, and Disaster Recovery
 
 Current repository facts:
 
@@ -717,7 +804,7 @@ Current repository facts:
 | ❓ | RPO / RTO | EARIST/project owner must define acceptable data-loss window and recovery-time objective. |
 | ⏳ | Deployment rollback runbook | Define safe rollback behavior for application releases and forward-only database migrations. |
 
-## 20.5 Deployment and Release Engineering
+## 21.5 Deployment and Release Engineering
 
 Current repository facts:
 
@@ -734,7 +821,7 @@ Current repository facts:
 | ⏳ | Release checklist/version record | Record deployed commit/version, migration state, backup prerequisite, readiness checks, and post-deploy smoke tests. |
 | ⏳ | Dependency/security update policy | Establish periodic dependency vulnerability review and controlled upgrades rather than only updating during feature work. |
 
-## 20.6 File Security, Storage, and Data Governance
+## 21.6 File Security, Storage, and Data Governance
 
 Current repository facts:
 
@@ -753,7 +840,7 @@ Current repository facts:
 | ❓ | Privacy/access policy | Confirm access/retention/publication rules for respondent/raw participant data, instruments, repository artifacts, and other sensitive records. |
 | ⏳ | Legacy storage migration plan | Prioritize remaining path-only models when they become production blockers; do not silently assume DL metadata covers every file-bearing model. |
 
-## 20.7 Production QA and Release Acceptance
+## 21.7 Production QA and Release Acceptance
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
@@ -766,7 +853,7 @@ Current repository facts:
 
 ---
 
-# 21. Additional Functional Gaps Found During Production Review
+# 22. Additional Functional Gaps Found During Production Review
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
@@ -776,7 +863,7 @@ Current repository facts:
 
 ---
 
-# 22. System Wording, Terminology, and Content Consistency
+# 23. System Wording, Terminology, and Content Consistency
 
 This is a cross-cutting UI/UX requirement. The system should not expose inconsistent, overly technical, stale, or role-confusing language even when the underlying workflow is correct.
 
