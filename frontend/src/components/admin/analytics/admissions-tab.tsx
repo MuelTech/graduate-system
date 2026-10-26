@@ -397,7 +397,7 @@ export function AdmissionsTab({ data }: AdmissionsTabProps) {
                   <strong>Bridging Prerequisite:</strong> Non-aligned disciplines require 6–9 foundation bridging units or Dean waiver endorsement before thesis candidacy.
                 </li>
                 <li>
-                  <strong>Flagged Records:</strong> 82 applicants currently have pending bridging waiver submissions requiring Program Chair recommendation.
+                  <strong>Flagged Records:</strong> 82 applicants currently have pending Applicant Program Alignment Form submissions requiring Program Chair recommendation.
                 </li>
               </ul>
             </div>

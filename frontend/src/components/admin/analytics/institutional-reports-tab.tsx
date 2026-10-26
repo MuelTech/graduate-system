@@ -528,7 +528,7 @@ export function InstitutionalReportsTab({ data }: InstitutionalReportsTabProps) 
             <div className="rounded border border-(--earist-border-gray) bg-white p-3 space-y-2">
               <span className="text-xs font-bold text-foreground block">Admissions & Alignment</span>
               <p className="text-[11px] text-(--earist-body-text)">
-                Applicant yield and undergraduate bridging waiver records.
+                Applicant yield and undergraduate Applicant Program Alignment Form records.
               </p>
               <Button
                 variant="outline"

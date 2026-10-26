@@ -113,7 +113,7 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
             Examination Performance & Institutional Evaluation
           </h2>
           <p className="text-xs text-(--earist-body-text)">
-            Entrance Examination (ECAT) results and FR15 Comprehensive Examination verification ledger.
+            Entrance Examination (ECAT) results and Comprehensive Examination verification ledger.
           </p>
         </div>
 
@@ -225,7 +225,7 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-sm font-bold text-(--earist-primary)">
-                Comprehensive Examination Tracking & Committee Verifications (FR15)
+                Comprehensive Examination Tracking & Committee Verifications
               </CardTitle>
               <CardDescription className="text-xs text-(--earist-body-text)">
                 Manual Administrator verification ledger for Written Examination and Oral Defense milestones
@@ -317,7 +317,7 @@ export function ExaminationsTab({ data }: ExaminationsTabProps) {
           <div className="flex items-start gap-2 rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-xs text-(--earist-body-text)">
             <Info className="h-4 w-4 text-(--earist-secondary) shrink-0 mt-0.5" />
             <p className="text-[11px] leading-relaxed">
-              <strong>FR15 Institutional Verification Procedure:</strong> Per Graduate School regulations, candidate thesis registration requires prior verification of passed Comprehensive Examinations. Official clearance is recorded by the Administrator upon receipt of signed Form CE-02 (Written Result) and Form CE-03 (Oral Deliberation) filed in the Dean&apos;s Office.
+              Per Graduate School regulations, candidate thesis registration requires prior verification of passed Comprehensive Examinations. Official clearance is recorded by the Administrator upon receipt of signed Form CE-02 (Written Result) and Form CE-03 (Oral Deliberation) filed in the Dean&apos;s Office.
             </p>
           </div>
         </CardContent>
