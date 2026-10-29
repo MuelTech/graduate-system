@@ -352,7 +352,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
-| ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
+| ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Before import, remove the seven temporary development/demo DB questions retained through EXAM-CONTENT-5 baseline QA; verify demo count = `0`, then import and QA only the authoritative 72-question OLSAT bank for numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
 | ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
 
 ### EXAM-CONTENT-1 review checkpoint
@@ -428,6 +428,11 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
   - updated Admin Question Bank rendered the seven existing development/demo questions;
   - owner approved the visible Admin Question Bank result.
 - Full 72-question development DB import: **NOT RUN / deferred to EXAM-CONTENT-6**
+- Development/demo bank cleanup boundary:
+  - keep the seven existing development/demo DB questions through EXAM-CONTENT-5 for Applicant baseline/regression QA;
+  - after EXAM-CONTENT-5 acceptance, remove/clean those demo questions;
+  - verify demo-question count = `0` before EXAM-CONTENT-6 controlled import;
+  - do not delete code-level automated-test fixtures under `backend/tests/fixtures/`.
 - Formal EXAM-CONTENT-4 acceptance: **ACCEPTED — 2026-10-29**
 - EXAM-CONTENT-5 authorization: **AUTHORIZED NEXT**
 
