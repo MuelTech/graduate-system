@@ -339,6 +339,10 @@ Current repository facts:
 
 This is the immediate Applicant Examination implementation workstream.
 
+**Working branch:** `feat/exam-content-integration`
+
+Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
+
 | Status | Package / Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |

@@ -11,6 +11,20 @@
 
 Upgrade the existing Applicant Entrance Examination question bank so GS-IS can faithfully represent and render the verified mixed-content question package.
 
+### Phase A branch strategy
+
+Use one dedicated working branch for the complete Phase A content-integration sequence:
+
+```text
+feat/exam-content-integration
+```
+
+Create this branch from the current approved `main` baseline when EXAM-CONTENT-1 begins. Continue EXAM-CONTENT-2 through EXAM-CONTENT-6 on the same branch unless the project owner explicitly changes the strategy.
+
+A shared Phase A branch does **not** remove package boundaries. After each EXAM-CONTENT package, stop implementation, report the exact commit/verification evidence, complete independent review, and wait for explicit project-owner authorization before starting the next package.
+
+Phase B — Exam Engine / Scheduling Audit is a separate workstream and must not be absorbed into `feat/exam-content-integration`.
+
 ```text
 verified manifest.json + assets/
         ↓
@@ -220,9 +234,12 @@ Independent remote source review should occur before package acceptance.
 Before EXAM-CONTENT-1:
 
 1. verify current `main` HEAD;
-2. create/use a dedicated feature branch;
-3. re-read the source of truth, this plan, and checklist;
-4. inspect current Prisma exam models, exam engine/repository/service/controller/routes, Admin question page, Applicant exam page, and storage abstraction;
-5. propose the smallest additive architecture supporting the verified manifest.
+2. create `feat/exam-content-integration` from that approved `main` baseline, or verify that the existing Phase A branch is at the expected approved checkpoint before continuing;
+3. do all Phase A implementation work on that branch;
+4. re-read the source of truth, this plan, and checklist;
+5. inspect current Prisma exam models, exam engine/repository/service/controller/routes, Admin question page, Applicant exam page, and storage abstraction;
+6. propose the smallest additive architecture supporting the verified manifest.
+
+For EXAM-CONTENT-2 through EXAM-CONTENT-6, continue on the same `feat/exam-content-integration` branch from the last accepted package checkpoint. Do not create a new package branch unless the project owner explicitly changes this strategy.
 
 Do not begin EXAM-CONTENT-2 or later packages until the previous package is reviewed and explicitly authorized.
