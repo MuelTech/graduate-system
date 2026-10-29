@@ -172,25 +172,29 @@ and deployment. Backend build was unnecessary because runtime backend code did
 not change; frontend code was type-checked and built. No browser acceptance is
 claimed from compile or helper/source-contract tests.
 
-## Independent review and project-owner browser checkpoint
+## Independent review and project-owner browser acceptance
 
 Independent remote source/diff review completed on 2026-10-29 and **passed** the approved EXAM-CONTENT-5 scope. The implementation remained limited to Applicant mixed-content presentation/selection compatibility and did not modify the accepted exam lifecycle, backend runtime/API/auth/projection, Prisma schema, or source package.
 
-Project-owner browser observation was then performed against the current development/demo Applicant examination. The updated Applicant UI successfully rendered the existing legacy text-question baseline and existing navigation shell. This is recorded as a **PARTIAL browser QA PASS**, not formal package acceptance.
+Project-owner browser QA was then completed against the development Applicant examination and **passed** the required mixed-content cases.
 
-Formal EXAM-CONTENT-5 acceptance remains pending because the owner has not yet browser-verified a temporary structured-stimulus question and a temporary visual/image-stimulus question (preferably including an image answer option and persisted non-A/B/C labels).
+Owner-verified browser evidence:
 
-The owner also observed existing examination-lifecycle gaps during browser use:
+- existing development/demo text questions still render correctly;
+- a temporary structured `MATRIX` stimulus renders correctly;
+- persisted non-A/B/C labels `F / G / H / J / K` render exactly as stored;
+- a temporary visual/image stimulus renders correctly;
+- image answer options render correctly;
+- selected-answer state remains visible after navigating away from a question and returning to it within the same active page session;
+- the current Applicant question navigator remains usable with the mixed-content questions.
 
-- MCQ selections are currently held in frontend page state and are lost after browser reload;
-- persisted MCQ autosave and answer restoration after refresh/reconnect are not yet implemented;
-- the current Applicant timer remains a fixed three-hour frontend assumption;
-- there is not yet an accepted Admin-side authoritative exam-duration configuration;
-- these findings are **Phase B** concerns and were intentionally not patched into EXAM-CONTENT-5.
+The owner separately confirmed an existing lifecycle limitation: after a full browser reload, MCQ selections disappear because the current implementation does not yet persist and restore them. This behavior does **not** block EXAM-CONTENT-5 acceptance because reload persistence, autosave/recovery, authoritative remaining time, Admin duration configuration, timeout/lock/auto-submit, and the broader exam-attempt lifecycle are explicitly Phase B concerns.
 
-The intended Phase B direction is a coherent server-authoritative exam-attempt lifecycle: Admin-configured duration, authoritative remaining time, persisted MCQ/essay answers, refresh/reconnect restoration, timeout/lock/auto-submit, and final submission integrity.
+The intended Phase B direction remains a coherent server-authoritative exam-attempt lifecycle: Admin-configured duration, authoritative remaining time, persisted MCQ/essay answers, refresh/reconnect restoration, timeout/lock/auto-submit, and final submission integrity.
 
-**EXAM-CONTENT-5 status: IMPLEMENTED + INDEPENDENT REVIEW PASS + PARTIAL OWNER QA; NOT YET ACCEPTED.**
+**EXAM-CONTENT-5 acceptance: ACCEPTED — 2026-10-29.**
+
+**Next authorized package:** EXAM-CONTENT-6 — controlled demo cleanup, verified 72-question bank import, and content QA.
 
 ## Data integrity and stop boundary
 
@@ -203,7 +207,7 @@ count is owner-provided context, not a newly queried live count.
 `npm run exam-content:import` was **not executed**. The real 72-question bank was
 not imported. EXAM-CONTENT-6 cleanup/import/content QA and all Phase B lifecycle,
 scheduling, recovery, selection-policy and scoring work were **not implemented**.
-EXAM-CONTENT-6 remains unauthorized until EXAM-CONTENT-5 receives final owner mixed-content browser QA and formal acceptance.
+EXAM-CONTENT-6 is now authorized next. Before the controlled real-bank import, remove/clean the temporary development/demo and QA DB questions, verify the pre-import demo count is zero, then preserve the authoritative source package unchanged while importing and validating the real 72-question bank.
 
 ## Exact files changed
 
