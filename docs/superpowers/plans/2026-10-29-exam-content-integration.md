@@ -133,6 +133,30 @@ Must:
 
 Do not implement the manifest importer or exam-engine changes.
 
+### Current EXAM-CONTENT-2 acceptance checkpoint
+
+Implementation commit:
+
+`c080222877380b2124c40ef49e6fbf04aa0fe2c9` — `feat(exam): add private exam media lifecycle`
+
+Independent remote review on 2026-10-29 found the package aligned with the approved EXAM-CONTENT-2 persistence, managed-storage, authorization, retrieval-integrity, migration, and scope boundaries.
+
+Acceptance evidence:
+
+- implementation/source review: **PASS**;
+- private-storage and image-policy review: **PASS**;
+- Admin/Applicant authorization review: **PASS**;
+- retrieval integrity and non-leakage review: **PASS**;
+- focused automated verification: **PASS**;
+- migration source review: **PASS**;
+- development-database migration rehearsal: **PASS** — `20261029010000_exam_private_media` applied successfully and `prisma migrate status` reported the database schema up to date;
+- project-owner post-migration XAMPP integrity checks: **PASS** — the new media schema remained clean before any EXAM-CONTENT-3 import, with no broken media references reported;
+- hosted CI on the feature commit: **not present / not claimed**;
+- manual/browser/content QA: **not required / not claimed for this backend infrastructure package**;
+- EXAM-CONTENT-2 formal acceptance: **ACCEPTED — 2026-10-29**.
+
+EXAM-CONTENT-3 is now the next authorized Phase A package. Continue on `feat/exam-content-integration` from this accepted checkpoint and preserve the package stop/review boundary.
+
 **Stop after review.**
 
 ## 5. EXAM-CONTENT-3 — Verified manifest importer
