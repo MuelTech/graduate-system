@@ -406,7 +406,9 @@ Therefore:
 - real-source emphasis fidelity: **PENDING**;
 - formal EC7 acceptance: **PENDING real owner-verified source map/application/comparison**.
 
-The next bounded implementation task is the still-open **EXAM-CONTENT-6 UI follow-up** only:
+The next bounded implementation task is the still-open **EXAM-CONTENT-6 UI follow-up** only.
+
+**OWNER-AUTHORIZED NEXT — 2026-10-30.**
 
 1. make Admin Question Bank pagination controls discoverable without requiring a long scroll through eight cards;
 2. use a neutral readable body color for normal assessment question/instruction text while preserving EARIST primary red for intentional accents/selection/focus states.
