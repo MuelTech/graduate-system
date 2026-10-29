@@ -1752,6 +1752,7 @@ model ExamContentImport {
 model ExamQuestion {
   id                   String           @id @default(uuid()) @map("question_id")
   questionText         String           @map("question_text") @db.Text
+  questionTextEmphasis Json?            @map("question_text_emphasis")
   type                 QuestionType     @default(MULTIPLE_CHOICE)
   order                Int              @default(0)
   stimulusType         ExamStimulusType @default(NONE) @map("stimulus_type")
@@ -1775,6 +1776,7 @@ model ExamOption {
   id         String  @id @default(uuid()) @map("option_id")
   questionId String  @map("question_id")
   optionText String? @map("option_text") @db.Text
+  optionTextEmphasis Json? @map("option_text_emphasis")
   // Nullable for legacy rows: never fabricate source labels during migration.
   label      String? @db.VarChar(8)
   mediaId    String? @map("media_id") @db.VarChar(36)

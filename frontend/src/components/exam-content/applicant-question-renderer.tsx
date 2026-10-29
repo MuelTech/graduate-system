@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import type { ExamQuestion } from "@/types";
 import { applicantOptionViews } from "@/lib/applicant-exam-content";
 import { StimulusRenderer } from "./stimulus-renderer";
+import { SemanticText } from "./semantic-text";
 import { OptionContentRenderer } from "./option-content-renderer";
 
 /** Selection belongs to the exam page; this composition owns no answer state. */
@@ -28,7 +29,10 @@ export function ApplicantQuestionRenderer({
   return (
     <fieldset className="min-w-0 space-y-5">
       <legend className="mb-5 max-w-full whitespace-pre-wrap break-words text-base font-medium text-(--earist-primary)">
-        {question.questionText}
+        <SemanticText
+          text={question.questionText}
+          emphasis={question.questionTextEmphasis}
+        />
       </legend>
       <div className="min-w-0 max-w-full">
         <StimulusRenderer
@@ -89,6 +93,7 @@ export function ApplicantQuestionRenderer({
                 <div id={contentId} className="min-w-0 break-words text-sm">
                   <OptionContentRenderer
                     optionText={option.optionText}
+                    optionTextEmphasis={option.optionTextEmphasis}
                     mediaId={option.mediaId}
                     alt={`${option.displayLabel} answer choice`}
                   />

@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { ExamImageUpload } from "./exam-image-upload";
 import { StructuredStimulusEditor } from "./structured-stimulus-editor";
 import { StimulusRenderer } from "./stimulus-renderer";
+import { SemanticText } from "./semantic-text";
+import { SemanticTextEditor } from "./semantic-text-editor";
 import { OptionContentRenderer } from "./option-content-renderer";
 
 const inputClass =
@@ -165,22 +167,20 @@ export function AdminQuestionEditor({
             />
           </label>
         </div>
-        <label className="block text-sm font-medium">
-          Question text / instructions
-          <textarea
-            required
-            maxLength={20000}
-            rows={4}
-            className={inputClass}
-            value={draft.questionText}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                questionText: event.target.value,
-              }))
-            }
-          />
-        </label>
+        <SemanticTextEditor
+          label="Question text / instructions"
+          text={draft.questionText}
+          emphasis={draft.questionTextEmphasis}
+          maxLength={20000}
+          rows={4}
+          onChange={(questionText, questionTextEmphasis) =>
+            setDraft((current) => ({
+              ...current,
+              questionText,
+              questionTextEmphasis,
+            }))
+          }
+        />
         <label className="block text-sm font-medium">
           Stimulus
           <select
@@ -306,8 +306,16 @@ export function AdminQuestionEditor({
                         updateOption(
                           option.key,
                           event.target.value === "IMAGE"
-                            ? { optionText: null, mediaId: null }
-                            : { optionText: "", mediaId: null },
+                            ? {
+                                optionText: null,
+                                optionTextEmphasis: null,
+                                mediaId: null,
+                              }
+                            : {
+                                optionText: "",
+                                optionTextEmphasis: null,
+                                mediaId: null,
+                              },
                         )
                       }
                     >
@@ -326,21 +334,19 @@ export function AdminQuestionEditor({
                     }
                   />
                 ) : (
-                  <label className="block text-xs font-medium">
-                    Option text
-                    <textarea
-                      rows={2}
-                      maxLength={10000}
-                      required
-                      className={inputClass}
-                      value={option.optionText}
-                      onChange={(event) =>
-                        updateOption(option.key, {
-                          optionText: event.target.value,
-                        })
-                      }
-                    />
-                  </label>
+                  <SemanticTextEditor
+                    label={`${optionLabel(option)} option text`}
+                    text={option.optionText}
+                    emphasis={option.optionTextEmphasis}
+                    maxLength={10000}
+                    rows={2}
+                    onChange={(optionText, optionTextEmphasis) =>
+                      updateOption(option.key, {
+                        optionText,
+                        optionTextEmphasis,
+                      })
+                    }
+                  />
                 )}
               </div>
             ))}
@@ -377,7 +383,10 @@ export function AdminQuestionEditor({
           className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4"
         >
           <p className="whitespace-pre-wrap font-medium">
-            {preview.questionText}
+            <SemanticText
+              text={preview.questionText}
+              emphasis={preview.questionTextEmphasis}
+            />
           </p>
           <StimulusRenderer
             stimulusType={preview.stimulusType}
@@ -398,6 +407,7 @@ export function AdminQuestionEditor({
                 </p>
                 <OptionContentRenderer
                   optionText={option.optionText}
+                  optionTextEmphasis={option.optionTextEmphasis}
                   mediaId={option.mediaId}
                   alt={`${optionLabel(option)} image`}
                 />

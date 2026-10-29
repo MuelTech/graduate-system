@@ -1,3 +1,4 @@
+import { validateTextEmphasis, type TextEmphasisSpan } from "./text-emphasis";
 import type {
   AdminQuestion,
   ExamCell,
@@ -42,11 +43,13 @@ export interface OptionDraft {
   label: string | null;
   order: number;
   optionText: string | null;
+  optionTextEmphasis?: TextEmphasisSpan[] | null;
   mediaId: string | null;
   isCorrect: boolean;
 }
 export interface QuestionDraft {
   questionText: string;
+  questionTextEmphasis?: TextEmphasisSpan[] | null;
   type: ExamQuestionType;
   order: number;
   stimulusType: ExamStimulusType;
@@ -218,6 +221,7 @@ export function questionDraft(
   if (!question)
     return {
       questionText: "",
+      questionTextEmphasis: null,
       type: "MULTIPLE_CHOICE",
       order,
       stimulusType: "NONE",
@@ -227,6 +231,7 @@ export function questionDraft(
     };
   return {
     questionText: question.questionText,
+    questionTextEmphasis: question.questionTextEmphasis ?? null,
     type: question.type,
     order: question.order,
     stimulusType: question.stimulusType,
@@ -238,6 +243,7 @@ export function questionDraft(
       label: opt.label,
       order: opt.order,
       optionText: opt.optionText,
+      optionTextEmphasis: opt.optionTextEmphasis ?? null,
       mediaId: opt.mediaId,
       isCorrect: opt.isCorrect,
     })),
@@ -293,6 +299,10 @@ export function buildQuestionPayload(draft: QuestionDraft) {
             label: opt.label,
             order: number(opt.order, "Option order"),
             optionText: opt.optionText,
+            optionTextEmphasis: validateTextEmphasis(
+              opt.optionText,
+              opt.optionTextEmphasis,
+            ),
             mediaId: opt.mediaId,
             isCorrect: opt.isCorrect,
           };
@@ -316,6 +326,10 @@ export function buildQuestionPayload(draft: QuestionDraft) {
     fail("Option labels and orders must be unique.");
   return {
     questionText,
+    questionTextEmphasis: validateTextEmphasis(
+      questionText,
+      draft.questionTextEmphasis,
+    ),
     type: draft.type,
     order,
     stimulusType: draft.stimulusType,
@@ -341,6 +355,8 @@ export function buildQuestionSavePayload(
         option.label === old.label &&
         option.order === old.order &&
         option.optionText === old.optionText &&
+        JSON.stringify(option.optionTextEmphasis ?? null) ===
+          JSON.stringify(old.optionTextEmphasis ?? null) &&
         option.mediaId === old.mediaId &&
         option.isCorrect === old.isCorrect
       );
@@ -358,6 +374,7 @@ export function buildQuestionSavePayload(
   });
   return {
     questionText: payload.questionText,
+    questionTextEmphasis: payload.questionTextEmphasis,
     type: payload.type,
     order: payload.order,
     stimulusType: payload.stimulusType,

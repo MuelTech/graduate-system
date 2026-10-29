@@ -5,9 +5,16 @@ import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
 import { applicantQuestionSelect, adminQuestionSelect, toApplicantQuestion, toAdminQuestion } from "./exam-content.projection";
 
+function emphasisJson(value: ExamQuestionInput["questionTextEmphasis"]) {
+  return value == null ? Prisma.DbNull : value as unknown as Prisma.InputJsonValue;
+}
+function optionData(opt: ExamQuestionInput["options"][number]) {
+  return { ...opt, optionTextEmphasis: emphasisJson(opt.optionTextEmphasis) };
+}
+
 function questionData(data: ExamQuestionInput) {
   return {
-    questionText: data.questionText, type: data.type, order: data.order,
+    questionText: data.questionText, questionTextEmphasis: emphasisJson(data.questionTextEmphasis), type: data.type, order: data.order,
     stimulusType: data.stimulusType, stimulusMediaId: data.stimulusMediaId,
     structuredStimulus: data.structuredStimulus === null ? Prisma.DbNull : data.structuredStimulus as Prisma.InputJsonValue,
   };
@@ -119,7 +126,7 @@ export class ExamEngineRepository {
     const row = await prisma.examQuestion.create({
       data: {
         ...questionData(data),
-        options: { create: data.options },
+        options: { create: data.options.map(optionData) },
       },
       select: adminQuestionSelect,
     });
@@ -154,8 +161,8 @@ export class ExamEngineRepository {
         }
         if (removedIds.length) await tx.examOption.deleteMany({ where: { questionId: id, id: { in: removedIds } } });
         for (const { id: optionId, ...opt } of data.options) {
-          if (optionId) await tx.examOption.update({ where: { id: optionId }, data: opt });
-          else await tx.examOption.create({ data: { ...opt, questionId: id } });
+          if (optionId) await tx.examOption.update({ where: { id: optionId }, data: optionData(opt) });
+          else await tx.examOption.create({ data: { ...optionData(opt), questionId: id } });
         }
       }
 
@@ -177,7 +184,7 @@ export class ExamEngineRepository {
 
 function questionDataForValidation(data: ExamQuestionInput): Omit<ExamQuestionInput, "options"> {
   return {
-    questionText: data.questionText, type: data.type, order: data.order,
+    questionText: data.questionText, questionTextEmphasis: data.questionTextEmphasis, type: data.type, order: data.order,
     stimulusType: data.stimulusType, stimulusMediaId: data.stimulusMediaId,
     structuredStimulus: data.structuredStimulus,
   };

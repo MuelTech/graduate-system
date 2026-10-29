@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ExamQuestion } from "@/types";
 import { ApplicantQuestionRenderer } from "@/components/exam-content/applicant-question-renderer";
+import { SemanticText } from "@/components/exam-content/semantic-text";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { withApplicantAnswer } from "@/lib/applicant-exam-content";
 import {
@@ -651,7 +652,7 @@ export default function ApplicantExamPage() {
                   structuredStimulus={essayQuestion.structuredStimulus}
                 />
                 <p className="text-sm font-medium text-(--earist-primary)">
-                  {essayQuestion.questionText}
+                  <SemanticText text={essayQuestion.questionText} emphasis={essayQuestion.questionTextEmphasis} />
                 </p>
 
                 <textarea

@@ -20,6 +20,7 @@ export function applicantOptionViews(
       label: option.label,
       order: option.order,
       optionText: option.optionText,
+      optionTextEmphasis: option.optionTextEmphasis ?? null,
       mediaId: option.mediaId,
       displayLabel: optionLabel(option),
       selected: selectedOptionId === option.id,

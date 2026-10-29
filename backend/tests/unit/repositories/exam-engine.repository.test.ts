@@ -44,6 +44,25 @@ beforeEach(() => {
 });
 
 describe("ExamEngineRepository content boundaries", () => {
+  it("persists question-emphasis-only updates without touching answered option identities", async () => {
+    db.applicantAnswer.count.mockResolvedValue(1);
+    const marks = [{ start: 0, end: 6, style: "BOLD" }];
+    await new ExamEngineRepository().updateQuestion("q1", { questionTextEmphasis: marks });
+    expect(db.examQuestion.update.mock.calls[0][0].data.questionTextEmphasis).toEqual(marks);
+    expect(db.examOption.deleteMany).not.toHaveBeenCalled();
+    expect(db.examOption.update).not.toHaveBeenCalled();
+    expect(db.examOption.create).not.toHaveBeenCalled();
+  });
+
+  it("updates option emphasis in place while preserving existing option IDs", async () => {
+    db.applicantAnswer.count.mockResolvedValue(1);
+    const options = editable().options.map(opt => ({ ...opt, optionTextEmphasis: opt.optionText === null ? null : [{ start: 0, end: 5, style: "UNDERLINE" }] }));
+    await new ExamEngineRepository().updateQuestion("q1", { options });
+    expect(db.examOption.update).toHaveBeenCalledWith({ where: { id: "opt2" }, data: expect.objectContaining({ optionTextEmphasis: [{ start: 0, end: 5, style: "UNDERLINE" }] }) });
+    expect(db.examOption.deleteMany).not.toHaveBeenCalled();
+    expect(db.examOption.create).not.toHaveBeenCalled();
+  });
+
   it("selects only explicit Applicant fields, including label/order/media identity", async () => {
     const result = await new ExamEngineRepository().getQuestionsForApplicant();
     expect(db.examQuestion.findMany).toHaveBeenCalledWith({ select: applicantQuestionSelect, orderBy: [{ order: "asc" }, { id: "asc" }] });

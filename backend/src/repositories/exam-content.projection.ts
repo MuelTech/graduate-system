@@ -1,13 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import type { AdminExamQuestion, ApplicantExamQuestion } from "../interfaces/exam-content.interfaces";
-import { examMediaId, validateStructuredStimulus } from "../services/exam-content.rules";
+import { examMediaId, validateStructuredStimulus, validatedEmphasis } from "../services/exam-content.rules";
 
 const questionFields = {
-  id: true, questionText: true, type: true, order: true,
+  id: true, questionText: true, questionTextEmphasis: true, type: true, order: true,
   stimulusType: true, stimulusMediaId: true, structuredStimulus: true,
 } as const;
 const optionFields = {
-  id: true, questionId: true, optionText: true, label: true, order: true, mediaId: true,
+  id: true, questionId: true, optionText: true, optionTextEmphasis: true, label: true, order: true, mediaId: true,
 } as const;
 
 export const applicantQuestionSelect = {
@@ -27,11 +27,13 @@ type AdminRow = Prisma.ExamQuestionGetPayload<{ select: typeof adminQuestionSele
 export function toApplicantQuestion(row: ApplicantRow): ApplicantExamQuestion {
   return {
     id: row.id, questionText: row.questionText, type: row.type, order: row.order,
+    questionTextEmphasis: validatedEmphasis(row.questionText, row.questionTextEmphasis),
     stimulusType: row.stimulusType,
     stimulusMediaId: row.stimulusType === "IMAGE" ? examMediaId(row.stimulusMediaId) : null,
     structuredStimulus: row.stimulusType === "STRUCTURED" ? validateStructuredStimulus(row.structuredStimulus) : null,
     options: row.options.map(opt => ({
       id: opt.id, questionId: opt.questionId, optionText: opt.optionText,
+      optionTextEmphasis: validatedEmphasis(opt.optionText, opt.optionTextEmphasis),
       label: opt.label, order: opt.order, mediaId: examMediaId(opt.mediaId),
     })),
   };

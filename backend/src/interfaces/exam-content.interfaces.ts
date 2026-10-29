@@ -1,3 +1,4 @@
+import type { TextEmphasisSpan } from "../shared/text-emphasis";
 /** Structured shapes observed in the verified manifest; no extraction provenance. */
 export type ExamCell = string | number;
 export type StructuredStimulus =
@@ -10,6 +11,7 @@ export interface ExamOptionInput {
   /** Absent for legacy clients; provided IDs preserve existing option identity. */
   id?: string;
   optionText: string | null;
+  optionTextEmphasis?: TextEmphasisSpan[] | null;
   label: string | null;
   order: number;
   mediaId: string | null;
@@ -18,6 +20,7 @@ export interface ExamOptionInput {
 
 export interface ExamQuestionInput {
   questionText: string;
+  questionTextEmphasis?: TextEmphasisSpan[] | null;
   type: "MULTIPLE_CHOICE" | "ESSAY";
   order: number;
   stimulusType: "NONE" | "IMAGE" | "STRUCTURED";

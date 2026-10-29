@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SemanticText } from "@/components/exam-content/semantic-text";
 import { AdminQuestionEditor } from "@/components/exam-content/admin-question-editor";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { OptionContentRenderer } from "@/components/exam-content/option-content-renderer";
@@ -181,7 +182,7 @@ export default function AdminExamQuestionsPage() {
                     </div>
                   </div>
                   <p className="whitespace-pre-wrap font-medium text-(--earist-primary)">
-                    {question.questionText}
+                    <SemanticText text={question.questionText} emphasis={question.questionTextEmphasis} />
                   </p>
                   <StimulusRenderer
                     stimulusType={question.stimulusType}
@@ -222,6 +223,7 @@ export default function AdminExamQuestionsPage() {
                             </div>
                             <OptionContentRenderer
                               optionText={option.optionText}
+                              optionTextEmphasis={option.optionTextEmphasis}
                               mediaId={option.mediaId}
                               alt={`${optionLabel(option)} image`}
                             />

@@ -1,3 +1,4 @@
+import type { TextEmphasisSpan } from "../lib/text-emphasis";
 // APPLICANT & EXAM INTERFACES
 export interface ApplicantStatus {
   alignmentStatus: string;
@@ -691,6 +692,7 @@ export type StructuredStimulus =
   | { type: "WORD_BANK" | "ALPHANUMERIC_SEQUENCE" | "WORD_SERIES" | "LETTER_SEQUENCE" | "LOGICAL_PREMISES"; items: string[] };
 
 export interface ExamOption {
+  optionTextEmphasis?: TextEmphasisSpan[] | null;
   id: string;
   questionId: string;
   optionText: string | null;
@@ -700,6 +702,7 @@ export interface ExamOption {
 }
 
 export interface ExamQuestion {
+  questionTextEmphasis?: TextEmphasisSpan[] | null;
   id: string;
   questionText: string;
   type: ExamQuestionType;

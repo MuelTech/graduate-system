@@ -12,8 +12,8 @@ describe("bounded mixed-content question validation", () => {
     const result = validateExamQuestion(legacy());
     expect(result).toMatchObject({ stimulusType: "NONE", stimulusMediaId: null, structuredStimulus: null });
     expect(result.options).toEqual([
-      { optionText: "First", isCorrect: true, label: null, mediaId: null, order: 0 },
-      { optionText: "Second", isCorrect: false, label: null, mediaId: null, order: 1 },
+      { optionText: "First", optionTextEmphasis: null, isCorrect: true, label: null, mediaId: null, order: 0 },
+      { optionText: "Second", optionTextEmphasis: null, isCorrect: false, label: null, mediaId: null, order: 1 },
     ]);
   });
 

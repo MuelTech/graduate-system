@@ -81,7 +81,7 @@ describe("Applicant mixed-content presentation/selection contract", () => {
     expect(JSON.stringify(fixture)).not.toMatch(/isCorrect|correctAnswer|storageKey|provider/);
     const unexpected = Object.assign({}, fixture.options[0], { isCorrect: true, storageKey: "private/key", provider: "local" });
     const clean = applicantOptionViews([unexpected], undefined, vi.fn())[0];
-    expect(Object.keys(clean).sort()).toEqual(["id", "questionId", "label", "order", "optionText", "mediaId", "displayLabel", "selected", "select"].sort());
+    expect(Object.keys(clean).sort()).toEqual(["id", "questionId", "label", "order", "optionText", "optionTextEmphasis", "mediaId", "displayLabel", "selected", "select"].sort());
     expect(clean.selected).toBe(false);
     expect(JSON.stringify(clean)).not.toMatch(/isCorrect|private\/key|provider/);
   });

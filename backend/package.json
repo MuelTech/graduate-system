@@ -21,6 +21,8 @@
     "storage:backfill": "node dist/cli/storage-backfill.js",
     "storage:backfill:apply": "node dist/cli/storage-backfill.js --apply",
     "storage:readiness": "node dist/cli/storage-readiness.js",
+    "exam-emphasis:preflight": "node dist/cli/exam-emphasis.js --dry-run",
+    "exam-emphasis:apply": "node dist/cli/exam-emphasis.js --apply",
     "exam-content:preflight": "node dist/cli/exam-content-import.js --dry-run",
     "exam-content:import": "node dist/cli/exam-content-import.js --apply"
   },

@@ -1,5 +1,11 @@
+import { validateTextEmphasis } from "../shared/text-emphasis";
 import type { ExamQuestionInput, ExamOptionInput, StructuredStimulus, ExamCell } from "../interfaces/exam-content.interfaces";
 import { AppError } from "../utils/AppError";
+
+export function validatedEmphasis(text: string | null, value: unknown) {
+  try { return validateTextEmphasis(text, value); }
+  catch (error) { return invalid(error instanceof Error ? error.message : "Invalid emphasis metadata."); }
+}
 
 function invalid(message: string): never { throw new AppError(message, 400); }
 
@@ -76,7 +82,7 @@ export function validateStructuredStimulus(value: unknown): StructuredStimulus {
 
 function option(value: unknown, index: number): ExamOptionInput {
   const data = object(value, "option");
-  keys(data, ["id", "optionText", "label", "order", "mediaId", "isCorrect"], "option");
+  keys(data, ["id", "optionText", "optionTextEmphasis", "label", "order", "mediaId", "isCorrect"], "option");
   const optionText = data.optionText == null ? null : text(data.optionText, "optionText", 10000);
   const mediaId = examMediaId(data.mediaId);
   if ((optionText === null) === (mediaId === null)) invalid("An option requires either text or an image media ID.");
@@ -84,10 +90,10 @@ function option(value: unknown, index: number): ExamOptionInput {
   if (label !== null && !/^[A-Z0-9]{1,8}$/.test(label)) invalid("Option labels must contain uppercase letters/digits.");
   if (typeof data.isCorrect !== "boolean") invalid("isCorrect must be boolean.");
   const id = data.id === undefined ? undefined : text(data.id, "option id", 191);
-  return { ...(id === undefined ? {} : { id }), optionText, mediaId, label, order: order(data.order === undefined ? index : data.order, "option order"), isCorrect: data.isCorrect };
+  return { ...(id === undefined ? {} : { id }), optionText, optionTextEmphasis: validatedEmphasis(optionText, data.optionTextEmphasis), mediaId, label, order: order(data.order === undefined ? index : data.order, "option order"), isCorrect: data.isCorrect };
 }
 
-const QUESTION_FIELDS = ["questionText", "type", "order", "stimulusType", "stimulusMediaId", "structuredStimulus", "options"];
+const QUESTION_FIELDS = ["questionText", "questionTextEmphasis", "type", "order", "stimulusType", "stimulusMediaId", "structuredStimulus", "options"];
 
 /** Validate the effective whole question, including after a partial Admin update. */
 export function validateExamQuestion(value: unknown): ExamQuestionInput {
@@ -114,11 +120,20 @@ export function validateExamQuestion(value: unknown): ExamQuestionInput {
   if (new Set(options.map(opt => opt.order)).size !== options.length) invalid("Option orders must be unique.");
   const ids = options.flatMap(opt => opt.id === undefined ? [] : [opt.id]);
   if (new Set(ids).size !== ids.length) invalid("Option IDs must be unique.");
-  return { questionText, type: data.type, order: order(data.order === undefined ? 0 : data.order, "question order"), stimulusType, stimulusMediaId, structuredStimulus, options };
+  return { questionText, questionTextEmphasis: validatedEmphasis(questionText, data.questionTextEmphasis), type: data.type, order: order(data.order === undefined ? 0 : data.order, "question order"), stimulusType, stimulusMediaId, structuredStimulus, options };
 }
 
 export function mergeExamQuestionUpdate(current: ExamQuestionInput, value: unknown): ExamQuestionInput {
   const patch = object(value, "question update");
   keys(patch, QUESTION_FIELDS, "question update");
-  return validateExamQuestion({ ...current, ...patch });
+  const merged: Record<string, unknown> = { ...current, ...patch };
+  if (patch.questionText !== undefined && patch.questionText !== current.questionText && !("questionTextEmphasis" in patch)) merged.questionTextEmphasis = null;
+  if (Array.isArray(patch.options)) merged.options = patch.options.map(value => {
+    const incoming = object(value, "option");
+    const old = current.options.find(opt => opt.id !== undefined && opt.id === incoming.id);
+    if (!old) return incoming;
+    const changed = incoming.optionText !== old.optionText;
+    return { ...incoming, optionTextEmphasis: "optionTextEmphasis" in incoming ? incoming.optionTextEmphasis : changed ? null : old.optionTextEmphasis };
+  });
+  return validateExamQuestion(merged);
 }
