@@ -172,6 +172,26 @@ and deployment. Backend build was unnecessary because runtime backend code did
 not change; frontend code was type-checked and built. No browser acceptance is
 claimed from compile or helper/source-contract tests.
 
+## Independent review and project-owner browser checkpoint
+
+Independent remote source/diff review completed on 2026-10-29 and **passed** the approved EXAM-CONTENT-5 scope. The implementation remained limited to Applicant mixed-content presentation/selection compatibility and did not modify the accepted exam lifecycle, backend runtime/API/auth/projection, Prisma schema, or source package.
+
+Project-owner browser observation was then performed against the current development/demo Applicant examination. The updated Applicant UI successfully rendered the existing legacy text-question baseline and existing navigation shell. This is recorded as a **PARTIAL browser QA PASS**, not formal package acceptance.
+
+Formal EXAM-CONTENT-5 acceptance remains pending because the owner has not yet browser-verified a temporary structured-stimulus question and a temporary visual/image-stimulus question (preferably including an image answer option and persisted non-A/B/C labels).
+
+The owner also observed existing examination-lifecycle gaps during browser use:
+
+- MCQ selections are currently held in frontend page state and are lost after browser reload;
+- persisted MCQ autosave and answer restoration after refresh/reconnect are not yet implemented;
+- the current Applicant timer remains a fixed three-hour frontend assumption;
+- there is not yet an accepted Admin-side authoritative exam-duration configuration;
+- these findings are **Phase B** concerns and were intentionally not patched into EXAM-CONTENT-5.
+
+The intended Phase B direction is a coherent server-authoritative exam-attempt lifecycle: Admin-configured duration, authoritative remaining time, persisted MCQ/essay answers, refresh/reconnect restoration, timeout/lock/auto-submit, and final submission integrity.
+
+**EXAM-CONTENT-5 status: IMPLEMENTED + INDEPENDENT REVIEW PASS + PARTIAL OWNER QA; NOT YET ACCEPTED.**
+
 ## Data integrity and stop boundary
 
 All **109 authoritative manifest/assets files remain byte-for-byte unchanged**
@@ -183,8 +203,7 @@ count is owner-provided context, not a newly queried live count.
 `npm run exam-content:import` was **not executed**. The real 72-question bank was
 not imported. EXAM-CONTENT-6 cleanup/import/content QA and all Phase B lifecycle,
 scheduling, recovery, selection-policy and scoring work were **not implemented**.
-No manual/browser QA is claimed. Stop after commit/push, do not merge `main`,
-and await independent review, project-owner browser QA and explicit authorization.
+EXAM-CONTENT-6 remains unauthorized until EXAM-CONTENT-5 receives final owner mixed-content browser QA and formal acceptance.
 
 ## Exact files changed
 
