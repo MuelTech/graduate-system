@@ -275,7 +275,12 @@ Before import:
 - confirm required `verificationStatus` values are `VERIFIED`;
 - confirm required `correctAnswer` values are populated;
 - run importer validation/dry-run if provided;
-- confirm asset-path/count validation.
+- confirm asset-path/count validation;
+- retain the seven existing development/demo questions only through EXAM-CONTENT-5 for Applicant baseline/regression QA;
+- after EXAM-CONTENT-5 acceptance, remove/clean those seven development/demo questions before the controlled EXAM-CONTENT-6 import;
+- verify the pre-import development bank contains `0` development/demo questions so final content QA evaluates only the authoritative 72-question OLSAT import.
+
+The seven development/demo questions are temporary QA data only. They are not part of the authoritative OLSAT package and must not be counted as part of the final verified bank.
 
 Content QA must verify representative items across every supported type plus:
 
