@@ -492,7 +492,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - Applicant full manual/browser QA: **OWNER-SKIPPED**;
   - real OLSAT emphasis sidecar/application: **PENDING OWNER-VERIFIED SOURCE MAP**;
   - formal EC7 acceptance: **PENDING real-source fidelity completion**.
-- Next implementation: **EXAM-CONTENT-6 UI FOLLOW-UP**
+- Next implementation: **EXAM-CONTENT-6 UI FOLLOW-UP — OWNER-AUTHORIZED 2026-10-30**
   - improve Admin pagination discoverability;
   - change normal assessment question/instruction body text from primary red to a neutral readable body color;
   - keep EC7 source-map work and Phase B out of this UI package.
