@@ -81,7 +81,7 @@ Must support:
 - existing plain question text;
 - broad stimulus semantics of `NONE`, `IMAGE`, or `STRUCTURED`;
 - a bounded validated discriminator/payload for structured forms demonstrated by the verified manifest instead of a closed top-level enum for every subtype;
-- structured examples demonstrated by the verified manifest, including matrices, word banks, numeric/alphanumeric sequences, word series, grouped-number rows, letter sequences, and logical-premise sets without flattening their meaning;
+- structured examples including matrices, word banks, numeric/alphanumeric sequences, word series, and grouped-number rows without flattening their meaning;
 - ordered text/image options with source option labels/order preserved;
 - verified correct-option mapping while retaining existing runtime scoring authority;
 - package-local image paths as import references, not production URLs;
@@ -90,30 +90,6 @@ Must support:
 Expected work may include Prisma/schema changes, additive migration(s), DTO/repository/service/interface updates, validation, and focused tests.
 
 Do not include full media transport, importer, broad Admin redesign, Applicant redesign, timer, or scheduling work.
-
-### Current EXAM-CONTENT-1 implementation checkpoint
-
-Implementation branch:
-
-`feat/exam-content-integration`
-
-Reviewed implementation commit:
-
-`3506707552e66c03d8e59bb9afdf394077995b9f` — `feat(exam): add mixed-content question architecture`
-
-Independent remote source/diff review on 2026-10-29 found the package aligned with the approved EXAM-CONTENT-1 architecture and scope. The implementation also validated all eight structured subtypes observed in the verified manifest, including `LETTER_SEQUENCE` and `LOGICAL_PREMISES`.
-
-Current acceptance state:
-
-- implementation/source review: **PASS**;
-- manifest-shape compatibility review: **PASS**;
-- migration source review: **PASS**;
-- hosted CI on the feature commit: **not present / not claimed**;
-- project-owner manual/browser/content QA: **not applicable / not claimed for this package**;
-- development-database migration rehearsal: **PENDING**;
-- EXAM-CONTENT-1 formal acceptance: **PENDING** until the development-DB migration rehearsal and post-migration verification are completed.
-
-Do not begin EXAM-CONTENT-2 until EXAM-CONTENT-1 is formally accepted.
 
 **Stop after review.**
 

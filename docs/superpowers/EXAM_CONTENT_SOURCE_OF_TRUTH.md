@@ -86,9 +86,9 @@ First-phase persistence/API semantics should distinguish the broad stimulus cate
 - `IMAGE`
 - `STRUCTURED`
 
-For `STRUCTURED`, preserve a bounded discriminator + payload validated against forms demonstrated by the verified manifest. The verified package currently demonstrates eight structured subtypes: `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, and `LOGICAL_PREMISES`. The validator should fail closed on unknown/invalid structured subtypes rather than silently flattening them.
+For `STRUCTURED`, preserve a bounded discriminator + payload validated against forms demonstrated by the verified manifest. Current package examples include `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, and `GROUPED_NUMBER_ROWS`. The validator should fail closed on unknown/invalid structured subtypes rather than silently flattening them.
 
-Do not encode every structured subtype as a permanent top-level Prisma enum merely because it appears in one assessment package. Do not flatten meaningful matrices, word banks, sequences, grouped rows, letter sequences, or logical-premise sets into ordinary prose.
+Do not encode every structured subtype as a permanent top-level Prisma enum merely because it appears in one assessment package. Do not flatten meaningful matrices, word banks, sequences, or grouped rows into ordinary prose.
 
 Answer options must support text-only and image-only forms. The architecture should not permanently block a later text+image option, but first implementation scope should remain bounded to forms demonstrated by the verified package.
 
