@@ -20,6 +20,46 @@ import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { OptionContentRenderer } from "@/components/exam-content/option-content-renderer";
 
 const PAGE_SIZE = 8;
+
+function QuestionBankPagination({
+  page,
+  pageCount,
+  onPageChange,
+  position,
+}: {
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+  position: "top" | "bottom";
+}) {
+  return (
+    <nav
+      aria-label={`Question bank pagination (${position})`}
+      className="flex flex-wrap items-center justify-between gap-3"
+    >
+      <Button
+        type="button"
+        variant="outline"
+        disabled={page === 0}
+        onClick={() => onPageChange(page - 1)}
+      >
+        Previous
+      </Button>
+      <span className="text-sm text-(--earist-body-text)">
+        Page {page + 1} of {pageCount}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={page >= pageCount - 1}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Next
+      </Button>
+    </nav>
+  );
+}
+
 export default function AdminExamQuestionsPage() {
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,9 +174,17 @@ export default function AdminExamQuestionsPage() {
         </Card>
       ) : (
         <>
-          <p className="text-sm text-gray-600">
-            {questions.length} questions · Page {visiblePage + 1} of {pageCount}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-gray-600">
+              {questions.length} questions
+            </p>
+            <QuestionBankPagination
+              page={visiblePage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+              position="top"
+            />
+          </div>
           {questions
             .slice(visiblePage * PAGE_SIZE, (visiblePage + 1) * PAGE_SIZE)
             .map((question) => (
@@ -181,8 +229,11 @@ export default function AdminExamQuestionsPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="whitespace-pre-wrap font-medium text-(--earist-primary)">
-                    <SemanticText text={question.questionText} emphasis={question.questionTextEmphasis} />
+                  <p className="whitespace-pre-wrap font-medium text-(--earist-body-text)">
+                    <SemanticText
+                      text={question.questionText}
+                      emphasis={question.questionTextEmphasis}
+                    />
                   </p>
                   <StimulusRenderer
                     stimulusType={question.stimulusType}
@@ -234,22 +285,12 @@ export default function AdminExamQuestionsPage() {
                 </CardContent>
               </Card>
             ))}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              disabled={visiblePage === 0}
-              onClick={() => setPage(visiblePage - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              disabled={visiblePage >= pageCount - 1}
-              onClick={() => setPage(visiblePage + 1)}
-            >
-              Next
-            </Button>
-          </div>
+          <QuestionBankPagination
+            page={visiblePage}
+            pageCount={pageCount}
+            onPageChange={setPage}
+            position="bottom"
+          />
         </>
       )}
       <Dialog

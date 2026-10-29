@@ -651,7 +651,7 @@ export default function ApplicantExamPage() {
                   stimulusMediaId={essayQuestion.stimulusMediaId}
                   structuredStimulus={essayQuestion.structuredStimulus}
                 />
-                <p className="text-sm font-medium text-(--earist-primary)">
+                <p className="text-sm font-medium text-(--earist-body-text)">
                   <SemanticText text={essayQuestion.questionText} emphasis={essayQuestion.questionTextEmphasis} />
                 </p>
 

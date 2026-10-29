@@ -28,7 +28,7 @@ export function ApplicantQuestionRenderer({
 
   return (
     <fieldset className="min-w-0 space-y-5">
-      <legend className="mb-5 max-w-full whitespace-pre-wrap break-words text-base font-medium text-(--earist-primary)">
+      <legend className="mb-5 max-w-full whitespace-pre-wrap break-words text-base font-medium text-(--earist-body-text)">
         <SemanticText
           text={question.questionText}
           emphasis={question.questionTextEmphasis}
