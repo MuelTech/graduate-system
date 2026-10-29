@@ -18,7 +18,7 @@ let provider: LocalStorageProvider;
 let service: ExamMediaService;
 let saved: Media | undefined;
 let attached: boolean;
-const repo = { create: vi.fn(), findForAdmin: vi.fn(), findForApplicant: vi.fn() };
+const repo = { create: vi.fn(), findForAdmin: vi.fn(), findForApplicant: vi.fn(), deleteUnreferenced: vi.fn() };
 const access = { assertApplicantQuestionAccess: vi.fn() };
 const admin = { userId: "admin1", role: "ADMIN" };
 const applicant = { userId: "applicant1", role: "APPLICANT" };
@@ -32,6 +32,11 @@ beforeEach(async () => {
   repo.create.mockImplementation(async (data: Media) => { saved = data; return { id: data.id }; });
   repo.findForAdmin.mockImplementation(async (id: string) => saved?.id === id ? saved : null);
   repo.findForApplicant.mockImplementation(async (id: string) => attached && saved?.id === id ? saved : null);
+  repo.deleteUnreferenced.mockImplementation(async (id: string) => {
+    if (attached || saved?.id !== id) return { count: 0 };
+    saved = undefined;
+    return { count: 1 };
+  });
   access.assertApplicantQuestionAccess.mockResolvedValue(undefined);
   service = new ExamMediaService(repo, provider, access);
 });
@@ -111,6 +116,50 @@ describe("private exam image creation using the real managed pipeline", () => {
     await expect(service.createImage(EXAM_PNG)).rejects.toThrow("DB failed");
     expect(log).toHaveBeenCalledWith("Exam media promotion cleanup failed; storage integrity review required.");
     expect(JSON.stringify(log.mock.calls)).not.toContain("private/key/path");
+  });
+});
+
+describe("guarded failed-import media compensation", () => {
+  it("removes only an unreferenced media row and its private object", async () => {
+    const { id } = await service.createImage(EXAM_PNG);
+    const key = saved!.storageKey;
+    expect(await service.discardUnreferencedImage(id)).toBe(true);
+    expect(saved).toBeUndefined();
+    expect(await provider.exists(key)).toBe(false);
+    expect(repo.deleteUnreferenced).toHaveBeenCalledWith(id, key, "local");
+  });
+
+  it("retains media when a question/option became authoritative before cleanup", async () => {
+    const { id } = await service.createImage(EXAM_PNG);
+    const key = saved!.storageKey;
+    attached = true;
+    expect(await service.discardUnreferencedImage(id)).toBe(false);
+    expect(saved!.id).toBe(id);
+    expect(await provider.exists(key)).toBe(true);
+  });
+
+  it("does not remove bytes when guarded DB deletion fails", async () => {
+    const { id } = await service.createImage(EXAM_PNG);
+    const key = saved!.storageKey;
+    repo.deleteUnreferenced.mockRejectedValue(new Error("Foreign-key race"));
+    await expect(service.discardUnreferencedImage(id)).rejects.toThrow("Foreign-key race");
+    expect(await provider.exists(key)).toBe(true);
+  });
+
+  it("reports a failed physical deletion after removing an unreferenced row", async () => {
+    const { id } = await service.createImage(EXAM_PNG);
+    const key = saved!.storageKey;
+    vi.spyOn(provider, "delete").mockRejectedValue(new Error("File delete failed"));
+    await expect(service.discardUnreferencedImage(id)).rejects.toThrow("File delete failed");
+    expect(saved).toBeUndefined();
+    expect(await provider.exists(key)).toBe(true);
+  });
+
+  it("rejects cleanup of a different provider or invalid namespace before DB deletion", async () => {
+    const { id } = await service.createImage(EXAM_PNG);
+    saved!.storageProvider = "other";
+    await expect(service.discardUnreferencedImage(id)).rejects.toThrow();
+    expect(repo.deleteUnreferenced).not.toHaveBeenCalled();
   });
 });
 

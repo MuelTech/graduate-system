@@ -1739,20 +1739,34 @@ model ExamMedia {
   @@map("exam_media")
 }
 
+model ExamContentImport {
+  id            String         @id @db.VarChar(64)
+  fingerprint   String         @db.VarChar(64)
+  questionCount Int            @map("question_count")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  questions     ExamQuestion[]
+
+  @@map("exam_content_imports")
+}
+
 model ExamQuestion {
-  id                 String           @id @default(uuid()) @map("question_id")
-  questionText       String           @map("question_text") @db.Text
-  type               QuestionType     @default(MULTIPLE_CHOICE)
-  order              Int              @default(0)
-  stimulusType       ExamStimulusType @default(NONE) @map("stimulus_type")
+  id                   String           @id @default(uuid()) @map("question_id")
+  questionText         String           @map("question_text") @db.Text
+  type                 QuestionType     @default(MULTIPLE_CHOICE)
+  order                Int              @default(0)
+  stimulusType         ExamStimulusType @default(NONE) @map("stimulus_type")
   // Opaque identity; private storage metadata belongs exclusively to ExamMedia.
-  stimulusMediaId    String?          @map("stimulus_media_id") @db.VarChar(36)
-  structuredStimulus Json?            @map("structured_stimulus")
+  stimulusMediaId      String?          @map("stimulus_media_id") @db.VarChar(36)
+  structuredStimulus   Json?            @map("structured_stimulus")
+  sourceImportId       String?          @map("source_import_id") @db.VarChar(64)
+  sourceQuestionNumber Int?             @map("source_question_number")
 
   options       ExamOption[]
   answers       ApplicantAnswer[]
-  stimulusMedia ExamMedia?        @relation("ExamStimulusMedia", fields: [stimulusMediaId], references: [id], onDelete: Restrict)
+  stimulusMedia ExamMedia?         @relation("ExamStimulusMedia", fields: [stimulusMediaId], references: [id], onDelete: Restrict)
+  sourceImport  ExamContentImport? @relation(fields: [sourceImportId], references: [id], onDelete: Restrict)
 
+  @@unique([sourceImportId, sourceQuestionNumber])
   @@index([stimulusMediaId])
   @@map("exam_questions")
 }

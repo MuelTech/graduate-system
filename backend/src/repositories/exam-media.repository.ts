@@ -21,6 +21,13 @@ export class ExamMediaRepository {
     return prisma.examMedia.findUnique({ where: { id }, select: mediaSelect });
   }
 
+  /** Internal failed-import compensation only; concurrent authoritative links win. */
+  deleteUnreferenced(id: string, storageKey: string, storageProvider: string) {
+    return prisma.examMedia.deleteMany({
+      where: { id, storageKey, storageProvider, stimulusQuestions: { none: {} }, options: { none: {} } },
+    });
+  }
+
   findForApplicant(id: string) {
     // The current Applicant question endpoint exposes the shared question bank.
     // Only attached media is visible; staged/unattached media is Admin-only.

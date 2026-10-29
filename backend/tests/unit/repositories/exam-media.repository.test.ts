@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const db = vi.hoisted(() => ({ examMedia: { create: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() } }));
+const db = vi.hoisted(() => ({ examMedia: { create: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 import { ExamMediaRepository } from "../../../src/repositories/exam-media.repository";
 import { toApplicantQuestion } from "../../../src/repositories/exam-content.projection";
@@ -8,6 +8,13 @@ import { toApplicantQuestion } from "../../../src/repositories/exam-content.proj
 beforeEach(() => vi.resetAllMocks());
 
 describe("ExamMediaRepository private persistence and visibility", () => {
+  it("guards failed-import cleanup against any question/option reference and identity change", async () => {
+    await new ExamMediaRepository().deleteUnreferenced("media1", "exam-media/key", "local");
+    expect(db.examMedia.deleteMany).toHaveBeenCalledWith({ where: {
+      id: "media1", storageKey: "exam-media/key", storageProvider: "local",
+      stimulusQuestions: { none: {} }, options: { none: {} },
+    } });
+  });
   it("returns only opaque identity on creation", async () => {
     const data = { storageKey: "exam-media/private", storageProvider: "local", verifiedMimeType: "image/png", sizeBytes: 10, checksum: "hash" };
     db.examMedia.create.mockResolvedValue({ id: "media1" });

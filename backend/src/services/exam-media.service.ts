@@ -122,4 +122,22 @@ export class ExamMediaService {
       throw unavailable();
     }
   }
+
+  /** Internal compensation for IDs created by a failed import, never an HTTP API. */
+  async discardUnreferencedImage(id: string): Promise<boolean> {
+    if (!examMediaId(id)) throw new AppError("Invalid media cleanup identity.", 400);
+    const media = await this.repo.findForAdmin(id);
+    if (!media) return true;
+    const key = normalizeStorageKey(media.storageKey);
+    if (media.storageProvider !== this.provider.name || !key.startsWith("exam-media/")) {
+      throw new AppError("Media cleanup requires storage integrity review.", 500);
+    }
+    const deleted = await this.repo.deleteUnreferenced(id, key, media.storageProvider);
+    if (deleted.count !== 1) return false;
+    // Delete the row first: restrictive FKs and the guarded delete prevent an
+    // authoritative question losing its bytes. A failed file delete is an orphan
+    // reported by the existing integrity scanner, never a dangling live question.
+    await this.provider.delete(key);
+    return true;
+  }
 }
