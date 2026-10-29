@@ -177,6 +177,33 @@ Importer should resolve package-local asset paths, create private media, create 
 
 Do not depend on `answer_key_candidates.csv`.
 
+### Current EXAM-CONTENT-3 acceptance checkpoint
+
+Implementation commit:
+
+`80816ad130dfdfa61fadb7e97fc4aa5d309d51f3` — `feat(exam): add verified exam content importer`
+
+Independent remote review on 2026-10-29 found the package aligned with the approved EXAM-CONTENT-3 importer, source-package, path-containment, media, duplicate/idempotency, transaction/compensation, migration, and scope boundaries.
+
+Acceptance evidence:
+
+- implementation/source review: **PASS**;
+- committed real-package verification: **PASS** — 72 verified questions and 108 referenced/committed image assets reconciled with no missing or extra assets;
+- structured-stimulus and answer-label mapping review: **PASS**;
+- package path-containment and source-integrity review: **PASS**;
+- private-media integration and compensation review: **PASS**;
+- duplicate/idempotency and transaction-boundary review: **PASS**;
+- focused automated verification and real-package preflight: **PASS**;
+- migration source review: **PASS**;
+- development-database migration rehearsal: **PASS** — `20261029020000_exam_import_identity` applied successfully and `prisma migrate status` reported the database schema up to date;
+- project-owner post-migration XAMPP integrity checks: **PASS** — import marker, sourced-question fields, and broken import-reference checks all remained at the expected zero pre-import state;
+- full 72-question development DB import: **NOT RUN / intentionally deferred to EXAM-CONTENT-6**;
+- hosted CI on the feature commit: **not present / not claimed**;
+- browser/manual/UI/content QA: **not required / not claimed for this importer package**;
+- EXAM-CONTENT-3 formal acceptance: **ACCEPTED — 2026-10-29**.
+
+EXAM-CONTENT-4 is now the next authorized Phase A package. Continue on `feat/exam-content-integration` from this accepted checkpoint and preserve the package stop/review boundary.
+
 **Stop after review.**
 
 ## 6. EXAM-CONTENT-4 — Admin Question Bank support
