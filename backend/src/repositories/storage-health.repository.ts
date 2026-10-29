@@ -11,6 +11,7 @@ import prisma from "../config/database";
 export interface ReferenceCounts {
   managedCorUploads: number;
   managedThesisDocuments: number;
+  managedExamMedia: number;
   legacyCorUploads: number;
   legacyThesisDocuments: number;
 }
@@ -55,11 +56,13 @@ export class StorageHealthRepository {
       legacyCorUploads,
       managedThesisDocuments,
       legacyThesisDocuments,
+      managedExamMedia,
     ] = await Promise.all([
       prisma.corUpload.count({ where: { storageKey: { not: null } } }),
       prisma.corUpload.count({ where: { storageKey: { equals: null } } }),
       prisma.thesisDocument.count({ where: { storageKey: { not: null } } }),
       prisma.thesisDocument.count({ where: { storageKey: { equals: null } } }),
+      prisma.examMedia.count(),
     ]);
 
     return {
@@ -67,6 +70,7 @@ export class StorageHealthRepository {
       managedThesisDocuments,
       legacyCorUploads,
       legacyThesisDocuments,
+      managedExamMedia,
     };
   }
 
@@ -86,6 +90,10 @@ export class StorageHealthRepository {
         defenseStage: true,
       },
     });
+  }
+
+  async listManagedExamMedia(): Promise<ManagedCorReference[]> {
+    return prisma.examMedia.findMany({ select: MANAGED_SELECT });
   }
 
   async listLegacyCorUploads(): Promise<LegacyCorReference[]> {

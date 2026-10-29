@@ -9,6 +9,23 @@ export class ExamEngineService {
         this.repo = new ExamEngineRepository();
     }
 
+    // Shared with confidential media retrieval; preserves the existing lookup.
+    async getApplicationIdForUser(userId: string) {
+        const student = await prisma.student.findUnique({ where: { userId } });
+        if (!student) throw new Error("Student profile not found.");
+        const application = await prisma.entranceExamApplication.findFirst({
+            where: { studentId: student.id },
+            orderBy: { createdAt: "desc" },
+        });
+        if (!application) throw new Error("Exam application not found.");
+        return application.id;
+    }
+
+    async assertApplicantQuestionAccess(userId: string) {
+        const applicationId = await this.getApplicationIdForUser(userId);
+        await this.validateExamTime(applicationId);
+    }
+
     // Validates if the current server time is within the applicant's scheduled 3-hour slot
     private async validateExamTime(applicationId: string) {
         const application = await prisma.entranceExamApplication.findUnique({

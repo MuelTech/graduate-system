@@ -1,9 +1,20 @@
 import { Router } from "express";
 import { ExamEngineController } from "../controllers/exam-engine.controller";
+import { ExamMediaController } from "../controllers/exam-media.controller";
 import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
 
 const router = Router();
 const controller = new ExamEngineController();
+const mediaController = new ExamMediaController();
+
+router.get('/media/:mediaId', (_req, res, next) => {
+    // Apply to successful bytes and authorization/error responses alike.
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    next();
+}, authenticateJWT, requireRole(['ADMIN', 'APPLICANT']), mediaController.getContent);
 
 // APPLICANT ROUTES
 router.get('/questions', authenticateJWT, requireRole(['APPLICANT']), controller.getQuestionsForApplicant);

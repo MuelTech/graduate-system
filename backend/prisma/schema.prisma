@@ -1723,19 +1723,37 @@ enum ExamStimulusType {
   @@map("exam_stimulus_type")
 }
 
+model ExamMedia {
+  id                String   @id @default(uuid()) @map("media_id") @db.VarChar(36)
+  storageKey        String   @unique @map("storage_key")
+  storageProvider   String   @map("storage_provider")
+  verifiedMimeType  String   @map("verified_mime_type")
+  sizeBytes         Int      @map("size_bytes")
+  checksum          String   @db.VarChar(64)
+  checksumAlgorithm String   @default("sha256") @map("checksum_algorithm")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  stimulusQuestions ExamQuestion[] @relation("ExamStimulusMedia")
+  options           ExamOption[]
+
+  @@map("exam_media")
+}
+
 model ExamQuestion {
   id                 String           @id @default(uuid()) @map("question_id")
   questionText       String           @map("question_text") @db.Text
   type               QuestionType     @default(MULTIPLE_CHOICE)
   order              Int              @default(0)
   stimulusType       ExamStimulusType @default(NONE) @map("stimulus_type")
-  // Opaque domain media identity only; private storage lifecycle is EXAM-CONTENT-2.
+  // Opaque identity; private storage metadata belongs exclusively to ExamMedia.
   stimulusMediaId    String?          @map("stimulus_media_id") @db.VarChar(36)
   structuredStimulus Json?            @map("structured_stimulus")
 
-  options ExamOption[]
-  answers ApplicantAnswer[]
+  options       ExamOption[]
+  answers       ApplicantAnswer[]
+  stimulusMedia ExamMedia?        @relation("ExamStimulusMedia", fields: [stimulusMediaId], references: [id], onDelete: Restrict)
 
+  @@index([stimulusMediaId])
   @@map("exam_questions")
 }
 
@@ -1751,7 +1769,9 @@ model ExamOption {
 
   question ExamQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answers  ApplicantAnswer[]
+  media    ExamMedia?        @relation(fields: [mediaId], references: [id], onDelete: Restrict)
 
+  @@index([mediaId])
   @@index([questionId], map: "exam_options_question_id_fkey")
   @@map("exam_options")
 }

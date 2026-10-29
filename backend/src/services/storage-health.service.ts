@@ -39,6 +39,7 @@ export type IntegrityIssueType = (typeof INTEGRITY_ISSUE_TYPES)[number];
 export type IntegrityIssueSource =
   | "COR_UPLOAD"
   | "THESIS_DOCUMENT"
+  | "EXAM_MEDIA"
   | "PHYSICAL_OBJECT";
 
 export interface IntegrityIssueDto {
@@ -204,13 +205,14 @@ export class StorageHealthService {
 
     try {
       const prefixes = MANAGED_STORAGE_PREFIXES;
-      const [listing, corRows, thesisRows, legacyCor, legacyThesis] =
+      const [listing, corRows, thesisRows, legacyCor, legacyThesis, examMedia] =
         await Promise.all([
           this.diagnostics.listManagedObjects(prefixes),
           this.repo.listManagedCorUploads(),
           this.repo.listManagedThesisDocuments(),
           this.repo.listLegacyCorUploads(),
           this.repo.listLegacyThesisDocuments(),
+          this.repo.listManagedExamMedia(),
         ]);
 
       const issues: IntegrityIssueDto[] = [];
@@ -233,7 +235,7 @@ export class StorageHealthService {
 
       const inspect = async (
         row: ManagedReferenceInput,
-        source: Extract<IntegrityIssueSource, "COR_UPLOAD" | "THESIS_DOCUMENT">,
+        source: Extract<IntegrityIssueSource, "COR_UPLOAD" | "THESIS_DOCUMENT" | "EXAM_MEDIA">,
       ): Promise<void> => {
         const key = row.storageKey;
         if (!key) return;
@@ -314,6 +316,7 @@ export class StorageHealthService {
 
       for (const row of corRows) await inspect(row, "COR_UPLOAD");
       for (const row of thesisRows) await inspect(row, "THESIS_DOCUMENT");
+      for (const row of examMedia) await inspect(row, "EXAM_MEDIA");
 
       for (const [key, count] of keyUsage) {
         if (count > 1) {

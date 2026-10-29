@@ -13,20 +13,7 @@ export class ExamEngineController {
 
     // Helper to get applicationId from userId
     private async getAppId(userId: string) {
-        const student = await prisma.student.findUnique({
-            where: { userId }
-        });
-
-        if (!student) throw new Error("Student profile not found.");
-
-        const app = await prisma.entranceExamApplication.findFirst({
-            where: { studentId: student.id },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        if (!app) throw new Error("Exam application not found.");
-
-        return app.id;
+        return this.service.getApplicationIdForUser(userId);
     }
 
     getQuestionsForApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
