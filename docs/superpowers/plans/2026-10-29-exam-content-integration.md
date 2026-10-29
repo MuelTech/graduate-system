@@ -223,6 +223,32 @@ Bold/rich-text emphasis is deferred unless required by a specific item's meaning
 
 Do not redesign timer/scheduling/submission behavior.
 
+### Current EXAM-CONTENT-4 acceptance checkpoint
+
+Implementation commit:
+
+`23180a40b3b236fe66432bd33fea9ab14fecb1b9` — `feat(exam): add admin mixed-content question support`
+
+Independent remote review on 2026-10-29 found the package aligned with the approved EXAM-CONTENT-4 mixed-content Admin rendering/editing, private-media preview/upload, option-identity preservation, structured-content, security, and scope boundaries.
+
+Acceptance evidence:
+
+- implementation/source review: **PASS**;
+- Admin mixed-content DTO/type alignment: **PASS**;
+- option ID/label/order/media preservation review: **PASS**;
+- all eight structured stimulus preview/editor paths: **PASS**;
+- authenticated private-image Blob/object-URL lifecycle review: **PASS**;
+- Admin-only secure image upload integration: **PASS**;
+- focused automated verification: **PASS** — 8 focused files / 184 tests;
+- backend build: **PASS**;
+- frontend TypeScript/build/lint verification: **PASS**;
+- project-owner browser/visual QA: **PASS** — the updated Admin Question Bank rendered the existing seven development/demo questions successfully and the owner approved the visible result;
+- real 72-question development DB import: **NOT RUN / intentionally deferred to EXAM-CONTENT-6**;
+- hosted CI on the feature commit: **not present / not claimed**;
+- EXAM-CONTENT-4 formal acceptance: **ACCEPTED — 2026-10-29**.
+
+EXAM-CONTENT-5 is now the next authorized Phase A package. Continue on `feat/exam-content-integration` from this accepted checkpoint and preserve the package stop/review boundary.
+
 **Stop after review.**
 
 ## 7. EXAM-CONTENT-5 — Applicant Exam renderer/UI
