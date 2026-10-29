@@ -349,11 +349,11 @@ Semantic emphasis is larger than a color/layout correction and must be handled a
 
 **EXAM-CONTENT-6 remains pending formal acceptance.** Do not treat the successful import as proof that presentation fidelity is complete.
 
-**Stop after acceptance.**
+On 2026-10-29 the project owner explicitly authorized EXAM-CONTENT-7 to proceed while the two bounded EXAM-CONTENT-6 UI follow-ups remain open. This is an intentional sequencing exception: do not mark EXAM-CONTENT-6 accepted, and do not mark Phase A accepted, until both the EC6 pagination/text-color follow-up and EC7 semantic-emphasis fidelity are closed and owner-verified.
 
 ## 8.1 EXAM-CONTENT-7 — Semantic text-emphasis fidelity
 
-This package follows EXAM-CONTENT-6 and remains part of Phase A.
+**OWNER-AUTHORIZED NEXT — 2026-10-29.** This package remains part of Phase A and may proceed on the existing feature branch under the sequencing exception above.
 
 Required scope:
 
