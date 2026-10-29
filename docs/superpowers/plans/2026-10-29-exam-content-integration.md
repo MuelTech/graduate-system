@@ -108,12 +108,13 @@ Current acceptance state:
 - implementation/source review: **PASS**;
 - manifest-shape compatibility review: **PASS**;
 - migration source review: **PASS**;
+- development-database migration rehearsal: **PASS** — `20261029000000_exam_mixed_content` applied successfully with `prisma migrate deploy`, and `prisma migrate status` reported the database schema up to date;
+- post-migration integrity verification: **PASS** — all 7 pre-existing exam questions report `stimulus_type = NONE`, and the selected-option referential check reports 0 broken references;
 - hosted CI on the feature commit: **not present / not claimed**;
 - project-owner manual/browser/content QA: **not applicable / not claimed for this package**;
-- development-database migration rehearsal: **PENDING**;
-- EXAM-CONTENT-1 formal acceptance: **PENDING** until the development-DB migration rehearsal and post-migration verification are completed.
+- EXAM-CONTENT-1 formal acceptance: **ACCEPTED — 2026-10-29**.
 
-Do not begin EXAM-CONTENT-2 until EXAM-CONTENT-1 is formally accepted.
+EXAM-CONTENT-2 is now the next authorized Phase A package. Continue on `feat/exam-content-integration` from the accepted EXAM-CONTENT-1 checkpoint and preserve the package stop/review boundary.
 
 **Stop after review.**
 
