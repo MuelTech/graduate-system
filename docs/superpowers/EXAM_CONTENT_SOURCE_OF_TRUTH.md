@@ -42,7 +42,11 @@ Supporting extraction artifacts may remain archived for review/provenance but ar
 - `crop_plan.csv`
 - `extraction-notes.md`
 
-The repository documentation must not duplicate the complete copyrighted assessment bank or source-page images merely for implementation planning.
+The project owner has confirmed client authorization to include the actual verified assessment package in the private project repository for development synchronization. When the integration package requires it, the authoritative source package may therefore be committed under a controlled non-public path such as `backend/exam-content/olsat/` so normal Git clone/pull workflows carry the same `manifest.json + assets/` across authorized development machines.
+
+Repository presence does **not** make those files runtime/public assets. Do not place the package under `frontend/public` or expose repository-relative asset paths directly to Applicants. EXAM-CONTENT-3 consumes the committed package as controlled import input; EXAM-CONTENT-2/3 move validated media into GS-IS managed/private storage for authorized runtime delivery.
+
+Source-page scans and supporting extraction artifacts remain unnecessary repository payload unless separately approved for a concrete project need.
 
 ## 4. Human verification contract
 
@@ -76,14 +80,15 @@ Question
     └── image
 ```
 
-First-phase stimulus forms must support at least:
+First-phase persistence/API semantics should distinguish the broad stimulus category from the structured subtype:
 
 - `NONE`
 - `IMAGE`
-- `MATRIX`
-- `WORD_BANK`
+- `STRUCTURED`
 
-Do not flatten meaningful matrix or word-bank structure into ordinary prose.
+For `STRUCTURED`, preserve a bounded discriminator + payload validated against forms demonstrated by the verified manifest. Current package examples include `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, and `GROUPED_NUMBER_ROWS`. The validator should fail closed on unknown/invalid structured subtypes rather than silently flattening them.
+
+Do not encode every structured subtype as a permanent top-level Prisma enum merely because it appears in one assessment package. Do not flatten meaningful matrices, word banks, sequences, or grouped rows into ordinary prose.
 
 Answer options must support text-only and image-only forms. The architecture should not permanently block a later text+image option, but first implementation scope should remain bounded to forms demonstrated by the verified package.
 
@@ -153,9 +158,12 @@ Prefer reusable bounded rendering instead of OLSAT-specific branches scattered t
 QuestionRenderer
 ├── text/instruction
 └── StimulusRenderer
+    ├── NONE
     ├── IMAGE
-    ├── MATRIX
-    └── WORD_BANK
+    └── STRUCTURED
+        └── subtype renderer selected from validated manifest semantics
+            ├── MATRIX / WORD_BANK
+            └── sequence / grouped-row forms demonstrated by the package
 
 OptionRenderer
 ├── TEXT
@@ -211,7 +219,7 @@ Those belong to Phase B and/or institutional policy.
 
 ## 13. Licensing/data guardrail
 
-System capability is separate from authorization to digitally reproduce/administer a commercial assessment. Before production use, EARIST/project stakeholders must confirm applicable rights/license for electronic administration.
+The project owner has confirmed client authorization to include the current assessment package in the private project repository for development synchronization. That repository authorization should not be treated as automatic proof of broader production rights for electronic administration of a commercial assessment; before production use, EARIST/project stakeholders must still confirm any applicable administration/license requirements.
 
 Implementation documentation should describe data contracts and system behavior without unnecessarily reproducing protected test content.
 

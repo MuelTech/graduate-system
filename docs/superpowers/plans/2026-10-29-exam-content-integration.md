@@ -48,7 +48,15 @@ Supporting extraction files remain review/provenance artifacts and must not beco
 - `crop_plan.csv`
 - `extraction-notes.md`
 
-Do not commit the complete copyrighted assessment bank merely to satisfy this plan.
+For this project, client authorization to include the actual verified package in the private repository is confirmed. When EXAM-CONTENT-3 requires the package, use a controlled non-public source location such as:
+
+```text
+backend/exam-content/olsat/
+├── manifest.json
+└── assets/
+```
+
+This is source/import data, not frontend static content. Do not place the package under `frontend/public`. Git distribution is permitted so authorized development machines receive the same package through normal clone/pull workflows. Runtime visual media must still be validated and imported into GS-IS managed/private storage before Applicant delivery.
 
 ## 3. EXAM-CONTENT-1 — Mixed-content question architecture
 
@@ -57,10 +65,12 @@ Do not commit the complete copyrighted assessment bank merely to satisfy this pl
 Must support:
 
 - existing plain question text;
-- explicit content/stimulus type;
-- optional `IMAGE`, `MATRIX`, and `WORD_BANK` stimulus;
-- ordered text/image options;
-- verified correct-option mapping;
+- broad stimulus semantics of `NONE`, `IMAGE`, or `STRUCTURED`;
+- a bounded validated discriminator/payload for structured forms demonstrated by the verified manifest instead of a closed top-level enum for every subtype;
+- structured examples including matrices, word banks, numeric/alphanumeric sequences, word series, and grouped-number rows without flattening their meaning;
+- ordered text/image options with source option labels/order preserved;
+- verified correct-option mapping while retaining existing runtime scoring authority;
+- package-local image paths as import references, not production URLs;
 - compatibility for existing text-only questions where reasonable.
 
 Expected work may include Prisma/schema changes, additive migration(s), DTO/repository/service/interface updates, validation, and focused tests.
@@ -79,7 +89,8 @@ Must:
 - validate supported media server-side;
 - authorize retrieval for legitimate Admin/exam contexts;
 - avoid raw public static URLs/storage keys;
-- preserve exact source-derived crops.
+- preserve exact source-derived crops;
+- treat any repository-committed `exam-content/olsat/assets/` files as controlled import sources, never as directly served Applicant assets.
 
 Do not implement the manifest importer or exam-engine changes.
 
@@ -87,7 +98,7 @@ Do not implement the manifest importer or exam-engine changes.
 
 ## 5. EXAM-CONTENT-3 — Verified manifest importer
 
-**Goal:** import a verified `manifest.json + assets/` package deterministically.
+**Goal:** import the verified `manifest.json + assets/` package deterministically from its controlled package root (for example `backend/exam-content/olsat/` when committed to the repository).
 
 Reject at least:
 
@@ -113,11 +124,10 @@ Must support Admin preview/editing for:
 
 - question text;
 - image stimulus;
-- matrix stimulus;
-- word bank;
+- validated structured stimulus forms demonstrated by the verified package;
 - text/image options;
 - correct answer;
-- ordering and existing management behavior where already supported.
+- source option labels/order and existing management behavior where already supported.
 
 Bold/rich-text emphasis is deferred unless required by a specific item's meaning.
 
@@ -135,7 +145,7 @@ Prefer bounded components such as:
 - `StimulusRenderer`
 - `OptionRenderer`
 
-Support responsive/readable text, matrices, word banks, image stimuli, and image answer choices.
+Support responsive/readable text, validated structured stimuli (including matrices, word banks, sequence/grouped-row forms demonstrated by the verified package), image stimuli, and image answer choices.
 
 Preserve unrelated existing exam behavior unless a direct compatibility fix is necessary. Timer/autosave/submission/scheduling corrections remain Phase B.
 
@@ -182,7 +192,7 @@ Phase A acceptance must never be documented as proof these concerns are solved.
 
 ## 10. Security/integrity guardrails
 
-- Exam visual assets are private.
+- Exam visual assets remain private at runtime even when the authorized source package is committed to the private repository.
 - Import data is server-validated.
 - Candidate/unverified answers never become scoring authority automatically.
 - AI-redrawn/generated assessment figures are prohibited.

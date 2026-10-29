@@ -330,7 +330,8 @@ Current repository facts:
 
 - `ExamQuestion`, `ExamOption.isCorrect`, essay answers, exam applications/slots, program exam totals, passing score, and essay-grading-related records already exist.
 - Current question/Admin/Applicant rendering is primarily text-oriented and does not yet represent the verified mixed-content assessment package completely.
-- The project owner completed and manually checked a structured extraction package outside the repository. Canonical future import inputs are the verified `manifest.json + assets/`.
+- The project owner completed and manually checked a structured extraction package. Canonical future import inputs are the verified `manifest.json + assets/`.
+- The project owner confirmed client authorization to commit the actual verified package to the private repository for development synchronization. Treat that package as controlled import source data, not as `frontend/public` runtime assets.
 - Supporting extraction CSV/notes files are review/provenance artifacts, not required production importer inputs once the manifest is finalized.
 - Existing schema/backend pieces do **not** prove the full Admin authoring/scheduling/exam lifecycle is complete.
 
@@ -342,9 +343,9 @@ This is the immediate Applicant Examination implementation workstream.
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
 | 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
-| ⏳ | EXAM-CONTENT-1 — Mixed-content question architecture | Add the minimum authoritative representation for text plus optional `IMAGE`, `MATRIX`, and `WORD_BANK` stimuli and text/image options. |
+| ⏳ | EXAM-CONTENT-1 — Mixed-content question architecture | Add the minimum authoritative representation for canonical text plus `NONE` / `IMAGE` / `STRUCTURED` stimulus semantics, bounded validated structured subtypes demonstrated by the verified manifest, preserved option labels/order, and text/image options. |
 | ⏳ | EXAM-CONTENT-2 — Private exam media | Import/store/retrieve assessment images through authorized private storage; no unrestricted public static exam assets. |
-| ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Import only verified items; reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
+| ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Consume the controlled `manifest.json + assets/` package, import only verified items, move validated media into private managed storage, and reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
 | ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
 | ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
 | ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
