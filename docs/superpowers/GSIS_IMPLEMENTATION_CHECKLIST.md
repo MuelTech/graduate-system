@@ -351,7 +351,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | ✅ | EXAM-CONTENT-2 — Private exam media | **ACCEPTED 2026-10-29.** Implemented at `c080222877380b2124c40ef49e6fbf04aa0fe2c9`; independent storage/authorization/retrieval/migration review PASS; development DB migration `20261029010000_exam_private_media` applied successfully; project-owner XAMPP post-migration integrity checks passed with no broken media references reported. |
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
-| ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
+| ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Implementation `ae54992cb87acad6e420c8788f14910c1035adf9` independently reviewed **PASS**. Project-owner browser baseline QA on existing demo/text questions **PARTIAL PASS**; formal acceptance still requires one structured and one visual/image Applicant QA case. Reload persistence/timer/Admin-duration issues are deferred to Phase B. |
 | ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Before import, remove the seven temporary development/demo DB questions retained through EXAM-CONTENT-5 baseline QA; verify demo count = `0`, then import and QA only the authoritative 72-question OLSAT bank for numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
 | ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
 
@@ -434,7 +434,29 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
   - verify demo-question count = `0` before EXAM-CONTENT-6 controlled import;
   - do not delete code-level automated-test fixtures under `backend/tests/fixtures/`.
 - Formal EXAM-CONTENT-4 acceptance: **ACCEPTED — 2026-10-29**
-- EXAM-CONTENT-5 authorization: **AUTHORIZED NEXT**
+- EXAM-CONTENT-5 authorization: **AUTHORIZED / IMPLEMENTED / PENDING FINAL OWNER QA**
+
+### EXAM-CONTENT-5 review checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `ae54992cb87acad6e420c8788f14910c1035adf9`
+- Independent implementation/source review: **PASS**
+- Applicant mixed-content renderer integration: **PASS**
+- Persisted source-label/order and option-ID selection authority: **PASS**
+- Shared structured/image renderer reuse and correctness non-exposure: **PASS**
+- Focused automated verification: **PASS** — 7 files / 92 tests.
+- Frontend TypeScript/build/targeted lint verification: **PASS**
+- Project-owner Applicant browser baseline QA: **PARTIAL PASS**
+  - current development/demo text questions rendered successfully in the updated Applicant exam UI;
+  - navigation shell and legacy text-question baseline remained usable;
+  - mixed-content visual/structured browser QA is still required before formal acceptance.
+- Owner-observed Phase B gaps:
+  - MCQ answers currently disappear on browser reload because selections are held in frontend state;
+  - persisted MCQ autosave/recovery and refresh/reconnect restoration are not yet implemented;
+  - current three-hour timer remains hard-coded/duplicated rather than driven by accepted Admin configuration;
+  - authoritative Admin exam-duration configuration and server-authoritative attempt/timer lifecycle remain Phase B work.
+- Formal EXAM-CONTENT-5 acceptance: **PENDING**
+- EXAM-CONTENT-6 authorization: **NOT YET AUTHORIZED**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
 
@@ -444,13 +466,15 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 
 | Status | Item | Audit target |
 | --- | --- | --- |
-| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics and scheduled-start vs exam-start behavior. |
+| 🔍 | Admin exam-duration configuration | Add an authoritative Admin-managed duration/configuration source instead of relying on duplicated hard-coded three-hour assumptions. |
+| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics, configured duration, remaining-time restoration, and scheduled-start vs actual-attempt behavior. |
 | 🔍 | Timeout behavior | Verify auto-submit, lock, server enforcement, and user-facing expiry behavior. |
-| 🔍 | Autosave + recovery | Verify persisted answer recovery after refresh/reconnect and failure handling. |
-| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, and score configuration. |
-| 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, and final state. |
+| 🔍 | MCQ autosave + recovery | Persist MCQ selections and restore answers/answered navigator state after refresh/reconnect; current frontend-only selections are lost on reload. |
+| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, recovery, and score configuration. |
+| 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, final state, and post-submit locking. |
 | 🔍 | Exam scheduling | Audit slot creation, capacity, eligibility, booking/assignment, transitions, edit/cancel/reschedule behavior, and edge cases. |
 | 🔍 | Question activation / selection | Verify active-question selection/ordering and prevent unintended question exposure. |
+| 🔍 | Scoring / answer integrity | Verify selected-option ownership, duplicate/incomplete answers, scoring denominator, and authoritative attempt state. |
 | 🔍 | Automated regression coverage | Expand exam-engine/service/API/frontend coverage for accepted lifecycle and failure cases. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 
