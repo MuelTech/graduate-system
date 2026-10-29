@@ -222,15 +222,35 @@ production DB migration and full-bank import; hosted CI; browser/manual/UI/conte
 QA. The project development database was **not populated**. Phase 6 content
 verification remains separate from this package's structural/type preflight.
 
+## Independent review and acceptance addendum
+
+Independent remote source/diff review completed on 2026-10-29 and passed the approved EXAM-CONTENT-3 importer, real-package, structured-content, answer-label mapping, path-containment, private-media, duplicate/idempotency, transaction/compensation, migration-source, and scope checks.
+
+The committed real package was independently reconciled at 72 questions, all explicitly `VERIFIED`, with 108 unique manifest-referenced image assets and 108 committed asset files; no referenced asset was missing and no extra committed asset was present.
+
+Development database migration rehearsal was completed by the project owner on the local XAMPP/MySQL development database:
+
+- `npx prisma migrate deploy` successfully applied `20261029020000_exam_import_identity`;
+- `npx prisma migrate status` reported the database schema is up to date;
+- post-migration pre-import integrity checks returned the expected zero state for import markers, sourced questions, sourced question numbers, and broken source-import references.
+
+The full 72-question import was intentionally **not** run. Controlled development-bank import and content QA remain EXAM-CONTENT-6.
+
+No hosted CI is claimed for this feature-branch checkpoint. No browser/manual/UI/content QA is required or claimed for this importer package.
+
+**EXAM-CONTENT-3 acceptance: ACCEPTED — 2026-10-29.**
+
+**Next authorized package:** EXAM-CONTENT-4 — Admin Question Bank mixed-content support, continuing on `feat/exam-content-integration`.
+
 ## Deferred scope and stop boundary
 
 No EXAM-CONTENT-4 Admin editor/UI; EXAM-CONTENT-5 Applicant renderer/UI;
 EXAM-CONTENT-6 full-bank development import or final content QA; or Phase B timer,
 autosave, recovery, submission, scheduling, activation/selection, scoring-denominator
-or historical-snapshot changes were implemented. Existing user-authored questions
-are retained, so future full-bank QA must consider the existing shared-bank policy.
-No manual/browser QA is claimed. Commit/push on the existing branch, do not merge
-`main`, and stop for independent review and project-owner authorization.
+or historical-snapshot changes were implemented in EXAM-CONTENT-3. Existing
+user-authored questions are retained, so future full-bank QA must consider the
+existing shared-bank policy. The accepted package remains bounded to verified
+source-package preflight/import infrastructure and deterministic source identity.
 
 ## Exact changed-file inventory
 
