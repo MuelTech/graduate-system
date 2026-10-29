@@ -277,7 +277,8 @@ migration, source content, or test fixture was changed**.
 
 ## Owner manual/browser/content QA matrix
 
-**Pending owner execution. The agent did not perform manual/browser/content QA.**
+**The agent did not perform manual/browser/content QA.** After this implementation report was produced, the project owner began real-bank browser/content review and reported the follow-up findings recorded below. The original representative matrix remains useful for continued source/browser comparison.
+
 All rows below have runtime response type `MULTIPLE_CHOICE`. Source categories
 are abbreviated only in this matrix: TEXT = TEXT_MULTIPLE_CHOICE; STRUCTURED =
 STRUCTURED_STIMULUS_TEXT_CHOICES; VISUAL = VISUAL_STIMULUS_VISUAL_CHOICES.
@@ -302,6 +303,27 @@ content. Source 4 also covers persisted non-A/B/C labels F/G/H/J/K. The owner
 should compare Admin preview with Applicant rendering, exact visual assets,
 labels/order, structured boundaries, and selection behavior. Numbering refers
 to source question numbers, not newly generated database IDs.
+
+### Project-owner real-bank QA follow-up
+
+The project owner confirmed the real imported bank is visible and reviewed the current browser presentation. This is a **partial owner QA pass with presentation follow-ups**, not formal EXAM-CONTENT-6 acceptance.
+
+Observed findings:
+
+- Admin correctly reports `72 questions · Page 1 of 9`. Source review confirms the page already has working Previous/Next state and slices eight questions per page, so this is not a missing import/data problem. The usability issue is that the controls appear only after the long eight-card page and are easy to miss during review.
+- Admin question text currently uses EARIST primary red, and Applicant multiple-choice/essay question text also uses the primary red token. The owner found this unsuitable for normal questionnaire reading. Assessment body text should use a neutral dark/body color; red should remain for intentional accents, focus, selection, headings, warnings, or other meaningful states.
+- Comparison against the physical assessment confirmed that some question/instruction text contains semantically meaningful **bold** and **underline**.
+- The physical assessment also contains meaningful **bold** text inside some textual answer choices.
+- The current manifest/import/runtime text contract is plain text and therefore does not preserve those emphasis semantics.
+
+Classification:
+
+- pagination discoverability and neutral assessment-text color are bounded EXAM-CONTENT-6 UI follow-ups and do **not** require re-importing the 72-question bank;
+- semantic bold/underline preservation is not merely cosmetic where it changes interpretation, so it is promoted to a separate required Phase A package: **EXAM-CONTENT-7 — Semantic text-emphasis fidelity**;
+- EXAM-CONTENT-7 must cover both question/instruction text and textual answer options, retain plain text as canonical fallback/searchable content, and use a bounded semantic representation rather than arbitrary HTML/general-purpose rich text;
+- Phase A must not claim complete presentation fidelity until that package is accepted.
+
+No importer/database/media evidence above is invalidated by these findings. They identify presentation/source-semantics gaps after successful structural import.
 
 ## Focused verification commands and results
 
@@ -367,8 +389,7 @@ deferred and was not treated as a Phase A blocker.
 
 All seven original development/demo questions and both EC5 temporary QA questions
 are gone from the active bank. The authoritative manifest/assets remain unchanged.
-Canonical acceptance/checklist documents were not edited. Stop after committing
-and pushing this evidence on the existing branch; wait for independent review
-and project-owner Admin/Applicant content/browser QA. **Neither EC6 nor Phase A
-is formally accepted by this report, and examination production readiness is not
-claimed. Phase B must not begin automatically.**
+
+Subsequent canonical documentation now records the project-owner browser/content findings above. EXAM-CONTENT-6 remains pending the bounded pagination/text-color follow-up and owner recheck. EXAM-CONTENT-7 is required afterward for semantic bold/underline fidelity before final Phase A acceptance.
+
+**Neither EC6 nor Phase A is formally accepted by this report or this addendum, and examination production readiness is not claimed. Phase B must not begin automatically.**
