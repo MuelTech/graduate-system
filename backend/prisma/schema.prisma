@@ -1715,11 +1715,23 @@ enum QuestionType {
   @@map("question_type")
 }
 
+enum ExamStimulusType {
+  NONE
+  IMAGE
+  STRUCTURED
+
+  @@map("exam_stimulus_type")
+}
+
 model ExamQuestion {
-  id           String       @id @default(uuid()) @map("question_id")
-  questionText String       @map("question_text") @db.Text
-  type         QuestionType @default(MULTIPLE_CHOICE)
-  order        Int          @default(0)
+  id                 String           @id @default(uuid()) @map("question_id")
+  questionText       String           @map("question_text") @db.Text
+  type               QuestionType     @default(MULTIPLE_CHOICE)
+  order              Int              @default(0)
+  stimulusType       ExamStimulusType @default(NONE) @map("stimulus_type")
+  // Opaque domain media identity only; private storage lifecycle is EXAM-CONTENT-2.
+  stimulusMediaId    String?          @map("stimulus_media_id") @db.VarChar(36)
+  structuredStimulus Json?            @map("structured_stimulus")
 
   options ExamOption[]
   answers ApplicantAnswer[]
@@ -1730,7 +1742,10 @@ model ExamQuestion {
 model ExamOption {
   id         String  @id @default(uuid()) @map("option_id")
   questionId String  @map("question_id")
-  optionText String  @map("option_text") @db.Text
+  optionText String? @map("option_text") @db.Text
+  // Nullable for legacy rows: never fabricate source labels during migration.
+  label      String? @db.VarChar(8)
+  mediaId    String? @map("media_id") @db.VarChar(36)
   isCorrect  Boolean @default(false) @map("is_correct")
   order      Int     @default(0) @map("order")
 

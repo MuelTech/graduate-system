@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
 import prisma from "../config/database";
+import { AppError } from "../utils/AppError";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -79,8 +80,8 @@ export class ExamEngineController {
             const question = await this.service.createQuestion(req.body);
 
             res.status(201).json(question);
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not create question." });
         }
     }
 
@@ -89,8 +90,8 @@ export class ExamEngineController {
             const question = await this.service.updateQuestion(req.params.id as string, req.body);
 
             res.status(200).json(question);
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not update question." });
         }
     }
 

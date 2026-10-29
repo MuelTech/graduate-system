@@ -1,5 +1,6 @@
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
 import prisma from "../config/database";
+import { validateExamQuestion } from "./exam-content.rules";
 
 export class ExamEngineService {
     private repo: ExamEngineRepository;
@@ -73,11 +74,11 @@ export class ExamEngineService {
         return this.repo.getAllQuestionsForAdmin();
     }
 
-    async createQuestion(data: any) {
-        return this.repo.createQuestion(data);
+    async createQuestion(data: unknown) {
+        return this.repo.createQuestion(validateExamQuestion(data));
     }
 
-    async updateQuestion(id: string, data: any) {
+    async updateQuestion(id: string, data: unknown) {
         return this.repo.updateQuestion(id, data);
     }
 
