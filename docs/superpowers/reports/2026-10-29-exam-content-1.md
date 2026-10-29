@@ -176,10 +176,26 @@ node -e 'const fs = require("fs"); const { validateStructuredStimulus } = requir
 13. `backend/tests/unit/migrations/exam-mixed-content.test.ts`
 14. `docs/superpowers/reports/2026-10-29-exam-content-1.md`
 
+## Independent review and acceptance addendum
+
+Independent remote source/diff review completed on 2026-10-29 and passed the approved EXAM-CONTENT-1 architecture, manifest-shape, migration-source, API-boundary, and scope checks.
+
+Development database rehearsal was then completed by the project owner on the local XAMPP/MySQL development database:
+
+- `npx prisma migrate deploy` successfully applied `20261029000000_exam_mixed_content`;
+- `npx prisma migrate status` reported the database schema is up to date;
+- post-migration query reported `stimulus_type = NONE` for all 7 existing exam questions;
+- selected-option referential-integrity query reported 0 broken `selected_option_id` references.
+
+No hosted CI is claimed for this feature-branch checkpoint. No manual/browser/content QA is required or claimed for this architecture-only package.
+
+**EXAM-CONTENT-1 acceptance: ACCEPTED — 2026-10-29.**
+
+**Next authorized package:** EXAM-CONTENT-2 — Private exam media, continuing on `feat/exam-content-integration`.
+
 ## Stop boundary
 
 No EXAM-CONTENT-2 private media; EXAM-CONTENT-3 source package/importer;
 EXAM-CONTENT-4 Admin UI; EXAM-CONTENT-5 Applicant UI; EXAM-CONTENT-6 bank import;
-or Phase B timer/autosave/submission/scheduling changes were implemented.
-No manual/browser/content QA is claimed. Stop after commit/push and await
-independent review and explicit owner authorization for the next package.
+or Phase B timer/autosave/submission/scheduling changes were implemented in EXAM-CONTENT-1.
+The accepted package remains bounded to mixed-content question architecture and its migration/API contract.
