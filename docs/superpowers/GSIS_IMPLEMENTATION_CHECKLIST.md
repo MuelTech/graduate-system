@@ -349,7 +349,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
 | ✅ | EXAM-CONTENT-1 — Mixed-content question architecture | **ACCEPTED 2026-10-29.** Implemented at `3506707552e66c03d8e59bb9afdf394077995b9f`; independent source/manifest/migration review PASS; development DB migration `20261029000000_exam_mixed_content` applied successfully; all 7 legacy questions defaulted to `NONE`; selected-option referential check found 0 broken references. |
 | ✅ | EXAM-CONTENT-2 — Private exam media | **ACCEPTED 2026-10-29.** Implemented at `c080222877380b2124c40ef49e6fbf04aa0fe2c9`; independent storage/authorization/retrieval/migration review PASS; development DB migration `20261029010000_exam_private_media` applied successfully; project-owner XAMPP post-migration integrity checks passed with no broken media references reported. |
-| ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Consume the controlled `manifest.json + assets/` package, import only verified items, move validated media into private managed storage, and reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
+| ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
 | ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
 | ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
@@ -385,7 +385,32 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
   - no imported exam media was expected yet;
   - no broken question/option media references were reported.
 - Formal EXAM-CONTENT-2 acceptance: **ACCEPTED — 2026-10-29**
-- EXAM-CONTENT-3 authorization: **AUTHORIZED NEXT**
+- EXAM-CONTENT-3 authorization: **COMPLETED / ACCEPTED**
+
+### EXAM-CONTENT-3 acceptance checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`
+- Independent implementation/source review: **PASS**
+- Real committed package verification: **PASS**
+  - 72 questions, all `VERIFIED`;
+  - 108 referenced/committed image assets;
+  - no missing or extra committed assets.
+- Structured-content and answer-label mapping review: **PASS**
+- Path-containment/source-integrity review: **PASS**
+- Private-media/idempotency/transaction-compensation review: **PASS**
+- Focused automated verification and read-only real-package preflight: **PASS**
+- Development DB migration rehearsal: **PASS**
+  - `npx prisma migrate deploy` applied `20261029020000_exam_import_identity` successfully.
+  - `npx prisma migrate status` reported: database schema is up to date.
+- Project-owner XAMPP post-migration pre-import checks: **PASS**
+  - import marker count remained `0`;
+  - sourced-question count remained `0`;
+  - sourced-question-number count remained `0`;
+  - broken import references remained `0`.
+- Full 72-question development DB import: **NOT RUN / deferred to EXAM-CONTENT-6**
+- Formal EXAM-CONTENT-3 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-4 authorization: **AUTHORIZED NEXT**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
 
