@@ -351,7 +351,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | ✅ | EXAM-CONTENT-2 — Private exam media | **ACCEPTED 2026-10-29.** Implemented at `c080222877380b2124c40ef49e6fbf04aa0fe2c9`; independent storage/authorization/retrieval/migration review PASS; development DB migration `20261029010000_exam_private_media` applied successfully; project-owner XAMPP post-migration integrity checks passed with no broken media references reported. |
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
-| ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Implementation `ae54992cb87acad6e420c8788f14910c1035adf9` independently reviewed **PASS**. Project-owner browser baseline QA on existing demo/text questions **PARTIAL PASS**; formal acceptance still requires one structured and one visual/image Applicant QA case. Reload persistence/timer/Admin-duration issues are deferred to Phase B. |
+| ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
 | ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Before import, remove the seven temporary development/demo DB questions retained through EXAM-CONTENT-5 baseline QA; verify demo count = `0`, then import and QA only the authoritative 72-question OLSAT bank for numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
 | ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
 
@@ -434,9 +434,9 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
   - verify demo-question count = `0` before EXAM-CONTENT-6 controlled import;
   - do not delete code-level automated-test fixtures under `backend/tests/fixtures/`.
 - Formal EXAM-CONTENT-4 acceptance: **ACCEPTED — 2026-10-29**
-- EXAM-CONTENT-5 authorization: **AUTHORIZED / IMPLEMENTED / PENDING FINAL OWNER QA**
+- EXAM-CONTENT-5 authorization: **COMPLETED / ACCEPTED**
 
-### EXAM-CONTENT-5 review checkpoint
+### EXAM-CONTENT-5 acceptance checkpoint
 
 - Branch: `feat/exam-content-integration`
 - Reviewed implementation commit: `ae54992cb87acad6e420c8788f14910c1035adf9`
@@ -446,17 +446,20 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 - Shared structured/image renderer reuse and correctness non-exposure: **PASS**
 - Focused automated verification: **PASS** — 7 files / 92 tests.
 - Frontend TypeScript/build/targeted lint verification: **PASS**
-- Project-owner Applicant browser baseline QA: **PARTIAL PASS**
-  - current development/demo text questions rendered successfully in the updated Applicant exam UI;
-  - navigation shell and legacy text-question baseline remained usable;
-  - mixed-content visual/structured browser QA is still required before formal acceptance.
-- Owner-observed Phase B gaps:
-  - MCQ answers currently disappear on browser reload because selections are held in frontend state;
-  - persisted MCQ autosave/recovery and refresh/reconnect restoration are not yet implemented;
-  - current three-hour timer remains hard-coded/duplicated rather than driven by accepted Admin configuration;
+- Project-owner Applicant browser QA: **PASS**
+  - existing development/demo text questions rendered successfully;
+  - temporary structured `MATRIX` stimulus rendered successfully;
+  - persisted `F / G / H / J / K` labels rendered correctly;
+  - temporary image stimulus rendered successfully;
+  - image answer options rendered successfully;
+  - selected answers remained selected after navigating away and back within the active page session.
+- Known Phase B gaps remain explicitly deferred:
+  - MCQ answers are lost after a full browser reload because selections are not yet persisted/recovered;
+  - complete MCQ autosave/recovery and refresh/reconnect restoration are not yet implemented;
+  - the current three-hour timer remains hard-coded/duplicated rather than driven by accepted Admin configuration;
   - authoritative Admin exam-duration configuration and server-authoritative attempt/timer lifecycle remain Phase B work.
-- Formal EXAM-CONTENT-5 acceptance: **PENDING**
-- EXAM-CONTENT-6 authorization: **NOT YET AUTHORIZED**
+- Formal EXAM-CONTENT-5 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-6 authorization: **AUTHORIZED NEXT**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
 
