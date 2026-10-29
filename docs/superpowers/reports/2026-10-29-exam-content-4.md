@@ -183,25 +183,34 @@ controls/status/alerts, stable keys, current-token fetching, abort/revocation,
 state derivation, immutable payload building and bounded rendering. This source
 review and compile/helper coverage do not claim visual/browser acceptance.
 
+## Independent review and acceptance addendum
+
+Independent remote source/diff review completed on 2026-10-29 and passed the approved EXAM-CONTENT-4 Admin mixed-content rendering/editing, structured-content, option-identity preservation, private-image preview/upload, secure-upload integration, and scope checks.
+
+Project-owner browser/visual QA was then completed against the development Admin Question Bank. The updated screen successfully rendered the seven existing development/demo questions and the owner approved the visible result. This acceptance does not claim that the real 72-question OLSAT bank was imported or content-QA'd; that remains EXAM-CONTENT-6.
+
+No hosted CI is claimed for this feature-branch checkpoint.
+
+**EXAM-CONTENT-4 acceptance: ACCEPTED — 2026-10-29.**
+
+**Next authorized package:** EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI, continuing on `feat/exam-content-integration`.
+
 ## Integrity, intentionally unexecuted work and stop boundary
 
 All **109 authoritative manifest/assets files remain byte-for-byte unchanged**
 against the initial SHA-256 snapshot. There are no source-package changes in the
-diff. The Applicant exam page is unchanged; no compatibility edit was necessary.
+diff. The Applicant exam page remained unchanged in EXAM-CONTENT-4.
 No Prisma/schema/migration change was needed or made, so no Prisma commands or
 migration deployment were run for this package. No importer/provenance projection
 expansion was needed, and no private paths/provider metadata were added to DTOs.
 
 `npm run exam-content:import` was **not executed**. The real development DB bank
 was not populated, and no real assessment image was used as an upload test fixture.
-Full backend suite, Playwright/browser suites, manual/browser/UI/content QA,
-hosted CI and production deployment were intentionally not run/claimed.
 
 EXAM-CONTENT-5 Applicant rendering, EXAM-CONTENT-6 controlled import/content QA,
 and Phase B timer/autosave/recovery/submission/scheduling/selection/scoring/history
-changes were not implemented. Existing deletion/history and staging limitations
-remain deferred. Stop after commit/push for independent review and owner QA and
-authorization. Do not mark this package accepted or begin the next package.
+changes were not implemented in EXAM-CONTENT-4. Existing deletion/history and
+staging limitations remain deferred.
 
 ## Exact files changed
 
