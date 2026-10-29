@@ -92,7 +92,11 @@ Do not encode every structured subtype as a permanent top-level Prisma enum mere
 
 Answer options must support text-only and image-only forms. The architecture should not permanently block a later text+image option, but first implementation scope should remain bounded to forms demonstrated by the verified package.
 
-Plain question text remains canonical searchable/accessibility/fallback content. Rich-text emphasis such as bold may be added later through Admin editing and is not a first-import blocker unless the formatting changes an item's meaning.
+Plain text remains the canonical searchable/accessibility/fallback content, but semantic emphasis must be preserved when the physical assessment uses formatting to carry meaning.
+
+Project-owner comparison of the real imported bank against the physical assessment after EXAM-CONTENT-6 confirmed that the source uses **bold** and **underline** inside question/instruction text, and that some answer-option text also contains meaningful bold emphasis. This is no longer optional presentation polish: when emphasis identifies terms such as a negation, exception, target word, or otherwise changes interpretation, losing it is a content-fidelity defect.
+
+The follow-up implementation must remain bounded rather than introducing arbitrary HTML. Preserve at least semantic `BOLD` and `UNDERLINE` spans for both question text and textual answer options, retain plain text as the fallback/searchable value, and render the same emphasis in Admin preview/editing and Applicant presentation.
 
 ## 6. Visual-asset integrity
 
@@ -172,6 +176,10 @@ OptionRenderer
 
 Admin preview and Applicant exam presentation must use the same authoritative question semantics.
 
+Question/instruction and option body text should use a neutral, high-readability body color by default. EARIST primary red may remain an accent for headings, selection/focus state, or other intentional emphasis, but should not color the complete assessment text by default.
+
+Admin bank pagination must also be discoverable for a real 72-question bank. Page status without readily visible navigation is insufficient when controls are only reachable after scrolling through a long page of cards.
+
 ## 10. Phase A — Exam Content Integration
 
 | Package | Scope |
@@ -181,9 +189,10 @@ Admin preview and Applicant exam presentation must use the same authoritative qu
 | EXAM-CONTENT-3 | Verified `manifest.json + assets/` importer with fail-closed validation. |
 | EXAM-CONTENT-4 | Admin Question Bank mixed-content renderer/editor support. |
 | EXAM-CONTENT-5 | Applicant Exam mixed-content renderer and bounded UI/UX integration. |
-| EXAM-CONTENT-6 | Import verified question bank and complete content-focused QA. |
+| EXAM-CONTENT-6 | Import verified question bank, complete content-focused QA, and close bounded real-bank presentation issues such as pagination discoverability and assessment-text color. |
+| EXAM-CONTENT-7 | Preserve semantically meaningful bold/underline emphasis in question/instruction text and textual answer choices across source representation, Admin authoring/preview, and Applicant rendering. |
 
-Phase A proves content representation/import/rendering fidelity. It does **not** prove the whole exam lifecycle is production-ready.
+Phase A proves content representation/import/rendering fidelity only after EXAM-CONTENT-7 closes the semantic-emphasis gap confirmed against the physical assessment. It does **not** prove the whole exam lifecycle is production-ready.
 
 ## 11. Phase B follows Phase A
 
@@ -225,6 +234,8 @@ Implementation documentation should describe data contracts and system behavior 
 
 ## 14. Acceptance boundary
 
-Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, Admin and Applicant render the same semantics, and project-owner content/manual QA is completed where applicable.
+Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, Admin and Applicant render the same semantics, semantically meaningful bold/underline emphasis from the physical assessment is preserved for both questions and textual answer choices, and project-owner content/manual QA is completed where applicable.
+
+EXAM-CONTENT-6 import/database success alone is not sufficient for full presentation-fidelity acceptance. Close the bounded pagination/color follow-up and EXAM-CONTENT-7 semantic-emphasis fidelity before Phase A acceptance.
 
 After Phase A acceptance, proceed directly to Phase B.
