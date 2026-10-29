@@ -323,20 +323,52 @@ The existing Panelist E-Signatures page is **document-specific**. The signer cur
 
 # 7. Applicant / Entrance Examination
 
+**Content authority:** `docs/superpowers/EXAM_CONTENT_SOURCE_OF_TRUTH.md`  
+**Phase A implementation plan:** `docs/superpowers/plans/2026-10-29-exam-content-integration.md`
+
 Current repository facts:
 
 - `ExamQuestion`, `ExamOption.isCorrect`, essay answers, exam applications/slots, program exam totals, passing score, and essay-grading-related records already exist.
-- Presence of schema/backend pieces does **not** prove the full Admin authoring/scheduling/exam lifecycle is complete.
+- Current question/Admin/Applicant rendering is primarily text-oriented and does not yet represent the verified mixed-content assessment package completely.
+- The project owner completed and manually checked a structured extraction package outside the repository. Canonical future import inputs are the verified `manifest.json + assets/`.
+- Supporting extraction CSV/notes files are review/provenance artifacts, not required production importer inputs once the manifest is finalized.
+- Existing schema/backend pieces do **not** prove the full Admin authoring/scheduling/exam lifecycle is complete.
 
-| Status | Item | Current / target state |
+## 7.1 Phase A — Mixed-Content Exam Integration
+
+This is the immediate Applicant Examination implementation workstream.
+
+| Status | Package / Item | Current / target state |
 | --- | --- | --- |
-| 🟡 | Exam question data model | Question and option/correct-answer structures exist. |
-| 🔍 | Admin question-management audit | Verify whether Admin can fully create/edit/order/activate MCQ questions and correct answers. |
-| 🔍 | Essay-question management audit | Verify complete Admin authoring/configuration of essay questions. |
-| 🔍 | Applicant examination UX audit | Verify actual end-to-end test-taking behavior, validation, completion, score state, and failure handling. |
-| 🟡 | Essay grading | Existing grading records/UI work exists; audit Program Chair/grader authority against future Faculty permissions. |
-| 🔍 | Exam scheduling | Audit slot creation, capacity, eligibility, applicant booking/assignment, status transitions, edit/cancel behavior, and edge cases. |
+| ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
+| 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
+| ⏳ | EXAM-CONTENT-1 — Mixed-content question architecture | Add the minimum authoritative representation for text plus optional `IMAGE`, `MATRIX`, and `WORD_BANK` stimuli and text/image options. |
+| ⏳ | EXAM-CONTENT-2 — Private exam media | Import/store/retrieve assessment images through authorized private storage; no unrestricted public static exam assets. |
+| ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Import only verified items; reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
+| ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
+| ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
+| ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
+| ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
+
+**Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
+
+## 7.2 Phase B — Exam Engine / Scheduling Audit
+
+**This begins immediately after Phase A is accepted.**
+
+| Status | Item | Audit target |
+| --- | --- | --- |
+| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics and scheduled-start vs exam-start behavior. |
+| 🔍 | Timeout behavior | Verify auto-submit, lock, server enforcement, and user-facing expiry behavior. |
+| 🔍 | Autosave + recovery | Verify persisted answer recovery after refresh/reconnect and failure handling. |
+| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, and score configuration. |
+| 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, and final state. |
+| 🔍 | Exam scheduling | Audit slot creation, capacity, eligibility, booking/assignment, transitions, edit/cancel/reschedule behavior, and edge cases. |
+| 🔍 | Question activation / selection | Verify active-question selection/ordering and prevent unintended question exposure. |
+| 🔍 | Automated regression coverage | Expand exam-engine/service/API/frontend coverage for accepted lifecycle and failure cases. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
+
+Do not mark the Applicant Entrance Examination production-ready until Phase B has been completed and accepted.
 
 ---
 
@@ -474,9 +506,9 @@ For each review, record:
 
 This list is intentionally orderable and may change.
 
-0. Complete the active GS020-FORM package: renderer visual acceptance first, then finalized-record/e-signature integration.
-1. Continue collecting missing-feature/process notes from the project owner.
-2. Audit Applicant Examination + Exam Scheduling to separate implemented vs incomplete behavior.
+0. Complete **Phase A — Applicant Examination Mixed-Content Integration** using `EXAM_CONTENT_SOURCE_OF_TRUTH.md` and the 2026-10-29 implementation plan (EXAM-CONTENT-1 through EXAM-CONTENT-6).
+1. Immediately after Phase A acceptance, complete **Phase B — Exam Engine / Scheduling Audit** covering timer, autosave/recovery, essay lifecycle, submission/timeout rules, scheduling semantics, question activation/selection, and regression coverage before treating Applicant Examination as production-ready.
+2. Continue collecting missing-feature/process notes from the project owner.
 3. Design Faculty identity / multi-permission architecture, taking existing `CustomRole` / `RoleFeatureAccess` into account.
 4. Redesign public Landing / Login / Applicant Sign-up and credential-state routing around the future Faculty model.
 5. Redesign Adviser eligibility/capacity under the future Faculty model.
