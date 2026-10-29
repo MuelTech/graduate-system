@@ -347,7 +347,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
 | 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
-| 🔍 | EXAM-CONTENT-1 — Mixed-content question architecture | Implemented on `feat/exam-content-integration` at `3506707552e66c03d8e59bb9afdf394077995b9f`. Independent remote source/diff review PASS: canonical text plus `NONE` / `IMAGE` / `STRUCTURED`, all eight observed structured subtypes, preserved option labels/order, explicit Applicant/Admin projections, and text/image option architecture are present. Development-DB migration rehearsal remains pending, so the package is not yet formally accepted. |
+| ✅ | EXAM-CONTENT-1 — Mixed-content question architecture | **ACCEPTED 2026-10-29.** Implemented at `3506707552e66c03d8e59bb9afdf394077995b9f`; independent source/manifest/migration review PASS; development DB migration `20261029000000_exam_mixed_content` applied successfully; all 7 legacy questions defaulted to `NONE`; selected-option referential check found 0 broken references. |
 | ⏳ | EXAM-CONTENT-2 — Private exam media | Import/store/retrieve assessment images through authorized private storage; no unrestricted public static exam assets. |
 | ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Consume the controlled `manifest.json + assets/` package, import only verified items, move validated media into private managed storage, and reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
 | ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
@@ -361,9 +361,14 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 - Reviewed commit: `3506707552e66c03d8e59bb9afdf394077995b9f`
 - Independent implementation/source review: **PASS**
 - Verified-manifest structured subtypes represented/validated: `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, `LOGICAL_PREMISES`
-- Live/development DB migration rehearsal: **PENDING**
-- Formal EXAM-CONTENT-1 acceptance: **PENDING**
-- EXAM-CONTENT-2 authorization: **NOT YET**
+- Development DB migration rehearsal: **PASS**
+  - `npx prisma migrate deploy` applied `20261029000000_exam_mixed_content` successfully.
+  - `npx prisma migrate status` reported: database schema is up to date.
+- Post-migration integrity verification: **PASS**
+  - legacy question stimulus state: `NONE = 7`;
+  - broken `selected_option_id` references: `0`.
+- Formal EXAM-CONTENT-1 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-2 authorization: **AUTHORIZED NEXT**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
 
