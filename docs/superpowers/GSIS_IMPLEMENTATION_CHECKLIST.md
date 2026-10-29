@@ -353,7 +353,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
 | 🟡 | EXAM-CONTENT-6 — Verified bank import + content QA | Import/reconciliation evidence at `5313c5934b3f3f6a2f98a316246810b284ab0e05` PASS: 72 authoritative questions, 108 imported media references, 72/72 verified answer mappings, all eight structured forms, idempotency, and unchanged source package. Owner real-bank QA found two bounded UI follow-ups before acceptance: Admin pagination controls are difficult to discover because they are only below the long page, and assessment question/instruction text uses primary red instead of a neutral body color. |
-| 🟡 | EXAM-CONTENT-7 — Semantic text-emphasis fidelity | **OWNER-AUTHORIZED 2026-10-29 / may proceed while EC6 bounded UI follow-ups remain open.** Required before Phase A acceptance. Owner comparison with the physical assessment confirmed meaningful bold/underline in question/instruction text and meaningful bold in some textual answer choices. Current plain-text representation loses these semantics. Add bounded BOLD/UNDERLINE metadata + Admin/Applicant support; do not introduce arbitrary HTML/general rich text. |
+| 🟡 | EXAM-CONTENT-7 — Semantic text-emphasis fidelity | Implementation `09e09260e5b1ab539b567b3b51b1e7b146e928d5`; independent actual-source review **PASS**; project owner observed Admin bold/underline authoring/rendering working. Applicant full browser QA was intentionally owner-skipped and remains covered only by reviewed shared-renderer/source + focused automated evidence. Real 72-question OLSAT emphasis population is **NOT RUN / PENDING OWNER-VERIFIED SOURCE MAP**; formal EC7 acceptance remains pending real-source application/comparison. |
 
 ### EXAM-CONTENT-1 review checkpoint
 
@@ -485,10 +485,18 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - use neutral body text for normal assessment question/instruction text while retaining red for intentional accents/selection states;
   - no re-import is required for these two UI fixes.
 - Formal EXAM-CONTENT-6 acceptance: **PENDING**
-- EXAM-CONTENT-7 authorization: **OWNER-AUTHORIZED — 2026-10-29**
-  - sequencing exception: EC7 may proceed before formal EC6 acceptance;
-  - the two EC6 UI follow-ups remain independently open and must not be silently folded into EC7.
-- Phase A final acceptance: **BLOCKED until both EC6 follow-ups and EXAM-CONTENT-7 semantic-emphasis fidelity are accepted**
+- EXAM-CONTENT-7 implementation/review checkpoint:
+  - implementation commit: `09e09260e5b1ab539b567b3b51b1e7b146e928d5`;
+  - independent actual GitHub source/diff review: **PASS**;
+  - owner Admin bold/underline browser observation: **PASS for observed behavior**;
+  - Applicant full manual/browser QA: **OWNER-SKIPPED**;
+  - real OLSAT emphasis sidecar/application: **PENDING OWNER-VERIFIED SOURCE MAP**;
+  - formal EC7 acceptance: **PENDING real-source fidelity completion**.
+- Next implementation: **EXAM-CONTENT-6 UI FOLLOW-UP**
+  - improve Admin pagination discoverability;
+  - change normal assessment question/instruction body text from primary red to a neutral readable body color;
+  - keep EC7 source-map work and Phase B out of this UI package.
+- Phase A final acceptance: **BLOCKED until both EC6 follow-ups and EXAM-CONTENT-7 real-source semantic-emphasis fidelity are accepted**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full presentation fidelity until semantically meaningful bold/underline is preserved for both questions and textual answer choices. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
