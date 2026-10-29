@@ -265,6 +265,34 @@ Support responsive/readable text, validated structured stimuli (including matric
 
 Preserve unrelated existing exam behavior unless a direct compatibility fix is necessary. Timer/autosave/submission/scheduling corrections remain Phase B.
 
+### Current EXAM-CONTENT-5 review checkpoint
+
+Implementation commit:
+
+`ae54992cb87acad6e420c8788f14910c1035adf9` — `feat(exam): add applicant mixed-content rendering`
+
+Independent remote source/diff review on 2026-10-29: **PASS**.
+
+Project-owner browser observation on the Applicant exam page: **PARTIAL QA PASS** for the existing development/demo text-question baseline. The updated renderer visibly loads the current Applicant examination layout and legacy text questions without breaking the existing navigation shell.
+
+This is **not yet formal EXAM-CONTENT-5 acceptance**. Before acceptance, complete focused Applicant browser QA with at least:
+
+- one temporary structured-stimulus question;
+- one temporary visual/image-stimulus question, preferably with an image answer option;
+- persisted non-A/B/C source labels;
+- selection retained while navigating away/back within the current page session.
+
+The current Applicant examination UX is not considered final production UX at this checkpoint. Real-bank presentation refinements discovered during EXAM-CONTENT-6 content QA may still be made where they are directly necessary for faithful question rendering.
+
+Observed examination-lifecycle gaps from owner browser use are intentionally deferred to Phase B and must not be patched inside EXAM-CONTENT-5:
+
+- MCQ selections currently live in frontend page state and are lost on browser reload;
+- complete MCQ autosave/persisted recovery is not yet implemented;
+- refresh/reconnect answer restoration is not yet implemented;
+- the Applicant timer remains fixed at three hours in the current frontend flow;
+- there is no accepted Admin-side authoritative exam-duration configuration yet;
+- timer source-of-truth, timeout/lock/auto-submit, autosave/recovery, and related lifecycle semantics require a coherent Phase B design.
+
 **Stop after review.**
 
 ## 8. EXAM-CONTENT-6 — Verified bank import + content QA
@@ -298,16 +326,20 @@ Project-owner manual/browser/content QA remains distinct from coding-agent autom
 
 After EXAM-CONTENT-6 acceptance, immediately proceed to a separate **Exam Engine / Scheduling Audit** covering:
 
-1. timer source of truth;
-2. frontend/backend duration alignment;
-3. timeout auto-submit/lock;
-4. autosave persistence;
-5. refresh/reconnect recovery;
-6. essay-question assumptions/management;
-7. incomplete-answer/submission behavior;
-8. scheduling eligibility/window semantics;
-9. question activation/selection;
-10. regression coverage.
+1. authoritative exam-duration configuration, including the required Admin-side configuration surface and persistence model;
+2. timer source of truth and removal of duplicated/hard-coded duration assumptions;
+3. frontend/backend duration alignment and remaining-time restoration after refresh/reconnect;
+4. timeout auto-submit/lock and server enforcement;
+5. MCQ autosave persistence;
+6. essay autosave lifecycle review;
+7. persisted answer recovery after refresh/reconnect, including answered/unanswered navigator state;
+8. incomplete-answer/submission behavior, retries/idempotency, and final lock state;
+9. scheduling eligibility/window semantics and scheduled-start vs actual-attempt semantics;
+10. question activation/selection;
+11. scoring/submission integrity checks;
+12. regression coverage.
+
+The Phase B direction should treat the backend/server-side attempt state as authoritative, with the frontend rendering configured duration/remaining time rather than owning an independent hard-coded timer. Admin configuration, timer enforcement, autosave, recovery, timeout, and final submission should be designed as one coherent exam-attempt lifecycle rather than separate frontend patches.
 
 Phase A acceptance must never be documented as proof these concerns are solved.
 
