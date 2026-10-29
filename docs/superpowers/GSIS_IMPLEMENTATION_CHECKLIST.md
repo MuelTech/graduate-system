@@ -341,7 +341,7 @@ This is the immediate Applicant Examination implementation workstream.
 
 **Working branch:** `feat/exam-content-integration`
 
-Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
+Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
 
 | Status | Package / Item | Current / target state |
 | --- | --- | --- |
@@ -352,8 +352,8 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
-| ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Before import, remove the seven temporary development/demo DB questions retained through EXAM-CONTENT-5 baseline QA; verify demo count = `0`, then import and QA only the authoritative 72-question OLSAT bank for numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
-| ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
+| 🟡 | EXAM-CONTENT-6 — Verified bank import + content QA | Import/reconciliation evidence at `5313c5934b3f3f6a2f98a316246810b284ab0e05` PASS: 72 authoritative questions, 108 imported media references, 72/72 verified answer mappings, all eight structured forms, idempotency, and unchanged source package. Owner real-bank QA found two bounded UI follow-ups before acceptance: Admin pagination controls are difficult to discover because they are only below the long page, and assessment question/instruction text uses primary red instead of a neutral body color. |
+| ⏳ | EXAM-CONTENT-7 — Semantic text-emphasis fidelity | **Required before Phase A acceptance.** Owner comparison with the physical assessment confirmed meaningful bold/underline in question/instruction text and meaningful bold in some textual answer choices. Current plain-text representation loses these semantics. Add bounded BOLD/UNDERLINE metadata + Admin/Applicant support; do not introduce arbitrary HTML/general rich text. |
 
 ### EXAM-CONTENT-1 review checkpoint
 
@@ -461,7 +461,34 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 - Formal EXAM-CONTENT-5 acceptance: **ACCEPTED — 2026-10-29**
 - EXAM-CONTENT-6 authorization: **AUTHORIZED NEXT**
 
-**Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
+### EXAM-CONTENT-6 owner-QA checkpoint
+
+- Verified import/evidence commit: `5313c5934b3f3f6a2f98a316246810b284ab0e05`
+- Controlled development-bank import/reconciliation: **PASS**
+  - 72 authoritative OLSAT questions;
+  - source identities 1–72 with no duplicates/nulls;
+  - 108 imported-bank media references;
+  - 72/72 verified correct-answer mappings;
+  - all eight structured subtypes reconciled;
+  - identical second import returned `ALREADY_IMPORTED`;
+  - authoritative manifest/assets remained unchanged.
+- Project-owner real-bank browser/content QA: **PARTIAL PASS WITH FOLLOW-UP FINDINGS**
+  - real imported questions are visible in the Admin Question Bank;
+  - `72 questions · Page 1 of 9` is correct;
+  - Previous/Next functionality exists, but controls are only at the bottom after eight long cards and are not discoverable enough;
+  - Admin and Applicant question/instruction body text currently use EARIST primary red; normal assessment text should use a neutral readable body color;
+  - physical-source comparison confirmed semantically meaningful bold/underline in question/instruction text;
+  - physical-source comparison also confirmed meaningful bold in some textual answer choices;
+  - current plain-text representation does not preserve those emphasis semantics.
+- Bounded EXAM-CONTENT-6 follow-up before formal acceptance:
+  - improve Admin pagination discoverability without changing bank data;
+  - use neutral body text for normal assessment question/instruction text while retaining red for intentional accents/selection states;
+  - no re-import is required for these two UI fixes.
+- Formal EXAM-CONTENT-6 acceptance: **PENDING**
+- EXAM-CONTENT-7 authorization: **PLANNED AFTER EC6 ACCEPTANCE**
+- Phase A final acceptance: **BLOCKED until EXAM-CONTENT-7 semantic-emphasis fidelity is accepted**
+
+**Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full presentation fidelity until semantically meaningful bold/underline is preserved for both questions and textual answer choices. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
