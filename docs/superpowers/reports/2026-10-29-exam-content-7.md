@@ -304,17 +304,48 @@ docs/superpowers/reports/2026-10-29-exam-content-7.md
 
 ## Owner QA and stop boundary
 
-Owner QA must verify selection-based authoring/removal, visible text-edit clearing,
-bold/underline overlap, whitespace and Unicode boundaries, question/essay/option
-preview parity, and saved option identity using synthetic review content first.
-Then the owner must verify actual question/option emphasis against the physical
-assessment and supply the bound VERIFIED sidecar. Real source-specific marks must
-not be invented to fill that gap. Controlled preflight/apply and owner comparison
-can follow when that source map is available.
+### Post-implementation independent review
 
-EC6 pagination discoverability and neutral assessment-body color remain separate.
-No timer/duration, timeout, autosave/recovery/reload persistence, scheduling,
-submission/scoring, essay lifecycle, or question activation/selection work was
-implemented. No acceptance/checklist document was changed. After commit/push,
-**STOP for independent review and project-owner physical-source/browser QA**.
-Neither EXAM-CONTENT-7 nor Phase A is formally accepted by this evidence report.
+The actual GitHub commit/diff at
+`09e09260e5b1ab539b567b3b51b1e7b146e928d5` was independently reviewed after
+the implementation report was produced. Review result: **PASS — no blocking
+architectural or package-scope defect found**.
+
+The review confirmed the additive migration, bounded span contract, safe React
+rendering, correctness non-exposure, fixed-path verified-sidecar workflow, and
+separation from both EC6 UI follow-ups and Phase B.
+
+### Project-owner browser checkpoint
+
+The project owner manually observed **Admin bold/underline authoring/rendering
+working**. This is recorded only for the behavior actually observed; no broader
+manual claim is inferred.
+
+The owner intentionally chose to skip a separate full Applicant browser QA pass
+for this checkpoint. Applicant semantic rendering therefore remains supported by:
+
+- independent source review of the shared `SemanticText` /
+  `OptionContentRenderer` path;
+- focused automated contract/rendering coverage.
+
+This must not be described as project-owner Applicant manual/browser QA.
+
+Real 72-question source-specific emphasis remains **NOT RUN / PENDING
+OWNER-VERIFIED SOURCE MAP**. The real `olsat-emphasis.json` remains absent. No
+source-specific bold/underline may be inferred from wording, capitalization,
+answers, OCR, or an LLM.
+
+Therefore the current checkpoint is:
+
+- EC7 architecture/support implementation review: **PASS**;
+- Admin owner browser observation: **PASS for observed bold/underline behavior**;
+- Applicant full owner browser QA: **OWNER-SKIPPED**;
+- real OLSAT emphasis population/source comparison: **PENDING**;
+- formal EC7 acceptance: **PENDING**.
+
+EC6 pagination discoverability and neutral assessment-body color remain separate
+and are the next bounded implementation work. No timer/duration, timeout,
+autosave/recovery/reload persistence, scheduling, submission/scoring, essay
+lifecycle, or question activation/selection work was implemented.
+
+Neither EXAM-CONTENT-7 nor Phase A is formally accepted by this checkpoint.
