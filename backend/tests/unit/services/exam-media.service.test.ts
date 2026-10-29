@@ -48,6 +48,21 @@ afterEach(async () => {
 });
 
 describe("private exam image creation using the real managed pipeline", () => {
+  it("rejects unvalidated/spoofed promoted metadata before registration", async () => {
+    const invalid = [undefined, {
+      storageKey: "exam-media/key", storageProvider: "other", verifiedMimeType: "image/png",
+      sizeBytes: 12, checksum: "a".repeat(64), checksumAlgorithm: "sha256",
+    }, {
+      storageKey: "exam-media/key", storageProvider: "local", verifiedMimeType: "application/pdf",
+      sizeBytes: 12, checksum: "a".repeat(64), checksumAlgorithm: "sha256",
+    }, {
+      storageKey: "exam-media/key", storageProvider: "local", verifiedMimeType: "image/png",
+      sizeBytes: 12, checksum: "not-a-sha256", checksumAlgorithm: "sha256",
+    }];
+    for (const storageMeta of invalid) await expect(service.registerPromotedImage({ storageMeta } as never)).rejects.toMatchObject({ statusCode: 400 });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it.each([["PNG", EXAM_PNG, "image/png"], ["JPEG", EXAM_JPEG, "image/jpeg"]] as const)("validates and promotes %s content with internal integrity metadata", async (_name, bytes, mime) => {
     const result = await service.createImage(bytes);
     expect(result).toEqual({ id: expect.stringMatching(/^[0-9a-f-]{36}$/) });

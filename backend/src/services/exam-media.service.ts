@@ -5,6 +5,7 @@ import { fileTypeFromBuffer } from "file-type";
 import { ExamMediaRepository } from "../repositories/exam-media.repository";
 import { storageProvider } from "../storage";
 import type { StorageProvider } from "../storage/storage.types";
+import type { SecureMulterFile } from "../storage/secure-upload";
 import { UploadPipeline } from "../storage/upload-pipeline";
 import { getUploadPolicy } from "../storage/upload-policy";
 import { normalizeStorageKey } from "../storage/storage-key";
@@ -25,9 +26,36 @@ export class ExamMediaService {
     private readonly examAccess: Pick<ExamEngineService, "assertApplicantQuestionAccess"> = new ExamEngineService(),
   ) {}
 
+  /** Register the secure-upload pipeline's existing object; never promote twice. */
+  async registerPromotedImage(file: SecureMulterFile): Promise<{ id: string }> {
+    const meta = file.storageMeta;
+    const policy = getUploadPolicy("exam-media");
+    if (!meta || meta.storageProvider !== this.provider.name ||
+        !policy.allowedMimeTypes?.includes(meta.verifiedMimeType ?? "") ||
+        !Number.isInteger(meta.sizeBytes) || meta.sizeBytes <= 0 || meta.sizeBytes > policy.maxBytes ||
+        meta.checksumAlgorithm !== DEFAULT_CHECKSUM_ALGORITHM || !/^[a-f0-9]{64}$/.test(meta.checksum)) {
+      throw new AppError("Invalid validated image upload.", 400);
+    }
+    const key = normalizeStorageKey(meta.storageKey);
+    if (!key.startsWith(`${policy.storagePrefix}/`)) throw new AppError("Invalid validated image upload.", 400);
+    // Resolve by the managed key, never by file.path or the client filename.
+    const resolved = await this.provider.resolveStorageKeyReadPath(key);
+    const verified = await new UploadPipeline(this.provider).validateAndHash(resolved, "exam-image", policy);
+    if (verified.verifiedMimeType !== meta.verifiedMimeType || verified.sizeBytes !== meta.sizeBytes || verified.checksum !== meta.checksum) {
+      throw new AppError("Image upload integrity check failed.", 400);
+    }
+    const created = await this.repo.create({
+      id: randomUUID(), storageKey: key, storageProvider: this.provider.name,
+      verifiedMimeType: verified.verifiedMimeType!, sizeBytes: verified.sizeBytes,
+      checksum: verified.checksum, checksumAlgorithm: verified.checksumAlgorithm,
+    });
+    return { id: created.id };
+  }
+
   /**
-   * Internal creation primitive for a future authorized importer/editor.
-   * Accepts bytes, never a caller-controlled path or URL. No HTTP upload API yet.
+   * Internal byte-creation primitive for the authorized importer.
+   * Admin multipart uploads register their already-promoted object separately.
+   * Accepts bytes, never a caller-controlled path or URL.
    * Images are immutable: replacing content creates a new identity.
    */
   async createImage(bytes: Buffer): Promise<{ id: string }> {

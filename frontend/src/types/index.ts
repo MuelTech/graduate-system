@@ -681,16 +681,32 @@ export interface ApiExamApplication {
   status: string;
 }
 
+export type ExamQuestionType = "MULTIPLE_CHOICE" | "ESSAY";
+export type ExamStimulusType = "NONE" | "IMAGE" | "STRUCTURED";
+export type ExamCell = string | number;
+export type StructuredStimulus =
+  | { type: "MATRIX"; rows: ExamCell[][] }
+  | { type: "GROUPED_NUMBER_ROWS"; groups: ExamCell[][] }
+  | { type: "NUMBER_SEQUENCE"; items: ExamCell[] }
+  | { type: "WORD_BANK" | "ALPHANUMERIC_SEQUENCE" | "WORD_SERIES" | "LETTER_SEQUENCE" | "LOGICAL_PREMISES"; items: string[] };
+
 export interface ExamOption {
   id: string;
-  optionText: string;
+  questionId: string;
+  optionText: string | null;
+  label: string | null;
+  order: number;
+  mediaId: string | null;
 }
 
 export interface ExamQuestion {
   id: string;
   questionText: string;
-  type: string;
+  type: ExamQuestionType;
   order: number;
+  stimulusType: ExamStimulusType;
+  stimulusMediaId: string | null;
+  structuredStimulus: StructuredStimulus | null;
   options: ExamOption[];
 }
 
