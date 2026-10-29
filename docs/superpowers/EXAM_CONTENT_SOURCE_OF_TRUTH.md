@@ -238,4 +238,8 @@ Phase A is accepted only after its bounded packages are implemented/reviewed, pr
 
 EXAM-CONTENT-6 import/database success alone is not sufficient for full presentation-fidelity acceptance. Close the bounded pagination/color follow-up and EXAM-CONTENT-7 semantic-emphasis fidelity before Phase A acceptance.
 
+Current EC7 checkpoint: the semantic-emphasis architecture/support implementation has passed independent source review, and the project owner has observed Admin bold/underline behavior working. A separate Applicant browser QA pass was intentionally skipped by the owner; Applicant behavior remains supported by the reviewed shared renderer and focused automated evidence rather than owner manual evidence. Real OLSAT emphasis population remains pending an owner-verified physical-source map, so EC7 is not yet formally accepted for real-source fidelity.
+
+The next bounded implementation is the remaining EC6 UI follow-up: Admin pagination discoverability plus neutral assessment question/instruction body text. Keep that UI work separate from EC7 source-map completion and from Phase B.
+
 After Phase A acceptance, proceed directly to Phase B.
