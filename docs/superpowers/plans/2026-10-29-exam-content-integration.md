@@ -373,6 +373,46 @@ No Phase B timer/autosave/scheduling/submission work belongs in EXAM-CONTENT-7.
 
 Phase A must not be marked fully presentation-faithful until this package is reviewed and project-owner source/browser QA confirms meaningful emphasis is preserved.
 
+### EXAM-CONTENT-7 review / owner-QA checkpoint
+
+Implementation commit:
+
+`09e09260e5b1ab539b567b3b51b1e7b146e928d5` — `feat(exam): add semantic text emphasis support`
+
+Independent remote review of the actual GitHub diff/source: **PASS — no blocking architectural or package-scope defect found.**
+
+Verified review points include:
+
+- one additive migration adding nullable question/option emphasis metadata only;
+- canonical `questionText` / `optionText` remain plain strings;
+- bounded `BOLD` / `UNDERLINE` span validation;
+- no arbitrary HTML / `dangerouslySetInnerHTML`;
+- Admin and Applicant share the controlled semantic renderer;
+- Applicant projections continue to exclude correctness/answer-key/source/storage authority;
+- the verified-sidecar/apply workflow does not guess real OLSAT formatting;
+- EC6 pagination/color changes and all Phase B lifecycle work remain outside EC7.
+
+Project-owner manual/browser evidence: **Admin bold/underline authoring/rendering observed working.**
+
+The owner intentionally elected not to perform a separate full Applicant browser QA pass for this checkpoint because the Applicant path uses the same reviewed semantic renderer and is covered by focused automated/source evidence. This must be recorded as **owner-skipped**, not as manual Applicant QA.
+
+Real 72-question OLSAT emphasis population remains **NOT RUN / PENDING OWNER-VERIFIED SOURCE MAP**. The real sidecar is absent and no source-specific emphasis may be inferred.
+
+Therefore:
+
+- EC7 architecture/support implementation review: **PASS**;
+- EC7 Admin manual/browser checkpoint: **PASS for observed bold/underline behavior**;
+- Applicant manual/browser QA: **OWNER-SKIPPED**;
+- real-source emphasis fidelity: **PENDING**;
+- formal EC7 acceptance: **PENDING real owner-verified source map/application/comparison**.
+
+The next bounded implementation task is the still-open **EXAM-CONTENT-6 UI follow-up** only:
+
+1. make Admin Question Bank pagination controls discoverable without requiring a long scroll through eight cards;
+2. use a neutral readable body color for normal assessment question/instruction text while preserving EARIST primary red for intentional accents/selection/focus states.
+
+Do not mix importer/database/emphasis-source changes or Phase B work into that UI follow-up.
+
 ## 9. Mandatory Phase B after Phase A
 
 After EXAM-CONTENT-7 acceptance and final Phase A acceptance, immediately proceed to a separate **Exam Engine / Scheduling Audit** covering:
