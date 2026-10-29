@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ExamOption, ExamQuestion } from "@/types";
+import type { ExamQuestion } from "@/types";
+import { ApplicantQuestionRenderer } from "@/components/exam-content/applicant-question-renderer";
+import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
+import { withApplicantAnswer } from "@/lib/applicant-exam-content";
 import {
   Clock,
   ChevronLeft,
@@ -22,8 +25,6 @@ import {
   Wifi,
   ShieldAlert,
 } from "lucide-react";
-
-const getLetter = (index: number) => String.fromCharCode(65 + index);
 
 export default function ApplicantExamPage() {
   const [examState, setExamState] = useState<
@@ -565,7 +566,7 @@ export default function ApplicantExamPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {/* Main Content Area */}
-        <div className="lg:col-span-3">
+        <div className="min-w-0 lg:col-span-3">
           {/* MCQ SECTION */}
           {!showEssay && mcqQuestions.length > 0 && (
             <Card>
@@ -581,42 +582,16 @@ export default function ApplicantExamPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <p className="text-base font-medium text-(--earist-primary)">
-                  {mcqQuestions[currentQuestion].questionText}
-                </p>
-
-                <div className="space-y-2">
-                  {mcqQuestions[currentQuestion].options?.map(
-                    (opt: ExamOption, idx: number) => {
-                      const qId = mcqQuestions[currentQuestion].id;
-                      const isSelected = answers[qId] === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() =>
-                            setAnswers((prev) => ({ ...prev, [qId]: opt.id }))
-                          }
-                          className={`flex w-full items-center gap-3 rounded-lg border p-4 text-left text-sm transition-all ${
-                            isSelected
-                              ? "border-(--earist-primary) bg-(--earist-surface-light-red) font-semibold text-(--earist-primary)"
-                              : "border-(--earist-border-gray) bg-white text-(--earist-body-text) hover:bg-(--earist-surface-gray)"
-                          }`}
-                        >
-                          <span
-                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                              isSelected
-                                ? "bg-(--earist-primary) text-white"
-                                : "bg-(--earist-surface-gray) text-(--earist-body-text)"
-                            }`}
-                          >
-                            {getLetter(idx)}
-                          </span>
-                          <span>{opt.optionText}</span>
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
+                <ApplicantQuestionRenderer
+                  key={mcqQuestions[currentQuestion].id}
+                  question={mcqQuestions[currentQuestion]}
+                  selectedOptionId={answers[mcqQuestions[currentQuestion].id]}
+                  onSelect={(optionId) =>
+                    setAnswers((prev) =>
+                      withApplicantAnswer(prev, mcqQuestions[currentQuestion].id, optionId),
+                    )
+                  }
+                />
 
                 {/* Navigation Buttons */}
                 <div className="flex items-center justify-between border-t border-(--earist-border-gray) pt-4">
@@ -670,6 +645,11 @@ export default function ApplicantExamPage() {
                   </AlertDescription>
                 </Alert>
 
+                <StimulusRenderer
+                  stimulusType={essayQuestion.stimulusType}
+                  stimulusMediaId={essayQuestion.stimulusMediaId}
+                  structuredStimulus={essayQuestion.structuredStimulus}
+                />
                 <p className="text-sm font-medium text-(--earist-primary)">
                   {essayQuestion.questionText}
                 </p>
