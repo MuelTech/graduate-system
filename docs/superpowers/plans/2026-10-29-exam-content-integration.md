@@ -327,11 +327,55 @@ Content QA must verify representative items across every supported type plus:
 
 Project-owner manual/browser/content QA remains distinct from coding-agent automated/source evidence and must not be claimed unless actually performed.
 
+### Current EXAM-CONTENT-6 owner-QA checkpoint
+
+Verified-bank import evidence is recorded at commit:
+
+`5313c5934b3f3f6a2f98a316246810b284ab0e05` — `docs(exam): record verified bank import evidence`
+
+The controlled development import/reconciliation passed: 72 authoritative questions, 108 imported-bank media references, source numbers 1–72, all eight structured forms, 72/72 answer mappings, private-media byte reconciliation, and identical-import idempotency. The authoritative source package remained unchanged.
+
+Project-owner real-bank browser/content review has now started and produced the following concrete presentation findings:
+
+- Admin Question Bank correctly reports `72 questions · Page 1 of 9`; pagination logic already exists, but the Previous/Next controls are only after the long eight-card page, so navigation is not discoverable enough during review;
+- full assessment question/instruction text is currently styled with EARIST primary red in both Admin and Applicant surfaces; normal questionnaire body text should use a neutral readable body color, reserving red for accents/selection/focus where appropriate;
+- comparison against the physical assessment confirmed semantically meaningful **bold** and **underline** inside question/instruction text;
+- the physical assessment also uses meaningful **bold** emphasis inside some textual answer choices;
+- the current plain-text source/import/runtime representation does not preserve those emphasis semantics.
+
+The pagination discoverability and neutral assessment-text color are bounded EXAM-CONTENT-6 presentation follow-ups. They do not require re-importing or changing the verified 72-question bank.
+
+Semantic emphasis is larger than a color/layout correction and must be handled as a separate bounded Phase A package, EXAM-CONTENT-7, before Phase A can claim faithful presentation.
+
+**EXAM-CONTENT-6 remains pending formal acceptance.** Do not treat the successful import as proof that presentation fidelity is complete.
+
 **Stop after acceptance.**
+
+## 8.1 EXAM-CONTENT-7 — Semantic text-emphasis fidelity
+
+This package follows EXAM-CONTENT-6 and remains part of Phase A.
+
+Required scope:
+
+- preserve semantically meaningful `BOLD` and `UNDERLINE` spans from the authorized physical assessment;
+- support emphasis in question/instruction text;
+- support emphasis in textual answer choices;
+- retain canonical plain text for search/accessibility/fallback;
+- avoid arbitrary/untrusted HTML as the data contract;
+- provide bounded source/import representation for emphasis metadata;
+- preserve the same semantics in Admin editing/preview and Applicant rendering;
+- add focused validation so emphasis ranges cannot point outside the canonical text or become structurally ambiguous;
+- verify representative real items where emphasis changes interpretation.
+
+General document-style rich text, fonts, colors, arbitrary HTML, and unrelated formatting remain out of scope unless separately justified by source semantics.
+
+No Phase B timer/autosave/scheduling/submission work belongs in EXAM-CONTENT-7.
+
+Phase A must not be marked fully presentation-faithful until this package is reviewed and project-owner source/browser QA confirms meaningful emphasis is preserved.
 
 ## 9. Mandatory Phase B after Phase A
 
-After EXAM-CONTENT-6 acceptance, immediately proceed to a separate **Exam Engine / Scheduling Audit** covering:
+After EXAM-CONTENT-7 acceptance and final Phase A acceptance, immediately proceed to a separate **Exam Engine / Scheduling Audit** covering:
 
 1. authoritative exam-duration configuration, including the required Admin-side configuration surface and persistence model;
 2. timer source of truth and removal of duplicated/hard-coded duration assumptions;
@@ -386,6 +430,6 @@ Before EXAM-CONTENT-1:
 5. inspect current Prisma exam models, exam engine/repository/service/controller/routes, Admin question page, Applicant exam page, and storage abstraction;
 6. propose the smallest additive architecture supporting the verified manifest.
 
-For EXAM-CONTENT-2 through EXAM-CONTENT-6, continue on the same `feat/exam-content-integration` branch from the last accepted package checkpoint. Do not create a new package branch unless the project owner explicitly changes this strategy.
+For EXAM-CONTENT-2 through EXAM-CONTENT-7, continue on the same `feat/exam-content-integration` branch from the last accepted package checkpoint. Do not create a new package branch unless the project owner explicitly changes this strategy.
 
 Do not begin EXAM-CONTENT-2 or later packages until the previous package is reviewed and explicitly authorized.
