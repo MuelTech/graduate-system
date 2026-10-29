@@ -347,13 +347,23 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package s
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
 | 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
-| ⏳ | EXAM-CONTENT-1 — Mixed-content question architecture | Add the minimum authoritative representation for canonical text plus `NONE` / `IMAGE` / `STRUCTURED` stimulus semantics, bounded validated structured subtypes demonstrated by the verified manifest, preserved option labels/order, and text/image options. |
+| 🔍 | EXAM-CONTENT-1 — Mixed-content question architecture | Implemented on `feat/exam-content-integration` at `3506707552e66c03d8e59bb9afdf394077995b9f`. Independent remote source/diff review PASS: canonical text plus `NONE` / `IMAGE` / `STRUCTURED`, all eight observed structured subtypes, preserved option labels/order, explicit Applicant/Admin projections, and text/image option architecture are present. Development-DB migration rehearsal remains pending, so the package is not yet formally accepted. |
 | ⏳ | EXAM-CONTENT-2 — Private exam media | Import/store/retrieve assessment images through authorized private storage; no unrestricted public static exam assets. |
 | ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Consume the controlled `manifest.json + assets/` package, import only verified items, move validated media into private managed storage, and reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
 | ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
 | ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
 | ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
 | ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
+
+### EXAM-CONTENT-1 review checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed commit: `3506707552e66c03d8e59bb9afdf394077995b9f`
+- Independent implementation/source review: **PASS**
+- Verified-manifest structured subtypes represented/validated: `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, `LOGICAL_PREMISES`
+- Live/development DB migration rehearsal: **PENDING**
+- Formal EXAM-CONTENT-1 acceptance: **PENDING**
+- EXAM-CONTENT-2 authorization: **NOT YET**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
 
