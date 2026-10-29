@@ -265,7 +265,7 @@ Support responsive/readable text, validated structured stimuli (including matric
 
 Preserve unrelated existing exam behavior unless a direct compatibility fix is necessary. Timer/autosave/submission/scheduling corrections remain Phase B.
 
-### Current EXAM-CONTENT-5 review checkpoint
+### Current EXAM-CONTENT-5 acceptance checkpoint
 
 Implementation commit:
 
@@ -273,25 +273,32 @@ Implementation commit:
 
 Independent remote source/diff review on 2026-10-29: **PASS**.
 
-Project-owner browser observation on the Applicant exam page: **PARTIAL QA PASS** for the existing development/demo text-question baseline. The updated renderer visibly loads the current Applicant examination layout and legacy text questions without breaking the existing navigation shell.
+Project-owner browser QA on the Applicant exam page: **PASS**.
 
-This is **not yet formal EXAM-CONTENT-5 acceptance**. Before acceptance, complete focused Applicant browser QA with at least:
+Browser QA verified:
 
-- one temporary structured-stimulus question;
-- one temporary visual/image-stimulus question, preferably with an image answer option;
-- persisted non-A/B/C source labels;
-- selection retained while navigating away/back within the current page session.
+- existing development/demo text questions still render correctly;
+- a temporary structured `MATRIX` stimulus renders correctly;
+- persisted non-A/B/C labels `F / G / H / J / K` render exactly as stored;
+- a temporary visual/image stimulus renders correctly;
+- image answer options render correctly;
+- selected-answer state remains visible when navigating away and back within the current page session;
+- the current navigation shell remains usable with mixed-content questions.
 
-The current Applicant examination UX is not considered final production UX at this checkpoint. Real-bank presentation refinements discovered during EXAM-CONTENT-6 content QA may still be made where they are directly necessary for faithful question rendering.
+The current Applicant examination UX is still not considered final production UX. Real-bank presentation refinements discovered during EXAM-CONTENT-6 content QA may still be made where directly necessary for faithful question rendering.
 
-Observed examination-lifecycle gaps from owner browser use are intentionally deferred to Phase B and must not be patched inside EXAM-CONTENT-5:
+The owner also confirmed the known lifecycle limitation that MCQ selections are lost after a full browser reload. This is **not an EXAM-CONTENT-5 blocker** and remains explicitly deferred to Phase B together with:
 
-- MCQ selections currently live in frontend page state and are lost on browser reload;
-- complete MCQ autosave/persisted recovery is not yet implemented;
-- refresh/reconnect answer restoration is not yet implemented;
-- the Applicant timer remains fixed at three hours in the current frontend flow;
-- there is no accepted Admin-side authoritative exam-duration configuration yet;
-- timer source-of-truth, timeout/lock/auto-submit, autosave/recovery, and related lifecycle semantics require a coherent Phase B design.
+- complete MCQ autosave/persisted recovery;
+- refresh/reconnect answer restoration;
+- server-authoritative remaining-time restoration;
+- the current fixed three-hour timer;
+- missing Admin-side authoritative exam-duration configuration;
+- timeout/lock/auto-submit and related exam-attempt lifecycle semantics.
+
+**EXAM-CONTENT-5 formal acceptance: ACCEPTED — 2026-10-29.**
+
+EXAM-CONTENT-6 is now the next authorized Phase A package. Continue on `feat/exam-content-integration` from this accepted checkpoint and preserve the package stop/review boundary.
 
 **Stop after review.**
 
