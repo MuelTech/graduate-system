@@ -420,27 +420,45 @@ The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted a
 
 **Do not build/apply the final real sidecar yet.**
 
-1. **EC6 bounded post-acceptance source correction — Q24 option J**
-   - correct the canonical manifest/source text to the exact physical wording;
-   - reconcile the already imported Q24 option without changing unrelated IDs, labels, order, correctness, media, or other questions;
-   - update any package fingerprint/import-marker assumptions required by the canonical source change through an explicit reviewed migration/reconciliation path rather than deleting/reimporting the bank;
-   - prove only the intended source/database field changed.
+#### Owner decision superseding EC6-CORR1 one-off reconciliation
 
-2. **EC7 bounded fidelity extension**
+The Q24-specific reconciliation implementation at `9430c833f11c46b3de43a2eb0e9b8e6486b55233` and its evidence-report commit were reviewed, but the project owner elected **not to retain that architecture**. The implementation is considered **SUPERSEDED / NOT ACCEPTED** because this is still a development-stage authoritative bank with no question-answer dependency that justifies carrying permanent Q24-only CLI/service/repository/test machinery.
+
+Next implementation must cleanly replace that approach rather than extend it.
+
+1. **Revert/remove Q24-only reconciliation machinery**
+   - preserve Git history; do not force-push/reset published history;
+   - remove the Q24-only CLI, repository, service, npm commands, dedicated tests, and operator doc from the final tree;
+   - do not create a generic correction framework merely to preserve this one-off approach;
+   - retain only genuinely reusable code if independently justified by the normal importer, otherwise restore the simpler pre-correction structure.
+
+2. **Retain the authoritative Q24 source fix**
+   - canonical Q24 Option J must remain exactly `Paul is younger than Dick and John`;
+   - compute/bind the corrected manifest/package identity from exact bytes;
+   - keep all 108 assets unchanged.
+
+3. **Development OLSAT bank reset + normal clean re-import**
+   - before destructive cleanup, verify there are no `ApplicantAnswer`/question-option references or other dependencies that make reset unsafe;
+   - delete/reset only the imported OLSAT bank state needed for a clean normal import (questions/options, OLSAT import marker, and imported exam media as appropriate);
+   - preserve Users, Students, applications, unrelated profiles/data, and non-OLSAT records;
+   - use the existing normal importer for the corrected package;
+   - verify 72 questions, 360 options, 108 media, all source identities, answer mappings, no broken refs, and corrected Q24 wording;
+   - repeat the normal importer to prove `ALREADY_IMPORTED` idempotency.
+
+4. **EC7 bounded fidelity extension**
    - add controlled `ITALIC` support alongside `BOLD` / `UNDERLINE`;
-   - extend the verified source-typography representation to structured textual stimuli where the physical source demonstrates emphasis;
-   - preserve the safe controlled React rendering model; no arbitrary HTML/Markdown;
-   - update Admin/source tooling and focused tests only as required by the verified source.
+   - extend verified typography to structured textual stimuli demonstrated by the source;
+   - preserve safe controlled React rendering; no arbitrary HTML/Markdown.
 
-3. **Real owner-verified typography map**
-   - encode the final verified physical-source marks only after steps 1–2 are accepted;
-   - do not infer any real mark from wording, capitalization, answers, or model/OCR guesses.
+5. **Real owner-verified typography map**
+   - encode final verified physical-source marks only after steps 1–4 are accepted;
+   - do not infer real marks from wording, capitalization, answers, OCR, or model guesses.
 
-4. Run emphasis preflight/apply and prove identical re-apply is idempotent.
+6. Run emphasis preflight/apply and prove identical re-apply is idempotent.
 
-5. Compare Admin/Applicant output against the physical assessment.
+7. Compare Admin/Applicant output against the physical assessment.
 
-6. Formally accept the Q24 correction, EC7, and then Phase A if all source-fidelity checks pass.
+8. Formally close the corrected-bank EC6 checkpoint, accept EC7, and then Phase A if all source-fidelity checks pass.
 
 Do not begin Phase B until these Phase A source-fidelity items are formally accepted.
 
