@@ -3,11 +3,11 @@
 The controlled `olsat/manifest.json` and 108 assets retain exact-byte handling.
 The owner-authorized Q24 option-J source correction revises the canonical manifest
 identity; all assets remain unchanged. A Q24-specific reconciliation utility was
-implemented temporarily but is now **superseded and not the selected operator
-path**. Do not use that one-off reconciliation as the prerequisite for later
-emphasis work. The chosen development path is to remove that machinery, retain
-the corrected canonical package, reset only the imported OLSAT development-bank
-state after dependency checks, and clean-import through the normal importer.
+implemented temporarily but is **superseded and not part of the retained
+architecture**. The selected development replacement has now been completed and
+accepted: that machinery was removed, the corrected canonical package was
+retained, the imported OLSAT development bank was safely reset after dependency
+checks, and the corrected package was clean-imported through the normal importer.
 Do not infer emphasis from words, capitalization, answers, or question types. No real OLSAT
 emphasis sidecar is included: the owner must verify annotations against the
 physical/source assessment before creating `exam-content/olsat-emphasis.json`.
@@ -23,13 +23,15 @@ sufficient for final real-source population:
   `UNDERLINE`;
 - some structured textual stimuli carry meaningful source emphasis (including the
   Q25 and Q45 WORD_SERIES terms);
-- Q24 option J has a source-text discrepancy that must be corrected before final
-  text hashes/offsets are generated.
+- Q24 option J had a source-text discrepancy; that corrected-bank checkpoint is
+  now closed and accepted, so future text hashes/offsets must bind to the corrected
+  canonical wording.
 
 Therefore the runtime contract documented below describes the **currently
-implemented support**, not the final accepted OLSAT fidelity contract. Do not
-create/apply the production `olsat-emphasis.json` until the bounded Q24 source
-correction and the reviewed ITALIC/structured-text extension are complete.
+implemented support**, not the final accepted OLSAT fidelity contract. The Q24
+source correction is complete; do not create/apply the production
+`olsat-emphasis.json` until the reviewed ITALIC/structured-text extension is
+complete and the final owner-verified source map exists.
 
 ## Runtime contract
 
