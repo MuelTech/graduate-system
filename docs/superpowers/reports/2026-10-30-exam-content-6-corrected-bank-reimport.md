@@ -281,3 +281,35 @@ activation/selection work was started.
 
 **STOP for independent/owner review.** This report does not formally accept
 EC6-CORR2, EC7, or Phase A, and does not start the next package automatically.
+
+
+## Independent review acceptance addendum — 2026-10-31
+
+Independent review of the actual pushed branch confirmed:
+
+- the superseded Q24-only CLI/service/repository/tests/operator documentation and
+  npm commands are absent from the final tree;
+- the temporary fingerprint helper is absent and normal package preflight uses
+  the original inline fingerprint algorithm;
+- Q24 Option J remains exactly `Paul is younger than Dick and John`, labels remain
+  F/G/H/J/K, and the correct answer remains F;
+- corrected manifest/package identity bindings remain accurate;
+- the normal importer is the retained continuing path;
+- no permanent reset/cleanup utility was introduced;
+- `main` remained untouched;
+- no EC7 ITALIC/structured-text implementation, real emphasis sidecar/application,
+  or Phase B work was introduced.
+
+The operational evidence in this report is accepted for the development-bank
+replacement: dependency safety gate passed, the old imported OLSAT bank/media
+were removed without unrelated-data loss, the corrected package was clean-imported,
+the final bank reconciled to 72 questions / 360 options / 108 media with 72/72
+correct-answer mappings and zero broken references, and the identical repeat import
+returned `ALREADY_IMPORTED` with zero writes.
+
+**EC6-CORR2 is formally ACCEPTED as of 2026-10-31.**
+
+This acceptance closes the bounded post-acceptance Q24/corrected-bank checkpoint
+only. The earlier Q24-specific reconciliation implementation remains historical
+and superseded. EXAM-CONTENT-7 and Phase A are still not accepted; the next Phase A
+package is the bounded ITALIC + structured textual-stimulus fidelity extension.
