@@ -352,7 +352,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
-| 🟠 | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED 2026-10-30 on then-known evidence; CONTENT FIDELITY REOPENED for one bounded post-acceptance correction.** Import/reconciliation and UI follow-up remain valid. Later owner-supplied 12-page physical-source audit found Q24 option J truncated in the canonical manifest/imported bank: source = `Paul is younger than Dick and John`; current = `Paul is younger than Dick`. Correct/reconcile only this source-text defect before final Phase A acceptance; do not reopen pagination/color work. |
+| 🟠 | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED 2026-10-30 on then-known evidence; CONTENT FIDELITY REOPENED for one bounded post-acceptance correction.** The Q24 physical-source correction remains required. The subsequently implemented Q24-only reconciliation utility was reviewed but is **SUPERSEDED / NOT ACCEPTED** as the retained architecture. Chosen path: keep the corrected canonical source, remove the one-off machinery, perform a dependency-checked development OLSAT bank reset, then normal clean re-import and verify 72/360/108 + mappings/idempotency. Pagination/color acceptance remains closed. |
 | 🟡 | EXAM-CONTENT-7 — Semantic source-typography fidelity | Original BOLD/UNDERLINE implementation `09e09260e5b1ab539b567b3b51b1e7b146e928d5` independently reviewed **PASS** and Admin behavior owner-observed. Complete physical-source audit later confirmed additional required **ITALIC** semantics and emphasis inside structured textual stimuli (e.g. Q25/Q45 WORD_SERIES). Final sidecar remains **NOT RUN** and must not be generated/applied until the Q24 source correction and bounded EC7 fidelity extension are complete. |
 
 ### EXAM-CONTENT-1 review checkpoint
@@ -490,10 +490,11 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - no backend/schema/migration/import/media/API/Phase-B changes.
 - Formal EXAM-CONTENT-6 acceptance history: **ACCEPTED — 2026-10-30 on then-known evidence**
 - Post-acceptance physical-source correction: **OPEN — Q24 OPTION J ONLY**
-  - physical source: `Paul is younger than Dick and John`;
-  - current canonical/imported text: `Paul is younger than Dick`;
-  - accepted pagination/color work remains closed;
-  - correct/reconcile this exact field before final Phase A acceptance.
+  - physical source authority: `Paul is younger than Dick and John`;
+  - Q24-specific reconciliation implementation `9430c833f11c46b3de43a2eb0e9b8e6486b55233`: independently reviewed but **SUPERSEDED / NOT ACCEPTED as the final architecture**;
+  - owner decision: remove/revert the one-off Q24 CLI/service/repository/tests/operator path and use a development-only OLSAT bank reset + normal clean re-import instead;
+  - corrected canonical manifest wording must be retained/reapplied;
+  - accepted pagination/color work remains closed.
 - EXAM-CONTENT-7 implementation/review checkpoint:
   - implementation commit: `09e09260e5b1ab539b567b3b51b1e7b146e928d5`;
   - independent actual GitHub source/diff review: **PASS**;
@@ -504,11 +505,14 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - real OLSAT sidecar/application: **BLOCKED / NOT RUN** until contract extension and Q24 correction are complete;
   - formal EC7 acceptance: **PENDING real-source fidelity completion**.
 - Next Phase A work, in order:
-  1. **Q24 bounded source correction/reconciliation**;
-  2. **EC7 ITALIC + structured textual-stimulus fidelity extension**;
-  3. **owner-verified real typography map + preflight/apply/idempotency**;
-  4. **physical-source Admin/Applicant comparison**.
-- Phase A final acceptance: **BLOCKED by Q24 source reconciliation + EC7 complete physical-source typography fidelity**
+  1. **remove/revert the superseded Q24-only reconciliation machinery while preserving published Git history**;
+  2. **retain the corrected Q24 canonical manifest + corrected package identity bindings**;
+  3. **development-only reset of imported OLSAT bank state + normal clean import**, only after dependency safety checks;
+  4. **verify 72 questions / 360 options / 108 media / mappings / Q24 wording / ALREADY_IMPORTED repeat**;
+  5. **EC7 ITALIC + structured textual-stimulus fidelity extension**;
+  6. **owner-verified real typography map + preflight/apply/idempotency**;
+  7. **physical-source Admin/Applicant comparison**.
+- Phase A final acceptance: **BLOCKED by corrected-bank clean re-import verification + EC7 complete physical-source typography fidelity**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
