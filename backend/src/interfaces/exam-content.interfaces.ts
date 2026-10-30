@@ -1,4 +1,4 @@
-import type { TextEmphasisSpan } from "../shared/text-emphasis";
+import type { TextEmphasisSpan, StructuredStimulusEmphasis } from "../shared/text-emphasis";
 /** Structured shapes observed in the verified manifest; no extraction provenance. */
 export type ExamCell = string | number;
 export type StructuredStimulus =
@@ -26,6 +26,7 @@ export interface ExamQuestionInput {
   stimulusType: "NONE" | "IMAGE" | "STRUCTURED";
   stimulusMediaId: string | null;
   structuredStimulus: StructuredStimulus | null;
+  structuredStimulusEmphasis?: StructuredStimulusEmphasis;
   options: ExamOptionInput[];
 }
 

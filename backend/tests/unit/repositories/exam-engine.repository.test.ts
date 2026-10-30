@@ -44,6 +44,36 @@ beforeEach(() => {
 });
 
 describe("ExamEngineRepository content boundaries", () => {
+  it("creates separate structured emphasis and projects it to both read models", async () => {
+    const structuredStimulus = { type: "WORD_SERIES", items: ["alpha", "bravo"] };
+    const structuredStimulusEmphasis = [{ index: 1, spans: [{ start: 0, end: 5, style: "ITALIC" }] }];
+    const persisted = { ...row(), stimulusType: "STRUCTURED", stimulusMediaId: null, structuredStimulus, structuredStimulusEmphasis };
+    db.examQuestion.create.mockResolvedValue(persisted);
+    db.examQuestion.findMany.mockResolvedValue([persisted]);
+    const input = validateExamQuestion({ ...editable(), stimulusType: "STRUCTURED", stimulusMediaId: null, structuredStimulus, structuredStimulusEmphasis, options: editable().options.map(({ id, ...o }) => o) });
+    const created = await new ExamEngineRepository().createQuestion(input);
+    expect(db.examQuestion.create.mock.calls[0][0].data).toMatchObject({ structuredStimulus, structuredStimulusEmphasis });
+    expect(created.structuredStimulusEmphasis).toEqual(structuredStimulusEmphasis);
+    const applicant = (await new ExamEngineRepository().getQuestionsForApplicant())[0];
+    expect(applicant.structuredStimulusEmphasis).toEqual(structuredStimulusEmphasis);
+    expect(JSON.stringify(applicant)).not.toContain("isCorrect");
+  });
+
+  it("persists structured metadata-only edits and stale clears without option writes", async () => {
+    const structuredStimulus = { type: "WORD_SERIES", items: ["alpha", "bravo"] };
+    const marks = [{ index: 1, spans: [{ start: 0, end: 5, style: "ITALIC" }] }];
+    db.examQuestion.findUnique.mockResolvedValue({ ...row(), stimulusType: "STRUCTURED", stimulusMediaId: null, structuredStimulus, structuredStimulusEmphasis: marks });
+    db.applicantAnswer.count.mockResolvedValue(1);
+    await new ExamEngineRepository().updateQuestion("q1", { questionText: "Edited instruction" });
+    expect(db.examQuestion.update.mock.calls[0][0].data.structuredStimulusEmphasis).toEqual(marks);
+    await new ExamEngineRepository().updateQuestion("q1", { structuredStimulusEmphasis: null });
+    expect(db.examQuestion.update.mock.calls[1][0].data.structuredStimulusEmphasis).toBe(Prisma.DbNull);
+    await new ExamEngineRepository().updateQuestion("q1", { structuredStimulus: { ...structuredStimulus, items: ["delta", "bravo"] } });
+    expect(db.examQuestion.update.mock.calls[2][0].data.structuredStimulusEmphasis).toBe(Prisma.DbNull);
+    expect(db.examOption.update).not.toHaveBeenCalled();
+    expect(db.examOption.deleteMany).not.toHaveBeenCalled();
+    expect(db.examOption.create).not.toHaveBeenCalled();
+  });
   it("persists question-emphasis-only updates without touching answered option identities", async () => {
     db.applicantAnswer.count.mockResolvedValue(1);
     const marks = [{ start: 0, end: 6, style: "BOLD" }];

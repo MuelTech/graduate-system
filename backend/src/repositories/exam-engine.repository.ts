@@ -5,7 +5,7 @@ import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
 import { applicantQuestionSelect, adminQuestionSelect, toApplicantQuestion, toAdminQuestion } from "./exam-content.projection";
 
-function emphasisJson(value: ExamQuestionInput["questionTextEmphasis"]) {
+function emphasisJson(value: ExamQuestionInput["questionTextEmphasis"] | ExamQuestionInput["structuredStimulusEmphasis"]) {
   return value == null ? Prisma.DbNull : value as unknown as Prisma.InputJsonValue;
 }
 function optionData(opt: ExamQuestionInput["options"][number]) {
@@ -16,6 +16,7 @@ function questionData(data: ExamQuestionInput) {
   return {
     questionText: data.questionText, questionTextEmphasis: emphasisJson(data.questionTextEmphasis), type: data.type, order: data.order,
     stimulusType: data.stimulusType, stimulusMediaId: data.stimulusMediaId,
+    structuredStimulusEmphasis: emphasisJson(data.structuredStimulusEmphasis),
     structuredStimulus: data.structuredStimulus === null ? Prisma.DbNull : data.structuredStimulus as Prisma.InputJsonValue,
   };
 }
@@ -186,6 +187,6 @@ function questionDataForValidation(data: ExamQuestionInput): Omit<ExamQuestionIn
   return {
     questionText: data.questionText, questionTextEmphasis: data.questionTextEmphasis, type: data.type, order: data.order,
     stimulusType: data.stimulusType, stimulusMediaId: data.stimulusMediaId,
-    structuredStimulus: data.structuredStimulus,
+    structuredStimulus: data.structuredStimulus, structuredStimulusEmphasis: data.structuredStimulusEmphasis,
   };
 }

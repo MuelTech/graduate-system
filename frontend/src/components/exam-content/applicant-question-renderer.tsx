@@ -39,6 +39,7 @@ export function ApplicantQuestionRenderer({
           stimulusType={question.stimulusType}
           stimulusMediaId={question.stimulusMediaId}
           structuredStimulus={question.structuredStimulus}
+          structuredStimulusEmphasis={question.structuredStimulusEmphasis}
         />
       </div>
       <div

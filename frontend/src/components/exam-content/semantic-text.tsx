@@ -11,11 +11,8 @@ export function SemanticText({
   return (
     <span className="whitespace-pre-wrap">
       {semanticTextSegments(text, emphasis).map((segment) => {
-        const content = segment.underline ? (
-          <u>{segment.text}</u>
-        ) : (
-          segment.text
-        );
+        const text = segment.italic ? <em>{segment.text}</em> : segment.text;
+        const content = segment.underline ? <u>{text}</u> : text;
         return segment.bold ? (
           <strong key={segment.start} className="font-bold">
             {content}

@@ -1,10 +1,15 @@
-import { validateTextEmphasis } from "../shared/text-emphasis";
+import { validateTextEmphasis, validateStructuredStimulusEmphasis } from "../shared/text-emphasis";
 import type { ExamQuestionInput, ExamOptionInput, StructuredStimulus, ExamCell } from "../interfaces/exam-content.interfaces";
 import { AppError } from "../utils/AppError";
 
 export function validatedEmphasis(text: string | null, value: unknown) {
   try { return validateTextEmphasis(text, value); }
   catch (error) { return invalid(error instanceof Error ? error.message : "Invalid emphasis metadata."); }
+}
+
+export function validatedStructuredEmphasis(stimulus: unknown, value: unknown) {
+  try { return validateStructuredStimulusEmphasis(stimulus, value); }
+  catch (error) { return invalid(error instanceof Error ? error.message : "Invalid structured emphasis."); }
 }
 
 function invalid(message: string): never { throw new AppError(message, 400); }
@@ -93,7 +98,7 @@ function option(value: unknown, index: number): ExamOptionInput {
   return { ...(id === undefined ? {} : { id }), optionText, optionTextEmphasis: validatedEmphasis(optionText, data.optionTextEmphasis), mediaId, label, order: order(data.order === undefined ? index : data.order, "option order"), isCorrect: data.isCorrect };
 }
 
-const QUESTION_FIELDS = ["questionText", "questionTextEmphasis", "type", "order", "stimulusType", "stimulusMediaId", "structuredStimulus", "options"];
+const QUESTION_FIELDS = ["questionText", "questionTextEmphasis", "type", "order", "stimulusType", "stimulusMediaId", "structuredStimulus", "structuredStimulusEmphasis", "options"];
 
 /** Validate the effective whole question, including after a partial Admin update. */
 export function validateExamQuestion(value: unknown): ExamQuestionInput {
@@ -120,7 +125,7 @@ export function validateExamQuestion(value: unknown): ExamQuestionInput {
   if (new Set(options.map(opt => opt.order)).size !== options.length) invalid("Option orders must be unique.");
   const ids = options.flatMap(opt => opt.id === undefined ? [] : [opt.id]);
   if (new Set(ids).size !== ids.length) invalid("Option IDs must be unique.");
-  return { questionText, questionTextEmphasis: validatedEmphasis(questionText, data.questionTextEmphasis), type: data.type, order: order(data.order === undefined ? 0 : data.order, "question order"), stimulusType, stimulusMediaId, structuredStimulus, options };
+  return { questionText, questionTextEmphasis: validatedEmphasis(questionText, data.questionTextEmphasis), type: data.type, order: order(data.order === undefined ? 0 : data.order, "question order"), stimulusType, stimulusMediaId, structuredStimulus, structuredStimulusEmphasis: validatedStructuredEmphasis(stimulusType === "STRUCTURED" ? structuredStimulus : null, data.structuredStimulusEmphasis), options };
 }
 
 export function mergeExamQuestionUpdate(current: ExamQuestionInput, value: unknown): ExamQuestionInput {
@@ -128,6 +133,10 @@ export function mergeExamQuestionUpdate(current: ExamQuestionInput, value: unkno
   keys(patch, QUESTION_FIELDS, "question update");
   const merged: Record<string, unknown> = { ...current, ...patch };
   if (patch.questionText !== undefined && patch.questionText !== current.questionText && !("questionTextEmphasis" in patch)) merged.questionTextEmphasis = null;
+  if (!("structuredStimulusEmphasis" in patch) && (merged.stimulusType !== "STRUCTURED" ||
+      JSON.stringify(merged.structuredStimulus == null ? null : validateStructuredStimulus(merged.structuredStimulus)) !==
+      JSON.stringify(current.structuredStimulus == null ? null : validateStructuredStimulus(current.structuredStimulus))))
+    merged.structuredStimulusEmphasis = null;
   if (Array.isArray(patch.options)) merged.options = patch.options.map(value => {
     const incoming = object(value, "option");
     const old = current.options.find(opt => opt.id !== undefined && opt.id === incoming.id);

@@ -1759,6 +1759,7 @@ model ExamQuestion {
   // Opaque identity; private storage metadata belongs exclusively to ExamMedia.
   stimulusMediaId      String?          @map("stimulus_media_id") @db.VarChar(36)
   structuredStimulus   Json?            @map("structured_stimulus")
+  structuredStimulusEmphasis Json?       @map("structured_stimulus_emphasis")
   sourceImportId       String?          @map("source_import_id") @db.VarChar(64)
   sourceQuestionNumber Int?             @map("source_question_number")
 

@@ -16,8 +16,8 @@ This sibling file is outside the fixed base-package inventory/fingerprint.
 ## Physical-source audit update — 2026-10-30
 
 The owner later supplied all 12 physical OLSAT test pages for direct source
-comparison. That audit showed the currently implemented v1 contract is not yet
-sufficient for final real-source population:
+comparison. That audit showed the original v1 contract was insufficient for
+final real-source population:
 
 - verified source typography includes `ITALIC` in addition to `BOLD` and
   `UNDERLINE`;
@@ -27,11 +27,10 @@ sufficient for final real-source population:
   now closed and accepted, so future text hashes/offsets must bind to the corrected
   canonical wording.
 
-Therefore the runtime contract documented below describes the **currently
-implemented support**, not the final accepted OLSAT fidelity contract. The Q24
-source correction is complete; do not create/apply the production
-`olsat-emphasis.json` until the reviewed ITALIC/structured-text extension is
-complete and the final owner-verified source map exists.
+EC7A extends the runtime support below to all three semantic styles and the
+bounded string-item structured surface. This is an architecture/support package;
+real physical-source population is still pending independent review and the final
+owner-verified source map. `olsat-emphasis.json` remains absent and unapplied.
 
 ## Runtime contract
 
@@ -39,7 +38,7 @@ Canonical `questionText` and `optionText` stay plain strings. Nullable JSON fiel
 `questionTextEmphasis` / `optionTextEmphasis` contain an array of:
 
 ```ts
-{ start: number; end: number; style: "BOLD" | "UNDERLINE" }
+{ start: number; end: number; style: "BOLD" | "UNDERLINE" | "ITALIC" }
 ```
 
 Offsets count **UTF-16 code units**, zero-based, end-exclusive, directly in the
@@ -50,15 +49,16 @@ CRLF/CR selections back to the unchanged original canonical string.
 Null, absent metadata, and an empty array mean no emphasis (normalized to null).
 At most 128 marks per field are accepted. Unknown fields/styles, noninteger or
 negative indices, empty/out-of-bounds ranges, duplicates, and overlapping marks
-of the same style are rejected. Adjacent same-style ranges are allowed. Bold
-and underline may overlap. Nonempty emphasis on an image-only option is rejected.
+of the same style are rejected. Adjacent same-style ranges are allowed. All three
+different styles may overlap, including triple overlap. Nonempty emphasis on an
+image-only option is rejected.
 Input is never clamped or silently repaired. Valid spans are sorted deterministically.
 
-React renders escaped strings and controlled `strong`/`u` elements, never HTML
+React renders escaped strings and controlled `<strong>` / `<u>` / `<em>` elements, never HTML
 injection or persisted Markdown. Invalid rendering metadata falls back to the
 exact plain text. API validation/projection rejects invalid stored marks.
 
-The Admin editor supports selection-based Bold, Underline, Remove selected
+The Admin editor supports selection-based Bold, Underline, Italic, Remove selected
 formatting, Clear all formatting, and a local preview for each field. Any actual
 text change clears **all** marks in that field with a visible notice. Reapply
 marks to the new text before saving. Image/text conversion clears option marks.
@@ -68,11 +68,45 @@ Partial API updates preserve unchanged marks. If text changes without supplying
 replacement marks, inherited marks are cleared. Callers explicitly supplying new
 marks must compute them against the new text; the same strict validation applies.
 
-## Sidecar schema version 1
+## Structured textual-stimulus metadata
+
+Canonical `structuredStimulus` remains unchanged. The separate nullable JSON field
+`ExamQuestion.structuredStimulusEmphasis` (SQL `structured_stimulus_emphasis`)
+contains `{ index: number; spans: TextEmphasisSpan[] }[] | null`. Migration
+`20261031000000_exam_structured_stimulus_emphasis` adds only this nullable column;
+existing rows start with SQL NULL and no backfill is required.
+
+Supported string `items` families: WORD_BANK, ALPHANUMERIC_SEQUENCE, WORD_SERIES,
+LETTER_SEQUENCE, LOGICAL_PREMISES. NUMBER_SEQUENCE, MATRIX, GROUPED_NUMBER_ROWS,
+images and arbitrary nested paths are excluded. Maximum 100 unique item entries,
+matching the existing item limit, with at most 128 spans per exact item string.
+Entries accept only `index` and explicit array `spans`; indexes must be non-negative
+integers within the canonical string items. Normalization sorts indexes/spans,
+drops empty item spans, and returns null when no marked items remain. Invalid,
+non-string, unsupported, duplicate or out-of-range targets fail closed.
+
+Server partial updates preserve omitted metadata when canonical structured content
+is unchanged. Changed content (including order, item count or subtype) clears all
+inherited structured metadata unless replacement metadata is explicitly supplied.
+Leaving STRUCTURED clears inherited marks; explicit nonempty marks on unsupported
+final content are rejected. Explicit replacements validate against the final
+merged stimulus, including explicit []/null clears. Canonical validation normalizes
+object keys before comparing content; textual values are never normalized.
+
+The Admin structured editor reuses SemanticTextEditor for supported string items.
+Editing an item's text clears that item's marks with the existing visible notice.
+Adding/removing items or changing structured form clears all structured marks.
+Switching stimulus category also clears structured metadata. Other unchanged item
+marks stay with their indexes. Numeric/grid editing remains unchanged.
+Admin preview/bank and Applicant MCQ/essay presentation pass the separate metadata
+to the same shared StructuredStimulusRenderer. Each supported item uses SemanticText;
+malformed rendering metadata falls back to all exact plain item strings.
+
+## Sidecar schema version 2
 
 The JSON root has exactly these fields:
 
-- `schemaVersion`: `1`.
+- `schemaVersion`: `2` (v1 is rejected; no real v1 sidecar existed).
 - `packageKey`: `"olsat"`.
 - `manifestSha256`:
   `6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6`.
@@ -89,7 +123,12 @@ Option targets: `{ "field": "optionText", "label": "<exact source label>",
 contract: explicit source order when present, otherwise the zero-based option
 array index. Do not use an array-index letter in place of the stored label.
 
-`textSha256` hashes the exact UTF-8 canonical field string, with no trim, Unicode
+Structured targets: `{ "field": "structuredItem", "index": <explicit item index> }`.
+The source question number identifies the question, and the index must resolve to
+a supported canonical string item. No label inference, JSONPath, or matrix cell
+annotation is supported.
+
+`textSha256` hashes the exact UTF-8 canonical field/item string, with no trim, Unicode
 normalization, newline conversion, or full question-text duplication in the file.
 `spans` must be an explicit array; `[]` deliberately clears a targeted field.
 Omitted field targets are left unchanged. Duplicate targets, unknown questions,
@@ -139,12 +178,22 @@ Every target's canonical text hash must match both the source and database.
 All targets are resolved and validated before any write.
 
 Preflight returns `PREFLIGHT_OK`, `fieldsChanged: 0`, and `fieldsWouldChange`.
-Apply writes only the two semantic metadata columns inside one Serializable
+Apply writes only the three semantic metadata columns inside one Serializable
 Prisma transaction. It preserves question/option IDs, text, correctness, media,
 source identities, and Applicant references. Failures roll back the transaction.
 The first changed apply returns `APPLIED`; an identical rerun returns
 `ALREADY_APPLIED` with zero writes. Applying a reviewed map deliberately replaces
 only its listed field metadata; removing a target from the file does not clear it.
+Structured annotations are grouped by question. After validating the entire sidecar,
+source/database structured content, exact item hashes, and current metadata, the
+reconciler changes only listed item targets in memory. `spans: []` clears that item;
+omitted indexes survive. It normalizes and writes the complete structured metadata
+field once per affected question, persisting SQL NULL if all marks are cleared.
+Question/option semantics remain unchanged. `annotationsValidated` counts targets;
+`fieldsWouldChange`/`fieldsChanged` count persisted fields (multiple changed items
+on one question count as one field), making preflight deterministic and repeated
+application idempotent with zero writes.
+
 Review the preflight counts before applying a revised owner map.
 
 No real annotation population or source/browser QA is certified by installing

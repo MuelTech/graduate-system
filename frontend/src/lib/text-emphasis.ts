@@ -5,7 +5,7 @@
 export interface TextEmphasisSpan {
   start: number;
   end: number;
-  style: "BOLD" | "UNDERLINE";
+  style: "BOLD" | "UNDERLINE" | "ITALIC";
 }
 export const MAX_EMPHASIS_SPANS = 128;
 
@@ -46,7 +46,9 @@ export function validateTextEmphasis(
         span.end > text.length ||
         !boundary(span.start) ||
         !boundary(span.end) ||
-        (span.style !== "BOLD" && span.style !== "UNDERLINE")
+        (span.style !== "BOLD" &&
+          span.style !== "UNDERLINE" &&
+          span.style !== "ITALIC")
       )
         throw new Error("Invalid emphasis range or style.");
       return { start: span.start, end: span.end, style: span.style };
@@ -55,7 +57,7 @@ export function validateTextEmphasis(
       (a, b) =>
         a.start - b.start || a.end - b.end || a.style.localeCompare(b.style),
     );
-  for (const style of ["BOLD", "UNDERLINE"] as const) {
+  for (const style of ["BOLD", "UNDERLINE", "ITALIC"] as const) {
     let end = -1;
     for (const span of spans.filter((s) => s.style === style)) {
       if (span.start < end)
@@ -71,6 +73,7 @@ export interface SemanticTextSegment {
   text: string;
   bold: boolean;
   underline: boolean;
+  italic: boolean;
 }
 /** Invalid persisted/client metadata falls back to the exact plain text, never markup. */
 export function semanticTextSegments(
@@ -91,6 +94,9 @@ export function semanticTextSegments(
     text: text.slice(start, points[index + 1]),
     bold: spans.some(
       (s) => s.style === "BOLD" && s.start <= start && s.end > start,
+    ),
+    italic: spans.some(
+      (s) => s.style === "ITALIC" && s.start <= start && s.end > start,
     ),
     underline: spans.some(
       (s) => s.style === "UNDERLINE" && s.start <= start && s.end > start,
@@ -157,4 +163,72 @@ export function canonicalTextareaOffset(text: string, offset: number): number {
   }
   if (dom !== offset) throw new Error("Invalid text selection.");
   return source;
+}
+
+/** Only canonical string-item families; numeric sequences/grids/images are excluded. */
+export const TEXTUAL_ITEM_TYPES = [
+  "WORD_BANK",
+  "ALPHANUMERIC_SEQUENCE",
+  "WORD_SERIES",
+  "LETTER_SEQUENCE",
+  "LOGICAL_PREMISES",
+] as const;
+export interface StructuredStimulusEmphasisEntry {
+  index: number;
+  spans: TextEmphasisSpan[];
+}
+export type StructuredStimulusEmphasis =
+  | StructuredStimulusEmphasisEntry[]
+  | null;
+export const MAX_STRUCTURED_EMPHASIS_ENTRIES = 100;
+
+export function structuredItemText(stimulus: unknown, index: number): string {
+  const content = stimulus as { type?: unknown; items?: unknown } | null;
+  if (
+    !content ||
+    typeof content !== "object" ||
+    Array.isArray(content) ||
+    !TEXTUAL_ITEM_TYPES.some((type) => type === content.type) ||
+    !Array.isArray(content.items) ||
+    content.items.length > MAX_STRUCTURED_EMPHASIS_ENTRIES ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= content.items.length ||
+    content.items.some((item) => typeof item !== "string")
+  )
+    throw new Error("Unsupported or invalid structured textual item.");
+  return content.items[index] as string;
+}
+
+export function validateStructuredStimulusEmphasis(
+  stimulus: unknown,
+  value: unknown,
+): StructuredStimulusEmphasis {
+  if (value == null) return null;
+  if (!Array.isArray(value) || value.length > MAX_STRUCTURED_EMPHASIS_ENTRIES)
+    throw new Error("Structured emphasis must be a bounded item array.");
+  const seen = new Set<number>();
+  const entries = value
+    .map((raw): StructuredStimulusEmphasisEntry => {
+      if (
+        !raw ||
+        typeof raw !== "object" ||
+        Array.isArray(raw) ||
+        Object.keys(raw).length !== 2 ||
+        Object.keys(raw).some((key) => !["index", "spans"].includes(key)) ||
+        !Array.isArray(raw.spans)
+      )
+        throw new Error("Malformed structured emphasis entry.");
+      const text = structuredItemText(stimulus, raw.index);
+      if (seen.has(raw.index))
+        throw new Error("Duplicate structured item index.");
+      seen.add(raw.index);
+      return {
+        index: raw.index,
+        spans: validateTextEmphasis(text, raw.spans) ?? [],
+      };
+    })
+    .filter((entry) => entry.spans.length)
+    .sort((a, b) => a.index - b.index);
+  return entries.length ? entries : null;
 }

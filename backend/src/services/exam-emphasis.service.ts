@@ -1,7 +1,11 @@
+import { validateStructuredStimulus } from "./exam-content.rules";
 import { createHash } from "crypto";
 import type { PreparedExamPackage } from "../interfaces/exam-content-import.interfaces";
 import {
   validateTextEmphasis,
+  structuredItemText,
+  validateStructuredStimulusEmphasis,
+  type StructuredStimulusEmphasis,
   type TextEmphasisSpan,
 } from "../shared/text-emphasis";
 
@@ -11,7 +15,8 @@ export const textSha256 = (text: string) =>
   createHash("sha256").update(text, "utf8").digest("hex");
 type Target =
   | { field: "questionText" }
-  | { field: "optionText"; label: string; order: number };
+  | { field: "optionText"; label: string; order: number }
+  | { field: "structuredItem"; index: number };
 interface Annotation {
   sourceQuestionNumber: number;
   target: Target;
@@ -19,7 +24,7 @@ interface Annotation {
   spans: TextEmphasisSpan[] | null;
 }
 export interface VerifiedEmphasisSidecar {
-  schemaVersion: 1;
+  schemaVersion: 2;
   packageKey: "olsat";
   manifestSha256: string;
   indexConvention: "UTF16_CODE_UNITS";
@@ -50,7 +55,7 @@ export function parseEmphasisSidecar(
     "annotations",
   ]);
   if (
-    data.schemaVersion !== 1 ||
+    data.schemaVersion !== 2 ||
     data.packageKey !== "olsat" ||
     data.manifestSha256 !== manifestSha256 ||
     data.indexConvention !== "UTF16_CODE_UNITS"
@@ -93,7 +98,12 @@ export function parseEmphasisSidecar(
       (q) => q.sourceQuestionNumber === annotation.sourceQuestionNumber,
     );
     if (!question) throw new Error("Unknown source question number.");
-    const target = object(annotation.target, ["field", "label", "order"]);
+    const target = object(annotation.target, [
+      "field",
+      "label",
+      "order",
+      "index",
+    ]);
     let identity: Target;
     let text: string | null;
     if (target.field === "questionText" && Object.keys(target).length === 1) {
@@ -117,6 +127,17 @@ export function parseEmphasisSidecar(
         order: target.order,
       };
       text = option.optionText;
+    } else if (
+      target.field === "structuredItem" &&
+      Object.keys(target).length === 2 &&
+      typeof target.index === "number" &&
+      question.input.stimulusType === "STRUCTURED"
+    ) {
+      identity = { field: "structuredItem", index: target.index };
+      text = structuredItemText(
+        question.input.structuredStimulus,
+        target.index,
+      );
     } else throw new Error("Invalid emphasis target.");
     if (text === null || annotation.textSha256 !== textSha256(text))
       throw new Error("Annotation text hash mismatch.");
@@ -136,7 +157,7 @@ export function parseEmphasisSidecar(
     };
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     packageKey: "olsat",
     manifestSha256,
     indexConvention: "UTF16_CODE_UNITS",
@@ -163,6 +184,9 @@ interface EmphasisQuestion {
   sourceQuestionNumber: number | null;
   questionText: string;
   questionTextEmphasis: unknown;
+  stimulusType: string;
+  structuredStimulus: unknown;
+  structuredStimulusEmphasis: unknown;
   options: {
     id: string;
     label: string | null;
@@ -195,6 +219,9 @@ export async function reconcileEmphasis(
       sourceQuestionNumber: true,
       questionText: true,
       questionTextEmphasis: true,
+      stimulusType: true,
+      structuredStimulus: true,
+      structuredStimulusEmphasis: true,
       options: {
         select: {
           id: true,
@@ -220,15 +247,58 @@ export async function reconcileEmphasis(
   const changes: {
     model: "examQuestion" | "examOption";
     id: string;
-    field: "questionTextEmphasis" | "optionTextEmphasis";
-    spans: TextEmphasisSpan[] | null;
+    field:
+      | "questionTextEmphasis"
+      | "optionTextEmphasis"
+      | "structuredStimulusEmphasis";
+    spans: TextEmphasisSpan[] | StructuredStimulusEmphasis;
   }[] = [];
+  const structured = new Map<
+    string,
+    {
+      current: StructuredStimulusEmphasis;
+      next: StructuredStimulusEmphasis;
+      stimulus: unknown;
+    }
+  >();
   for (const annotation of sidecar.annotations) {
     const row = rows.find(
       (r) => r.sourceQuestionNumber === annotation.sourceQuestionNumber,
     )!;
     let target: { id: string; text: string | null; emphasis: unknown };
     const identity = annotation.target;
+    if (identity.field === "structuredItem") {
+      const canonical = source.questions.find(
+        (q) => q.sourceQuestionNumber === annotation.sourceQuestionNumber,
+      )!.input;
+      if (
+        row.stimulusType !== "STRUCTURED" ||
+        JSON.stringify(validateStructuredStimulus(row.structuredStimulus)) !==
+          JSON.stringify(
+            validateStructuredStimulus(canonical.structuredStimulus),
+          )
+      )
+        throw new Error("Imported structured content mismatch.");
+      const text = structuredItemText(row.structuredStimulus, identity.index);
+      if (textSha256(text) !== annotation.textSha256)
+        throw new Error("Imported item hash mismatch.");
+      let group = structured.get(row.id);
+      if (!group) {
+        const current = validateStructuredStimulusEmphasis(
+          row.structuredStimulus,
+          row.structuredStimulusEmphasis,
+        );
+        group = { current, next: current, stimulus: row.structuredStimulus };
+        structured.set(row.id, group);
+      }
+      group.next = validateStructuredStimulusEmphasis(group.stimulus, [
+        ...(group.next ?? []).filter((entry) => entry.index !== identity.index),
+        ...(annotation.spans
+          ? [{ index: identity.index, spans: annotation.spans }]
+          : []),
+      ]);
+      continue;
+    }
     if (identity.field === "questionText")
       target = {
         id: row.id,
@@ -239,7 +309,8 @@ export async function reconcileEmphasis(
       const matches = row.options.filter(
         (o) => o.label === identity.label && o.order === identity.order,
       );
-      if (matches.length !== 1) throw new Error("Imported option identity mismatch.");
+      if (matches.length !== 1)
+        throw new Error("Imported option identity mismatch.");
       const option = matches[0];
       target = {
         id: option.id,
@@ -265,6 +336,14 @@ export async function reconcileEmphasis(
         spans: annotation.spans,
       });
   }
+  for (const [id, group] of structured)
+    if (JSON.stringify(group.current) !== JSON.stringify(group.next))
+      changes.push({
+        model: "examQuestion",
+        id,
+        field: "structuredStimulusEmphasis",
+        spans: group.next,
+      });
   if (apply)
     for (const change of changes)
       await tx[change.model].update({

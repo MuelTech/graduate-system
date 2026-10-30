@@ -1,4 +1,4 @@
-import type { TextEmphasisSpan } from "../lib/text-emphasis";
+import type { TextEmphasisSpan, StructuredStimulusEmphasis } from "../lib/text-emphasis";
 // APPLICANT & EXAM INTERFACES
 export interface ApplicantStatus {
   alignmentStatus: string;
@@ -710,6 +710,7 @@ export interface ExamQuestion {
   stimulusType: ExamStimulusType;
   stimulusMediaId: string | null;
   structuredStimulus: StructuredStimulus | null;
+  structuredStimulusEmphasis?: StructuredStimulusEmphasis;
   options: ExamOption[];
 }
 

@@ -1,8 +1,14 @@
 "use client";
 
+import { SemanticTextEditor } from "./semantic-text-editor";
+import {
+  TEXTUAL_ITEM_TYPES,
+  type StructuredStimulusEmphasis,
+} from "../../lib/text-emphasis";
 import { Button } from "@/components/ui/button";
 import {
   newStructuredDraft,
+  structuredDraftEmphasisAfterEdit,
   STRUCTURED_LABELS,
   STRUCTURED_TYPES,
   type CellDraft,
@@ -16,11 +22,19 @@ const blank = (): CellDraft => ({ value: "", kind: "text" });
 
 export function StructuredStimulusEditor({
   value,
-  onChange,
+  onChange: emitChange,
+  emphasis,
 }: {
   value: StructuredDraft | null;
-  onChange: (value: StructuredDraft) => void;
+  emphasis?: StructuredStimulusEmphasis;
+  onChange: (
+    value: StructuredDraft,
+    emphasis: StructuredStimulusEmphasis,
+  ) => void;
 }) {
+  const onChange = (next: StructuredDraft) =>
+    emitChange(next, structuredDraftEmphasisAfterEdit(value, next, emphasis));
+  const textual = TEXTUAL_ITEM_TYPES.some((type) => type === value?.type);
   const grid =
     value?.type === "MATRIX" || value?.type === "GROUPED_NUMBER_ROWS";
   const numeric = grid || value?.type === "NUMBER_SEQUENCE";
@@ -79,7 +93,8 @@ export function StructuredStimulusEditor({
         <>
           <p className="text-xs text-gray-600">
             Keep item order and row boundaries. Use ? for a missing value; keep
-            fractions as text.
+            fractions as text. Adding/removing items or changing form clears
+            structured formatting.
           </p>
           <div className="space-y-3 overflow-x-auto">
             {cells.map((row, rowIndex) => (
@@ -111,17 +126,52 @@ export function StructuredStimulusEditor({
                           </select>
                         </label>
                       )}
-                      <input
-                        aria-label={`${grid ? `Row ${rowIndex + 1} cell` : "Item"} ${columnIndex + 1}`}
-                        className={`${inputClass} ${grid ? "w-32" : "w-full"}`}
-                        maxLength={500}
-                        value={cell.value}
-                        onChange={(event) =>
-                          changeCell(rowIndex, columnIndex, {
-                            value: event.target.value,
-                          })
-                        }
-                      />
+                      {textual ? (
+                        <SemanticTextEditor
+                          label={`Item ${columnIndex + 1}`}
+                          text={cell.value}
+                          emphasis={
+                            emphasis?.find(
+                              (entry) => entry.index === columnIndex,
+                            )?.spans
+                          }
+                          maxLength={500}
+                          rows={1}
+                          onChange={(text, spans) => {
+                            const next = {
+                              ...value,
+                              items: value.items.map((item, index) =>
+                                index === columnIndex
+                                  ? { ...item, value: text }
+                                  : item,
+                              ),
+                            };
+                            const entries = (emphasis ?? []).filter(
+                              (entry) => entry.index !== columnIndex,
+                            );
+                            if (spans)
+                              entries.push({ index: columnIndex, spans });
+                            emitChange(
+                              next,
+                              entries.length
+                                ? entries.sort((a, b) => a.index - b.index)
+                                : null,
+                            );
+                          }}
+                        />
+                      ) : (
+                        <input
+                          aria-label={`${grid ? `Row ${rowIndex + 1} cell` : "Item"} ${columnIndex + 1}`}
+                          className={`${inputClass} ${grid ? "w-32" : "w-full"}`}
+                          maxLength={500}
+                          value={cell.value}
+                          onChange={(event) =>
+                            changeCell(rowIndex, columnIndex, {
+                              value: event.target.value,
+                            })
+                          }
+                        />
+                      )}
                       {!grid && (
                         <Button
                           type="button"

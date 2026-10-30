@@ -1,4 +1,9 @@
-import { validateTextEmphasis, type TextEmphasisSpan } from "./text-emphasis";
+import {
+  validateTextEmphasis,
+  validateStructuredStimulusEmphasis,
+  type StructuredStimulusEmphasis,
+  type TextEmphasisSpan,
+} from "./text-emphasis";
 import type {
   AdminQuestion,
   ExamCell,
@@ -55,6 +60,7 @@ export interface QuestionDraft {
   stimulusType: ExamStimulusType;
   stimulusMediaId: string | null;
   structured: StructuredDraft | null;
+  structuredStimulusEmphasis?: StructuredStimulusEmphasis;
   options: OptionDraft[];
 }
 let nextKey = 0;
@@ -227,6 +233,7 @@ export function questionDraft(
       stimulusType: "NONE",
       stimulusMediaId: null,
       structured: null,
+      structuredStimulusEmphasis: null,
       options: [newOption(0), newOption(1), newOption(2), newOption(3)],
     };
   return {
@@ -237,6 +244,10 @@ export function questionDraft(
     stimulusType: question.stimulusType,
     stimulusMediaId: question.stimulusMediaId,
     structured: structuredDraft(question.structuredStimulus),
+    structuredStimulusEmphasis: validateStructuredStimulusEmphasis(
+      question.structuredStimulus,
+      question.structuredStimulusEmphasis,
+    ),
     options: question.options.map((opt) => ({
       key: opt.id,
       id: opt.id,
@@ -335,6 +346,10 @@ export function buildQuestionPayload(draft: QuestionDraft) {
     stimulusType: draft.stimulusType,
     stimulusMediaId,
     structuredStimulus,
+    structuredStimulusEmphasis: validateStructuredStimulusEmphasis(
+      structuredStimulus,
+      draft.structuredStimulusEmphasis,
+    ),
     options,
   };
 }
@@ -380,5 +395,34 @@ export function buildQuestionSavePayload(
     stimulusType: payload.stimulusType,
     stimulusMediaId: payload.stimulusMediaId,
     structuredStimulus: payload.structuredStimulus,
+    structuredStimulusEmphasis: payload.structuredStimulusEmphasis,
   };
+}
+
+/** Index-changing operations clear all marks; text edits clear only the changed item. */
+export function structuredDraftEmphasisAfterEdit(
+  previous: StructuredDraft | null,
+  next: StructuredDraft,
+  emphasis: StructuredStimulusEmphasis | undefined,
+): StructuredStimulusEmphasis {
+  if (
+    !previous ||
+    previous.type !== next.type ||
+    previous.items.length !== next.items.length ||
+    next.type === "MATRIX" ||
+    next.type === "GROUPED_NUMBER_ROWS" ||
+    next.type === "NUMBER_SEQUENCE"
+  )
+    return null;
+  const entries = (emphasis ?? []).filter((entry) => {
+    const before = previous.items[entry.index];
+    const after = next.items[entry.index];
+    return (
+      before &&
+      after &&
+      before.value === after.value &&
+      before.kind === after.kind
+    );
+  });
+  return entries.length ? entries : null;
 }

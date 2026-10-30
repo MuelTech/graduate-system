@@ -239,6 +239,7 @@ export default function AdminExamQuestionsPage() {
                     stimulusType={question.stimulusType}
                     stimulusMediaId={question.stimulusMediaId}
                     structuredStimulus={question.structuredStimulus}
+                    structuredStimulusEmphasis={question.structuredStimulusEmphasis}
                   />
                   {question.type === "MULTIPLE_CHOICE" && (
                     <ol

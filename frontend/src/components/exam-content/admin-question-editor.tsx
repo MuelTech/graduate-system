@@ -190,6 +190,7 @@ export function AdminQuestionEditor({
               setDraft((current) => ({
                 ...current,
                 stimulusType: event.target.value as ExamStimulusType,
+                structuredStimulusEmphasis: null,
               }))
             }
           >
@@ -211,8 +212,13 @@ export function AdminQuestionEditor({
         {draft.stimulusType === "STRUCTURED" && (
           <StructuredStimulusEditor
             value={draft.structured}
-            onChange={(structured) =>
-              setDraft((current) => ({ ...current, structured }))
+            emphasis={draft.structuredStimulusEmphasis}
+            onChange={(structured, structuredStimulusEmphasis) =>
+              setDraft((current) => ({
+                ...current,
+                structured,
+                structuredStimulusEmphasis,
+              }))
             }
           />
         )}
@@ -392,6 +398,7 @@ export function AdminQuestionEditor({
             stimulusType={preview.stimulusType}
             stimulusMediaId={preview.stimulusMediaId}
             structuredStimulus={preview.structuredStimulus}
+            structuredStimulusEmphasis={preview.structuredStimulusEmphasis}
           />
           {preview.options
             .slice()

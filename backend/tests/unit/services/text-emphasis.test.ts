@@ -38,7 +38,7 @@ describe("bounded UTF-16 emphasis contract", () => {
     [{ ...bold, end: 0 }],
     [{ ...bold, start: 3 }],
     [{ ...bold, end: 99 }],
-    [{ ...bold, style: "ITALIC" }],
+    [{ ...bold, style: "HIGHLIGHT" }],
     [bold, bold],
     [bold, { ...bold, start: 1, end: 4 }],
     [{ ...bold, isCorrect: true }],
@@ -128,7 +128,7 @@ describe("backend/frontend validation parity", () => {
     ];
     for (let start = -1; start <= text.length + 1; start++)
       for (let end = -1; end <= text.length + 1; end++)
-        for (const style of ["BOLD", "UNDERLINE"])
+        for (const style of ["BOLD", "UNDERLINE", "ITALIC"])
           samples.push([{ start, end, style }]);
     for (const sample of samples) {
       let a, b;
@@ -202,7 +202,7 @@ describe("selection editing and segmentation", () => {
   it("falls back to exact plain text for invalid metadata", () => {
     const text = '<script>alert("x")</script>\n';
     expect(semanticTextSegments(text, [{ ...bold, end: 999 }])).toEqual([
-      { start: 0, text, bold: false, underline: false },
+      { start: 0, text, bold: false, underline: false, italic: false },
     ]);
   });
 });

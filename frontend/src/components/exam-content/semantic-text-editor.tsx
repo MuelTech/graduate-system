@@ -75,8 +75,8 @@ export function SemanticTextEditor({
         }}
       />
       <p id={`${id}-help`} className="text-xs text-gray-600">
-        Select text, then apply bold or underline. Editing text clears its
-        formatting.
+        Select text, then apply bold, underline, or italic. Editing text clears
+        its formatting.
       </p>
       <div
         role="group"
@@ -87,6 +87,7 @@ export function SemanticTextEditor({
           [
             ["BOLD", "Bold"],
             ["UNDERLINE", "Underline"],
+            ["ITALIC", "Italic"],
             ["CLEAR", "Remove selected formatting"],
           ] as const
         ).map(([style, name]) => (

@@ -65,16 +65,32 @@ export async function runExamEmphasisCli(argv: readonly string[]) {
             update: (args) => {
               const input = args as {
                 where: { id: string };
-                data: { questionTextEmphasis: unknown };
+                data: {
+                  questionTextEmphasis?: unknown;
+                  structuredStimulusEmphasis?: unknown;
+                };
               };
               return tx.examQuestion.update({
                 where: input.where,
                 data: {
-                  questionTextEmphasis:
-                    input.data.questionTextEmphasis === null
-                      ? Prisma.DbNull
-                      : (input.data
-                          .questionTextEmphasis as import("@prisma/client").Prisma.InputJsonValue),
+                  ...("questionTextEmphasis" in input.data
+                    ? {
+                        questionTextEmphasis:
+                          input.data.questionTextEmphasis === null
+                            ? Prisma.DbNull
+                            : (input.data
+                                .questionTextEmphasis as import("@prisma/client").Prisma.InputJsonValue),
+                      }
+                    : {}),
+                  ...("structuredStimulusEmphasis" in input.data
+                    ? {
+                        structuredStimulusEmphasis:
+                          input.data.structuredStimulusEmphasis === null
+                            ? Prisma.DbNull
+                            : (input.data
+                                .structuredStimulusEmphasis as import("@prisma/client").Prisma.InputJsonValue),
+                      }
+                    : {}),
                 },
               });
             },
