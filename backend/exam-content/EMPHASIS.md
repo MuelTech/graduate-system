@@ -6,6 +6,24 @@ emphasis sidecar is included: the owner must verify annotations against the
 physical/source assessment before creating `exam-content/olsat-emphasis.json`.
 This sibling file is outside the fixed base-package inventory/fingerprint.
 
+## Physical-source audit update — 2026-10-30
+
+The owner later supplied all 12 physical OLSAT test pages for direct source
+comparison. That audit showed the currently implemented v1 contract is not yet
+sufficient for final real-source population:
+
+- verified source typography includes `ITALIC` in addition to `BOLD` and
+  `UNDERLINE`;
+- some structured textual stimuli carry meaningful source emphasis (including the
+  Q25 and Q45 WORD_SERIES terms);
+- Q24 option J has a source-text discrepancy that must be corrected before final
+  text hashes/offsets are generated.
+
+Therefore the runtime contract documented below describes the **currently
+implemented support**, not the final accepted OLSAT fidelity contract. Do not
+create/apply the production `olsat-emphasis.json` until the bounded Q24 source
+correction and the reviewed ITALIC/structured-text extension are complete.
+
 ## Runtime contract
 
 Canonical `questionText` and `optionText` stay plain strings. Nullable JSON fields
