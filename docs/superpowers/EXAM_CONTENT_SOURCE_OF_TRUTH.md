@@ -236,10 +236,10 @@ Implementation documentation should describe data contracts and system behavior 
 
 Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, Admin and Applicant render the same semantics, semantically meaningful bold/underline emphasis from the physical assessment is preserved for both questions and textual answer choices, and project-owner content/manual QA is completed where applicable.
 
-EXAM-CONTENT-6 import/database success alone is not sufficient for full presentation-fidelity acceptance. Close the bounded pagination/color follow-up and EXAM-CONTENT-7 semantic-emphasis fidelity before Phase A acceptance.
+EXAM-CONTENT-6 is **formally accepted as of 2026-10-30**. Its acceptance combines the verified 72-question import/reconciliation with the bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`: discoverable top/bottom pagination and neutral assessment question/instruction body text. Independent review of the actual pushed diff found no blocking issue, and the project owner visually accepted the resulting UI.
 
 Current EC7 checkpoint: the semantic-emphasis architecture/support implementation has passed independent source review, and the project owner has observed Admin bold/underline behavior working. A separate Applicant browser QA pass was intentionally skipped by the owner; Applicant behavior remains supported by the reviewed shared renderer and focused automated evidence rather than owner manual evidence. Real OLSAT emphasis population remains pending an owner-verified physical-source map, so EC7 is not yet formally accepted for real-source fidelity.
 
-The next bounded implementation is the remaining EC6 UI follow-up: Admin pagination discoverability plus neutral assessment question/instruction body text. Keep that UI work separate from EC7 source-map completion and from Phase B.
+With EC6 closed, the only remaining Phase A blocker is EXAM-CONTENT-7 real-source semantic-emphasis completion and comparison against the verified physical assessment. Keep that source-map work separate from Phase B.
 
 After Phase A acceptance, proceed directly to Phase B.
