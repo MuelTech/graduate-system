@@ -145,26 +145,27 @@ reviewed but later rejected by the project owner as unnecessary permanent
 one-off machinery for the current development-stage bank. It is
 **SUPERSEDED / NOT ACCEPTED as the retained correction architecture**.
 
-The selected replacement path is:
+The selected replacement path was completed and independently reviewed on
+2026-10-31:
 
-1. remove/revert the Q24-only CLI/service/repository/tests/npm commands/operator
-   documentation while preserving published Git history;
-2. retain/reapply the exact canonical Q24 Option J wording:
+1. Q24-only CLI/service/repository/tests/npm commands/operator documentation were
+   removed while preserving published Git history;
+2. the exact canonical Q24 Option J wording remains
    `Paul is younger than Dick and John`;
-3. recompute/bind the corrected manifest/package identity from exact bytes;
-4. prove the current development database has no answer/question-option
-   dependencies that make the reset unsafe;
-5. remove only the imported OLSAT bank state needed for a clean normal import,
-   including its questions/options, import marker, and imported exam media as
-   appropriate;
-6. preserve unrelated users, students, profiles, applications, and non-OLSAT data;
-7. use the normal importer to create the corrected authoritative bank;
-8. verify 72 questions, 360 options, 108 media, exact source identities,
-   answer-key mappings, zero broken references, corrected Q24 wording, and an
-   identical second import returning `ALREADY_IMPORTED`.
+3. corrected manifest/package identity bindings were verified from exact bytes;
+4. dependency checks confirmed no live ApplicantAnswer/question-option references
+   blocked the development reset;
+5. only the imported OLSAT bank state and exclusively owned media were removed;
+6. unrelated users, students, profiles, applications, scores and non-OLSAT data
+   were preserved;
+7. the normal importer clean-created the corrected authoritative bank;
+8. final verification passed for 72 questions, 360 options, 108 media, exact
+   source identities, 72/72 answer mappings, zero broken references, corrected
+   Q24 wording, and an identical repeat import returning `ALREADY_IMPORTED`.
 
-This is explicitly a development-stage cleanup strategy. It must not be treated
-as the production migration policy for a bank with live answers/attempts.
+The corrected-bank EC6 checkpoint is therefore **CLOSED / ACCEPTED**. This remains
+explicitly a development-stage cleanup strategy and must not be treated as a
+production migration policy for a bank with live answers/attempts.
 
 ### Step 2 — bounded EC7 fidelity extension
 
@@ -187,7 +188,7 @@ typography must be justified by the chosen bounded representation.
 
 ### Step 3 — final owner-verified real typography map
 
-Only after Steps 1 and 2 are reviewed/accepted:
+Only after the accepted corrected-bank Step 1 and the EC7 Step 2 are complete:
 
 - compare all 12 physical pages again;
 - enumerate the exact real targets;
@@ -209,9 +210,9 @@ Run the reviewed preflight/application sequence and verify:
 
 Compare the physical source against Admin and Applicant presentation.
 
-Only then may:
+The corrected-bank EC6 post-acceptance checkpoint is already closed. Only after
+the remaining EC7 source-typography work and source QA may:
 
-- the corrected-bank EC6 post-acceptance checkpoint be closed;
 - EXAM-CONTENT-7 be formally accepted;
 - Phase A be formally accepted.
 
