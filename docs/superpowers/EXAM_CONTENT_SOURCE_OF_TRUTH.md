@@ -206,16 +206,28 @@ Confirmed findings:
 - the current EC7 v1 runtime/sidecar contract supports only question/option text BOLD/UNDERLINE and therefore is insufficient for the complete verified physical-source typography;
 - Q24 option J is a real source-text mismatch: the physical page reads `Paul is younger than Dick and John`, while the current canonical manifest/imported bank contains `Paul is younger than Dick`.
 
-Do not generate/apply the final real OLSAT emphasis sidecar against the current manifest. The exact text hashes/offsets must be generated only after the Q24 canonical source/database correction is reconciled and the EC7 typography contract supports the verified source requirements.
+Do not generate/apply the final real OLSAT emphasis sidecar against the current source state. The exact text hashes/offsets must be generated only after the Q24 canonical source correction is represented in the final cleaned package/database state and the EC7 typography contract supports the verified source requirements.
 
-Required sequence:
+### Development correction strategy decision — 2026-10-30
 
-1. bounded Q24 source correction and imported-bank reconciliation;
-2. bounded EC7 fidelity extension for ITALIC and verified structured textual-stimulus emphasis;
-3. owner-verified real typography map;
-4. sidecar preflight/apply/idempotency verification;
-5. Admin/Applicant comparison against the physical source;
-6. formal EC7 and Phase A acceptance.
+A Q24-specific transactional reconciliation utility was implemented and independently reviewed after the discrepancy was found. Although technically bounded and fail-closed, the project owner rejected that approach for this development-stage bank because it leaves permanent one-off CLI/service/repository/test machinery for a single source typo.
+
+That implementation is **SUPERSEDED / NOT ACCEPTED as the continuing architecture**. Do not treat the Q24-specific reconciliation command as the required operator path.
+
+The selected development strategy is:
+
+1. revert/remove the Q24-only reconciliation machinery and its dedicated npm commands/tests/operator documentation while preserving Git history;
+2. keep/reapply the verified Q24 Option J canonical correction in `manifest.json`;
+3. update the corrected manifest/package identity bindings required by the canonical package;
+4. reset only the imported OLSAT question-bank state in the development database after first proving there are no answer/reference dependencies that would make the reset unsafe;
+5. clean-import the corrected 72-question package using the normal importer;
+6. verify the resulting 72 questions / 360 options / 108 media, correct mappings, package identity, and Q24 wording;
+7. then implement the bounded EC7 ITALIC + structured textual-stimulus fidelity extension;
+8. prepare/apply the owner-verified real typography map;
+9. compare Admin/Applicant presentation against the physical source;
+10. formally accept EC7 and Phase A.
+
+This reset/re-import choice is explicitly **development-stage only**. It is not a general production migration policy for banks with live attempts/answers.
 
 Do not infer typography from wording, answer correctness, capitalization, OCR, or model judgment. Only the owner-reviewed physical source may authorize real source-specific marks.
 
@@ -261,10 +273,10 @@ Implementation documentation should describe data contracts and system behavior 
 
 Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, canonical text matches the verified physical source, Admin and Applicant render the same assessment semantics, required BOLD/UNDERLINE/ITALIC source typography is preserved on all supported textual surfaces demonstrated by the assessment, and project-owner source/manual QA is completed where applicable.
 
-EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then available**. Its verified import/reconciliation and bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` remain valid. However, the later 12-page physical-source audit found a bounded Q24 option-J truncation in the canonical manifest/imported bank. Therefore EC6 content fidelity is **REOPENED only for that post-acceptance source correction**; the accepted pagination/color work is not reopened.
+EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then available**. Its original verified bank import and bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` remain valid historical checkpoints. However, the later 12-page physical-source audit found a bounded Q24 option-J truncation. EC6 content fidelity is therefore **REOPENED only for the corrected-bank replacement verification**; the accepted pagination/color work is not reopened. The temporary Q24-specific reconciliation implementation is superseded and is not the selected final approach.
 
 Current EC7 checkpoint: the original BOLD/UNDERLINE architecture/support implementation passed independent source review and the project owner observed Admin bold/underline behavior working. The subsequent physical-source audit proves the current contract is not yet complete because verified source typography also includes ITALIC and emphasis inside structured textual stimuli. A separate Applicant browser QA pass for the original support was intentionally skipped by the owner; that remains supported by reviewed shared-renderer/source and focused automated evidence rather than owner manual evidence.
 
-The real OLSAT emphasis sidecar must remain absent/unapplied until (a) the Q24 canonical text is corrected/reconciled and (b) the bounded EC7 fidelity extension is implemented/reviewed. Phase A remains blocked by both of those physical-source reconciliation items. Keep all of this work separate from Phase B.
+The real OLSAT emphasis sidecar must remain absent/unapplied until (a) the Q24-specific reconciliation machinery has been removed/superseded by the corrected canonical package plus verified development reset/re-import, and (b) the bounded EC7 fidelity extension is implemented/reviewed. Phase A remains blocked by those source-fidelity items. Keep all of this work separate from Phase B.
 
 After Phase A acceptance, proceed directly to Phase B.
