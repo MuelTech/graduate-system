@@ -1,6 +1,9 @@
 # Verified semantic text emphasis
 
-The original `olsat/manifest.json` and 108 assets remain immutable. Do not infer
+The controlled `olsat/manifest.json` and 108 assets retain exact-byte handling.
+The owner-authorized Q24 option-J source correction revises the canonical manifest
+SHA below; all assets remain unchanged. Existing imported environments must use
+the bounded [Q24 reconciliation](Q24-CORRECTION.md) before later emphasis work. Do not infer
 emphasis from words, capitalization, answers, or question types. No real OLSAT
 emphasis sidecar is included: the owner must verify annotations against the
 physical/source assessment before creating `exam-content/olsat-emphasis.json`.
@@ -66,7 +69,7 @@ The JSON root has exactly these fields:
 - `schemaVersion`: `1`.
 - `packageKey`: `"olsat"`.
 - `manifestSha256`:
-  `0327342827f9afafeadb65b88f18e9bb4f21b2c513fe6edfdb9104ab16abd3d9`.
+  `6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6`.
 - `indexConvention`: `"UTF16_CODE_UNITS"`.
 - `verification`: `{ "status": "VERIFIED", "verifiedBy": "<owner/reviewer>",
   "verifiedAt": "<ISO UTC timestamp>" }`. This is explicit owner/source

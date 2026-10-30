@@ -6,7 +6,7 @@ import {
 } from "../shared/text-emphasis";
 
 export const OLSAT_MANIFEST_SHA256 =
-  "0327342827f9afafeadb65b88f18e9bb4f21b2c513fe6edfdb9104ab16abd3d9";
+  "6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6";
 export const textSha256 = (text: string) =>
   createHash("sha256").update(text, "utf8").digest("hex");
 type Target =
