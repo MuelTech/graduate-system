@@ -138,20 +138,33 @@ unsupported.
 
 ## Required implementation sequence
 
-### Step 1 — bounded Q24 source correction
+### Step 1 — corrected Q24 package + clean development-bank replacement
 
-Correct the exact Q24 option-J canonical text and reconcile the imported row.
-Review package fingerprint/import-marker implications explicitly because changing
-the canonical manifest changes protected source identity assumptions.
+The initially implemented Q24-specific reconciliation utility was technically
+reviewed but later rejected by the project owner as unnecessary permanent
+one-off machinery for the current development-stage bank. It is
+**SUPERSEDED / NOT ACCEPTED as the retained correction architecture**.
 
-Required proof:
+The selected replacement path is:
 
-- exact old/new source field;
-- exact old/new database field;
-- no unrelated question/option change;
-- answer mapping remains correct;
-- IDs/labels/order/media remain unchanged;
-- revised canonical package identity is intentional and documented.
+1. remove/revert the Q24-only CLI/service/repository/tests/npm commands/operator
+   documentation while preserving published Git history;
+2. retain/reapply the exact canonical Q24 Option J wording:
+   `Paul is younger than Dick and John`;
+3. recompute/bind the corrected manifest/package identity from exact bytes;
+4. prove the current development database has no answer/question-option
+   dependencies that make the reset unsafe;
+5. remove only the imported OLSAT bank state needed for a clean normal import,
+   including its questions/options, import marker, and imported exam media as
+   appropriate;
+6. preserve unrelated users, students, profiles, applications, and non-OLSAT data;
+7. use the normal importer to create the corrected authoritative bank;
+8. verify 72 questions, 360 options, 108 media, exact source identities,
+   answer-key mappings, zero broken references, corrected Q24 wording, and an
+   identical second import returning `ALREADY_IMPORTED`.
+
+This is explicitly a development-stage cleanup strategy. It must not be treated
+as the production migration policy for a bank with live answers/attempts.
 
 ### Step 2 — bounded EC7 fidelity extension
 
@@ -198,7 +211,7 @@ Compare the physical source against Admin and Applicant presentation.
 
 Only then may:
 
-- the Q24 post-acceptance correction be closed;
+- the corrected-bank EC6 post-acceptance checkpoint be closed;
 - EXAM-CONTENT-7 be formally accepted;
 - Phase A be formally accepted.
 
