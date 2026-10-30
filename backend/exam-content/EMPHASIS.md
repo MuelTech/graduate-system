@@ -2,9 +2,13 @@
 
 The controlled `olsat/manifest.json` and 108 assets retain exact-byte handling.
 The owner-authorized Q24 option-J source correction revises the canonical manifest
-SHA below; all assets remain unchanged. Existing imported environments must use
-the bounded [Q24 reconciliation](Q24-CORRECTION.md) before later emphasis work. Do not infer
-emphasis from words, capitalization, answers, or question types. No real OLSAT
+identity; all assets remain unchanged. A Q24-specific reconciliation utility was
+implemented temporarily but is now **superseded and not the selected operator
+path**. Do not use that one-off reconciliation as the prerequisite for later
+emphasis work. The chosen development path is to remove that machinery, retain
+the corrected canonical package, reset only the imported OLSAT development-bank
+state after dependency checks, and clean-import through the normal importer.
+Do not infer emphasis from words, capitalization, answers, or question types. No real OLSAT
 emphasis sidecar is included: the owner must verify annotations against the
 physical/source assessment before creating `exam-content/olsat-emphasis.json`.
 This sibling file is outside the fixed base-package inventory/fingerprint.
