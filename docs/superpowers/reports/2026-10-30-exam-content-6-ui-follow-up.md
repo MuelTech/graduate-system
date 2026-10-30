@@ -202,3 +202,24 @@ coverage rather than overstating that every state was manually exercised.
 This acceptance does **not** accept EXAM-CONTENT-7 or Phase A. Real OLSAT
 semantic-emphasis population remains pending an owner-verified physical-source
 map, and Phase B has not started.
+
+
+## Later physical-source audit note — 2026-10-30
+
+After the acceptance above, the project owner supplied all 12 physical OLSAT test
+pages for the separate EC7 source-typography audit. That later audit found one
+content discrepancy outside the pagination/color UI follow-up:
+
+- Q24 option J physical source:
+  `Paul is younger than Dick and John`
+- Q24 option J current canonical manifest/imported text:
+  `Paul is younger than Dick`
+
+This does not invalidate the accepted pagination/readability implementation or
+its evidence. It **reopens EC6 content fidelity only for a bounded Q24 source-text
+correction/reconciliation** before final Phase A acceptance.
+
+The same audit also expanded the still-open EC7 source-fidelity requirement:
+verified physical typography includes ITALIC and emphasis inside structured
+textual stimuli, so the final real emphasis sidecar must remain unapplied until
+that EC7 contract extension is implemented and reviewed.
