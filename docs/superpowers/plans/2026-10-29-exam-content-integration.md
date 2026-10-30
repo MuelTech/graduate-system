@@ -420,47 +420,44 @@ The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted a
 
 **Do not build/apply the final real sidecar yet.**
 
-#### Owner decision superseding EC6-CORR1 one-off reconciliation
+#### Corrected-bank checkpoint — ACCEPTED 2026-10-31
 
-The Q24-specific reconciliation implementation at `9430c833f11c46b3de43a2eb0e9b8e6486b55233` and its evidence-report commit were reviewed, but the project owner elected **not to retain that architecture**. The implementation is considered **SUPERSEDED / NOT ACCEPTED** because this is still a development-stage authoritative bank with no question-answer dependency that justifies carrying permanent Q24-only CLI/service/repository/test machinery.
+The Q24-specific reconciliation implementation at `9430c833f11c46b3de43a2eb0e9b8e6486b55233` remains historical and **SUPERSEDED / NOT ACCEPTED as retained architecture**.
 
-Next implementation must cleanly replace that approach rather than extend it.
+The replacement CORR2 path has now been completed and independently reviewed:
 
-1. **Revert/remove Q24-only reconciliation machinery**
-   - preserve Git history; do not force-push/reset published history;
-   - remove the Q24-only CLI, repository, service, npm commands, dedicated tests, and operator doc from the final tree;
-   - do not create a generic correction framework merely to preserve this one-off approach;
-   - retain only genuinely reusable code if independently justified by the normal importer, otherwise restore the simpler pre-correction structure.
+- Q24-only CLI/service/repository/tests/npm commands/operator documentation removed from the final tree;
+- corrected Q24 Option J retained as `Paul is younger than Dick and John`;
+- corrected manifest SHA and package fingerprint preserved;
+- dependency gate confirmed zero ApplicantAnswer references to the OLSAT question/option IDs;
+- only the imported OLSAT development-bank state and its exclusively owned media were removed;
+- normal importer clean-created the corrected bank;
+- final state verified at 72 questions / 360 options / 108 media;
+- 72/72 correct-answer mappings matched the source;
+- zero broken references;
+- second normal import returned `ALREADY_IMPORTED` with zero writes.
 
-2. **Retain the authoritative Q24 source fix**
-   - canonical Q24 Option J must remain exactly `Paul is younger than Dick and John`;
-   - compute/bind the corrected manifest/package identity from exact bytes;
-   - keep all 108 assets unchanged.
+This closes the post-acceptance EC6 source-correction checkpoint. No browser/manual QA is required for CORR2 because no frontend behavior changed.
 
-3. **Development OLSAT bank reset + normal clean re-import**
-   - before destructive cleanup, verify there are no `ApplicantAnswer`/question-option references or other dependencies that make reset unsafe;
-   - delete/reset only the imported OLSAT bank state needed for a clean normal import (questions/options, OLSAT import marker, and imported exam media as appropriate);
-   - preserve Users, Students, applications, unrelated profiles/data, and non-OLSAT records;
-   - use the existing normal importer for the corrected package;
-   - verify 72 questions, 360 options, 108 media, all source identities, answer mappings, no broken refs, and corrected Q24 wording;
-   - repeat the normal importer to prove `ALREADY_IMPORTED` idempotency.
+### Remaining Phase A sequence
 
-4. **EC7 bounded fidelity extension**
+1. **EC7 bounded fidelity extension**
    - add controlled `ITALIC` support alongside `BOLD` / `UNDERLINE`;
-   - extend verified typography to structured textual stimuli demonstrated by the source;
-   - preserve safe controlled React rendering; no arbitrary HTML/Markdown.
+   - extend verified typography to structured textual stimuli demonstrated by the physical source;
+   - preserve safe controlled React rendering; no arbitrary HTML/Markdown;
+   - keep the change bounded to the verified physical-source requirements.
 
-5. **Real owner-verified typography map**
-   - encode final verified physical-source marks only after steps 1–4 are accepted;
+2. **Real owner-verified typography map**
+   - encode final verified physical-source marks only after the EC7 extension is accepted;
    - do not infer real marks from wording, capitalization, answers, OCR, or model guesses.
 
-6. Run emphasis preflight/apply and prove identical re-apply is idempotent.
+3. Run emphasis preflight/apply and prove identical re-apply is idempotent.
 
-7. Compare Admin/Applicant output against the physical assessment.
+4. Compare Admin/Applicant output against the physical assessment.
 
-8. Formally close the corrected-bank EC6 checkpoint, accept EC7, and then Phase A if all source-fidelity checks pass.
+5. Formally accept EC7 and then Phase A if all source-fidelity checks pass.
 
-Do not begin Phase B until these Phase A source-fidelity items are formally accepted.
+Do not begin Phase B until EC7 and Phase A are formally accepted.
 
 ## 9. Mandatory Phase B after Phase A
 
