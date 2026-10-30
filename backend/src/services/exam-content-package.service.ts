@@ -1,7 +1,7 @@
 import fsp from "fs/promises";
 import { constants } from "fs";
 import path from "path";
-import { examPackageFingerprint } from "./exam-package-fingerprint";
+import { createHash } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { validateExamQuestion } from "./exam-content.rules";
 import { getUploadPolicy } from "../storage/upload-policy";
@@ -173,6 +173,7 @@ export async function preflightExamPackage(packageRoot: string): Promise<Prepare
   if (files.size !== references.size + 1 || [...files].some(ref => ref !== "manifest.json" && !references.has(ref))) invalid("Source package contains unreferenced or unexpected files.");
   const assets = new Map<string, Buffer>();
   const policy = getUploadPolicy("exam-media");
+  const hash = createHash("sha256").update(`${manifestBytes.length}:`).update(manifestBytes);
   let totalBytes = 0;
   for (const reference of [...references].sort()) {
     const bytes = await readContained(root, reference, policy.maxBytes);
@@ -183,6 +184,8 @@ export async function preflightExamPackage(packageRoot: string): Promise<Prepare
     const expected = reference.endsWith(".png") ? "image/png" : "image/jpeg";
     if (!detected || !policy.allowedMimeTypes?.includes(detected.mime) || detected.mime !== expected) invalid("Source image content does not match its supported image extension/type.");
     assets.set(reference, bytes);
+    // Length-prefix each component to make the exact package digest unambiguous.
+    hash.update(`${Buffer.byteLength(reference)}:${reference}:${bytes.length}:`).update(bytes);
   }
   const counts: ExamPackageCounts = {
     questionsValidated: questions.length, textOnlyQuestions: 0, structuredStimulusQuestions: 0,
@@ -203,5 +206,5 @@ export async function preflightExamPackage(packageRoot: string): Promise<Prepare
     }
     counts.visualOptions += q.optionAssets.filter(Boolean).length;
   }
-  return { packageKey: "olsat", fingerprint: examPackageFingerprint(manifestBytes, assets), questions, assets, counts };
+  return { packageKey: "olsat", fingerprint: hash.digest("hex"), questions, assets, counts };
 }
