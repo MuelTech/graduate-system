@@ -190,9 +190,34 @@ Admin bank pagination must also be discoverable for a real 72-question bank. Pag
 | EXAM-CONTENT-4 | Admin Question Bank mixed-content renderer/editor support. |
 | EXAM-CONTENT-5 | Applicant Exam mixed-content renderer and bounded UI/UX integration. |
 | EXAM-CONTENT-6 | Import verified question bank, complete content-focused QA, and close bounded real-bank presentation issues such as pagination discoverability and assessment-text color. |
-| EXAM-CONTENT-7 | Preserve semantically meaningful bold/underline emphasis in question/instruction text and textual answer choices across source representation, Admin authoring/preview, and Applicant rendering. |
+| EXAM-CONTENT-7 | Preserve semantically meaningful source typography required for assessment meaning/fidelity, including BOLD, UNDERLINE, and ITALIC where verified, across question/instruction text, textual answer choices, and supported structured textual stimuli, with matching Admin/Applicant rendering. |
 
-Phase A proves content representation/import/rendering fidelity only after EXAM-CONTENT-7 closes the semantic-emphasis gap confirmed against the physical assessment. It does **not** prove the whole exam lifecycle is production-ready.
+Phase A proves content representation/import/rendering fidelity only after the verified physical-source audit is reconciled. This includes the bounded Q24 source-text correction discovered after the original EC6 acceptance and EXAM-CONTENT-7 source typography fidelity. It does **not** prove the whole exam lifecycle is production-ready.
+
+### 10.1 Physical-source audit checkpoint — 2026-10-30
+
+The project owner supplied all 12 physical OLSAT test-page images for direct visual comparison against the canonical manifest. This audit is the source authority for typography and exposed one content discrepancy that must be corrected before final Phase A acceptance.
+
+Confirmed findings:
+
+- the physical source uses **BOLD**, **UNDERLINE**, and **ITALIC** as meaningful/intentional typography;
+- ITALIC is not purely decorative in all cases; representative examples include the emphasized word `not` in Q11/Q61, so EC7 cannot claim complete source fidelity while supporting only BOLD/UNDERLINE;
+- structured textual stimuli can themselves carry source emphasis; representative examples include the bold WORD_SERIES terms in Q25 (`peaceful / serene / tranquil`) and Q45 (`forward / sideways / down`);
+- the current EC7 v1 runtime/sidecar contract supports only question/option text BOLD/UNDERLINE and therefore is insufficient for the complete verified physical-source typography;
+- Q24 option J is a real source-text mismatch: the physical page reads `Paul is younger than Dick and John`, while the current canonical manifest/imported bank contains `Paul is younger than Dick`.
+
+Do not generate/apply the final real OLSAT emphasis sidecar against the current manifest. The exact text hashes/offsets must be generated only after the Q24 canonical source/database correction is reconciled and the EC7 typography contract supports the verified source requirements.
+
+Required sequence:
+
+1. bounded Q24 source correction and imported-bank reconciliation;
+2. bounded EC7 fidelity extension for ITALIC and verified structured textual-stimulus emphasis;
+3. owner-verified real typography map;
+4. sidecar preflight/apply/idempotency verification;
+5. Admin/Applicant comparison against the physical source;
+6. formal EC7 and Phase A acceptance.
+
+Do not infer typography from wording, answer correctness, capitalization, OCR, or model judgment. Only the owner-reviewed physical source may authorize real source-specific marks.
 
 ## 11. Phase B follows Phase A
 
@@ -234,12 +259,12 @@ Implementation documentation should describe data contracts and system behavior 
 
 ## 14. Acceptance boundary
 
-Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, Admin and Applicant render the same semantics, semantically meaningful bold/underline emphasis from the physical assessment is preserved for both questions and textual answer choices, and project-owner content/manual QA is completed where applicable.
+Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, canonical text matches the verified physical source, Admin and Applicant render the same assessment semantics, required BOLD/UNDERLINE/ITALIC source typography is preserved on all supported textual surfaces demonstrated by the assessment, and project-owner source/manual QA is completed where applicable.
 
-EXAM-CONTENT-6 is **formally accepted as of 2026-10-30**. Its acceptance combines the verified 72-question import/reconciliation with the bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`: discoverable top/bottom pagination and neutral assessment question/instruction body text. Independent review of the actual pushed diff found no blocking issue, and the project owner visually accepted the resulting UI.
+EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then available**. Its verified import/reconciliation and bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` remain valid. However, the later 12-page physical-source audit found a bounded Q24 option-J truncation in the canonical manifest/imported bank. Therefore EC6 content fidelity is **REOPENED only for that post-acceptance source correction**; the accepted pagination/color work is not reopened.
 
-Current EC7 checkpoint: the semantic-emphasis architecture/support implementation has passed independent source review, and the project owner has observed Admin bold/underline behavior working. A separate Applicant browser QA pass was intentionally skipped by the owner; Applicant behavior remains supported by the reviewed shared renderer and focused automated evidence rather than owner manual evidence. Real OLSAT emphasis population remains pending an owner-verified physical-source map, so EC7 is not yet formally accepted for real-source fidelity.
+Current EC7 checkpoint: the original BOLD/UNDERLINE architecture/support implementation passed independent source review and the project owner observed Admin bold/underline behavior working. The subsequent physical-source audit proves the current contract is not yet complete because verified source typography also includes ITALIC and emphasis inside structured textual stimuli. A separate Applicant browser QA pass for the original support was intentionally skipped by the owner; that remains supported by reviewed shared-renderer/source and focused automated evidence rather than owner manual evidence.
 
-With EC6 closed, the only remaining Phase A blocker is EXAM-CONTENT-7 real-source semantic-emphasis completion and comparison against the verified physical assessment. Keep that source-map work separate from Phase B.
+The real OLSAT emphasis sidecar must remain absent/unapplied until (a) the Q24 canonical text is corrected/reconciled and (b) the bounded EC7 fidelity extension is implemented/reviewed. Phase A remains blocked by both of those physical-source reconciliation items. Keep all of this work separate from Phase B.
 
 After Phase A acceptance, proceed directly to Phase B.
