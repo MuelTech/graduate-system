@@ -347,9 +347,11 @@ The pagination discoverability and neutral assessment-text color are bounded EXA
 
 Semantic emphasis is larger than a color/layout correction and must be handled as a separate bounded Phase A package, EXAM-CONTENT-7, before Phase A can claim faithful presentation.
 
-**EXAM-CONTENT-6 remains pending formal acceptance.** Do not treat the successful import as proof that presentation fidelity is complete.
+**EXAM-CONTENT-6 is formally ACCEPTED — 2026-10-30.**
 
-On 2026-10-29 the project owner explicitly authorized EXAM-CONTENT-7 to proceed while the two bounded EXAM-CONTENT-6 UI follow-ups remain open. This is an intentional sequencing exception: do not mark EXAM-CONTENT-6 accepted, and do not mark Phase A accepted, until both the EC6 pagination/text-color follow-up and EC7 semantic-emphasis fidelity are closed and owner-verified.
+Acceptance combines the previously verified 72-question import/reconciliation evidence with the bounded UI follow-up implemented at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`. Independent review of the actual pushed GitHub source/diff found no blocking issue. The project owner visually reviewed the resulting UI and reported satisfaction with the output. Focused automated/source evidence covers top/bottom pagination state behavior and the three neutral question/instruction text surfaces.
+
+The earlier sequencing exception is now closed for EC6: pagination discoverability and neutral assessment-text color are no longer open blockers. Phase A is still **not accepted** because EXAM-CONTENT-7 real-source OLSAT emphasis population/comparison remains pending.
 
 ## 8.1 EXAM-CONTENT-7 — Semantic text-emphasis fidelity
 
@@ -406,14 +408,16 @@ Therefore:
 - real-source emphasis fidelity: **PENDING**;
 - formal EC7 acceptance: **PENDING real owner-verified source map/application/comparison**.
 
-The next bounded implementation task is the still-open **EXAM-CONTENT-6 UI follow-up** only.
+The EXAM-CONTENT-6 UI follow-up is complete and accepted at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`.
 
-**OWNER-AUTHORIZED NEXT — 2026-10-30.**
+The remaining Phase A blocker is now **EXAM-CONTENT-7 real-source semantic-emphasis completion**:
 
-1. make Admin Question Bank pagination controls discoverable without requiring a long scroll through eight cards;
-2. use a neutral readable body color for normal assessment question/instruction text while preserving EARIST primary red for intentional accents/selection/focus states.
+1. prepare the owner-verified OLSAT emphasis map from the authorized physical source;
+2. run bounded preflight/apply only after that map exists;
+3. compare the resulting Admin/Applicant presentation against the verified physical source;
+4. formally accept EC7 and then Phase A if no fidelity issue remains.
 
-Do not mix importer/database/emphasis-source changes or Phase B work into that UI follow-up.
+Do not begin Phase B until EC7 and Phase A are formally accepted.
 
 ## 9. Mandatory Phase B after Phase A
 
