@@ -352,8 +352,8 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 | ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
-| ✅ | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED 2026-10-30.** Import/reconciliation evidence at `5313c5934b3f3f6a2f98a316246810b284ab0e05` PASS: 72 authoritative questions, 108 imported media references, 72/72 verified answer mappings, all eight structured forms, idempotency, and unchanged source package. Bounded UI follow-up `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` independently reviewed PASS; owner visually accepted improved top/bottom pagination discoverability and neutral question/instruction body text. No backend/schema/import/EC7-source-map/Phase-B scope was added. |
-| 🟡 | EXAM-CONTENT-7 — Semantic text-emphasis fidelity | Implementation `09e09260e5b1ab539b567b3b51b1e7b146e928d5`; independent actual-source review **PASS**; project owner observed Admin bold/underline authoring/rendering working. Applicant full browser QA was intentionally owner-skipped and remains covered only by reviewed shared-renderer/source + focused automated evidence. Real 72-question OLSAT emphasis population is **NOT RUN / PENDING OWNER-VERIFIED SOURCE MAP**; formal EC7 acceptance remains pending real-source application/comparison. |
+| 🟠 | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED 2026-10-30 on then-known evidence; CONTENT FIDELITY REOPENED for one bounded post-acceptance correction.** Import/reconciliation and UI follow-up remain valid. Later owner-supplied 12-page physical-source audit found Q24 option J truncated in the canonical manifest/imported bank: source = `Paul is younger than Dick and John`; current = `Paul is younger than Dick`. Correct/reconcile only this source-text defect before final Phase A acceptance; do not reopen pagination/color work. |
+| 🟡 | EXAM-CONTENT-7 — Semantic source-typography fidelity | Original BOLD/UNDERLINE implementation `09e09260e5b1ab539b567b3b51b1e7b146e928d5` independently reviewed **PASS** and Admin behavior owner-observed. Complete physical-source audit later confirmed additional required **ITALIC** semantics and emphasis inside structured textual stimuli (e.g. Q25/Q45 WORD_SERIES). Final sidecar remains **NOT RUN** and must not be generated/applied until the Q24 source correction and bounded EC7 fidelity extension are complete. |
 
 ### EXAM-CONTENT-1 review checkpoint
 
@@ -488,22 +488,29 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - independent actual-source review: **PASS**;
   - project-owner visual/browser review: **PASS / satisfied with output**;
   - no backend/schema/migration/import/media/API/Phase-B changes.
-- Formal EXAM-CONTENT-6 acceptance: **ACCEPTED — 2026-10-30**
+- Formal EXAM-CONTENT-6 acceptance history: **ACCEPTED — 2026-10-30 on then-known evidence**
+- Post-acceptance physical-source correction: **OPEN — Q24 OPTION J ONLY**
+  - physical source: `Paul is younger than Dick and John`;
+  - current canonical/imported text: `Paul is younger than Dick`;
+  - accepted pagination/color work remains closed;
+  - correct/reconcile this exact field before final Phase A acceptance.
 - EXAM-CONTENT-7 implementation/review checkpoint:
   - implementation commit: `09e09260e5b1ab539b567b3b51b1e7b146e928d5`;
   - independent actual GitHub source/diff review: **PASS**;
   - owner Admin bold/underline browser observation: **PASS for observed behavior**;
   - Applicant full manual/browser QA: **OWNER-SKIPPED**;
-  - real OLSAT emphasis sidecar/application: **PENDING OWNER-VERIFIED SOURCE MAP**;
+  - complete 12-page physical-source audit: **DONE — 2026-10-30**;
+  - audit found verified ITALIC semantics plus structured textual-stimulus emphasis beyond the original BOLD/UNDERLINE contract;
+  - real OLSAT sidecar/application: **BLOCKED / NOT RUN** until contract extension and Q24 correction are complete;
   - formal EC7 acceptance: **PENDING real-source fidelity completion**.
-- Next Phase A work: **EXAM-CONTENT-7 REAL-SOURCE EMPHASIS COMPLETION**
-  - prepare an owner-verified physical-source emphasis map;
-  - preflight/apply the verified sidecar only when the real map exists;
-  - compare real Admin/Applicant rendering against the physical source;
-  - keep Phase B out until EC7 and Phase A are accepted.
-- Phase A final acceptance: **BLOCKED only by EXAM-CONTENT-7 real-source semantic-emphasis fidelity**
+- Next Phase A work, in order:
+  1. **Q24 bounded source correction/reconciliation**;
+  2. **EC7 ITALIC + structured textual-stimulus fidelity extension**;
+  3. **owner-verified real typography map + preflight/apply/idempotency**;
+  4. **physical-source Admin/Applicant comparison**.
+- Phase A final acceptance: **BLOCKED by Q24 source reconciliation + EC7 complete physical-source typography fidelity**
 
-**Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full presentation fidelity until semantically meaningful bold/underline is preserved for both questions and textual answer choices. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
+**Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
