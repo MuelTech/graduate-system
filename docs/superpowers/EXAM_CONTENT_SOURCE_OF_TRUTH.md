@@ -276,42 +276,20 @@ Phase A is accepted only after its bounded packages are implemented/reviewed, pr
 
 EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then available**. Its original verified bank import and bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` remain valid historical checkpoints. However, the later 12-page physical-source audit found a bounded Q24 option-J truncation. That corrected-bank replacement verification is now **CLOSED / ACCEPTED as of 2026-10-31** after the superseded one-off reconciler was removed, the development OLSAT bank was safely reset, the corrected canonical package was imported through the normal importer, and the resulting 72/360/108 bank plus 72/72 mappings/Q24 wording/idempotency were independently reviewed. The accepted pagination/color work was never reopened.
 
-Current EC7 checkpoint: EC7A architecture/support, EC7B real owner-verified map creation/preflight, EC7C real development-database application/idempotency, and EC7D structured-stimulus Admin authoring simplification have all passed independent review.
+Current EC7 / Phase A closure checkpoint — **ACCEPTED 2026-10-31**:
 
-EC7C used the unchanged reviewed `backend/exam-content/olsat-emphasis.json` and populated exactly the reviewed 34 semantic metadata fields. Canonical bank content, IDs, source/import identity, correctness, structured content, media references, managed media records, and import-marker state remained unchanged; the identical second apply returned `ALREADY_APPLIED` with zero writes.
+- EC7A architecture/support, EC7B owner-verified real typography map/preflight, EC7C real development-database application/idempotency, and EC7D structured-stimulus Admin authoring simplification remain independently reviewed PASS.
+- EC7E — Items Consolidation + Q40 Source Fidelity — was implemented at `052ddcf1ce96c625da8a2618f131c98c017d1051` and delivered with evidence at `f8b0ffa7618249763bf41ca4f43041c77310307f`.
+- Independent remote review of the actual pushed EC7E source is **PASS** with no blocking implementation issue.
+- The project owner reviewed the resulting EC7E output, confirmed that the correction was correct, and authorized Phase A documentation closure.
+- Admin structured authoring now exposes exactly **Grid / Table** and **Items**. All eight existing internal structured subtypes remain supported; `LOGICAL_PREMISES` maps to Items and renders as plain vertically stacked lines without automatic numbering.
+- Canonical Q40 now renders in the owner-verified source order: leading `Assume that —` prompt → three premise lines → trailing `We know that —` prompt → unchanged answer choices. No Q40-specific renderer branch, one-off backend correction service, or retained database reconciler was introduced.
+- The corrected manifest SHA is `2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95`; the corrected package/import fingerprint is `01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343`.
+- All 38 previously reviewed emphasis targets remain text-hash compatible. The sidecar changed only its manifest binding; no Q40 emphasis was invented. Q25/Q45 reviewed structured emphasis remains intact.
+- The accepted development-only clean replacement path restored the canonical bank at 72 questions / 360 options / 108 bank media with 72/72 answer mappings and zero broken bank references. The owner-authorized cleanup also restored the pre-existing noncanonical Q26 development edit to the canonical MATRIX representation.
+- Identical repeat import returned `ALREADY_IMPORTED`; identical repeat emphasis application returned `ALREADY_APPLIED` with zero changes.
+- EC7E introduced no Prisma/schema migration and no scoring, attempt, timer, scheduling, autosave, submission, essay-lifecycle, thesis/dissertation, or Phase B change.
 
-During owner Admin QA, the imported assessment content itself remained correct but the structured-stimulus editor was found to expose unnecessary source-oriented subtype and primitive-type controls. EC7D corrected that configuration UX without reopening the verified bank or persistence model.
+Therefore **EXAM-CONTENT-7 is formally ACCEPTED as of 2026-10-31**, and **Phase A — Applicant Examination Mixed-Content Integration is formally ACCEPTED as of 2026-10-31** for its documented content-representation/import/private-media/rendering/source-fidelity scope.
 
-EC7D now exposes exactly three Admin-facing structured layouts: **Grid / Table**, **Inline Items**, and **Numbered List**. The eight existing internal structured subtypes remain supported and map into those families. The visible per-cell `Text / Number` selector has been removed. Visible cell/item editing uses text inputs, while hidden draft compatibility metadata preserves an untouched source value's exact string/number primitive where necessary.
-
-Independent EC7D source review confirmed that an unchanged imported structured payload preserves its exact subtype, field shape, item order, numbers/numeric strings/fractions/gaps, and JSON serialization. Focused tests cover all 29 real structured source payloads. Existing Q25/Q45 structured emphasis survives unchanged draft/save round trips. Actual edits that outgrow a legacy numeric/letter/alphanumeric grammar may adapt to the broad existing representation for the same visible layout (for example GROUPED_NUMBER_ROWS → MATRIX or NUMBER_SEQUENCE → WORD_SERIES), without introducing a new persisted discriminator or relaxing backend validation.
-
-EC7D changed only the bounded frontend editor/helper contract, focused tests, and its report. No Prisma/schema/migration, backend runtime, renderer, API type, manifest/assets, sidecar, database operation, bank reset/re-import, scoring/scheduling/attempt, or Phase B work occurred. Focused evidence reported 4 files / 115 tests PASS plus frontend TypeScript and scoped ESLint PASS.
-
-Therefore **EC7D structured authoring simplification is independently reviewed PASS**. Phase A remains not formally accepted only because owner manual/browser QA must now resume against the simplified Admin editor and the actual populated Admin/Applicant presentation.
-
-Post-EC7D owner QA found one additional source-fidelity/configuration issue before formal acceptance:
-
-- the Admin-facing **Numbered List** layout is not demonstrated by the verified OLSAT source and is redundant for the current bank;
-- the physical Q40 source shows plain vertically stacked statements with **no numeric list markers**;
-- the physical Q40 order is: `Assume that -` → three premise lines → `We know that -` → answer choices;
-- the current canonical Q40 manifest instead places `We know that —` inside `questionText` before the structured stimulus, so correcting only the list marker would still leave the source order wrong.
-
-Therefore EC7D remains an independently reviewed implementation checkpoint, but owner QA is paused for a bounded follow-up package, **EC7E — Items Consolidation + Q40 Source Fidelity**.
-
-EC7E requirements:
-
-- Admin exposes only **Grid / Table** and **Items** as structured authoring layouts;
-- all existing eight internal structured subtypes remain backward-compatible and are not removed from persistence;
-- `LOGICAL_PREMISES` maps to Admin **Items**;
-- `LOGICAL_PREMISES` renders as plain vertically stacked lines with no automatic numbering;
-- correct canonical Q40 from the owner-verified physical source instead of adding a renderer-only special case;
-- preserve Q40 answer choices/correct answer and all unrelated question content;
-- do not add a one-off Q40 database patch/reconciler; correct the canonical source package and use the established clean development re-import path if source identity changes;
-- because the emphasis sidecar is bound to the manifest SHA, any corrected manifest identity must be reconciled deterministically and the already-reviewed emphasis map must be revalidated/reapplied without changing its unaffected annotation semantics;
-- no Prisma migration is expected;
-- no Phase B work.
-
-The next Phase A action is EC7E implementation + independent review. After EC7E passes, resume owner visual/source QA. Only then may EXAM-CONTENT-7 and Phase A be formally accepted. Keep Phase B separate until Phase A acceptance.
-
-After Phase A acceptance, proceed directly to Phase B.
+Phase A acceptance does **not** mean the Applicant Entrance Examination is production-ready. The known exam-attempt lifecycle concerns remain intentionally outside Phase A. **Phase B — Exam Engine / Scheduling Audit is the next workstream and has not been started by this closure update.**
