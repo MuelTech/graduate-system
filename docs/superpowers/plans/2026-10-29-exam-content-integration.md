@@ -416,8 +416,8 @@ Current EC7 status:
 - canonical bank/media/import-marker invariance: **PASS**;
 - identical second apply idempotency: **PASS** — `ALREADY_APPLIED`, `fieldsChanged: 0`, `fieldsWouldChange: 0`;
 - focused EC7C verification: **PASS** — 3 files / 53 tests;
-- owner Admin/Applicant manual/browser physical-source comparison: **PENDING / DEFERRED UNTIL NOW**;
-- formal EC7 acceptance: **PENDING final owner source comparison only**.
+- owner Admin/Applicant physical-source/configuration review: **COMPLETED through the EC7D/EC7E correction cycle; project owner confirmed the final EC7E output was correct and authorized closure**;
+- formal EC7 acceptance: **ACCEPTED — 2026-10-31**.
 
 The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`.
 
