@@ -353,7 +353,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
 | ✅ | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED, including corrected-bank closure 2026-10-31.** Original EC6 acceptance remains historically valid; the later Q24 physical-source truncation was corrected through the accepted replacement path: one-off reconciler removed, development OLSAT bank safely reset after dependency checks, corrected canonical package clean-imported through the normal importer, 72 questions / 360 options / 108 media verified, 72/72 answer mappings matched, zero broken refs, and repeat import returned `ALREADY_IMPORTED`. Pagination/color acceptance remained closed throughout. |
-| 🟡 | EXAM-CONTENT-7 — Semantic source-typography fidelity | Original support and EC7A ITALIC/structured-text extension remain reviewed PASS. EC7B real owner-verified map at `b25a6c486c341cc67cbc9c6b264c15293d238bd4` is now independently reviewed **PASS**: 28 questions / 38 targets / 59 spans, protected package unchanged, read-only preflight `PREFLIGHT_OK` with 34 fields planned and zero writes. Real DB apply/idempotency is the next checkpoint; owner manual/browser source comparison remains deferred until after apply. Formal EC7/Phase A acceptance is still pending. |
+| ✅ | EXAM-CONTENT-7 — Semantic source-typography fidelity | **ACCEPTED 2026-10-31.** EC7A–D remain independently reviewed PASS. EC7E at `052ddcf1ce96c625da8a2618f131c98c017d1051` plus evidence delivery `f8b0ffa7618249763bf41ca4f43041c77310307f` completed Items consolidation, generic unnumbered LOGICAL_PREMISES rendering, canonical Q40 source order, corrected manifest/package/emphasis binding, clean development-bank replacement, and idempotency verification. Independent remote review PASS; project owner reviewed the resulting output, confirmed the correction, and authorized Phase A closure. |
 
 ### EXAM-CONTENT-1 review checkpoint
 
@@ -502,32 +502,31 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - EC7B real owner-verified map creation + source binding + read-only preflight: **INDEPENDENT REVIEW PASS**;
   - EC7C real DB application/idempotency: **INDEPENDENT REVIEW PASS**;
   - EC7D structured-stimulus Admin authoring simplification: **INDEPENDENT REVIEW PASS**;
-  - EC7D Admin-visible layouts: **Grid / Table, Inline Items, Numbered List**;
-  - EC7D per-cell Text/Number selector removal: **PASS**;
-  - all 29 real structured source payloads exact unchanged round-trip: **PASS**;
-  - Q25/Q45 structured emphasis unchanged save round-trip: **PASS**;
-  - eight legacy internal structured subtypes remain compatible: **PASS**;
-  - no schema/migration/backend-runtime/renderer/package/database rewrite: **PASS**;
-  - EC7D focused tests: **4 files / 115 tests PASS**;
-  - frontend TypeScript + scoped ESLint: **PASS**;
-  - verified imported bank/questions/options/answer mappings/media/emphasis remain unchanged;
-  - post-EC7D owner QA finding: **Numbered List is not source-demonstrated and Q40 source order is not represented faithfully**;
-  - physical Q40: `Assume that -` → three unnumbered stacked premises → `We know that -` → choices;
-  - EC7E Items Consolidation + Q40 Source Fidelity: **NEXT / REQUIRED**;
-  - owner Admin/Applicant browser physical-source/configuration QA: **PAUSED FOR EC7E**;
-  - formal EC7 acceptance: **PENDING EC7E + OWNER FINAL QA**.
-- Next Phase A work, in order:
-  1. **EC7E implementation + independent review**;
-  2. **resume owner manual/browser QA of Admin/Applicant presentation**;
-  3. **formal EC7 acceptance if owner QA passes**;
-  4. **formal Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED by EC7E + final owner manual/browser QA**
+  - post-EC7D owner finding correctly identified Numbered List as not source-demonstrated and Q40 source order as non-faithful;
+  - EC7E Items Consolidation + Q40 Source Fidelity implementation: **COMPLETE** at `052ddcf1ce96c625da8a2618f131c98c017d1051`;
+  - EC7E evidence delivery: `f8b0ffa7618249763bf41ca4f43041c77310307f`;
+  - EC7E Admin-visible layouts: **Grid / Table, Items**;
+  - all eight legacy internal structured subtypes remain compatible: **PASS**;
+  - `LOGICAL_PREMISES` renders as plain stacked lines without automatic numbering: **PASS**;
+  - canonical Q40 order: `Assume that —` → three premises → `We know that —` → unchanged choices: **PASS**;
+  - other 28 structured source payloads exact unchanged round-trip/renderability: **PASS**;
+  - Q25/Q45 reviewed structured emphasis preserved: **PASS**;
+  - corrected manifest/package/emphasis source binding: **PASS**;
+  - clean development replacement restored 72 questions / 360 options / 108 bank media and 72/72 answer mappings with zero broken bank references: **PASS**;
+  - repeated import: **ALREADY_IMPORTED**;
+  - repeated emphasis apply: **ALREADY_APPLIED**, zero changes;
+  - EC7E focused verification: **14 files / 280 tests PASS**; backend build, frontend TypeScript, scoped ESLint and formatting checks PASS;
+  - independent remote source review: **PASS — no blocking issue**;
+  - project owner reviewed the resulting EC7E output, confirmed it was correct, and authorized Phase A documentation closure;
+  - formal EC7 acceptance: **ACCEPTED — 2026-10-31**.
+- Phase A final acceptance: **ACCEPTED — 2026-10-31**
+- Next workstream: **Phase B — Exam Engine / Scheduling Audit**. Phase B implementation has not started as part of this closure update.
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**This begins immediately after Phase A is accepted.**
+**Phase A is accepted as of 2026-10-31. Phase B is the next workstream; implementation has not started in this documentation-closure update.**
 
 | Status | Item | Audit target |
 | --- | --- | --- |
