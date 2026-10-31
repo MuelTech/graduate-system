@@ -167,28 +167,29 @@ The corrected-bank EC6 checkpoint is therefore **CLOSED / ACCEPTED**. This remai
 explicitly a development-stage cleanup strategy and must not be treated as a
 production migration policy for a bank with live answers/attempts.
 
-### Step 2 — bounded EC7 fidelity extension
+### Step 2 — bounded EC7 fidelity extension — IMPLEMENTED / REVIEW PASS
 
-Extend the safe semantic typography architecture to support verified source
-requirements:
+The EC7A architecture/support extension at
+`3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473` has been implemented and
+independently reviewed with no blocking issue found.
 
-- add controlled `ITALIC` style support;
-- preserve existing BOLD/UNDERLINE behavior;
-- support typography for structured textual stimulus values demonstrated by the
-  physical source, with the smallest additive representation possible;
-- continue using escaped React string nodes and controlled semantic elements;
-- do not introduce arbitrary HTML, stored Markdown, dynamic style injection, or
-  a broad rich-text document model;
-- extend validation, Admin/source tooling, projections/renderers, and focused
-  tests only as required.
+It now provides:
 
-A new Prisma migration should not be assumed merely for ITALIC because the
-existing emphasis columns are JSON. Any schema change for structured stimulus
-typography must be justified by the chosen bounded representation.
+- controlled `ITALIC` alongside existing BOLD/UNDERLINE;
+- separate bounded structured textual-stimulus emphasis metadata;
+- supported string-item structured targets needed by the verified physical source;
+- safe shared Admin/Applicant semantic rendering;
+- sidecar schema v2 and grouped transactional structured-item reconciliation;
+- focused migration/test/build evidence without changing the protected OLSAT
+  manifest/assets or populating any real source marks.
+
+Owner manual/browser QA for this new capability is **DEFERRED until the actual
+owner-verified OLSAT typography map is populated/applied**, so the final pass can
+compare real source-derived formatting rather than synthetic temporary marks.
 
 ### Step 3 — final owner-verified real typography map
 
-Only after the accepted corrected-bank Step 1 and the EC7 Step 2 are complete:
+With the corrected-bank Step 1 and EC7A support Step 2 now complete/reviewed:
 
 - compare all 12 physical pages again;
 - enumerate the exact real targets;
