@@ -10,9 +10,9 @@ retained, the imported OLSAT development bank was safely reset after dependency
 checks, and the corrected package was clean-imported through the normal importer.
 Do not infer emphasis from words, capitalization, answers, or question types.
 The owner-authorized real map now exists at `exam-content/olsat-emphasis.json`.
-It has passed source/package validation and read-only database preflight, but
-has **not been applied**. This sibling file is outside the fixed base-package
-inventory/fingerprint.
+It has passed source/package validation and independent map review. EC7C applied
+exactly 34 semantic fields and verified an identical second apply changed zero
+fields. This sibling file is outside the fixed base-package inventory/fingerprint.
 
 ## Physical-source audit update — 2026-10-30
 
@@ -32,10 +32,10 @@ EC7A extends the runtime support below to all three semantic styles and the
 bounded string-item structured surface. The architecture/support implementation
 has passed independent review. EC7B now encodes the explicit owner-verified map,
 and independent review of that committed map plus its read-only live preflight
-has also passed with no blocking issue found. The sidecar remains unapplied.
+has also passed with no blocking issue found. EC7C application evidence is below.
 Owner manual/browser QA is intentionally deferred until after the reviewed map
 has been applied, so the final visual pass can compare actual source-derived
-formatting. No real database marks have been populated yet.
+formatting. That final owner comparison and formal acceptance remain pending.
 
 ## Runtime contract
 
@@ -158,12 +158,25 @@ Read-only database preflight returned `PREFLIGHT_OK`, `annotationsValidated: 38`
 2 grouped structured fields). Matching before/after reads confirmed all three
 emphasis fields remain null across the 72 imported questions and 360 options.
 
-EC7B stops at preflight and is now independently reviewed PASS. No real apply
-command was run. The next checkpoint is EC7C: re-run the same preflight, apply
-the reviewed sidecar, verify the expected 34 persisted semantic metadata fields,
-repeat the identical apply and require `ALREADY_APPLIED` with zero writes, then
-stop for independent review. Deferred owner manual/browser QA and formal EC7/Phase A
-acceptance remain after EC7C.
+EC7B stopped at preflight and is independently reviewed PASS. No real apply command
+was run in that package. EC7C records the separately authorized application below.
+
+## EC7C application checkpoint — 2026-10-31
+
+The unchanged reviewed sidecar passed the exact 38-target / 34-field preflight.
+The first transactional apply returned `APPLIED`, `fieldsChanged: 34`.
+Readback matched the reviewed normalized metadata: 27 questionText fields,
+5 Q24 optionText fields, and 2 structuredStimulus fields on Q25/Q45. Remaining
+fields stayed null (45 / 355 / 70 respectively); Q67 remained unannotated.
+
+Canonical bank content, question/option identities, correctness, media references,
+all 108 managed bank media records, and the import marker were unchanged.
+The identical second apply returned `ALREADY_APPLIED`, `fieldsChanged: 0`,
+`fieldsWouldChange: 0`; its before/after snapshots matched exactly.
+See `docs/superpowers/reports/2026-10-31-exam-content-7-typography-application.md`
+for the operational evidence. Stop for independent EC7C review. No manual/browser
+QA or formal EC7/Phase A acceptance is certified by this checkpoint; those remain
+pending independent review and the deferred owner source comparison.
 
 ## Operator sequence
 
