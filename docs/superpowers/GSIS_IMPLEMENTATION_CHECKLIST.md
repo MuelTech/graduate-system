@@ -353,7 +353,7 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 | ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
 | ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
 | ✅ | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED, including corrected-bank closure 2026-10-31.** Original EC6 acceptance remains historically valid; the later Q24 physical-source truncation was corrected through the accepted replacement path: one-off reconciler removed, development OLSAT bank safely reset after dependency checks, corrected canonical package clean-imported through the normal importer, 72 questions / 360 options / 108 media verified, 72/72 answer mappings matched, zero broken refs, and repeat import returned `ALREADY_IMPORTED`. Pagination/color acceptance remained closed throughout. |
-| 🟡 | EXAM-CONTENT-7 — Semantic source-typography fidelity | Original BOLD/UNDERLINE support remains reviewed PASS. EC7A ITALIC + structured textual-stimulus support at `3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473` has now independently reviewed **PASS** with focused migration/tests/build evidence. Owner manual/browser QA for the new support is **DEFERRED until the real verified OLSAT typography map is populated/applied**. Real sidecar/application and final source comparison remain pending; formal EC7/Phase A acceptance is not yet granted. |
+| 🟡 | EXAM-CONTENT-7 — Semantic source-typography fidelity | Original support and EC7A ITALIC/structured-text extension remain reviewed PASS. EC7B real owner-verified map at `b25a6c486c341cc67cbc9c6b264c15293d238bd4` is now independently reviewed **PASS**: 28 questions / 38 targets / 59 spans, protected package unchanged, read-only preflight `PREFLIGHT_OK` with 34 fields planned and zero writes. Real DB apply/idempotency is the next checkpoint; owner manual/browser source comparison remains deferred until after apply. Formal EC7/Phase A acceptance is still pending. |
 
 ### EXAM-CONTENT-1 review checkpoint
 
@@ -496,23 +496,25 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - final verified state: 72 questions / 360 options / 108 media, 72/72 correct-answer mappings, zero broken refs, Q24 corrected, repeat import `ALREADY_IMPORTED`;
   - accepted pagination/color work remains closed.
 - EXAM-CONTENT-7 implementation/review checkpoint:
-  - original BOLD/UNDERLINE implementation commit: `09e09260e5b1ab539b567b3b51b1e7b146e928d5`;
-  - original architecture/source review: **PASS**;
-  - prior owner Admin bold/underline browser observation: **PASS for observed behavior**;
-  - complete 12-page physical-source audit: **DONE — 2026-10-30**;
-  - audit established required ITALIC semantics plus structured textual-stimulus emphasis;
+  - original BOLD/UNDERLINE implementation: **PASS**;
   - EC7A fidelity-support implementation commit: `3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473`;
-  - EC7A independent actual GitHub source/diff review: **PASS — no blocking issue found**;
-  - EC7A migration/focused automated tests/backend+frontend build evidence: **PASS**;
-  - new EC7A owner manual/browser QA: **DEFERRED BY OWNER until real verified OLSAT typography is populated/applied**;
-  - real OLSAT sidecar/application: **NOT RUN / PENDING OWNER-VERIFIED SOURCE MAP**;
-  - formal EC7 acceptance: **PENDING real-source map + application/idempotency + deferred final Admin/Applicant source comparison**.
+  - EC7A independent review + migration/focused tests/backend+frontend builds: **PASS**;
+  - complete 12-page physical-source audit: **DONE — 2026-10-30**;
+  - EC7B real typography map implementation commit: `b25a6c486c341cc67cbc9c6b264c15293d238bd4`;
+  - EC7B independent actual GitHub map/source review: **PASS — no blocking issue found**;
+  - map inventory: **28 questions / 38 targets / 59 spans = 33 BOLD / 8 UNDERLINE / 18 ITALIC**;
+  - Q24/Q25/Q45/Q58 special targets and Q67 exclusion: **PASS**;
+  - protected manifest/assets/package identity: **UNCHANGED**;
+  - EC7B live read-only preflight: **PASS** — `annotationsValidated: 38`, `fieldsWouldChange: 34`, zero writes;
+  - real DB emphasis application/idempotency: **NOT YET RUN**;
+  - owner manual/browser QA for actual source formatting: **DEFERRED BY OWNER until EC7C apply is reviewed**;
+  - formal EC7 acceptance: **PENDING EC7C apply/idempotency + final owner Admin/Applicant physical-source comparison**.
 - Next Phase A work, in order:
-  1. **owner-verified real typography map**;
-  2. **sidecar review + preflight/apply/idempotency**;
-  3. **deferred owner manual/browser QA against the actual populated Admin/Applicant presentation**;
+  1. **EC7C reviewed sidecar apply + second-run `ALREADY_APPLIED` idempotency**;
+  2. **independent application evidence review**;
+  3. **deferred owner manual/browser QA against actual populated Admin/Applicant presentation**;
   4. **physical-source comparison + formal EC7/Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED only by remaining real-source EC7 typography population/application/final QA**
+- Phase A final acceptance: **BLOCKED only by EC7C application/idempotency and final owner source QA**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
