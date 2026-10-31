@@ -202,3 +202,36 @@ Independent sidecar review, separately authorized application/idempotency, defer
 owner Admin/Applicant manual/browser source comparison, and formal EXAM-CONTENT-7
 and Phase A acceptance remain **PENDING**. Stop here; do not apply the map or start
 Phase B automatically.
+
+
+## Independent review addendum — 2026-10-31
+
+Independent review of the actual pushed EC7B branch found **no blocking issue**.
+
+The committed real sidecar was independently checked against the corrected
+canonical manifest and the owner-authorized map:
+
+- exactly 28 distinct source questions;
+- exactly 38 annotation targets;
+- exactly 59 spans;
+- exactly 33 BOLD / 8 UNDERLINE / 18 ITALIC spans;
+- exactly 27 questionText / 5 optionText / 6 structuredItem targets;
+- Q24 option subject targets resolve correctly;
+- Q25/Q45 questionText + structured WORD_SERIES targets resolve correctly;
+- Q58's terminal `cold` resolves to UTF-16 `[135,139)` in the final clause;
+- Q67 has zero annotations;
+- every reviewed span slice matches the authorized phrase;
+- the focused real-map test binds each `textSha256` to the exact resolved
+  canonical target using the production hash helper;
+- protected manifest/assets/package identity remain unchanged.
+
+The reported read-only live preflight is internally consistent with the reviewed
+map: 38 annotation targets coalesce to 34 persisted fields (27 question fields,
+5 option fields, 2 structured metadata fields), with zero writes before apply.
+
+**EC7B real-map creation/review/preflight checkpoint: PASS.**
+
+No real emphasis application is accepted by this addendum. The next authorized
+checkpoint is EC7C controlled application + identical second-run idempotency.
+Owner manual/browser source comparison remains deferred until EC7C is reviewed.
+Formal EXAM-CONTENT-7 and Phase A acceptance remain pending.
