@@ -511,13 +511,17 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - EC7D focused tests: **4 files / 115 tests PASS**;
   - frontend TypeScript + scoped ESLint: **PASS**;
   - verified imported bank/questions/options/answer mappings/media/emphasis remain unchanged;
-  - owner Admin/Applicant browser physical-source/configuration QA: **RESUMED / PENDING**;
-  - formal EC7 acceptance: **PENDING OWNER FINAL QA ONLY**.
+  - post-EC7D owner QA finding: **Numbered List is not source-demonstrated and Q40 source order is not represented faithfully**;
+  - physical Q40: `Assume that -` → three unnumbered stacked premises → `We know that -` → choices;
+  - EC7E Items Consolidation + Q40 Source Fidelity: **NEXT / REQUIRED**;
+  - owner Admin/Applicant browser physical-source/configuration QA: **PAUSED FOR EC7E**;
+  - formal EC7 acceptance: **PENDING EC7E + OWNER FINAL QA**.
 - Next Phase A work, in order:
-  1. **owner manual/browser QA of simplified structured authoring + actual populated Admin/Applicant presentation**;
-  2. **formal EC7 acceptance if owner QA passes**;
-  3. **formal Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED only by final owner manual/browser QA**
+  1. **EC7E implementation + independent review**;
+  2. **resume owner manual/browser QA of Admin/Applicant presentation**;
+  3. **formal EC7 acceptance if owner QA passes**;
+  4. **formal Phase A acceptance**.
+- Phase A final acceptance: **BLOCKED by EC7E + final owner manual/browser QA**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
