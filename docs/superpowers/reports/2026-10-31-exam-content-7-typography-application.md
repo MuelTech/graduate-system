@@ -226,3 +226,37 @@ checklist, plan, and acceptance status were not updated by this package.
 **STOP for independent EC7C review.** Owner Admin/Applicant browser QA and final
 physical-source comparison remain deferred. Formal EXAM-CONTENT-7 and Phase A
 acceptance remain pending independent application review plus owner browser QA.
+
+
+## Independent review addendum — 2026-10-31
+
+Independent review of the actual pushed EC7C branch found **no blocking issue**.
+
+Reviewed checkpoint evidence:
+
+- repository diff from the approved EC7C start contains only this report and the
+  bounded `backend/exam-content/EMPHASIS.md` status update;
+- the reviewed sidecar, manifest/assets, Prisma schema/migrations, importer,
+  runtime source and frontend are unchanged;
+- immediate preflight produced exactly `PREFLIGHT_OK`,
+  `annotationsValidated: 38`, `fieldsChanged: 0`,
+  `fieldsWouldChange: 34`;
+- first real apply produced exactly `APPLIED`, `fieldsChanged: 34`;
+- post-apply counts are exactly 27 questionText, 5 Q24 optionText, and 2
+  Q25/Q45 structured metadata fields non-null, with all expected remainders null;
+- reported normalized readback matches the reviewed map, including Q24, Q25,
+  Q45, Q58 and Q67 special cases;
+- canonical bank/media/import-marker comparison reports exact invariance outside
+  the three semantic metadata fields;
+- the identical second apply produced `ALREADY_APPLIED`,
+  `fieldsChanged: 0`, `fieldsWouldChange: 0`;
+- second-run before/after evidence reports exact equality;
+- focused verification passed 3 files / 53 tests;
+- no migration, reset, re-import, deployment, browser QA, or Phase B work occurred.
+
+**EC7C controlled application + real-environment idempotency checkpoint: PASS.**
+
+This addendum does not certify the deferred owner visual comparison. The next and
+final EC7 fidelity step is owner manual/browser QA against the actual populated
+Admin and Applicant presentation and the physical source. Formal EXAM-CONTENT-7
+and Phase A acceptance remain pending that owner source comparison only.
