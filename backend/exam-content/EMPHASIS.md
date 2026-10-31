@@ -114,7 +114,7 @@ The JSON root has exactly these fields:
 - `schemaVersion`: `2` (v1 is rejected; no real v1 sidecar existed).
 - `packageKey`: `"olsat"`.
 - `manifestSha256`:
-  `6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6`.
+  `2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95`.
 - `indexConvention`: `"UTF16_CODE_UNITS"`.
 - `verification`: `{ "status": "VERIFIED", "verifiedBy": "<owner/reviewer>",
   "verifiedAt": "<ISO UTC timestamp>" }`. This is explicit owner/source
@@ -179,6 +179,25 @@ issue found. No manual/browser QA or formal EC7/Phase A acceptance is certified
 by EC7C; those remain pending the deferred owner source comparison.
 
 ## Operator sequence
+
+EC7E corrects canonical Q40 to leading prompt → unnumbered premise lines →
+trailing prompt → choices. Its manifest SHA above and existing operator source
+guard follow that correction. All 38 reviewed emphasis targets remain exactly
+text-hash compatible; only the sidecar manifest binding changes. No Q40 marks
+were added. The corrected package fingerprint is
+`01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343`.
+This source correction requires the accepted controlled **development-only**
+clean bank replacement path because an existing `olsat` marker with the previous
+fingerprint is a source conflict. This exception is for the authorized source
+correction; adding formatting alone still never requires deleting questions.
+Operational evidence and the EC7E review/owner-QA boundary are recorded in
+`docs/superpowers/reports/2026-10-31-exam-content-7-items-and-q40-source-fidelity.md`.
+The controlled replacement is complete: 72 questions / 360 options / 108 bank
+media, 72/72 answer mappings, zero broken bank references, and unchanged unrelated
+record hashes. Corrected-package live emphasis preflight planned 34 fields;
+application restored exactly those 34 fields (27 question / 5 option / 2
+structured). Identical repeats returned ALREADY_IMPORTED and ALREADY_APPLIED
+with zero changes. EC7E independent review and owner QA remain pending.
 
 From `backend`, after installing dependencies and deploying reviewed migrations:
 
