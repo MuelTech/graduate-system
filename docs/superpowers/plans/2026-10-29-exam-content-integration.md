@@ -425,21 +425,47 @@ The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted a
 
 EC7A support, EC7B real-map creation/review/preflight, and EC7C real-map application/idempotency are complete and independently reviewed PASS.
 
+Owner Admin QA then exposed a **configuration-layer defect** in the structured-stimulus editor. The verified imported bank remains correct; the problem is that Admin authoring currently exposes eight source-oriented structured subtype names plus a redundant per-cell `Text / Number` selector. This creates invalid/confusing states even though the rendered assessment content is correct.
+
+### EC7D — Structured Stimulus Admin Authoring Simplification — NEXT
+
+Scope is UI/configuration simplification only.
+
+Required behavior:
+
+1. **Admin-visible layout families**
+   - Grid / Table
+   - Inline Items
+   - Numbered List
+
+2. **Compatibility preservation**
+   - existing `MATRIX`, `GROUPED_NUMBER_ROWS`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `LETTER_SEQUENCE`, and `LOGICAL_PREMISES` payloads remain supported internally;
+   - opening/saving an unchanged imported structured question must not silently rewrite its subtype or number/string representation;
+   - no bulk conversion of the existing 72-question bank.
+
+3. **Editor simplification**
+   - remove the visible per-cell `Text / Number` selector;
+   - use simple text inputs for cells/items;
+   - preserve internal compatibility information only where required to round-trip existing imported values;
+   - no UI path should invite a state that the selected authoring layout can never save.
+
+4. **New structured content**
+   - Admin chooses a layout family, not an OLSAT-specific semantic subtype;
+   - use a bounded canonical internal subtype for newly created generic content;
+   - do not introduce arbitrary free-form JSON editing.
+
+5. **Preserve accepted content**
+   - do not modify the protected manifest/assets;
+   - do not reset/re-import the bank;
+   - do not alter question/option IDs, labels/orders, correct answers, media, source identities, or applied emphasis;
+   - no Prisma migration is expected.
+
 ### Remaining Phase A sequence
 
-1. **Owner manual/browser physical-source QA**
-   - verify actual populated OLSAT typography in the Admin Question Bank/preview;
-   - verify Applicant exam presentation using an eligible active exam context;
-   - compare BOLD / UNDERLINE / ITALIC question text, Q24 option emphasis, and Q25/Q45 structured WORD_SERIES emphasis against the owner-reviewed physical source;
-   - confirm no unexpected formatting appears on unannotated content, including Q67.
-
-2. **Formal EC7 acceptance**
-   - only after the owner confirms the source-derived presentation is correct.
-
-3. **Formal Phase A acceptance**
-   - after EC7 acceptance, record the completed content-representation/import/rendering fidelity boundary;
-   - do not describe Phase A acceptance as full Applicant Examination production readiness.
-
+1. Implement/review **EC7D**.
+2. Resume owner Admin/Applicant manual/browser QA on actual populated content.
+3. Formally accept EC7 if structured authoring + source presentation both pass.
+4. Formally accept Phase A.
 Do not begin Phase B until EC7 and Phase A are formally accepted.
 
 ## 9. Mandatory Phase B after Phase A
