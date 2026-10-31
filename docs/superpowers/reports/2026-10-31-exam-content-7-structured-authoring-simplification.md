@@ -209,3 +209,29 @@ Reviewed evidence:
 
 This does not certify owner manual/browser QA. Formal EXAM-CONTENT-7 and Phase A
 acceptance remain pending the resumed owner Admin/Applicant source/configuration QA.
+
+
+## Post-review owner QA note — EC7E follow-up
+
+After the EC7D independent review passed, owner browser/source QA identified a
+separate source-fidelity issue in Q40.
+
+The EC7D implementation evidence remains valid for the three-layout simplification
+it delivered. However, the physical source shows Q40 premises as plain stacked
+lines without numeric list markers, and the closing `We know that -` prompt appears
+after those premise lines.
+
+The current canonical manifest places that closing prompt inside questionText
+before the structured stimulus. Therefore formal EC7/Phase A acceptance is paused
+for EC7E, which will:
+
+- remove Numbered List from the Admin-facing structured choices;
+- expose only Grid / Table and Items;
+- map legacy LOGICAL_PREMISES to Items;
+- render logical-premise items vertically without numbering;
+- correct canonical Q40 source order without a renderer-only special case;
+- reconcile package/emphasis source identity through the established clean
+  development correction path.
+
+This note does not retroactively change the EC7D independent review result; it
+records a new owner-QA finding discovered afterward.
