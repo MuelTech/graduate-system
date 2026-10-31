@@ -33,9 +33,33 @@ export const STRUCTURED_LABELS: Record<StructuredType, string> = {
   LETTER_SEQUENCE: "Letter sequence",
   LOGICAL_PREMISES: "Logical premises",
 };
+export const STRUCTURED_LAYOUTS = [
+  { value: "GRID", label: "Grid / Table" },
+  { value: "INLINE", label: "Inline Items" },
+  { value: "NUMBERED", label: "Numbered List" },
+] as const;
+export type StructuredLayout = (typeof STRUCTURED_LAYOUTS)[number]["value"];
+const STRUCTURED_LAYOUT_BY_TYPE: Record<StructuredType, StructuredLayout> = {
+  MATRIX: "GRID",
+  GROUPED_NUMBER_ROWS: "GRID",
+  WORD_BANK: "INLINE",
+  NUMBER_SEQUENCE: "INLINE",
+  ALPHANUMERIC_SEQUENCE: "INLINE",
+  WORD_SERIES: "INLINE",
+  LETTER_SEQUENCE: "INLINE",
+  LOGICAL_PREMISES: "NUMBERED",
+};
+const LAYOUT_DEFAULT_TYPE: Record<StructuredLayout, StructuredType> = {
+  GRID: "MATRIX",
+  INLINE: "WORD_SERIES",
+  NUMBERED: "LOGICAL_PREMISES",
+};
+export const structuredLayout = (type: StructuredType): StructuredLayout =>
+  STRUCTURED_LAYOUT_BY_TYPE[type];
 export interface CellDraft {
   value: string;
-  kind: "text" | "number";
+  /** Hidden compatibility only: an untouched value retains its JSON primitive. */
+  originalValue?: ExamCell;
 }
 export interface StructuredDraft {
   type: StructuredType;
@@ -157,7 +181,7 @@ export function readStructuredStimulus(
 
 const toDraftCell = (value: ExamCell): CellDraft => ({
   value: String(value),
-  kind: typeof value === "number" ? "number" : "text",
+  originalValue: value,
 });
 export function structuredDraft(value: unknown): StructuredDraft | null {
   const stimulus = readStructuredStimulus(value);
@@ -176,20 +200,65 @@ export function structuredDraft(value: unknown): StructuredDraft | null {
 export function newStructuredDraft(type: StructuredType): StructuredDraft {
   return {
     type,
-    rows: [[{ value: "?", kind: "text" }]],
-    items: [{ value: "", kind: "text" }],
+    rows: [[{ value: "?" }]],
+    items: [{ value: "" }],
   };
+}
+export function newStructuredLayoutDraft(
+  layout: StructuredLayout,
+): StructuredDraft {
+  if (!STRUCTURED_LAYOUTS.some((family) => family.value === layout))
+    return fail("Choose a supported structured layout.");
+  const type = LAYOUT_DEFAULT_TYPE[layout];
+  return newStructuredDraft(type);
 }
 export function buildStructuredStimulus(
   draft: StructuredDraft | null,
 ): StructuredStimulus {
-  if (!draft) return fail("Choose a supported structured form.");
+  if (!draft || !STRUCTURED_TYPES.includes(draft.type))
+    return fail("Choose a supported structured layout.");
+  const layout = structuredLayout(draft.type);
+  const itemName =
+    layout === "NUMBERED" ? "list item" : layout === "GRID" ? "cell" : "item";
   const parse = (cell: CellDraft): ExamCell => {
-    if (cell.kind === "text") return cell.value;
-    if (!cell.value.trim() || !Number.isFinite(Number(cell.value)))
-      return fail("Enter a finite number for each numeric cell.");
-    return Number(cell.value);
+    if (!cell || typeof cell.value !== "string" || !cell.value.trim())
+      return fail(`Enter a value for each ${itemName}.`);
+    if (cell.value.length > 500)
+      return fail(`Each ${itemName} must contain at most 500 characters.`);
+    if (cell.originalValue !== undefined) {
+      if (
+        typeof cell.originalValue !== "string" &&
+        !(
+          typeof cell.originalValue === "number" &&
+          Number.isFinite(cell.originalValue)
+        )
+      )
+        return fail("Invalid saved cell value.");
+      if (cell.value === String(cell.originalValue)) return cell.originalValue;
+    }
+    return cell.value;
   };
+  if (layout === "GRID") {
+    if (!Array.isArray(draft.rows) || !draft.rows.length)
+      return fail("Enter at least one row.");
+    if (
+      draft.rows.length > 30 ||
+      draft.rows.some((row) => !Array.isArray(row) || row.length > 30)
+    )
+      return fail("Use at most 30 rows and 30 columns.");
+    if (!draft.rows[0].length)
+      return fail("Enter at least one cell in each row.");
+    if (draft.rows.some((row) => row.length !== draft.rows[0].length))
+      return fail("Rows must have the same number of cells.");
+  } else {
+    if (!Array.isArray(draft.items) || !draft.items.length)
+      return fail(
+        layout === "NUMBERED"
+          ? "Enter at least one list item."
+          : "Enter at least one item.",
+      );
+    if (draft.items.length > 100) return fail("Use at most 100 items.");
+  }
   const field =
     draft.type === "MATRIX"
       ? "rows"
@@ -203,11 +272,20 @@ export function buildStructuredStimulus(
         ? draft.items.map(parse)
         : draft.rows.map((row) => row.map(parse)),
   };
+  const legacy = readStructuredStimulus(candidate);
+  if (legacy) return legacy;
+  // Actual edits may outgrow a legacy value grammar. Keep the visible layout
+  // using its broad existing representation; untouched valid payloads return above.
+  const compatible =
+    layout === "GRID"
+      ? { type: "MATRIX", rows: draft.rows.map((row) => row.map(parse)) }
+      : {
+          type: LAYOUT_DEFAULT_TYPE[layout],
+          items: draft.items.map((cell) => String(parse(cell))),
+        };
   return (
-    readStructuredStimulus(candidate) ??
-    fail(
-      "Check the structured items: rows need equal widths, text items cannot be blank, and numeric forms allow numbers, fractions or ?.",
-    )
+    readStructuredStimulus(compatible) ??
+    fail("Check the values in this structured layout.")
   );
 }
 export function newOption(order: number): OptionDraft {
@@ -417,12 +495,7 @@ export function structuredDraftEmphasisAfterEdit(
   const entries = (emphasis ?? []).filter((entry) => {
     const before = previous.items[entry.index];
     const after = next.items[entry.index];
-    return (
-      before &&
-      after &&
-      before.value === after.value &&
-      before.kind === after.kind
-    );
+    return before && after && before.value === after.value;
   });
   return entries.length ? entries : null;
 }

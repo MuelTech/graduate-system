@@ -5,20 +5,20 @@ import {
   TEXTUAL_ITEM_TYPES,
   type StructuredStimulusEmphasis,
 } from "../../lib/text-emphasis";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import {
-  newStructuredDraft,
+  newStructuredLayoutDraft,
   structuredDraftEmphasisAfterEdit,
-  STRUCTURED_LABELS,
-  STRUCTURED_TYPES,
+  structuredLayout,
+  STRUCTURED_LAYOUTS,
   type CellDraft,
   type StructuredDraft,
-  type StructuredType,
-} from "@/lib/exam-content";
+  type StructuredLayout,
+} from "../../lib/exam-content";
 
 const inputClass =
   "min-w-0 rounded-md border border-gray-300 bg-white p-2 text-sm";
-const blank = (): CellDraft => ({ value: "", kind: "text" });
+const blank = (): CellDraft => ({ value: "" });
 
 export function StructuredStimulusEditor({
   value,
@@ -35,10 +35,9 @@ export function StructuredStimulusEditor({
   const onChange = (next: StructuredDraft) =>
     emitChange(next, structuredDraftEmphasisAfterEdit(value, next, emphasis));
   const textual = TEXTUAL_ITEM_TYPES.some((type) => type === value?.type);
-  const grid =
-    value?.type === "MATRIX" || value?.type === "GROUPED_NUMBER_ROWS";
-  const numeric = grid || value?.type === "NUMBER_SEQUENCE";
-  const cells = grid ? value.rows : [value?.items ?? []];
+  const layout = value ? structuredLayout(value.type) : null;
+  const grid = layout === "GRID";
+  const cells = grid ? (value?.rows ?? []) : [value?.items ?? []];
   const changeCell = (
     row: number,
     column: number,
@@ -67,68 +66,52 @@ export function StructuredStimulusEditor({
   return (
     <div className="space-y-3">
       <label className="block text-sm font-medium">
-        Structured form
+        Structured layout
         <select
           className={`${inputClass} mt-1 block w-full`}
-          value={value?.type ?? ""}
-          onChange={(event) =>
-            onChange(newStructuredDraft(event.target.value as StructuredType))
-          }
+          value={layout ?? ""}
+          onChange={(event) => {
+            const next = event.target.value as StructuredLayout;
+            if (next !== layout) onChange(newStructuredLayoutDraft(next));
+          }}
         >
           <option value="" disabled>
-            Choose a form
+            Choose a layout
           </option>
-          {STRUCTURED_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {STRUCTURED_LABELS[type]}
+          {STRUCTURED_LAYOUTS.map((family) => (
+            <option key={family.value} value={family.value}>
+              {family.label}
             </option>
           ))}
         </select>
       </label>
       {!value ? (
         <p role="alert" className="text-sm text-amber-900">
-          Choose a supported form to create or replace structured content.
+          Choose a layout to create or replace structured content.
         </p>
       ) : (
         <>
           <p className="text-xs text-gray-600">
-            Keep item order and row boundaries. Use ? for a missing value; keep
-            fractions as text. Adding/removing items or changing form clears
-            structured formatting.
+            Keep item order and row boundaries. Use ? for a missing value.
+            Adding/removing items clears structured formatting. Changing layout
+            replaces the current rows/items and clears their formatting.
           </p>
           <div className="space-y-3 overflow-x-auto">
             {cells.map((row, rowIndex) => (
               <fieldset key={rowIndex} className="space-y-2 rounded border p-3">
                 <legend className="px-1 text-xs font-semibold">
                   {grid
-                    ? `${value.type === "MATRIX" ? "Row" : "Group"} ${rowIndex + 1}`
-                    : "Ordered items"}
+                    ? `Row ${rowIndex + 1}`
+                    : layout === "NUMBERED"
+                      ? "Numbered items"
+                      : "Ordered items"}
                 </legend>
                 <div className={grid ? "flex flex-wrap gap-2" : "space-y-2"}>
                   {row.map((cell, columnIndex) => (
                     <div key={columnIndex} className="flex items-center gap-2">
-                      {numeric && (
-                        <label className="text-xs">
-                          <span className="sr-only">
-                            Row {rowIndex + 1} item {columnIndex + 1} value type
-                          </span>
-                          <select
-                            className={inputClass}
-                            value={cell.kind}
-                            onChange={(event) =>
-                              changeCell(rowIndex, columnIndex, {
-                                kind: event.target.value as CellDraft["kind"],
-                              })
-                            }
-                          >
-                            <option value="text">Text</option>
-                            <option value="number">Number</option>
-                          </select>
-                        </label>
-                      )}
                       {textual ? (
                         <SemanticTextEditor
-                          label={`Item ${columnIndex + 1}`}
+                          label={`${layout === "NUMBERED" ? "List item" : "Item"} ${columnIndex + 1}`}
                           text={cell.value}
                           emphasis={
                             emphasis?.find(
@@ -188,7 +171,7 @@ export function StructuredStimulusEditor({
                           }
                           aria-label={`Remove item ${columnIndex + 1}`}
                         >
-                          Remove
+                          Remove item
                         </Button>
                       )}
                     </div>
@@ -209,7 +192,7 @@ export function StructuredStimulusEditor({
                       })
                     }
                   >
-                    Remove {value.type === "MATRIX" ? "row" : "group"}
+                    Remove row
                   </Button>
                 )}
               </fieldset>
@@ -230,7 +213,7 @@ export function StructuredStimulusEditor({
                     })
                   }
                 >
-                  Add {value.type === "MATRIX" ? "row" : "group"}
+                  Add row
                 </Button>
                 <Button
                   type="button"
