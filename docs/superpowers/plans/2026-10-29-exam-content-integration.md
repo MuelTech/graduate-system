@@ -449,54 +449,40 @@ Accepted implementation behavior:
 - focused verification: **4 files / 115 tests PASS**;
 - frontend TypeScript and scoped ESLint: **PASS**.
 
-### EC7E — Items Consolidation + Q40 Source Fidelity — NEXT
+### EC7E — Items Consolidation + Q40 Source Fidelity — COMPLETE / ACCEPTED
 
-Owner QA after EC7D found that the source does not demonstrate numbered logical
-premises. Q40 is visually stacked without numeric markers, and its physical order
-places the closing prompt after the premises.
+Owner QA after EC7D found that numbered logical premises were not source-demonstrated and that Q40's trailing prompt was represented in the wrong order. EC7E corrected both issues without adding Q40-specific runtime behavior.
 
-Required bounded correction:
+Accepted EC7E implementation:
 
-- reduce Admin-visible structured layouts from three to two:
-  - **Grid / Table**
-  - **Items**
-- map `LOGICAL_PREMISES` to **Items** in the Admin editor;
-- keep all eight existing internal structured subtypes readable/editable for
-  backward compatibility;
-- render `LOGICAL_PREMISES` as plain vertical lines without `1., 2., 3.`;
-- correct canonical Q40 so the source order is:
-  `Assume that -` → premise lines → `We know that -` → choices;
-- do not special-case Q40 in the renderer;
-- do not introduce a one-off DB correction artifact;
-- if correcting the manifest changes package identity, use the established clean
-  development re-import path and reconcile the emphasis sidecar's manifest binding
-  deterministically;
-- preserve all unrelated question/option/media/answer/emphasis semantics;
-- no Prisma migration and no Phase B work.
+- implementation commit: `052ddcf1ce96c625da8a2618f131c98c017d1051`;
+- evidence delivery commit: `f8b0ffa7618249763bf41ca4f43041c77310307f`;
+- Admin-visible structured layouts reduced to exactly **Grid / Table** and **Items**;
+- all eight existing internal structured subtypes remain backward-compatible;
+- `LOGICAL_PREMISES` maps to Items and renders as plain vertical lines without numeric markers;
+- canonical Q40 now renders `Assume that —` → three premises → `We know that —` → unchanged choices;
+- no Q40-specific renderer branch, backend service, one-off database reconciler, new persisted discriminator, or Prisma migration was introduced;
+- corrected manifest SHA: `2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95`;
+- corrected package/import fingerprint: `01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343`;
+- the reviewed emphasis sidecar retained the same 38 targets / 59 spans and changed only its manifest binding;
+- Q25/Q45 reviewed structured emphasis remains intact and Q40 receives no invented emphasis;
+- the accepted development-only clean replacement path restored 72 questions / 360 options / 108 bank media / 72 answer mappings with zero broken bank references;
+- the owner-authorized cleanup restored the pre-existing noncanonical Q26 development edit to its canonical MATRIX source state;
+- identical repeat import returned `ALREADY_IMPORTED`;
+- identical repeat emphasis application returned `ALREADY_APPLIED` with zero changes;
+- focused verification reported **14 files / 280 tests PASS**, backend build PASS, frontend TypeScript PASS, scoped ESLint PASS, and formatting/diff checks PASS;
+- independent remote review of the actual pushed source: **PASS — no blocking implementation issue**;
+- project owner reviewed the resulting EC7E output, confirmed it was correct, and authorized Phase A documentation closure.
 
-Focused verification must prove:
+**EXAM-CONTENT-7 formal acceptance: ACCEPTED — 2026-10-31.**
 
-1. only two Admin-visible structured layouts remain;
-2. legacy `LOGICAL_PREMISES` loads under Items;
-3. Q40 renders stacked and unnumbered;
-4. corrected Q40 order matches the owner-verified physical source;
-5. all unrelated real structured payloads remain compatible;
-6. Q25/Q45 emphasis remains intact after any required re-import/reapply cycle;
-7. corrected package/source identity is internally consistent;
-8. repeat import/application remains idempotent.
+**Phase A — Applicant Examination Mixed-Content Integration formal acceptance: ACCEPTED — 2026-10-31.**
 
-### Remaining Phase A sequence
-
-1. **Implement EC7E and stop for independent review.**
-2. **Resume owner manual/browser physical-source QA after EC7E PASS.**
-3. **Formal EC7 acceptance if owner QA passes.**
-4. **Formal Phase A acceptance.**
-
-Do not begin Phase B until EC7 and Phase A are formally accepted.
+This closes the Phase A implementation sequence. It does not certify the complete Applicant Examination lifecycle as production-ready. Timer, autosave/recovery, submission/timeout enforcement, scheduling semantics, question activation/selection, essay lifecycle, and broader attempt-state integrity remain Phase B concerns.
 
 ## 9. Mandatory Phase B after Phase A
 
-After EXAM-CONTENT-7 acceptance and final Phase A acceptance, immediately proceed to a separate **Exam Engine / Scheduling Audit** covering:
+Phase A is accepted as of 2026-10-31. The next workstream is a separate **Exam Engine / Scheduling Audit** covering:
 
 1. authoritative exam-duration configuration, including the required Admin-side configuration surface and persistence model;
 2. timer source of truth and removal of duplicated/hard-coded duration assumptions;
