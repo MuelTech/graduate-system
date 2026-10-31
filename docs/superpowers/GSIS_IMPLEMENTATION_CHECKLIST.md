@@ -501,24 +501,23 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - 12-page physical-source audit: **DONE**;
   - EC7B real owner-verified map creation + source binding + read-only preflight: **INDEPENDENT REVIEW PASS**;
   - EC7C real DB application/idempotency: **INDEPENDENT REVIEW PASS**;
-  - verified imported bank/questions/options/answer mappings/media/emphasis remain correct;
-  - owner Admin QA discovered a **structured-stimulus authoring/configuration UX defect** before formal acceptance;
-  - current DB persistence remains broad `NONE | IMAGE | STRUCTURED` plus structured JSON subtype/payload; no schema redesign is required for the correction;
-  - current Admin structured editor exposes eight source-oriented subtype names and a redundant per-cell `Text / Number` selector;
-  - **EC7D — Structured Stimulus Admin Authoring Simplification: PENDING / NEXT**;
-  - EC7D target UI families: **Grid / Table**, **Inline Items**, **Numbered List**;
-  - EC7D must preserve existing internal subtype/payload compatibility and untouched imported JSON exactly;
-  - EC7D must remove the visible per-cell Text/Number selector and avoid invalid/conflicting authoring states;
-  - no migration/reset/re-import/package rewrite is expected;
-  - owner Admin/Applicant browser physical-source comparison: **PAUSED until EC7D is reviewed**;
-  - formal EC7 acceptance: **PENDING EC7D + resumed owner final source QA**.
+  - EC7D structured-stimulus Admin authoring simplification: **INDEPENDENT REVIEW PASS**;
+  - EC7D Admin-visible layouts: **Grid / Table, Inline Items, Numbered List**;
+  - EC7D per-cell Text/Number selector removal: **PASS**;
+  - all 29 real structured source payloads exact unchanged round-trip: **PASS**;
+  - Q25/Q45 structured emphasis unchanged save round-trip: **PASS**;
+  - eight legacy internal structured subtypes remain compatible: **PASS**;
+  - no schema/migration/backend-runtime/renderer/package/database rewrite: **PASS**;
+  - EC7D focused tests: **4 files / 115 tests PASS**;
+  - frontend TypeScript + scoped ESLint: **PASS**;
+  - verified imported bank/questions/options/answer mappings/media/emphasis remain unchanged;
+  - owner Admin/Applicant browser physical-source/configuration QA: **RESUMED / PENDING**;
+  - formal EC7 acceptance: **PENDING OWNER FINAL QA ONLY**.
 - Next Phase A work, in order:
-  1. **EC7D structured-stimulus Admin authoring simplification**;
-  2. **independent EC7D review**;
-  3. **resume owner manual/browser QA against actual populated Admin/Applicant presentation**;
-  4. **formal EC7 acceptance**;
-  5. **formal Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED by EC7D configuration UX correction + final owner source QA**
+  1. **owner manual/browser QA of simplified structured authoring + actual populated Admin/Applicant presentation**;
+  2. **formal EC7 acceptance if owner QA passes**;
+  3. **formal Phase A acceptance**.
+- Phase A final acceptance: **BLOCKED only by final owner manual/browser QA**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
