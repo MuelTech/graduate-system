@@ -8,10 +8,11 @@ architecture**. The selected development replacement has now been completed and
 accepted: that machinery was removed, the corrected canonical package was
 retained, the imported OLSAT development bank was safely reset after dependency
 checks, and the corrected package was clean-imported through the normal importer.
-Do not infer emphasis from words, capitalization, answers, or question types. No real OLSAT
-emphasis sidecar is included: the owner must verify annotations against the
-physical/source assessment before creating `exam-content/olsat-emphasis.json`.
-This sibling file is outside the fixed base-package inventory/fingerprint.
+Do not infer emphasis from words, capitalization, answers, or question types.
+The owner-authorized real map now exists at `exam-content/olsat-emphasis.json`.
+It has passed source/package validation and read-only database preflight, but
+has **not been applied**. This sibling file is outside the fixed base-package
+inventory/fingerprint.
 
 ## Physical-source audit update — 2026-10-30
 
@@ -29,11 +30,11 @@ final real-source population:
 
 EC7A extends the runtime support below to all three semantic styles and the
 bounded string-item structured surface. The architecture/support implementation
-has passed independent review. Real physical-source population remains pending
-the final owner-verified source map. Owner manual/browser QA for the new EC7A
-capability is intentionally deferred until that real map has been populated and
-applied, so the final visual pass can compare actual source-derived formatting.
-`olsat-emphasis.json` remains absent and unapplied.
+has passed independent review. EC7B now encodes the explicit owner-verified map;
+database application remains pending independent review and separate authorization.
+Owner manual/browser QA for the new EC7A capability is intentionally deferred
+until the real map has been applied, so the final visual pass can compare actual
+source-derived formatting. No real database marks have been populated.
 
 ## Runtime contract
 
@@ -141,6 +142,25 @@ metadata, and malformed/unsupported schema fail the entire operation.
 Synthetic examples live in `tests/unit/services/exam-emphasis.test.ts` and
 `tests/unit/cli/exam-emphasis.test.ts`. They are fixtures, not real annotations;
 do not copy them to the production sidecar.
+
+## EC7B real-map checkpoint — 2026-10-31
+
+The schema-v2 sidecar binds only the explicitly owner-authorized targets, with
+verification `PROJECT_OWNER_APPROVED_PHYSICAL_SOURCE_MAP` at
+`2026-10-31T09:39:09Z`. It contains 38 targets across 28 questions and 59 spans:
+33 BOLD, 8 UNDERLINE, 18 ITALIC. Q67 is excluded. The protected corrected
+manifest/package identity is unchanged.
+
+Source-parser validation and the focused real-map integrity test passed.
+Read-only database preflight returned `PREFLIGHT_OK`, `annotationsValidated: 38`,
+`fieldsChanged: 0`, `fieldsWouldChange: 34` (27 question fields, 5 option fields,
+2 grouped structured fields). Matching before/after reads confirmed all three
+emphasis fields remain null across the 72 imported questions and 360 options.
+
+EC7B stops at preflight. No real apply command was run. Sidecar independent review,
+separately authorized apply/idempotency, deferred owner manual/browser QA, and
+formal EC7/Phase A acceptance remain pending. The general apply sequence below
+is for that future authorized step, not an action completed in EC7B.
 
 ## Operator sequence
 

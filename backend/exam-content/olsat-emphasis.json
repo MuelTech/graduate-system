@@ -1,0 +1,666 @@
+{
+  "schemaVersion": 2,
+  "packageKey": "olsat",
+  "manifestSha256": "6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6",
+  "indexConvention": "UTF16_CODE_UNITS",
+  "verification": {
+    "status": "VERIFIED",
+    "verifiedBy": "PROJECT_OWNER_APPROVED_PHYSICAL_SOURCE_MAP",
+    "verifiedAt": "2026-10-31T09:39:09Z"
+  },
+  "annotations": [
+    {
+      "sourceQuestionNumber": 1,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "fbbd9d4e56459578c30c3458d15b0016b269d97b5cb5fa3e487f3223c511b011",
+      "spans": [
+        {
+          "start": 22,
+          "end": 26,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 5,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "f9ea92ed40eec774392bc85e70829d5696c8b426b86e8e98ede7765209921813",
+      "spans": [
+        {
+          "start": 0,
+          "end": 5,
+          "style": "BOLD"
+        },
+        {
+          "start": 12,
+          "end": 20,
+          "style": "BOLD"
+        },
+        {
+          "start": 24,
+          "end": 28,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 6,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "02ea2675954c343104d81c1458ed8438b8c8391f585c6b007805f9e22b44aef6",
+      "spans": [
+        {
+          "start": 45,
+          "end": 49,
+          "style": "ITALIC"
+        },
+        {
+          "start": 88,
+          "end": 93,
+          "style": "UNDERLINE"
+        },
+        {
+          "start": 115,
+          "end": 120,
+          "style": "UNDERLINE"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 7,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 10,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "53e740e770ada90354f541c9c341054cb15538f17e4483de5f102ec706669f8a",
+      "spans": [
+        {
+          "start": 16,
+          "end": 27,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 11,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "e4de637c83709b98f1507c26dece63e312504204856a6b8b3f5e26bb5f782586",
+      "spans": [
+        {
+          "start": 16,
+          "end": 19,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 15,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4917e9872e09fa59037e1741f111cdd52c9916ac12101af31bf3f43c4b897fd7",
+      "spans": [
+        {
+          "start": 21,
+          "end": 25,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 18,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "ff5759c14fae320c863698e9dd897285f70ff801c16a41a5e1f3c509a9cf2b07",
+      "spans": [
+        {
+          "start": 45,
+          "end": 49,
+          "style": "ITALIC"
+        },
+        {
+          "start": 88,
+          "end": 92,
+          "style": "UNDERLINE"
+        },
+        {
+          "start": 114,
+          "end": 119,
+          "style": "UNDERLINE"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 20,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "d2822651f5b7c43178dd02514931355265f49d9a0f2b4ec426297b5451302b4d",
+      "spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "style": "BOLD"
+        },
+        {
+          "start": 15,
+          "end": 21,
+          "style": "BOLD"
+        },
+        {
+          "start": 25,
+          "end": 33,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 24,
+      "target": {
+        "field": "optionText",
+        "label": "F",
+        "order": 0
+      },
+      "textSha256": "b18a60479e2457637961b16f7e5a9ecb862b359c9dcb7d9948bf2b080cfb15f1",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 24,
+      "target": {
+        "field": "optionText",
+        "label": "G",
+        "order": 1
+      },
+      "textSha256": "4380449e9d8ab2e383ee6ed29eae3f2c66c2309e1c265b26dd1166fe5381b49f",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 24,
+      "target": {
+        "field": "optionText",
+        "label": "H",
+        "order": 2
+      },
+      "textSha256": "5352837b4223555c2391f9cd4497216cd95339e526368d21a979174db4fa8b8d",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 24,
+      "target": {
+        "field": "optionText",
+        "label": "J",
+        "order": 3
+      },
+      "textSha256": "c7137efd9acecf415f8d09d8ae2d231cdaec348ba9b4ddcf7331b4f427832d75",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 24,
+      "target": {
+        "field": "optionText",
+        "label": "K",
+        "order": 4
+      },
+      "textSha256": "1273dd0f122a391d7318c308aa62b1639dcd571b589f79bca42d3bbd4b1afa27",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 25,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "e21c5f99c204e16fb3567b881478947aeb9ef2daf6594394fb9e99bfa93564e5",
+      "spans": [
+        {
+          "start": 16,
+          "end": 28,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 25,
+      "target": {
+        "field": "structuredItem",
+        "index": 0
+      },
+      "textSha256": "2a4baa647f524b2a9e19deb0c8a1b88806eb9bdf550a7b6fa6e7ce8133e3b92b",
+      "spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 25,
+      "target": {
+        "field": "structuredItem",
+        "index": 1
+      },
+      "textSha256": "77bd5dd94c37c5b117eb7b8dd9b0c0bd8036baea25c08abc3ef82d397b0473e9",
+      "spans": [
+        {
+          "start": 0,
+          "end": 6,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 25,
+      "target": {
+        "field": "structuredItem",
+        "index": 2
+      },
+      "textSha256": "ec62056c21a0fe202474055a07a6d1331cea630f945cecb42d5d8d4323baefef",
+      "spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 26,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 27,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "02ea2675954c343104d81c1458ed8438b8c8391f585c6b007805f9e22b44aef6",
+      "spans": [
+        {
+          "start": 45,
+          "end": 49,
+          "style": "ITALIC"
+        },
+        {
+          "start": 88,
+          "end": 93,
+          "style": "UNDERLINE"
+        },
+        {
+          "start": 115,
+          "end": 120,
+          "style": "UNDERLINE"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 28,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "70cce6d8f91b6e92fc2bd71d5a1e4fecc66cf96f9220dce20a2ac0d9f13abdc3",
+      "spans": [
+        {
+          "start": 16,
+          "end": 23,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 33,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "0a0fde4020bebafdc535f15b0dfdda1a73d284a22574a5a835cd773aac2a81b4",
+      "spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "style": "BOLD"
+        },
+        {
+          "start": 15,
+          "end": 20,
+          "style": "BOLD"
+        },
+        {
+          "start": 24,
+          "end": 32,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 35,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "a3f308dcd8bb480bb05cb2c7a9805b6d6ce5299933f7ea578ff9b2feb2be044a",
+      "spans": [
+        {
+          "start": 16,
+          "end": 24,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 42,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 45,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "e21c5f99c204e16fb3567b881478947aeb9ef2daf6594394fb9e99bfa93564e5",
+      "spans": [
+        {
+          "start": 16,
+          "end": 28,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 45,
+      "target": {
+        "field": "structuredItem",
+        "index": 0
+      },
+      "textSha256": "9dc08e4033827c93f48cabc2f61e3f9817b51a7f1bcfa513a7537dcbc5d162e7",
+      "spans": [
+        {
+          "start": 0,
+          "end": 7,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 45,
+      "target": {
+        "field": "structuredItem",
+        "index": 1
+      },
+      "textSha256": "a5325c0c0e7cc20ce6330d56c287f519c1449b2d7f476477b870cb022bf5f160",
+      "spans": [
+        {
+          "start": 0,
+          "end": 8,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 45,
+      "target": {
+        "field": "structuredItem",
+        "index": 2
+      },
+      "textSha256": "908aec4512d80ff4fefb1970899091e9de8e734b36b8fdb7678e77dc092f6959",
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 49,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 50,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "b0b7a3776ef248efa6fdcf0d116abb6830f762436187746a6360785880da045a",
+      "spans": [
+        {
+          "start": 0,
+          "end": 11,
+          "style": "BOLD"
+        },
+        {
+          "start": 18,
+          "end": 28,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 51,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 55,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "a91df2a07315d54c3debe9db03c1f46b54731a656a0fba0945fd6c1388b89aa9",
+      "spans": [
+        {
+          "start": 22,
+          "end": 26,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 57,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "cdc34683e2d0638d150a68612e8ebcf038d260d67e4642c33f667a59b8d5deeb",
+      "spans": [
+        {
+          "start": 16,
+          "end": 24,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 58,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "0b1a7761c86e27ca0ada37085e14c443a7c2bba592551874f682df12a68786bb",
+      "spans": [
+        {
+          "start": 22,
+          "end": 36,
+          "style": "BOLD"
+        },
+        {
+          "start": 43,
+          "end": 58,
+          "style": "BOLD"
+        },
+        {
+          "start": 60,
+          "end": 69,
+          "style": "BOLD"
+        },
+        {
+          "start": 76,
+          "end": 85,
+          "style": "BOLD"
+        },
+        {
+          "start": 91,
+          "end": 100,
+          "style": "BOLD"
+        },
+        {
+          "start": 107,
+          "end": 116,
+          "style": "BOLD"
+        },
+        {
+          "start": 135,
+          "end": 139,
+          "style": "BOLD"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 61,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "e4de637c83709b98f1507c26dece63e312504204856a6b8b3f5e26bb5f782586",
+      "spans": [
+        {
+          "start": 16,
+          "end": 19,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 62,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "ff5759c14fae320c863698e9dd897285f70ff801c16a41a5e1f3c509a9cf2b07",
+      "spans": [
+        {
+          "start": 45,
+          "end": 49,
+          "style": "ITALIC"
+        },
+        {
+          "start": 88,
+          "end": 92,
+          "style": "UNDERLINE"
+        },
+        {
+          "start": 114,
+          "end": 119,
+          "style": "UNDERLINE"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 64,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "4c0c3a8afdb1bd2858217ae986d9af14b021482c037dd7758944994933b82813",
+      "spans": [
+        {
+          "start": 53,
+          "end": 57,
+          "style": "ITALIC"
+        }
+      ]
+    },
+    {
+      "sourceQuestionNumber": 72,
+      "target": {
+        "field": "questionText"
+      },
+      "textSha256": "e64f75b15aa190940c7d60d0ff843b19974c2840f26ecf621677426a5d0b3657",
+      "spans": [
+        {
+          "start": 22,
+          "end": 26,
+          "style": "ITALIC"
+        }
+      ]
+    }
+  ]
+}
