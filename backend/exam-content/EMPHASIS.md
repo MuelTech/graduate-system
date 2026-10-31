@@ -28,9 +28,12 @@ final real-source population:
   canonical wording.
 
 EC7A extends the runtime support below to all three semantic styles and the
-bounded string-item structured surface. This is an architecture/support package;
-real physical-source population is still pending independent review and the final
-owner-verified source map. `olsat-emphasis.json` remains absent and unapplied.
+bounded string-item structured surface. The architecture/support implementation
+has passed independent review. Real physical-source population remains pending
+the final owner-verified source map. Owner manual/browser QA for the new EC7A
+capability is intentionally deferred until that real map has been populated and
+applied, so the final visual pass can compare actual source-derived formatting.
+`olsat-emphasis.json` remains absent and unapplied.
 
 ## Runtime contract
 
@@ -196,6 +199,8 @@ application idempotent with zero writes.
 
 Review the preflight counts before applying a revised owner map.
 
-No real annotation population or source/browser QA is certified by installing
-this support. EC6 pagination/color follow-ups and all Phase B lifecycle work
-remain separate.
+No real annotation population is certified by installing this support. EC7A
+architecture/support review is PASS, while the owner manual/browser pass is
+DEFERRED until real source typography is populated/applied; do not treat that
+deferred pass as completed QA. EC6 pagination/color follow-ups and all Phase B
+lifecycle work remain separate.
