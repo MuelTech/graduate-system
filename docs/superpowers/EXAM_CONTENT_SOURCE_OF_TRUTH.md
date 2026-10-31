@@ -278,12 +278,25 @@ EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then 
 
 Current EC7 checkpoint: EC7A architecture/support, EC7B real owner-verified map creation/preflight, and EC7C real development-database application/idempotency have all passed independent review.
 
-EC7C used the unchanged reviewed `backend/exam-content/olsat-emphasis.json`. Immediate preflight returned `PREFLIGHT_OK`, `annotationsValidated: 38`, `fieldsChanged: 0`, `fieldsWouldChange: 34`. The first transactional apply returned `APPLIED` with exactly 34 persisted semantic fields changed: 27 questionText emphasis fields, 5 Q24 optionText emphasis fields, and 2 structuredStimulusEmphasis fields for Q25/Q45. Exact readback matched the reviewed normalized map, including the Q24 option subjects, Q25/Q45 WORD_SERIES marks, Q58 terminal-`cold` span, and explicit Q67 exclusion.
+EC7C used the unchanged reviewed `backend/exam-content/olsat-emphasis.json`. Immediate preflight returned `PREFLIGHT_OK`, `annotationsValidated: 38`, `fieldsChanged: 0`, `fieldsWouldChange: 34`. The first transactional apply returned `APPLIED` with exactly 34 persisted semantic fields changed: 27 questionText emphasis fields, 5 Q24 optionText emphasis fields, and 2 structuredStimulusEmphasis fields for Q25/Q45. Exact readback matched the reviewed normalized map. Canonical bank content, IDs, source/import identity, correctness, structured content, media references, the 108 managed media records, and import-marker state remained unchanged. The identical second apply returned `ALREADY_APPLIED` with zero writes.
 
-Canonical bank content, IDs, source/import identity, correctness, structured content, media references, the 108 managed media records, and import-marker state remained unchanged outside the three semantic metadata fields. The identical second apply returned `ALREADY_APPLIED`, `fieldsChanged: 0`, `fieldsWouldChange: 0`; before/after second-run evidence reported exact equality. Focused EC7C verification passed 3 files / 53 tests. No migration, reset, bank re-import, frontend/runtime change, deployment, manual/browser QA, or Phase B work occurred.
+During the deferred owner Admin browser QA, a **structured-stimulus authoring/configuration UX defect** was discovered before formal Phase A acceptance. The imported 72-question bank, choices, answer mappings, rendered structured content, and applied source typography remain accepted evidence; this finding concerns how an Admin configures or edits structured content, not the correctness of the verified imported assessment.
 
-Therefore **EC7C controlled application + idempotency is independently reviewed PASS**. Real verified source typography is now populated in the development database. Project-owner Admin/Applicant manual/browser QA and physical-source comparison remain the final Phase A source-fidelity checkpoint; do not record that deferred pass as completed until the owner performs it.
+The current persistence boundary remains intentional and must not be rewritten for this correction: `ExamStimulusType` stores only `NONE | IMAGE | STRUCTURED`, while the existing structured subtype/payload remains inside `structured_stimulus` JSON. Existing verified subtypes (`MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, `LOGICAL_PREMISES`) must remain readable and round-trip compatible so the verified bank is not migrated/re-imported merely for UI cleanup.
 
-The next Phase A action is the owner visual/source QA against the actual populated OLSAT content. If that passes, formally accept EXAM-CONTENT-7 and Phase A. Keep Phase B separate until Phase A acceptance.
+The Admin authoring surface, however, is over-specified. It currently exposes eight source-oriented subtype names plus a per-cell `Text / Number` selector, even though the renderer primarily needs three layout families. The next bounded corrective package, **EC7D — Structured Stimulus Admin Authoring Simplification**, must:
+
+- expose three clear Admin layout families: **Grid / Table**, **Inline Items**, and **Numbered List**;
+- map existing internal subtypes to those layout families without rewriting untouched stored JSON;
+- preserve the exact existing subtype/payload when an imported question is opened and saved without structured-content changes;
+- remove the per-cell `Text / Number` selector from the Admin UI;
+- use plain text inputs for visible cell/item editing while retaining any hidden compatibility information required to round-trip existing numeric JSON values exactly;
+- for newly created generic layouts, use a bounded canonical internal representation rather than asking the Admin to understand OLSAT-specific subtype taxonomy;
+- keep row/item boundaries, emphasis metadata, question/option identities, correct answers, media, and source/import authority unchanged;
+- perform no Prisma migration, bank reset, package rewrite, or 72-question re-import for this UI correction.
+
+Do **not** collapse structured content into one free-text textarea; row/item structure remains meaningful for rendering, accessibility, emphasis targeting, and source fidelity.
+
+Therefore Phase A is **not yet formally accepted**. EC7D implementation/review must complete first, followed by resumed owner Admin/Applicant physical-source QA. If both pass, formally accept EXAM-CONTENT-7 and Phase A. Keep Phase B separate until Phase A acceptance.
 
 After Phase A acceptance, proceed directly to Phase B.
