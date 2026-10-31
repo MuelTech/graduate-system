@@ -2,9 +2,10 @@
 
 Date: 2026-10-31 (Asia/Manila).
 
-Implementation and focused automated evidence. Independent remote review and
-owner Admin/Applicant physical-source QA remain required. This report does not
-formally accept EXAM-CONTENT-7 or Phase A. EC7D remains independently reviewed PASS.
+Implementation and focused automated evidence are complete. Independent remote
+review of the actual pushed EC7E source passed with no blocking issue. The project
+owner reviewed the resulting output, confirmed the correction was correct, and
+authorized Phase A documentation closure. EC7D remains independently reviewed PASS.
 
 ## Git checkpoint
 
@@ -272,12 +273,36 @@ merge to main, reset, rebase, history rewrite, or force push.
 
 There is no unresolved implementation/integrity issue. The discovered live Q26
 difference was explicitly resolved by the owner before destructive operations.
-Independent review and owner QA remain outstanding acceptance steps.
 
-Not executed/claimed: owner Admin/Applicant browser/manual QA, visual/source
-comparison, scans review, formal EC7 or Phase A acceptance, Phase B, hosted CI,
-deployment, full-repository suites, frontend production build, Prisma generation
-or migration commands, production-bank reset, or broad media garbage collection.
+## Independent review and owner acceptance addendum — 2026-10-31
 
-Stop after bounded delivery. Next step: independent review of actual pushed
-remote source; owner QA resumes only after that review passes.
+Independent review of the actual pushed EC7E branch found **no blocking issue**.
+
+Confirmed from the remote implementation:
+
+- the branch contains exactly the bounded EC7E implementation plus evidence delivery from the approved start;
+- Admin exposes exactly **Grid / Table** and **Items**;
+- Numbered List / Inline Items are no longer Admin-facing layout choices;
+- all eight internal legacy structured subtypes remain supported;
+- existing `LOGICAL_PREMISES` maps to Items without silently changing its subtype on an untouched save;
+- `LOGICAL_PREMISES` uses generic stacked paragraph rendering with no numeric markers and no Q40-specific condition;
+- canonical Q40 is represented as leading `Assume that —` question text followed by the three premises and trailing `We know that —` structured item, then unchanged choices;
+- Q40 labels/order/correct answer remain unchanged;
+- the manifest SHA, package/import fingerprint, emphasis sidecar binding, and runtime source-hash guard agree on the corrected source identity;
+- the sidecar's existing 38 target identities / 59 spans remain unchanged apart from the manifest binding, with no invented Q40 emphasis;
+- focused tests protect all 29 real structured payloads, Q25/Q45 structured emphasis, Q40 source order, and Admin/Applicant shared composition;
+- no Prisma/schema migration, retained Q40 reconciler, scoring/attempt/timer/scheduling/autosave/submission/essay/thesis change, or Phase B implementation was introduced.
+
+The project owner then confirmed the resulting EC7E output was correct and authorized this Phase A closure update.
+
+**EC7E independent review: PASS.**  
+**EXAM-CONTENT-7: ACCEPTED — 2026-10-31.**  
+**Phase A — Applicant Examination Mixed-Content Integration: ACCEPTED — 2026-10-31.**
+
+Not executed/claimed by the coding agent: hosted CI, deployment, full-repository
+suites, frontend production build, Prisma generation/migration commands, production-bank
+reset, or Phase B implementation. The project-owner acceptance above is recorded
+separately from the coding-agent automated evidence.
+
+Phase B — Exam Engine / Scheduling Audit is now the next workstream. It has not
+been started by this documentation-closure update.
