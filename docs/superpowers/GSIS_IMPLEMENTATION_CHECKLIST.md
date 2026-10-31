@@ -497,24 +497,25 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - accepted pagination/color work remains closed.
 - EXAM-CONTENT-7 implementation/review checkpoint:
   - original BOLD/UNDERLINE implementation: **PASS**;
-  - EC7A fidelity-support implementation commit: `3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473`;
-  - EC7A independent review + migration/focused tests/backend+frontend builds: **PASS**;
-  - complete 12-page physical-source audit: **DONE — 2026-10-30**;
-  - EC7B real typography map implementation commit: `b25a6c486c341cc67cbc9c6b264c15293d238bd4`;
-  - EC7B independent actual GitHub map/source review: **PASS — no blocking issue found**;
+  - EC7A ITALIC + structured textual-stimulus support: **INDEPENDENT REVIEW PASS**;
+  - 12-page physical-source audit: **DONE**;
+  - EC7B real owner-verified map creation + source binding + read-only preflight: **INDEPENDENT REVIEW PASS**;
   - map inventory: **28 questions / 38 targets / 59 spans = 33 BOLD / 8 UNDERLINE / 18 ITALIC**;
-  - Q24/Q25/Q45/Q58 special targets and Q67 exclusion: **PASS**;
-  - protected manifest/assets/package identity: **UNCHANGED**;
-  - EC7B live read-only preflight: **PASS** — `annotationsValidated: 38`, `fieldsWouldChange: 34`, zero writes;
-  - real DB emphasis application/idempotency: **NOT YET RUN**;
-  - owner manual/browser QA for actual source formatting: **DEFERRED BY OWNER until EC7C apply is reviewed**;
-  - formal EC7 acceptance: **PENDING EC7C apply/idempotency + final owner Admin/Applicant physical-source comparison**.
+  - EC7C real DB application: **INDEPENDENT REVIEW PASS**;
+  - EC7C immediate preflight: `PREFLIGHT_OK`, 38 annotations, 34 fields planned;
+  - EC7C first apply: `APPLIED`, exactly 34 fields changed;
+  - persisted result: 27 questionText + 5 Q24 optionText + 2 Q25/Q45 structured fields; all expected null remainders preserved;
+  - Q24/Q25/Q45/Q58 persisted special cases and Q67 exclusion: **PASS**;
+  - canonical question/option/structured/media/import-marker invariance: **PASS**;
+  - identical second apply: **ALREADY_APPLIED / 0 writes**;
+  - focused EC7C tests: **3 files / 53 tests PASS**;
+  - owner Admin/Applicant browser physical-source comparison: **PENDING**;
+  - formal EC7 acceptance: **PENDING OWNER FINAL SOURCE QA ONLY**.
 - Next Phase A work, in order:
-  1. **EC7C reviewed sidecar apply + second-run `ALREADY_APPLIED` idempotency**;
-  2. **independent application evidence review**;
-  3. **deferred owner manual/browser QA against actual populated Admin/Applicant presentation**;
-  4. **physical-source comparison + formal EC7/Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED only by EC7C application/idempotency and final owner source QA**
+  1. **owner manual/browser QA against the actual populated OLSAT formatting**;
+  2. **formal EC7 acceptance if owner source comparison passes**;
+  3. **formal Phase A acceptance**.
+- Phase A final acceptance: **BLOCKED only by final owner physical-source browser QA**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
