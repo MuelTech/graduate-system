@@ -404,48 +404,41 @@ Project-owner manual/browser evidence: **Admin bold/underline authoring/renderin
 
 The owner intentionally elected not to perform a separate full Applicant browser QA pass for this checkpoint because the Applicant path uses the same reviewed semantic renderer and is covered by focused automated/source evidence. This must be recorded as **owner-skipped**, not as manual Applicant QA.
 
-EC7B has now created and independently reviewed the real owner-verified schema-v2 map at `backend/exam-content/olsat-emphasis.json`.
+EC7B created and independently reviewed the real owner-verified schema-v2 map. EC7C has now applied that unchanged reviewed map to the development database and the application evidence has independently reviewed PASS.
 
 Current EC7 status:
 
 - original EC7 BOLD/UNDERLINE architecture/support review: **PASS**;
-- EC7A ITALIC + structured textual-stimulus support at `3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473`: **INDEPENDENT REVIEW PASS**;
-- EC7B real typography map implementation at `b25a6c486c341cc67cbc9c6b264c15293d238bd4`: **INDEPENDENT REVIEW PASS — no blocking issue found**;
-- real map inventory: **28 questions / 38 targets / 59 spans = 33 BOLD / 8 UNDERLINE / 18 ITALIC**;
-- protected manifest/assets/package identity: **UNCHANGED**;
-- live read-only preflight: **PASS** — `PREFLIGHT_OK`, `annotationsValidated: 38`, `fieldsChanged: 0`, `fieldsWouldChange: 34`;
-- real database emphasis application: **NOT YET RUN**;
-- EC7A/EC7B owner manual/browser QA: **DEFERRED BY OWNER until after the reviewed map is applied**;
-- formal EC7 acceptance: **PENDING EC7C application/idempotency plus final owner Admin/Applicant physical-source comparison**.
-
-The deferred browser pass must not be described as completed QA. The next implementation checkpoint is EC7C, which applies only the already-reviewed map and proves identical re-apply is zero-write idempotent.
+- EC7A ITALIC + structured textual-stimulus support: **PASS**;
+- EC7B real typography map creation/source binding/read-only preflight: **PASS**;
+- EC7C first real apply: **PASS** — `APPLIED`, `annotationsValidated: 38`, `fieldsChanged: 34`;
+- persisted semantic metadata: **PASS** — 27 questionText + 5 Q24 optionText + 2 Q25/Q45 structured fields;
+- canonical bank/media/import-marker invariance: **PASS**;
+- identical second apply idempotency: **PASS** — `ALREADY_APPLIED`, `fieldsChanged: 0`, `fieldsWouldChange: 0`;
+- focused EC7C verification: **PASS** — 3 files / 53 tests;
+- owner Admin/Applicant manual/browser physical-source comparison: **PENDING / DEFERRED UNTIL NOW**;
+- formal EC7 acceptance: **PENDING final owner source comparison only**.
 
 The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`.
 
 ### Revised remaining Phase A sequence after physical-source audit
 
-EC7A support and EC7B real-map creation/review/preflight are complete. The real sidecar exists and is reviewed but has not yet been applied.
-
-#### Corrected-bank checkpoint — ACCEPTED 2026-10-31
-
-The Q24-specific reconciliation implementation at `9430c833f11c46b3de43a2eb0e9b8e6486b55233` remains historical and **SUPERSEDED / NOT ACCEPTED as retained architecture**. The accepted CORR2 path preserved the corrected canonical Q24 wording and clean-imported/verified the 72-question bank through the normal importer.
+EC7A support, EC7B real-map creation/review/preflight, and EC7C real-map application/idempotency are complete and independently reviewed PASS.
 
 ### Remaining Phase A sequence
 
-1. **EC7C — controlled real-map application + idempotency**
-   - re-run preflight and require the reviewed 38-target / 34-field change plan;
-   - apply the reviewed `olsat-emphasis.json`;
-   - verify only the expected semantic metadata fields change;
-   - verify canonical exam content, identities, correctness, media and unrelated data remain unchanged;
-   - run the identical apply again and require `ALREADY_APPLIED` with zero writes.
+1. **Owner manual/browser physical-source QA**
+   - verify actual populated OLSAT typography in the Admin Question Bank/preview;
+   - verify Applicant exam presentation using an eligible active exam context;
+   - compare BOLD / UNDERLINE / ITALIC question text, Q24 option emphasis, and Q25/Q45 structured WORD_SERIES emphasis against the owner-reviewed physical source;
+   - confirm no unexpected formatting appears on unannotated content, including Q67.
 
-2. **Independent review of EC7C application evidence**.
+2. **Formal EC7 acceptance**
+   - only after the owner confirms the source-derived presentation is correct.
 
-3. **Deferred owner manual/browser QA**
-   - compare the actual populated OLSAT formatting in Admin and Applicant surfaces against the physical assessment;
-   - include question/option BOLD/UNDERLINE/ITALIC and Q25/Q45 structured WORD_SERIES rendering.
-
-4. **Formal EC7 and Phase A acceptance** after application/idempotency and owner source comparison pass.
+3. **Formal Phase A acceptance**
+   - after EC7 acceptance, record the completed content-representation/import/rendering fidelity boundary;
+   - do not describe Phase A acceptance as full Applicant Examination production readiness.
 
 Do not begin Phase B until EC7 and Phase A are formally accepted.
 
