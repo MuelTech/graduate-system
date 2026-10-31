@@ -176,3 +176,36 @@ documents were not changed.
 **STOP for independent EC7D review.** Owner manual/browser QA remains pending and
 resumes after that review. Formal EC7 and Phase A acceptance remain pending
 independent review plus resumed owner Admin/Applicant physical-source QA.
+
+
+## Independent review addendum — 2026-10-31
+
+Independent review of the actual pushed EC7D branch found **no blocking issue**.
+
+Reviewed evidence:
+
+- branch is exactly one implementation commit ahead of the approved EC7D start;
+- changed files are limited to the structured Admin editor/helper, one focused test
+  file, and this report;
+- no backend runtime, Prisma schema/migration, renderer, manifest/assets, emphasis
+  sidecar, API type, database operation, reset, re-import, or Phase B change exists
+  in the EC7D implementation diff;
+- the editor exposes exactly Grid / Table, Inline Items, and Numbered List;
+- the visible Text/Number selector is removed;
+- existing legacy subtypes map to those three visible families;
+- the helper preserves original string/number primitives for unchanged loaded cells;
+- all 29 real structured source payloads are asserted to round-trip with deep and
+  JSON serialization equality;
+- compatible edits preserve untouched primitives and only adapt a restrictive
+  legacy subtype when the actual edited value no longer satisfies that hidden
+  subtype grammar;
+- Q25/Q45 structured emphasis and related question/option emphasis survive
+  unchanged save paths;
+- malformed/unsupported stored content continues to fail closed;
+- focused verification reports 4 files / 115 tests passed, with frontend
+  `tsc --noEmit` and scoped ESLint passing.
+
+**EC7D Structured Stimulus Admin Authoring Simplification: INDEPENDENT REVIEW PASS.**
+
+This does not certify owner manual/browser QA. Formal EXAM-CONTENT-7 and Phase A
+acceptance remain pending the resumed owner Admin/Applicant source/configuration QA.
