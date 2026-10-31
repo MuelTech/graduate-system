@@ -227,12 +227,28 @@ Reviewed evidence:
 - focused EC7C verification: 3 files / 53 tests PASS;
 - no migration/reset/re-import/frontend/runtime/Phase-B change occurred.
 
-### Step 5 — source QA and acceptance — NEXT / OWNER MANUAL QA
+### Step 5 — source QA and acceptance — PAUSED FOR EC7D
 
-Compare the physical source against the now-populated Admin and Applicant presentation.
+Owner Admin browser QA began against the populated bank and confirmed that the
+question/option content itself is rendering correctly, but exposed an Admin
+structured-stimulus configuration UX defect before formal acceptance.
 
-The corrected-bank EC6 post-acceptance checkpoint is already closed. Only after
-the remaining EC7 source-typography work and source QA may:
+The defect is in authoring/configuration, not in the verified imported bank:
+
+- the editor exposes eight source-oriented structured subtype names;
+- grid/numeric forms additionally expose a per-cell `Text / Number` selector;
+- that combination is redundant and can lead the Admin into invalid/confusing
+  states even though the underlying rendered assessment content is correct.
+
+The bounded correction is EC7D. It must simplify the Admin authoring surface to
+three layout families — Grid / Table, Inline Items, Numbered List — while keeping
+all existing internal structured subtype/payload values readable and round-trip
+compatible. Untouched imported questions must not be rewritten merely because
+the UI is simplified. No schema migration, bank reset, source-package rewrite,
+or re-import is authorized for this correction.
+
+After EC7D is implemented and independently reviewed, resume the owner Admin and
+Applicant physical-source comparison. Only then may:
 
 - EXAM-CONTENT-7 be formally accepted;
 - Phase A be formally accepted.
