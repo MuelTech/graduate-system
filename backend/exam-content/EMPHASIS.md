@@ -30,11 +30,12 @@ final real-source population:
 
 EC7A extends the runtime support below to all three semantic styles and the
 bounded string-item structured surface. The architecture/support implementation
-has passed independent review. EC7B now encodes the explicit owner-verified map;
-database application remains pending independent review and separate authorization.
-Owner manual/browser QA for the new EC7A capability is intentionally deferred
-until the real map has been applied, so the final visual pass can compare actual
-source-derived formatting. No real database marks have been populated.
+has passed independent review. EC7B now encodes the explicit owner-verified map,
+and independent review of that committed map plus its read-only live preflight
+has also passed with no blocking issue found. The sidecar remains unapplied.
+Owner manual/browser QA is intentionally deferred until after the reviewed map
+has been applied, so the final visual pass can compare actual source-derived
+formatting. No real database marks have been populated yet.
 
 ## Runtime contract
 
@@ -157,10 +158,12 @@ Read-only database preflight returned `PREFLIGHT_OK`, `annotationsValidated: 38`
 2 grouped structured fields). Matching before/after reads confirmed all three
 emphasis fields remain null across the 72 imported questions and 360 options.
 
-EC7B stops at preflight. No real apply command was run. Sidecar independent review,
-separately authorized apply/idempotency, deferred owner manual/browser QA, and
-formal EC7/Phase A acceptance remain pending. The general apply sequence below
-is for that future authorized step, not an action completed in EC7B.
+EC7B stops at preflight and is now independently reviewed PASS. No real apply
+command was run. The next checkpoint is EC7C: re-run the same preflight, apply
+the reviewed sidecar, verify the expected 34 persisted semantic metadata fields,
+repeat the identical apply and require `ALREADY_APPLIED` with zero writes, then
+stop for independent review. Deferred owner manual/browser QA and formal EC7/Phase A
+acceptance remain after EC7C.
 
 ## Operator sequence
 
