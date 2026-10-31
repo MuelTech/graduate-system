@@ -290,6 +290,28 @@ EC7D changed only the bounded frontend editor/helper contract, focused tests, an
 
 Therefore **EC7D structured authoring simplification is independently reviewed PASS**. Phase A remains not formally accepted only because owner manual/browser QA must now resume against the simplified Admin editor and the actual populated Admin/Applicant presentation.
 
-The next Phase A action is resumed owner visual/source QA. If that passes, formally accept EXAM-CONTENT-7 and Phase A. Keep Phase B separate until Phase A acceptance.
+Post-EC7D owner QA found one additional source-fidelity/configuration issue before formal acceptance:
+
+- the Admin-facing **Numbered List** layout is not demonstrated by the verified OLSAT source and is redundant for the current bank;
+- the physical Q40 source shows plain vertically stacked statements with **no numeric list markers**;
+- the physical Q40 order is: `Assume that -` → three premise lines → `We know that -` → answer choices;
+- the current canonical Q40 manifest instead places `We know that —` inside `questionText` before the structured stimulus, so correcting only the list marker would still leave the source order wrong.
+
+Therefore EC7D remains an independently reviewed implementation checkpoint, but owner QA is paused for a bounded follow-up package, **EC7E — Items Consolidation + Q40 Source Fidelity**.
+
+EC7E requirements:
+
+- Admin exposes only **Grid / Table** and **Items** as structured authoring layouts;
+- all existing eight internal structured subtypes remain backward-compatible and are not removed from persistence;
+- `LOGICAL_PREMISES` maps to Admin **Items**;
+- `LOGICAL_PREMISES` renders as plain vertically stacked lines with no automatic numbering;
+- correct canonical Q40 from the owner-verified physical source instead of adding a renderer-only special case;
+- preserve Q40 answer choices/correct answer and all unrelated question content;
+- do not add a one-off Q40 database patch/reconciler; correct the canonical source package and use the established clean development re-import path if source identity changes;
+- because the emphasis sidecar is bound to the manifest SHA, any corrected manifest identity must be reconciled deterministically and the already-reviewed emphasis map must be revalidated/reapplied without changing its unaffected annotation semantics;
+- no Prisma migration is expected;
+- no Phase B work.
+
+The next Phase A action is EC7E implementation + independent review. After EC7E passes, resume owner visual/source QA. Only then may EXAM-CONTENT-7 and Phase A be formally accepted. Keep Phase B separate until Phase A acceptance.
 
 After Phase A acceptance, proceed directly to Phase B.
