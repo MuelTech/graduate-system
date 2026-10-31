@@ -174,9 +174,9 @@ all 108 managed bank media records, and the import marker were unchanged.
 The identical second apply returned `ALREADY_APPLIED`, `fieldsChanged: 0`,
 `fieldsWouldChange: 0`; its before/after snapshots matched exactly.
 See `docs/superpowers/reports/2026-10-31-exam-content-7-typography-application.md`
-for the operational evidence. Stop for independent EC7C review. No manual/browser
-QA or formal EC7/Phase A acceptance is certified by this checkpoint; those remain
-pending independent review and the deferred owner source comparison.
+for the operational evidence. Independent EC7C review is now PASS with no blocking
+issue found. No manual/browser QA or formal EC7/Phase A acceptance is certified
+by EC7C; those remain pending the deferred owner source comparison.
 
 ## Operator sequence
 
@@ -235,8 +235,9 @@ application idempotent with zero writes.
 
 Review the preflight counts before applying a revised owner map.
 
-No real annotation population is certified by installing this support. EC7A
-architecture/support review is PASS, while the owner manual/browser pass is
-DEFERRED until real source typography is populated/applied; do not treat that
-deferred pass as completed QA. EC6 pagination/color follow-ups and all Phase B
-lifecycle work remain separate.
+Real owner-verified annotation population is now present in the development
+database through reviewed EC7C application/idempotency. EC7A support, EC7B map
+review/preflight, and EC7C apply/idempotency are PASS. The owner manual/browser
+physical-source comparison remains the only unfinished EC7 fidelity checkpoint;
+do not treat it as completed QA until the owner performs it. EC6 pagination/color
+follow-ups and all Phase B lifecycle work remain separate.
