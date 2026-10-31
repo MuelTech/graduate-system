@@ -500,22 +500,25 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
   - EC7A ITALIC + structured textual-stimulus support: **INDEPENDENT REVIEW PASS**;
   - 12-page physical-source audit: **DONE**;
   - EC7B real owner-verified map creation + source binding + read-only preflight: **INDEPENDENT REVIEW PASS**;
-  - map inventory: **28 questions / 38 targets / 59 spans = 33 BOLD / 8 UNDERLINE / 18 ITALIC**;
-  - EC7C real DB application: **INDEPENDENT REVIEW PASS**;
-  - EC7C immediate preflight: `PREFLIGHT_OK`, 38 annotations, 34 fields planned;
-  - EC7C first apply: `APPLIED`, exactly 34 fields changed;
-  - persisted result: 27 questionText + 5 Q24 optionText + 2 Q25/Q45 structured fields; all expected null remainders preserved;
-  - Q24/Q25/Q45/Q58 persisted special cases and Q67 exclusion: **PASS**;
-  - canonical question/option/structured/media/import-marker invariance: **PASS**;
-  - identical second apply: **ALREADY_APPLIED / 0 writes**;
-  - focused EC7C tests: **3 files / 53 tests PASS**;
-  - owner Admin/Applicant browser physical-source comparison: **PENDING**;
-  - formal EC7 acceptance: **PENDING OWNER FINAL SOURCE QA ONLY**.
+  - EC7C real DB application/idempotency: **INDEPENDENT REVIEW PASS**;
+  - verified imported bank/questions/options/answer mappings/media/emphasis remain correct;
+  - owner Admin QA discovered a **structured-stimulus authoring/configuration UX defect** before formal acceptance;
+  - current DB persistence remains broad `NONE | IMAGE | STRUCTURED` plus structured JSON subtype/payload; no schema redesign is required for the correction;
+  - current Admin structured editor exposes eight source-oriented subtype names and a redundant per-cell `Text / Number` selector;
+  - **EC7D — Structured Stimulus Admin Authoring Simplification: PENDING / NEXT**;
+  - EC7D target UI families: **Grid / Table**, **Inline Items**, **Numbered List**;
+  - EC7D must preserve existing internal subtype/payload compatibility and untouched imported JSON exactly;
+  - EC7D must remove the visible per-cell Text/Number selector and avoid invalid/conflicting authoring states;
+  - no migration/reset/re-import/package rewrite is expected;
+  - owner Admin/Applicant browser physical-source comparison: **PAUSED until EC7D is reviewed**;
+  - formal EC7 acceptance: **PENDING EC7D + resumed owner final source QA**.
 - Next Phase A work, in order:
-  1. **owner manual/browser QA against the actual populated OLSAT formatting**;
-  2. **formal EC7 acceptance if owner source comparison passes**;
-  3. **formal Phase A acceptance**.
-- Phase A final acceptance: **BLOCKED only by final owner physical-source browser QA**
+  1. **EC7D structured-stimulus Admin authoring simplification**;
+  2. **independent EC7D review**;
+  3. **resume owner manual/browser QA against actual populated Admin/Applicant presentation**;
+  4. **formal EC7 acceptance**;
+  5. **formal Phase A acceptance**.
+- Phase A final acceptance: **BLOCKED by EC7D configuration UX correction + final owner source QA**
 
 **Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
