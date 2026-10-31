@@ -197,7 +197,7 @@ media, 72/72 answer mappings, zero broken bank references, and unchanged unrelat
 record hashes. Corrected-package live emphasis preflight planned 34 fields;
 application restored exactly those 34 fields (27 question / 5 option / 2
 structured). Identical repeats returned ALREADY_IMPORTED and ALREADY_APPLIED
-with zero changes. EC7E independent review and owner QA remain pending.
+with zero changes. EC7E independent remote review is PASS, the project owner confirmed the resulting correction, and EXAM-CONTENT-7 / Phase A are accepted as of 2026-10-31.
 
 From `backend`, after installing dependencies and deploying reviewed migrations:
 
@@ -254,9 +254,10 @@ application idempotent with zero writes.
 
 Review the preflight counts before applying a revised owner map.
 
-Real owner-verified annotation population is now present in the development
-database through reviewed EC7C application/idempotency. EC7A support, EC7B map
-review/preflight, and EC7C apply/idempotency are PASS. The owner manual/browser
-physical-source comparison remains the only unfinished EC7 fidelity checkpoint;
-do not treat it as completed QA until the owner performs it. EC6 pagination/color
-follow-ups and all Phase B lifecycle work remain separate.
+Real owner-verified annotation population is present in the development database.
+EC7A support, EC7B map review/preflight, EC7C apply/idempotency, EC7D structured
+authoring simplification, and EC7E Items/Q40 source-fidelity correction have all
+passed their required reviews. The project owner confirmed the final EC7E output
+and authorized Phase A closure. **EXAM-CONTENT-7 and Phase A are accepted as of
+2026-10-31.** EC6 pagination/color follow-ups remain closed. Phase B lifecycle
+work remains separate and has not been started by this documentation update.
