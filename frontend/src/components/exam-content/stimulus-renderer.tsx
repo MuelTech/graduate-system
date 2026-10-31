@@ -65,16 +65,13 @@ export function StructuredStimulusRenderer({
   }
   if (content.type === "LOGICAL_PREMISES")
     return (
-      <ol
-        aria-label={label}
-        className="list-inside list-decimal space-y-2 text-sm"
-      >
+      <div aria-label={label} className="space-y-2 text-sm">
         {content.items.map((item, index) => (
-          <li key={index} className="whitespace-pre-wrap">
+          <p key={index} className="whitespace-pre-wrap">
             {itemText(item, index)}
-          </li>
+          </p>
         ))}
-      </ol>
+      </div>
     );
   return (
     <ol aria-label={label} className="flex list-none flex-wrap gap-2">

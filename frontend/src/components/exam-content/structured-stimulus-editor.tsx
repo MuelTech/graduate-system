@@ -100,18 +100,14 @@ export function StructuredStimulusEditor({
             {cells.map((row, rowIndex) => (
               <fieldset key={rowIndex} className="space-y-2 rounded border p-3">
                 <legend className="px-1 text-xs font-semibold">
-                  {grid
-                    ? `Row ${rowIndex + 1}`
-                    : layout === "NUMBERED"
-                      ? "Numbered items"
-                      : "Ordered items"}
+                  {grid ? `Row ${rowIndex + 1}` : "Items"}
                 </legend>
                 <div className={grid ? "flex flex-wrap gap-2" : "space-y-2"}>
                   {row.map((cell, columnIndex) => (
                     <div key={columnIndex} className="flex items-center gap-2">
                       {textual ? (
                         <SemanticTextEditor
-                          label={`${layout === "NUMBERED" ? "List item" : "Item"} ${columnIndex + 1}`}
+                          label={`Item ${columnIndex + 1}`}
                           text={cell.value}
                           emphasis={
                             emphasis?.find(

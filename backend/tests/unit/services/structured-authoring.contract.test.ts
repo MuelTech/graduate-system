@@ -59,14 +59,14 @@ const legacy = [
     },
     "GRID",
   ],
-  [{ type: "WORD_BANK", items: ["red", "blue"] }, "INLINE"],
-  [{ type: "NUMBER_SEQUENCE", items: [1, "2", "1/2", "?"] }, "INLINE"],
-  [{ type: "ALPHANUMERIC_SEQUENCE", items: ["2A", "4B", "?"] }, "INLINE"],
-  [{ type: "WORD_SERIES", items: ["near", "far", "?"] }, "INLINE"],
-  [{ type: "LETTER_SEQUENCE", items: ["A", "C", "?"] }, "INLINE"],
+  [{ type: "WORD_BANK", items: ["red", "blue"] }, "ITEMS"],
+  [{ type: "NUMBER_SEQUENCE", items: [1, "2", "1/2", "?"] }, "ITEMS"],
+  [{ type: "ALPHANUMERIC_SEQUENCE", items: ["2A", "4B", "?"] }, "ITEMS"],
+  [{ type: "WORD_SERIES", items: ["near", "far", "?"] }, "ITEMS"],
+  [{ type: "LETTER_SEQUENCE", items: ["A", "C", "?"] }, "ITEMS"],
   [
     { type: "LOGICAL_PREMISES", items: ["All Xs are Ys.", "No Zs are Ys."] },
-    "NUMBERED",
+    "ITEMS",
   ],
 ] as const;
 const bold = { start: 0, end: 3, style: "BOLD" as const };
@@ -192,16 +192,15 @@ function question(
   };
 }
 
-describe("three layout families with legacy round-trip compatibility", () => {
-  it("exposes exactly three layout labels and uses existing broad representations", () => {
+describe("two layout families with legacy round-trip compatibility", () => {
+  it("exposes exactly two layout labels and uses existing broad representations", () => {
     expect(STRUCTURED_LAYOUTS.map((f) => f.label)).toEqual([
       "Grid / Table",
-      "Inline Items",
-      "Numbered List",
+      "Items",
     ]);
     expect(newStructuredLayoutDraft("GRID").type).toBe("MATRIX");
-    expect(newStructuredLayoutDraft("INLINE").type).toBe("WORD_SERIES");
-    expect(newStructuredLayoutDraft("NUMBERED").type).toBe("LOGICAL_PREMISES");
+    expect(newStructuredLayoutDraft("ITEMS").type).toBe("WORD_SERIES");
+    expect(() => newStructuredLayoutDraft("NUMBERED" as never)).toThrow();
     expect(() => newStructuredLayoutDraft("__proto__" as never)).toThrow(
       "Choose a supported structured layout.",
     );
@@ -223,10 +222,10 @@ describe("three layout families with legacy round-trip compatibility", () => {
     });
     expect(html).not.toContain('role="alert"');
     if (layout === "GRID") expect(html).toContain("<table");
-    else
-      expect(html).toContain(
-        layout === "NUMBERED" ? "list-decimal" : "flex list-none",
-      );
+    else if (stimulus.type === "LOGICAL_PREMISES") {
+      expect(html).toContain("space-y-2 text-sm");
+      expect(html).not.toMatch(/<ol|<li|list-decimal|list-inside/);
+    } else expect(html).toContain("flex list-none");
   });
   it.each(legacy)(
     "renders one family selector and no primitive selectors for %j",
@@ -239,6 +238,7 @@ describe("three layout families with legacy round-trip compatibility", () => {
       expect(html).toContain("Structured layout");
       for (const family of STRUCTURED_LAYOUTS)
         expect(html).toContain(family.label);
+      expect(html).not.toMatch(/Numbered List|Inline Items|value="NUMBERED"/);
       expect(html).not.toMatch(
         /value="(?:text|number)"|value type|>Number<|>Text<|>Matrix<|>Word series<|>Grouped number rows</,
       );
@@ -255,6 +255,9 @@ describe("three layout families with legacy round-trip compatibility", () => {
       .filter((s: any) => readStructuredStimulus(s));
     expect(stimuli).toHaveLength(29);
     for (const stimulus of stimuli) {
+      expect(render(StructuredStimulusRenderer, { stimulus })).not.toContain(
+        'role="alert"',
+      );
       expect(buildStructuredStimulus(structuredDraft(stimulus))).toStrictEqual(
         stimulus,
       );
@@ -312,40 +315,40 @@ describe("actual row/column and ordered-item controls", () => {
       expect(buildStructuredStimulus(actor.value)).toStrictEqual(stimulus);
     },
   );
-  it.each(legacy.slice(2))(
-    "adds/edits/removes inline or numbered items in %j",
-    (stimulus) => {
-      const draft = structuredDraft(stimulus)!;
-      const count = draft.items.length;
-      const actor = editor(draft);
-      actor.click("Add item");
-      expect(actor.value.items).toHaveLength(count + 1);
-      actor.editItem(count, "A new text entry");
-      const saved = buildStructuredStimulus(actor.value);
-      expect("items" in saved && saved.items.at(-1)).toBe("A new text entry");
-      expect(
-        validateExamQuestion(
-          buildQuestionPayload({
-            ...questionDraft(question(stimulus)),
-            structured: actor.value,
-          }),
-        ).structuredStimulus,
-      ).toEqual(saved);
-      actor.removeItem(count);
-      expect(buildStructuredStimulus(actor.value)).toStrictEqual(stimulus);
-    },
-  );
-  it("uses numbered list controls and the existing numbered renderer", () => {
-    const actor = editor(newStructuredLayoutDraft("NUMBERED"));
-    actor.editItem(0, "First premise");
+  it.each(legacy.slice(2))("adds/edits/removes Items in %j", (stimulus) => {
+    const draft = structuredDraft(stimulus)!;
+    const count = draft.items.length;
+    const actor = editor(draft);
     actor.click("Add item");
+    expect(actor.value.items).toHaveLength(count + 1);
+    actor.editItem(count, "A new text entry");
+    const saved = buildStructuredStimulus(actor.value);
+    expect("items" in saved && saved.items.at(-1)).toBe("A new text entry");
+    expect(
+      validateExamQuestion(
+        buildQuestionPayload({
+          ...questionDraft(question(stimulus)),
+          structured: actor.value,
+        }),
+      ).structuredStimulus,
+    ).toEqual(saved);
+    actor.removeItem(count);
+    expect(buildStructuredStimulus(actor.value)).toStrictEqual(stimulus);
+  });
+  it("loads and edits logical premises under Items with plain stacked semantic lines", () => {
+    const actor = editor(structuredDraft(legacy[7][0])!, marks);
+    actor.choose("ITEMS");
+    expect(actor.value.type).toBe("LOGICAL_PREMISES");
+    actor.editItem(0, "First premise");
     actor.editItem(1, "Second premise");
     const html = render(StructuredStimulusRenderer, {
       stimulus: buildStructuredStimulus(actor.value),
+      emphasis: [{ index: 0, spans: [bold] }],
     });
-    expect(html).toContain("list-decimal");
-    expect(html.match(/<li/g)).toHaveLength(2);
-    expect(html).toContain("First premise");
+    expect(html).not.toMatch(/<ol|<ul|<li|list-decimal|list-inside|\d\./);
+    expect(html.match(/<p /g)).toHaveLength(2);
+    expect(html).toContain('<strong class="font-bold">Fir</strong>');
+    expect(html).toContain("st premise");
     expect(html).toContain("Second premise");
   });
   it("bounds rows/columns and items with disabled controls", () => {
@@ -413,7 +416,7 @@ describe("emphasis preservation and bounded validation", () => {
       };
       const draft = questionDraft(original);
       const actor = editor(draft.structured!, draft.structuredStimulusEmphasis);
-      actor.choose("INLINE");
+      actor.choose("ITEMS");
       const payload = buildQuestionSavePayload(
         {
           ...draft,
@@ -449,8 +452,8 @@ describe("emphasis preservation and bounded validation", () => {
     removed.removeItem(0);
     expect(removed.marks).toBeNull();
     const other = editor(structuredDraft(stimulus)!, marks);
-    other.choose("NUMBERED");
-    expect(other.value.type).toBe("LOGICAL_PREMISES");
+    other.choose("GRID");
+    expect(other.value.type).toBe("MATRIX");
     expect(other.marks).toBeNull();
   });
   it.each([
@@ -476,19 +479,19 @@ describe("emphasis preservation and bounded validation", () => {
     ).toThrow("Rows must have the same number of cells.");
     expect(() =>
       buildStructuredStimulus({
-        ...newStructuredLayoutDraft("INLINE"),
+        ...newStructuredLayoutDraft("ITEMS"),
         items: [],
       }),
     ).toThrow("Enter at least one item.");
     expect(() =>
       buildStructuredStimulus({
-        ...newStructuredLayoutDraft("NUMBERED"),
+        ...structuredDraft(legacy[7][0])!,
         items: [],
       }),
-    ).toThrow("Enter at least one list item.");
+    ).toThrow("Enter at least one item.");
     expect(() =>
       buildStructuredStimulus({
-        ...newStructuredLayoutDraft("INLINE"),
+        ...newStructuredLayoutDraft("ITEMS"),
         items: Array(101).fill({ value: "x" }),
       }),
     ).toThrow("100");

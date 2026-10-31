@@ -24,12 +24,12 @@ describe("read-only committed verified source package", () => {
     }
     const before = await snapshot();
     const validated = await preflightExamPackage(root);
-    // Corrected canonical identity survives removal of the superseded reconciler/helper.
+    // Canonical Q24/Q40 corrections are bound by exact manifest/package bytes.
     expect(
       calculateSha256(await readFile(path.join(root, "manifest.json"))),
-    ).toBe("6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6");
+    ).toBe("2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95");
     expect(validated.fingerprint).toBe(
-      "8fa052874c6276e8fefca396d3e9387febf90978cabc8fc43bcb627186af5738",
+      "01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343",
     );
     const q24 = validated.questions.find((q) => q.sourceQuestionNumber === 24)!;
     expect(q24.input.options.map((option) => option.label)).toEqual([
@@ -48,6 +48,26 @@ describe("read-only committed verified source package", () => {
     expect(q24.input.options.find((option) => option.isCorrect)?.label).toBe(
       "F",
     );
+    const q40 = validated.questions.find((q) => q.sourceQuestionNumber === 40)!;
+    expect(q40.input.questionText).toBe("Assume that —");
+    expect(q40.input.structuredStimulus).toEqual({
+      type: "LOGICAL_PREMISES",
+      items: [
+        "All As are Cs.",
+        "Some Ds are Cs.",
+        "No Bs are Cs.",
+        "We know that —",
+      ],
+    });
+    expect(
+      q40.input.options.map((o) => [o.label, o.order, o.isCorrect]),
+    ).toEqual([
+      ["F", 0, false],
+      ["G", 1, true],
+      ["H", 2, false],
+      ["J", 3, false],
+      ["K", 4, false],
+    ]);
     expect(validated.counts).toEqual({
       questionsValidated: 72,
       textOnlyQuestions: 25,

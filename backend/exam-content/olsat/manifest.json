@@ -2067,13 +2067,14 @@
       "sourcePage": "page-007",
       "sourceFile": "page-007.jpg",
       "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
-      "questionText": "Assume that the following statements are true. We know that —",
+      "questionText": "Assume that —",
       "stimulus": {
         "type": "LOGICAL_PREMISES",
         "items": [
           "All As are Cs.",
           "Some Ds are Cs.",
-          "No Bs are Cs."
+          "No Bs are Cs.",
+          "We know that —"
         ]
       },
       "options": [

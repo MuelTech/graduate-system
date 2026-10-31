@@ -35,24 +35,22 @@ export const STRUCTURED_LABELS: Record<StructuredType, string> = {
 };
 export const STRUCTURED_LAYOUTS = [
   { value: "GRID", label: "Grid / Table" },
-  { value: "INLINE", label: "Inline Items" },
-  { value: "NUMBERED", label: "Numbered List" },
+  { value: "ITEMS", label: "Items" },
 ] as const;
 export type StructuredLayout = (typeof STRUCTURED_LAYOUTS)[number]["value"];
 const STRUCTURED_LAYOUT_BY_TYPE: Record<StructuredType, StructuredLayout> = {
   MATRIX: "GRID",
   GROUPED_NUMBER_ROWS: "GRID",
-  WORD_BANK: "INLINE",
-  NUMBER_SEQUENCE: "INLINE",
-  ALPHANUMERIC_SEQUENCE: "INLINE",
-  WORD_SERIES: "INLINE",
-  LETTER_SEQUENCE: "INLINE",
-  LOGICAL_PREMISES: "NUMBERED",
+  WORD_BANK: "ITEMS",
+  NUMBER_SEQUENCE: "ITEMS",
+  ALPHANUMERIC_SEQUENCE: "ITEMS",
+  WORD_SERIES: "ITEMS",
+  LETTER_SEQUENCE: "ITEMS",
+  LOGICAL_PREMISES: "ITEMS",
 };
 const LAYOUT_DEFAULT_TYPE: Record<StructuredLayout, StructuredType> = {
   GRID: "MATRIX",
-  INLINE: "WORD_SERIES",
-  NUMBERED: "LOGICAL_PREMISES",
+  ITEMS: "WORD_SERIES",
 };
 export const structuredLayout = (type: StructuredType): StructuredLayout =>
   STRUCTURED_LAYOUT_BY_TYPE[type];
@@ -218,8 +216,7 @@ export function buildStructuredStimulus(
   if (!draft || !STRUCTURED_TYPES.includes(draft.type))
     return fail("Choose a supported structured layout.");
   const layout = structuredLayout(draft.type);
-  const itemName =
-    layout === "NUMBERED" ? "list item" : layout === "GRID" ? "cell" : "item";
+  const itemName = layout === "GRID" ? "cell" : "item";
   const parse = (cell: CellDraft): ExamCell => {
     if (!cell || typeof cell.value !== "string" || !cell.value.trim())
       return fail(`Enter a value for each ${itemName}.`);
@@ -252,11 +249,7 @@ export function buildStructuredStimulus(
       return fail("Rows must have the same number of cells.");
   } else {
     if (!Array.isArray(draft.items) || !draft.items.length)
-      return fail(
-        layout === "NUMBERED"
-          ? "Enter at least one list item."
-          : "Enter at least one item.",
-      );
+      return fail("Enter at least one item.");
     if (draft.items.length > 100) return fail("Use at most 100 items.");
   }
   const field =

@@ -84,10 +84,10 @@ describe("read-only real owner-verified OLSAT typography map", () => {
       await readFile(path.join(root, "manifest.json")),
     );
     expect(manifestSha).toBe(
-      "6fd4a1e7a0e9efe1d68b25d93198168f363a02f71c67ba7e1bc271ae4ffb1ed6",
+      "2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95",
     );
     expect(source.fingerprint).toBe(
-      "8fa052874c6276e8fefca396d3e9387febf90978cabc8fc43bcb627186af5738",
+      "01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343",
     );
     const raw = JSON.parse(
       new TextDecoder("utf-8", { fatal: true }).decode(

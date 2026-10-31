@@ -11,6 +11,7 @@ import {
   StimulusRenderer,
 } from "../../../../frontend/src/components/exam-content/stimulus-renderer";
 import { SemanticText } from "../../../../frontend/src/components/exam-content/semantic-text";
+import { OptionContentRenderer } from "../../../../frontend/src/components/exam-content/option-content-renderer";
 const frontendRequire = createRequire(path.resolve("../frontend/package.json"));
 const { createElement } = frontendRequire("react");
 const { renderToStaticMarkup } = frontendRequire("react-dom/server");
@@ -21,6 +22,81 @@ const read = (file: string) =>
   fs.readFileSync(path.resolve("../frontend/src", file), "utf8");
 
 describe("controlled italic and structured item React rendering", () => {
+  it("renders canonical Q40 in source order with unnumbered premises before unchanged choices", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync("exam-content/olsat/manifest.json", "utf8"),
+    );
+    const q40 = manifest.questions.find((q: any) => q.questionNumber === 40);
+    expect(q40.questionText).toBe("Assume that —");
+    expect(q40.stimulus).toEqual({
+      type: "LOGICAL_PREMISES",
+      items: [
+        "All As are Cs.",
+        "Some Ds are Cs.",
+        "No Bs are Cs.",
+        "We know that —",
+      ],
+    });
+    expect(q40.options.map((o: any) => [o.label, o.text])).toEqual([
+      ["F", "no As are Ds"],
+      ["G", "no As are Bs"],
+      ["H", "some Bs are Ds"],
+      ["J", "no As are both Cs and Ds"],
+      ["K", "no Ds are Bs"],
+    ]);
+    expect(q40.correctAnswer).toBe("G");
+    // Both consumers compose these shared components in text → stimulus → choices order.
+    const html = renderToStaticMarkup(
+      createElement(
+        "div",
+        null,
+        createElement(SemanticText, { text: q40.questionText }),
+        createElement(StimulusRenderer, {
+          stimulusType: "STRUCTURED",
+          structuredStimulus: q40.stimulus,
+          stimulusMediaId: null,
+        }),
+        ...q40.options.map((o: any) =>
+          createElement(
+            "div",
+            { key: o.label },
+            o.label,
+            createElement(OptionContentRenderer, {
+              optionText: o.text,
+              mediaId: null,
+              alt: o.label,
+            }),
+          ),
+        ),
+      ),
+    );
+    const expected = [
+      q40.questionText,
+      ...q40.stimulus.items,
+      ...q40.options.map((o: any) => o.text),
+    ];
+    const positions = expected.map((text: string) => html.indexOf(text));
+    expect(
+      positions.every(
+        (p: number, i: number) => p >= 0 && (i === 0 || p > positions[i - 1]),
+      ),
+    ).toBe(true);
+    expect(html).not.toMatch(/<ol|<ul|<li|list-decimal|list-inside|\d\./);
+    expect(html.match(/<p /g)).toHaveLength(4);
+    for (const file of [
+      "components/exam-content/applicant-question-renderer.tsx",
+      "app/(portal)/admin/exam/questions/page.tsx",
+    ]) {
+      const code = read(file);
+      const textAt = code.indexOf("<SemanticText");
+      const stimulusAt = code.indexOf("<StimulusRenderer", textAt);
+      expect(textAt).toBeGreaterThanOrEqual(0);
+      expect(stimulusAt).toBeGreaterThan(textAt);
+      expect(
+        code.indexOf("<OptionContentRenderer", stimulusAt),
+      ).toBeGreaterThan(stimulusAt);
+    }
+  });
   it.each([
     [["ITALIC"], "<em>abc</em>"],
     [["BOLD", "ITALIC"], '<strong class="font-bold"><em>abc</em></strong>'],
