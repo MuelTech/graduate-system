@@ -237,3 +237,26 @@ Confirmed:
 **EC7D independent review: PASS.**
 
 Next: resume owner Admin/Applicant manual/browser QA. Formal EC7 and Phase A acceptance remain pending that final owner QA.
+
+
+## Post-review owner QA addendum — EC7E required
+
+After EC7D passed independent review, owner browser QA compared the simplified
+editor against the physical Q40 source and found a separate source-fidelity issue.
+
+EC7D's compatibility and simplification work remains valid, but its three-family
+Admin model is not the final accepted Phase A contract.
+
+New verified facts:
+
+- the OLSAT source does not show a numbered logical-premise list for Q40;
+- Q40's statements are plain vertically stacked lines;
+- physical order is `Assume that -` → premises → `We know that -` → choices;
+- the current manifest places the trailing prompt before the structured stimulus.
+
+Therefore a follow-up EC7E package must reduce the Admin model to **Grid / Table**
+and **Items**, keep legacy internal types for compatibility, remove automatic
+numbering from LOGICAL_PREMISES rendering, and correct canonical Q40 ordering.
+
+Formal EC7/Phase A acceptance remains blocked until EC7E passes independent review
+and owner QA resumes/passes.
