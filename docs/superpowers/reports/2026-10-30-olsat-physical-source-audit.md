@@ -227,35 +227,40 @@ Reviewed evidence:
 - focused EC7C verification: 3 files / 53 tests PASS;
 - no migration/reset/re-import/frontend/runtime/Phase-B change occurred.
 
-### Step 5 — source QA and acceptance — RESUMED / OWNER MANUAL QA
+### Step 5 — source QA and acceptance — PAUSED FOR EC7E
 
-EC7D structured-stimulus Admin authoring simplification has passed independent
-review.
+Owner QA after EC7D confirmed the simplified editor is visible, but the physical
+Q40 source exposed a remaining fidelity issue.
 
-The Admin authoring surface now exposes only:
+Verified source facts for Q40:
 
-- Grid / Table;
-- Inline Items;
-- Numbered List.
+- no numeric list markers are printed beside the premise lines;
+- the premises are plain vertically stacked lines;
+- the source order is:
+  - `Assume that -`
+  - `All As are Cs.`
+  - `Some Ds are Cs.`
+  - `No Bs are Cs.`
+  - `We know that -`
+  - answer choices.
 
-The visible per-cell Text/Number selector is removed. All eight existing internal
-structured subtypes remain compatible, and focused evidence proves exact unchanged
-round-trip of all 29 real structured source payloads. Q25/Q45 structured emphasis
-also survives unchanged save paths.
+The current `Numbered List` Admin concept is therefore not source-demonstrated
+for this bank. The current canonical Q40 manifest also places `We know that —`
+inside question text before the structured stimulus, so a renderer-only removal
+of numbering would be incomplete.
 
-No schema/migration, backend runtime, renderer, source package, sidecar, database
-reset/re-import, or Phase B change occurred.
+EC7E must:
 
-Owner QA may now resume. Verify the simplified Admin configuration UI and compare
-the actual populated Admin/Applicant question presentation against the physical
-source.
+- expose only Grid / Table and Items to Admin;
+- map legacy LOGICAL_PREMISES to Items;
+- render legacy logical-premise items vertically without numbering;
+- correct canonical Q40 ordering from the verified source;
+- avoid a Q40-specific renderer hack or one-off database reconciler;
+- reconcile package/source identity and the emphasis sidecar binding if the
+  manifest changes;
+- preserve all unrelated bank content and reviewed emphasis.
 
-Only after owner QA passes may:
-
-- EXAM-CONTENT-7 be formally accepted;
-- Phase A be formally accepted.
-
-Phase B must not begin before Phase A acceptance.
+Owner browser/source QA resumes only after EC7E independent review passes.
 
 ## Codex handoff rule
 
