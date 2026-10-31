@@ -209,19 +209,27 @@ Accepted EC7B map evidence:
 
 No real emphasis metadata has been applied yet.
 
-### Step 4 — controlled application — NEXT (EC7C)
+### Step 4 — controlled application — COMPLETE / REVIEW PASS
 
-Run the already-reviewed map through the controlled preflight/application sequence and verify:
+EC7C applied the unchanged reviewed sidecar through the existing transactional
+operator path.
 
-- full fail-closed preflight;
-- expected target/span counts;
-- first apply succeeds;
-- identical second apply is idempotent / `ALREADY_APPLIED`;
-- no unrelated bank content changes.
+Reviewed evidence:
 
-### Step 5 — source QA and acceptance
+- immediate preflight: `PREFLIGHT_OK`, 38 annotations, 34 fields planned;
+- first apply: `APPLIED`, exactly 34 persisted fields changed;
+- normalized readback matched the reviewed sidecar;
+- canonical question/option/structured content, identities, correctness, media,
+  import marker and selected 108 managed-media metadata remained unchanged;
+- identical second apply: `ALREADY_APPLIED`, zero fields changed / zero fields
+  would change;
+- second-run before/after snapshots matched exactly;
+- focused EC7C verification: 3 files / 53 tests PASS;
+- no migration/reset/re-import/frontend/runtime/Phase-B change occurred.
 
-Compare the physical source against Admin and Applicant presentation.
+### Step 5 — source QA and acceptance — NEXT / OWNER MANUAL QA
+
+Compare the physical source against the now-populated Admin and Applicant presentation.
 
 The corrected-bank EC6 post-acceptance checkpoint is already closed. Only after
 the remaining EC7 source-typography work and source QA may:
