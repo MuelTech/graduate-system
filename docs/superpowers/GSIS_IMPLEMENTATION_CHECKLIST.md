@@ -341,35 +341,204 @@ This is the immediate Applicant Examination implementation workstream.
 
 **Working branch:** `feat/exam-content-integration`
 
-Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-6. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
+Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package still has a strict stop/review/owner-authorization boundary before the next package begins. Phase B — Exam Engine / Scheduling Audit will use a separate workstream/branch and is not part of this Phase A branch.
 
 | Status | Package / Item | Current / target state |
 | --- | --- | --- |
 | ✅ | Extraction pipeline / verified input package | Source-image extraction and exact visual cropping were validated; project-owner review confirmed the output. Treat the package as integration input, not runtime integration proof. |
 | 🟡 | Existing exam question data model | Text question/option/correct-answer structures exist, but mixed-content stimulus/media support is incomplete. |
-| ⏳ | EXAM-CONTENT-1 — Mixed-content question architecture | Add the minimum authoritative representation for canonical text plus `NONE` / `IMAGE` / `STRUCTURED` stimulus semantics, bounded validated structured subtypes demonstrated by the verified manifest, preserved option labels/order, and text/image options. |
-| ⏳ | EXAM-CONTENT-2 — Private exam media | Import/store/retrieve assessment images through authorized private storage; no unrestricted public static exam assets. |
-| ⏳ | EXAM-CONTENT-3 — Verified manifest importer | Consume the controlled `manifest.json + assets/` package, import only verified items, move validated media into private managed storage, and reject missing answers/assets, invalid option mappings, duplicates, and unsupported content. |
-| ⏳ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | Faithful Admin preview/editing for supported structured/visual content. |
-| ⏳ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | Render the same authoritative semantics responsively for Applicants; preserve unrelated timer/scheduling behavior until Phase B. |
-| ⏳ | EXAM-CONTENT-6 — Verified bank import + content QA | Verify numbering, options, structured stimuli, exact visual crops, answer mapping, and Admin/Applicant rendering consistency. |
-| ⏳ | Rich-text emphasis / bold formatting | Deferred presentation enhancement unless a specific item's meaning depends on formatting. |
+| ✅ | EXAM-CONTENT-1 — Mixed-content question architecture | **ACCEPTED 2026-10-29.** Implemented at `3506707552e66c03d8e59bb9afdf394077995b9f`; independent source/manifest/migration review PASS; development DB migration `20261029000000_exam_mixed_content` applied successfully; all 7 legacy questions defaulted to `NONE`; selected-option referential check found 0 broken references. |
+| ✅ | EXAM-CONTENT-2 — Private exam media | **ACCEPTED 2026-10-29.** Implemented at `c080222877380b2124c40ef49e6fbf04aa0fe2c9`; independent storage/authorization/retrieval/migration review PASS; development DB migration `20261029010000_exam_private_media` applied successfully; project-owner XAMPP post-migration integrity checks passed with no broken media references reported. |
+| ✅ | EXAM-CONTENT-3 — Verified manifest importer | **ACCEPTED 2026-10-29.** Implemented at `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`; independent importer/package/media/idempotency/migration review PASS; real package reconciled at 72 VERIFIED questions and 108 image assets; development DB migration `20261029020000_exam_import_identity` applied successfully; post-migration pre-import checks remained at the expected zero state. |
+| ✅ | EXAM-CONTENT-4 — Admin Question Bank mixed-content support | **ACCEPTED 2026-10-29.** Implemented at `23180a40b3b236fe66432bd33fea9ab14fecb1b9`; independent Admin renderer/editor/private-media review PASS; focused 184-test evidence and backend/frontend builds PASS; project-owner browser/visual QA approved the rendered Admin Question Bank. |
+| ✅ | EXAM-CONTENT-5 — Applicant Exam mixed-content renderer/UI | **ACCEPTED 2026-10-29.** Implementation `ae54992cb87acad6e420c8788f14910c1035adf9`; independent review PASS; owner browser QA PASS for legacy text, structured MATRIX, image stimulus, image options, persisted `F/G/H/J/K` labels, and away/back selection retention. Full-browser reload persistence remains a documented Phase B issue. |
+| ✅ | EXAM-CONTENT-6 — Verified bank import + content QA | **ACCEPTED, including corrected-bank closure 2026-10-31.** Original EC6 acceptance remains historically valid; the later Q24 physical-source truncation was corrected through the accepted replacement path: one-off reconciler removed, development OLSAT bank safely reset after dependency checks, corrected canonical package clean-imported through the normal importer, 72 questions / 360 options / 108 media verified, 72/72 answer mappings matched, zero broken refs, and repeat import returned `ALREADY_IMPORTED`. Pagination/color acceptance remained closed throughout. |
+| ✅ | EXAM-CONTENT-7 — Semantic source-typography fidelity | **ACCEPTED 2026-10-31.** EC7A–D remain independently reviewed PASS. EC7E at `052ddcf1ce96c625da8a2618f131c98c017d1051` plus evidence delivery `f8b0ffa7618249763bf41ca4f43041c77310307f` completed Items consolidation, generic unnumbered LOGICAL_PREMISES rendering, canonical Q40 source order, corrected manifest/package/emphasis binding, clean development-bank replacement, and idempotency verification. Independent remote review PASS; project owner reviewed the resulting output, confirmed the correction, and authorized Phase A closure. |
 
-**Phase A acceptance boundary:** content representation/import/rendering may be accepted independently, but this must **not** be described as full Applicant Examination production readiness.
+### EXAM-CONTENT-1 review checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed commit: `3506707552e66c03d8e59bb9afdf394077995b9f`
+- Independent implementation/source review: **PASS**
+- Verified-manifest structured subtypes represented/validated: `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, `LOGICAL_PREMISES`
+- Development DB migration rehearsal: **PASS**
+  - `npx prisma migrate deploy` applied `20261029000000_exam_mixed_content` successfully.
+  - `npx prisma migrate status` reported: database schema is up to date.
+- Post-migration integrity verification: **PASS**
+  - legacy question stimulus state: `NONE = 7`;
+  - broken `selected_option_id` references: `0`.
+- Formal EXAM-CONTENT-1 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-2 authorization: **COMPLETED / ACCEPTED**
+
+### EXAM-CONTENT-2 acceptance checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `c080222877380b2124c40ef49e6fbf04aa0fe2c9`
+- Independent implementation/source review: **PASS**
+- Managed private-storage and image-policy review: **PASS**
+- Admin/Applicant authorization review: **PASS**
+- Retrieval-integrity/non-leakage review: **PASS**
+- Development DB migration rehearsal: **PASS**
+  - `npx prisma migrate deploy` applied `20261029010000_exam_private_media` successfully.
+  - `npx prisma migrate status` reported: database schema is up to date.
+- Project-owner XAMPP post-migration integrity checks: **PASS**
+  - no imported exam media was expected yet;
+  - no broken question/option media references were reported.
+- Formal EXAM-CONTENT-2 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-3 authorization: **COMPLETED / ACCEPTED**
+
+### EXAM-CONTENT-3 acceptance checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `80816ad130dfdfa61fadb7e97fc4aa5d309d51f3`
+- Independent implementation/source review: **PASS**
+- Real committed package verification: **PASS**
+  - 72 questions, all `VERIFIED`;
+  - 108 referenced/committed image assets;
+  - no missing or extra committed assets.
+- Structured-content and answer-label mapping review: **PASS**
+- Path-containment/source-integrity review: **PASS**
+- Private-media/idempotency/transaction-compensation review: **PASS**
+- Focused automated verification and read-only real-package preflight: **PASS**
+- Development DB migration rehearsal: **PASS**
+  - `npx prisma migrate deploy` applied `20261029020000_exam_import_identity` successfully.
+  - `npx prisma migrate status` reported: database schema is up to date.
+- Project-owner XAMPP post-migration pre-import checks: **PASS**
+  - import marker count remained `0`;
+  - sourced-question count remained `0`;
+  - sourced-question-number count remained `0`;
+  - broken import references remained `0`.
+- Full 72-question development DB import: **NOT RUN / deferred to EXAM-CONTENT-6**
+- Formal EXAM-CONTENT-3 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-4 authorization: **COMPLETED / ACCEPTED**
+
+### EXAM-CONTENT-4 acceptance checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `23180a40b3b236fe66432bd33fea9ab14fecb1b9`
+- Independent implementation/source review: **PASS**
+- Admin mixed-content DTO/type alignment: **PASS**
+- Option identity/label/order/media preservation review: **PASS**
+- Eight structured-stimulus preview/editor paths: **PASS**
+- Authenticated private-image preview and object-URL lifecycle: **PASS**
+- Admin-only secure image-upload integration: **PASS**
+- Focused automated verification: **PASS** — 8 files / 184 tests.
+- Backend/frontend compile/build/lint verification: **PASS**
+- Project-owner browser/visual QA: **PASS**
+  - updated Admin Question Bank rendered the seven existing development/demo questions;
+  - owner approved the visible Admin Question Bank result.
+- Full 72-question development DB import: **NOT RUN / deferred to EXAM-CONTENT-6**
+- Development/demo bank cleanup boundary:
+  - keep the seven existing development/demo DB questions through EXAM-CONTENT-5 for Applicant baseline/regression QA;
+  - after EXAM-CONTENT-5 acceptance, remove/clean those demo questions;
+  - verify demo-question count = `0` before EXAM-CONTENT-6 controlled import;
+  - do not delete code-level automated-test fixtures under `backend/tests/fixtures/`.
+- Formal EXAM-CONTENT-4 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-5 authorization: **COMPLETED / ACCEPTED**
+
+### EXAM-CONTENT-5 acceptance checkpoint
+
+- Branch: `feat/exam-content-integration`
+- Reviewed implementation commit: `ae54992cb87acad6e420c8788f14910c1035adf9`
+- Independent implementation/source review: **PASS**
+- Applicant mixed-content renderer integration: **PASS**
+- Persisted source-label/order and option-ID selection authority: **PASS**
+- Shared structured/image renderer reuse and correctness non-exposure: **PASS**
+- Focused automated verification: **PASS** — 7 files / 92 tests.
+- Frontend TypeScript/build/targeted lint verification: **PASS**
+- Project-owner Applicant browser QA: **PASS**
+  - existing development/demo text questions rendered successfully;
+  - temporary structured `MATRIX` stimulus rendered successfully;
+  - persisted `F / G / H / J / K` labels rendered correctly;
+  - temporary image stimulus rendered successfully;
+  - image answer options rendered successfully;
+  - selected answers remained selected after navigating away and back within the active page session.
+- Known Phase B gaps remain explicitly deferred:
+  - MCQ answers are lost after a full browser reload because selections are not yet persisted/recovered;
+  - complete MCQ autosave/recovery and refresh/reconnect restoration are not yet implemented;
+  - the current three-hour timer remains hard-coded/duplicated rather than driven by accepted Admin configuration;
+  - authoritative Admin exam-duration configuration and server-authoritative attempt/timer lifecycle remain Phase B work.
+- Formal EXAM-CONTENT-5 acceptance: **ACCEPTED — 2026-10-29**
+- EXAM-CONTENT-6 authorization: **AUTHORIZED NEXT**
+
+### EXAM-CONTENT-6 owner-QA checkpoint
+
+- Verified import/evidence commit: `5313c5934b3f3f6a2f98a316246810b284ab0e05`
+- Controlled development-bank import/reconciliation: **PASS**
+  - 72 authoritative OLSAT questions;
+  - source identities 1–72 with no duplicates/nulls;
+  - 108 imported-bank media references;
+  - 72/72 verified correct-answer mappings;
+  - all eight structured subtypes reconciled;
+  - identical second import returned `ALREADY_IMPORTED`;
+  - authoritative manifest/assets remained unchanged.
+- Project-owner real-bank browser/content QA: **PARTIAL PASS WITH FOLLOW-UP FINDINGS**
+  - real imported questions are visible in the Admin Question Bank;
+  - `72 questions · Page 1 of 9` is correct;
+  - Previous/Next functionality exists, but controls are only at the bottom after eight long cards and are not discoverable enough;
+  - Admin and Applicant question/instruction body text currently use EARIST primary red; normal assessment text should use a neutral readable body color;
+  - physical-source comparison confirmed semantically meaningful bold/underline in question/instruction text;
+  - physical-source comparison also confirmed meaningful bold in some textual answer choices;
+  - current plain-text representation does not preserve those emphasis semantics.
+- Bounded EXAM-CONTENT-6 UI follow-up:
+  - implementation commit: `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`;
+  - top and bottom pagination controls share the existing page state and preserve `PAGE_SIZE = 8`;
+  - Admin, Applicant MCQ, and Applicant essay question/instruction text now use neutral body text;
+  - EC7 `SemanticText` wiring remains intact;
+  - independent actual-source review: **PASS**;
+  - project-owner visual/browser review: **PASS / satisfied with output**;
+  - no backend/schema/migration/import/media/API/Phase-B changes.
+- Formal EXAM-CONTENT-6 acceptance history: **ACCEPTED — 2026-10-30 on then-known evidence**
+- Post-acceptance physical-source correction: **CLOSED / ACCEPTED — 2026-10-31**
+  - physical source authority: `Paul is younger than Dick and John`;
+  - Q24-specific reconciliation implementation `9430c833f11c46b3de43a2eb0e9b8e6486b55233`: remains **SUPERSEDED / NOT ACCEPTED as retained architecture**;
+  - replacement CORR2 path: **PASS** — one-off machinery removed, dependency gate passed, development OLSAT bank reset, normal clean import completed;
+  - final verified state: 72 questions / 360 options / 108 media, 72/72 correct-answer mappings, zero broken refs, Q24 corrected, repeat import `ALREADY_IMPORTED`;
+  - accepted pagination/color work remains closed.
+- EXAM-CONTENT-7 implementation/review checkpoint:
+  - original BOLD/UNDERLINE implementation: **PASS**;
+  - EC7A ITALIC + structured textual-stimulus support: **INDEPENDENT REVIEW PASS**;
+  - 12-page physical-source audit: **DONE**;
+  - EC7B real owner-verified map creation + source binding + read-only preflight: **INDEPENDENT REVIEW PASS**;
+  - EC7C real DB application/idempotency: **INDEPENDENT REVIEW PASS**;
+  - EC7D structured-stimulus Admin authoring simplification: **INDEPENDENT REVIEW PASS**;
+  - post-EC7D owner finding correctly identified Numbered List as not source-demonstrated and Q40 source order as non-faithful;
+  - EC7E Items Consolidation + Q40 Source Fidelity implementation: **COMPLETE** at `052ddcf1ce96c625da8a2618f131c98c017d1051`;
+  - EC7E evidence delivery: `f8b0ffa7618249763bf41ca4f43041c77310307f`;
+  - EC7E Admin-visible layouts: **Grid / Table, Items**;
+  - all eight legacy internal structured subtypes remain compatible: **PASS**;
+  - `LOGICAL_PREMISES` renders as plain stacked lines without automatic numbering: **PASS**;
+  - canonical Q40 order: `Assume that —` → three premises → `We know that —` → unchanged choices: **PASS**;
+  - other 28 structured source payloads exact unchanged round-trip/renderability: **PASS**;
+  - Q25/Q45 reviewed structured emphasis preserved: **PASS**;
+  - corrected manifest/package/emphasis source binding: **PASS**;
+  - clean development replacement restored 72 questions / 360 options / 108 bank media and 72/72 answer mappings with zero broken bank references: **PASS**;
+  - repeated import: **ALREADY_IMPORTED**;
+  - repeated emphasis apply: **ALREADY_APPLIED**, zero changes;
+  - EC7E focused verification: **14 files / 280 tests PASS**; backend build, frontend TypeScript, scoped ESLint and formatting checks PASS;
+  - independent remote source review: **PASS — no blocking issue**;
+  - project owner reviewed the resulting EC7E output, confirmed it was correct, and authorized Phase A documentation closure;
+  - formal EC7 acceptance: **ACCEPTED — 2026-10-31**.
+- Phase A final acceptance: **ACCEPTED — 2026-10-31**
+- Next workstream: **Phase B — Exam Engine / Scheduling Audit**. Phase B implementation has not started as part of this closure update.
+
+**Phase A acceptance boundary:** content representation/import/rendering may be accepted package-by-package, but Phase A must not claim full source fidelity until canonical text matches the owner-reviewed physical assessment and all required source typography demonstrated by that assessment (BOLD, UNDERLINE, ITALIC, including supported structured textual stimuli) is preserved. This still must **not** be described as full Applicant Examination production readiness; Phase B remains required.
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**This begins immediately after Phase A is accepted.**
+**Phase A is accepted as of 2026-10-31. Phase B is the next workstream; implementation has not started in this documentation-closure update.**
 
 | Status | Item | Audit target |
 | --- | --- | --- |
-| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics and scheduled-start vs exam-start behavior. |
+| 🔍 | Admin exam-duration configuration | Add an authoritative Admin-managed duration/configuration source instead of relying on duplicated hard-coded three-hour assumptions. |
+| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics, configured duration, remaining-time restoration, and scheduled-start vs actual-attempt behavior. |
 | 🔍 | Timeout behavior | Verify auto-submit, lock, server enforcement, and user-facing expiry behavior. |
-| 🔍 | Autosave + recovery | Verify persisted answer recovery after refresh/reconnect and failure handling. |
-| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, and score configuration. |
-| 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, and final state. |
+| 🔍 | MCQ autosave + recovery | Persist MCQ selections and restore answers/answered navigator state after refresh/reconnect; current frontend-only selections are lost on reload. |
+| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, recovery, and score configuration. |
+| 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, final state, and post-submit locking. |
 | 🔍 | Exam scheduling | Audit slot creation, capacity, eligibility, booking/assignment, transitions, edit/cancel/reschedule behavior, and edge cases. |
 | 🔍 | Question activation / selection | Verify active-question selection/ordering and prevent unintended question exposure. |
+| 🔍 | Scoring / answer integrity | Verify selected-option ownership, duplicate/incomplete answers, scoring denominator, and authoritative attempt state. |
 | 🔍 | Automated regression coverage | Expand exam-engine/service/API/frontend coverage for accepted lifecycle and failure cases. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 

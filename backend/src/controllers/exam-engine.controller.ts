@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
 import prisma from "../config/database";
+import { AppError } from "../utils/AppError";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -12,20 +13,7 @@ export class ExamEngineController {
 
     // Helper to get applicationId from userId
     private async getAppId(userId: string) {
-        const student = await prisma.student.findUnique({
-            where: { userId }
-        });
-
-        if (!student) throw new Error("Student profile not found.");
-
-        const app = await prisma.entranceExamApplication.findFirst({
-            where: { studentId: student.id },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        if (!app) throw new Error("Exam application not found.");
-
-        return app.id;
+        return this.service.getApplicationIdForUser(userId);
     }
 
     getQuestionsForApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -79,8 +67,8 @@ export class ExamEngineController {
             const question = await this.service.createQuestion(req.body);
 
             res.status(201).json(question);
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not create question." });
         }
     }
 
@@ -89,8 +77,8 @@ export class ExamEngineController {
             const question = await this.service.updateQuestion(req.params.id as string, req.body);
 
             res.status(200).json(question);
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not update question." });
         }
     }
 

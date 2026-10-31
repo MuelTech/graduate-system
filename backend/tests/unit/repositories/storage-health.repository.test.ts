@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  examMedia: { count: vi.fn(), findMany: vi.fn() },
   corUpload: {
     count: vi.fn(),
     findMany: vi.fn(),
@@ -50,6 +51,7 @@ describe("StorageHealthRepository", () => {
   it("counts managed vs legacy COR and ThesisDocument references", async () => {
     prismaMock.corUpload.count.mockResolvedValue(3);
     prismaMock.thesisDocument.count.mockResolvedValue(4);
+    prismaMock.examMedia.count.mockResolvedValue(2);
 
     const counts = await repo.getReferenceCounts();
 
@@ -68,6 +70,7 @@ describe("StorageHealthRepository", () => {
     expect(counts).toEqual({
       managedCorUploads: 3,
       managedThesisDocuments: 4,
+      managedExamMedia: 2,
       legacyCorUploads: 3,
       legacyThesisDocuments: 4,
     });
@@ -90,6 +93,15 @@ describe("StorageHealthRepository", () => {
     });
     expect(args.select).not.toHaveProperty("filePath");
     expectNoMutations();
+  });
+
+  it("includes exam media in read-only integrity diagnostics", async () => {
+    prismaMock.examMedia.findMany.mockResolvedValue([]);
+    await repo.listManagedExamMedia();
+    expect(prismaMock.examMedia.findMany).toHaveBeenCalledWith({ select: {
+      id: true, storageKey: true, storageProvider: true, sizeBytes: true,
+      checksum: true, checksumAlgorithm: true,
+    } });
   });
 
   it("lists managed ThesisDocument rows with doc type + stage context", async () => {

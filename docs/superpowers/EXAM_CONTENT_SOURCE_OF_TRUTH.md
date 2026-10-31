@@ -86,13 +86,17 @@ First-phase persistence/API semantics should distinguish the broad stimulus cate
 - `IMAGE`
 - `STRUCTURED`
 
-For `STRUCTURED`, preserve a bounded discriminator + payload validated against forms demonstrated by the verified manifest. Current package examples include `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, and `GROUPED_NUMBER_ROWS`. The validator should fail closed on unknown/invalid structured subtypes rather than silently flattening them.
+For `STRUCTURED`, preserve a bounded discriminator + payload validated against forms demonstrated by the verified manifest. The verified package currently demonstrates eight structured subtypes: `MATRIX`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `GROUPED_NUMBER_ROWS`, `LETTER_SEQUENCE`, and `LOGICAL_PREMISES`. The validator should fail closed on unknown/invalid structured subtypes rather than silently flattening them.
 
-Do not encode every structured subtype as a permanent top-level Prisma enum merely because it appears in one assessment package. Do not flatten meaningful matrices, word banks, sequences, or grouped rows into ordinary prose.
+Do not encode every structured subtype as a permanent top-level Prisma enum merely because it appears in one assessment package. Do not flatten meaningful matrices, word banks, sequences, grouped rows, letter sequences, or logical-premise sets into ordinary prose.
 
 Answer options must support text-only and image-only forms. The architecture should not permanently block a later text+image option, but first implementation scope should remain bounded to forms demonstrated by the verified package.
 
-Plain question text remains canonical searchable/accessibility/fallback content. Rich-text emphasis such as bold may be added later through Admin editing and is not a first-import blocker unless the formatting changes an item's meaning.
+Plain text remains the canonical searchable/accessibility/fallback content, but semantic emphasis must be preserved when the physical assessment uses formatting to carry meaning.
+
+Project-owner comparison of the real imported bank against the physical assessment after EXAM-CONTENT-6 confirmed that the source uses **bold** and **underline** inside question/instruction text, and that some answer-option text also contains meaningful bold emphasis. This is no longer optional presentation polish: when emphasis identifies terms such as a negation, exception, target word, or otherwise changes interpretation, losing it is a content-fidelity defect.
+
+The follow-up implementation must remain bounded rather than introducing arbitrary HTML. Preserve at least semantic `BOLD` and `UNDERLINE` spans for both question text and textual answer options, retain plain text as the fallback/searchable value, and render the same emphasis in Admin preview/editing and Applicant presentation.
 
 ## 6. Visual-asset integrity
 
@@ -172,6 +176,10 @@ OptionRenderer
 
 Admin preview and Applicant exam presentation must use the same authoritative question semantics.
 
+Question/instruction and option body text should use a neutral, high-readability body color by default. EARIST primary red may remain an accent for headings, selection/focus state, or other intentional emphasis, but should not color the complete assessment text by default.
+
+Admin bank pagination must also be discoverable for a real 72-question bank. Page status without readily visible navigation is insufficient when controls are only reachable after scrolling through a long page of cards.
+
 ## 10. Phase A — Exam Content Integration
 
 | Package | Scope |
@@ -181,9 +189,48 @@ Admin preview and Applicant exam presentation must use the same authoritative qu
 | EXAM-CONTENT-3 | Verified `manifest.json + assets/` importer with fail-closed validation. |
 | EXAM-CONTENT-4 | Admin Question Bank mixed-content renderer/editor support. |
 | EXAM-CONTENT-5 | Applicant Exam mixed-content renderer and bounded UI/UX integration. |
-| EXAM-CONTENT-6 | Import verified question bank and complete content-focused QA. |
+| EXAM-CONTENT-6 | Import verified question bank, complete content-focused QA, and close bounded real-bank presentation issues such as pagination discoverability and assessment-text color. |
+| EXAM-CONTENT-7 | Preserve semantically meaningful source typography required for assessment meaning/fidelity, including BOLD, UNDERLINE, and ITALIC where verified, across question/instruction text, textual answer choices, and supported structured textual stimuli, with matching Admin/Applicant rendering. |
 
-Phase A proves content representation/import/rendering fidelity. It does **not** prove the whole exam lifecycle is production-ready.
+Phase A proves content representation/import/rendering fidelity only after the verified physical-source audit is reconciled. This includes the bounded Q24 source-text correction discovered after the original EC6 acceptance and EXAM-CONTENT-7 source typography fidelity. It does **not** prove the whole exam lifecycle is production-ready.
+
+### 10.1 Physical-source audit checkpoint — 2026-10-30
+
+The project owner supplied all 12 physical OLSAT test-page images for direct visual comparison against the canonical manifest. This audit is the source authority for typography and exposed one content discrepancy that must be corrected before final Phase A acceptance.
+
+Confirmed findings:
+
+- the physical source uses **BOLD**, **UNDERLINE**, and **ITALIC** as meaningful/intentional typography;
+- ITALIC is not purely decorative in all cases; representative examples include the emphasized word `not` in Q11/Q61, so EC7 cannot claim complete source fidelity while supporting only BOLD/UNDERLINE;
+- structured textual stimuli can themselves carry source emphasis; representative examples include the bold WORD_SERIES terms in Q25 (`peaceful / serene / tranquil`) and Q45 (`forward / sideways / down`);
+- the current EC7 v1 runtime/sidecar contract supports only question/option text BOLD/UNDERLINE and therefore is insufficient for the complete verified physical-source typography;
+- Q24 option J is a real source-text mismatch: the physical page reads `Paul is younger than Dick and John`, while the current canonical manifest/imported bank contains `Paul is younger than Dick`.
+
+Do not generate/apply the final real OLSAT emphasis sidecar against the current source state. The exact text hashes/offsets must be generated only after the Q24 canonical source correction is represented in the final cleaned package/database state and the EC7 typography contract supports the verified source requirements.
+
+### Development correction strategy decision — 2026-10-30
+
+A Q24-specific transactional reconciliation utility was implemented and independently reviewed after the discrepancy was found. Although technically bounded and fail-closed, the project owner rejected that approach for this development-stage bank because it leaves permanent one-off CLI/service/repository/test machinery for a single source typo.
+
+That implementation is **SUPERSEDED / NOT ACCEPTED as the continuing architecture**. Do not treat the Q24-specific reconciliation command as the required operator path.
+
+The selected development strategy has now been completed and independently reviewed:
+
+1. the Q24-only reconciliation machinery and dedicated npm commands/tests/operator documentation were removed through normal forward history;
+2. the verified Q24 Option J canonical correction remains in `manifest.json`;
+3. the corrected manifest/package identity bindings remain accurate;
+4. dependency safety checks confirmed no live ApplicantAnswer/question-option dependency blocked reset;
+5. only the imported OLSAT development-bank state was removed, including its owned exam media;
+6. the corrected 72-question package was clean-imported through the normal importer;
+7. verification passed for 72 questions / 360 options / 108 media, 72/72 answer mappings, zero broken references, corrected Q24 wording, and identical repeat import returning `ALREADY_IMPORTED`.
+
+Therefore the corrected-bank EC6 post-acceptance checkpoint is **CLOSED / ACCEPTED as of 2026-10-31**. The Q24-specific reconciliation implementation remains historical and superseded; it is not part of the retained architecture.
+
+The next Phase A work is the bounded EC7 ITALIC + structured textual-stimulus fidelity extension, followed by the owner-verified real typography map, controlled sidecar application, physical-source comparison, and final EC7/Phase A acceptance.
+
+This reset/re-import choice is explicitly **development-stage only**. It is not a general production migration policy for banks with live attempts/answers.
+
+Do not infer typography from wording, answer correctness, capitalization, OCR, or model judgment. Only the owner-reviewed physical source may authorize real source-specific marks.
 
 ## 11. Phase B follows Phase A
 
@@ -225,6 +272,24 @@ Implementation documentation should describe data contracts and system behavior 
 
 ## 14. Acceptance boundary
 
-Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, Admin and Applicant render the same semantics, and project-owner content/manual QA is completed where applicable.
+Phase A is accepted only after its bounded packages are implemented/reviewed, private-media authorization is verified, importer validation is proven, canonical text matches the verified physical source, Admin and Applicant render the same assessment semantics, required BOLD/UNDERLINE/ITALIC source typography is preserved on all supported textual surfaces demonstrated by the assessment, and project-owner source/manual QA is completed where applicable.
 
-After Phase A acceptance, proceed directly to Phase B.
+EXAM-CONTENT-6 was **formally accepted on 2026-10-30 based on the evidence then available**. Its original verified bank import and bounded UI follow-up at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437` remain valid historical checkpoints. However, the later 12-page physical-source audit found a bounded Q24 option-J truncation. That corrected-bank replacement verification is now **CLOSED / ACCEPTED as of 2026-10-31** after the superseded one-off reconciler was removed, the development OLSAT bank was safely reset, the corrected canonical package was imported through the normal importer, and the resulting 72/360/108 bank plus 72/72 mappings/Q24 wording/idempotency were independently reviewed. The accepted pagination/color work was never reopened.
+
+Current EC7 / Phase A closure checkpoint — **ACCEPTED 2026-10-31**:
+
+- EC7A architecture/support, EC7B owner-verified real typography map/preflight, EC7C real development-database application/idempotency, and EC7D structured-stimulus Admin authoring simplification remain independently reviewed PASS.
+- EC7E — Items Consolidation + Q40 Source Fidelity — was implemented at `052ddcf1ce96c625da8a2618f131c98c017d1051` and delivered with evidence at `f8b0ffa7618249763bf41ca4f43041c77310307f`.
+- Independent remote review of the actual pushed EC7E source is **PASS** with no blocking implementation issue.
+- The project owner reviewed the resulting EC7E output, confirmed that the correction was correct, and authorized Phase A documentation closure.
+- Admin structured authoring now exposes exactly **Grid / Table** and **Items**. All eight existing internal structured subtypes remain supported; `LOGICAL_PREMISES` maps to Items and renders as plain vertically stacked lines without automatic numbering.
+- Canonical Q40 now renders in the owner-verified source order: leading `Assume that —` prompt → three premise lines → trailing `We know that —` prompt → unchanged answer choices. No Q40-specific renderer branch, one-off backend correction service, or retained database reconciler was introduced.
+- The corrected manifest SHA is `2cd14cd6578eafe14536db36833a07a085e7d7e091ed2f6d2a934f79b6f30c95`; the corrected package/import fingerprint is `01ad6b100f65e312387779852a352dcff97d5fd2a0b707ba1901dc2c8aeac343`.
+- All 38 previously reviewed emphasis targets remain text-hash compatible. The sidecar changed only its manifest binding; no Q40 emphasis was invented. Q25/Q45 reviewed structured emphasis remains intact.
+- The accepted development-only clean replacement path restored the canonical bank at 72 questions / 360 options / 108 bank media with 72/72 answer mappings and zero broken bank references. The owner-authorized cleanup also restored the pre-existing noncanonical Q26 development edit to the canonical MATRIX representation.
+- Identical repeat import returned `ALREADY_IMPORTED`; identical repeat emphasis application returned `ALREADY_APPLIED` with zero changes.
+- EC7E introduced no Prisma/schema migration and no scoring, attempt, timer, scheduling, autosave, submission, essay-lifecycle, thesis/dissertation, or Phase B change.
+
+Therefore **EXAM-CONTENT-7 is formally ACCEPTED as of 2026-10-31**, and **Phase A — Applicant Examination Mixed-Content Integration is formally ACCEPTED as of 2026-10-31** for its documented content-representation/import/private-media/rendering/source-fidelity scope.
+
+Phase A acceptance does **not** mean the Applicant Entrance Examination is production-ready. The known exam-attempt lifecycle concerns remain intentionally outside Phase A. **Phase B — Exam Engine / Scheduling Audit is the next workstream and has not been started by this closure update.**

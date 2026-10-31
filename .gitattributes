@@ -1,0 +1,3 @@
+# Keep the authorized source package byte-for-byte identical across checkouts.
+backend/exam-content/olsat/manifest.json -text
+backend/exam-content/olsat/assets/** -text

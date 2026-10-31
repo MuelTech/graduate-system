@@ -1,0 +1,3803 @@
+{
+  "packageName": "OLSAT_Extraction_Output",
+  "scope": {
+    "sampleSource": "sample.jpg",
+    "testPages": [
+      "page-001.jpg",
+      "page-002.jpg",
+      "page-003.jpg",
+      "page-004.jpg",
+      "page-005.jpg",
+      "page-006.jpg",
+      "page-007.jpg",
+      "page-008.jpg",
+      "page-009.jpg",
+      "page-010.jpg",
+      "page-011.jpg",
+      "page-012.jpg"
+    ],
+    "answerKeySource": "answer_key.jpg",
+    "actualQuestionRange": [
+      1,
+      72
+    ]
+  },
+  "rules": {
+    "sampleExcludedFromActualQuestions": true,
+    "questionPageMarksUsedAsAnswers": false,
+    "answerKeyIsCandidateAuthorityOnly": true,
+    "visualAssetsAreOriginalPixelCrops": true,
+    "figuresRedrawnOrRegenerated": false,
+    "humanVerificationAutomatic": false
+  },
+  "questions": [
+    {
+      "questionNumber": 1,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Choose the words that best complete this sentence: _____ I was nervous, I had a _____ manner.",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "When — sad",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "After — jittery",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "If — reasonable",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "Although — quiet",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "Where — humorous",
+          "image": null
+        }
+      ],
+      "correctAnswer": "A",
+      "answerKeyCandidate": {
+        "label": "A",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 2,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The words in the box go together in a certain way. Choose the word that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            "ail",
+            "rail",
+            "trail"
+          ],
+          [
+            "ate",
+            "?",
+            "slate"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "seat",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "rate",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "tail",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "slat",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "late",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 3,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            3,
+            9,
+            27
+          ],
+          [
+            1,
+            3,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "4",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "5",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "7",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "9",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "30",
+          "image": null
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 4,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q004/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q004/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q004/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q004/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q004/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q004/option_K.png"
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 5,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "First is to original as only is to —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "special",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "unique",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "expensive",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "many",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "last",
+          "image": null
+        }
+      ],
+      "correctAnswer": "A",
+      "answerKeyCandidate": {
+        "label": "A",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 6,
+      "sourcePage": "page-001",
+      "sourceFile": "page-001.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "If the words below were arranged to make the best sentence, with which letter would the first word of the sentence begin?",
+      "stimulus": {
+        "type": "WORD_BANK",
+        "items": [
+          "way",
+          "help",
+          "the",
+          "find",
+          "me"
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "F",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "W",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "H",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "T",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "M",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 7,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            5,
+            8,
+            16
+          ],
+          [
+            7,
+            10,
+            20
+          ],
+          [
+            9,
+            12,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "18",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "20",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "21",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "22",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "24",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 8,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q008/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q008/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q008/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q008/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q008/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q008/option_K.png"
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 9,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "What number comes next in this series?",
+      "stimulus": {
+        "type": "NUMBER_SEQUENCE",
+        "items": [
+          1,
+          6,
+          10,
+          13,
+          15,
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "14",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "16",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "17",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "18",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "19",
+          "image": null
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 10,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "The opposite of confinement is —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "recognition",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "satisfaction",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "cooperation",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "dedication",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "freedom",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 11,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Which word does not go with the other four?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "honest",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "polite",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "truthful",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "open",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "frank",
+          "image": null
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 12,
+      "sourcePage": "page-002",
+      "sourceFile": "page-002.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q012/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q012/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q012/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q012/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q012/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q012/option_K.png"
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 13,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "There are five houses in a row. One house is green. Two yellow houses are next to each other. The end house is red. The middle house is blue. What colors are the houses that are farthest apart?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "Red and yellow",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "Red and blue",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "Yellow and blue",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "Green and yellow",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "Blue and green",
+          "image": null
+        }
+      ],
+      "correctAnswer": "A",
+      "answerKeyCandidate": {
+        "label": "A",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 14,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "An enclosure always has —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "an entrance",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "ventilation",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "sides",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "a roof",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "windows",
+          "image": null
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 15,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Choose the word that best completes this sentence: Faulty reasoning generally results in ______ conclusions.",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "intelligent",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "valid",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "eccentric",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "erroneous",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "offensive",
+          "image": null
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 16,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "One number in this series is wrong. What should that number be?",
+      "stimulus": {
+        "type": "NUMBER_SEQUENCE",
+        "items": [
+          "1/4",
+          1,
+          4,
+          16,
+          62,
+          256
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "2",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "6",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "14",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "64",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "1025",
+          "image": null
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 17,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            1,
+            4,
+            9
+          ],
+          [
+            4,
+            7,
+            12
+          ],
+          [
+            9,
+            12,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "14",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "15",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "17",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "21",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "24",
+          "image": null
+        }
+      ],
+      "correctAnswer": "C",
+      "answerKeyCandidate": {
+        "label": "C",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 18,
+      "sourcePage": "page-003",
+      "sourceFile": "page-003.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "If the words below were arranged to make the best sentence, with which letter would the last word of the sentence begin?",
+      "stimulus": {
+        "type": "WORD_BANK",
+        "items": [
+          "left",
+          "new",
+          "was",
+          "bike",
+          "his",
+          "outside"
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "b",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "o",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "h",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "w",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "n",
+          "image": null
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 19,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q019/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q019/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q019/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q019/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q019/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q019/option_E.png"
+        }
+      ],
+      "correctAnswer": "C",
+      "answerKeyCandidate": {
+        "label": "C",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 20,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Increase is to reveal as decrease is to —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "reduce",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "concede",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "refuse",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "conceal",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "disclose",
+          "image": null
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 21,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Robert buys 14 cans of dog food every week for his dogs, who each eat one can a day. If Robert has twice as many cats as dogs, how many cats does he have?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "2",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "4",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "6",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "7",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "8",
+          "image": null
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 22,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q022/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q022/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q022/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q022/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q022/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q022/option_K.png"
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 23,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "What comes next in this series?",
+      "stimulus": {
+        "type": "ALPHANUMERIC_SEQUENCE",
+        "items": [
+          "10C",
+          "8A",
+          "12E",
+          "10C",
+          "14G",
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "12E",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "12G",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "14E",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "16I",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "18K",
+          "image": null
+        }
+      ],
+      "correctAnswer": "A",
+      "answerKeyCandidate": {
+        "label": "A",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 24,
+      "sourcePage": "page-004",
+      "sourceFile": "page-004.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Paul was born in 1970. Dick was born in 1972. If John is younger than Dick, then we know that —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "Dick is younger than Paul and older than John",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "Paul is older than Dick and younger than John",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "Paul is younger than Dick and older than John",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "Paul is younger than Dick and John",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "Dick is older than Paul and younger than John",
+          "image": null
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 25,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "Which word goes most clearly with the following words?",
+      "stimulus": {
+        "type": "WORD_SERIES",
+        "items": [
+          "peaceful",
+          "serene",
+          "tranquil",
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "joyous",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "monotonous",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "emotional",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "sensible",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "calm",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 26,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            20,
+            15
+          ],
+          [
+            40,
+            30
+          ],
+          [
+            60,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "35",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "40",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "45",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "50",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "55",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 27,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "If the words below were arranged to make the best sentence, with which letter would the first word of the sentence begin?",
+      "stimulus": {
+        "type": "WORD_BANK",
+        "items": [
+          "here",
+          "two",
+          "park",
+          "blocks",
+          "walk",
+          "and"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "H",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "B",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "P",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "W",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "T",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 28,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "The opposite of discord is —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "harmony",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "grace",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "tradition",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "silence",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "friendliness",
+          "image": null
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 29,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q029/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q029/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q029/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q029/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q029/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q029/option_E.png"
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 30,
+      "sourcePage": "page-005",
+      "sourceFile": "page-005.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            2,
+            8,
+            4
+          ],
+          [
+            4,
+            16,
+            8
+          ],
+          [
+            8,
+            "?",
+            16
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "12",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "24",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "32",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "48",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "64",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 31,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q031/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q031/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q031/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q031/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q031/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q031/option_E.png"
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 32,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q032/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q032/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q032/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q032/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q032/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q032/option_K.png"
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 33,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Possible is to maybe as probable is to —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "gradually",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "hopefully",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "certainly",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "eventually",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "likely",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 34,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Mr. and Mrs. DiNapoli have two sons and three daughters. When the whole family is together for dinner, they have to bring one extra chair to the table. How many chairs do they usually have around the table?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "4",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "5",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "6",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "7",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "8",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 35,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "The opposite of moderate is —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "sudden",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "swift",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "treacherous",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "violent",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "extreme",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 36,
+      "sourcePage": "page-006",
+      "sourceFile": "page-006.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            1,
+            "1/2",
+            "1/4"
+          ],
+          [
+            "1/2",
+            "1/4",
+            "1/8"
+          ],
+          [
+            "1/4",
+            "?",
+            "1/16"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "1/2",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "1/3",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "1/6",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "1/8",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "1/12",
+          "image": null
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 37,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The groups of letters in the box go together in a certain way. Choose the group of letters that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            "ABCD",
+            "ADCB",
+            "CDAB"
+          ],
+          [
+            "WXYZ",
+            "WZYX",
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "WXZY",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "XYZW",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "YXZW",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "YZWX",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "ZYXW",
+          "image": null
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 38,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Every country must have —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "coasts",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "a president",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "boundaries",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "a navy",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "a flag",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 39,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "What number is missing from this series?",
+      "stimulus": {
+        "type": "NUMBER_SEQUENCE",
+        "items": [
+          4,
+          8,
+          6,
+          12,
+          10,
+          "?",
+          18,
+          36
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "8",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "14",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "16",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "20",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "24",
+          "image": null
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 40,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "Assume that —",
+      "stimulus": {
+        "type": "LOGICAL_PREMISES",
+        "items": [
+          "All As are Cs.",
+          "Some Ds are Cs.",
+          "No Bs are Cs.",
+          "We know that —"
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "no As are Ds",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "no As are Bs",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "some Bs are Ds",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "no As are both Cs and Ds",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "no Ds are Bs",
+          "image": null
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 41,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q041/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q041/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q041/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q041/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q041/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q041/option_E.png"
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 42,
+      "sourcePage": "page-007",
+      "sourceFile": "page-007.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "GROUPED_NUMBER_ROWS",
+        "groups": [
+          [
+            1,
+            4,
+            10
+          ],
+          [
+            3,
+            6,
+            12
+          ],
+          [
+            5,
+            8,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "13",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "14",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "15",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "16",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "18",
+          "image": null
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 43,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q043/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q043/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q043/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q043/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q043/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q043/option_E.png"
+        }
+      ],
+      "correctAnswer": "A",
+      "answerKeyCandidate": {
+        "label": "A",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 44,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            10,
+            7,
+            21
+          ],
+          [
+            8,
+            5,
+            15
+          ],
+          [
+            12,
+            9,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "19",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "21",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "24",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "27",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "36",
+          "image": null
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 45,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "Which word goes most clearly with the following words?",
+      "stimulus": {
+        "type": "WORD_SERIES",
+        "items": [
+          "forward",
+          "sideways",
+          "down",
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "top",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "up",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "above",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "over",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "beyond",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 46,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "What number is equal to one-third of the difference between the squares of ten and eight?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "3",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "6",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "12",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "18",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "36",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 47,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "What letter comes next in this series?",
+      "stimulus": {
+        "type": "LETTER_SEQUENCE",
+        "items": [
+          "H",
+          "I",
+          "K",
+          "L",
+          "N",
+          "O",
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "M",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "P",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "Q",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "R",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "S",
+          "image": null
+        }
+      ],
+      "correctAnswer": "C",
+      "answerKeyCandidate": {
+        "label": "C",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 48,
+      "sourcePage": "page-008",
+      "sourceFile": "page-008.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q048/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q048/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q048/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q048/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q048/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q048/option_K.png"
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 49,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "GROUPED_NUMBER_ROWS",
+        "groups": [
+          [
+            6,
+            18,
+            16
+          ],
+          [
+            10,
+            30,
+            28
+          ],
+          [
+            15,
+            45,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "35",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "40",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "43",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "48",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "60",
+          "image": null
+        }
+      ],
+      "correctAnswer": "C",
+      "answerKeyCandidate": {
+        "label": "C",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 50,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Electricity is to light bulb as —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "furnace is to heat",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "steam is to radiator",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "water is to dam",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "fuel is to engine",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "smoke is to fire",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 51,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "GROUPED_NUMBER_ROWS",
+        "groups": [
+          [
+            2,
+            4,
+            8
+          ],
+          [
+            3,
+            9,
+            "?"
+          ],
+          [
+            4,
+            16,
+            20
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "11",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "13",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "18",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "27",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "36",
+          "image": null
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 52,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The words in the box go together in a certain way. Choose the word that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            "steel",
+            "shovel",
+            "dig"
+          ],
+          [
+            "china",
+            "pitcher",
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "glass",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "cup",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "pour",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "milk",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "break",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 53,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "There can be no message if there is no —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "word",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "note",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "messenger",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "thought",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "pencil",
+          "image": null
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 54,
+      "sourcePage": "page-009",
+      "sourceFile": "page-009.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q054/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q054/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q054/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q054/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q054/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q054/option_K.png"
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 55,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Choose the words that best complete this sentence: The evidence against him was ______ so the charges were ______.",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "convincing — dropped",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "feeble — extended",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "overwhelming — reduced",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "damaging — withdrawn",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "unsupported — dismissed",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 56,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q056/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q056/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q056/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q056/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q056/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q056/option_K.png"
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 57,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "The opposite of scarcity is —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "necessity",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "bonus",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "privilege",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "abundance",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "expansion",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 58,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "In a foreign language tana dona meka means very cold water, tana neta means hot water, and dona bela means very good. Which word means cold?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "dona",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "neta",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "tana",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "bela",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "meka",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 59,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q059/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q059/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q059/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q059/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q059/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q059/option_E.png"
+        }
+      ],
+      "correctAnswer": "D",
+      "answerKeyCandidate": {
+        "label": "D",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 60,
+      "sourcePage": "page-010",
+      "sourceFile": "page-010.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "What number comes next in this series?",
+      "stimulus": {
+        "type": "NUMBER_SEQUENCE",
+        "items": [
+          5,
+          11,
+          16,
+          20,
+          23,
+          "?"
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "24",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "25",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "27",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "28",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "29",
+          "image": null
+        }
+      ],
+      "correctAnswer": "G",
+      "answerKeyCandidate": {
+        "label": "G",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 61,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Which word does not go with the other four?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "dangerous",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "risky",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "hazardous",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "unsafe",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "frightened",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 62,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "If the words below were arranged to make the best sentence, with which letter would the last word of the sentence begin?",
+      "stimulus": {
+        "type": "WORD_BANK",
+        "items": [
+          "live",
+          "many",
+          "of",
+          "groups",
+          "in",
+          "animals"
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "a",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "g",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "s",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "m",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "i",
+          "image": null
+        }
+      ],
+      "correctAnswer": "K",
+      "answerKeyCandidate": {
+        "label": "K",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 63,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q063/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": null,
+          "image": "assets/q063/option_A.png"
+        },
+        {
+          "label": "B",
+          "text": null,
+          "image": "assets/q063/option_B.png"
+        },
+        {
+          "label": "C",
+          "text": null,
+          "image": "assets/q063/option_C.png"
+        },
+        {
+          "label": "D",
+          "text": null,
+          "image": "assets/q063/option_D.png"
+        },
+        {
+          "label": "E",
+          "text": null,
+          "image": "assets/q063/option_E.png"
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 64,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in each box go together by following the same rule. Decide what the rule is, and then choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "GROUPED_NUMBER_ROWS",
+        "groups": [
+          [
+            16,
+            "?",
+            2
+          ],
+          [
+            54,
+            27,
+            3
+          ],
+          [
+            128,
+            64,
+            4
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": "4",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "6",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "8",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "10",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "12",
+          "image": null
+        }
+      ],
+      "correctAnswer": "H",
+      "answerKeyCandidate": {
+        "label": "H",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 65,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "A cloud is always —",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "humid",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "fluffy",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "white",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "big",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "high",
+          "image": null
+        }
+      ],
+      "correctAnswer": "B",
+      "answerKeyCandidate": {
+        "label": "B",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 66,
+      "sourcePage": "page-011",
+      "sourceFile": "page-011.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the box go together in a certain way. Choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q066/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q066/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q066/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q066/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q066/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q066/option_K.png"
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 67,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The words in the box go together in a certain way. Choose the word that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            "triangle",
+            "geometry",
+            "mathematics"
+          ],
+          [
+            "frog",
+            "biology",
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "zoology",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "dissection",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "laboratory",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "experiment",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "science",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 68,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "is to ... as ... is to —",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q068/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q068/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q068/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q068/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q068/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q068/option_K.png"
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 69,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "STRUCTURED_STIMULUS_TEXT_CHOICES",
+      "questionText": "The numbers in the box go together in a certain way. Choose the number that goes where you see the question mark.",
+      "stimulus": {
+        "type": "MATRIX",
+        "rows": [
+          [
+            0,
+            4,
+            12
+          ],
+          [
+            4,
+            8,
+            16
+          ],
+          [
+            12,
+            16,
+            "?"
+          ]
+        ]
+      },
+      "options": [
+        {
+          "label": "A",
+          "text": "18",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "20",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "24",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "28",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "32",
+          "image": null
+        }
+      ],
+      "correctAnswer": "C",
+      "answerKeyCandidate": {
+        "label": "C",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 70,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "VISUAL_STIMULUS_VISUAL_CHOICES",
+      "questionText": "The drawings in the first part of the row go together to form a series. In the next part of the row, choose the drawing that goes where you see the question mark.",
+      "stimulus": {
+        "type": "IMAGE",
+        "image": "assets/q070/stimulus.png"
+      },
+      "options": [
+        {
+          "label": "F",
+          "text": null,
+          "image": "assets/q070/option_F.png"
+        },
+        {
+          "label": "G",
+          "text": null,
+          "image": "assets/q070/option_G.png"
+        },
+        {
+          "label": "H",
+          "text": null,
+          "image": "assets/q070/option_H.png"
+        },
+        {
+          "label": "J",
+          "text": null,
+          "image": "assets/q070/option_J.png"
+        },
+        {
+          "label": "K",
+          "text": null,
+          "image": "assets/q070/option_K.png"
+        }
+      ],
+      "correctAnswer": "F",
+      "answerKeyCandidate": {
+        "label": "F",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 71,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "What number divided by three is equal to ten plus two?",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "A",
+          "text": "12",
+          "image": null
+        },
+        {
+          "label": "B",
+          "text": "13",
+          "image": null
+        },
+        {
+          "label": "C",
+          "text": "24",
+          "image": null
+        },
+        {
+          "label": "D",
+          "text": "30",
+          "image": null
+        },
+        {
+          "label": "E",
+          "text": "36",
+          "image": null
+        }
+      ],
+      "correctAnswer": "E",
+      "answerKeyCandidate": {
+        "label": "E",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    },
+    {
+      "questionNumber": 72,
+      "sourcePage": "page-012",
+      "sourceFile": "page-012.jpg",
+      "questionType": "TEXT_MULTIPLE_CHOICE",
+      "questionText": "Choose the words that best complete this sentence: Although Jamie’s grades were ______, her parents were ______.",
+      "stimulus": null,
+      "options": [
+        {
+          "label": "F",
+          "text": "excellent — delighted",
+          "image": null
+        },
+        {
+          "label": "G",
+          "text": "terrible — furious",
+          "image": null
+        },
+        {
+          "label": "H",
+          "text": "poor — dissatisfied",
+          "image": null
+        },
+        {
+          "label": "J",
+          "text": "acceptable — disappointed",
+          "image": null
+        },
+        {
+          "label": "K",
+          "text": "superior — interested",
+          "image": null
+        }
+      ],
+      "correctAnswer": "J",
+      "answerKeyCandidate": {
+        "label": "J",
+        "source": "answer_key.jpg",
+        "status": "CANDIDATE_FROM_ANSWER_KEY",
+        "confidence": "HIGH",
+        "derivedFromQuestionPageMarks": false
+      },
+      "extractionStatus": "PASS",
+      "verificationStatus": "VERIFIED",
+      "issues": []
+    }
+  ]
+}

@@ -40,6 +40,14 @@ function policy(p: Omit<UploadPolicy, "maxBytes"> & { maxBytes?: number }): Uplo
 }
 
 export const UPLOAD_POLICIES = {
+  "exam-media": policy({
+    name: "exam-media",
+    storagePrefix: "exam-media",
+    maxFiles: 1,
+    maxBytes: Math.min(DEFAULT_MAX_UPLOAD_BYTES, 5 * 1024 * 1024),
+    allowedMimeTypes: ["image/png", "image/jpeg"],
+    fallbackExtensionsWhenUndetected: [],
+  }),
   "applicant-cor": policy({
     name: "applicant-cor",
     storagePrefix: "cor",

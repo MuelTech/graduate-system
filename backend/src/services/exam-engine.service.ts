@@ -1,11 +1,29 @@
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
 import prisma from "../config/database";
+import { validateExamQuestion } from "./exam-content.rules";
 
 export class ExamEngineService {
     private repo: ExamEngineRepository;
 
     constructor() {
         this.repo = new ExamEngineRepository();
+    }
+
+    // Shared with confidential media retrieval; preserves the existing lookup.
+    async getApplicationIdForUser(userId: string) {
+        const student = await prisma.student.findUnique({ where: { userId } });
+        if (!student) throw new Error("Student profile not found.");
+        const application = await prisma.entranceExamApplication.findFirst({
+            where: { studentId: student.id },
+            orderBy: { createdAt: "desc" },
+        });
+        if (!application) throw new Error("Exam application not found.");
+        return application.id;
+    }
+
+    async assertApplicantQuestionAccess(userId: string) {
+        const applicationId = await this.getApplicationIdForUser(userId);
+        await this.validateExamTime(applicationId);
     }
 
     // Validates if the current server time is within the applicant's scheduled 3-hour slot
@@ -73,11 +91,11 @@ export class ExamEngineService {
         return this.repo.getAllQuestionsForAdmin();
     }
 
-    async createQuestion(data: any) {
-        return this.repo.createQuestion(data);
+    async createQuestion(data: unknown) {
+        return this.repo.createQuestion(validateExamQuestion(data));
     }
 
-    async updateQuestion(id: string, data: any) {
+    async updateQuestion(id: string, data: unknown) {
         return this.repo.updateQuestion(id, data);
     }
 

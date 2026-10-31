@@ -21,11 +21,13 @@ function makeRepo() {
     getReferenceCounts: vi.fn().mockResolvedValue({
       managedCorUploads: 0,
       managedThesisDocuments: 0,
+      managedExamMedia: 0,
       legacyCorUploads: 0,
       legacyThesisDocuments: 0,
     }),
     listManagedCorUploads: vi.fn().mockResolvedValue([]),
     listManagedThesisDocuments: vi.fn().mockResolvedValue([]),
+    listManagedExamMedia: vi.fn().mockResolvedValue([]),
     listLegacyCorUploads: vi.fn().mockResolvedValue([]),
     listLegacyThesisDocuments: vi.fn().mockResolvedValue([]),
     create: vi.fn(),
@@ -109,6 +111,7 @@ describe("DL-11 StorageHealthService.getHealth", () => {
     repo.getReferenceCounts.mockResolvedValue({
       managedCorUploads: 1,
       managedThesisDocuments: 1,
+      managedExamMedia: 2,
       legacyCorUploads: 2,
       legacyThesisDocuments: 3,
     });
@@ -122,6 +125,7 @@ describe("DL-11 StorageHealthService.getHealth", () => {
     expect(health.references).toEqual({
       managedCorUploads: 1,
       managedThesisDocuments: 1,
+      managedExamMedia: 2,
       legacyCorUploads: 2,
       legacyThesisDocuments: 3,
     });
@@ -192,6 +196,33 @@ describe("DL-11 StorageHealthService.getHealth", () => {
 });
 
 describe("DL-11 integrity scan — healthy + reference checks", () => {
+  it("recognizes exam-media records instead of reporting their images as orphans", async () => {
+    const diag = makeDiag({
+      listManagedObjects: vi.fn().mockResolvedValue({ objects: [
+        { storageKey: "exam-media/image1", namespace: "exam-media", sizeBytes: 10, modifiedAt: "2026-10-29T00:00:00.000Z" },
+      ], symlinks: [] }),
+    });
+    const repo = makeRepo();
+    repo.listManagedExamMedia.mockResolvedValue([
+      { id: "image1", storageKey: "exam-media/image1", storageProvider: "local", sizeBytes: 10, checksum: "checksum-a", checksumAlgorithm: "sha256" },
+    ]);
+    const { service } = makeService({ diag, repo });
+    const result = await service.runIntegrityScan();
+    expect(result.totalIssues).toBe(0);
+    expect(diag.listManagedObjects).toHaveBeenCalledWith(expect.arrayContaining(["exam-media"]));
+  });
+
+  it("reports exam-media integrity failures with fingerprints rather than raw keys", async () => {
+    const repo = makeRepo();
+    repo.listManagedExamMedia.mockResolvedValue([
+      { id: "image1", storageKey: "exam-media/private-key", storageProvider: "local", sizeBytes: 10, checksum: "wrong", checksumAlgorithm: "sha256" },
+    ]);
+    const { service } = makeService({ repo });
+    const result = await service.runIntegrityScan();
+    expect(result.issues).toContainEqual(expect.objectContaining({ source: "EXAM_MEDIA", recordId: "image1", issueType: "CHECKSUM_MISMATCH" }));
+    expect(JSON.stringify(result)).not.toContain("exam-media/private-key");
+  });
+
   it("reports no issues when metadata and physical objects agree", async () => {
     const diag = makeDiag({
       listManagedObjects: vi.fn().mockResolvedValue({
