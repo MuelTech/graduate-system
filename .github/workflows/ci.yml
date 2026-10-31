@@ -63,10 +63,16 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Install frontend dependencies for cross-package contract tests
+        working-directory: frontend
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
