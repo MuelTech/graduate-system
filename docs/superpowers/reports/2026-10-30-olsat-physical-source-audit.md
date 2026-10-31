@@ -227,28 +227,30 @@ Reviewed evidence:
 - focused EC7C verification: 3 files / 53 tests PASS;
 - no migration/reset/re-import/frontend/runtime/Phase-B change occurred.
 
-### Step 5 — source QA and acceptance — PAUSED FOR EC7D
+### Step 5 — source QA and acceptance — RESUMED / OWNER MANUAL QA
 
-Owner Admin browser QA began against the populated bank and confirmed that the
-question/option content itself is rendering correctly, but exposed an Admin
-structured-stimulus configuration UX defect before formal acceptance.
+EC7D structured-stimulus Admin authoring simplification has passed independent
+review.
 
-The defect is in authoring/configuration, not in the verified imported bank:
+The Admin authoring surface now exposes only:
 
-- the editor exposes eight source-oriented structured subtype names;
-- grid/numeric forms additionally expose a per-cell `Text / Number` selector;
-- that combination is redundant and can lead the Admin into invalid/confusing
-  states even though the underlying rendered assessment content is correct.
+- Grid / Table;
+- Inline Items;
+- Numbered List.
 
-The bounded correction is EC7D. It must simplify the Admin authoring surface to
-three layout families — Grid / Table, Inline Items, Numbered List — while keeping
-all existing internal structured subtype/payload values readable and round-trip
-compatible. Untouched imported questions must not be rewritten merely because
-the UI is simplified. No schema migration, bank reset, source-package rewrite,
-or re-import is authorized for this correction.
+The visible per-cell Text/Number selector is removed. All eight existing internal
+structured subtypes remain compatible, and focused evidence proves exact unchanged
+round-trip of all 29 real structured source payloads. Q25/Q45 structured emphasis
+also survives unchanged save paths.
 
-After EC7D is implemented and independently reviewed, resume the owner Admin and
-Applicant physical-source comparison. Only then may:
+No schema/migration, backend runtime, renderer, source package, sidecar, database
+reset/re-import, or Phase B change occurred.
+
+Owner QA may now resume. Verify the simplified Admin configuration UI and compare
+the actual populated Admin/Applicant question presentation against the physical
+source.
+
+Only after owner QA passes may:
 
 - EXAM-CONTENT-7 be formally accepted;
 - Phase A be formally accepted.
