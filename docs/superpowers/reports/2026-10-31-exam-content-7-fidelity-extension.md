@@ -232,3 +232,40 @@ Evidence commit adds only:
 Canonical acceptance docs are not changed. Owner manual QA, independent EC7A
 review, real-source fidelity work, and formal EC7/Phase A acceptance remain pending.
 Stop here; do not begin the real map or Phase B automatically.
+
+
+## Independent review addendum — 2026-10-31
+
+Independent review of the actual pushed GitHub branch found **no blocking issue** in
+the EC7A architecture/support implementation.
+
+Reviewed and accepted for the support checkpoint:
+
+- controlled BOLD / UNDERLINE / ITALIC span validation and deterministic semantic
+  React rendering;
+- separate nullable `structured_stimulus_emphasis` metadata rather than mixing
+  presentation metadata into canonical `structuredStimulus`;
+- bounded textual-item support only for the verified string-item structured
+  families;
+- server-authoritative stale-metadata clearing/preservation rules;
+- Admin and Applicant projection/rendering wiring without Applicant correctness
+  leakage;
+- sidecar schema v2 and grouped transactional `structuredItem` reconciliation;
+- Prisma JSON-null handling for apply/clear;
+- additive migration scope;
+- unchanged protected OLSAT manifest/assets/package identity;
+- absence of a real `olsat-emphasis.json` and absence of real source population;
+- no Phase B changes.
+
+**EC7A architecture/support independent review: PASS.**
+
+The project owner has intentionally **DEFERRED manual/browser QA for the new EC7A
+capability until the real owner-verified OLSAT typography map is populated and
+applied**. The deferred pass is not certified as completed QA. The intent is to
+perform one final Admin/Applicant visual comparison against the actual
+source-derived BOLD/UNDERLINE/ITALIC/structured-item formatting instead of a
+separate synthetic temporary-formatting pass.
+
+Formal EXAM-CONTENT-7 and Phase A acceptance remain pending the real source map,
+sidecar review, controlled preflight/apply/idempotency, and final owner
+Admin/Applicant physical-source comparison.
