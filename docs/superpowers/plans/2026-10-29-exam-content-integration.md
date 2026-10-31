@@ -427,45 +427,48 @@ EC7A support, EC7B real-map creation/review/preflight, and EC7C real-map applica
 
 Owner Admin QA then exposed a **configuration-layer defect** in the structured-stimulus editor. The verified imported bank remains correct; the problem is that Admin authoring currently exposes eight source-oriented structured subtype names plus a redundant per-cell `Text / Number` selector. This creates invalid/confusing states even though the rendered assessment content is correct.
 
-### EC7D — Structured Stimulus Admin Authoring Simplification — NEXT
+### EC7D — Structured Stimulus Admin Authoring Simplification — COMPLETE / INDEPENDENT REVIEW PASS
 
-Scope is UI/configuration simplification only.
+EC7D simplified the Admin structured-stimulus authoring surface without changing
+the verified imported bank or persistence model.
 
-Required behavior:
+Accepted implementation behavior:
 
-1. **Admin-visible layout families**
-   - Grid / Table
-   - Inline Items
-   - Numbered List
-
-2. **Compatibility preservation**
-   - existing `MATRIX`, `GROUPED_NUMBER_ROWS`, `WORD_BANK`, `NUMBER_SEQUENCE`, `ALPHANUMERIC_SEQUENCE`, `WORD_SERIES`, `LETTER_SEQUENCE`, and `LOGICAL_PREMISES` payloads remain supported internally;
-   - opening/saving an unchanged imported structured question must not silently rewrite its subtype or number/string representation;
-   - no bulk conversion of the existing 72-question bank.
-
-3. **Editor simplification**
-   - remove the visible per-cell `Text / Number` selector;
-   - use simple text inputs for cells/items;
-   - preserve internal compatibility information only where required to round-trip existing imported values;
-   - no UI path should invite a state that the selected authoring layout can never save.
-
-4. **New structured content**
-   - Admin chooses a layout family, not an OLSAT-specific semantic subtype;
-   - use a bounded canonical internal subtype for newly created generic content;
-   - do not introduce arbitrary free-form JSON editing.
-
-5. **Preserve accepted content**
-   - do not modify the protected manifest/assets;
-   - do not reset/re-import the bank;
-   - do not alter question/option IDs, labels/orders, correct answers, media, source identities, or applied emphasis;
-   - no Prisma migration is expected.
+- Admin sees only **Grid / Table**, **Inline Items**, and **Numbered List**;
+- all eight existing internal structured subtypes remain readable/renderable;
+- the visible per-cell `Text / Number` selector is removed;
+- unchanged imported payloads preserve exact subtype, JSON field shape, item order,
+  string/number primitives, fractions and gaps;
+- focused evidence round-trips all 29 real structured source payloads exactly;
+- Q25/Q45 structured emphasis survives unchanged save paths;
+- actual edits may adapt a restrictive legacy subtype to the broad existing
+  representation for the same visible layout;
+- no new persisted discriminator was introduced;
+- no backend validation was relaxed;
+- no schema/migration/reset/re-import/package rewrite occurred;
+- focused verification: **4 files / 115 tests PASS**;
+- frontend TypeScript and scoped ESLint: **PASS**.
 
 ### Remaining Phase A sequence
 
-1. Implement/review **EC7D**.
-2. Resume owner Admin/Applicant manual/browser QA on actual populated content.
-3. Formally accept EC7 if structured authoring + source presentation both pass.
-4. Formally accept Phase A.
+1. **Resume owner manual/browser physical-source QA**
+   - verify the simplified three-layout Admin authoring UI;
+   - verify representative Grid / Table, Inline Items, and Numbered List editing;
+   - confirm there is no visible Text/Number primitive selector;
+   - verify actual populated OLSAT typography/content in Admin preview;
+   - verify Applicant exam presentation;
+   - confirm Q24 option emphasis, Q25/Q45 structured emphasis, Q58 terminal-cold
+     formatting, and Q67 no unauthorized marks.
+
+2. **Formal EC7 acceptance**
+   - only after owner source/configuration QA passes.
+
+3. **Formal Phase A acceptance**
+   - record the completed content representation/import/rendering/authoring
+     fidelity boundary;
+   - do not describe Phase A acceptance as full Applicant Examination production
+     readiness.
+
 Do not begin Phase B until EC7 and Phase A are formally accepted.
 
 ## 9. Mandatory Phase B after Phase A
