@@ -187,19 +187,31 @@ Owner manual/browser QA for this new capability is **DEFERRED until the actual
 owner-verified OLSAT typography map is populated/applied**, so the final pass can
 compare real source-derived formatting rather than synthetic temporary marks.
 
-### Step 3 — final owner-verified real typography map
+### Step 3 — final owner-verified real typography map — COMPLETE / REVIEW PASS
 
-With the corrected-bank Step 1 and EC7A support Step 2 now complete/reviewed:
+The explicit schema-v2 map was created in EC7B at
+`backend/exam-content/olsat-emphasis.json` and independently reviewed with no
+blocking issue found.
 
-- compare all 12 physical pages again;
-- enumerate the exact real targets;
-- compute exact canonical UTF-16 offsets/hashes through deterministic tooling;
-- create the reviewed production sidecar/structured-text annotations;
-- do not let Codex or an LLM independently decide what the scan means.
+Accepted EC7B map evidence:
 
-### Step 4 — controlled application
+- 28 annotated source questions;
+- 38 annotation targets;
+- 59 spans total: 33 BOLD / 8 UNDERLINE / 18 ITALIC;
+- Q24 option subjects encoded exactly;
+- Q25/Q45 structured WORD_SERIES indexes 0/1/2 encoded exactly;
+- Q58 terminal `cold` disambiguated from the earlier phrase;
+- Q67 explicitly excluded;
+- exact canonical hashes/offsets validated by the real parser/integrity test;
+- manifest/assets/package fingerprint unchanged;
+- live read-only preflight returned `PREFLIGHT_OK` with 34 fields that would
+  change and zero writes.
 
-Run the reviewed preflight/application sequence and verify:
+No real emphasis metadata has been applied yet.
+
+### Step 4 — controlled application — NEXT (EC7C)
+
+Run the already-reviewed map through the controlled preflight/application sequence and verify:
 
 - full fail-closed preflight;
 - expected target/span counts;
