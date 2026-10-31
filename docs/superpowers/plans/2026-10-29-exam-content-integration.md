@@ -449,25 +449,48 @@ Accepted implementation behavior:
 - focused verification: **4 files / 115 tests PASS**;
 - frontend TypeScript and scoped ESLint: **PASS**.
 
+### EC7E — Items Consolidation + Q40 Source Fidelity — NEXT
+
+Owner QA after EC7D found that the source does not demonstrate numbered logical
+premises. Q40 is visually stacked without numeric markers, and its physical order
+places the closing prompt after the premises.
+
+Required bounded correction:
+
+- reduce Admin-visible structured layouts from three to two:
+  - **Grid / Table**
+  - **Items**
+- map `LOGICAL_PREMISES` to **Items** in the Admin editor;
+- keep all eight existing internal structured subtypes readable/editable for
+  backward compatibility;
+- render `LOGICAL_PREMISES` as plain vertical lines without `1., 2., 3.`;
+- correct canonical Q40 so the source order is:
+  `Assume that -` → premise lines → `We know that -` → choices;
+- do not special-case Q40 in the renderer;
+- do not introduce a one-off DB correction artifact;
+- if correcting the manifest changes package identity, use the established clean
+  development re-import path and reconcile the emphasis sidecar's manifest binding
+  deterministically;
+- preserve all unrelated question/option/media/answer/emphasis semantics;
+- no Prisma migration and no Phase B work.
+
+Focused verification must prove:
+
+1. only two Admin-visible structured layouts remain;
+2. legacy `LOGICAL_PREMISES` loads under Items;
+3. Q40 renders stacked and unnumbered;
+4. corrected Q40 order matches the owner-verified physical source;
+5. all unrelated real structured payloads remain compatible;
+6. Q25/Q45 emphasis remains intact after any required re-import/reapply cycle;
+7. corrected package/source identity is internally consistent;
+8. repeat import/application remains idempotent.
+
 ### Remaining Phase A sequence
 
-1. **Resume owner manual/browser physical-source QA**
-   - verify the simplified three-layout Admin authoring UI;
-   - verify representative Grid / Table, Inline Items, and Numbered List editing;
-   - confirm there is no visible Text/Number primitive selector;
-   - verify actual populated OLSAT typography/content in Admin preview;
-   - verify Applicant exam presentation;
-   - confirm Q24 option emphasis, Q25/Q45 structured emphasis, Q58 terminal-cold
-     formatting, and Q67 no unauthorized marks.
-
-2. **Formal EC7 acceptance**
-   - only after owner source/configuration QA passes.
-
-3. **Formal Phase A acceptance**
-   - record the completed content representation/import/rendering/authoring
-     fidelity boundary;
-   - do not describe Phase A acceptance as full Applicant Examination production
-     readiness.
+1. **Implement EC7E and stop for independent review.**
+2. **Resume owner manual/browser physical-source QA after EC7E PASS.**
+3. **Formal EC7 acceptance if owner QA passes.**
+4. **Formal Phase A acceptance.**
 
 Do not begin Phase B until EC7 and Phase A are formally accepted.
 
