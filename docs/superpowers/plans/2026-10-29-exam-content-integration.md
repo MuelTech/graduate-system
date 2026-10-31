@@ -408,17 +408,21 @@ Real 72-question OLSAT emphasis population remains **NOT RUN / PENDING OWNER-VER
 
 Therefore:
 
-- EC7 architecture/support implementation review: **PASS**;
-- EC7 Admin manual/browser checkpoint: **PASS for observed bold/underline behavior**;
-- Applicant manual/browser QA: **OWNER-SKIPPED**;
+- original EC7 BOLD/UNDERLINE architecture/support review: **PASS**;
+- EC7A ITALIC + structured textual-stimulus architecture/support implementation at `3d8a7cbb7121f5aaf24291327a8e9c1f7d88e473`: **INDEPENDENT REVIEW PASS — no blocking issue found**;
+- focused automated verification/build/migration evidence for EC7A: **PASS**;
+- prior Admin bold/underline manual/browser observation: **PASS for observed behavior**;
+- new EC7A manual/browser QA: **DEFERRED BY OWNER until the real owner-verified OLSAT typography map is populated/applied**;
 - real-source emphasis fidelity: **PENDING**;
-- formal EC7 acceptance: **PENDING real owner-verified source map/application/comparison**.
+- formal EC7 acceptance: **PENDING real owner-verified source map/application/idempotency/final source comparison**.
+
+The deferred EC7A browser pass must not be described as completed QA. The intent is to perform one final manual Admin/Applicant comparison against the actual source-derived typography after real population, rather than spending a separate pass on synthetic temporary formatting.
 
 The EXAM-CONTENT-6 pagination/color UI follow-up remains complete and accepted at `78c76fb6bd84b17368ca94ebacd8f5a6ad778437`.
 
 ### Revised remaining Phase A sequence after physical-source audit
 
-**Do not build/apply the final real sidecar yet.**
+**EC7A support is implemented/reviewed. Do not apply the final real sidecar until the owner-verified typography map is prepared/reviewed.**
 
 #### Corrected-bank checkpoint — ACCEPTED 2026-10-31
 
@@ -441,21 +445,19 @@ This closes the post-acceptance EC6 source-correction checkpoint. No browser/man
 
 ### Remaining Phase A sequence
 
-1. **EC7 bounded fidelity extension**
-   - add controlled `ITALIC` support alongside `BOLD` / `UNDERLINE`;
-   - extend verified typography to structured textual stimuli demonstrated by the physical source;
-   - preserve safe controlled React rendering; no arbitrary HTML/Markdown;
-   - keep the change bounded to the verified physical-source requirements.
-
-2. **Real owner-verified typography map**
-   - encode final verified physical-source marks only after the EC7 extension is accepted;
+1. **Real owner-verified typography map**
+   - encode the final verified BOLD / UNDERLINE / ITALIC / structured-item marks from the owner-reviewed physical source;
    - do not infer real marks from wording, capitalization, answers, OCR, or model guesses.
+
+2. Review the generated sidecar against the verified source map.
 
 3. Run emphasis preflight/apply and prove identical re-apply is idempotent.
 
-4. Compare Admin/Applicant output against the physical assessment.
+4. Perform the deferred owner manual/browser QA against the actual populated OLSAT content in Admin and Applicant surfaces, including structured textual stimuli.
 
-5. Formally accept EC7 and then Phase A if all source-fidelity checks pass.
+5. Compare the populated presentation against the physical assessment.
+
+6. Formally accept EC7 and then Phase A if all source-fidelity checks pass.
 
 Do not begin Phase B until EC7 and Phase A are formally accepted.
 
