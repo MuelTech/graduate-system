@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** PROPOSED; INDEPENDENT REVIEW REQUIRED; NO PACKAGE IMPLEMENTED OR ACCEPTED
+**Status:** PROPOSED; INDEPENDENT REVIEW PASS; NO PACKAGE IMPLEMENTED OR ACCEPTED
 
 **Evidence:** [Phase B lifecycle audit](../reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md)
 
@@ -30,6 +30,20 @@ Common protected scope for **every** package:
 - No fabricated legacy starts, deadlines, received-question sets, grades, signatures or period assignments. Reconcile ambiguous legacy state through an explicit migration/operator boundary.
 
 When schema/auth/shared storage references change, apply the verification policy's broader related checks and additive migration rehearsal. Otherwise use focused tests and directly affected regressions, appropriate type/build/lint and diff checks. Browser/manual, live contention and hosted CI evidence must be reported separately and honestly. Add tests with each implementation package, not all at the end.
+
+
+### 1.1 Owner clarifications captured after independent review
+
+These clarifications narrow the plan without authorizing implementation:
+
+- **Institutional timezone:** Entrance Examination schedule/date-time authority is `Asia/Manila`. An Admin-entered 4:00 PM schedule must remain 4:00 PM Philippine time for Applicant and server lifecycle behavior, independent of browser/server timezone.
+- **Essay composition:** the physical entrance-examination form confirms **one essay assessment**. The exact essay prompt/content is intentionally not yet encoded as authoritative system content.
+- **Essay scoring:** maximum points/weighting remain **TBD pending client confirmation**; current hard-coded 30-point behavior is not policy.
+- **MCQ scoring:** intended rule is **1 point per correct item**, pending client confirmation.
+- **Passing threshold:** must be Admin-configurable; the actual threshold/rounding remains **TBD pending client confirmation**. Hard-coded 75% is not policy.
+- **Configuration complexity:** use a simple current examination configuration. Do **not** introduce a full policy-version/effective-date subsystem. When an attempt/result becomes authoritative, persist the timing/content/scoring basis actually used so later config changes cannot retroactively alter finalized results.
+- **Lifecycle/fallback:** refresh/reopen resumes the same attempt/deadline and acknowledged answers; reconnect resynchronizes; server restart cannot reset time; browser closure cannot prevent expiry; lost submit responses recover the same terminal receipt/state; stale multi-tab/device writes cannot overwrite newer/final state; pending essay grading must never display/email FAILED.
+- **Legacy discipline:** do not fabricate historical start/deadline/question-set/scoring values for old records without evidence.
 
 ## 2. Dependency order and rationale
 
@@ -87,12 +101,12 @@ These are review boundaries, not authorization to keep an incomplete system open
 | Contract | Definition |
 | --- | --- |
 | Problem | Duration has no Admin authority; Program score fragments conflict with hard-coded maxima/75%. Future attempts need a stable effective configuration. |
-| Authoritative behavior | Authorized Admin manages validated examination settings; effective versions are identifiable and cannot silently rewrite settings of an existing attempt. Incomplete settings cannot be published as authoritative. |
-| Exact scope | Duration, units, start/deadline rule, score maxima/threshold representation, essay composition/weight and selection policy fields only to the extent approved in PD-1/2/3. Reuse Program configuration where sound. Add a bounded Admin configuration surface with explicit draft/effective semantics and safe read DTOs. Consumer rollout to B3/B4/B7/B8 must be explicit; do not claim constants gone while legacy code still uses them. |
+| Authoritative behavior | Authorized Admin manages the current validated examination settings. When an attempt/result becomes authoritative, the system preserves the timing/content/scoring basis actually used so later Admin changes cannot retroactively alter that attempt/result. Incomplete settings cannot be activated as authoritative. |
+| Exact scope | Duration, units, start/deadline rule, score maxima/threshold representation, the confirmed one-essay composition, essay maximum/weight, MCQ points-per-item, and selection policy fields only to the extent approved in PD-1/2/3. Reuse Program configuration where sound. Add a bounded Admin configuration surface for current authoritative values and safe read DTOs. Consumer rollout to B3/B4/B7/B8 must be explicit; do not claim constants gone while legacy code still uses them. No full policy-version/effective-date subsystem. |
 | Likely surfaces | Program/exam configuration schema/repository/service/controller/routes/validation; Admin exam settings surface and types; Program totals/detail compatibility. |
 | Protected / out of scope | Common protections; no actual attempt start, answer saving, scheduling amendment, content change or permission-system replacement. No hard-coded policy values presented as owner-approved. |
-| Migration | Additive settings/versioning storage expected; reuse existing totals with explicit provenance. Preserve null/unknown legacy values; don't backfill three hours/75% as approved policy. Existing app settings cannot be fabricated. |
-| Automated verification | Bounds/units/threshold validation, unauthorized mutation, publish incomplete config rejection, stable version identity, nullable legacy handling and accepted Admin detail compatibility. Migration rehearsal and broader related schema checks. |
+| Migration | Additive current-settings storage only where existing fields cannot safely represent the approved values. Reuse existing totals where sound. Preserve null/unknown legacy values; don't backfill three hours/30 essay points/75% as approved policy. Existing app settings cannot be fabricated. A full policy-version/effective-date subsystem is not required. |
+| Automated verification | Bounds/units/threshold validation, unauthorized mutation, incomplete-config activation rejection, stable current-config reads, preserved attempt/result scoring basis after later config changes, nullable legacy handling and accepted Admin detail compatibility. Migration rehearsal and broader related schema checks. |
 | Owner / manual QA | Review proposed values/semantics, edit/publish/read them, reject invalid values and confirm historical/current settings are distinguishable. |
 | Stop / acceptance | A reviewed config contract and Admin authority exist; consumers and transitional restrictions documented. No assertion that timer/scoring are aligned until consumer packages pass. |
 | Dependencies / policy | B0A/B0B accepted. PD-1/2/3 block effective publication; owner may authorize a draft-only storage/UI package first if useful. |
@@ -117,7 +131,7 @@ These are review boundaries, not authorization to keep an incomplete system open
 | Contract | Definition |
 | --- | --- |
 | Problem | Supplied slot IDs bypass program/active/future filters; DATE/TIME comparisons/conversions disagree; capacity and duplicate applications race. |
-| Authoritative behavior | One approved wall-clock/timezone contract yields the same schedule instant to server/Admin/Applicant. Booking authorizes this Applicant, exact program, alignment, active future slot and a remaining seat atomically, under the accepted period rule. |
+| Authoritative behavior | One approved wall-clock contract using `Asia/Manila` yields the same intended Philippine schedule to server/Admin/Applicant. Booking authorizes this Applicant, exact program, alignment, active future slot and a remaining seat atomically, under the accepted period rule. |
 | Exact scope | Server scheduling DTO validation, canonical combined start conversion shared by comparisons, same-day availability, slot program/active/eligibility checks, bounded capacity reservation and one-active/period invariant. Validate create/edit capacity and freeze booked Program/date/time on the ordinary edit route. Closing for Booking still preserves booked access. Booking and attempt start remain distinct operations. |
 | Likely surfaces | `exam.controller.ts`, `exam.service.ts`, `exam.repository.ts`, schema uniqueness/admission support where necessary; Admin schedule helpers/page and Applicant schedule/exam consumers; period/admission validation. |
 | Protected / out of scope | Common protections; retain Applicant self-booking without a new Admin approval gate and accepted close/reopen semantics. No cancellation/amendment/appeal implementation beyond rejecting unsafe ordinary edits. |
@@ -148,7 +162,7 @@ These are review boundaries, not authorization to keep an incomplete system open
 | --- | --- |
 | Problem | MCQs only persist at final submit; essay interval resets while typing, blank clearing does not save, stale writes win and no Applicant recovery endpoint exists. |
 | Authoritative behavior | Server persists owned attempt drafts with type/membership/deadline/state checks and stale-write protection. Readback restores choices, essay text and navigator state. An acknowledged save remains recoverable after reload; client distinguishes unsaved/in-flight/failed state. |
-| Exact scope | MCQ incremental upsert/change/clear, Applicant presentation/editing/recovery of the complete accepted essay set, explicit empty-text semantics, bounded save scheduling, version/sequence conflict handling, read recovery and network retry/resync. Finalization handoff must drain/resolve pending saves and preserve B0A terminal locks. Avoid an unreviewed local cache of protected content; any local durability requires an explicit bounded design. |
+| Exact scope | MCQ incremental upsert/change/clear, Applicant presentation/editing/recovery of the confirmed **single essay assessment**, explicit empty-text semantics, bounded save scheduling, version/sequence conflict handling, read recovery and network retry/resync. Finalization handoff must drain/resolve pending saves and preserve B0A terminal locks. Avoid an unreviewed local cache of protected content; any local durability requires an explicit bounded design. |
 | Likely surfaces | ApplicantAnswer or attempt answer schema/version fields; engine draft/read API and DTOs; Applicant page/state/save helper; existing renderer selection callbacks reused. |
 | Protected / out of scope | Common protections; no new score calculation or policy, no generic rewrite of defense autosave, no silent last-writer-wins across devices. |
 | Migration | Additive answer revision/timestamp or equivalent concurrency metadata expected; preserve existing application/question uniqueness and legacy drafts honestly. No answer guessing/backfill. |
@@ -176,13 +190,13 @@ These are review boundaries, not authorization to keep an incomplete system open
 
 | Contract | Definition |
 | --- | --- |
-| Problem | Only first essay is shown to Applicant; aggregate grade is mutable without server state guards/history; zero/multiple essays lack coherent completion. |
-| Authoritative behavior | The exact received essay set and approved scoring maximum/weight govern display, submitted text and evaluation. Current authorized ADMIN grades finalized immutable answers; completion is explicit. Direct regrade of completed results is rejected unless a separate exception workflow is authorized. |
-| Exact scope | Connect the received essay set to Admin review and approved aggregate or per-essay evaluation; grade bounds derive from frozen config; validate reviewable terminal state, record evaluator/completion evidence and prevent concurrent overwrite. Zero-essay path has no fabricated required essay grade. Multi-essay evaluation follows PD-2. B5 already owns Applicant essay presentation/editing/recovery; do not repeat that UI work here. |
+| Problem | The physical form confirms one essay assessment, but runtime authoring still permits zero/multiple essays and the Applicant UI only takes the first. Aggregate grading is mutable without server state guards/history, and the essay maximum is not yet confirmed. |
+| Authoritative behavior | Exactly one received essay assessment and the approved maximum/weight govern display, submitted text and evaluation. Current authorized ADMIN grades the finalized immutable response; completion is explicit. Direct regrade of completed results is rejected unless a separate exception workflow is authorized. |
+| Exact scope | Connect the single received essay assessment to Admin review; grade bounds derive from the approved current configuration captured for the attempt/result; validate reviewable terminal state, record evaluator/completion evidence and prevent concurrent overwrite. Reject/unpublish invalid zero/multiple-essay compositions instead of silently supporting them. B5 already owns Applicant essay presentation/editing/recovery; do not repeat that UI work here. |
 | Likely surfaces | Essay answer/evaluation schema as needed, `exam.service.ts` / `exam.repository.ts:gradeEssay`, controller DTO conversion, Admin record detail/read DTO and related types; regression coverage of B5's Applicant essay contract. |
 | Protected / out of scope | Common protections; no future Faculty/Program Chair permission-system implementation, rubric invention, oral/defense scoring, or accepted structured editor redesign. |
 | Migration | Additive evaluation/completion/history records if needed; existing aggregate scores remain legacy authoritative records with honest unknown metadata. No fake per-question historical grades or grading timestamps. |
-| Automated verification | Zero/one/approved-multiple essay paths; numeric/type/max checks from frozen config; finalized-only review; wrong role/record, stale competing graders, repeated grade, immutable response, review completion and legacy aggregate compatibility. |
+| Automated verification | Confirmed one-essay path; invalid zero/multiple composition protection; numeric/type/max checks from the captured scoring basis; finalized-only review; wrong role/record, stale competing graders, repeated grade, immutable response, review completion and legacy aggregate compatibility. |
 | Owner / manual QA | Applicant essay set → immutable Admin review → grade/save/refresh; verify exact response, bounds, completion and historical grader evidence. |
 | Stop / acceptance | Approved essay lifecycle works without reopening answer edits or inventing evaluator authority. Overall scoring consistency/publication is B8. |
 | Dependencies / policy | B2/B6 and PD-2. ADMIN authority is established; Program Chair and post-result regrade exceptions remain deferred, not blockers to this base package. |
@@ -193,7 +207,7 @@ These are review boundaries, not authorization to keep an incomplete system open
 | --- | --- |
 | Problem | Live-bank denominators, forced essay max 30, dynamic 75% floor and stored Program fields disagree; regrading can move historical thresholds/results. |
 | Authoritative behavior | Unique finalized answers and frozen question keys/config produce reproducible MCQ/essay totals and PASS/FAIL. Admin and Applicant read the same persisted assessment basis; pending remains pending. Result email uses that exact final assessment. |
-| Exact scope | Consolidate score calculation and bounds/rounding into the authoritative server function, persist required calculation provenance/config version, reconcile completion with B7, align result/detail DTOs and prevent live bank edits/regrades from silently changing historical denominators. Keep B0B's publication prerequisite and define bounded repeat-email behavior without claiming delivery. |
+| Exact scope | Consolidate score calculation and bounds/rounding into the authoritative server function, persist the calculation/scoring basis actually used (for example MCQ maximum/points basis, essay maximum, passing threshold and final total), reconcile completion with B7, align result/detail DTOs and prevent later config/bank edits from silently changing historical denominators or PASS/FAIL. Keep B0B's publication prerequisite and define bounded repeat-email behavior without claiming delivery. |
 | Likely surfaces | EntranceExamScore/assessment provenance, engine final MCQ scoring, `exam.repository.ts:gradeEssay/getLatestResult`, result/notification services, Admin detail and Applicant results/types. |
 | Protected / out of scope | Common protections; no frontend authority to choose PASS/FAIL, no silent recomputation/reclassification of historical results, no COR/promotion rewrite or email-system redesign. |
 | Migration | Additive immutable scoring basis/provenance as required. Existing scores retain recorded result; mark unverifiable denominator/config explicitly. Any historical correction is a separately reviewed operation. |
@@ -236,7 +250,7 @@ These are review boundaries, not authorization to keep an incomplete system open
 
 The audit's **Policy Decisions Required** section is the decision register. Do not add clarification questions whose answers are already established (self-booking, current ADMIN grading, private media, deterministic order, configuration ownership).
 
-PD-1 establishes duration/start/deadline/entry/grace and explicit institutional timezone. PD-2 establishes selected assessment composition/essay count/maxima/weights. PD-3 establishes passing threshold authority and rounding. PD-4 establishes incomplete/timeout/no-show outcomes. PD-5 resolves the documented one-attempt-per-period rule into a usable period/retry/appeal/amendment contract. Record approved answers in a dedicated examination lifecycle authority before activating dependent code; do not revise historical Phase A acceptance to encode them.
+PD-1 establishes duration/start/deadline/entry/grace; the institutional timezone is already fixed as `Asia/Manila`. PD-2 establishes MCQ membership/selection and the still-unconfirmed essay maximum/weight while preserving the owner-confirmed one-essay composition; MCQs are intended as 1 point per correct item pending client confirmation. PD-3 establishes the configurable passing-threshold value/units/rounding. PD-4 establishes incomplete/timeout/no-show outcomes. PD-5 resolves the documented one-attempt-per-period rule into a usable period/retry/appeal/amendment contract. Record approved answers in the examination lifecycle/configuration authority before activating dependent code; do not revise historical Phase A acceptance to encode them, and do not introduce a full policy-version/effective-date subsystem.
 
 Review schema choices at the smallest package needing them. Prefer additive application/config/revision/answer extensions, existing storage/provider boundaries and accepted UI. Explain why any child Attempt or Definition entity is necessary from cardinality/history requirements; a model name is not a requirement. Preserve identifiable legacy records, unknown timing/content provenance and accepted scores. Do not convert old createdAt into actual-start or assume every old attempt saw today's 72 questions. No development-bank reset is a production migration strategy.
 
