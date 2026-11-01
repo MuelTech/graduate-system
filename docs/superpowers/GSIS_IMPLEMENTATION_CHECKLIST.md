@@ -526,20 +526,29 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**Phase A is accepted as of 2026-10-31. Phase B is the next workstream; implementation has not started in this documentation-closure update.**
+**Phase A is accepted as of 2026-10-31. Initial Phase B source audit completed 2026-11-01 on `feat/exam-engine-scheduling-audit` from verified `main` at `9ab8aa037b9c5a9f746bd0e6aef72478a3b76564`; independent review of the audit/plan is PASS. Owner clarifications for timezone, essay composition, scoring configuration, and lifecycle recovery are now recorded. No Phase B implementation package has started or been accepted.**
+
+- Audit report: [Exam engine / scheduling findings](reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md).
+- Proposed bounded packages: [Phase B implementation plan](plans/2026-11-01-exam-engine-scheduling-phase-b.md). Sequence: B0A answer/state containment → B0B pending-result protection → B1 configuration → B2 selection/received content → B3 booking/time → B4 attempt/timer → B5 drafts/recovery → B6 submit/expiry → B7 essay evaluation → B8 scoring/results → B9 amendments/appeals/reconsideration → B10 acceptance gate.
+- Owner clarifications: authoritative timezone = `Asia/Manila`; physical form = one essay assessment; exact essay prompt is not yet encoded; essay maximum/weight and passing threshold remain client-confirmation items; MCQ is intended as 1 point per correct item pending client confirmation; use current configurable scoring settings plus finalized-result scoring-basis preservation rather than a full policy-version/effective-date subsystem.
+- Admin UI ownership: **Exam Questions / Exam Question Bank → Exam Configuration** owns exam duration, MCQ points per correct item, essay maximum score and passing threshold. `Asia/Manila` is read-only/system-defined. Do not add a separate configuration sidebar item and do not use Exam Records as the global settings editor.
+- Finalized FAILED-result reconsideration belongs to the individual **Exam Record** under B9: preserve original score/threshold/computed FAILED, require justification/actor/timestamp, and record a separate **PASSED — RECONSIDERED** institutional decision. Exact authorized higher-school role remains a policy/permission decision.
+- Lifecycle/recovery baseline: refresh/reopen preserves the same attempt/deadline and acknowledged answers; reconnect resynchronizes; server restart cannot reset time; timeout does not depend on the browser; lost submit responses recover the same terminal state; stale multi-tab/device writes cannot overwrite newer/final state; pending essay grading is never FAILED.
+- **Next step: owner authorization for the first bounded implementation package. EXAM-B0A is the recommended first package; it has not started or been accepted. Phase B is not accepted.**
 
 | Status | Item | Audit target |
 | --- | --- | --- |
-| 🔍 | Admin exam-duration configuration | Add an authoritative Admin-managed duration/configuration source instead of relying on duplicated hard-coded three-hour assumptions. |
-| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics, configured duration, remaining-time restoration, and scheduled-start vs actual-attempt behavior. |
+| 🔍 | Admin exam configuration | On **Exam Questions / Exam Question Bank**, add an **Exam Configuration** action for duration, MCQ points per correct item, essay maximum score and passing threshold. `Asia/Manila` is fixed/read-only timezone authority; exact duration/start/deadline and unresolved score values still require policy/client confirmation. |
+| 🔍 | Timer source of truth | Reconcile frontend/backend timing semantics against `Asia/Manila`, configured duration, server-owned deadline/remaining time, and refresh/reconnect restoration. |
 | 🔍 | Timeout behavior | Verify auto-submit, lock, server enforcement, and user-facing expiry behavior. |
 | 🔍 | MCQ autosave + recovery | Persist MCQ selections and restore answers/answered navigator state after refresh/reconnect; current frontend-only selections are lost on reload. |
-| 🔍 | Essay lifecycle | Audit essay count/configuration, authoring assumptions, autosave, grading authority, recovery, and score configuration. |
+| 🔍 | Essay lifecycle | Physical form confirms one essay assessment. Exact prompt remains intentionally unencoded; maximum score/weight is pending client confirmation. Implement authoritative one-essay composition, autosave/recovery, grading guards, and configurable score basis. |
 | 🔍 | Submission rules | Audit incomplete-answer submission, confirmation, retries/idempotency, final state, and post-submit locking. |
 | 🔍 | Exam scheduling | Audit slot creation, capacity, eligibility, booking/assignment, transitions, edit/cancel/reschedule behavior, and edge cases. |
 | 🔍 | Question activation / selection | Verify active-question selection/ordering and prevent unintended question exposure. |
-| 🔍 | Scoring / answer integrity | Verify selected-option ownership, duplicate/incomplete answers, scoring denominator, and authoritative attempt state. |
-| 🔍 | Automated regression coverage | Expand exam-engine/service/API/frontend coverage for accepted lifecycle and failure cases. |
+| 🔍 | Scoring / answer integrity | Verify selected-option ownership, duplicate/incomplete answers, intended 1-point-per-MCQ rule pending client confirmation, configurable passing threshold, and preservation of the scoring basis used for each finalized result so later config changes do not retroactively alter outcomes. |
+| 🔍 | Finalized FAILED-result reconsideration | Under the individual **Exam Record**, support the planned controlled FAILED→PASSED — RECONSIDERED institutional decision without editing the original score, threshold or computed result. Require reason/actor/time audit evidence; exact authorized role remains to be confirmed. |
+| 🔍 | Automated regression coverage | Expand exam-engine/service/API/frontend coverage for accepted lifecycle and failure cases, including authorized/unauthorized reconsideration and historical-result preservation. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 
 Do not mark the Applicant Entrance Examination production-ready until Phase B has been completed and accepted.
