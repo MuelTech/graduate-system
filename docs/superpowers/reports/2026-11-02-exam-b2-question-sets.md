@@ -2,8 +2,10 @@
 
 Date: 2026-11-02 (Asia/Manila).
 
-Status: **EXAM-B2 IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING**.
-B0A/B0B/B1 remain accepted. B3 and every later implementation remain unauthorized.
+Status: **ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**.
+Independent remote source review: **PASS — no blocking issue**. Project-owner
+manual/browser QA: **DEFERRED / NOT EXECUTED**, not reported as PASS. B0A/B0B/B1
+remain accepted. B3 and every later implementation remain separately unauthorized.
 Phase B is incomplete and is not production-ready.
 
 ## Baseline and scope
@@ -260,11 +262,14 @@ Hosted CI: **NOT EXECUTED / no hosted PASS claimed**. Existing workflow triggers
 main pushes and PRs to main; this package only pushes the existing feature branch
 and creates no PR/deployment. Delivery checks report observed remote status separately.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility.** Consolidated
-owner QA should cover opening Question Set, selection across pages, publication,
-subsequent bank edits, retained content using the internal read contract, existing
-image/structured previews, and continued Configuration/Add/Edit usability. Component
-contracts and source inspection are not browser acceptance.
+**Manual/browser QA: DEFERRED / NOT EXECUTED — project-owner decision.** The owner
+accepted B2 for Phase B progression based on completed migration/automated/real-DB
+verification and independent remote source review, while reserving browser/manual
+lifecycle QA for the later consolidated Phase B gate unless an intermediate
+UI-sensitive package requires it. This is an explicit deferral, not a manual QA PASS.
+Consolidated owner QA should still cover opening Question Set, selection across pages,
+publication, subsequent bank edits, retained content using the internal read contract,
+existing image/structured previews, and continued Configuration/Add/Edit usability.
 
 ## Exact changed files
 
@@ -308,6 +313,22 @@ weight or 40-question rule is introduced. Scoring, passing threshold and start/
 deadline/composition policy remain unresolved under their existing authorities.
 A frozen question set does not certify a complete institutional examination.
 
-Stop after normal commit/push on the shared branch. Independent remote source/diff
-review and owner acceptance remain pending. No B3/B4 implementation, main merge,
-attempt binding or Phase B production-readiness claim is authorized by this report.
+## Independent review and owner checkpoint
+
+- Reviewed remote implementation commit: `ab1e39d7abb0de0405e558ef0cdedda55d24402f`.
+- Branch relationship at review: B2 was exactly one commit ahead of the accepted B1
+  documentation checkpoint `7083a28fffe75a8177a322eadf30e6f2b6429db7`; the shared
+  Phase B branch was thirteen commits ahead of `main` and zero behind.
+- Independent remote source review: **PASS — no blocking issue found** across migration
+  safety, restrictive historical-answer FKs, explicit selection, SERIALIZABLE publication,
+  immutable copied content/key, source question/option/media retention, Applicant-safe
+  projection, deletion/media guards, ADMIN-only routes, transitional legacy Applicant
+  runtime, focused tests, real-DB integration evidence, and B2 scope.
+- Project-owner decision on 2026-11-02: **ACCEPTED FOR PHASE B PROGRESSION**.
+- Manual/browser QA: **DEFERRED / NOT EXECUTED** by project-owner decision; it remains
+  future evidence and must never be reported as passed unless actually performed.
+- Hosted CI remains **NOT EXECUTED / no hosted PASS claimed** for the branch-only checkpoint.
+- B3 and every later Phase B package remain separately authorized work; acceptance
+  of B2 does not authorize automatic continuation.
+
+Next action, when separately authorized by the owner, is the bounded EXAM-B3 package.
