@@ -526,7 +526,11 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**Phase A is accepted as of 2026-10-31. Phase B is the next workstream; implementation has not started in this documentation-closure update.**
+**Phase A is accepted as of 2026-10-31. Initial Phase B source audit completed 2026-11-01 on `feat/exam-engine-scheduling-audit` from verified `main` at `9ab8aa037b9c5a9f746bd0e6aef72478a3b76564`; independent review of the audit/plan is required. No Phase B implementation package has started or been accepted.**
+
+- Audit report: [Exam engine / scheduling findings](reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md).
+- Proposed bounded packages: [Phase B implementation plan](plans/2026-11-01-exam-engine-scheduling-phase-b.md). Sequence: B0A answer/state containment → B0B pending-result protection → B1 configuration → B2 selection/received content → B3 booking/time → B4 attempt/timer → B5 drafts/recovery → B6 submit/expiry → B7 essay evaluation → B8 scoring/results → B9 amendments/appeals → B10 acceptance gate.
+- **Next step: independent review of the pushed audit/plan. All implementation packages remain pending separate explicit authorization; Phase B is not accepted.**
 
 | Status | Item | Audit target |
 | --- | --- | --- |
