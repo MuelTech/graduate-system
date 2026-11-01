@@ -4,7 +4,7 @@
 
 **Repository:** `MuelTech/graduate-system`
 
-**Status:** SOURCE AUDIT COMPLETE; INDEPENDENT REVIEW REQUIRED; NO IMPLEMENTATION AUTHORIZED
+**Status:** SOURCE AUDIT COMPLETE; INDEPENDENT REVIEW PASS; NO IMPLEMENTATION AUTHORIZED
 
 **Branch:** `feat/exam-engine-scheduling-audit`
 
@@ -151,6 +151,8 @@ M uses `@db.Date` and `@db.Time(0)`. FS Admin helper writes `examTime: 1970-01-0
 
 FE exam/schedule and ES.validateExamTime instead use local `getFullYear/getMonth/getDate/getHours/getMinutes`; FE schedule/result and the Admin record time formatter use locale time conversion. No shared institution-zone conversion is applied. A read-only `Intl.DateTimeFormat` check of the same serialized time in Asia/Manila yielded **17:00**, where the Admin schedule helper presents **09:00**. The server constructs its boundary in host local time; different host/browser offsets and date rollovers can further disagree. This is a proven representation mismatch, not a claim about current live booking data. Legacy already-shifted rows require evidence-based reconciliation, not automatic offset subtraction.
 
+**Owner clarification after audit review:** `Asia/Manila` is the authoritative institutional timezone for Entrance Examination scheduling. An Admin-entered wall-clock schedule such as **4:00 PM** must represent **4:00 PM Philippine time** for the Applicant and server-side lifecycle regardless of browser or server host timezone. This resolves the timezone authority; exact exam duration, late-entry, grace, and deadline semantics remain policy decisions.
+
 ## 6. Attempts, timer and timeout (C–E)
 
 ES.getApplicationIdForUser resolves Student by unique userId then latest application descending createdAt. EC never accepts a caller's applicationId for questions, autosave or submission. This is **ALREADY_CORRECT** direct cross-app ownership protection. Reopening does not create a new attempt: it reads the same selected application, provided no newer one exists.
@@ -201,6 +203,8 @@ Stopping/changing frontend JavaScript can bypass the displayed countdown and lea
 
 Thirty essay points, 75%, exact duration and configuration ownership/versioning are technical behavior, not newly established institutional policy. Existing program fields should be evaluated for reuse rather than replaced wholesale.
 
+**Owner clarification after audit review:** the current physical entrance-examination form contains **one essay assessment**. The exact essay prompt/content is intentionally not being encoded as authoritative system content yet. The essay maximum score/weight remains **TBD pending client confirmation**. MCQ scoring is intended as **1 point per correct item**, also pending client confirmation. The passing threshold must be Admin-configurable and remains **TBD pending client confirmation**. Phase B should use a simple current examination configuration plus a persisted scoring basis on each finalized result; a full policy-version/effective-date subsystem is not required.
+
 ## 8. Answers, essay drafts and final submission (F–H, I)
 
 ### MCQ state and persistence
@@ -225,7 +229,7 @@ This isolates an actual algorithm defect; it is not a live-database integration 
 
 ### Essay lifecycle
 
-Admin can author any number of ESSAY questions with no options (C). ER sends them all. FE uses `.find(type === ESSAY)` and displays only the first; multiple essays are silently omitted and zero essays still leave a valid sidebar Submit action. The canonical OLSAT import is the MCQ bank; it does not supply an authoritative essay-count policy. No live DB essay count was queried.
+Admin can author any number of ESSAY questions with no options (C). ER sends them all. FE uses `.find(type === ESSAY)` and displays only the first; multiple essays are silently omitted and zero essays still leave a valid sidebar Submit action. **Owner review of the physical entrance-examination form confirms one essay assessment as the intended exam composition.** The current first-only frontend behavior therefore happens to match the intended count, but it is not yet an authoritative one-essay contract because authoring/runtime validation still permits zero or multiple essays. The exact essay prompt/content is intentionally deferred, and its maximum score/weight remains pending client confirmation. No live DB essay count was queried.
 
 FE starts an interval only when essayText.trim() is nonempty. The effect depends on essayText, so each edit restarts the sixty-second interval: continuous typing can postpone saving indefinitely. Clearing text does not persist a blank; server may retain a previous draft. There is no save-status feedback, durable retry, revision, in-flight ordering, unload flush or recovery GET. Errors only reach console. Automatic reconnection retry is not implemented.
 
@@ -311,17 +315,36 @@ Only unresolved decisions that block the affected implementation are listed. The
 
 | Decision | Existing evidence / genuine unresolved part | Blocks |
 | --- | --- | --- |
-| PD-1 Duration and authorized start | Current code uses three hours with a one-minute early grace; docs explicitly defer exact duration and scheduled-vs-actual start. Decide duration scope/value, late-entry cutoff, grace, deadline rule and whether entry starts a fresh allotted duration or is capped by schedule end. | Config publication, start/timer/expiry acceptance. |
-| PD-2 Assessment composition | Decide allowed bank membership/selection (all verified MCQs or configured subset), required essay count including zero, aggregate/per-essay maximum and any weighting. No randomization requirement is established. | Published selection, essay UI, final scoring. |
-| PD-3 Passing authority | Decide authoritative threshold/units/rounding, program-specific variation and whether existing Program examPassingScore is the intended source; hard-coded 75% is not policy approval. | Score configuration and final-result gate. |
+| PD-1 Duration and authorized start | `Asia/Manila` is now fixed as the institutional timezone. Current code still uses three hours with a one-minute early grace; decide duration scope/value, late-entry cutoff, grace, deadline rule and whether entry starts a fresh allotted duration or is capped by schedule end. | Config publication, start/timer/expiry acceptance. |
+| PD-2 Assessment composition and essay scoring | Physical-form review confirms **one essay assessment**. Decide allowed MCQ bank membership/selection, essay maximum score/weighting, and any grading basis/rubric needed by the system. Exact essay prompt/content remains intentionally unencoded pending client confirmation. MCQs are intended as **1 point per correct item**, pending client confirmation. No randomization requirement is established. | Published selection, essay scoring, final scoring. |
+| PD-3 Passing authority | Passing threshold must be Admin-configurable. Confirm the authoritative threshold value, units/rounding, program-specific variation if any, and whether existing Program `examPassingScore` is the intended storage source; hard-coded 75% is not policy approval. A full policy-version/effective-date subsystem is not required; finalized results must retain the scoring basis actually used. | Score configuration and final-result gate. |
 | PD-4 Incomplete/timeout outcome | Decide whether explicit incomplete submissions are allowed and what final record/results to produce on timeout or no-show, using only server-received answers. Never invent unsent client answers. | Finalization validation and expired/no-show outcome. |
 | PD-5 Attempts, period and appeals | July authority says one attempt per period. Define period identity, what consumes an attempt, failed-exam retry, no-show appeal eligibility/approval and post-assignment reschedule/cancellation authority. | Admission uniqueness, retries and schedule/appeal amendments. |
 
-Current ADMIN grading and self-booking authority are established and need no new owner question to preserve them. Program Chair access, regrade/appeal exceptions after final results, optional capacity defaults and randomization can remain disabled/deferred; they do not block the base safe path. Concurrent devices must at minimum obey common server state and stale-write protection; a mandatory one-device policy is not invented. Timezone normalization is a technical requirement under the accepted wall-clock contract; select and document the deployment's explicit institutional zone when approving PD-1, rather than treating browser locale as authority.
+Current ADMIN grading and self-booking authority are established and need no new owner question to preserve them. Program Chair access, regrade/appeal exceptions after final results, optional capacity defaults and randomization can remain disabled/deferred; they do not block the base safe path. Concurrent devices must at minimum obey common server state and stale-write protection; a mandatory one-device policy is not invented. `Asia/Manila` is now the explicit institutional timezone authority and must not depend on browser locale or server host timezone.
+
+
+### Owner-confirmed lifecycle and failure-recovery contract
+
+The following cross-package behavior is now the Phase B recovery/fallback baseline. It does not authorize implementation by itself:
+
+- **Refresh / browser reopen:** resume the same server-owned attempt, same deadline, and acknowledged saved answers; never restart a full local duration.
+- **Disconnect / reconnect:** acknowledged server saves remain authoritative; unsaved/failed saves must be visible and safely retried or resynchronized without creating a new attempt.
+- **Browser closed at expiry:** server-side expiry/finalization remains authoritative and must not require the browser to stay open.
+- **Lost submit response:** if finalization committed but the HTTP response was lost, retry/reload must recover the same terminal state/receipt rather than create a duplicate submission.
+- **Multiple tabs/devices:** all clients share the same attempt/deadline and stale writes cannot overwrite newer or finalized state. No mandatory one-device policy is introduced.
+- **Autosave state:** the UI must distinguish saving/saved/failed or equivalent authoritative states; it must never claim persistence that the server did not acknowledge.
+- **Server restart:** persisted attempt start/deadline/answers/final state survive restart; restart cannot reset examination time.
+- **Timeout:** client UI locks for usability, but server time/finalization is authoritative even if client JavaScript freezes or is modified.
+- **Timezone:** all institutional Entrance Examination scheduling uses `Asia/Manila`; Admin and Applicant must see the same intended Philippine wall-clock schedule.
+- **Assigned schedule changes:** ordinary Admin edits must not silently rewrite an already-bound active attempt; later amendments/reschedules require the controlled lifecycle package.
+- **Question/config stability:** an active/finalized attempt must retain the question set, answer key/scoring basis, and relevant configuration actually used so later Admin changes cannot alter historical results.
+- **Pending essay grading:** awaiting evaluation remains pending and must never be presented or emailed as FAILED before authoritative grading completes.
+- **Legacy records:** do not fabricate historical starts, deadlines, received-question sets, or scoring values where evidence does not exist.
 
 ## 14. Recommended remediation and architecture assessment
 
-Use additive changes around existing Student/application/score relationships, validators, private storage and accepted Admin surfaces. First contain payload/state exploits and premature result publication. Then establish versioned configuration/received content, correct schedule admission/time, server attempt authority, persisted drafts, finalization/expiry, essay evaluation and consistent result scoring; close amendment/appeal history and run the lifecycle gate. See the companion plan for separate review boundaries.
+Use additive changes around existing Student/application/score relationships, validators, private storage and accepted Admin surfaces. First contain payload/state exploits and premature result publication. Then establish authoritative current configuration plus attempt/result scoring-basis snapshots and immutable received content, correct schedule admission/time, server attempt authority, persisted drafts, finalization/expiry, essay evaluation and consistent result scoring; close amendment/appeal history and run the lifecycle gate. See the companion plan for separate review boundaries.
 
 The audit does not mandate a replacement exam platform or a separate model merely named Attempt. An additive authoritative lifecycle on EntranceExamApplication may be sufficient if it remains one execution per application; a child record is warranted only when accepted attempt policy requires it. Whatever representation is chosen must freeze effective settings/content, expose an exact owned identity, and support atomic draft/terminal transitions.
 
