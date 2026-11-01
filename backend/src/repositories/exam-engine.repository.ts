@@ -177,6 +177,9 @@ export class ExamEngineRepository {
         if (removedIds.length && await tx.applicantAnswer.count({ where: { selectedOptionId: { in: removedIds } } })) {
           throw new AppError("Cannot replace options referenced by Applicant answers; preserve their IDs.", 409);
         }
+        if (removedIds.length && await tx.examRevisionOption.count({ where: { optionId: { in: removedIds } } })) {
+          throw new AppError("Cannot remove options in a published question set; preserve their IDs.", 409);
+        }
         if (removedIds.length) await tx.examOption.deleteMany({ where: { questionId: id, id: { in: removedIds } } });
         for (const { id: optionId, ...opt } of data.options) {
           if (optionId) await tx.examOption.update({ where: { id: optionId }, data: optionData(opt) });
@@ -194,9 +197,21 @@ export class ExamEngineRepository {
   }
 
   async deleteQuestion(id: string) {
-    return prisma.examQuestion.delete({
-      where: { id },
-    });
+    try {
+      return await prisma.$transaction(async tx => {
+        if (await tx.applicantAnswer.count({ where: { questionId: id } })
+          || await tx.examRevisionQuestion.count({ where: { questionId: id } })) {
+          throw new AppError("This question has answer history or belongs to a published set. Deselect it from future sets instead.", 409);
+        }
+        return tx.examQuestion.delete({ where: { id } });
+      });
+    } catch (error) {
+      // The FK remains authoritative if a reference is committed after the guard.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new AppError("This question is in use. Deselect it from future sets instead.", 409);
+      }
+      throw error;
+    }
   }
 }
 

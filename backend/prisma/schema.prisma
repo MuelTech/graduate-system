@@ -61,6 +61,7 @@ model User {
   studentRequirementsReviewed        StudentRequirement[]      @relation("RequirementReviewedBy")
   student                            Student?
   systemSettingsModified             SystemSetting[]           @relation("SettingModifiedBy")
+  examContentPublished               ExamContentRevision[]
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -1735,6 +1736,7 @@ model ExamMedia {
 
   stimulusQuestions ExamQuestion[] @relation("ExamStimulusMedia")
   options           ExamOption[]
+  revisionReferences ExamRevisionMedia[]
 
   @@map("exam_media")
 }
@@ -1767,6 +1769,8 @@ model ExamQuestion {
   answers       ApplicantAnswer[]
   stimulusMedia ExamMedia?         @relation("ExamStimulusMedia", fields: [stimulusMediaId], references: [id], onDelete: Restrict)
   sourceImport  ExamContentImport? @relation(fields: [sourceImportId], references: [id], onDelete: Restrict)
+  selection     ExamQuestionSelection?
+  revisionItems ExamRevisionQuestion[]
 
   @@unique([sourceImportId, sourceQuestionNumber])
   @@index([stimulusMediaId])
@@ -1787,6 +1791,7 @@ model ExamOption {
   question ExamQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answers  ApplicantAnswer[]
   media    ExamMedia?        @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  revisionReferences ExamRevisionOption[]
 
   @@index([mediaId])
   @@index([questionId], map: "exam_options_question_id_fkey")
@@ -1801,11 +1806,63 @@ model ApplicantAnswer {
   essayAnswer      String? @map("essay_answer") @db.Text
 
   application    EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  selectedOption ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOption ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: Restrict)
 
   @@unique([applicationId, questionId], map: "unique_applicant_question_answer")
   @@index([questionId], map: "applicant_answers_question_id_fkey")
   @@index([selectedOptionId], map: "applicant_answers_option_id_fkey")
   @@map("applicant_answers")
+}
+
+// Empty until an Admin explicitly saves membership. Bank/import writes never select.
+model ExamQuestionSelection {
+  questionId String @id @map("question_id")
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@map("exam_question_selection")
+}
+
+// Write-once content authority. No application/attempt binding or mutable current pointer.
+model ExamContentRevision {
+  id String @id @default(uuid()) @db.VarChar(36)
+  publishedAt DateTime @default(now()) @map("published_at")
+  publishedById String @map("published_by_id")
+  publishedBy User @relation(fields: [publishedById], references: [id], onDelete: Restrict)
+  questions ExamRevisionQuestion[]
+  media ExamRevisionMedia[]
+  @@map("exam_content_revisions")
+}
+
+model ExamRevisionQuestion {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  questionId String @map("question_id")
+  position Int
+  // Allowlisted, validated Phase A content plus internal key, copied at publication.
+  content Json
+  revision ExamContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  options ExamRevisionOption[]
+  @@id([revisionId, questionId])
+  @@unique([revisionId, position])
+  @@map("exam_revision_questions")
+}
+
+model ExamRevisionOption {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  questionId String @map("question_id")
+  optionId String @map("option_id")
+  item ExamRevisionQuestion @relation(fields: [revisionId, questionId], references: [revisionId, questionId], onDelete: Restrict)
+  option ExamOption @relation(fields: [optionId], references: [id], onDelete: Restrict)
+  @@id([revisionId, optionId])
+  @@index([revisionId, questionId])
+  @@map("exam_revision_options")
+}
+
+model ExamRevisionMedia {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  mediaId String @map("media_id") @db.VarChar(36)
+  revision ExamContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  media ExamMedia @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  @@id([revisionId, mediaId])
+  @@map("exam_revision_media")
 }

@@ -12,7 +12,7 @@ describe("ExamMediaRepository private persistence and visibility", () => {
     await new ExamMediaRepository().deleteUnreferenced("media1", "exam-media/key", "local");
     expect(db.examMedia.deleteMany).toHaveBeenCalledWith({ where: {
       id: "media1", storageKey: "exam-media/key", storageProvider: "local",
-      stimulusQuestions: { none: {} }, options: { none: {} },
+      stimulusQuestions: { none: {} }, options: { none: {} }, revisionReferences: { none: {} },
     } });
   });
   it("returns only opaque identity on creation", async () => {

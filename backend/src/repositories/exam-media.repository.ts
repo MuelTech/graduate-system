@@ -24,7 +24,7 @@ export class ExamMediaRepository {
   /** Internal failed-import compensation only; concurrent authoritative links win. */
   deleteUnreferenced(id: string, storageKey: string, storageProvider: string) {
     return prisma.examMedia.deleteMany({
-      where: { id, storageKey, storageProvider, stimulusQuestions: { none: {} }, options: { none: {} } },
+      where: { id, storageKey, storageProvider, stimulusQuestions: { none: {} }, options: { none: {} }, revisionReferences: { none: {} } },
     });
   }
 

@@ -5,6 +5,7 @@ const db = vi.hoisted(() => ({
   examQuestion: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   examOption: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
   applicantAnswer: { count: vi.fn(), upsert: vi.fn() },
+  examRevisionOption: { count: vi.fn() },
   entranceExamApplication: { findUnique: vi.fn(), update: vi.fn() },
   entranceExamScore: { upsert: vi.fn() },
   $transaction: vi.fn(),

@@ -88,8 +88,8 @@ export class ExamEngineController {
             await this.service.deleteQuestion(req.params.id as string);
 
             res.status(200).json({ success: true });
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not delete question." });
         }
     }
 

@@ -6,11 +6,13 @@ import { secureUpload } from '../storage/secure-upload';
 import { AppError } from '../utils/AppError';
 import type { ErrorRequestHandler } from 'express';
 import { ExamConfigurationController } from '../controllers/exam-configuration.controller';
+import { ExamQuestionSetController } from '../controllers/exam-question-set.controller';
 
 const router = Router();
 const controller = new ExamEngineController();
 const mediaController = new ExamMediaController();
 const configurationController = new ExamConfigurationController();
+const questionSetController = new ExamQuestionSetController();
 
 router.get('/media/:mediaId', (_req, res, next) => {
     // Apply to successful bytes and authorization/error responses alike.
@@ -27,6 +29,9 @@ router.patch('/autosave', authenticateJWT, requireRole(['APPLICANT']), controlle
 router.post('/submit', authenticateJWT, requireRole(['APPLICANT']), controller.submitAnswers);
 
 // ADMIN ROUTES
+router.get('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), questionSetController.getCurrent);
+router.put('/admin/question-set', authenticateJWT, requireRole(['ADMIN']), questionSetController.replaceSelection);
+router.post('/admin/question-set/publish', authenticateJWT, requireRole(['ADMIN']), questionSetController.publish);
 router.get('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.getCurrent);
 router.put('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.replaceCurrent);
 const mediaUploadError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
