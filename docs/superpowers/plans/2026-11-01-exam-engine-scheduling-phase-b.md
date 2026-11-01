@@ -8,9 +8,9 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A IMPLEMENTED PENDING INDEPENDENT REVIEW / OWNER ACCEPTANCE; NO PACKAGE ACCEPTED
+**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A ACCEPTED FOR PHASE B PROGRESSION; MANUAL/BROWSER QA DEFERRED BY OWNER; B0B AND LATER PACKAGES UNAUTHORIZED
 
-**2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
+**2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
 **Evidence:** [Phase B lifecycle audit](../reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md)
 
@@ -73,7 +73,7 @@ These are review boundaries, not authorization to keep an incomplete system open
 
 ## 3. EXAM-B0A — Answer payload and submitted-state containment
 
-Implemented checkpoint: **2026-11-02, pending independent remote review and project-owner acceptance**. See [bounded implementation report](../reports/2026-11-02-exam-b0a-answer-containment.md). This does not accept B0A or authorize the next package.
+Accepted checkpoint: **2026-11-02 — ACCEPTED FOR PHASE B PROGRESSION** after focused verification, real-database contention evidence, and independent remote source review PASS. Project-owner manual/browser QA is **DEFERRED / NOT EXECUTED**, not passed, and is reserved for a later consolidated Phase B gate unless needed earlier by a UI-sensitive package. See [bounded implementation report](../reports/2026-11-02-exam-b0a-answer-containment.md). This acceptance does not authorize B0B or any later package.
 
 | Contract | Definition |
 | --- | --- |
