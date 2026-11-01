@@ -1,6 +1,7 @@
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
 import prisma from "../config/database";
 import { validateExamQuestion } from "./exam-content.rules";
+import { AppError } from "../utils/AppError";
 
 export class ExamEngineService {
     private repo: ExamEngineRepository;
@@ -12,12 +13,12 @@ export class ExamEngineService {
     // Shared with confidential media retrieval; preserves the existing lookup.
     async getApplicationIdForUser(userId: string) {
         const student = await prisma.student.findUnique({ where: { userId } });
-        if (!student) throw new Error("Student profile not found.");
+        if (!student) throw new AppError("Student profile not found.", 404);
         const application = await prisma.entranceExamApplication.findFirst({
             where: { studentId: student.id },
             orderBy: { createdAt: "desc" },
         });
-        if (!application) throw new Error("Exam application not found.");
+        if (!application) throw new AppError("Exam application not found.", 404);
         return application.id;
     }
 
@@ -37,7 +38,7 @@ export class ExamEngineService {
         const timeToUse = application?.slot?.examTime || application?.examTime;
 
         if (!application || !dateToUse || !timeToUse) {
-            throw new Error("No scheduled exam found.");
+            throw new AppError("No scheduled exam found.", 400);
         }
 
         const now = new Date();
@@ -59,11 +60,11 @@ export class ExamEngineService {
         const gracePeriodStart = new Date(examStart.getTime() - 60000);
 
         if (now < gracePeriodStart) {
-            throw new Error(`Your exam window has not started yet. (Server Time: ${now.toLocaleString()}, Exam Start: ${examStart.toLocaleString()})`);
+            throw new AppError(`Your exam window has not started yet. (Server Time: ${now.toLocaleString()}, Exam Start: ${examStart.toLocaleString()})`, 400);
         }
 
         if (now > examEnd) {
-            throw new Error("Your exam window has expired.");
+            throw new AppError("Your exam window has expired.", 400);
         }
 
         return true;
@@ -75,13 +76,13 @@ export class ExamEngineService {
         return this.repo.getQuestionsForApplicant();
     }
 
-    async autoSaveAnswer(applicationId: string, questionId: string, essayAnswer: string) {
+    async autoSaveAnswer(applicationId: string, questionId: unknown, essayAnswer: unknown) {
         await this.validateExamTime(applicationId);
 
         return this.repo.autoSaveAnswer(applicationId, questionId, essayAnswer);
     }
 
-    async submitAnswers(applicationId: string, answers: any[]) {
+    async submitAnswers(applicationId: string, answers: unknown) {
         await this.validateExamTime(applicationId);
 
         return this.repo.submitAnswers(applicationId, answers);

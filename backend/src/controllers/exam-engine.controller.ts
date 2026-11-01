@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
 import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { validateSubmissionBody, validateEssayAutosave } from "../services/exam-answer.rules";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -29,26 +30,26 @@ export class ExamEngineController {
 
     autoSaveAnswer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
+            const { questionId, essayAnswer } = validateEssayAutosave(req.body);
             const appId = await this.getAppId(req.user!.userId);
-            const { questionId, essayAnswer } = req.body;
 
             await this.service.autoSaveAnswer(appId, questionId, essayAnswer);
 
             res.status(200).json({ success: true });
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not save answer." });
         }
     }
 
     submitAnswers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
+            const answers = validateSubmissionBody(req.body);
             const appId = await this.getAppId(req.user!.userId);
-            const { answers } = req.body;
             const result = await this.service.submitAnswers(appId, answers);
 
             res.status(200).json(result);
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not submit answers." });
         }
     }
 

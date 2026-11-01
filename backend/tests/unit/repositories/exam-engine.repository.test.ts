@@ -8,6 +8,7 @@ const db = vi.hoisted(() => ({
   entranceExamApplication: { findUnique: vi.fn(), update: vi.fn() },
   entranceExamScore: { upsert: vi.fn() },
   $transaction: vi.fn(),
+  $queryRaw: vi.fn(),
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 
@@ -208,12 +209,15 @@ describe("ExamEngineRepository content boundaries", () => {
   });
 
   it("continues scoring and persisting image choices by selectedOptionId", async () => {
-    db.entranceExamApplication.findUnique.mockResolvedValue({ id: "app1", status: "SCHEDULED" });
-    const result = await new ExamEngineRepository().submitAnswers("app1", [{ questionId: "q1", selectedOptionId: "opt1" }]);
+    const questionId = "11111111-1111-4111-8111-111111111111";
+    const optionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
+    db.examQuestion.findUnique.mockResolvedValue({ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] });
+    const result = await new ExamEngineRepository().submitAnswers("app1", [{ questionId, selectedOptionId: optionId }]);
     expect(result.mcqScore).toBe(1);
     expect(db.applicantAnswer.upsert.mock.calls[0][0]).toMatchObject({
-      create: { applicationId: "app1", questionId: "q1", selectedOptionId: "opt1" },
-      update: { selectedOptionId: "opt1" },
+      create: { applicationId: "app1", questionId, selectedOptionId: optionId },
+      update: { selectedOptionId: optionId },
     });
     expect(db.entranceExamScore.upsert.mock.calls[0][0].create.multipleChoiceScore).toBe(1);
   });

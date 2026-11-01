@@ -1,9 +1,23 @@
 import prisma from "../config/database";
-import { Prisma } from "@prisma/client";
+import { Prisma, ExamAppStatus } from "@prisma/client";
 import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
 import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
 import { applicantQuestionSelect, adminQuestionSelect, toApplicantQuestion, toAdminQuestion } from "./exam-content.projection";
+import { validateAnswers, validateEssayAutosave } from "../services/exam-answer.rules";
+
+async function lockAnswerApplication(tx: Prisma.TransactionClient, applicationId: string) {
+  // A locking/current read is essential under InnoDB REPEATABLE READ. Do not
+  // authorize from a snapshot or a service-level read made before this lock.
+  const rows = await tx.$queryRaw<{ status: ExamAppStatus }[]>`
+    SELECT status FROM entrance_exam_applications
+    WHERE application_id = ${applicationId} FOR UPDATE
+  `;
+  if (!rows.length) throw new AppError("Exam application not found.", 404);
+  if (rows[0].status !== ExamAppStatus.PENDING && rows[0].status !== ExamAppStatus.APPROVED) {
+    throw new AppError("This application cannot accept answer writes or final submission.", 409);
+  }
+}
 
 function emphasisJson(value: ExamQuestionInput["questionTextEmphasis"] | ExamQuestionInput["structuredStimulusEmphasis"]) {
   return value == null ? Prisma.DbNull : value as unknown as Prisma.InputJsonValue;
@@ -32,47 +46,50 @@ export class ExamEngineRepository {
 
   async autoSaveAnswer(
     applicationId: string,
-    questionId: string,
-    essayAnswer: string,
+    questionId: unknown,
+    essayAnswer: unknown,
   ) {
-    return prisma.applicantAnswer.upsert({
-      where: {
-        applicationId_questionId: {
-          applicationId,
-          questionId,
-        },
-      },
-      update: { essayAnswer },
-      create: { applicationId, questionId, essayAnswer },
+    const answer = validateEssayAutosave({ questionId, essayAnswer });
+    return prisma.$transaction(async (tx) => {
+      await lockAnswerApplication(tx, applicationId);
+      const question = await tx.examQuestion.findUnique({
+        where: { id: answer.questionId }, select: { type: true },
+      });
+      if (!question || question.type !== "ESSAY") throw new AppError("Autosave requires an existing essay question.", 400);
+      return tx.applicantAnswer.upsert({
+        where: { applicationId_questionId: { applicationId, questionId: answer.questionId } },
+        update: { essayAnswer: answer.essayAnswer, selectedOptionId: null },
+        create: { applicationId, ...answer, selectedOptionId: null },
+      });
     });
   }
 
-  async submitAnswers(applicationId: string, answers: any[]) {
+  async submitAnswers(applicationId: string, payload: unknown) {
+    const answers = validateAnswers(payload);
     return prisma.$transaction(async (tx) => {
-      const existingApp = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
-      if (!existingApp || ['TAKEN', 'PASSED', 'FAILED'].includes(existingApp.status)) {
-         throw new Error("This exam has already been submitted and cannot be overwritten.");
-      }
-
+      await lockAnswerApplication(tx, applicationId);
       let mcqCorrect = 0;
-
-      // 1. Upsert all answers and calculate MCQ Score
+      // Validate the entire supplied set before the first answer/status/score write.
+      // Only bounded scoring authority is loaded; it never enters Applicant DTOs.
       for (const answer of answers) {
-        // Check if it's correct
         const question = await tx.examQuestion.findUnique({
           where: { id: answer.questionId },
-          include: { options: true },
+          select: { type: true, options: { select: { id: true, isCorrect: true } } },
         });
-
-        if (question?.type === "MULTIPLE_CHOICE") {
-          const selectedOpt = question.options.find(
-            (o) => o.id === answer.selectedOptionId,
-          );
-          if (selectedOpt && selectedOpt.isCorrect) {
-            mcqCorrect++;
-          }
+        if (!question) throw new AppError("Submitted question does not exist.", 400);
+        if (question.type === "MULTIPLE_CHOICE") {
+          if (answer.selectedOptionId === undefined) throw new AppError("Multiple-choice questions require a selected option.", 400);
+          const selected = question.options.find(option => option.id.toLowerCase() === answer.selectedOptionId);
+          if (!selected) throw new AppError("Selected option does not belong to the submitted question.", 400);
+          if (selected.isCorrect) mcqCorrect++;
+        } else if (question.type === "ESSAY") {
+          if (answer.essayAnswer === undefined) throw new AppError("Essay questions require essayAnswer text.", 400);
+        } else {
+          throw new AppError("Unsupported question type.", 400);
         }
+      }
 
+      for (const answer of answers) {
         await tx.applicantAnswer.upsert({
           where: {
             applicationId_questionId: {
@@ -81,14 +98,14 @@ export class ExamEngineRepository {
             },
           },
           update: {
-            selectedOptionId: answer.selectedOptionId || null,
-            essayAnswer: answer.essayAnswer || null,
+            selectedOptionId: answer.selectedOptionId ?? null,
+            essayAnswer: answer.essayAnswer ?? null,
           },
           create: {
             applicationId,
             questionId: answer.questionId,
-            selectedOptionId: answer.selectedOptionId || null,
-            essayAnswer: answer.essayAnswer || null,
+            selectedOptionId: answer.selectedOptionId ?? null,
+            essayAnswer: answer.essayAnswer ?? null,
           },
         });
       }

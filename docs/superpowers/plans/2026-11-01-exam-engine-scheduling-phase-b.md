@@ -8,7 +8,9 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** PROPOSED; INDEPENDENT REVIEW PASS; NO PACKAGE IMPLEMENTED OR ACCEPTED
+**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A IMPLEMENTED PENDING INDEPENDENT REVIEW / OWNER ACCEPTANCE; NO PACKAGE ACCEPTED
+
+**2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
 **Evidence:** [Phase B lifecycle audit](../reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md)
 
@@ -70,6 +72,8 @@ The first two packages contain current integrity defects without waiting for ins
 These are review boundaries, not authorization to keep an incomplete system open to production use. B4's server contract must be used consistently by affected requests even if B5/B6 add richer persistence/expiry behavior later. Where an intermediate package cannot safely activate alone, keep it unpublished/inactive until its declared consumer package is accepted. Do not deploy partially connected authority paths.
 
 ## 3. EXAM-B0A — Answer payload and submitted-state containment
+
+Implemented checkpoint: **2026-11-02, pending independent remote review and project-owner acceptance**. See [bounded implementation report](../reports/2026-11-02-exam-b0a-answer-containment.md). This does not accept B0A or authorize the next package.
 
 | Contract | Definition |
 | --- | --- |
