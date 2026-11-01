@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A AND EXAM-B0B ACCEPTED FOR PHASE B PROGRESSION; MANUAL/BROWSER QA DEFERRED BY OWNER; B1 AND LATER PACKAGES UNAUTHORIZED
+**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A AND EXAM-B0B ACCEPTED FOR PHASE B PROGRESSION; EXAM-B1 IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING; B2 AND LATER PACKAGES UNAUTHORIZED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
@@ -108,6 +108,8 @@ Accepted checkpoint: **2026-11-02 — ACCEPTED FOR PHASE B PROGRESSION** after f
 | Dependencies / policy | Can be independently reviewed after audit authorization; no threshold/count/grade-authority policy needed. |
 
 ## 5. EXAM-B1 — Authoritative examination configuration
+
+Implemented checkpoint: **2026-11-02 — IMPLEMENTED; INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING** from `ff378b0748ff29302bf47fc08a00578711b0cb64` on the shared Phase B branch, under separate B1-only owner authorization. See [storage/API/UI and verification report](../reports/2026-11-02-exam-b1-configuration.md). This is a typed, nullable current-draft foundation with no fake defaults; threshold unit/value remain unresolved and all configurations remain incomplete. Consumer rollout, immutable per-attempt basis and runtime integration remain later packages. No migration, B2 work or self-acceptance is included. Earlier audit/B0A/B0B-only authorization statements describe those historical checkpoints.
 
 | Contract | Definition |
 | --- | --- |

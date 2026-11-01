@@ -18,6 +18,7 @@ import { SemanticText } from "@/components/exam-content/semantic-text";
 import { AdminQuestionEditor } from "@/components/exam-content/admin-question-editor";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { OptionContentRenderer } from "@/components/exam-content/option-content-renderer";
+import { ExamConfigurationDialog } from "@/components/exam-content/exam-configuration-dialog";
 
 const PAGE_SIZE = 8;
 
@@ -70,6 +71,7 @@ export default function AdminExamQuestionsPage() {
   } | null>(null);
   const [working, setWorking] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [configurationOpen, setConfigurationOpen] = useState(false);
   const listRequest = useRef<AbortController | null>(null);
   const fetchQuestions = useCallback(async () => {
     listRequest.current?.abort();
@@ -144,14 +146,17 @@ export default function AdminExamQuestionsPage() {
             View and maintain entrance-exam questions and answer choices.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setWorking(false);
-            setEditor({ question: null });
-          }}
-        >
-          Add question
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setConfigurationOpen(true)}>Exam Configuration</Button>
+          <Button
+            onClick={() => {
+              setWorking(false);
+              setEditor({ question: null });
+            }}
+          >
+            Add question
+          </Button>
+        </div>
       </div>
       {error && (
         <div
@@ -294,6 +299,7 @@ export default function AdminExamQuestionsPage() {
           />
         </>
       )}
+      {configurationOpen ? <ExamConfigurationDialog onClose={() => setConfigurationOpen(false)} /> : null}
       <Dialog
         open={editor !== null}
         onOpenChange={(open) => {

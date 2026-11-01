@@ -5,10 +5,12 @@ import { authenticateJWT, requireRole } from '../middlewares/auth.middleware';
 import { secureUpload } from '../storage/secure-upload';
 import { AppError } from '../utils/AppError';
 import type { ErrorRequestHandler } from 'express';
+import { ExamConfigurationController } from '../controllers/exam-configuration.controller';
 
 const router = Router();
 const controller = new ExamEngineController();
 const mediaController = new ExamMediaController();
+const configurationController = new ExamConfigurationController();
 
 router.get('/media/:mediaId', (_req, res, next) => {
     // Apply to successful bytes and authorization/error responses alike.
@@ -25,6 +27,8 @@ router.patch('/autosave', authenticateJWT, requireRole(['APPLICANT']), controlle
 router.post('/submit', authenticateJWT, requireRole(['APPLICANT']), controller.submitAnswers);
 
 // ADMIN ROUTES
+router.get('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.getCurrent);
+router.put('/admin/configuration', authenticateJWT, requireRole(['ADMIN']), configurationController.replaceCurrent);
 const mediaUploadError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
     const status = error instanceof AppError && error.statusCode === 413 ? 413 : 400;
     res.setHeader('Cache-Control', 'private, no-store');

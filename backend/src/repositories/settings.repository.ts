@@ -1,5 +1,7 @@
 import prisma from '../config/database';
 import { Prisma } from '@prisma/client';
+import { EXAM_CONFIGURATION_KEY } from '../services/exam-configuration.rules';
+import { AppError } from '../utils/AppError';
 
 export interface AuditLogQuery {
     page?: number;
@@ -14,13 +16,20 @@ export interface AuditLogQuery {
 export class SettingsRepository {
     async getAllSettings() {
         return prisma.systemSetting.findMany({
+            where: { settingKey: { not: EXAM_CONFIGURATION_KEY } },
             orderBy: { settingKey: 'asc' }
         });
     }
 
     async updateSetting(settingKey: string, settingValue: string, userId: string) {
+        // Resolve through the DB's key collation so case/accent aliases cannot
+        // bypass the exam-specific validator via the generic string endpoint.
+        const current = await prisma.systemSetting.findUnique({ where: { settingKey }, select: { settingKey: true } });
+        if (current?.settingKey.toLowerCase() === EXAM_CONFIGURATION_KEY || settingKey.toLowerCase() === EXAM_CONFIGURATION_KEY) {
+            throw new AppError("Manage exam configuration from the Exam Question Bank.", 409);
+        }
         return prisma.systemSetting.update({
-            where: { settingKey },
+            where: { settingKey, NOT: { settingKey: EXAM_CONFIGURATION_KEY } },
             data: { settingValue, lastModifiedById: userId }
         });
     }
