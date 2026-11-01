@@ -2,10 +2,12 @@
 
 Date: 2026-11-02 (Asia/Manila).
 
-Status: **IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING**.
-B0A/B0B remain accepted for Phase B progression. Phase B is incomplete and not
+Status: **ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**.
+Independent remote source review: **PASS — no blocking issue**. Project-owner
+manual/browser QA: **DEFERRED / NOT EXECUTED**, not reported as PASS. B0A/B0B
+remain accepted for Phase B progression. Phase B is incomplete and not
 production-ready. This package is a configuration foundation; B2 and later work
-require separate authorization.
+require separate explicit authorization.
 
 ## Verified baseline and authorities
 
@@ -222,7 +224,11 @@ are byte-unchanged. Schema, source bank/Q24/Q40, manifest/import/assets, structu
 stimuli/emphasis, option IDs, private media and Applicant projection implementation
 are unchanged. Existing Program data and historical results are not modified.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility.**
+**Manual/browser QA: DEFERRED / NOT EXECUTED — project-owner decision.** The owner
+accepted B1 for Phase B progression based on completed automated verification and
+independent remote source review, while reserving browser/manual lifecycle QA for
+the later consolidated Phase B gate unless an intermediate UI-sensitive package
+requires it. This is an explicit deferral, not a manual QA PASS.
 **Hosted CI: NOT OBSERVED; no hosted result claimed.** No PR, CI change, deployment
 or main merge is performed by this package.
 
@@ -241,5 +247,23 @@ configuration and retain the basis actually used before activation.
 There is one current draft document, no history/version/effective-date/activation
 model. Concurrent Admin replacements use ordinary last-committed whole-document
 saves; no stale-edit reconciliation is claimed. Policy completion and consumer
-integration require separately reviewed changes. Stop after B1 commit/push and
-remote/worktree verification; independent review and owner acceptance are pending.
+integration require separately reviewed changes.
+
+## Independent review and owner checkpoint
+
+- Reviewed remote implementation commit: `ed025cf7201cbe9963fd06b158a9c071464b66ab`.
+- Branch relationship at review: B1 was exactly one commit ahead of the accepted B0B
+  documentation checkpoint `ff378b0748ff29302bf47fc08a00578711b0cb64`; the shared
+  Phase B branch was nine commits ahead of `main` and zero behind.
+- Independent remote source review: **PASS — no blocking issue found** across typed
+  draft validation, fail-closed persistence parsing, reserved-key generic-settings
+  protection, ADMIN-only API authority, Question Bank dialog behavior, absence of
+  fake policy defaults, preserved B0A/B0B/content/media boundaries, and B1 scope.
+- Project-owner decision on 2026-11-02: **ACCEPTED FOR PHASE B PROGRESSION**.
+- Manual/browser QA: **DEFERRED / NOT EXECUTED** by project-owner decision; it remains
+  future evidence and must never be reported as passed unless actually performed.
+- Hosted CI remains **NOT OBSERVED / no CI result claimed** for the branch-only checkpoint.
+- B2 and every later Phase B package remain separately authorized work; acceptance
+  of B1 does not authorize automatic continuation.
+
+Next action, when separately authorized by the owner, is the bounded EXAM-B2 package.
