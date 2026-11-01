@@ -2,9 +2,11 @@
 
 Date: 2026-11-02 (Asia/Manila).
 
-Status: **IMPLEMENTED; INDEPENDENT REMOTE REVIEW AND PROJECT-OWNER ACCEPTANCE PENDING**.
-Phase B remains incomplete and is not production-ready. Stop after this package;
-B0B and all later packages require separate authorization.
+Status: **ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**.
+Independent remote source review: **PASS — no blocking issue**. Project-owner
+manual/browser QA: **DEFERRED / NOT EXECUTED**, not reported as PASS. Phase B
+remains incomplete and is not production-ready; B0B and all later packages require
+separate explicit authorization.
 
 ## Baseline and authorization
 
@@ -199,7 +201,11 @@ UI/UX-specific authority reading was not triggered. Phase A content, Q24/Q40,
 manifest/assets/imports, ordering/emphasis, projection implementation, private-media
 implementation, Admin authoring and Applicant rendering are unchanged.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility.**
+**Manual/browser QA: DEFERRED / NOT EXECUTED — project-owner decision.** The owner
+accepted B0A for Phase B progression based on the completed automated, real-DB and
+independent-review evidence, while reserving browser/manual lifecycle QA for a later
+consolidated Phase B gate unless an intermediate UI-sensitive package requires it.
+This is an explicit deferral, not a manual QA PASS.
 **Hosted CI: NOT EXECUTED / no new run claimed.** Existing CI triggers on main
 pushes or PRs targeting main, not this branch-only push; this package does not
 create a PR, modify CI, deploy, or merge.
@@ -216,7 +222,24 @@ Existing schedule/time checks and values remain in the service before transactio
 deadline-crossing waits, canonical timezone/timer/expiry and config/content snapshots
 remain later packages. No MCQ autosave/recovery, pending-result containment,
 threshold/configuration, grading, appeal, scheduling-capacity or reconsideration
-changes were included. No production readiness or owner acceptance is claimed.
+changes were included. No production readiness for the Applicant Entrance Examination
+or Phase B as a whole is claimed. B0A acceptance is bounded to the containment scope
+above and does not convert deferred manual/browser QA into a PASS.
 
-Next action is independent review of the actual pushed B0A diff, followed by
-owner QA/acceptance and separate authorization before any next package.
+## Independent review and owner checkpoint
+
+- Reviewed remote implementation commit: `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb`.
+- Branch relationship at review: `feat/exam-engine-scheduling` was exactly one commit
+  ahead of merged-audit `main` and zero behind.
+- Independent remote source review: **PASS — no blocking issue found** across the
+  controller/service/repository validation path, application-row serialization,
+  state allowlist, focused tests, real-DB contention harness, protected Phase A
+  boundaries, and package scope.
+- Project-owner decision on 2026-11-02: **ACCEPTED FOR PHASE B PROGRESSION**.
+- Manual/browser QA: **DEFERRED / NOT EXECUTED** by project-owner decision; it remains
+  future evidence and must never be reported as passed unless actually performed.
+- Hosted CI remains **NOT EXECUTED / no run claimed** for the branch-only checkpoint.
+- B0B and every later Phase B package remain separately authorized work; acceptance
+  of B0A does not authorize automatic continuation.
+
+Next action, when separately authorized by the owner, is the bounded EXAM-B0B package.
