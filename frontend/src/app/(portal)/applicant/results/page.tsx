@@ -17,7 +17,7 @@ import {
   ClipboardList,
   AlertTriangle
 } from "lucide-react";
-import { apiClientRequest } from "@/lib/api.client";
+import { apiClientRequest, ApiError } from "@/lib/api.client";
 
 export default function ApplicantResultsPage() {
   const { data: session } = useSession(); // Retrieve session state
@@ -37,11 +37,13 @@ export default function ApplicantResultsPage() {
       </div>
     );
   }
-  if (error || !result) {
-    const errorMsg =
-      error instanceof Error ? error.message : "No results found.";
-      
-    const isExpectedEmptyState = (!error && !result) || errorMsg.includes("pending") || errorMsg.includes("not taken") || errorMsg.includes("No exam found");
+  const isFinalResult = result?.status === "passed" || result?.status === "failed";
+  if (error || !isFinalResult) {
+    const isExpectedEmptyState = !error ||
+      (error instanceof ApiError && (error.statusCode === 404 || error.statusCode === 409));
+    const errorMsg = isExpectedEmptyState
+      ? error?.message || "Your examination result is not yet available. It may still be awaiting evaluation."
+      : "We could not load your examination results. Please try again later.";
 
     return (
       <div className="space-y-4">
@@ -132,7 +134,7 @@ export default function ApplicantResultsPage() {
                   Congratulations! You have passed the entrance examination.
                 </p>
               </>
-            ) : (
+            ) : result.status === "failed" ? (
               <>
                 <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
                   <XCircle className="h-10 w-10 text-red-600" />
@@ -144,7 +146,7 @@ export default function ApplicantResultsPage() {
                   You did not meet the passing score for this examination.
                 </p>
               </>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -333,8 +335,7 @@ export default function ApplicantResultsPage() {
       <div className="flex items-start gap-2 rounded-lg bg-(--earist-surface-gray) p-3">
         <Mail className="mt-0.5 h-4 w-4 shrink-0 text-(--earist-body-text)" />
         <p className="text-xs text-(--earist-body-text)">
-          A detailed results notification has been sent to your registered email
-          address.
+          Result notifications use your registered email address.
         </p>
       </div>
     </div>

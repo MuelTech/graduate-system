@@ -113,7 +113,7 @@ export class EmailService {
                 errorMessage: `Handlebars Compilation Error: ${error.message}`,
             });
             console.error(`[EmailService] Handlebars error on template '${templateKey}':`, error.message);
-            return;
+            throw error;
         }
 
         await emailQueue.add("send-single-email", {

@@ -234,7 +234,7 @@ export class ExamRepository {
         const app = await prisma.entranceExamApplication.findFirst({
             where: {
                 student: { userId: userId },
-                score: { isNot: null } // Only fetch if graded
+                score: { isNot: null } // May still be PENDING; the service checks final application/score agreement.
             },
             include: {
                 score: true,
@@ -314,13 +314,15 @@ export class ExamRepository {
             where: {
                 id: applicationId
             },
-            include: {
+            select: {
+                id: true,
+                status: true,
+                score: { select: { status: true } },
                 student: {
-                    include: {
-                        user: true
+                    select: {
+                        user: { select: { email: true, firstName: true } }
                     }
-                },
-                program: true
+                }
             }
         });
     }

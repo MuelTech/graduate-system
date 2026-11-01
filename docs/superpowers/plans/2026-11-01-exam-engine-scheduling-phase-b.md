@@ -8,11 +8,13 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A ACCEPTED FOR PHASE B PROGRESSION; MANUAL/BROWSER QA DEFERRED BY OWNER; B0B AND LATER PACKAGES UNAUTHORIZED
+**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A ACCEPTED FOR PHASE B PROGRESSION; EXAM-B0B IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING; B1 AND LATER PACKAGES UNAUTHORIZED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
 **Evidence:** [Phase B lifecycle audit](../reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md)
+
+**2026-11-02 B0B checkpoint:** A separate owner request authorized B0B only from `ad84c161ed718e1743cb0f385b715381de4eeeb2` on `feat/exam-engine-scheduling`. [Implementation and verification evidence](../reports/2026-11-02-exam-b0b-result-containment.md) records pending-result/email containment, preserved B0A and finalized-result behavior, and focused checks. B0B is implemented pending independent review/owner acceptance; no next-package authorization or Phase B acceptance is implied. Earlier audit/B0A-only authorization statements remain historical.
 
 **Authorities:** [Content source of truth](../EXAM_CONTENT_SOURCE_OF_TRUTH.md), [verification policy](../ENGINEERING_VERIFICATION_POLICY.md), [tracking index](../GSIS_IMPLEMENTATION_CHECKLIST.md) §7.2.
 
@@ -89,6 +91,8 @@ Accepted checkpoint: **2026-11-02 — ACCEPTED FOR PHASE B PROGRESSION** after f
 | Dependencies / policy | Audit review and explicit authorization; no unresolved institutional decision blocks rejection of inconsistent IDs or terminal mutation. |
 
 ## 4. EXAM-B0B — Pending-result and notification containment
+
+Implemented checkpoint: **2026-11-02 — IMPLEMENTED; INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING**. See [bounded B0B report](../reports/2026-11-02-exam-b0b-result-containment.md). Manual/browser QA is **NOT EXECUTED — project-owner responsibility**. B1 has not started.
 
 | Contract | Definition |
 | --- | --- |

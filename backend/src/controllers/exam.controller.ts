@@ -243,12 +243,8 @@ export class ExamController {
     } catch (error: unknown) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
       } else {
-        // Log internally for unexpected failures
-        console.error("Unexpected error in getExamResult:", error);
-        res.status(500).json({ error: "An unexpected error occurred." });
+        res.status(500).json({ error: "Could not load examination results." });
       }
     }
   };
@@ -280,8 +276,9 @@ export class ExamController {
 
       res.status(200).json(result);
     } catch (error: unknown) {
-      console.error("Unexpected error in confirmResultAndEmail:", error);
-      res.status(400).json({ error: "An unexpected error occurred." });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({
+        error: error instanceof AppError ? error.message : "Could not queue the result email.",
+      });
     }
   }
 }

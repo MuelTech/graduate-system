@@ -4,6 +4,11 @@ import { EmailService } from "./email.service";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 
+function completedResultStatus(application: { status: string; score: { status: string } | null }): "PASSED" | "FAILED" | null {
+  const status = application.status;
+  return (status === "PASSED" || status === "FAILED") && application.score?.status === status ? status : null;
+}
+
 export class ExamService {
   private examRepo = new ExamRepository();
 
@@ -265,10 +270,11 @@ export class ExamService {
     const app = await this.examRepo.getLatestResult(userId);
 
     if (!app || !app.score) {
-      throw new Error(
-        "No exam found. Your exam is either pending grading or you have not taken it.",
-      );
+      throw new AppError("No examination result is available yet.", 404);
     }
+
+    const finalStatus = completedResultStatus(app);
+    if (!finalStatus) throw new AppError("Your examination result is not yet available. It may still be awaiting evaluation.", 409);
 
     const mcqTotal = app.program?.examMcqTotal ?? 0;
     const essayTotal = app.program?.examEssayTotal ?? 0;
@@ -283,7 +289,7 @@ export class ExamService {
     }
 
     return {
-      status: app.score.status.toLowerCase(),
+      status: finalStatus.toLowerCase(),
       mcqScore: Number(app.score.multipleChoiceScore || 0),
       mcqTotal: mcqTotal,
       essayScore: Number(app.score.essayScore || 0),
@@ -309,9 +315,11 @@ export class ExamService {
 
   async confirmResultAndEmail(applicationId: string) {
     const application = await this.examRepo.getApplicationDetailsForEmail(applicationId);
-    if (!application) throw new Error("Application not found.");
+    if (!application) throw new AppError("Exam record not found.", 404);
 
-    const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
+    const finalStatus = completedResultStatus(application);
+    if (!finalStatus) throw new AppError("A completed, consistent examination result is required before queueing a result email.", 409);
+    const template = finalStatus === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
 
      // Dispatch actual email via BullMQ
     await EmailService.sendTemplateEmail(application.student.user.email, template, {
