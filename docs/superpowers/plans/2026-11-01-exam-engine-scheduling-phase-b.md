@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A, EXAM-B0B, EXAM-B1 AND EXAM-B2 ACCEPTED FOR PHASE B PROGRESSION; EXAM-B3 IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING; MANUAL/BROWSER QA NOT EXECUTED; B4 AND LATER IMPLEMENTATION UNAUTHORIZED
+**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A, EXAM-B0B, EXAM-B1, EXAM-B2 AND EXAM-B3 ACCEPTED FOR PHASE B PROGRESSION; MANUAL/BROWSER QA DEFERRED BY OWNER; B4 AND LATER IMPLEMENTATION UNAUTHORIZED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
@@ -145,7 +145,7 @@ Accepted checkpoint: **2026-11-02 — ACCEPTED FOR PHASE B PROGRESSION** from im
 
 ## 7. EXAM-B3 — Canonical schedule time and atomic booking admission
 
-**EXAM-B3 IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING**. The owner-authorized B3 boundary below supersedes the original audit's speculative period/schema work. See [B3 evidence](../reports/2026-11-02-exam-b3-booking-admission.md).
+**EXAM-B3 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02** after focused backend/frontend verification, ten real-MariaDB booking/concurrency checks, and independent remote source review PASS. Project-owner manual/browser QA is **DEFERRED / NOT EXECUTED**, not passed, and remains reserved for the consolidated Phase B gate. The owner-authorized B3 boundary below supersedes the original audit's speculative period/schema work. See [B3 evidence](../reports/2026-11-02-exam-b3-booking-admission.md). This acceptance does not authorize B4 or any later package.
 
 | Contract | Definition |
 | --- | --- |
