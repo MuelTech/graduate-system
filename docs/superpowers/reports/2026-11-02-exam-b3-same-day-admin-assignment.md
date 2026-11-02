@@ -2,7 +2,7 @@
 
 Date: 2026-11-02 (Asia/Manila).
 
-**IMPLEMENTED / PUSHED — INDEPENDENT REVIEW AND PROJECT-OWNER ACCEPTANCE PENDING**.
+**ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**. Independent remote source review: **PASS — no blocking issue found**. Project-owner browser/manual QA: **PASS**.
 Not ACCEPTED; not an Approved Reference Implementation; B4 remains unauthorized.
 
 ## Starting state and scope
@@ -147,7 +147,7 @@ API/type wiring. Existing middleware/Node deprecation notices are nonblocking.
 checks pass. No whole-repository suite was run; directly affected regressions
 cover shared B3 admission and reused read models.
 
-**Project-owner manual/browser QA: EXECUTED 2026-11-02 — redundant explicit `Asia/Manila` labels were identified in the Admin assignment dialog. A bounded copy-only follow-up removed the timezone label from the dialog description, same-day schedule legend, and review timestamp; backend `Asia/Manila` scheduling authority is unchanged. Post-fix owner recheck and final acceptance remain pending.**
+**Project-owner manual/browser QA: COMPLETED / PASS 2026-11-02.** The first pass identified redundant explicit `Asia/Manila` labels. Bounded copy-only refinement `a2378d308387be476d532be1bfe5b4bc0c677211` removed the timezone label from the dialog description, same-day schedule legend, and review timestamp while backend `Asia/Manila` scheduling authority remained unchanged. The owner rechecked the corrected UI and accepted the B3 follow-up.
 
 Hosted CI: **NOT EXECUTED / no hosted PASS claimed**. Existing CI triggers main
 pushes and PRs targeting main, not this branch-only push. No workflow change/PR.
@@ -182,6 +182,4 @@ that remains B4. Different-date missed appointments and period/seat-release poli
 remain B9/PD-5. Local DB tests establish tested service behavior, not deployed
 engine guarantees or protection against direct out-of-band database writers.
 
-Final commit/live remote SHA and clean pushed state are reported in the delivery
-message, avoiding a self-referential hash in this report. Stop for independent
-review and owner acceptance; do not begin B4.
+Final implementation/live remote SHA and clean pushed state are reported in the delivery history, avoiding a self-referential acceptance hash in this report. Independent review and owner acceptance are complete. B3 follow-up is accepted for Phase B progression. The next separately bounded package is EXAM-B4; do not begin B5 or later work without separate authorization.
