@@ -923,14 +923,14 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B4 implementation checkpoint — exact record Start Now and Applicant execution
 
-**2026-11-03: IMPLEMENTED / PUSHED — INDEPENDENT REVIEW AND PROJECT-OWNER ACCEPTANCE PENDING.** [B4 evidence](../reports/2026-11-02-exam-b4-server-owned-attempt.md). This is not an additional Approved Reference Implementation.
+**2026-11-03: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. Project-owner manual/browser QA is intentionally **DEFERRED / NOT EXECUTED** and will be consolidated into the later Phase B lifecycle/manual acceptance gate. [B4 evidence](../reports/2026-11-02-exam-b4-server-owned-attempt.md). This is not an additional Approved Reference Implementation or production acceptance.
 
 - Existing individual Exam Record detail contains the per-application **Authorize Start Now** action and shared confirmation Dialog naming the Applicant. Original appointment, authorization actor/time, actual start and individual deadline are separate read-only facts. Permission does not start the timer. The existing list/assignment entry point and Applicant Profile remain unchanged.
 - Detail appointment formatting now reuses the accepted wall-clock helpers, avoiding a contradictory browser-offset display alongside B4's original-appointment panel. No stored schedule value changes.
 - Applicant examination opens in a server-reported pre-start/blocked/legacy/active/expired/terminal state. **Start Examination** is an explicit mutation with duplicate-click protection. Recovery reads the same exact application, content revision and persisted deadline. A monotonic display clock resynchronizes every 15 seconds and on focus/reconnect/visibility; synchronization failure locks access. Expiry is displayed honestly without claiming automatic finalization.
 - The owner clarified that normal starts at/after the appointment on that Manila date require no override; early starts require authorization. No extra late-entry cutoff is invented. Original appointment remains visible after actual start.
 - The page explicitly says answers are not restored after refresh. No incremental MCQ saving, hydration, stale-draft conflict UI or final expiry receipt is added. Existing best-effort essay interval remains transitional B5 work.
-- Controlled component/handler/static-render and clock-contract checks are automated evidence. **Manual/browser QA: NOT EXECUTED — project-owner responsibility.** Acceptance, responsive/focus/keyboard runtime QA and multi-device journeys remain pending.
+- Controlled component/handler/static-render and clock-contract checks are automated evidence. **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED by owner decision.** Responsive/focus/keyboard runtime QA, local-clock/reconnect checks, and multi-device journeys remain required at the consolidated Phase B lifecycle/manual acceptance gate; they are not reported as PASS here.
 
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 

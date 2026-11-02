@@ -2,7 +2,7 @@
 
 Requested package date: 2026-11-02. Implementation/verification completed 2026-11-03, Asia/Manila; the requested report filename is retained.
 
-**IMPLEMENTED / PUSHED — INDEPENDENT REVIEW AND PROJECT-OWNER ACCEPTANCE PENDING**
+**ACCEPTED FOR PHASE B PROGRESSION — 2026-11-03**. Independent remote source review: **PASS — no blocking issue found**. Project-owner manual/browser QA is **DEFERRED / NOT EXECUTED** by owner decision and will be consolidated into the later Phase B lifecycle/manual acceptance gate.
 
 ## Starting state and bounded delivery
 
@@ -258,16 +258,21 @@ fixtures and restrictive-FK test cleanup; those were corrected and final scoped
 runs passed. Accepted B0A/B2 fixtures now represent their historical schema or
 explicit synthetic B4 execution as appropriate, without weakening runtime guards.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility.** Owner QA still
-needs normal start, early authorization, optional late authorization, no-booking
-B3 assignment then start, different-date rejection, original appointment,
-refresh/reopen, another tab/device, local-clock changes, reconnect near deadline
-and matching server time. Automated/static rendering is not manual acceptance.
+**Project-owner manual/browser QA: DEFERRED / NOT EXECUTED by owner decision.**
+The owner chose to consolidate manual/browser validation after the remaining
+Phase B packages instead of stopping after B4. The later lifecycle/manual gate
+must still cover normal start, early authorization, optional late authorization,
+no-booking B3 assignment then start, different-date rejection, original
+appointment preservation, refresh/reopen, another tab/device, local-clock
+changes, reconnect near deadline and matching server time. Automated/static
+rendering is not manual acceptance.
 
 **Hosted CI: NOT EXECUTED / no hosted PASS claimed.** Existing workflow triggers
 main pushes and PRs targeting main; this delivery creates neither. Independent
-remote review and project-owner acceptance remain pending. Stop after B4 delivery;
-do not begin B5.
+remote source review is complete with no blocking issue. B4 is accepted for
+Phase B progression with owner manual/browser QA deferred to the consolidated
+lifecycle gate. The next bounded package is B5; B6 and later remain separately
+unauthorized.
 
 ## Exact changed files
 
