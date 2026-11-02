@@ -12,6 +12,7 @@ const gateway = vi.hoisted(() => ({ $transaction: vi.fn(), student: { findUnique
 vi.mock("../../src/config/database", () => ({ default: gateway }));
 vi.mock("../../src/services/email.service", () => ({ EmailService: {} }));
 import { ExamService } from "../../src/services/exam.service";
+import { manilaCalendarDate } from "../../src/services/exam-schedule-time";
 
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 
@@ -50,7 +51,7 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
     await observer.program.createMany({ data: [ids.program, ids.otherProgram].map((id, i) => ({ id, programName: `B3 synthetic ${id}`, programType: "MASTERS" as const })) });
     for (let i = 0; i < ids.users.length; i++) {
       await observer.user.create({ data: { id: ids.users[i], email: `b3-${ids.users[i]}@example.invalid`, passwordHash: "unusable-synthetic", firstName: "B3", lastName: "Fixture", role: "APPLICANT" } });
-      await observer.student.create({ data: { id: ids.students[i], userId: ids.users[i], programId: ids.program, alignmentStatus: "ALIGNED" } });
+      await observer.student.create({ data: { id: ids.students[i], userId: ids.users[i], programId: ids.program, alignmentStatus: "ALIGNED", pinnacleApplicantId: `B3-${ids.students[i]}` } });
     }
     await observer.examSlot.createMany({ data: ids.slots.map(id => ({ id, programId: ids.program, examDate: date, examTime: time, maxSlots: 2 })) });
     gateway.student.findUnique.mockImplementation(args => observer.student.findUnique(args));
@@ -133,6 +134,80 @@ describe.skipIf(process.env.EXAM_B3_DB_TEST !== "1")("B3 real MariaDB booking ad
     console.log(`B3 observed ${table} lock wait on independent connections ${connections.join(" / ")}`);
     return Promise.all([firstResult, secondResult!]);
   }
+
+  const assignment = (student = 0, slot = 0) => service.assignApplicant(ids.students[student], ids.slots[slot]);
+  async function sameDaySlots() {
+    const today = new Date(`${manilaCalendarDate()}T00:00:00Z`);
+    await observer.examSlot.updateMany({ where: { id: { in: ids.slots } }, data: { examDate: today, examTime: new Date("1970-01-01T00:00:00Z") } });
+    return today;
+  }
+
+  it("Admin assigns an earlier same-day wall clock; ordinary self-booking rejects it and the original appointment is unchanged", async () => {
+    const today = await sameDaySlots();
+    await expect(booking()).rejects.toMatchObject({ statusCode: 409 });
+    await assignment();
+    expect(await observer.entranceExamApplication.findFirstOrThrow({ where: { studentId: ids.students[0] } })).toMatchObject({
+      slotId: ids.slots[0], examDate: today, examTime: new Date("1970-01-01T00:00:00Z"), status: "PENDING",
+    });
+    expect(await observer.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).toMatchObject({
+      examDate: today, examTime: new Date("1970-01-01T00:00:00Z"), slotsTaken: 1, isActive: true,
+    });
+  });
+
+  it("same Student's concurrent Admin assignments serialize and only one wins", async () => {
+    await sameDaySlots();
+    const [winner, loser] = await contend("students", () => assignment(0, 0), () => assignment(0, 1));
+    expect(winner).toHaveProperty("value"); expect(loser).toMatchObject({ error: { statusCode: 409 } });
+    expect(await observer.entranceExamApplication.count({ where: { studentId: ids.students[0] } })).toBe(1);
+    expect((await observer.examSlot.findMany({ where: { id: { in: ids.slots } } })).map(s => s.slotsTaken).sort()).toEqual([0, 0, 1]);
+  }, 15_000);
+
+  it("two Admin assignments compete for the final seat without overbooking", async () => {
+    await sameDaySlots();
+    await observer.entranceExamApplication.create({ data: { studentId: ids.students[2], programId: ids.program, slotId: ids.slots[0], status: "FAILED" } });
+    await observer.examSlot.update({ where: { id: ids.slots[0] }, data: { slotsTaken: 1 } });
+    const [winner, loser] = await contend("exam_slots", () => assignment(0), () => assignment(1));
+    expect(winner).toHaveProperty("value"); expect(loser).toMatchObject({ error: { statusCode: 409 } });
+    expect(await observer.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).toMatchObject({ slotsTaken: 2, maxSlots: 2 });
+    expect(await observer.entranceExamApplication.count({ where: { slotId: ids.slots[0] } })).toBe(2);
+  }, 15_000);
+
+  it("Admin and Applicant self-booking share the same Student lock", async () => {
+    await sameDaySlots();
+    // Self-booking needs a future wall clock; Admin holds the same Student first.
+    const tomorrow = new Date(`${manilaCalendarDate()}T00:00:00Z`); tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    await observer.examSlot.update({ where: { id: ids.slots[1] }, data: { examDate: tomorrow } });
+    const [winner, loser] = await contend("students", () => assignment(0, 0), () => booking(0, 1));
+    expect(winner).toHaveProperty("value"); expect(loser).toMatchObject({ error: { statusCode: 409 } });
+    expect(await observer.entranceExamApplication.count({ where: { studentId: ids.students[0] } })).toBe(1);
+  }, 15_000);
+
+  it("Admin application failure rolls back both real writes", async () => {
+    await sameDaySlots();
+    let inserted = false;
+    gateway.$transaction.mockImplementation((callback, options) => workers[0].$transaction(tx => callback(new Proxy(tx, { get(target, key) {
+      if (key !== "entranceExamApplication") return Reflect.get(target, key);
+      return new Proxy(target.entranceExamApplication, { get(model, operation) {
+        if (operation !== "create") return Reflect.get(model, operation);
+        return async (args: Prisma.EntranceExamApplicationCreateArgs) => {
+          expect((await tx.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).slotsTaken).toBe(1);
+          await model.create(args); inserted = true; throw new Error("Injected Admin assignment failure after insert");
+        };
+      } });
+    } })), options));
+    await expect(assignment()).rejects.toThrow("Injected Admin assignment failure"); expect(inserted).toBe(true);
+    expect((await observer.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).slotsTaken).toBe(0);
+    expect(await observer.entranceExamApplication.count({ where: { studentId: ids.students[0] } })).toBe(0);
+  });
+
+  it("Admin rejects real counter drift without repair", async () => {
+    await sameDaySlots();
+    await observer.examSlot.update({ where: { id: ids.slots[0] }, data: { slotsTaken: 1 } });
+    await expect(assignment()).rejects.toMatchObject({ statusCode: 409 });
+    expect((await service.getAssignmentOptions(ids.students[0])).slots.map(s => s.id)).not.toContain(ids.slots[0]);
+    expect((await observer.examSlot.findUniqueOrThrow({ where: { id: ids.slots[0] } })).slotsTaken).toBe(1);
+    expect(await observer.entranceExamApplication.count({ where: { slotId: ids.slots[0] } })).toBe(0);
+  });
 
   it("two Applicants contend for the final seat: one commits, one gets full conflict; counter never exceeds maximum", async () => {
     await observer.entranceExamApplication.create({ data: { studentId: ids.students[2], programId: ids.program, slotId: ids.slots[0], status: "FAILED" } });

@@ -10,11 +10,12 @@ export class ExamRepository {
         return prisma.examSlot.create({ data });
     }
 
-    async getActiveProgramSlots(programId: string) {
-        return prisma.examSlot.findMany({
+    async getActiveProgramSlots(programId: string, tx?: TransactionClient, examDate?: Date) {
+        return (tx ?? prisma).examSlot.findMany({
             where: {
                 programId: programId,
                 isActive: true,
+                ...(examDate ? { examDate } : {}),
             },
             include: { _count: { select: { examApplications: true } } },
             orderBy: [{ examDate: 'asc' }, { examTime: 'asc' }, { id: 'asc' }]
@@ -56,6 +57,23 @@ export class ExamRepository {
         const slot = await tx.examSlot.findUnique({ where: { id: slotId } });
         if (!slot) throw new AppError('Exam slot not found.', 404);
         return slot;
+    }
+
+    async lockAssignmentStudent(studentId: string, tx: TransactionClient) {
+        // Same physical Student lock as self-booking, before any Slot lock.
+        const rows = await tx.$queryRaw<{ id: string }[]>`
+            SELECT student_id AS id FROM students WHERE student_id = ${studentId} FOR UPDATE
+        `;
+        if (!rows.length) throw new AppError('Applicant not found.', 404);
+        const student = await tx.student.findUnique({
+            where: { id: studentId },
+            include: {
+                user: { select: { role: true, firstName: true, lastName: true, email: true } },
+                program: { select: { id: true, programName: true } },
+            },
+        });
+        if (!student) throw new AppError('Applicant not found.', 404);
+        return student;
     }
 
     async getAssignedCount(slotId: string, tx: TransactionClient) {

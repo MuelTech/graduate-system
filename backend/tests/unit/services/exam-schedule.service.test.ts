@@ -8,7 +8,7 @@ vi.mock("../../../src/config/database", () => ({ default: db }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: {} }));
 import { ExamService } from "../../../src/services/exam.service";
 const service = new ExamService();
-const ids = { program: "11111111-1111-4111-8111-111111111111", slot: "22222222-2222-4222-8222-222222222222", other: "33333333-3333-4333-8333-333333333333", student: "student" };
+const ids = { program: "11111111-1111-4111-8111-111111111111", slot: "22222222-2222-4222-8222-222222222222", other: "33333333-3333-4333-8333-333333333333", student: "44444444-4444-4444-8444-444444444444" };
 const input = { programId: ids.program, examDate: "2026-11-15", examTime: "1970-01-01T16:00:00.000Z", maxSlots: 2 };
 const slot = (data = {}) => ({ id: ids.slot, programId: ids.program, examDate: new Date("2026-11-15T00:00:00Z"), examTime: new Date(input.examTime), slotsTaken: 0, maxSlots: 2, isActive: true, _count: { examApplications: 0 }, ...data });
 
@@ -24,6 +24,108 @@ beforeEach(() => {
   db.entranceExamApplication.create.mockImplementation(({ data }) => Promise.resolve({ id: "created", ...data }));
 });
 afterEach(() => vi.useRealTimers());
+
+describe("B3 Admin same-day assignment", () => {
+  const registered = (data = {}) => ({ id: ids.student, userId: "jwt-user", admissionStatus: "APPLICANT",
+    pinnacleApplicantId: "SYNTHETIC-1", alignmentStatus: "ALIGNED", programId: ids.program,
+    user: { role: "APPLICANT", firstName: "Test", lastName: "Applicant", email: "test@example.invalid" },
+    program: { id: ids.program, programName: "Test Program" }, ...data });
+  beforeEach(() => db.student.findUnique.mockResolvedValue(registered()));
+
+  it.each(["1970-01-01T09:00:00Z", "1970-01-01T10:00:00Z", "1970-01-01T16:00:00Z"])("admits same-day wall clock %s, preserving appointment", async examTime => {
+    db.examSlot.findUnique.mockResolvedValue(slot({ examTime: new Date(examTime) }));
+    expect(await service.assignApplicant(ids.student, ids.slot)).toMatchObject({ studentId: ids.student, programId: ids.program,
+      slotId: ids.slot, status: "PENDING", examDate: new Date("2026-11-15T00:00:00Z"), examTime: new Date(examTime) });
+    expect(db.$transaction.mock.calls[0][1]).toEqual({ isolationLevel: "ReadCommitted" });
+    expect(db.$queryRaw.mock.calls.map(([strings, value]) => [strings.join("?"), value])).toEqual([
+      [expect.stringMatching(/FROM students WHERE student_id = \? FOR UPDATE/), ids.student],
+      [expect.stringMatching(/FROM exam_slots WHERE slot_id = \? FOR UPDATE/), ids.slot],
+    ]);
+    expect(db.student.findUnique.mock.calls[0][0]).toMatchObject({ where: { id: ids.student }, include: { user: { select: { role: true } } } });
+    expect(db.examSlot.updateMany.mock.calls[0][0]).toMatchObject({ where: { id: ids.slot, slotsTaken: 0, maxSlots: 2, isActive: true, AND: { slotsTaken: { lt: 2 } } } });
+    expect(db.examSlot.update).not.toHaveBeenCalled();
+  });
+  it.each(["ALIGNED", "CLEARED"])("allows eligible alignment %s", async alignmentStatus => {
+    db.student.findUnique.mockResolvedValue(registered({ alignmentStatus }));
+    await expect(service.assignApplicant(ids.student, ids.slot)).resolves.toHaveProperty("id");
+  });
+  it.each(["PENDING", "APPROVED", "TAKEN", "PASSED", "APPEALED", "DISQUALIFIED"])("blocks any %s even behind a newer FAILED", async status => {
+    db.entranceExamApplication.findMany.mockResolvedValue([{ status: "FAILED" }, { status }]);
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
+  it("preserves transitional FAILED as nonblocking", async () => {
+    db.entranceExamApplication.findMany.mockResolvedValue([{ status: "FAILED" }]);
+    await expect(service.assignApplicant(ids.student, ids.slot)).resolves.toHaveProperty("id");
+  });
+  it.each([
+    { alignmentStatus: "PENDING_WAIVER" }, { alignmentStatus: "UNKNOWN" }, { alignmentStatus: null },
+    { admissionStatus: "ENROLLED" }, { user: { role: "STUDENT" } }, { pinnacleApplicantId: null }, { pinnacleApplicantId: " " },
+  ])("rejects an ineligible/unregistered selected Student %#", async change => {
+    db.student.findUnique.mockResolvedValue(registered(change));
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+    expect((await service.getAssignmentOptions(ids.student))).toMatchObject({ eligible: false, reason: expect.any(String), slots: [] });
+  });
+  it.each([
+    { examDate: new Date("2026-11-14T00:00:00Z") }, { examDate: new Date("2026-11-16T00:00:00Z") },
+    { isActive: false }, { programId: ids.other }, { slotsTaken: 1 }, { maxSlots: 0 },
+    { examTime: new Date("1970-01-01T25:00:00Z") }, { examTime: new Date("1970-01-01T09:00:01Z") },
+    { examDate: new Date("2026-11-15T01:00:00Z") },
+  ])("fails closed for unsafe slot %#", async change => {
+    db.examSlot.findUnique.mockResolvedValue(slot(change));
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled(); expect(db.entranceExamApplication.create).not.toHaveBeenCalled();
+  });
+  it("rejects full consistent capacity", async () => {
+    db.examSlot.findUnique.mockResolvedValue(slot({ slotsTaken: 2 })); db.entranceExamApplication.count.mockResolvedValue(2);
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
+  it("rechecks Manila date immediately before reservation across midnight", async () => {
+    db.entranceExamApplication.findMany.mockImplementation(async () => {
+      if (db.$queryRaw.mock.calls.length === 2) vi.setSystemTime(new Date("2026-11-15T16:00:00Z"));
+      return [];
+    });
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
+  it("uses Manila's date when UTC is still the prior day", async () => {
+    vi.setSystemTime(new Date("2026-11-14T16:01:00Z"));
+    db.examSlot.findUnique.mockResolvedValue(slot({ examTime: new Date("1970-01-01T00:00:00Z") }));
+    await expect(service.assignApplicant(ids.student, ids.slot)).resolves.toHaveProperty("id");
+    await expect(service.scheduleExam("jwt-user", ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+  });
+  it("validates both UUIDs before starting a transaction", async () => {
+    for (const value of [null, [], "bad", "", 123]) {
+      await expect(service.assignApplicant(value, ids.slot)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.assignApplicant(ids.student, value)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(service.getAssignmentOptions(value)).rejects.toMatchObject({ statusCode: 400 });
+    }
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+  it("rejects missing Applicant/slot and a lost reservation", async () => {
+    db.$queryRaw.mockResolvedValueOnce([]);
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 404 });
+    db.$queryRaw.mockResolvedValueOnce([{ id: ids.student }]).mockResolvedValueOnce([]);
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 404 });
+    db.examSlot.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.assignApplicant(ids.student, ids.slot)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.entranceExamApplication.create).not.toHaveBeenCalled();
+  });
+  it("options expose authoritative identity and only eligible same-day slots, including past time", async () => {
+    db.examSlot.findMany.mockResolvedValue([slot(), slot({ id: ids.other, examTime: new Date("1970-01-01T09:00:00Z") }),
+      slot({ isActive: false }), slot({ programId: ids.other }), slot({ examDate: new Date("2026-11-16T00:00:00Z") }),
+      slot({ slotsTaken: 1 }), slot({ slotsTaken: 2, _count: { examApplications: 2 } }), slot({ examTime: new Date(NaN) })]);
+    const options = await service.getAssignmentOptions(ids.student);
+    expect(options).toMatchObject({ eligible: true, reason: null, date: "2026-11-15", timeZone: "Asia/Manila",
+      applicant: { id: ids.student, pinnacleApplicantId: "SYNTHETIC-1", program: { id: ids.program }, alignmentStatus: "ALIGNED" } });
+    expect(options.slots).toHaveLength(2);
+    expect(options.slots[1]).toEqual({ id: ids.other, examDate: "2026-11-15T00:00:00.000Z", examTime: "1970-01-01T09:00:00.000Z", slotsTaken: 0, maxSlots: 2, remainingSeats: 2 });
+    expect(options.applicant).not.toHaveProperty("user");
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
+});
 
 describe("B3 available schedules", () => {
   it.each(["ALIGNED", "CLEARED"])("uses authenticated Student Program with %s", async alignmentStatus => {

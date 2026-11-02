@@ -3,12 +3,28 @@ import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
-import { requireFutureSchedule, scheduleStartInstant } from "./exam-schedule-time";
+import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
 import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
 
 function completedResultStatus(application: { status: string; score: { status: string } | null }): "PASSED" | "FAILED" | null {
   const status = application.status;
   return (status === "PASSED" || status === "FAILED") && application.score?.status === status ? status : null;
+}
+
+function assignmentBlockReason(student: {
+  admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
+  user: { role: string };
+}, applications: { status: string }[]): string | null {
+  if (student.admissionStatus !== "APPLICANT" || student.user.role !== "APPLICANT" || !student.pinnacleApplicantId?.trim()) {
+    return "Select an existing registered Applicant with a Pinnacle Applicant ID.";
+  }
+  if (student.alignmentStatus !== "ALIGNED" && student.alignmentStatus !== "CLEARED") {
+    return "Program alignment or bridging waiver clearance is required before assignment.";
+  }
+  if (applications.some(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status))) {
+    return "This Applicant already has an examination record that prevents another assignment.";
+  }
+  return null;
 }
 
 export class ExamService {
@@ -50,22 +66,83 @@ export class ExamService {
 
   async scheduleExam(userId: string, requestedSlotId: unknown) {
     const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    return this.admitExam({ kind: "self", userId }, slotId);
+  }
+
+  async assignApplicant(requestedStudentId: unknown, requestedSlotId: unknown) {
+    const studentId = scheduleIdentifier(requestedStudentId, "studentId");
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    return this.admitExam({ kind: "admin", studentId }, slotId);
+  }
+
+  /** Selection is advisory; confirmation independently repeats every safeguard. */
+  async getAssignmentOptions(requestedStudentId: unknown) {
+    const studentId = scheduleIdentifier(requestedStudentId, "studentId");
+    return this.examRepo.runInTransaction(async tx => {
+      const student = await this.examRepo.lockAssignmentStudent(studentId, tx);
+      const applications = await this.examRepo.getStudentApplications(student.id, tx);
+      const reason = assignmentBlockReason(student, applications);
+      const now = new Date();
+      const candidates = reason ? [] : await this.examRepo.getActiveProgramSlots(student.programId, tx, parseScheduleDate(manilaCalendarDate(now)));
+      const slots = candidates.filter(slot => {
+        try {
+          requireSameDaySchedule(slot.examDate, slot.examTime, now);
+          requireConsistentCapacity(slot, slot._count.examApplications);
+          return slot.programId === student.programId && slot.isActive === true && slot.slotsTaken < slot.maxSlots;
+        } catch (error) {
+          if (error instanceof AppError) return false;
+          throw error;
+        }
+      }).map(slot => ({
+        id: slot.id, examDate: slot.examDate.toISOString(), examTime: slot.examTime.toISOString(),
+        maxSlots: slot.maxSlots, slotsTaken: slot.slotsTaken, remainingSeats: slot.maxSlots - slot.slotsTaken,
+      }));
+      return {
+        applicant: {
+          id: student.id, firstName: student.user.firstName, lastName: student.user.lastName,
+          email: student.user.email, pinnacleApplicantId: student.pinnacleApplicantId,
+          program: student.program, alignmentStatus: student.alignmentStatus,
+        },
+        eligible: reason === null, reason, date: manilaCalendarDate(now), timeZone: "Asia/Manila", slots,
+      };
+    });
+  }
+
+  /** Shared B3 admission; no caller-controlled time-bypass flag. */
+  private async admitExam(target: { kind: "self"; userId: string } | { kind: "admin"; studentId: string }, slotId: string) {
+    const requireSchedule = target.kind === "admin" ? requireSameDaySchedule : requireFutureSchedule;
     return this.examRepo.runInTransaction(async (tx) => {
-      const student = await this.examRepo.lockSchedulingStudent(userId, tx);
+      const student = target.kind === "admin"
+        ? await this.examRepo.lockAssignmentStudent(target.studentId, tx).then(async selected => {
+            const reason = assignmentBlockReason(selected, await this.examRepo.getStudentApplications(selected.id, tx));
+            if (reason) throw new AppError(reason, 409);
+            return selected;
+          })
+        : await this.examRepo.lockSchedulingStudent(target.userId, tx);
       requireEligibleAlignment(student.alignmentStatus);
       const slot = await this.examRepo.lockSlot(slotId, tx);
-      if (slot.programId !== student.programId) throw new AppError("Exam slot does not belong to your Program.", 403);
+      if (slot.programId !== student.programId) throw new AppError(target.kind === "admin"
+        ? "Choose a schedule for this Applicant's Program." : "Exam slot does not belong to your Program.", target.kind === "admin" ? 409 : 403);
       if (slot.isActive !== true) throw new AppError("This schedule is closed for booking.", 409);
-      requireFutureSchedule(slot.examDate, slot.examTime);
+      requireSchedule(slot.examDate, slot.examTime);
       const assignedCount = await this.examRepo.getAssignedCount(slotId, tx);
-      requireConsistentCapacity(slot, assignedCount);
+      try {
+        requireConsistentCapacity(slot, assignedCount);
+      } catch (error) {
+        if (target.kind === "admin" && error instanceof AppError) {
+          throw new AppError("This schedule's booked-seat information needs review. Contact the schedule administrator.", 409);
+        }
+        throw error;
+      }
       if (slot.slotsTaken >= slot.maxSlots) throw new AppError("This slot is fully booked.", 409);
       const applications = await this.examRepo.getStudentApplications(student.id, tx);
       const blocking = applications.find(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status));
-      if (blocking) throw new AppError(`You already have an application with status: ${blocking.status}`, 409);
+      if (blocking) throw new AppError(target.kind === "admin"
+        ? "This Applicant already has an examination record that prevents another assignment."
+        : `You already have an application with status: ${blocking.status}`, 409);
 
       // Recheck actual time after all potentially waiting reads and before reserve.
-      requireFutureSchedule(slot.examDate, slot.examTime);
+      requireSchedule(slot.examDate, slot.examTime);
       await this.examRepo.incrementSlotTaken(slotId, slot.slotsTaken, slot.maxSlots, tx);
 
       const application = await this.examRepo.createApplication(

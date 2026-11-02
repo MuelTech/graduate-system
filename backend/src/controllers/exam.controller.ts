@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamService } from "../services/exam.service";
 import { AppError } from "../utils/AppError";
-import { validateBookingBody, validateBookingStatusBody } from "../services/exam-schedule.rules";
+import { validateAssignmentBody, validateBookingBody, validateBookingStatusBody } from "../services/exam-schedule.rules";
 
 function schedulingError(res: Response, error: unknown): void {
   res.status(error instanceof AppError ? error.statusCode : 500).json({
@@ -12,6 +12,21 @@ function schedulingError(res: Response, error: unknown): void {
 
 export class ExamController {
   private examService = new ExamService();
+
+  getAssignmentOptions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      res.status(200).json(await this.examService.getAssignmentOptions(req.params.studentId));
+    } catch (error: unknown) { schedulingError(res, error); }
+  };
+
+  assignApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { studentId, slotId } = validateAssignmentBody(req.body);
+      const application = await this.examService.assignApplicant(studentId, slotId);
+      // Do not expose Student/account data from an expanded Prisma relation.
+      res.status(201).json({ application: { id: application.id }, message: "Applicant assigned successfully." });
+    } catch (error: unknown) { schedulingError(res, error); }
+  };
 
   createSlot = async (
     req: AuthenticatedRequest,

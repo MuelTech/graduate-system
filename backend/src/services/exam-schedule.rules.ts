@@ -35,6 +35,14 @@ export function validateBookingBody(value: unknown): string {
   return scheduleIdentifier(body(value, ["slotId"]).slotId, "slotId");
 }
 
+export function validateAssignmentBody(value: unknown) {
+  const data = body(value, ["studentId", "slotId"]);
+  return {
+    studentId: scheduleIdentifier(data.studentId, "studentId"),
+    slotId: scheduleIdentifier(data.slotId, "slotId"),
+  };
+}
+
 export function validateBookingStatusBody(value: unknown): boolean {
   const data = body(value, ["isActive"]);
   if (typeof data.isActive !== "boolean") throw new AppError("isActive must be a boolean.", 400);

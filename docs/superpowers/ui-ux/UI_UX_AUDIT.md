@@ -906,7 +906,7 @@ The accepted entrance-exam detail establishes a second concrete detail-page patt
 
 ### Pending B3/B4 UI follow-up — Applicant-specific same-day assignment and Start Now authorization
 
-**Status:** OWNER-CONFIRMED ENTRY POINT AND INTERACTION — **NOT IMPLEMENTED, NOT VISUALLY ACCEPTED, AND NOT AN ADDITIONAL APPROVED REFERENCE** (2026-11-02).
+**Status:** B3 SAME-DAY ASSIGNMENT **IMPLEMENTED / PUSHED — INDEPENDENT REVIEW AND PROJECT-OWNER ACCEPTANCE PENDING** (2026-11-02). B4 Start Now remains **NOT IMPLEMENTED / UNAUTHORIZED**. This UI is **NOT VISUALLY ACCEPTED AND NOT AN ADDITIONAL APPROVED REFERENCE**. [Implementation and verification evidence](../reports/2026-11-02-exam-b3-same-day-admin-assignment.md).
 
 This is a bounded extension to the accepted Exam Records / Applicant administration experience. The accepted UIUX-2D/2E reference above remains unchanged.
 
@@ -918,7 +918,8 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 - **Confirmation and result:** confirm the assignment before mutation. On success, refresh the existing Exam Records query so the newly created record appears in the unchanged table. If the Applicant or slot is ineligible, blocked, closed, full, cross-Program/cross-date, or has counter drift, fail closed and explain the actual reason; never offer a capacity or eligibility override.
 - **Preserve existing UI:** retain the accepted PageHeader/table/filter/row-action composition. Do not add a sidebar destination, KPI layer, separate walk-in module, fake appointment, or assignment control to Applicant Profile. Do not assume an Exam Record exists before assignment.
 - **Workflow boundary:** an Applicant with an existing booking is not reassigned through this action; B4 handles that exact application's same-day Start Now authorization. A no-booking Applicant is assigned first under B3, then B4 authorization may follow. Different-date missed appointments remain B9 work.
-- **QA / acceptance:** the entry point and interaction direction are owner-confirmed, but the new UI is not implemented or visually accepted. Project-owner browser/manual QA remains required; do not promote it to an Approved Reference before that review.
+- **Implementation / evidence:** the page-level action/dialog now reuses registered Applicant search, reads exact selected-Applicant eligibility and same-day slots from the server, reviews original wall-clock/capacity, and prevents duplicate confirmation. Server rejection clears the slot/review and refreshes eligibility while retaining its reason. Success closes/resets the dialog, invalidates the existing Exam Records query and resets list filters/page so the new record is visible. Existing table/filter/View/pagination markup is preserved. Focused UI contract/component checks **11/11 PASS**; frontend TypeScript/scoped ESLint/production build **PASS**. Source/controlled-hook/static-render tests are not browser QA.
+- **QA / acceptance:** **Manual/browser QA: NOT EXECUTED — project-owner responsibility**. Independent review and project-owner acceptance remain pending. Do not promote this UI to an Approved Reference before explicit acceptance. B4's authorization and timer flow are not part of this delivery.
 
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 

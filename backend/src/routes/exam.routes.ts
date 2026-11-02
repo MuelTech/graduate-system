@@ -16,6 +16,8 @@ router.post('/schedule', authenticateJWT, requireRole(['APPLICANT']), examContro
 router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.getAllSlots);
 
 // Routes for Admin Exam Applications
+router.get('/assignment-options/:studentId', authenticateJWT, requireRole(['ADMIN']), examController.getAssignmentOptions);
+router.post('/assignments', authenticateJWT, requireRole(['ADMIN']), examController.assignApplicant);
 router.get('/applications', authenticateJWT, requireRole(['ADMIN']), examController.getAllApplications);
 router.get('/applications/:id', authenticateJWT, requireRole(['ADMIN']), examController.getApplicationDetail);
 

@@ -59,3 +59,16 @@ export function requireFutureSchedule(examDate: Date, examTime: Date, now = new 
     throw new AppError("The schedule start must still be in the future (Asia/Manila).", 409);
   }
 }
+
+export function manilaCalendarDate(now = new Date()): string {
+  const parts = Object.fromEntries(clock.formatToParts(now).map(p => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/** Admin assignment alone admits earlier wall clocks, on today's Manila date. */
+export function requireSameDaySchedule(examDate: Date, examTime: Date, now = new Date()): void {
+  scheduleStartInstant(examDate, examTime); // Validate stored values without repair.
+  if (examDate.toISOString().slice(0, 10) !== manilaCalendarDate(now)) {
+    throw new AppError("Choose a schedule for today's date (Asia/Manila).", 409);
+  }
+}
