@@ -100,20 +100,22 @@ export function scheduleWallClockMs(
   );
 }
 
-/** Current wall-clock in the same frame (browser local clock). */
+const manilaClock = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Manila", calendar: "gregory", numberingSystem: "latn",
+  year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+});
+
+/** Current institutional wall-clock, independent of the browser's timezone. */
 function nowWallClockMs(now: Date): number {
+  const parts = Object.fromEntries(manilaClock.formatToParts(now).map(p => [p.type, p.value]));
   return Date.UTC(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    now.getHours(),
-    now.getMinutes(),
-    0,
-    0,
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second), now.getUTCMilliseconds(),
   );
 }
 
-/** True when the schedule wall-clock is before the current wall-clock. */
+/** At/past start is no longer future for booking; no attempt-start policy here. */
 export function isPastExamSchedule(
   examDate: string | null | undefined,
   examTime: string | null | undefined,
@@ -121,7 +123,7 @@ export function isPastExamSchedule(
 ): boolean {
   const scheduled = scheduleWallClockMs(examDate, examTime);
   if (scheduled === null) return false;
-  return scheduled < nowWallClockMs(now);
+  return scheduled <= nowWallClockMs(now);
 }
 
 /* ---------------------------------------------------------------- capacity */
@@ -224,9 +226,8 @@ export function matchesAvailabilityFilter(
 /* ----------------------------------------------------------------- payload */
 
 /**
- * Submit payload matching the backend's wall-clock contract. The backend runs
- * `new Date(examDate)` and `new Date(examTime)`; the adapter then stores the
- * UTC date/time-of-day, so the admin's typed wall-clock round-trips exactly.
+ * Submit the backend's strict wall-clock payload. UTC components carry the
+ * typed values to DATE/TIME storage; Asia/Manila supplies comparison authority.
  */
 export function toSchedulePayload(
   examDate: string,

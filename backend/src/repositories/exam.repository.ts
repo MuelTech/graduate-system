@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { AppError } from '../utils/AppError';
 
 // Type for the transaction client that Prisma provides inside $transaction
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -9,38 +10,68 @@ export class ExamRepository {
         return prisma.examSlot.create({ data });
     }
 
-    async getFutureActiveSlots(programId: string) {
+    async getActiveProgramSlots(programId: string) {
         return prisma.examSlot.findMany({
             where: {
                 programId: programId,
                 isActive: true,
-                examDate: { gte: new Date() }
             },
-            orderBy: { examDate: 'asc' }
+            include: { _count: { select: { examApplications: true } } },
+            orderBy: [{ examDate: 'asc' }, { examTime: 'asc' }, { id: 'asc' }]
         });
+    }
+
+    async getSchedulingStudent(userId: string) {
+        return prisma.student.findUnique({ where: { userId }, select: { id: true, programId: true, alignmentStatus: true } });
+    }
+
+    async requireProgram(programId: string, tx?: TransactionClient) {
+        const program = await (tx ?? prisma).program.findUnique({ where: { id: programId }, select: { id: true } });
+        if (!program) throw new AppError('Program not found.', 404);
     }
 
     // --- TRANSACTIONAL QUERIES ---
     async runInTransaction<T>(callback: (tx: TransactionClient) => Promise<T>): Promise<T> {
-        return prisma.$transaction(callback);
+        // Post-lock ordinary reads must see committed state after waiting, even on
+        // MariaDB hosts whose default is REPEATABLE READ. Every B3 writer shares
+        // the Student -> ExamSlot lock order; Admin writers only lock ExamSlot.
+        return prisma.$transaction(callback, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     }
 
-    async getStudentWithExamApps(userId: string, tx: TransactionClient) {
-        return tx.student.findUnique({
-            where: { userId },
-            include: { examApplications: true }
-        });
+    async lockSchedulingStudent(userId: string, tx: TransactionClient) {
+        const rows = await tx.$queryRaw<{ id: string }[]>`
+            SELECT student_id AS id FROM students WHERE user_id = ${userId} FOR UPDATE
+        `;
+        if (!rows.length) throw new AppError('Student not found.', 404);
+        const student = await tx.student.findUnique({ where: { id: rows[0].id } });
+        if (!student) throw new AppError('Student not found.', 404);
+        return student;
     }
 
-    async getSlotById(slotId: string, tx: TransactionClient) {
-        return tx.examSlot.findUnique({ where: { id: slotId }});
+    async lockSlot(slotId: string, tx: TransactionClient) {
+        const rows = await tx.$queryRaw<{ id: string }[]>`
+            SELECT slot_id AS id FROM exam_slots WHERE slot_id = ${slotId} FOR UPDATE
+        `;
+        if (!rows.length) throw new AppError('Exam slot not found.', 404);
+        const slot = await tx.examSlot.findUnique({ where: { id: slotId } });
+        if (!slot) throw new AppError('Exam slot not found.', 404);
+        return slot;
     }
 
-    async incrementSlotTaken(slotId: string, tx: TransactionClient) {
-        return tx.examSlot.update({
-            where: { id: slotId },
+    async getAssignedCount(slotId: string, tx: TransactionClient) {
+        return tx.entranceExamApplication.count({ where: { slotId } });
+    }
+
+    async getStudentApplications(studentId: string, tx: TransactionClient) {
+        return tx.entranceExamApplication.findMany({ where: { studentId }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }] });
+    }
+
+    async incrementSlotTaken(slotId: string, slotsTaken: number, maxSlots: number, tx: TransactionClient) {
+        const result = await tx.examSlot.updateMany({
+            where: { id: slotId, isActive: true, slotsTaken, maxSlots, AND: { slotsTaken: { lt: maxSlots } } },
             data: { slotsTaken: { increment: 1 } }
         });
+        if (result.count !== 1) throw new AppError('This slot is fully booked or no longer available.', 409);
     }
 
     async createApplication(data: Prisma.EntranceExamApplicationUncheckedCreateInput, tx: TransactionClient) {
@@ -69,17 +100,10 @@ export class ExamRepository {
         });
     }
 
-        async updateSlot(slotId: string, data: Prisma.ExamSlotUncheckedUpdateInput) {
-        return prisma.examSlot.update({
+        async updateSlot(slotId: string, data: Prisma.ExamSlotUncheckedUpdateInput, tx: TransactionClient) {
+        return tx.examSlot.update({
             where: { id: slotId },
             data
-        });
-    }
-
-    async getApplicantsForSlot(slotId: string) {
-        return prisma.entranceExamApplication.findMany({
-            where: { slotId },
-            include: { student: { include: { user: true } } }
         });
     }
 

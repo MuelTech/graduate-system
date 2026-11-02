@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 import { ApplicantStatus, ExamSlot } from "@/types";
+import { formatScheduleDate as formatDate, formatScheduleTime as formatTime, isPastExamSchedule as isPast } from "@/lib/admin-exam-schedules";
 
 export default function ApplicantSchedulePage() {
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
@@ -84,28 +85,6 @@ export default function ApplicantSchedulePage() {
   const isLoading =
     isApplicantLoading || isSlotsLoading || scheduleMutation.isPending;
   const error = applicantError?.message || slotsError?.message;
-
-  const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString([], {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const isPast = (dateStr: string, timeStr: string) => {
-    const d = new Date(dateStr);
-    const t = new Date(timeStr);
-    d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
-    return d < new Date();
-  };
 
   if (isLoading)
     return <div className="p-4 text-center">Loading your schedule...</div>;

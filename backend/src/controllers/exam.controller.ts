@@ -2,6 +2,13 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamService } from "../services/exam.service";
 import { AppError } from "../utils/AppError";
+import { validateBookingBody, validateBookingStatusBody } from "../services/exam-schedule.rules";
+
+function schedulingError(res: Response, error: unknown): void {
+  res.status(error instanceof AppError ? error.statusCode : 500).json({
+    error: error instanceof AppError ? error.message : "Could not complete the scheduling request.",
+  });
+}
 
 export class ExamController {
   private examService = new ExamService();
@@ -14,13 +21,7 @@ export class ExamController {
       const slot = await this.examService.createSlot(req.body);
       res.status(201).json(slot);
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -62,23 +63,17 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const { programId } = req.query;
-      if (!programId) {
-        res.status(400).json({ error: "programId is required" });
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
         return;
       }
       const slots = await this.examService.getAvailableSlots(
-        programId as string,
+        userId, req.query.programId,
       );
       res.status(200).json(slots);
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -88,25 +83,18 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const userId = req.user?.userId;
-      const { slotId } = req.body;
 
       if (!userId) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      const application = await this.examService.scheduleExam(userId, slotId);
+      const application = await this.examService.scheduleExam(userId, validateBookingBody(req.body));
       res
         .status(201)
         .json({ message: "Exam scheduled successfully", application });
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -118,10 +106,8 @@ export class ExamController {
       const id = req.params.id as string;
       const slot = await this.examService.updateSlot(id, req.body);
       res.status(200).json(slot);
-    } catch (error: any) {
-      res
-        .status(500)
-        .json({ error: error.message || "An unexpected error occurred." });
+    } catch (error: unknown) {
+      schedulingError(res, error);
     }
   };
 
@@ -131,13 +117,10 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const { isActive } = req.body;
-      const slot = await this.examService.toggleSlotStatus(id, isActive);
+      const slot = await this.examService.toggleSlotStatus(id, validateBookingStatusBody(req.body));
       res.status(200).json(slot);
-    } catch (error: any) {
-      res
-        .status(500)
-        .json({ error: error.message || "An unexpected error occurred." });
+    } catch (error: unknown) {
+      schedulingError(res, error);
     }
   };
 
