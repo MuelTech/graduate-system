@@ -904,6 +904,21 @@ The accepted entrance-exam detail establishes a second concrete detail-page patt
 - **Needs Essay Grading** replaces the old Essay Grading Queue entry point, while Passed/Failed Exam Record detail replaces the old Score Review workspace;
 - missed-exam appeal mutation behavior remains unresolved/read-only and outside this accepted package.
 
+### Pending B3/B4 UI follow-up — Applicant-specific same-day assignment and Start Now authorization
+
+**Status:** OWNER-CLARIFIED REQUIREMENTS RECORDED — NOT IMPLEMENTED, NOT VISUALLY ACCEPTED, AND NOT AN ADDITIONAL APPROVED REFERENCE (2026-11-02).
+
+This is a bounded extension to the accepted Exam Records / Applicant administration experience. The accepted UIUX-2D/2E reference above remains unchanged.
+
+- Applicants continue to self-register in GS-IS using an existing EARIST Pinnacle Applicant ID. Staff do not create or provision Applicant accounts.
+- For an Applicant who already has an examination booking, B4 may expose an ADMIN-only **Authorize Start Now** action on the exact eligible examination application. It applies only to that Applicant and the same Asia/Manila calendar date; it bypasses only the scheduled-time gate. The original appointment remains visible and unchanged.
+- For a registered Applicant with no examination application, B3 follow-up must provide an Admin path to find that Applicant and assign an existing active same-day schedule with remaining, reconciled capacity. The slot's scheduled time may already have passed; all Program, alignment, blocking-application, active-slot, counter and capacity safeguards remain mandatory. B4 authorization follows the assignment.
+- Do not assume the individual Exam Record detail exists before the application is created. During B3 follow-up design, choose the correct entry point using the accepted Admin Applicants/Profile and Exam Records ownership patterns. A list-level assignment action or contextual Applicant action must be evaluated against those precedents; the final placement is not yet approved.
+- Do not add a new sidebar destination, staff-created account flow, separate walk-in module/type, fake appointment, or global slot-time override.
+- The confirmation/helper copy must state that only this Applicant's start-time restriction is bypassed, not eligibility or capacity. Show the original scheduled date/time as unchanged. Explain why assignment is unavailable when the same-day slot is closed, full, inconsistent, or belongs to another Program.
+- Staff authorization does not start the timer. The Applicant starts when ready; the server records actual start and the individual configured-duration deadline. A different-date missed appointment follows B9, not this same-day action.
+- Browser/manual QA remains project-owner responsibility after implementation. Do not claim this pending design as visually accepted.
+
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 
 - Manually accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316`; initial detail/read model `ecb35b3`, accepted dead-space balance fix `d80b95c`.
