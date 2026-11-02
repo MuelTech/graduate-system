@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   $transaction: vi.fn(), $queryRaw: vi.fn(),
+  bound: vi.fn(),
   examQuestion: { findUnique: vi.fn() },
   applicantAnswer: { upsert: vi.fn() },
   entranceExamApplication: { update: vi.fn() },
   entranceExamScore: { upsert: vi.fn() },
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
+vi.mock("../../../src/repositories/exam-execution.repository", () => ({ activeBoundExecution: db.bound }));
 import { ExamEngineRepository } from "../../../src/repositories/exam-engine.repository";
 
 const q1 = "aaaaaaaa-1111-4111-8111-111111111111";
@@ -23,6 +25,11 @@ beforeEach(() => {
   vi.resetAllMocks();
   db.$transaction.mockImplementation(callback => callback(db));
   db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
+  db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [
+    { id: q1, type: "MULTIPLE_CHOICE", options: [{ id: o1, isCorrect: true }] },
+    { id: q2, type: "MULTIPLE_CHOICE", options: [{ id: o2, isCorrect: false }] },
+    { id: essayId, type: "ESSAY", options: [] },
+  ] } });
   db.examQuestion.findUnique.mockImplementation(async ({ where }) => ({
     [q1]: { type: "MULTIPLE_CHOICE", options: [{ id: o1, isCorrect: true }] },
     [q2]: { type: "MULTIPLE_CHOICE", options: [{ id: o2, isCorrect: false }] },
@@ -69,7 +76,7 @@ describe("B0A validated unique answer persistence", () => {
   });
 
   it("fails closed on an unsupported persisted question type", async () => {
-    db.examQuestion.findUnique.mockResolvedValue({ type: "UNKNOWN", options: [] });
+    db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [{ id: q1, type: "UNKNOWN", options: [] }] } });
     await expect(repo.submitAnswers("app", [correct])).rejects.toMatchObject({ statusCode: 400 });
     noWrites();
   });
@@ -105,7 +112,8 @@ describe("B0A validated unique answer persistence", () => {
       expect(sql.join("?")).toMatch(/SELECT status FROM entrance_exam_applications\s+WHERE application_id = \? FOR UPDATE/);
       expect(id).toBe("owned-app");
     }
-    expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.examQuestion.findUnique.mock.invocationCallOrder[0]);
+    expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.bound.mock.invocationCallOrder[0]);
+    expect(db.examQuestion.findUnique).not.toHaveBeenCalled();
   });
 
   it.each(["TAKEN", "PASSED", "FAILED", "APPEALED", "DISQUALIFIED", "UNKNOWN"])("rejects %s in both paths before question lookup or writes", async status => {

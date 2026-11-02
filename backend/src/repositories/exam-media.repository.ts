@@ -28,16 +28,12 @@ export class ExamMediaRepository {
     });
   }
 
-  findForApplicant(id: string) {
-    // The current Applicant question endpoint exposes the shared question bank.
-    // Only attached media is visible; staged/unattached media is Admin-only.
+  findForApplicant(id: string, revisionId: string) {
+    if (!revisionId) return null;
     return prisma.examMedia.findFirst({
       where: {
         id,
-        OR: [
-          { stimulusQuestions: { some: { stimulusType: "IMAGE" } } },
-          { options: { some: {} } },
-        ],
+        revisionReferences: { some: { revisionId } },
       },
       select: mediaSelect,
     });

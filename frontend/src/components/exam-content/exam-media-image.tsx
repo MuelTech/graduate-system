@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { ExamExecutionContext } from "./exam-execution-context";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { getClientBackendBaseUrl } from "@/lib/backend-origin.client";
@@ -18,6 +19,7 @@ function AuthenticatedImage({
   alt: string;
   onRetry: () => void;
 }) {
+  const applicationId = useContext(ExamExecutionContext);
   const [image, setImage] = useState<{
     url: string | null;
     error: string | null;
@@ -27,6 +29,7 @@ function AuthenticatedImage({
     const cleanup = startExamImageRequest({
       baseUrl: getClientBackendBaseUrl,
       mediaId,
+      applicationId,
       token,
       onLoad: (url) => setImage({ url, error: null }),
       onError: (error) => setImage({ url: null, error }),
@@ -36,7 +39,7 @@ function AuthenticatedImage({
     });
     release.current = cleanup;
     return cleanup;
-  }, [mediaId, token]);
+  }, [mediaId, token, applicationId]);
 
   if (image.error)
     return (

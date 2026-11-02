@@ -100,7 +100,7 @@ describe("B1 Admin draft values and state contract", () => {
 
   it("shows explicit draft context, disabled threshold and fixed read-only timezone", () => {
     const rendered = html();
-    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Asia/Manila", "system-defined, read-only", "policy confirmation", "Draft configuration"]) expect(rendered).toContain(text);
+    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Asia/Manila", "system-defined, read-only", "policy confirmation", "Scoring settings remain draft", "Duration applies to new examination starts"]) expect(rendered).toContain(text);
     expect(rendered).toMatch(/id="configuration-threshold"[^>]*disabled/);
     expect(rendered).not.toMatch(/value="(?:180|30|75|1)"|<select|settingKey|entrance_exam_configuration/);
   });

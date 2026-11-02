@@ -3,8 +3,9 @@ import { Prisma, ExamAppStatus } from "@prisma/client";
 import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
 import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
-import { applicantQuestionSelect, adminQuestionSelect, toApplicantQuestion, toAdminQuestion } from "./exam-content.projection";
+import { adminQuestionSelect, toAdminQuestion } from "./exam-content.projection";
 import { validateAnswers, validateEssayAutosave } from "../services/exam-answer.rules";
+import { activeBoundExecution } from "./exam-execution.repository";
 
 async function lockAnswerApplication(tx: Prisma.TransactionClient, applicationId: string) {
   // A locking/current read is essential under InnoDB REPEATABLE READ. Do not
@@ -36,14 +37,6 @@ function questionData(data: ExamQuestionInput) {
 }
 
 export class ExamEngineRepository {
-  async getQuestionsForApplicant() {
-    const rows = await prisma.examQuestion.findMany({
-      orderBy: [{ order: "asc" }, { id: "asc" }],
-      select: applicantQuestionSelect,
-    });
-    return rows.map(toApplicantQuestion);
-  }
-
   async autoSaveAnswer(
     applicationId: string,
     questionId: unknown,
@@ -52,10 +45,10 @@ export class ExamEngineRepository {
     const answer = validateEssayAutosave({ questionId, essayAnswer });
     return prisma.$transaction(async (tx) => {
       await lockAnswerApplication(tx, applicationId);
-      const question = await tx.examQuestion.findUnique({
-        where: { id: answer.questionId }, select: { type: true },
-      });
+      const bound = await activeBoundExecution(tx, applicationId);
+      const question = bound.content.questions.find(q => q.id === answer.questionId);
       if (!question || question.type !== "ESSAY") throw new AppError("Autosave requires an existing essay question.", 400);
+      bound.assertTime();
       return tx.applicantAnswer.upsert({
         where: { applicationId_questionId: { applicationId, questionId: answer.questionId } },
         update: { essayAnswer: answer.essayAnswer, selectedOptionId: null },
@@ -68,14 +61,12 @@ export class ExamEngineRepository {
     const answers = validateAnswers(payload);
     return prisma.$transaction(async (tx) => {
       await lockAnswerApplication(tx, applicationId);
+      const bound = await activeBoundExecution(tx, applicationId);
       let mcqCorrect = 0;
       // Validate the entire supplied set before the first answer/status/score write.
       // Only bounded scoring authority is loaded; it never enters Applicant DTOs.
       for (const answer of answers) {
-        const question = await tx.examQuestion.findUnique({
-          where: { id: answer.questionId },
-          select: { type: true, options: { select: { id: true, isCorrect: true } } },
-        });
+        const question = bound.content.questions.find(q => q.id === answer.questionId);
         if (!question) throw new AppError("Submitted question does not exist.", 400);
         if (question.type === "MULTIPLE_CHOICE") {
           if (answer.selectedOptionId === undefined) throw new AppError("Multiple-choice questions require a selected option.", 400);
@@ -89,6 +80,7 @@ export class ExamEngineRepository {
         }
       }
 
+      bound.assertTime();
       for (const answer of answers) {
         await tx.applicantAnswer.upsert({
           where: {
@@ -111,6 +103,7 @@ export class ExamEngineRepository {
       }
 
       // 2. Mark application as TAKEN
+      bound.assertTime();
       await tx.entranceExamApplication.update({
         where: { id: applicationId },
         data: { status: "TAKEN" },

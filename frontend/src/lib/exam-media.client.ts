@@ -3,6 +3,7 @@ import { isExamMediaId } from "./exam-content";
 interface ImageRequest {
   baseUrl: string | (() => string);
   mediaId: string;
+  applicationId?: string | null;
   token: string;
   onLoad: (url: string) => void;
   onError: (message: string) => void;
@@ -26,7 +27,7 @@ export function startExamImageRequest(request: ImageRequest): () => void {
           ? request.baseUrl()
           : request.baseUrl;
       const response = await (request.fetcher ?? fetch)(
-        `${baseUrl}/api/exam-engine/media/${request.mediaId}`,
+        `${baseUrl}/api/exam-engine/media/${request.mediaId}${request.applicationId ? `?applicationId=${encodeURIComponent(request.applicationId)}` : ""}`,
         {
           headers: { Authorization: `Bearer ${request.token}` },
           signal: controller.signal,

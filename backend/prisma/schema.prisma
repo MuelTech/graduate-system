@@ -62,6 +62,7 @@ model User {
   student                            Student?
   systemSettingsModified             SystemSetting[]           @relation("SettingModifiedBy")
   examContentPublished               ExamContentRevision[]
+  examStartsAuthorized               EntranceExamApplication[] @relation("ExamStartAuthorizedBy")
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -271,6 +272,15 @@ model EntranceExamApplication {
   examTime  DateTime?          @map("exam_time") @db.Time(0)
   status    ExamAppStatus      @default(PENDING)
   createdAt DateTime           @default(now()) @map("created_at")
+  // B4: one execution per existing application; null means no recorded authority.
+  startAuthorizedById String? @map("start_authorized_by_id")
+  startAuthorizedAt DateTime? @map("start_authorized_at") @db.DateTime(3)
+  actualStartedAt DateTime? @map("actual_started_at") @db.DateTime(3)
+  deadlineAt DateTime? @map("deadline_at") @db.DateTime(3)
+  executionConfiguration Json? @map("execution_configuration")
+  contentRevisionId String? @map("content_revision_id") @db.VarChar(36)
+  startAuthorizedBy User? @relation("ExamStartAuthorizedBy", fields: [startAuthorizedById], references: [id], onDelete: Restrict)
+  contentRevision ExamContentRevision? @relation(fields: [contentRevisionId], references: [id], onDelete: Restrict)
   program   Program            @relation(fields: [programId], references: [id])
   slot      ExamSlot           @relation(fields: [slotId], references: [id])
   student   Student            @relation(fields: [studentId], references: [id])
@@ -280,6 +290,8 @@ model EntranceExamApplication {
   @@index([programId], map: "entrance_exam_applications_program_id_fkey")
   @@index([slotId], map: "entrance_exam_applications_slot_id_fkey")
   @@index([studentId], map: "entrance_exam_applications_student_id_fkey")
+  @@index([startAuthorizedById])
+  @@index([contentRevisionId])
   @@map("entrance_exam_applications")
 }
 
@@ -1830,6 +1842,7 @@ model ExamContentRevision {
   publishedBy User @relation(fields: [publishedById], references: [id], onDelete: Restrict)
   questions ExamRevisionQuestion[]
   media ExamRevisionMedia[]
+  applications EntranceExamApplication[]
   @@map("exam_content_revisions")
 }
 

@@ -49,7 +49,9 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
     await db.program.create({ data: { id: ids.program, programName: "B2 fixture", programType: "MASTERS" } });
     await db.student.create({ data: { id: ids.student, userId: ids.user, programId: ids.program } });
     await db.examSlot.create({ data: { id: ids.slot, programId: ids.program, examDate: new Date("2026-11-02T00:00:00Z"), examTime: new Date("1970-01-01T09:00:00Z"), maxSlots: 1 } });
-    await db.entranceExamApplication.create({ data: { id: ids.app, studentId: ids.student, programId: ids.program, slotId: ids.slot } });
+    // Use the historical schema columns being rehearsed, independent of newer
+    // generated Prisma fields added by consumer packages such as B4.
+    await admin.execute("INSERT INTO entrance_exam_applications (application_id,student_id,program_id,slot_id) VALUES (?,?,?,?)", [ids.app, ids.student, ids.program, ids.slot]);
     await db.examContentImport.create({ data: { id: "b2-synthetic-existing", fingerprint: "f".repeat(64), questionCount: 1 } });
     await db.examMedia.create({ data: { id: ids.media, storageKey: `${database}/synthetic`, storageProvider: "local", verifiedMimeType: "image/png", sizeBytes: 1, checksum: "a".repeat(64) } });
     const q = await db.examQuestion.create({ data: { id: ids.q, questionText: "Synthetic NOT instruction", questionTextEmphasis: [{ start: 10, end: 13, style: "ITALIC" }], type: "MULTIPLE_CHOICE", order: 2,

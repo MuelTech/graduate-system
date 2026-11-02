@@ -37,7 +37,7 @@ beforeEach(async () => {
     saved = undefined;
     return { count: 1 };
   });
-  access.assertApplicantQuestionAccess.mockResolvedValue(undefined);
+  access.assertApplicantQuestionAccess.mockResolvedValue("bound-revision");
   service = new ExamMediaService(repo, provider, access);
 });
 
@@ -190,9 +190,9 @@ describe("confidential exam media retrieval", () => {
   it("requires the Applicant's own eligible exam context and an attached image", async () => {
     const { id } = await service.createImage(EXAM_PNG);
     attached = true;
-    expect(await service.getContent(id, applicant)).toEqual({ bytes: EXAM_PNG, mimeType: "image/png" });
-    expect(access.assertApplicantQuestionAccess).toHaveBeenCalledWith("applicant1");
-    expect(repo.findForApplicant).toHaveBeenCalledWith(id);
+    expect(await service.getContent(id, applicant, "owned-app")).toEqual({ bytes: EXAM_PNG, mimeType: "image/png" });
+    expect(access.assertApplicantQuestionAccess).toHaveBeenCalledWith("applicant1", "owned-app", id);
+    expect(repo.findForApplicant).toHaveBeenCalledWith(id, "bound-revision");
     expect(repo.findForAdmin).not.toHaveBeenCalled();
   });
 
@@ -210,7 +210,7 @@ describe("confidential exam media retrieval", () => {
     attached = true;
     access.assertApplicantQuestionAccess.mockRejectedValue(new Error(reason));
     const open = vi.spyOn(provider, "openRead");
-    await expect(service.getContent(id, applicant)).rejects.toMatchObject({ statusCode: 404, message: "Exam media not found." });
+    await expect(service.getContent(id, applicant, "owned-app")).rejects.toMatchObject({ statusCode: 404, message: "Exam media not found." });
     expect(repo.findForApplicant).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
   });

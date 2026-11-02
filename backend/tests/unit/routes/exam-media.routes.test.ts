@@ -51,7 +51,7 @@ describe("authenticated private image HTTP contract", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("cross-origin-resource-policy")).toBe("same-origin");
     expect(Buffer.from(await response.arrayBuffer())).toEqual(EXAM_PNG);
-    expect(content).toHaveBeenCalledWith("c523f44d-c5ae-4b82-91bf-ccaf165ad567", { userId: "user1", role });
+    expect(content).toHaveBeenCalledWith("c523f44d-c5ae-4b82-91bf-ccaf165ad567", { userId: "user1", role }, undefined);
   });
 
   it("uses the detected JPEG content type and generic filename", async () => {

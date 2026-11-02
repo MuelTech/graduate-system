@@ -20,7 +20,7 @@ function res() {
   value.status.mockReturnValue(value);
   return value;
 }
-function req(body: unknown) { return { user: { userId: "jwt-user" }, body } as AuthenticatedRequest; }
+function req(body: unknown) { return { user: { userId: "jwt-user" }, params: { applicationId: "owned-app" }, body } as unknown as AuthenticatedRequest; }
 beforeEach(() => {
   vi.resetAllMocks();
   service.getApplicationIdForUser.mockResolvedValue("owned-app");
@@ -47,8 +47,8 @@ describe("B0A Applicant request boundary", () => {
     service.submitAnswers.mockResolvedValue(result);
     const response = res();
     await controller.submitAnswers(req({ answers: [{ questionId, selectedOptionId }] }), response as unknown as Response);
-    expect(service.getApplicationIdForUser).toHaveBeenCalledWith("jwt-user");
-    expect(service.submitAnswers).toHaveBeenCalledWith("owned-app", [{ questionId, selectedOptionId }]);
+    expect(service.getApplicationIdForUser).not.toHaveBeenCalled();
+    expect(service.submitAnswers).toHaveBeenCalledWith("owned-app", [{ questionId, selectedOptionId }], "jwt-user");
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(result);
   });
@@ -56,7 +56,7 @@ describe("B0A Applicant request boundary", () => {
   it("accepts empty essay text without inventing completeness policy", async () => {
     const response = res();
     await controller.autoSaveAnswer(req({ questionId, essayAnswer: "" }), response as unknown as Response);
-    expect(service.autoSaveAnswer).toHaveBeenCalledWith("owned-app", questionId, "");
+    expect(service.autoSaveAnswer).toHaveBeenCalledWith("owned-app", questionId, "", "jwt-user");
     expect(response.json).toHaveBeenCalledWith({ success: true });
   });
 

@@ -10,8 +10,10 @@ const db = vi.hoisted(() => ({
   entranceExamScore: { upsert: vi.fn() },
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
+  bound: vi.fn(),
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
+vi.mock("../../../src/repositories/exam-execution.repository", () => ({ activeBoundExecution: db.bound }));
 
 import { ExamEngineRepository } from "../../../src/repositories/exam-engine.repository";
 import { applicantQuestionSelect, toApplicantQuestion } from "../../../src/repositories/exam-content.projection";
@@ -56,7 +58,7 @@ describe("ExamEngineRepository content boundaries", () => {
     const created = await new ExamEngineRepository().createQuestion(input);
     expect(db.examQuestion.create.mock.calls[0][0].data).toMatchObject({ structuredStimulus, structuredStimulusEmphasis });
     expect(created.structuredStimulusEmphasis).toEqual(structuredStimulusEmphasis);
-    const applicant = (await new ExamEngineRepository().getQuestionsForApplicant())[0];
+    const applicant = toApplicantQuestion(persisted);
     expect(applicant.structuredStimulusEmphasis).toEqual(structuredStimulusEmphasis);
     expect(JSON.stringify(applicant)).not.toContain("isCorrect");
   });
@@ -96,8 +98,7 @@ describe("ExamEngineRepository content boundaries", () => {
   });
 
   it("selects only explicit Applicant fields, including label/order/media identity", async () => {
-    const result = await new ExamEngineRepository().getQuestionsForApplicant();
-    expect(db.examQuestion.findMany).toHaveBeenCalledWith({ select: applicantQuestionSelect, orderBy: [{ order: "asc" }, { id: "asc" }] });
+    const result = [toApplicantQuestion(row())];
     const projection = JSON.stringify(applicantQuestionSelect);
     expect(projection).not.toContain("isCorrect");
     expect(projection).not.toContain("storageKey");
@@ -154,7 +155,7 @@ describe("ExamEngineRepository content boundaries", () => {
     const created = await new ExamEngineRepository().createQuestion(validateExamQuestion({ ...editable(), stimulusType: "STRUCTURED", stimulusMediaId: null, structuredStimulus, options: [first, second] }));
     expect(created.structuredStimulus).toEqual(structuredStimulus);
     expect(db.examQuestion.create.mock.calls[0][0].data.structuredStimulus).toEqual(structuredStimulus);
-    expect((await new ExamEngineRepository().getQuestionsForApplicant())[0].structuredStimulus).toEqual(structuredStimulus);
+    expect(toApplicantQuestion(persisted).structuredStimulus).toEqual(structuredStimulus);
   });
 
   it("updates question metadata without touching option identities", async () => {
@@ -214,6 +215,7 @@ describe("ExamEngineRepository content boundaries", () => {
     const optionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
     db.examQuestion.findUnique.mockResolvedValue({ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] });
+    db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [{ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] }] } });
     const result = await new ExamEngineRepository().submitAnswers("app1", [{ questionId, selectedOptionId: optionId }]);
     expect(result.mcqScore).toBe(1);
     expect(db.applicantAnswer.upsert.mock.calls[0][0]).toMatchObject({

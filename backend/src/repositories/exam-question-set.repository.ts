@@ -73,12 +73,13 @@ export class ExamQuestionSetRepository {
   }
 
   /** INTERNAL B4 contract: resolve an exact identity; never infer latest for an attempt. */
-  async getForBinding(revisionId: string) {
-    const revision = await prisma.examContentRevision.findUnique({ where: { id: revisionId }, select: {
+  async getForBinding(revisionId: string, db: Prisma.TransactionClient = prisma) {
+    const revision = await db.examContentRevision.findUnique({ where: { id: revisionId }, select: {
       id: true, publishedAt: true, questions: { orderBy: { position: "asc" }, select: { questionId: true, position: true, content: true } },
       media: { select: { mediaId: true } },
     } });
     if (!revision) throw new AppError("Published question set not found.", 404);
+    if (!revision.questions.length) throw new AppError("Published question set is empty.", 409);
     const questions = revision.questions.map(item => {
       const q = checkedContent(item.content);
       if (q.id !== item.questionId) throw new AppError("Published question identity mismatch.", 500);

@@ -2,6 +2,7 @@ import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
 import { EXAM_CONFIGURATION_KEY, validateExamConfiguration } from "../services/exam-configuration.rules";
 import type { ExamConfigurationValues } from "../interfaces/exam-configuration.interfaces";
+import type { Prisma } from "@prisma/client";
 
 function readValues(row: { settingType: string; settingValue: string | null } | null): ExamConfigurationValues {
   if (!row) return { examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null, passingThreshold: null };
@@ -15,8 +16,8 @@ function readValues(row: { settingType: string; settingValue: string | null } | 
 }
 
 export class ExamConfigurationRepository {
-  async getCurrent(): Promise<ExamConfigurationValues> {
-    return readValues(await prisma.systemSetting.findUnique({
+  async getCurrent(db: Prisma.TransactionClient = prisma): Promise<ExamConfigurationValues> {
+    return readValues(await db.systemSetting.findUnique({
       where: { settingKey: EXAM_CONFIGURATION_KEY },
       select: { settingType: true, settingValue: true },
     }));

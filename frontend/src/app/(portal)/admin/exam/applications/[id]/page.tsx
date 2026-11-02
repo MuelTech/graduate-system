@@ -13,13 +13,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
+import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
   deriveExamState,
   EXAM_STATE_LABEL,
   EXAM_STATE_DESCRIPTION,
-  formatExamDate,
-  formatExamTime,
 } from "@/lib/exam-record-state";
+import {
+  formatScheduleDate as formatExamDate,
+  formatScheduleTime as formatExamTime,
+} from "@/lib/admin-exam-schedules";
 import type { ExamRecordDetail } from "@/types";
 import { toast } from "sonner";
 import {
@@ -304,7 +307,8 @@ export default function ExamRecordDetailPage() {
 
   const record = recordQuery.data;
   const state = deriveExamState(record.status);
-  const fullName = `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
+  const fullName =
+    `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
   const pinnacleId = record.student.pinnacleApplicantId || "No Pinnacle ID";
   const programName = record.program.programName;
   const essayMax = record.program.examEssayTotal;
@@ -373,6 +377,11 @@ export default function ExamRecordDetailPage() {
         </CardContent>
       </Card>
 
+      <StartAuthorization
+        applicationId={applicationId}
+        applicantName={fullName}
+      />
+
       {/* Exam Information */}
       <SectionCard title="Exam Information">
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -392,7 +401,9 @@ export default function ExamRecordDetailPage() {
         {isGrading ? (
           <div className="space-y-5">
             <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-              <p className="text-xs text-(--earist-body-text)">Multiple Choice</p>
+              <p className="text-xs text-(--earist-body-text)">
+                Multiple Choice
+              </p>
               <ScoreValue
                 value={record.score?.multipleChoiceScore ?? null}
                 max={mcqMax}
@@ -474,10 +485,7 @@ export default function ExamRecordDetailPage() {
               ) : null}
             </div>
 
-            <Button
-              onClick={() => gradeMutation.mutate()}
-              disabled={!canSave}
-            >
+            <Button onClick={() => gradeMutation.mutate()} disabled={!canSave}>
               {gradeMutation.isPending ? "Saving…" : "Save Essay Grade"}
             </Button>
           </div>

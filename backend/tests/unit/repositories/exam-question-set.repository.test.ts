@@ -114,15 +114,13 @@ describe("B2 explicit selection, publication and exact binding", () => {
     const publication = await repo.publish({ questionIds: membership }, "admin");
     expect((await repo.getForBinding(publication.id)).applicantQuestions[0].options.map(o => [o.label, o.order])).toEqual([["F", 2], ["K", 2]]);
   });
-  it("intentionally leaves live Applicant question reads on the entire legacy bank despite selection/publication", async () => {
-    membership = [qid]; await repo.publish({ questionIds: membership }, "admin");
-    await repo.replaceSelection({ questionIds: [] }); db.examQuestion.findMany.mockResolvedValue(bank);
-    const questions = await new ExamEngineRepository().getQuestionsForApplicant();
-    expect(questions.map(q => q.id)).toEqual(bank.map(q => q.id));
-    expect(db.examQuestion.findMany).toHaveBeenLastCalledWith({ orderBy: [{ order: "asc" }, { id: "asc" }], select: applicantQuestionSelect });
-    expect(db.examContentRevision.findUnique).not.toHaveBeenCalled();
-  });
-  it("contains transaction conflicts without leaking database details", async () => {
+  it("B4 cutover retains exact published content after draft deselection", async () => {
+    membership = [qid]; const published = await repo.publish({ questionIds: membership }, "admin");
+    await repo.replaceSelection({ questionIds: [] });
+    const questions = (await repo.getForBinding(published.id)).applicantQuestions;
+    expect(questions.map(q => q.id)).toEqual([qid]);
+    expect(db.examContentRevision.findUnique).toHaveBeenCalled();
+  });  it("contains transaction conflicts without leaking database details", async () => {
     db.$transaction.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("secret", { code: "P2034", clientVersion: "test" }));
     await expect(repo.replaceSelection({ questionIds: [] })).rejects.toMatchObject({ statusCode: 409 });
   });

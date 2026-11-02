@@ -92,8 +92,9 @@ function ConfigurationForm({
         id="configuration-draft-help"
         className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-sm text-(--earist-body-text)"
       >
-        Draft configuration. These settings do not change current examination
-        timing or grading yet. Leave unresolved values blank.
+        Duration applies to new examination starts. Scoring settings remain
+        draft. Leave unresolved values blank. Started examinations keep their
+        original settings.
       </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
