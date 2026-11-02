@@ -147,7 +147,7 @@ API/type wiring. Existing middleware/Node deprecation notices are nonblocking.
 checks pass. No whole-repository suite was run; directly affected regressions
 cover shared B3 admission and reused read models.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility**.
+**Project-owner manual/browser QA: EXECUTED 2026-11-02 — redundant explicit `Asia/Manila` labels were identified in the Admin assignment dialog. A bounded copy-only follow-up removed the timezone label from the dialog description, same-day schedule legend, and review timestamp; backend `Asia/Manila` scheduling authority is unchanged. Post-fix owner recheck and final acceptance remain pending.**
 
 Hosted CI: **NOT EXECUTED / no hosted PASS claimed**. Existing CI triggers main
 pushes and PRs targeting main, not this branch-only push. No workflow change/PR.

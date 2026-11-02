@@ -177,8 +177,7 @@ function AssignmentForm({
           {review ? "Confirm Applicant Assignment" : "Assign Applicant"}
         </DialogTitle>
         <DialogDescription>
-          Assign a registered Applicant to an existing schedule for today
-          (Asia/Manila).
+          Assign a registered Applicant to an existing schedule for today.
         </DialogDescription>
       </DialogHeader>
 
@@ -320,7 +319,7 @@ function AssignmentForm({
           {data.eligible && !review && (
             <fieldset className="space-y-2">
               <legend className="mb-2 font-medium">
-                Today&apos;s available schedules · Asia/Manila
+                Today&apos;s available schedules
               </legend>
               {data.slots.length === 0 && (
                 <p>
@@ -363,7 +362,7 @@ function AssignmentForm({
               <p className="font-medium">Original scheduled date and time</p>
               <p>
                 {formatScheduleDate(selectedSlot.examDate)} ·{" "}
-                {formatScheduleTime(selectedSlot.examTime)} (Asia/Manila)
+                {formatScheduleTime(selectedSlot.examTime)}
               </p>
               <p>
                 {selectedSlot.slotsTaken} / {selectedSlot.maxSlots} booked ·{" "}
