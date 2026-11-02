@@ -62,3 +62,24 @@ export function validateEssayAutosave(value: unknown): { questionId: string; ess
   keys(data, ["questionId", "essayAnswer"]);
   return { questionId: identifier(data.questionId, "questionId"), essayAnswer: essay(data.essayAnswer) };
 }
+
+export type ExamDraftInput = { expectedRevision: number; questionId: string } & (
+  | { selectedOptionId: string | null; essayAnswer?: never }
+  | { essayAnswer: string; selectedOptionId?: never }
+);
+
+export function validateDraft(value: unknown): ExamDraftInput {
+  const data = object(value);
+  keys(data, ["questionId", "expectedRevision", "selectedOptionId", "essayAnswer"]);
+  const questionId = identifier(data.questionId, "questionId");
+  if (!Number.isInteger(data.expectedRevision) || (data.expectedRevision as number) < 0 || (data.expectedRevision as number) >= 2_147_483_647) {
+    invalid("expectedRevision must be a nonnegative database integer below its maximum.");
+  }
+  const expectedRevision = data.expectedRevision as number;
+  const hasOption = Object.prototype.hasOwnProperty.call(data, "selectedOptionId");
+  const hasEssay = Object.prototype.hasOwnProperty.call(data, "essayAnswer");
+  if (hasOption === hasEssay) invalid("Supply exactly one answer representation.");
+  return hasOption
+    ? { questionId, expectedRevision, selectedOptionId: data.selectedOptionId === null ? null : identifier(data.selectedOptionId, "selectedOptionId") }
+    : { questionId, expectedRevision, essayAnswer: essay(data.essayAnswer) };
+}

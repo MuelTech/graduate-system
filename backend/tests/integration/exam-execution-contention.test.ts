@@ -203,7 +203,7 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
     await start(); const payload = [{ questionId: ids.q, selectedOptionId: question.options[0].id }, { questionId: ids.essay, essayAnswer: "Final answer" }];
     const [winner, loser] = await contend(() => answers.submitAnswers(ids.app, payload), () => answers.submitAnswers(ids.app, payload), "entrance_exam_applications");
     expect(winner).toHaveProperty("value.success", true); expect(loser).toHaveProperty("error.statusCode", 409); expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(1);
-    await expect(answers.autoSaveAnswer(ids.app, ids.essay, "Late overwrite")).rejects.toThrow(); expect((await observer.applicantAnswer.findUniqueOrThrow({ where: { applicationId_questionId: { applicationId: ids.app, questionId: ids.essay } } })).essayAnswer).toBe("Final answer");
+    await expect(answers.autoSaveAnswer(ids.app, ids.essay, "Late overwrite", 0, ids.user)).rejects.toThrow(); expect((await observer.applicantAnswer.findUniqueOrThrow({ where: { applicationId_questionId: { applicationId: ids.app, questionId: ids.essay } } })).essayAnswer).toBe("Final answer");
   }, 15_000);
   it("frozen content/key survive source edits; answer writes reject unrelated members and preserve B0A scoring", async () => {
     await start();
@@ -211,7 +211,7 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
     await observer.examOption.update({ where: { id: question.options[0].id }, data: { isCorrect: false, optionText: "Changed source option" } });
     const received = await repo.questions(ids.user, ids.app); expect(received[0].questionText).toBe(question.questionText);
     await expect(answers.submitAnswers(ids.app, [{ questionId: ids.q, selectedOptionId: randomUUID() }])).rejects.toThrow();
-    await expect(answers.autoSaveAnswer(ids.app, randomUUID(), "Unrelated")).rejects.toThrow();
+    await expect(answers.autoSaveAnswer(ids.app, randomUUID(), "Unrelated", 0, ids.user)).rejects.toMatchObject({ statusCode: 400 });
     expect(await answers.submitAnswers(ids.app, [{ questionId: ids.q, selectedOptionId: question.options[0].id }])).toMatchObject({ mcqScore: 1 });
   });
   it("runs the five existing B0A real-DB regressions with authoritative synthetic B4 bindings", () => {

@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthenticatedRequest } from "../../../src/middlewares/auth.middleware";
 import { AppError } from "../../../src/utils/AppError";
 
-const service = vi.hoisted(() => ({ getApplicationIdForUser: vi.fn(), submitAnswers: vi.fn(), autoSaveAnswer: vi.fn() }));
+const service = vi.hoisted(() => ({ getApplicationIdForUser: vi.fn(), submitAnswers: vi.fn(), autoSaveAnswer: vi.fn(), saveDraft: vi.fn() }));
 vi.mock("../../../src/config/database", () => ({ default: {} }));
 vi.mock("../../../src/services/exam-engine.service", () => ({ ExamEngineService: class {
   getApplicationIdForUser = service.getApplicationIdForUser;
   submitAnswers = service.submitAnswers;
   autoSaveAnswer = service.autoSaveAnswer;
+  saveDraft = service.saveDraft;
 } }));
 import { ExamEngineController } from "../../../src/controllers/exam-engine.controller";
 
@@ -55,18 +56,18 @@ describe("B0A Applicant request boundary", () => {
 
   it("accepts empty essay text without inventing completeness policy", async () => {
     const response = res();
-    await controller.autoSaveAnswer(req({ questionId, essayAnswer: "" }), response as unknown as Response);
-    expect(service.autoSaveAnswer).toHaveBeenCalledWith("owned-app", questionId, "", "jwt-user");
-    expect(response.json).toHaveBeenCalledWith({ success: true });
+    await controller.autoSaveAnswer(req({ questionId, essayAnswer: "", expectedRevision: 0 }), response as unknown as Response);
+    expect(service.saveDraft).toHaveBeenCalledWith("owned-app", { questionId, essayAnswer: "", expectedRevision: 0 }, "jwt-user");
+    expect(response.status).toHaveBeenCalledWith(200);
   });
 
   it.each(["submitAnswers", "autoSaveAnswer"] as const)("returns state conflicts and hides internal errors on %s", async method => {
-    const body = method === "submitAnswers" ? { answers: [] } : { questionId, essayAnswer: "x" };
-    service[method].mockRejectedValueOnce(new AppError("Answer writes are closed.", 409));
+    const body = method === "submitAnswers" ? { answers: [] } : { questionId, essayAnswer: "x", expectedRevision: 0 };
+    service[method === "autoSaveAnswer" ? "saveDraft" : method].mockRejectedValueOnce(new AppError("Answer writes are closed.", 409));
     const conflict = res();
     await controller[method](req(body), conflict as unknown as Response);
     expect(conflict.status).toHaveBeenCalledWith(409);
-    service[method].mockRejectedValueOnce(new Error("private database/answer-key details"));
+    service[method === "autoSaveAnswer" ? "saveDraft" : method].mockRejectedValueOnce(new Error("private database/answer-key details"));
     const failure = res();
     await controller[method](req(body), failure as unknown as Response);
     expect(failure.status).toHaveBeenCalledWith(500);

@@ -4,8 +4,9 @@ import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
 import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
 import { adminQuestionSelect, toAdminQuestion } from "./exam-content.projection";
-import { validateAnswers, validateEssayAutosave } from "../services/exam-answer.rules";
+import { validateAnswers, validateDraft } from "../services/exam-answer.rules";
 import { activeBoundExecution } from "./exam-execution.repository";
+import { scheduleIdentifier } from "../services/exam-schedule.rules";
 
 async function lockAnswerApplication(tx: Prisma.TransactionClient, applicationId: string) {
   // A locking/current read is essential under InnoDB REPEATABLE READ. Do not
@@ -37,24 +38,78 @@ function questionData(data: ExamQuestionInput) {
 }
 
 export class ExamEngineRepository {
+  private async draftTransaction<T>(applicationId: string, userId: string, operation: (tx: Prisma.TransactionClient, bound: Awaited<ReturnType<typeof activeBoundExecution>>) => Promise<T>) {
+    const id = scheduleIdentifier(applicationId, "applicationId");
+    return prisma.$transaction(async tx => {
+      const target = await tx.entranceExamApplication.findUnique({ where: { id }, select: { student: { select: { userId: true } } } });
+      if (!target || target.student.userId !== userId) throw new AppError("Exam application not found.", 404);
+      await lockAnswerApplication(tx, id);
+      const bound = await activeBoundExecution(tx, id);
+      if (bound.app.student.userId !== userId) throw new AppError("Exam application not found.", 404);
+      const result = await operation(tx, bound);
+      bound.assertTime(); // Deadline crossed during persistence => roll back.
+      return result;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+  }
+
+  async readDrafts(applicationId: string, userId: string) {
+    return this.draftTransaction(applicationId, userId, async (tx, bound) => {
+      const questions = bound.content.questions;
+      const rows = await tx.applicantAnswer.findMany({
+        where: { applicationId, questionId: { in: questions.map(q => q.id) } },
+        select: { questionId: true, selectedOptionId: true, essayAnswer: true, draftRevision: true },
+        orderBy: { questionId: "asc" },
+      });
+      return rows.map(row => {
+        const question = questions.find(q => q.id === row.questionId)!;
+        if (question.type === "MULTIPLE_CHOICE" && row.essayAnswer === null &&
+            (row.selectedOptionId === null || question.options.some(o => o.id === row.selectedOptionId))) {
+          return { questionId: row.questionId, selectedOptionId: row.selectedOptionId, revision: row.draftRevision };
+        }
+        if (question.type === "ESSAY" && row.selectedOptionId === null && typeof row.essayAnswer === "string") {
+          return { questionId: row.questionId, essayAnswer: row.essayAnswer, revision: row.draftRevision };
+        }
+        throw new AppError("Saved answers require staff review.", 409);
+      });
+    });
+  }
+
+  async saveDraft(applicationId: string, payload: unknown, userId: string) {
+    const answer = validateDraft(payload);
+    return this.draftTransaction(applicationId, userId, async (tx, bound) => {
+      const question = bound.content.questions.find(q => q.id === answer.questionId);
+      if (!question) throw new AppError("Draft question does not belong to this examination.", 400);
+      if (question.type === "MULTIPLE_CHOICE") {
+        if (answer.selectedOptionId === undefined || (answer.selectedOptionId !== null && !question.options.some(o => o.id.toLowerCase() === answer.selectedOptionId))) {
+          throw new AppError("Select an option belonging to this multiple-choice question, or clear it.", 400);
+        }
+      } else if (question.type !== "ESSAY" || answer.essayAnswer === undefined) {
+        throw new AppError("Draft representation does not match the question type.", 400);
+      }
+      const where = { applicationId_questionId: { applicationId, questionId: answer.questionId } };
+      const current = await tx.applicantAnswer.findUnique({ where, select: { draftRevision: true } });
+      if ((current?.draftRevision ?? 0) !== answer.expectedRevision) {
+        throw new AppError("This answer changed elsewhere. Refresh saved answers before continuing.", 409);
+      }
+      const revision = answer.expectedRevision + 1;
+      const data = { selectedOptionId: answer.selectedOptionId ?? null, essayAnswer: answer.essayAnswer ?? null, draftRevision: revision };
+      bound.assertTime();
+      await tx.applicantAnswer.upsert({ where, update: data, create: { applicationId, questionId: answer.questionId, ...data } });
+      return answer.essayAnswer !== undefined
+        ? { questionId: answer.questionId, essayAnswer: answer.essayAnswer, revision }
+        : { questionId: answer.questionId, selectedOptionId: answer.selectedOptionId!, revision };
+    });
+  }
+
+  // Compatibility for internal callers only; unversioned writes now fail validation.
   async autoSaveAnswer(
     applicationId: string,
     questionId: unknown,
     essayAnswer: unknown,
+    expectedRevision: unknown,
+    userId: string,
   ) {
-    const answer = validateEssayAutosave({ questionId, essayAnswer });
-    return prisma.$transaction(async (tx) => {
-      await lockAnswerApplication(tx, applicationId);
-      const bound = await activeBoundExecution(tx, applicationId);
-      const question = bound.content.questions.find(q => q.id === answer.questionId);
-      if (!question || question.type !== "ESSAY") throw new AppError("Autosave requires an existing essay question.", 400);
-      bound.assertTime();
-      return tx.applicantAnswer.upsert({
-        where: { applicationId_questionId: { applicationId, questionId: answer.questionId } },
-        update: { essayAnswer: answer.essayAnswer, selectedOptionId: null },
-        create: { applicationId, ...answer, selectedOptionId: null },
-      });
-    });
+    return this.saveDraft(applicationId, { questionId, essayAnswer, expectedRevision }, userId);
   }
 
   async submitAnswers(applicationId: string, payload: unknown) {
@@ -121,7 +176,7 @@ export class ExamEngineRepository {
       });
 
       return { success: true, mcqScore: mcqCorrect };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
 
   async getAllQuestionsForAdmin() {

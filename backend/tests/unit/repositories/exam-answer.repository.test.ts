@@ -4,8 +4,8 @@ const db = vi.hoisted(() => ({
   $transaction: vi.fn(), $queryRaw: vi.fn(),
   bound: vi.fn(),
   examQuestion: { findUnique: vi.fn() },
-  applicantAnswer: { upsert: vi.fn() },
-  entranceExamApplication: { update: vi.fn() },
+  applicantAnswer: { upsert: vi.fn(), findUnique: vi.fn() },
+  entranceExamApplication: { update: vi.fn(), findUnique: vi.fn() },
   entranceExamScore: { upsert: vi.fn() },
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
@@ -23,9 +23,11 @@ const correct = { questionId: q1, selectedOptionId: o1 };
 
 beforeEach(() => {
   vi.resetAllMocks();
+  db.entranceExamApplication.findUnique.mockResolvedValue({ student: { userId: "jwt-user" } });
+  db.applicantAnswer.findUnique.mockResolvedValue(null);
   db.$transaction.mockImplementation(callback => callback(db));
   db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
-  db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [
+  db.bound.mockResolvedValue({ app: { student: { userId: "jwt-user" } }, assertTime: vi.fn(), content: { questions: [
     { id: q1, type: "MULTIPLE_CHOICE", options: [{ id: o1, isCorrect: true }] },
     { id: q2, type: "MULTIPLE_CHOICE", options: [{ id: o2, isCorrect: false }] },
     { id: essayId, type: "ESSAY", options: [] },
@@ -76,7 +78,7 @@ describe("B0A validated unique answer persistence", () => {
   });
 
   it("fails closed on an unsupported persisted question type", async () => {
-    db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [{ id: q1, type: "UNKNOWN", options: [] }] } });
+    db.bound.mockResolvedValue({ app: { student: { userId: "jwt-user" } }, assertTime: vi.fn(), content: { questions: [{ id: q1, type: "UNKNOWN", options: [] }] } });
     await expect(repo.submitAnswers("app", [correct])).rejects.toMatchObject({ statusCode: 400 });
     noWrites();
   });
@@ -106,11 +108,11 @@ describe("B0A validated unique answer persistence", () => {
 
   it.each(["PENDING", "APPROVED"])("admits %s to both write paths under the exact application lock", async status => {
     db.$queryRaw.mockResolvedValue([{ status }]);
-    await repo.autoSaveAnswer("owned-app", essayId, "Draft");
-    await repo.submitAnswers("owned-app", [correct]);
+    await repo.autoSaveAnswer("11111111-1111-4111-8111-111111111111", essayId, "Draft", 0, "jwt-user");
+    await repo.submitAnswers("11111111-1111-4111-8111-111111111111", [correct]);
     for (const [sql, id] of db.$queryRaw.mock.calls) {
       expect(sql.join("?")).toMatch(/SELECT status FROM entrance_exam_applications\s+WHERE application_id = \? FOR UPDATE/);
-      expect(id).toBe("owned-app");
+      expect(id).toBe("11111111-1111-4111-8111-111111111111");
     }
     expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.bound.mock.invocationCallOrder[0]);
     expect(db.examQuestion.findUnique).not.toHaveBeenCalled();
@@ -119,7 +121,7 @@ describe("B0A validated unique answer persistence", () => {
   it.each(["TAKEN", "PASSED", "FAILED", "APPEALED", "DISQUALIFIED", "UNKNOWN"])("rejects %s in both paths before question lookup or writes", async status => {
     db.$queryRaw.mockResolvedValue([{ status }]);
     await expect(repo.submitAnswers("app", [correct])).rejects.toMatchObject({ statusCode: 409 });
-    await expect(repo.autoSaveAnswer("app", essayId, "Late")).rejects.toMatchObject({ statusCode: 409 });
+    await expect(repo.autoSaveAnswer("11111111-1111-4111-8111-111111111111", essayId, "Late", 0, "jwt-user")).rejects.toMatchObject({ statusCode: 409 });
     noWrites();
     expect(db.examQuestion.findUnique).not.toHaveBeenCalled();
   });
@@ -127,21 +129,21 @@ describe("B0A validated unique answer persistence", () => {
   it("rejects missing applications", async () => {
     db.$queryRaw.mockResolvedValue([]);
     await expect(repo.submitAnswers("missing", [])).rejects.toMatchObject({ statusCode: 404 });
-    await expect(repo.autoSaveAnswer("missing", essayId, "x")).rejects.toMatchObject({ statusCode: 404 });
+    await expect(repo.autoSaveAnswer("11111111-1111-4111-8111-111111111111", essayId, "x", 0, "jwt-user")).rejects.toMatchObject({ statusCode: 404 });
     noWrites();
   });
 
   it.each([q1, missing])("rejects autosave to a non-essay or missing question %s", async questionId => {
-    await expect(repo.autoSaveAnswer("app", questionId, "Draft")).rejects.toMatchObject({ statusCode: 400 });
+    await expect(repo.autoSaveAnswer("11111111-1111-4111-8111-111111111111", questionId, "Draft", 0, "jwt-user")).rejects.toMatchObject({ statusCode: 400 });
     noWrites();
   });
 
   it("autosaves valid essay text, including empty text, without a selected option", async () => {
-    await repo.autoSaveAnswer("app", essayId, "");
+    await repo.autoSaveAnswer("11111111-1111-4111-8111-111111111111", essayId, "", 0, "jwt-user");
     expect(db.applicantAnswer.upsert).toHaveBeenCalledWith({
-      where: { applicationId_questionId: { applicationId: "app", questionId: essayId } },
-      update: { essayAnswer: "", selectedOptionId: null },
-      create: { applicationId: "app", questionId: essayId, essayAnswer: "", selectedOptionId: null },
+      where: { applicationId_questionId: { applicationId: "11111111-1111-4111-8111-111111111111", questionId: essayId } },
+      update: { essayAnswer: "", selectedOptionId: null, draftRevision: 1 },
+      create: { applicationId: "11111111-1111-4111-8111-111111111111", questionId: essayId, essayAnswer: "", selectedOptionId: null, draftRevision: 1 },
     });
   });
 });

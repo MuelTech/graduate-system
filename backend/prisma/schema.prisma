@@ -1816,6 +1816,8 @@ model ApplicantAnswer {
   questionId       String  @map("question_id")
   selectedOptionId String? @map("selected_option_id")
   essayAnswer      String? @map("essay_answer") @db.Text
+  // Technical concurrency baseline; zero does not describe historical edits.
+  draftRevision    Int     @default(0) @map("draft_revision")
 
   application    EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Restrict)

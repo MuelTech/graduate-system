@@ -59,7 +59,8 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
       options: { create: [{ label: "F", order: 3, optionText: "Correct", isCorrect: true }, { label: "K", order: 8, optionText: null, mediaId: ids.media, isCorrect: false }] } }, include: { options: { orderBy: { order: "asc" } } } });
     optionIds = q.options.map(o => o.id);
     await db.examQuestion.create({ data: { id: ids.answerQ, questionText: "Existing synthetic answer prompt", type: "ESSAY" } });
-    await db.applicantAnswer.create({ data: { id: ids.answer, applicationId: ids.app, questionId: ids.answerQ, essayAnswer: "Preserved existing history" } });
+    // Rehearse the historical answer columns, independently of B5 client fields.
+    await admin.execute("INSERT INTO applicant_answers (answer_id,application_id,question_id,essay_answer) VALUES (?,?,?,?)", [ids.answer, ids.app, ids.answerQ, "Preserved existing history"]);
     beforeMigration = await snapshot(admin);
     await admin.query(readFileSync("prisma/migrations/20261102010000_exam_question_sets/migration.sql", "utf8"));
     gateway.$transaction.mockImplementation((fn, options) => db.$transaction(fn, options));
@@ -122,7 +123,7 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
     await new ExamEngineRepository().deleteQuestion(manual.id); expect(await db.examQuestion.count({ where: { id: manual.id } })).toBe(0);
     const second = await repo.replaceSelection({ questionIds: [ids.q] }); const publication = await repo.publish({ questionIds: second.questionIds }, ids.user);
     expect((await repo.getForBinding(publication.id)).answerKey[0].correctOptionIds).toEqual([optionIds[1]]);
-    await db.applicantAnswer.create({ data: { applicationId: ids.app, questionId: ids.q, selectedOptionId: optionIds[0] } });
+    await admin.execute("INSERT INTO applicant_answers (answer_id,application_id,question_id,selected_option_id) VALUES (?,?,?,?)", [randomUUID(), ids.app, ids.q, optionIds[0]]);
     await expect(db.examOption.delete({ where: { id: optionIds[0] } })).rejects.toMatchObject({ code: "P2003" });
     expect(await db.examContentRevision.count()).toBe(2);
   });

@@ -169,23 +169,23 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
   }, 15_000);
 
   it("autosave first: draft commits, waiting submit rereads eligibility and finalizes", async () => {
-    const [draft, final] = await contend(() => repo.autoSaveAnswer(ids.app, ids.essay, "Earlier draft"), () => repo.submitAnswers(ids.app, finalAnswers()));
+    const [draft, final] = await contend(() => repo.autoSaveAnswer(ids.app, ids.essay, "Earlier draft", 0, ids.user), () => repo.submitAnswers(ids.app, finalAnswers()));
     expect(draft).toHaveProperty("value");
     expect(final).toEqual({ value: { success: true, mcqScore: 1 } });
     await assertFinal();
   }, 15_000);
 
   it("submit first: waiting and later autosaves reject without overwriting final essay", async () => {
-    const [final, draft] = await contend(() => repo.submitAnswers(ids.app, finalAnswers()), () => repo.autoSaveAnswer(ids.app, ids.essay, "Waiting stale draft"));
+    const [final, draft] = await contend(() => repo.submitAnswers(ids.app, finalAnswers()), () => repo.autoSaveAnswer(ids.app, ids.essay, "Waiting stale draft", 0, ids.user));
     expect(final).toHaveProperty("value");
     expect(draft).toMatchObject({ error: { statusCode: 409 } });
     gateway.$transaction.mockImplementation(callback => workers[0].$transaction(callback));
-    await expect(repo.autoSaveAnswer(ids.app, ids.essay, "Later stale draft")).rejects.toMatchObject({ statusCode: 409 });
+    await expect(repo.autoSaveAnswer(ids.app, ids.essay, "Later stale draft", 0, ids.user)).rejects.toMatchObject({ statusCode: 409 });
     await assertFinal();
   }, 15_000);
 
   it("invalid/foreign payload rolls back with no partial finalization and preserves prior draft", async () => {
-    await repo.autoSaveAnswer(ids.app, ids.essay, "Existing draft");
+    await repo.autoSaveAnswer(ids.app, ids.essay, "Existing draft", 0, ids.user);
     await expect(repo.submitAnswers(ids.app, [...finalAnswers(), { questionId: ids.otherQ, selectedOptionId: ids.option }])).rejects.toMatchObject({ statusCode: 400 });
     expect((await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: ids.app } })).status).toBe("PENDING");
     expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(0);

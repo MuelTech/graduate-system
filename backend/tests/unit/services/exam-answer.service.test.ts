@@ -9,13 +9,13 @@ beforeEach(() => { vi.resetAllMocks(); execution.read.mockResolvedValue({ state:
 describe("B0A writes now delegate through exact B4 execution", () => {
   it("checks exact JWT ownership/execution then uses the locked answer repository", async () => {
     const service = new ExamEngineService();
-    await service.submitAnswers("owned-app", [], "jwt-user"); await service.autoSaveAnswer("owned-app", "essay-id", "Draft", "jwt-user");
+    await service.submitAnswers("owned-app", [], "jwt-user"); await service.autoSaveAnswer("owned-app", "essay-id", "Draft", "jwt-user", 0);
     expect(execution.read).toHaveBeenCalledWith("jwt-user", "owned-app");
-    expect(repo.submitAnswers).toHaveBeenCalledWith("owned-app", []); expect(repo.autoSaveAnswer).toHaveBeenCalledWith("owned-app", "essay-id", "Draft");
+    expect(repo.submitAnswers).toHaveBeenCalledWith("owned-app", []); expect(repo.autoSaveAnswer).toHaveBeenCalledWith("owned-app", "essay-id", "Draft", 0, "jwt-user");
   });
   it.each(["READY", "BLOCKED", "EXPIRED", "TERMINAL", "LEGACY_UNBOUND"])("rejects %s before persistence", async state => {
     execution.read.mockResolvedValue({ state }); const service = new ExamEngineService();
-    await expect(service.submitAnswers("app", [], "u")).rejects.toMatchObject({ statusCode: 409 }); await expect(service.autoSaveAnswer("app", "essay", "x", "u")).rejects.toThrow();
+    await expect(service.submitAnswers("app", [], "u")).rejects.toMatchObject({ statusCode: 409 }); await expect(service.autoSaveAnswer("app", "essay", "x", "u", 0)).rejects.toThrow();
     expect(repo.submitAnswers).not.toHaveBeenCalled(); expect(repo.autoSaveAnswer).not.toHaveBeenCalled();
   });
 });

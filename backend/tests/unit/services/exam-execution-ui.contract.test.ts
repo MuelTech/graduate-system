@@ -12,6 +12,9 @@ const { createElement } = requireFrontend("react");
 const { renderToStaticMarkup } = requireFrontend("react-dom/server");
 let states: any[], cursor: number, queries: any[], mutations: any[], queryResult: any, questions: any[], pending: boolean;
 const request = vi.fn(), mutate = vi.fn(), refetch = vi.fn(), invalidate = vi.fn();
+let draftState: any;
+const draftChange = vi.fn(), draftFlush = vi.fn(), draftPrepare = vi.fn(), draftResync = vi.fn();
+const draftQueue = { snapshot: () => draftState, subscribe: () => () => {}, activate: vi.fn(), pause: vi.fn(), change: draftChange, flush: draftFlush, prepare: draftPrepare, resync: draftResync };
 const primitive = (name: string) => ({ children }: any) => createElement(name, {}, children);
 const primitives = (names: string[]) => Object.fromEntries(names.map(name => [name, primitive("div")]));
 const modules: Record<string, any> = {
@@ -19,6 +22,8 @@ const modules: Record<string, any> = {
   react: {
     useState: (initial: any) => { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], (v: any) => { states[i] = typeof v === "function" ? v(states[i]) : v; }]; },
     useRef: (initial: any) => { const i = cursor++; return states[i] ??= { current: initial }; }, useEffect: () => {},
+    useMemo: (factory: any) => { const i = cursor++; return states[i] ??= factory(); },
+    useSyncExternalStore: (_subscribe: any, snapshot: any) => snapshot(),
   },
   "@tanstack/react-query": {
     useQuery: (options: any) => { queries.push(options); return options.queryKey[0] === "applicant-bound-exam-questions" ? { data: questions } : queryResult; },
@@ -27,6 +32,7 @@ const modules: Record<string, any> = {
   },
   "@/lib/api.client": { apiClientRequest: request }, "@/lib/exam-execution": executionHelpers, "@/lib/admin-exam-schedules": scheduleHelpers,
   "@/lib/applicant-exam-content": { withApplicantAnswer: (before: any, id: string, option: string) => ({ ...before, [id]: option }) },
+  "@/lib/exam-drafts": { ExamDraftQueue: class { constructor() { return draftQueue; } }, draftStatusText: { saved: "Saved", unsaved: "Unsaved changes", saving: "Saving…", error: "Save failed", conflict: "Answers changed elsewhere" } },
   "@/components/ui/button": { Button: primitive("button") }, "@/components/ui/card": primitives(["Card", "CardContent", "CardHeader", "CardTitle"]),
   "@/components/ui/dialog": primitives(["Dialog", "DialogContent", "DialogHeader", "DialogTitle", "DialogDescription", "DialogFooter"]),
   "@/components/ui/badge": primitives(["Badge"]), "@/components/ui/alert": primitives(["Alert", "AlertDescription"]), "@/components/ui/skeleton": primitives(["Skeleton"]),
@@ -55,12 +61,13 @@ function execution(patch: Partial<ExamExecution> = {}): ExamExecution {
 }
 beforeEach(() => {
   vi.clearAllMocks(); states = []; cursor = 0; queries = []; mutations = []; pending = false; questions = [];
+  draftState = { values: {}, status: "saved", ready: true }; draftPrepare.mockResolvedValue(true);
   queryResult = { data: { execution: execution(), receivedAt: 100 }, refetch }; refetch.mockResolvedValue({ isError: false });
 });
 describe("B4 Applicant server execution UI", () => {
   it("pre-start displays original appointment and explicit Start without fetching protected content", () => {
     const tree = render(); expect(text(tree)).toContain("Examination not started."); expect(text(tree)).toContain("9:00 AM"); expect(button(tree, "Start Examination").props.disabled).toBe(false); expect(queries[1].enabled).toBe(false);
-    expect(renderToStaticMarkup(tree)).toContain("Answers are not restored after refresh");
+    expect(renderToStaticMarkup(tree)).toContain("saved answers");
   });
   it("does not unlock from device time when the server blocks early entry", () => {
     queryResult.data.execution = execution({ state: "BLOCKED", canStart: false, reason: "Scheduled time has not arrived" });
@@ -101,10 +108,11 @@ describe("B4 Applicant server execution UI", () => {
     queryResult.data.execution = execution({ state: "BLOCKED", actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", reason: "Contact staff" });
     const tree = render(); expect(text(tree)).toContain("Your recorded start"); expect(text(tree)).not.toContain("Examination not started");
   });
-  it("removes independent duration, live-bank start, local clock authority and answer-recovery claims", () => {
+  it("preserves B4 duration/content authority while B5 adds acknowledged draft recovery", () => {
     expect(applicantSource).not.toMatch(/10800|3 Hours|3-hour|new Date\(\)|Date\.now\(|\/exam-engine\/questions/);
     expect(applicantSource).toContain("performance.now()"); expect(applicantSource).toContain('window.addEventListener("online"'); expect(applicantSource).toContain('document.addEventListener("visibilitychange"');
-    expect(applicantSource).not.toMatch(/localStorage|hydrate|savedAnswers/);
+    expect(applicantSource).not.toMatch(/localStorage|sessionStorage|indexedDB/);
+    expect(applicantSource).toContain("ExamDraftQueue");
   });
 });
 describe("B4 exact per-record Admin start authorization", () => {
@@ -122,5 +130,51 @@ describe("B4 exact per-record Admin start authorization", () => {
     expect(text(render(admin))).toContain("Authorized by Admin Fixture"); expect(text(render(admin))).toContain("The Applicant has not started");
     queryResult.data = execution({ actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", canAuthorize: false });
     const tree = render(admin); expect(text(tree)).toContain("Individual deadline"); expect(text(tree)).not.toContain("The Applicant has not started");
+  });
+});
+
+describe("B5 Applicant component and submission contracts", () => {
+  function activePage() {
+    queryResult.data.execution = execution({ state: "ACTIVE", actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", contentRevisionId: "revision1" });
+    questions = [{ id: "q", type: "MULTIPLE_CHOICE", options: [], questionText: "Synthetic MCQ" }, { id: "e", type: "ESSAY", options: [], questionText: "Synthetic essay" }];
+    return render();
+  }
+  it("hydrates MCQ renderer selection, essay and answered navigator from the queue", () => {
+    draftState.values = { q: { selectedOptionId: "option-a" }, e: { essayAnswer: "saved essay" } };
+    const tree = activePage(); const renderer = nodes(tree).find(n => n.props?.selectedOptionId);
+    expect(renderer.props.selectedOptionId).toBe("option-a"); expect(text(tree)).toContain("1 / 1");
+    button(tree, "Essay Question").props.onClick(); const textarea = nodes(render()).find(n => n.type === "textarea"); expect(textarea.props.value).toBe("saved essay");
+    textarea.props.onChange({ target: { value: "" } }); expect(draftChange).toHaveBeenCalledWith("e", { essayAnswer: "" }); textarea.props.onBlur(); expect(draftFlush).toHaveBeenCalled();
+  });
+  it("MCQ selection/change and clear use exact opaque IDs and explicit null", () => {
+    draftState.values = { q: { selectedOptionId: "option-a" } }; const tree = activePage();
+    nodes(tree).find(n => n.props?.onSelect).props.onSelect("option-b"); expect(draftChange).toHaveBeenCalledWith("q", { selectedOptionId: "option-b" });
+    button(tree, "Clear answer").props.onClick(); expect(draftChange).toHaveBeenCalledWith("q", { selectedOptionId: null });
+  });
+  it.each(["unsaved", "saving", "saved", "error", "conflict"])("shows %s without hidden revision numbers", status => {
+    draftState.status = status; const tree = activePage(); expect(nodes(tree).some(n => n.props.role === "status")).toBe(true);
+    if (status === "error") { button(tree, "Retry save").props.onClick(); expect(draftPrepare).toHaveBeenCalled(); }
+    if (status === "conflict") { expect(nodes(tree).find(n => n.type === "fieldset").props.disabled).toBe(true); button(tree, "Refresh saved answers").props.onClick(); expect(draftResync).toHaveBeenCalledWith(true); }
+    expect(text(tree)).not.toContain("revision");
+  });
+  it("guards confirmation until pending drafts drain and blocks unresolved conflict", async () => {
+    let resolve!: (v: boolean) => void; draftPrepare.mockReturnValue(new Promise(done => { resolve = done; }));
+    let tree = activePage(); const pending = button(tree, "Submit Exam").props.onClick(); tree = render();
+    expect(nodes(tree).find(n => n.type === modules["@/components/ui/dialog"].Dialog).props.open).toBe(false);
+    expect(nodes(tree).find(n => n.type === "fieldset").props.disabled).toBe(true);
+    resolve(false); await Promise.resolve(); await Promise.resolve(); await pending;
+    expect(nodes(render()).find(n => n.type === modules["@/components/ui/dialog"].Dialog).props.open).toBe(false);
+  });
+  it("final submission rechecks/drains drafts and sends the latest snapshot including blank essay", async () => {
+    draftState.values = { q: { selectedOptionId: "option-a" }, e: { essayAnswer: "" } }; let tree = activePage();
+    button(tree, "Submit Exam").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
+    expect(nodes(tree).find(n => n.type === modules["@/components/ui/dialog"].Dialog).props.open).toBe(true);
+    await button(tree, "Yes, Submit Exam").props.onClick(); expect(draftPrepare).toHaveBeenCalledTimes(2); expect(mutate).toHaveBeenCalledOnce();
+    await mutations[1].mutationFn(); expect(JSON.parse(request.mock.calls.at(-1)![1].body)).toEqual({ answers: [{ questionId: "q", selectedOptionId: "option-a" }, { questionId: "e", essayAnswer: "" }] });
+  });
+  it("does not keep protected content in local persistent caches or retain the transitional interval", () => {
+    const source = readFileSync("../frontend/src/lib/exam-drafts.ts", "utf8") + applicantSource;
+    expect(source).not.toMatch(/localStorage|sessionStorage|indexedDB|60_000|sendBeacon/);
+    expect(source).toContain('"visibilitychange"'); expect(source).toContain('"focus"'); expect(source).toContain("drafts.pause()");
   });
 });

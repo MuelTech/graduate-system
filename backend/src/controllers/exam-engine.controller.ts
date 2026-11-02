@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
 import { AppError } from "../utils/AppError";
-import { validateSubmissionBody, validateEssayAutosave } from "../services/exam-answer.rules";
+import { validateSubmissionBody, validateDraft } from "../services/exam-answer.rules";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -23,14 +23,20 @@ export class ExamEngineController {
 
     autoSaveAnswer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const { questionId, essayAnswer } = validateEssayAutosave(req.body);
+            const answer = validateDraft(req.body);
             const appId = req.params.applicationId as string;
-
-            await this.service.autoSaveAnswer(appId, questionId, essayAnswer, req.user!.userId);
-
-            res.status(200).json({ success: true });
+            const saved = await this.service.saveDraft(appId, answer, req.user!.userId);
+            res.status(200).json(saved);
         } catch (error: unknown) {
             res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not save answer." });
+        }
+    }
+
+    readDrafts = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            res.status(200).json(await this.service.readDrafts(req.params.applicationId as string, req.user!.userId));
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not load saved answers." });
         }
     }
 

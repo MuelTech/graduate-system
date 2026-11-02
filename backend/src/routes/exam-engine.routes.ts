@@ -39,6 +39,8 @@ router.get('/execution', authenticateJWT, requireRole(['APPLICANT']), executionC
 router.get('/applications/:applicationId/execution', authenticateJWT, requireRole(['APPLICANT']), executionController.read);
 router.post('/applications/:applicationId/start', authenticateJWT, requireRole(['APPLICANT']), executionController.start);
 router.get('/applications/:applicationId/questions', authenticateJWT, requireRole(['APPLICANT']), controller.getQuestionsForApplicant);
+router.get('/applications/:applicationId/drafts', authenticateJWT, requireRole(['APPLICANT']), controller.readDrafts);
+router.patch('/applications/:applicationId/drafts', authenticateJWT, requireRole(['APPLICANT']), controller.autoSaveAnswer);
 router.patch('/applications/:applicationId/autosave', authenticateJWT, requireRole(['APPLICANT']), controller.autoSaveAnswer);
 router.post('/applications/:applicationId/submit', authenticateJWT, requireRole(['APPLICANT']), controller.submitAnswers);
 

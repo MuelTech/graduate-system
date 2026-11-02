@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -34,7 +40,7 @@ import { ApplicantQuestionRenderer } from "@/components/exam-content/applicant-q
 import { SemanticText } from "@/components/exam-content/semantic-text";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { ExamExecutionContext } from "@/components/exam-content/exam-execution-context";
-import { withApplicantAnswer } from "@/lib/applicant-exam-content";
+import { ExamDraftQueue, draftStatusText } from "@/lib/exam-drafts";
 import {
   Clock,
   ChevronLeft,
@@ -49,13 +55,13 @@ export default function ApplicantExamPage() {
   const userId = session?.user.id;
   const pinnedApplication = useRef<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [essayText, setEssayText] = useState("");
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showEssay, setShowEssay] = useState(false);
   const [tick, setTick] = useState<number | null>(null);
   const [connected, setConnected] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const prepareBusy = useRef(false);
   const startBusy = useRef(false);
   const submitBusy = useRef(false);
   const query = useQuery<ExecutionClock | null>({
@@ -118,6 +124,48 @@ export default function ApplicantExamPage() {
   );
   const essayQuestion =
     (questionsQuery.data ?? []).find((q) => q.type === "ESSAY") ?? null;
+  const applicationId = execution?.applicationId;
+  const drafts = useMemo(
+    () =>
+      new ExamDraftQueue({
+        read: () =>
+          apiClientRequest(executionPath(applicationId!, "drafts"), {
+            method: "GET",
+            cache: "no-store",
+          }),
+        write: (body) =>
+          apiClientRequest(executionPath(applicationId!, "drafts"), {
+            method: "PATCH",
+            body: JSON.stringify(body),
+          }),
+      }),
+    [applicationId],
+  );
+  const draftState = useSyncExternalStore(
+    drafts.subscribe,
+    drafts.snapshot,
+    drafts.snapshot,
+  );
+  const answers = Object.fromEntries(
+    Object.entries(draftState.values).flatMap(([id, value]) =>
+      "selectedOptionId" in value && value.selectedOptionId
+        ? [[id, value.selectedOptionId]]
+        : [],
+    ),
+  );
+  const essayValue = essayQuestion
+    ? draftState.values[essayQuestion.id]
+    : undefined;
+  const essayText =
+    essayValue && "essayAnswer" in essayValue ? essayValue.essayAnswer : "";
+  const draftsEnabled = active && questionsQuery.isSuccess;
+  useEffect(() => {
+    if (draftsEnabled) void drafts.activate();
+    else drafts.pause();
+    return () => drafts.pause();
+  }, [drafts, draftsEnabled]);
+  const editingLocked =
+    preparing || showSubmitConfirm || draftState.status === "conflict";
   const start = useMutation({
     mutationFn: () =>
       apiClientRequest(executionPath(execution!.applicationId, "start"), {
@@ -132,19 +180,22 @@ export default function ApplicantExamPage() {
   });
   const submit = useMutation({
     mutationFn: () => {
+      const current = drafts.snapshot().values;
       const formattedAnswers: Array<{
         questionId: string;
         selectedOptionId?: string;
         essayAnswer?: string;
-      }> = Object.entries(answers).map(([questionId, selectedOptionId]) => ({
-        questionId,
-        selectedOptionId,
-      }));
-      if (essayQuestion && essayText)
-        formattedAnswers.push({
-          questionId: essayQuestion.id,
-          essayAnswer: essayText,
-        });
+      }> = Object.entries(current).flatMap<{
+        questionId: string;
+        essayAnswer?: string;
+        selectedOptionId?: string;
+      }>(([questionId, value]) =>
+        "essayAnswer" in value
+          ? [{ questionId, essayAnswer: value.essayAnswer }]
+          : value.selectedOptionId
+            ? [{ questionId, selectedOptionId: value.selectedOptionId }]
+            : [],
+      );
       return apiClientRequest(
         executionPath(execution!.applicationId, "submit"),
         { method: "POST", body: JSON.stringify({ answers: formattedAnswers }) },
@@ -163,49 +214,60 @@ export default function ApplicantExamPage() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    const offline = () => setConnected(false);
+    const offline = () => {
+      drafts.pause();
+      setConnected(false);
+    };
     const online = () => {
-      void refetchExecution().then((result) => setConnected(!result.isError));
+      void refetchExecution().then(async (result) => {
+        const valid =
+          !result.isError && result.data?.execution.state === "ACTIVE";
+        if (valid) await drafts.activate();
+        setConnected(!result.isError);
+      });
     };
     const visible = () => {
       if (document.visibilityState === "visible") online();
+      else void drafts.flush();
     };
     window.addEventListener("offline", offline);
     window.addEventListener("online", online);
+    window.addEventListener("focus", online);
     document.addEventListener("visibilitychange", visible);
     return () => {
       window.removeEventListener("offline", offline);
       window.removeEventListener("online", online);
+      window.removeEventListener("focus", online);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [refetchExecution]);
-
-  const executionId = execution?.applicationId;
-  const essayId = essayQuestion?.id;
-  // Retain the existing essay interval only. B5 owns draft autosave/recovery.
-  useEffect(() => {
-    if (!active || !executionId || !essayId || essayText.trim() === "") return;
-    const applicationId = executionId;
-    const timer = setInterval(async () => {
-      try {
-        await apiClientRequest(executionPath(applicationId, "autosave"), {
-          method: "PATCH",
-          body: JSON.stringify({ questionId: essayId, essayAnswer: essayText }),
-        });
-      } catch {
-        void refetchExecution();
-      }
-    }, 60_000);
-    return () => clearInterval(timer);
-  }, [active, executionId, essayId, essayText, refetchExecution]);
+  }, [refetchExecution, drafts]);
 
   const formatTime = (seconds: number) =>
     `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const essayWordCount = essayText.trim().split(/\s+/).filter(Boolean).length;
-  const handleFinalSubmit = () => {
+  const prepareSubmission = async () => {
+    if (!active || prepareBusy.current || submitBusy.current) return;
+    prepareBusy.current = true;
+    setPreparing(true);
+    try {
+      if (await drafts.prepare()) setShowSubmitConfirm(true);
+    } finally {
+      prepareBusy.current = false;
+      setPreparing(false);
+    }
+  };
+  const handleFinalSubmit = async () => {
     if (!active || submitBusy.current) return;
     submitBusy.current = true;
+    setPreparing(true);
     setErrorMsg("");
+    if (!(await drafts.prepare())) {
+      submitBusy.current = false;
+      setPreparing(false);
+      setShowSubmitConfirm(false);
+      return;
+    }
+    setPreparing(false);
     submit.mutate();
   };
 
@@ -311,8 +373,8 @@ export default function ApplicantExamPage() {
             {execution.reason && <p role="status">{execution.reason}</p>}
             <p className="text-sm text-muted-foreground">
               Your allotted time begins when you click Start Examination.
-              Refreshing restores the same deadline and questions. Answers are
-              not restored after refresh.
+              Refreshing restores the same deadline, questions and saved
+              answers.
             </p>
             {start.isError && (
               <p role="alert" className="text-sm text-destructive">
@@ -348,6 +410,19 @@ export default function ApplicantExamPage() {
         </AlertDescription>
       </Alert>
     );
+  if (!draftState.ready)
+    return draftState.status === "error" ? (
+      <Alert>
+        <AlertDescription>
+          Saved answers could not be loaded.{" "}
+          <Button variant="outline" onClick={() => drafts.activate()}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    ) : (
+      <Skeleton className="h-64 w-full" />
+    );
   // --- STATE 5: EXAM IN PROGRESS ---
   return (
     <ExamExecutionContext.Provider value={execution.applicationId}>
@@ -356,9 +431,26 @@ export default function ApplicantExamPage() {
           Original appointment:{" "}
           {formatScheduleDate(execution.appointment.examDate)} ·{" "}
           {formatScheduleTime(execution.appointment.examTime)}. Deadline:{" "}
-          {examinationTimestamp(execution.deadlineAt!)}. Answers are not
-          restored after refresh.
+          {examinationTimestamp(execution.deadlineAt!)}.
         </p>
+        <div
+          className="flex flex-wrap items-center gap-2 text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <span>{draftStatusText[draftState.status]}</span>
+          {draftState.status === "error" && (
+            <Button variant="outline" onClick={() => drafts.prepare()}>
+              Retry save
+            </Button>
+          )}
+          {draftState.status === "conflict" && (
+            <Button variant="outline" onClick={() => drafts.resync(true)}>
+              Refresh saved answers
+            </Button>
+          )}
+          {preparing && <span>Synchronizing answers…</span>}
+        </div>
         {/* EXAM HEADER BAR */}
         <div className="sticky top-16 z-20 flex items-center justify-between rounded-xl border border-(--earist-border-gray) bg-white px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
@@ -388,7 +480,11 @@ export default function ApplicantExamPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <fieldset
+          disabled={editingLocked}
+          className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-4"
+        >
+          <legend className="sr-only">Examination answers</legend>
           {/* Main Content Area */}
           <div className="min-w-0 lg:col-span-3">
             {/* MCQ SECTION */}
@@ -411,22 +507,32 @@ export default function ApplicantExamPage() {
                     question={mcqQuestions[currentQuestion]}
                     selectedOptionId={answers[mcqQuestions[currentQuestion].id]}
                     onSelect={(optionId) =>
-                      setAnswers((prev) =>
-                        withApplicantAnswer(
-                          prev,
-                          mcqQuestions[currentQuestion].id,
-                          optionId,
-                        ),
-                      )
+                      drafts.change(mcqQuestions[currentQuestion].id, {
+                        selectedOptionId: optionId,
+                      })
                     }
                   />
+                  <Button
+                    variant="outline"
+                    disabled={!answers[mcqQuestions[currentQuestion].id]}
+                    onClick={() =>
+                      drafts.change(mcqQuestions[currentQuestion].id, {
+                        selectedOptionId: null,
+                      })
+                    }
+                  >
+                    Clear answer
+                  </Button>
 
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between border-t border-(--earist-border-gray) pt-4">
                     <Button
                       variant="outline"
                       disabled={currentQuestion === 0}
-                      onClick={() => setCurrentQuestion((prev) => prev - 1)}
+                      onClick={() => {
+                        void drafts.flush();
+                        setCurrentQuestion((prev) => prev - 1);
+                      }}
                     >
                       <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                     </Button>
@@ -434,7 +540,10 @@ export default function ApplicantExamPage() {
                     {currentQuestion < mcqQuestions.length - 1 ? (
                       <Button
                         className="bg-(--earist-primary) hover:bg-red-900"
-                        onClick={() => setCurrentQuestion((prev) => prev + 1)}
+                        onClick={() => {
+                          void drafts.flush();
+                          setCurrentQuestion((prev) => prev + 1);
+                        }}
                       >
                         Next <ChevronRight className="ml-1 h-4 w-4" />
                       </Button>
@@ -442,7 +551,10 @@ export default function ApplicantExamPage() {
                       essayQuestion && (
                         <Button
                           className="bg-blue-600 hover:bg-blue-700"
-                          onClick={() => setShowEssay(true)}
+                          onClick={() => {
+                            void drafts.flush();
+                            setShowEssay(true);
+                          }}
                         >
                           Proceed to Essay Section{" "}
                           <ChevronRight className="ml-1 h-4 w-4" />
@@ -466,13 +578,6 @@ export default function ApplicantExamPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Alert className="border-blue-200 bg-blue-50 text-blue-800">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-xs">
-                      Your essay response auto-saves every 60 seconds.
-                    </AlertDescription>
-                  </Alert>
-
                   <StimulusRenderer
                     stimulusType={essayQuestion.stimulusType}
                     stimulusMediaId={essayQuestion.stimulusMediaId}
@@ -491,20 +596,33 @@ export default function ApplicantExamPage() {
                   <textarea
                     className="min-h-64 w-full rounded-md border border-(--earist-border-gray) p-3 text-sm focus:border-(--earist-primary) focus:ring-1 focus:ring-(--earist-primary) outline-none"
                     placeholder="Type your essay response here..."
+                    aria-label="Essay response"
                     value={essayText}
-                    onChange={(e) => setEssayText(e.target.value)}
+                    onChange={(e) =>
+                      drafts.change(essayQuestion.id, {
+                        essayAnswer: e.target.value,
+                      })
+                    }
+                    onBlur={() => {
+                      void drafts.flush();
+                    }}
                   />
 
                   <div className="flex items-center justify-between border-t border-(--earist-border-gray) pt-4">
                     <Button
                       variant="outline"
-                      onClick={() => setShowEssay(false)}
+                      onClick={() => {
+                        void drafts.flush();
+                        setShowEssay(false);
+                      }}
                     >
                       <ChevronLeft className="mr-1 h-4 w-4" /> Back to MCQs
                     </Button>
                     <Button
                       className="bg-green-600 hover:bg-green-700"
-                      onClick={() => setShowSubmitConfirm(true)}
+                      onClick={() => {
+                        void prepareSubmission();
+                      }}
                     >
                       Submit Examination <Send className="ml-2 h-4 w-4" />
                     </Button>
@@ -533,6 +651,7 @@ export default function ApplicantExamPage() {
                         onClick={() => {
                           setShowEssay(false);
                           setCurrentQuestion(idx);
+                          void drafts.flush();
                         }}
                         className={`h-9 rounded-md text-xs font-bold transition-all ${
                           isCurrent
@@ -551,7 +670,10 @@ export default function ApplicantExamPage() {
                 {essayQuestion && (
                   <div className="border-t border-(--earist-border-gray) pt-3">
                     <button
-                      onClick={() => setShowEssay(true)}
+                      onClick={() => {
+                        void drafts.flush();
+                        setShowEssay(true);
+                      }}
                       className={`w-full py-2 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-between ${
                         showEssay
                           ? "ring-2 ring-blue-600 bg-blue-50 text-blue-700"
@@ -570,14 +692,16 @@ export default function ApplicantExamPage() {
 
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-xs"
-                  onClick={() => setShowSubmitConfirm(true)}
+                  onClick={() => {
+                    void prepareSubmission();
+                  }}
                 >
                   Submit Exam
                 </Button>
               </CardContent>
             </Card>
           </div>
-        </div>
+        </fieldset>
 
         <Dialog
           open={showSubmitConfirm}
@@ -614,7 +738,12 @@ export default function ApplicantExamPage() {
                 Continue Exam
               </Button>
               <Button
-                disabled={submit.isPending || !active}
+                disabled={
+                  submit.isPending ||
+                  preparing ||
+                  !active ||
+                  draftState.status !== "saved"
+                }
                 onClick={handleFinalSubmit}
               >
                 {submit.isPending ? "Submitting…" : "Yes, Submit Exam"}
