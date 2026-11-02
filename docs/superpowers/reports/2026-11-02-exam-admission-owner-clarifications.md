@@ -92,8 +92,24 @@ Common rules:
 3. Then implement B4 per-Applicant Start Now authorization, server-owned actual start, and individual configured-duration timer.
 4. B9 remains responsible for different-date missed-exam appeals, rescheduling, and historical booking preservation.
 
-Exact UI placement for assigning an Applicant who has no Exam Record yet remains subject to the existing Admin Applicants/Profile and Exam Records UI/UX ownership patterns. No new sidebar destination is approved. The pending UI follow-up is recorded in `docs/superpowers/ui-ux/UI_UX_AUDIT.md`; the accepted UIUX-2D/2E reference is not changed.
+The owner-confirmed entry point is one **Assign Applicant** primary action in the upper-right action area of the existing **Entrance Exam Records** PageHeader. It opens a dialog for registered-Applicant search, identity/Program/eligibility review, eligible same-day slot selection, original schedule/capacity review, and assignment confirmation. The existing Exam Records table only contains Applicants who already have an examination application; this page-level action creates the first record for an eligible Applicant who has no booking. The new record appears in the unchanged table after success. Do not place this mutation on Applicant Profile or assume an individual Exam Record already exists. No new sidebar destination is approved. The accepted UIUX-2D/2E reference remains unchanged; the new UI direction is documented but not implemented or visually accepted.
 
 PD-5 examination-period identity, one-attempt-per-period, reset/retake, different-date appeal authority, and seat-release/retention remain unresolved.
+
+## 8. Owner-confirmed Admin entry point and interaction
+
+The existing **Entrance Exam Records** table contains Applicants only after an examination application exists. A registered Applicant without a booking therefore cannot be found through an existing record row or individual Exam Record detail.
+
+The owner-confirmed creation entry point is the existing **Entrance Exam Records** page:
+
+- Add one **Assign Applicant** primary action in the upper-right action area of its existing PageHeader.
+- Open a focused dialog using the existing shared Dialog pattern.
+- Search existing registered Applicants; select the intended Applicant and review authoritative identity, Program, and eligibility information.
+- Select an eligible existing active ExamSlot for the current Asia/Manila calendar date, including a slot whose scheduled wall-clock time has already passed. Review its original date/time and remaining capacity before confirmation.
+- Confirm the assignment. After success, refresh the existing Exam Records query so the newly created record appears in the existing table.
+- Keep the accepted Exam Records table, filters, and row actions unchanged. Do not add a table-row action, Applicant Profile mutation, new sidebar destination, separate walk-in module, or fake appointment.
+- Server-side B3 validation remains authoritative. The UI must not bypass identity/Program/alignment/blocking-status/active-slot/counter/capacity/locking/atomicity safeguards. Ineligible Applicants and unavailable slots fail closed with truthful reasons.
+- Applicants with existing bookings are not reassigned through this action; B4 handles their exact application's Start Now authorization. A no-booking Applicant is assigned first under B3, then B4 authorization may follow.
+- This is an owner-confirmed UI direction only. It is not implemented or visually accepted; project-owner browser/manual QA remains required.
 
 **This report records owner clarifications only. It does not implement B3 follow-up or B4, accept any new UI, or authorize automatic progression.**

@@ -181,17 +181,29 @@ Accepted checkpoint: **2026-11-02 — ACCEPTED FOR PHASE B PROGRESSION** from im
 
 This is a bounded follow-up within EXAM-B3, not a new package family. It does not reopen or invalidate the accepted B3 baseline.
 
-- Add an ADMIN-only operation to assign an already-registered, eligible Applicant who has no blocking examination application to an existing active ExamSlot for the current Asia/Manila calendar date.
-- The selected slot may have a scheduled wall-clock time earlier than the current time. This is a same-day Admin assignment exception only; ordinary Applicant self-booking must continue rejecting past schedule times.
-- Preserve the slot's original date/time and active state. Do not create a synthetic slot, change the appointment time, or add a WALK_IN application type.
-- Reuse B3's authoritative Student/Program/alignment checks, blocking-application contract, Student → Slot lock order, READ COMMITTED/current-state reads, counter reconciliation, conditional capacity reservation, and atomic application creation.
-- Require the slot to remain active, belong to the Applicant's exact Program, have a consistent capacity counter, and have at least one available seat. Reject full, closed, foreign-Program, cross-date, counter-drift, duplicate/blocking-application, or ineligible cases. Never overbook.
-- For an Applicant who already has a booking, do not create another application or reassign the slot. B4 handles that Applicant's per-application Start Now authorization.
-- For an Applicant with no booking, complete this same-day assignment first; B4 then authorizes immediate start for the newly created exact application.
-- A different Manila calendar date is not covered. Use B9's approved missed-exam appeal/rescheduling path instead.
-- Keep the action within existing Admin Applicant/Exam Records workflows; do not add a sidebar destination. Exact placement must respect the accepted UIUX-2D/2E Exam Record detail and Admin Applicant/Profile ownership patterns. Do not assume an Exam Record detail exists before an application has been created.
-- Add focused service/controller/API and real-MariaDB tests for same-day past-time Admin assignment, ordinary Applicant past-time rejection, Program/alignment/status/capacity/counter/duplicate guards, concurrency, and rollback.
-- Status: **DOCUMENTED ONLY — NOT IMPLEMENTED / NOT ACCEPTED**. Complete and independently review this B3 follow-up before starting B4.
+**Owner-confirmed Admin UI entry point:** Add one **Assign Applicant** primary action in the upper-right action area of the existing **Entrance Exam Records** PageHeader. The existing table contains only Applicants who already have an examination application; a registered Applicant without a booking has no row or individual Exam Record to open. The page-level action is therefore the creation entry point. It is not a table-row action, Applicant Profile mutation, or new sidebar destination.
+
+**Bounded interaction flow:**
+
+1. Admin clicks **Assign Applicant**; an existing shared Dialog opens.
+2. Admin searches existing registered Applicants and selects the intended Applicant.
+3. The dialog presents the authoritative Applicant identity/Program and eligibility information for review. The server—not the UI—decides whether the Applicant may be assigned.
+4. Admin selects an existing eligible active ExamSlot for the current Asia/Manila calendar date. Its scheduled wall-clock time may already have passed. The dialog shows the original scheduled date/time and available capacity.
+5. Admin reviews and confirms the assignment.
+6. On success, the new examination application/record appears in the existing Exam Records table after its query is refreshed. The accepted table, filters, and row actions remain unchanged.
+
+**Assignment authority and safeguards:**
+
+- Applicants continue self-registering in GS-IS using an existing EARIST Pinnacle Applicant ID. Graduate School staff do not create, provision, or issue accounts/passwords.
+- The ADMIN-only assignment must preserve exact Student/Program ownership, ALIGNED/CLEARED eligibility, existing blocking-application rules, active-slot requirement, verified counter consistency, remaining capacity, Student → Slot transaction locking, READ COMMITTED/current-state reads, and atomic application/capacity writes.
+- The selected slot must belong to the Applicant's exact Program, remain active, be on the current Manila calendar date, have a consistent capacity counter, and have at least one available seat. A past scheduled wall-clock time is the only same-day filter exception.
+- Closed, full, inconsistent/drifting, foreign-Program, cross-date, duplicate/blocking-application, or ineligible cases fail closed with a truthful reason. No overbooking, capacity override, fake slot, appointment-time change, or historical slot rewrite is allowed.
+- Existing Applicants with a booking are not reassigned through this action. Their exact application is handled by B4 Start Now authorization. For Applicants without a booking, this B3 assignment must happen before B4 authorization.
+- Ordinary Applicant self-booking continues rejecting past schedule times. The exception is ADMIN-only and applies only to the current Asia/Manila calendar date.
+- Do not add a new sidebar destination, separate walk-in model, KPI layer, or assignment mutation to Applicant Profile. Do not depend on an individual Exam Record detail that does not yet exist.
+- The accepted UIUX-2D/2E Exam Records reference and existing table composition remain intact. The placement/interaction is owner-confirmed, but the new UI is not implemented or visually accepted. Project-owner browser/manual QA remains required after implementation.
+
+**Verification / stop boundary:** Add focused service/controller/API tests and real-MariaDB checks for the same-day past-time Admin assignment, ordinary Applicant past-time rejection, exact Program/alignment/status/capacity/counter/duplicate guards, Student → Slot locking, contention, and rollback. Add focused UI contract coverage for the PageHeader action, dialog search/review/selection/confirmation, truthful blocked states, and post-success table refresh. Independently review the pushed bounded diff. Stop after B3 follow-up acceptance; B4 remains separately unauthorized.
 
 ## 8. EXAM-B4 — Server-owned attempt and remaining time
 
