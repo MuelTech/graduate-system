@@ -2,7 +2,7 @@
 
 Date: 2026-11-02 (Asia/Manila).
 
-**EXAM-B3 IMPLEMENTED — INDEPENDENT REVIEW / OWNER ACCEPTANCE PENDING**.
+**EXAM-B3 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**. Independent remote source review: **PASS — no blocking issue found**. Project-owner manual/browser QA: **DEFERRED / NOT EXECUTED**, not reported as PASS.
 
 ## Verified starting state and authorities
 
@@ -246,11 +246,13 @@ Hosted CI: **NOT EXECUTED / no hosted PASS claimed**; current workflow triggers
 main pushes or PRs targeting main, not this feature-branch-only push. No PR,
 workflow modification, deployment or main merge is part of B3.
 
-**Manual/browser QA: NOT EXECUTED — project-owner responsibility.** Later owner
-QA should cover Admin create → exact Applicant Manila display → eligible selection,
-foreign Program denial, same-day future/full handling, booked-field/minimum guards,
-Close preventing selection while retaining access, and future Reopen. This may be
-consolidated into the Phase B gate and is not reported as PASS.
+**Manual/browser QA: DEFERRED / NOT EXECUTED — project-owner decision.** The owner
+accepted B3 for Phase B progression based on completed automated, real-database and
+independent-review evidence, while reserving browser/manual lifecycle QA for the
+consolidated Phase B gate. This is an explicit deferral, not a manual QA PASS.
+Later owner QA should cover Admin create → exact Applicant Manila display → eligible
+selection, foreign Program denial, same-day future/full handling, booked-field/minimum
+guards, Close preventing selection while retaining access, and future Reopen.
 
 ## Exact changed files and remaining boundaries
 
@@ -293,5 +295,26 @@ coordination remain later-package concerns, not a new institutional attempt poli
 The real tests establish the local tested flow, not deployment-engine evidence or
 protection against direct out-of-band database writers. Syntactically valid legacy
 times retain their stored meaning; original human intent is not reconstructed.
-Review/owner acceptance remains pending. B4 and later work remain unauthorized;
-Phase B is incomplete and no production-ready claim is made.
+## Independent review and owner checkpoint
+
+- Reviewed remote implementation commit: `f7cd211149cd5edf0d2feee9bbd97e70707c3947`.
+- The B3 implementation is exactly one commit on top of accepted B2 documentation
+  checkpoint `d094b92d92a3c69367ef707c0a3673516ae00ec1`; the shared Phase B branch
+  was 17 commits ahead of `main` and zero behind at review.
+- Independent remote source review: **PASS — no blocking issue found** across
+  Asia/Manila wall-clock conversion, strict scheduling validation, authenticated
+  Student/Program/alignment authority, Student → Slot row locking, READ COMMITTED
+  rereads, last-seat conditional reservation, rollback, counter reconciliation,
+  booked-slot mutation guards, Close/Reopen semantics, Applicant display, accepted
+  UIUX-2H boundaries, appeal race containment, focused tests and B3 scope.
+- Project-owner decision on 2026-11-02: **ACCEPTED FOR PHASE B PROGRESSION**.
+- Manual/browser QA: **DEFERRED / NOT EXECUTED** by project-owner decision; it remains
+  future evidence and must never be reported as passed unless actually performed.
+- Hosted CI remains **NOT EXECUTED / no hosted PASS claimed** for this branch-only
+  checkpoint.
+- PD-1 and PD-5 remain unresolved exactly as listed above. B4 and all later packages
+  remain separately authorized work; acceptance of B3 does not authorize automatic
+  continuation.
+
+Next action, when separately authorized by the owner, is the bounded EXAM-B4 package.
+Phase B remains incomplete and is not production-ready.
