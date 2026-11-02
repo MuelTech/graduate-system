@@ -60,10 +60,13 @@ cutover under all current guards. Opening the old page was never recorded as an
 actual start; no such historical event is inferred. No use of createdAt,
 appointment, answer timestamps or grading timestamps as invented execution evidence.
 
-**Configured development database: NOT MIGRATED / untouched.** Apply the committed
-migration with `prisma migrate deploy` before running B4 there. Rehearsal used
-disposable local databases; it did not reset or migrate the configured database.
-Other environments must also migrate before using the new code.
+**Configured development database at implementation delivery: NOT MIGRATED / untouched.**
+The implementation agent correctly left it unchanged and rehearsed the migration only
+against disposable local databases. After independent review and B4 acceptance, the
+project owner reported successfully running `npx prisma migrate deploy` against the
+configured development database on 2026-11-03. This is owner-reported runtime
+preparation, not independently verified remote-source evidence. Other environments
+must still apply the committed migration before using the new B4 code.
 
 ## Exact lifecycle and API authority
 
