@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 const db = vi.hoisted(() => ({
   examQuestion: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   examOption: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
-  applicantAnswer: { count: vi.fn(), upsert: vi.fn() },
+  applicantAnswer: { count: vi.fn(), upsert: vi.fn(), findUnique: vi.fn() },
   examRevisionOption: { count: vi.fn() },
   entranceExamApplication: { findUnique: vi.fn(), update: vi.fn() },
   entranceExamScore: { upsert: vi.fn() },
@@ -210,18 +210,18 @@ describe("ExamEngineRepository content boundaries", () => {
     await expect(new ExamEngineRepository().updateQuestion("missing", {})).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it("continues scoring and persisting image choices by selectedOptionId", async () => {
+  it("continues persisting image draft choices by selectedOptionId", async () => {
     const questionId = "11111111-1111-4111-8111-111111111111";
     const optionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
     db.examQuestion.findUnique.mockResolvedValue({ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] });
-    db.bound.mockResolvedValue({ assertTime: vi.fn(), content: { questions: [{ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] }] } });
-    const result = await new ExamEngineRepository().submitAnswers("app1", [{ questionId, selectedOptionId: optionId }]);
-    expect(result.mcqScore).toBe(1);
+    db.entranceExamApplication.findUnique.mockResolvedValue({ student: { userId: "u" } });
+    db.bound.mockResolvedValue({ app: { student: { userId: "u" } }, assertTime: vi.fn(), content: { questions: [{ ...row(), id: questionId, options: [{ ...row().options[0], id: optionId, questionId }] }] } });
+    await new ExamEngineRepository().saveDraft(questionId, { questionId, selectedOptionId: optionId, expectedRevision: 0 }, "u");
     expect(db.applicantAnswer.upsert.mock.calls[0][0]).toMatchObject({
-      create: { applicationId: "app1", questionId, selectedOptionId: optionId },
+      create: { applicationId: questionId, questionId, selectedOptionId: optionId },
       update: { selectedOptionId: optionId },
     });
-    expect(db.entranceExamScore.upsert.mock.calls[0][0].create.multipleChoiceScore).toBe(1);
+    expect(db.entranceExamScore.upsert).not.toHaveBeenCalled();
   });
 });

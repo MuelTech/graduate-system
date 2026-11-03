@@ -42,6 +42,7 @@ router.get('/applications/:applicationId/questions', authenticateJWT, requireRol
 router.get('/applications/:applicationId/drafts', authenticateJWT, requireRole(['APPLICANT']), controller.readDrafts);
 router.patch('/applications/:applicationId/drafts', authenticateJWT, requireRole(['APPLICANT']), controller.autoSaveAnswer);
 router.patch('/applications/:applicationId/autosave', authenticateJWT, requireRole(['APPLICANT']), controller.autoSaveAnswer);
+router.get('/applications/:applicationId/finalization', authenticateJWT, requireRole(['APPLICANT']), controller.readFinalization);
 router.post('/applications/:applicationId/submit', authenticateJWT, requireRole(['APPLICANT']), controller.submitAnswers);
 
 // ADMIN ROUTES

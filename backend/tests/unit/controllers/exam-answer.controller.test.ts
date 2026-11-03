@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("B0A Applicant request boundary", () => {
-  it.each([undefined, null, [], {}, { answers: null }, { answers: {} }, { answers: "x" }, { answers: [null] }, { answers: [{ questionId }] }, { answers: [], applicationId: "foreign" }])("rejects malformed submit body %# before calling persistence", async body => {
+  it.each([undefined, null, [], { answers: null }, { answers: {} }, { answers: "x" }, { answers: [null] }, { answers: [{ questionId }] }, { answers: [], applicationId: "foreign" }])("rejects malformed submit body %# before calling persistence", async body => {
     const response = res();
     await controller.submitAnswers(req(body), response as unknown as Response);
     expect(response.status).toHaveBeenCalledWith(400);
@@ -47,9 +47,9 @@ describe("B0A Applicant request boundary", () => {
     const result = { success: true, mcqScore: 1 };
     service.submitAnswers.mockResolvedValue(result);
     const response = res();
-    await controller.submitAnswers(req({ answers: [{ questionId, selectedOptionId }] }), response as unknown as Response);
+    await controller.submitAnswers(req({ acknowledgeIncomplete: true }), response as unknown as Response);
     expect(service.getApplicationIdForUser).not.toHaveBeenCalled();
-    expect(service.submitAnswers).toHaveBeenCalledWith("owned-app", [{ questionId, selectedOptionId }], "jwt-user");
+    expect(service.submitAnswers).toHaveBeenCalledWith("owned-app", { acknowledgeIncomplete: true }, "jwt-user");
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(result);
   });
@@ -62,7 +62,7 @@ describe("B0A Applicant request boundary", () => {
   });
 
   it.each(["submitAnswers", "autoSaveAnswer"] as const)("returns state conflicts and hides internal errors on %s", async method => {
-    const body = method === "submitAnswers" ? { answers: [] } : { questionId, essayAnswer: "x", expectedRevision: 0 };
+    const body = method === "submitAnswers" ? {} : { questionId, essayAnswer: "x", expectedRevision: 0 };
     service[method === "autoSaveAnswer" ? "saveDraft" : method].mockRejectedValueOnce(new AppError("Answer writes are closed.", 409));
     const conflict = res();
     await controller[method](req(body), conflict as unknown as Response);

@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const gateway = vi.hoisted(() => ({ $transaction: vi.fn() }));
 vi.mock("../../src/config/database", () => ({ default: gateway }));
 import { ExamExecutionRepository } from "../../src/repositories/exam-execution.repository";
+import { ExamFinalizationRepository } from "../../src/repositories/exam-finalization.repository";
 import { ExamEngineRepository } from "../../src/repositories/exam-engine.repository";
 import { manilaCalendarDate } from "../../src/services/exam-schedule-time";
 import { EXAM_CONFIGURATION_KEY } from "../../src/services/exam-configuration.rules";
@@ -50,7 +51,7 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
     await admin.query(`USE \`${database}\``); url.pathname = `/${database}`;
     folder = mkdtempSync(path.join(tmpdir(), "exam-b5-"));
     const migrations = path.join(folder, "migrations");
-    for (const item of readdirSync("prisma/migrations")) if (item !== migration) cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    for (const item of readdirSync("prisma/migrations")) if (item < migration || item === "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
     prismaConfig = path.join(folder, "prisma.config.ts");
     writeFileSync(prismaConfig, `export default ${JSON.stringify({ schema: path.resolve("prisma/schema.prisma"), migrations: { path: migrations }, datasource: { url: url.toString() } })}`);
     migrate(); // Entire committed pre-B5 migration chain on empty isolated database.
@@ -73,6 +74,9 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
       return (sql: string) => target.query(sql === "SELECT * FROM `applicant_answers`" ? `SELECT ${(columns as any[]).filter(c => c.Field !== "draft_revision").map(c => `\`${c.Field}\``).join(",")} FROM applicant_answers` : sql);
     } });
     expect(await snapshot(projected)).toBe(before);
+    // Newer packages are applied only after comparing the historical migration's original columns.
+    for (const item of readdirSync("prisma/migrations")) if (item > migration && item !== "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    migrate();
     const status = execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "status", "--config", prismaConfig], { encoding: "utf8", stdio: "pipe" });
     expect(status).toContain("up to date"); expect(migrate()).toContain("No pending migrations");
     const client = () => new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });
@@ -106,7 +110,7 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
   beforeEach(async () => {
     gateway.$transaction.mockReset(); gateway.$transaction.mockImplementation((fn, options) => workers[0].$transaction(fn, options));
     await observer.applicantAnswer.deleteMany({ where: { applicationId: ids.app } }); await observer.entranceExamScore.deleteMany({ where: { applicationId: ids.app } });
-    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING", actualStartedAt: null, deadlineAt: null, contentRevisionId: null, executionConfiguration: Prisma.DbNull, startAuthorizedAt: null, startAuthorizedById: null, examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
+    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING", finalizedAt: null, finalizationReason: null, finalizationReceiptId: null, finalizationAnsweredCount: null, finalizationQuestionCount: null, actualStartedAt: null, deadlineAt: null, contentRevisionId: null, executionConfiguration: Prisma.DbNull, startAuthorizedAt: null, startAuthorizedById: null, examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
     await observer.examSlot.update({ where: { id: ids.slot }, data: { examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
     await observer.systemSetting.upsert({ where: { settingKey: EXAM_CONFIGURATION_KEY }, create: { settingKey: EXAM_CONFIGURATION_KEY, settingType: "JSON", settingValue: JSON.stringify(config) }, update: { settingValue: JSON.stringify(config) } });
     // Test-only cleanup of synthetic future publications, respecting B2 RESTRICT.
@@ -155,7 +159,7 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
   }
   const save = (questionId: string, value: object, expectedRevision = 0, userId = ids.user) => answers.saveDraft(ids.app, { questionId, ...value, expectedRevision }, userId);
   const read = () => answers.readDrafts(ids.app, ids.user);
-  const final = () => answers.submitAnswers(ids.app, [{ questionId: ids.q, selectedOptionId: question.options[0].id }, { questionId: ids.essay, essayAnswer: "Final snapshot" }]);
+  const final = () => new ExamFinalizationRepository().submit(ids.app, { acknowledgeIncomplete: true }, ids.user);
   it("rehearsed migration preserves nonempty legacy answers at technical revision zero", async () => {
     expect(await observer.applicantAnswer.findMany({ where: { applicationId: ids.legacy } })).toMatchObject([{ essayAnswer: "Preserve legacy evidence", draftRevision: 0 }]);
     await expect(answers.readDrafts(ids.legacy, ids.user)).rejects.toMatchObject({ statusCode: 409 });
@@ -189,12 +193,12 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
   });
   it("draft holding lock first commits before final submission", async () => {
     await start(); const [draft, submitted] = await contend(() => save(ids.essay, { essayAnswer: "Draft" }), final, "entrance_exam_applications");
-    expect(draft).toHaveProperty("value.revision", 1); expect(submitted).toHaveProperty("value.success", true);
-    expect(await observer.applicantAnswer.findUniqueOrThrow({ where: { applicationId_questionId: { applicationId: ids.app, questionId: ids.essay } } })).toMatchObject({ essayAnswer: "Final snapshot" });
+    expect(draft).toHaveProperty("value.revision", 1); expect(submitted).toHaveProperty("value.finalizationReason", "APPLICANT_SUBMITTED");
+    expect(await observer.applicantAnswer.findUniqueOrThrow({ where: { applicationId_questionId: { applicationId: ids.app, questionId: ids.essay } } })).toMatchObject({ essayAnswer: "Draft" });
   }, 15000);
   it("submission holding lock first makes waiting and post-TAKEN draft writes reject", async () => {
     await start(); const [submitted, rejected] = await contend(final, () => save(ids.essay, { essayAnswer: "late" }), "entrance_exam_applications");
-    expect(submitted).toHaveProperty("value.success", true); expect(rejected).toHaveProperty("error.statusCode", 409);
+    expect(submitted).toHaveProperty("value.finalizationReason", "APPLICANT_SUBMITTED"); expect(rejected).toHaveProperty("error.statusCode", 409);
     await expect(save(ids.q, { selectedOptionId: null })).rejects.toMatchObject({ statusCode: 409 });
     await expect(read()).rejects.toMatchObject({ statusCode: 409 });
   }, 15000);

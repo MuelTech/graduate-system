@@ -10,6 +10,7 @@ import { parse } from "dotenv";
 
 const gateway = vi.hoisted(() => ({ $transaction: vi.fn() }));
 vi.mock("../../src/config/database", () => ({ default: gateway }));
+import { ExamFinalizationRepository } from "../../src/repositories/exam-finalization.repository";
 import { ExamEngineRepository } from "../../src/repositories/exam-engine.repository";
 import { toAdminQuestion } from "../../src/repositories/exam-content.projection";
 
@@ -22,9 +23,11 @@ function deferred() {
 describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contention", () => {
   const ids = { user: randomUUID(), student: randomUUID(), program: randomUUID(), slot: randomUUID(), app: randomUUID(), q: randomUUID(), otherQ: randomUUID(), essay: randomUUID(), option: randomUUID(), foreignOption: randomUUID(), revision: randomUUID() };
   const repo = new ExamEngineRepository();
+  const finalizer = new ExamFinalizationRepository();
+  const final = () => finalizer.submit(ids.app, { acknowledgeIncomplete: true }, ids.user);
+  async function seedFinal() { await repo.saveDraft(ids.app, { questionId: ids.q, selectedOptionId: ids.option, expectedRevision: 0 }, ids.user); await repo.saveDraft(ids.app, { questionId: ids.essay, essayAnswer: "Final essay", expectedRevision: 0 }, ids.user); }
   let observer: PrismaClient;
   let workers: PrismaClient[];
-  const finalAnswers = () => [{ questionId: ids.q, selectedOptionId: ids.option }, { questionId: ids.essay, essayAnswer: "Final essay" }];
 
   beforeAll(async () => {
     const env = existsSync(".env") ? parse(readFileSync(".env")) : {};
@@ -89,10 +92,10 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
 
   beforeEach(async () => {
     gateway.$transaction.mockReset();
-    gateway.$transaction.mockImplementation(callback => workers[0].$transaction(callback));
+    gateway.$transaction.mockImplementation((callback, options) => workers[0].$transaction(callback, options));
     await observer.applicantAnswer.deleteMany({ where: { applicationId: ids.app } });
     await observer.entranceExamScore.deleteMany({ where: { applicationId: ids.app } });
-    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING" } });
+    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING", finalizedAt: null, finalizationReason: null, finalizationReceiptId: null, finalizationAnsweredCount: null, finalizationQuestionCount: null } });
   });
 
   async function assertFinal(essay = "Final essay") {
@@ -113,7 +116,7 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
     const connections: number[] = [];
     let invocation = 0;
     let secondAcquired = false;
-    gateway.$transaction.mockImplementation((callback: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
+    gateway.$transaction.mockImplementation((callback: (tx: Prisma.TransactionClient) => Promise<unknown>, options: any) => {
       const index = invocation++;
       return workers[index].$transaction(async tx => {
         const [connection] = await tx.$queryRaw<{ id: bigint }[]>`SELECT CONNECTION_ID() AS id`;
@@ -130,7 +133,7 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
             };
           },
         }));
-      }, { timeout: 10_000 });
+      }, { ...options, timeout: 10_000 });
     });
     const firstResult = first().then(value => ({ value }), error => ({ error }));
     let secondResult: Promise<{ value: unknown } | { error: unknown }> | undefined;
@@ -161,32 +164,35 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
     return results;
   }
 
-  it("submit vs submit: one winner, waiting finalizer rejects and cannot replace score/answers", async () => {
-    const [winner, loser] = await contend(() => repo.submitAnswers(ids.app, finalAnswers()), () => repo.submitAnswers(ids.app, [{ questionId: ids.essay, essayAnswer: "Losing final" }]));
-    expect(winner).toEqual({ value: { success: true, mcqScore: 1 } });
-    expect(loser).toMatchObject({ error: { statusCode: 409 } });
+  it("submit vs submit: one finalization, waiting finalizer recovers without replacing score/answers", async () => {
+    await seedFinal();
+    const [winner, loser] = await contend(final, final);
+    expect(winner).toHaveProperty("value.finalizationReason", "APPLICANT_SUBMITTED");
+    expect(loser).toEqual(winner);
     await assertFinal();
   }, 15_000);
 
   it("autosave first: draft commits, waiting submit rereads eligibility and finalizes", async () => {
-    const [draft, final] = await contend(() => repo.autoSaveAnswer(ids.app, ids.essay, "Earlier draft", 0, ids.user), () => repo.submitAnswers(ids.app, finalAnswers()));
+    await repo.saveDraft(ids.app, { questionId: ids.q, selectedOptionId: ids.option, expectedRevision: 0 }, ids.user);
+    const [draft, submitted] = await contend(() => repo.autoSaveAnswer(ids.app, ids.essay, "Earlier draft", 0, ids.user), final);
     expect(draft).toHaveProperty("value");
-    expect(final).toEqual({ value: { success: true, mcqScore: 1 } });
-    await assertFinal();
+    expect(submitted).toHaveProperty("value.finalizationReason", "APPLICANT_SUBMITTED");
+    await assertFinal("Earlier draft");
   }, 15_000);
 
   it("submit first: waiting and later autosaves reject without overwriting final essay", async () => {
-    const [final, draft] = await contend(() => repo.submitAnswers(ids.app, finalAnswers()), () => repo.autoSaveAnswer(ids.app, ids.essay, "Waiting stale draft", 0, ids.user));
-    expect(final).toHaveProperty("value");
+    await seedFinal();
+    const [submitted, draft] = await contend(final, () => repo.autoSaveAnswer(ids.app, ids.essay, "Waiting stale draft", 0, ids.user));
+    expect(submitted).toHaveProperty("value");
     expect(draft).toMatchObject({ error: { statusCode: 409 } });
-    gateway.$transaction.mockImplementation(callback => workers[0].$transaction(callback));
+    gateway.$transaction.mockImplementation((callback, options) => workers[0].$transaction(callback, options));
     await expect(repo.autoSaveAnswer(ids.app, ids.essay, "Later stale draft", 0, ids.user)).rejects.toMatchObject({ statusCode: 409 });
     await assertFinal();
   }, 15_000);
 
   it("invalid/foreign payload rolls back with no partial finalization and preserves prior draft", async () => {
     await repo.autoSaveAnswer(ids.app, ids.essay, "Existing draft", 0, ids.user);
-    await expect(repo.submitAnswers(ids.app, [...finalAnswers(), { questionId: ids.otherQ, selectedOptionId: ids.option }])).rejects.toMatchObject({ statusCode: 400 });
+    await expect(repo.saveDraft(ids.app, { questionId: ids.otherQ, selectedOptionId: ids.option, expectedRevision: 0 }, ids.user)).rejects.toMatchObject({ statusCode: 400 });
     expect((await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: ids.app } })).status).toBe("PENDING");
     expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(0);
     const answers = await observer.applicantAnswer.findMany({ where: { applicationId: ids.app } });
@@ -195,16 +201,17 @@ describe.skipIf(process.env.EXAM_B0A_DB_TEST !== "1")("B0A real InnoDB contentio
     expect(answers[0].selectedOptionId).toBeNull();
   });
 
-  it("failure after answer/status writes rolls the entire final transaction back", async () => {
+  it("failure after status writes rolls back finalization and preserves acknowledged answers", async () => {
+    await seedFinal();
     gateway.$transaction.mockImplementation(callback => workers[0].$transaction(async tx => callback(new Proxy(tx, {
       get(target, property) {
-        if (property === "entranceExamScore") return { upsert: async () => { throw new Error("Injected score write failure"); } };
+        if (property === "entranceExamScore") return { create: async () => { throw new Error("Injected score write failure"); } };
         return Reflect.get(target, property);
       },
     }))));
-    await expect(repo.submitAnswers(ids.app, finalAnswers())).rejects.toThrow("Injected score write failure");
+    await expect(final()).rejects.toThrow("Injected score write failure");
     expect((await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: ids.app } })).status).toBe("PENDING");
-    expect(await observer.applicantAnswer.count({ where: { applicationId: ids.app } })).toBe(0);
+    expect(await observer.applicantAnswer.count({ where: { applicationId: ids.app } })).toBe(2);
     expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(0);
   });
 });

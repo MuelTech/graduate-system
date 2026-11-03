@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** AUDIT/PLAN INDEPENDENT REVIEW PASS; EXAM-B0A, EXAM-B0B, EXAM-B1, EXAM-B2, THE ORIGINAL EXAM-B3 BASELINE, THE B3 SAME-DAY ADMIN-ASSIGNMENT FOLLOW-UP, AND EXAM-B4 ACCEPTED FOR PHASE B PROGRESSION; B5 IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING; B6 AND LATER IMPLEMENTATION UNAUTHORIZED
+**Status:** B0A/B0B/B1/B2/B3/B4/B5 ACCEPTED FOR PHASE B PROGRESSION; B6 IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING; B7 AND LATER IMPLEMENTATION UNAUTHORIZED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
@@ -246,6 +246,8 @@ B4 requires a valid configured duration and freezes all representable B1 scoring
 | Dependencies / policy | B4 and B0A invariants; PD-2 accepted essay count. Writer conflict behavior can be conservative technical rejection/resync without inventing an institutional one-device rule. |
 
 ## 10. EXAM-B6 — Explicit submission, expiry and immutable final attempts
+
+**2026-11-04 implementation checkpoint: IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING.** Explicit B6-only authorization from verified `dd9031b2c8601410b2cb0722021b1276d451fb84` on the existing feature branch. [Implementation, migration and verification report](../reports/2026-11-04-exam-b6-finalization.md). Additive nullable receipt/reason/time/count fields preserve legacy truth. The sole finalizer locks and rereads the application under READ COMMITTED, reuses B4 binding, checks server time after locking (`now >= deadlineAt` means TIME_EXPIRED), validates and consumes B5 persisted rows unchanged, and atomically writes TAKEN plus one PENDING raw-MCQ score. Explicit incomplete answers require acknowledgment. Stable receipt readback and execution projection recover lost responses. A dedicated paged expiry sweep runs at startup and every 30 seconds, isolates failures and prevents worker overlap; database locking owns cross-process uniqueness. Real MariaDB contention, separate Node startup/catch-up, migration preservation/status/redeploy and directly affected regressions are documented separately. The configured development DB was not migrated. **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. Hosted CI: NOT EXECUTED / no hosted PASS claimed. B6 is not accepted and B7 remains unauthorized.
 
 | Contract | Definition |
 | --- | --- |

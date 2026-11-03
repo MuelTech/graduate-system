@@ -279,6 +279,12 @@ model EntranceExamApplication {
   deadlineAt DateTime? @map("deadline_at") @db.DateTime(3)
   executionConfiguration Json? @map("execution_configuration")
   contentRevisionId String? @map("content_revision_id") @db.VarChar(36)
+  // B6: null on truthful legacy records; written once under the application lock.
+  finalizedAt DateTime? @map("finalized_at") @db.DateTime(3)
+  finalizationReason ExamFinalizationReason? @map("finalization_reason")
+  finalizationReceiptId String? @unique @map("finalization_receipt_id") @db.VarChar(36)
+  finalizationAnsweredCount Int? @map("finalization_answered_count")
+  finalizationQuestionCount Int? @map("finalization_question_count")
   startAuthorizedBy User? @relation("ExamStartAuthorizedBy", fields: [startAuthorizedById], references: [id], onDelete: Restrict)
   contentRevision ExamContentRevision? @relation(fields: [contentRevisionId], references: [id], onDelete: Restrict)
   program   Program            @relation(fields: [programId], references: [id])
@@ -292,6 +298,7 @@ model EntranceExamApplication {
   @@index([studentId], map: "entrance_exam_applications_student_id_fkey")
   @@index([startAuthorizedById])
   @@index([contentRevisionId])
+  @@index([status, finalizedAt, deadlineAt], map: "exam_expiry_candidates")
   @@map("entrance_exam_applications")
 }
 
@@ -1403,6 +1410,11 @@ enum BridgingWaiverStatus {
   REJECTED
 
   @@map("bridging_waiver_status")
+}
+
+enum ExamFinalizationReason {
+  APPLICANT_SUBMITTED
+  TIME_EXPIRED
 }
 
 enum ExamAppStatus {

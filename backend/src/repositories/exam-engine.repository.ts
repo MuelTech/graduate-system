@@ -4,7 +4,7 @@ import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
 import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
 import { adminQuestionSelect, toAdminQuestion } from "./exam-content.projection";
-import { validateAnswers, validateDraft } from "../services/exam-answer.rules";
+import { validateDraft } from "../services/exam-answer.rules";
 import { activeBoundExecution } from "./exam-execution.repository";
 import { scheduleIdentifier } from "../services/exam-schedule.rules";
 
@@ -110,73 +110,6 @@ export class ExamEngineRepository {
     userId: string,
   ) {
     return this.saveDraft(applicationId, { questionId, essayAnswer, expectedRevision }, userId);
-  }
-
-  async submitAnswers(applicationId: string, payload: unknown) {
-    const answers = validateAnswers(payload);
-    return prisma.$transaction(async (tx) => {
-      await lockAnswerApplication(tx, applicationId);
-      const bound = await activeBoundExecution(tx, applicationId);
-      let mcqCorrect = 0;
-      // Validate the entire supplied set before the first answer/status/score write.
-      // Only bounded scoring authority is loaded; it never enters Applicant DTOs.
-      for (const answer of answers) {
-        const question = bound.content.questions.find(q => q.id === answer.questionId);
-        if (!question) throw new AppError("Submitted question does not exist.", 400);
-        if (question.type === "MULTIPLE_CHOICE") {
-          if (answer.selectedOptionId === undefined) throw new AppError("Multiple-choice questions require a selected option.", 400);
-          const selected = question.options.find(option => option.id.toLowerCase() === answer.selectedOptionId);
-          if (!selected) throw new AppError("Selected option does not belong to the submitted question.", 400);
-          if (selected.isCorrect) mcqCorrect++;
-        } else if (question.type === "ESSAY") {
-          if (answer.essayAnswer === undefined) throw new AppError("Essay questions require essayAnswer text.", 400);
-        } else {
-          throw new AppError("Unsupported question type.", 400);
-        }
-      }
-
-      bound.assertTime();
-      for (const answer of answers) {
-        await tx.applicantAnswer.upsert({
-          where: {
-            applicationId_questionId: {
-              applicationId,
-              questionId: answer.questionId,
-            },
-          },
-          update: {
-            selectedOptionId: answer.selectedOptionId ?? null,
-            essayAnswer: answer.essayAnswer ?? null,
-          },
-          create: {
-            applicationId,
-            questionId: answer.questionId,
-            selectedOptionId: answer.selectedOptionId ?? null,
-            essayAnswer: answer.essayAnswer ?? null,
-          },
-        });
-      }
-
-      // 2. Mark application as TAKEN
-      bound.assertTime();
-      await tx.entranceExamApplication.update({
-        where: { id: applicationId },
-        data: { status: "TAKEN" },
-      });
-
-      // 3. Create the Score Record with the Auto-Graded MCQ
-      await tx.entranceExamScore.upsert({
-        where: { applicationId },
-        update: { multipleChoiceScore: mcqCorrect },
-        create: {
-          applicationId,
-          multipleChoiceScore: mcqCorrect,
-          status: "PENDING",
-        },
-      });
-
-      return { success: true, mcqScore: mcqCorrect };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
 
   async getAllQuestionsForAdmin() {

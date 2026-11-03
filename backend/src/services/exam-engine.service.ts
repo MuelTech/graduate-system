@@ -1,6 +1,7 @@
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
 import { ExamExecutionRepository } from "../repositories/exam-execution.repository";
 import { validateExamQuestion } from "./exam-content.rules";
+import { ExamFinalizationRepository } from "../repositories/exam-finalization.repository";
 import { AppError } from "../utils/AppError";
 
 export class ExamEngineService {
@@ -32,10 +33,11 @@ export class ExamEngineService {
         return this.repo.autoSaveAnswer(applicationId, questionId, essayAnswer, expectedRevision, userId);
     }
 
-    async submitAnswers(applicationId: string, answers: unknown, userId: string) {
-        const execution = await new ExamExecutionRepository().read(userId, applicationId);
-        if (execution.state !== "ACTIVE") throw new AppError(execution.reason ?? "Examination is not active.", 409);
-        return this.repo.submitAnswers(applicationId, answers);
+    async submitAnswers(applicationId: string, confirmation: unknown, userId: string) {
+        return new ExamFinalizationRepository().submit(applicationId, confirmation, userId);
+    }
+    async readFinalization(applicationId: string, userId: string) {
+        return new ExamFinalizationRepository().read(applicationId, userId);
     }
     async getAllQuestionsForAdmin() {
         return this.repo.getAllQuestionsForAdmin();

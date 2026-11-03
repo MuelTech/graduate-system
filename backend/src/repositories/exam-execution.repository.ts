@@ -6,6 +6,7 @@ import { ExamQuestionSetRepository } from "./exam-question-set.repository";
 import { examConfigurationDto, validateExamConfiguration } from "../services/exam-configuration.rules";
 import { requireConsistentCapacity, scheduleIdentifier } from "../services/exam-schedule.rules";
 import { manilaCalendarDate, scheduleStartInstant } from "../services/exam-schedule-time";
+import { finalizationReceipt } from "../services/exam-finalization.rules";
 
 const include = {
   student: { include: { user: { select: { role: true, isActive: true } } } }, slot: true, program: true,
@@ -15,7 +16,7 @@ const include = {
 type Application = Prisma.EntranceExamApplicationGetPayload<{ include: typeof include }>;
 const writable = (status: string) => status === "PENDING" || status === "APPROVED";
 
-function validateIdentity(app: Application, requireActiveSlot = false) {
+export function validateExecutionIdentity(app: Application, requireActiveSlot = false) {
   if (app.student.user.role !== "APPLICANT" || !app.student.user.isActive ||
       app.student.admissionStatus !== "APPLICANT" || !app.student.pinnacleApplicantId?.trim() ||
       !["ALIGNED", "CLEARED"].includes(app.student.alignmentStatus ?? "") ||
@@ -55,7 +56,7 @@ function requireNewStart(app: Application, now: Date, bypassScheduledTime = fals
   if (!writable(app.status) || app.score) throw new AppError("This application cannot start an examination.", 409);
   if (app._count.answers > 0) throw new AppError("This legacy record has answers without a recorded start. Contact Graduate School staff.", 409);
   if (app.deadlineAt || app.contentRevisionId || app.executionConfiguration) throw new AppError("Incomplete examination authority requires staff review.", 409);
-  const scheduled = validateIdentity(app, true);
+  const scheduled = validateExecutionIdentity(app, true);
   if (app.slot.examDate.toISOString().slice(0, 10) !== manilaCalendarDate(now)) {
     throw new AppError("Start is limited to the original appointment date. Contact Graduate School staff about a different-date appointment.", 409);
   }
@@ -63,13 +64,20 @@ function requireNewStart(app: Application, now: Date, bypassScheduledTime = fals
   if (now < scheduled && !authorized && !bypassScheduledTime) throw new AppError("Your scheduled start time has not arrived. Start Now authorization is required for early entry.", 409);
 }
 
-/** Called inside the B0A application lock by every existing answer writer. */
-export async function activeBoundExecution(tx: Prisma.TransactionClient, applicationId: string) {
+/** B4 persisted timing/content authority, also consumed by B6 after expiry. */
+export async function startedBoundExecution(tx: Prisma.TransactionClient, applicationId: string) {
   const app = await tx.entranceExamApplication.findUnique({ where: { id: applicationId }, include });
   if (!app) throw new AppError("Exam application not found.", 404);
-  validateIdentity(app);
-  requireTime(app);
+  binding(app);
   const content = await new ExamQuestionSetRepository().getForBinding(app.contentRevisionId!, tx);
+  return { app, content };
+}
+
+/** Called inside the B0A application lock by every existing answer writer. */
+export async function activeBoundExecution(tx: Prisma.TransactionClient, applicationId: string) {
+  const { app, content } = await startedBoundExecution(tx, applicationId);
+  validateExecutionIdentity(app);
+  requireTime(app);
   return { app, content, assertTime: () => requireTime(app) };
 }
 
@@ -108,7 +116,7 @@ export class ExamExecutionRepository {
     const hasAuthority = !!(app.actualStartedAt || app.deadlineAt || app.contentRevisionId || app.executionConfiguration);
     if (!writable(app.status)) state = hasAuthority ? "TERMINAL" : "LEGACY_UNBOUND";
     else if (app.actualStartedAt) {
-      try { validateIdentity(app); binding(app); if (app.score) throw new AppError("Examination assessment state requires staff review.", 409); state = now >= app.deadlineAt! ? "EXPIRED" : "ACTIVE"; }
+      try { validateExecutionIdentity(app); binding(app); if (app.score) throw new AppError("Examination assessment state requires staff review.", 409); state = now >= app.deadlineAt! ? "EXPIRED" : "ACTIVE"; }
       catch (error) { state = "BLOCKED"; reason = error instanceof AppError ? error.message : "Examination authority requires staff review."; }
     } else if (app._count.answers || app.score || hasAuthority) {
       state = "LEGACY_UNBOUND"; reason = "This record has no authoritative examination start. Contact Graduate School staff.";
@@ -122,6 +130,7 @@ export class ExamExecutionRepository {
       deadlineAt: app.deadlineAt?.toISOString() ?? null,
       remainingSeconds: state === "ACTIVE" ? Math.max(0, Math.ceil((app.deadlineAt!.getTime() - now.getTime()) / 1000)) : 0,
       contentRevisionId: app.contentRevisionId,
+      finalization: finalizationReceipt(app),
       durationMinutes: app.actualStartedAt && app.executionConfiguration ? (app.executionConfiguration as Record<string, unknown>).examDurationMinutes : null,
       authorization: app.startAuthorizedAt ? { authorizedAt: app.startAuthorizedAt.toISOString(), authorizedBy: app.startAuthorizedBy } : null,
       appointment: { examDate: app.slot.examDate.toISOString(), examTime: app.slot.examTime.toISOString(), programName: app.program.programName },
@@ -154,7 +163,7 @@ export class ExamExecutionRepository {
   start(userId: string, id: string) {
     return this.locked(id, userId, async (app, tx) => {
       if (app.actualStartedAt) {
-        validateIdentity(app); requireTime(app);
+        validateExecutionIdentity(app); requireTime(app);
         await new ExamQuestionSetRepository().getForBinding(app.contentRevisionId!, tx);
         return this.dto(app);
       }

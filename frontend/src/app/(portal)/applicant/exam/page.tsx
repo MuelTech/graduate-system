@@ -26,7 +26,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { ExamQuestion } from "@/types";
-import type { ExamExecution, ExecutionClock } from "@/lib/exam-execution";
+import type {
+  ExamExecution,
+  ExecutionClock,
+  ExamFinalizationReceipt,
+} from "@/lib/exam-execution";
 import {
   executionSeconds,
   executionPath,
@@ -64,6 +68,8 @@ export default function ApplicantExamPage() {
   const prepareBusy = useRef(false);
   const startBusy = useRef(false);
   const submitBusy = useRef(false);
+  const [receipt, setReceipt] = useState<ExamFinalizationReceipt | null>(null);
+  const [submissionUncertain, setSubmissionUncertain] = useState(false);
   const query = useQuery<ExecutionClock | null>({
     queryKey: ["applicant-exam-execution", userId],
     enabled: !!userId,
@@ -100,7 +106,10 @@ export default function ApplicantExamPage() {
     execution?.state === "ACTIVE" &&
     timeLeft > 0 &&
     !query.isError &&
-    connected;
+    connected &&
+    !receipt &&
+    !execution?.finalization &&
+    !submissionUncertain;
   const questionsQuery = useQuery<ExamQuestion[]>({
     queryKey: [
       "applicant-bound-exam-questions",
@@ -165,7 +174,10 @@ export default function ApplicantExamPage() {
     return () => drafts.pause();
   }, [drafts, draftsEnabled]);
   const editingLocked =
-    preparing || showSubmitConfirm || draftState.status === "conflict";
+    preparing ||
+    showSubmitConfirm ||
+    submissionUncertain ||
+    draftState.status === "conflict";
   const start = useMutation({
     mutationFn: () =>
       apiClientRequest(executionPath(execution!.applicationId, "start"), {
@@ -179,36 +191,58 @@ export default function ApplicantExamPage() {
     },
   });
   const submit = useMutation({
-    mutationFn: () => {
-      const current = drafts.snapshot().values;
-      const formattedAnswers: Array<{
-        questionId: string;
-        selectedOptionId?: string;
-        essayAnswer?: string;
-      }> = Object.entries(current).flatMap<{
-        questionId: string;
-        essayAnswer?: string;
-        selectedOptionId?: string;
-      }>(([questionId, value]) =>
-        "essayAnswer" in value
-          ? [{ questionId, essayAnswer: value.essayAnswer }]
-          : value.selectedOptionId
-            ? [{ questionId, selectedOptionId: value.selectedOptionId }]
-            : [],
-      );
-      return apiClientRequest(
-        executionPath(execution!.applicationId, "submit"),
-        { method: "POST", body: JSON.stringify({ answers: formattedAnswers }) },
-      );
-    },
+    mutationFn: (acknowledgeIncomplete: boolean) =>
+      apiClientRequest(executionPath(execution!.applicationId, "submit"), {
+        method: "POST",
+        body: JSON.stringify({ acknowledgeIncomplete }),
+      }) as Promise<ExamFinalizationReceipt>,
     retry: false,
-    onSuccess: () => setShowSubmitConfirm(false),
-    onError: (error) => setErrorMsg(error.message),
+    onSuccess: (finalized) => {
+      drafts.pause();
+      setReceipt(finalized);
+      setSubmissionUncertain(false);
+      setShowSubmitConfirm(false);
+    },
+    onError: (error) => {
+      setErrorMsg(error.message);
+      // A failed response may follow a committed transaction. Lock until readback.
+      setSubmissionUncertain(true);
+    },
     onSettled: async () => {
       await refetchExecution();
       submitBusy.current = false;
     },
   });
+  const finalReceipt = receipt ?? execution?.finalization;
+  const unansweredCount = (questionsQuery.data ?? []).filter((question) => {
+    const value = draftState.values[question.id];
+    return question.type === "ESSAY"
+      ? !value || !("essayAnswer" in value) || !value.essayAnswer.trim()
+      : !value || !("selectedOptionId" in value) || !value.selectedOptionId;
+  }).length;
+  const recoverFinalization = async () => {
+    if (!applicationId) return;
+    try {
+      const result: { receipt: ExamFinalizationReceipt | null } =
+        await apiClientRequest(executionPath(applicationId, "finalization"), {
+          method: "GET",
+          cache: "no-store",
+        });
+      if (result.receipt) {
+        drafts.pause();
+        setReceipt(result.receipt);
+        setShowSubmitConfirm(false);
+      } else {
+        const refreshed = await refetchExecution();
+        if (!refreshed.isError) {
+          setSubmissionUncertain(false);
+          setShowSubmitConfirm(false);
+        }
+      }
+    } catch (error) {
+      setErrorMsg((error as Error).message);
+    }
+  };
   useEffect(() => {
     const timer = setInterval(() => setTick(performance.now()), 250);
     return () => clearInterval(timer);
@@ -268,9 +302,53 @@ export default function ApplicantExamPage() {
       return;
     }
     setPreparing(false);
-    submit.mutate();
+    submit.mutate(unansweredCount > 0);
   };
 
+  if (finalReceipt)
+    return (
+      <Card>
+        <CardContent className="space-y-3" role="status">
+          <PageHeader title="Examination Submitted" />
+          <p>
+            {finalReceipt.finalizationReason === "TIME_EXPIRED"
+              ? "Your examination was finalized after time expired, using your last saved answers."
+              : "Your examination has been submitted."}
+          </p>
+          <p className="break-all">Receipt: {finalReceipt.receiptId}</p>
+          <p>Finalized: {examinationTimestamp(finalReceipt.finalizedAt)}</p>
+          <p>Started: {examinationTimestamp(finalReceipt.actualStartedAt)}</p>
+          <p>Deadline: {examinationTimestamp(finalReceipt.deadlineAt)}</p>
+          <p>
+            {finalReceipt.answeredCount} answered;{" "}
+            {finalReceipt.unansweredCount} unanswered.
+          </p>
+          <p>
+            Unanswered items remain unanswered. View examination status for
+            grading and final results.
+          </p>
+          <Link href="/applicant/results">View examination status</Link>
+        </CardContent>
+      </Card>
+    );
+  if (submissionUncertain)
+    return (
+      <Alert>
+        <AlertDescription>
+          Submission status could not be confirmed. Answer editing is locked
+          while you retrieve the final status.
+          {errorMsg && <p role="alert">{errorMsg}</p>}
+          <Button
+            variant="outline"
+            onClick={() => {
+              void recoverFinalization();
+            }}
+          >
+            Retrieve submission status
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
   if (query.isPending)
     return (
       <div className="space-y-4" aria-busy="true">
@@ -334,8 +412,16 @@ export default function ApplicantExamPage() {
       <Alert>
         <AlertDescription>
           Your examination time has expired. Examination access is locked.
-          Automatic submission and a final receipt are not available yet.
-          Contact Graduate School staff.
+          Retrieving final status. The server will finalize your last saved
+          answers. Submission is confirmed only when your receipt is available.
+          <Button
+            variant="outline"
+            onClick={() => {
+              void recoverFinalization();
+            }}
+          >
+            Retrieve submission status
+          </Button>
         </AlertDescription>
       </Alert>
     );
@@ -724,6 +810,13 @@ export default function ApplicantExamPage() {
                 : "Not answered"}
               .
             </p>
+            {unansweredCount > 0 && (
+              <p role="alert" className="text-sm font-medium">
+                {unansweredCount} questions are unanswered. Submitting now
+                leaves these items unanswered. Choose Yes, Submit Exam to
+                confirm incomplete submission.
+              </p>
+            )}
             {errorMsg && (
               <p role="alert" className="text-sm text-destructive">
                 {errorMsg}

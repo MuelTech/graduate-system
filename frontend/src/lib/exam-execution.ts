@@ -1,3 +1,16 @@
+export interface ExamFinalizationReceipt {
+  receiptId: string;
+  applicationId: string;
+  finalizedAt: string;
+  finalizationReason: "APPLICANT_SUBMITTED" | "TIME_EXPIRED";
+  actualStartedAt: string;
+  deadlineAt: string;
+  contentRevisionId: string;
+  answeredCount: number;
+  unansweredCount: number;
+  questionCount: number;
+}
+
 export interface ExamExecution {
   applicationId: string;
   applicationStatus: string;
@@ -17,6 +30,7 @@ export interface ExamExecution {
   remainingSeconds: number;
   durationMinutes: number | null;
   contentRevisionId: string | null;
+  finalization?: ExamFinalizationReceipt | null;
   authorization: null | {
     authorizedAt: string;
     authorizedBy: null | { id: string; firstName: string; lastName: string };

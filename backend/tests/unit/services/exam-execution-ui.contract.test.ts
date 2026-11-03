@@ -101,7 +101,7 @@ describe("B4 Applicant server execution UI", () => {
     queryResult.data.execution = execution({ state }); const tree = render(); expect(text(tree)).not.toContain("Start Examination"); expect(queries[1].enabled).toBe(false);
   });
   it("deadline zero and failed synchronization lock access without claiming timeout submission", () => {
-    queryResult.data.execution = execution({ state: "ACTIVE", deadlineAt: "2026-11-03T02:17:00Z" }); expect(text(render())).toContain("Automatic submission and a final receipt are not available yet");
+    queryResult.data.execution = execution({ state: "ACTIVE", deadlineAt: "2026-11-03T02:17:00Z" }); expect(text(render())).toContain("Submission is confirmed only when your receipt is available");
     queryResult.isError = true; expect(text(render())).toContain("Reconnect and refresh");
   });
   it("blocked started records retain recorded timing instead of claiming not started", () => {
@@ -165,16 +165,60 @@ describe("B5 Applicant component and submission contracts", () => {
     resolve(false); await Promise.resolve(); await Promise.resolve(); await pending;
     expect(nodes(render()).find(n => n.type === modules["@/components/ui/dialog"].Dialog).props.open).toBe(false);
   });
-  it("final submission rechecks/drains drafts and sends the latest snapshot including blank essay", async () => {
+  it("final submission rechecks/drains drafts and sends only incomplete confirmation", async () => {
     draftState.values = { q: { selectedOptionId: "option-a" }, e: { essayAnswer: "" } }; let tree = activePage();
     button(tree, "Submit Exam").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
     expect(nodes(tree).find(n => n.type === modules["@/components/ui/dialog"].Dialog).props.open).toBe(true);
     await button(tree, "Yes, Submit Exam").props.onClick(); expect(draftPrepare).toHaveBeenCalledTimes(2); expect(mutate).toHaveBeenCalledOnce();
-    await mutations[1].mutationFn(); expect(JSON.parse(request.mock.calls.at(-1)![1].body)).toEqual({ answers: [{ questionId: "q", selectedOptionId: "option-a" }, { questionId: "e", essayAnswer: "" }] });
+    await mutations[1].mutationFn(true); expect(JSON.parse(request.mock.calls.at(-1)![1].body)).toEqual({ acknowledgeIncomplete: true });
   });
   it("does not keep protected content in local persistent caches or retain the transitional interval", () => {
     const source = readFileSync("../frontend/src/lib/exam-drafts.ts", "utf8") + applicantSource;
     expect(source).not.toMatch(/localStorage|sessionStorage|indexedDB|60_000|sendBeacon/);
     expect(source).toContain('"visibilitychange"'); expect(source).toContain('"focus"'); expect(source).toContain("drafts.pause()");
+  });
+});
+
+
+describe("B6 Applicant finalization and recovery", () => {
+  const receipt = { receiptId: "stable-receipt", applicationId: props.applicationId, finalizationReason: "APPLICANT_SUBMITTED", finalizedAt: "2026-11-03T03:17:00Z", actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", contentRevisionId: "revision1", answeredCount: 1, unansweredCount: 1, questionCount: 2 };
+  function activePage() {
+    queryResult.data.execution = execution({ state: "ACTIVE", actualStartedAt: receipt.actualStartedAt, deadlineAt: receipt.deadlineAt, contentRevisionId: "revision1" });
+    questions = [{ id: "q", type: "MULTIPLE_CHOICE", options: [], questionText: "Synthetic MCQ" }, { id: "e", type: "ESSAY", options: [], questionText: "Synthetic essay" }];
+    return render();
+  }
+  it("incomplete confirmation warns unanswered items remain unanswered", async () => {
+    let tree = activePage(); button(tree, "Submit Exam").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
+    expect(text(tree)).toContain("2 questions are unanswered"); expect(text(tree)).toContain("confirm incomplete submission");
+    await button(tree, "Yes, Submit Exam").props.onClick(); expect(mutate).toHaveBeenCalledWith(true);
+  });
+  it("complete answers submit without an incomplete warning", async () => {
+    draftState.values = { q: { selectedOptionId: "option" }, e: { essayAnswer: "actual answer" } };
+    let tree = activePage(); button(tree, "Submit Exam").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
+    expect(text(tree)).not.toContain("questions are unanswered"); await button(tree, "Yes, Submit Exam").props.onClick(); expect(mutate).toHaveBeenCalledWith(false);
+  });
+  it("locks answer editing during pending commit and blocks duplicate final clicks", async () => {
+    let tree = activePage(); button(tree, "Submit Exam").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
+    await button(tree, "Yes, Submit Exam").props.onClick(); await button(tree, "Yes, Submit Exam").props.onClick(); expect(mutate).toHaveBeenCalledOnce();
+    expect(nodes(render()).find(n => n.type === "fieldset").props.disabled).toBe(true);
+  });
+  it.each(["APPLICANT_SUBMITTED", "TIME_EXPIRED"])("reopen %s shows authoritative receipt and no editable questions", reason => {
+    queryResult.data.execution = execution({ state: "TERMINAL", finalization: { ...receipt, finalizationReason: reason as any } });
+    const tree = render(); expect(text(tree)).toContain("stable-receipt"); expect(text(tree)).toContain("1 answered; 1 unanswered"); expect(nodes(tree).some(n => n.type === "fieldset")).toBe(false);
+    expect(queries[1].enabled).toBe(false);
+  });
+  it("successful response renders a receipt even before the execution query refresh", () => {
+    activePage(); mutations[1].onSuccess(receipt); expect(text(render())).toContain("stable-receipt"); expect(draftQueue.pause).toHaveBeenCalled();
+  });
+  it("lost response locks editing, GET recovers the committed receipt without another submit", async () => {
+    activePage(); mutations[1].onError(new Error("Connection dropped"));
+    let tree = render(); expect(text(tree)).toContain("Submission status could not be confirmed"); expect(nodes(tree).some(n => n.type === "fieldset")).toBe(false);
+    request.mockResolvedValueOnce({ state: "FINALIZED", receipt });
+    await button(tree, "Retrieve submission status").props.onClick(); await Promise.resolve(); await Promise.resolve(); tree = render();
+    expect(request.mock.calls.at(-1)![0]).toBe("/exam-engine/applications/exact-application/finalization"); expect(text(tree)).toContain("stable-receipt"); expect(mutate).not.toHaveBeenCalled();
+  });
+  it("timeout zero truthfully waits for receipt and keeps content disabled", () => {
+    queryResult.data.execution = execution({ state: "ACTIVE", deadlineAt: "2026-11-03T02:17:00Z" });
+    const tree = render(); expect(text(tree)).toContain("Retrieving final status"); expect(text(tree)).toContain("Submission is confirmed only when your receipt is available"); expect(text(tree)).not.toContain("Examination Submitted"); expect(queries[1].enabled).toBe(false);
   });
 });

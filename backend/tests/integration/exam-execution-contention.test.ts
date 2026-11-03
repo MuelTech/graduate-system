@@ -13,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const gateway = vi.hoisted(() => ({ $transaction: vi.fn() }));
 vi.mock("../../src/config/database", () => ({ default: gateway }));
 import { ExamExecutionRepository } from "../../src/repositories/exam-execution.repository";
+import { ExamFinalizationRepository } from "../../src/repositories/exam-finalization.repository";
 import { ExamEngineRepository } from "../../src/repositories/exam-engine.repository";
 import { manilaCalendarDate } from "../../src/services/exam-schedule-time";
 import { EXAM_CONFIGURATION_KEY } from "../../src/services/exam-configuration.rules";
@@ -50,7 +51,7 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
     await admin.query(`USE \`${database}\``); url.pathname = `/${database}`;
     folder = mkdtempSync(path.join(tmpdir(), "exam-b4-"));
     const migrations = path.join(folder, "migrations");
-    for (const item of readdirSync("prisma/migrations")) if (item !== migration) cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    for (const item of readdirSync("prisma/migrations")) if (item < migration || item === "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
     prismaConfig = path.join(folder, "prisma.config.ts");
     writeFileSync(prismaConfig, `export default ${JSON.stringify({ schema: path.resolve("prisma/schema.prisma"), migrations: { path: migrations }, datasource: { url: url.toString() } })}`);
     migrate(); // Entire committed pre-B4 migration chain on empty isolated database.
@@ -79,6 +80,9 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
       return (sql: string) => target.query(sql === "SELECT * FROM `entrance_exam_applications`" ? `SELECT ${(columns as any[]).filter(c => !added.includes(c.Field)).map(c => `\`${c.Field}\``).join(",")} FROM entrance_exam_applications` : sql);
     } });
     expect(await snapshot(projected)).toBe(before);
+    // Newer packages are applied only after comparing the historical migration's original columns.
+    for (const item of readdirSync("prisma/migrations")) if (item > migration && item !== "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    migrate();
     const status = execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "status", "--config", prismaConfig], { encoding: "utf8", stdio: "pipe" });
     expect(status).toContain("up to date"); expect(migrate()).toContain("No pending migrations");
     const client = () => new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });
@@ -112,7 +116,7 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
   beforeEach(async () => {
     gateway.$transaction.mockReset(); gateway.$transaction.mockImplementation((fn, options) => workers[0].$transaction(fn, options));
     await observer.applicantAnswer.deleteMany({ where: { applicationId: ids.app } }); await observer.entranceExamScore.deleteMany({ where: { applicationId: ids.app } });
-    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING", actualStartedAt: null, deadlineAt: null, contentRevisionId: null, executionConfiguration: Prisma.DbNull, startAuthorizedAt: null, startAuthorizedById: null, examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
+    await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "PENDING", finalizedAt: null, finalizationReason: null, finalizationReceiptId: null, finalizationAnsweredCount: null, finalizationQuestionCount: null, actualStartedAt: null, deadlineAt: null, contentRevisionId: null, executionConfiguration: Prisma.DbNull, startAuthorizedAt: null, startAuthorizedById: null, examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
     await observer.examSlot.update({ where: { id: ids.slot }, data: { examDate: today(), examTime: new Date("1970-01-01T00:00:00Z") } });
     await observer.systemSetting.upsert({ where: { settingKey: EXAM_CONFIGURATION_KEY }, create: { settingKey: EXAM_CONFIGURATION_KEY, settingType: "JSON", settingValue: JSON.stringify(config) }, update: { settingValue: JSON.stringify(config) } });
     // Test-only cleanup of synthetic future publications, respecting B2 RESTRICT.
@@ -200,9 +204,9 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
     await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { deadlineAt: new Date(Date.now() - 1) } }); await expect(repo.media(ids.user, ids.app, ids.media)).rejects.toThrow();
   });
   it("B0A competing final submissions retain one terminal result and immutable answers", async () => {
-    await start(); const payload = [{ questionId: ids.q, selectedOptionId: question.options[0].id }, { questionId: ids.essay, essayAnswer: "Final answer" }];
-    const [winner, loser] = await contend(() => answers.submitAnswers(ids.app, payload), () => answers.submitAnswers(ids.app, payload), "entrance_exam_applications");
-    expect(winner).toHaveProperty("value.success", true); expect(loser).toHaveProperty("error.statusCode", 409); expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(1);
+    await start(); await answers.saveDraft(ids.app, { questionId: ids.essay, essayAnswer: "Final answer", expectedRevision: 0 }, ids.user);
+    const [winner, loser] = await contend(() => new ExamFinalizationRepository().submit(ids.app, { acknowledgeIncomplete: true }, ids.user), () => new ExamFinalizationRepository().submit(ids.app, { acknowledgeIncomplete: true }, ids.user), "entrance_exam_applications");
+    expect(winner).toHaveProperty("value.finalizationReason", "APPLICANT_SUBMITTED"); expect(loser).toEqual(winner); expect(await observer.entranceExamScore.count({ where: { applicationId: ids.app } })).toBe(1);
     await expect(answers.autoSaveAnswer(ids.app, ids.essay, "Late overwrite", 0, ids.user)).rejects.toThrow(); expect((await observer.applicantAnswer.findUniqueOrThrow({ where: { applicationId_questionId: { applicationId: ids.app, questionId: ids.essay } } })).essayAnswer).toBe("Final answer");
   }, 15_000);
   it("frozen content/key survive source edits; answer writes reject unrelated members and preserve B0A scoring", async () => {
@@ -210,9 +214,11 @@ describe.skipIf(process.env.EXAM_B4_DB_TEST !== "1")("B4 real MariaDB execution/
     await observer.examQuestion.update({ where: { id: ids.q }, data: { questionText: "Edited synthetic source" } });
     await observer.examOption.update({ where: { id: question.options[0].id }, data: { isCorrect: false, optionText: "Changed source option" } });
     const received = await repo.questions(ids.user, ids.app); expect(received[0].questionText).toBe(question.questionText);
-    await expect(answers.submitAnswers(ids.app, [{ questionId: ids.q, selectedOptionId: randomUUID() }])).rejects.toThrow();
+    await expect(answers.saveDraft(ids.app, { questionId: ids.q, selectedOptionId: randomUUID(), expectedRevision: 0 }, ids.user)).rejects.toThrow();
     await expect(answers.autoSaveAnswer(ids.app, randomUUID(), "Unrelated", 0, ids.user)).rejects.toMatchObject({ statusCode: 400 });
-    expect(await answers.submitAnswers(ids.app, [{ questionId: ids.q, selectedOptionId: question.options[0].id }])).toMatchObject({ mcqScore: 1 });
+    await answers.saveDraft(ids.app, { questionId: ids.q, selectedOptionId: question.options[0].id, expectedRevision: 0 }, ids.user);
+    await new ExamFinalizationRepository().submit(ids.app, { acknowledgeIncomplete: true }, ids.user);
+    expect(Number((await observer.entranceExamScore.findUniqueOrThrow({ where: { applicationId: ids.app } })).multipleChoiceScore)).toBe(1);
   });
   it("runs the five existing B0A real-DB regressions with authoritative synthetic B4 bindings", () => {
     const output = execFileSync(process.execPath, ["node_modules/vitest/vitest.mjs", "run", "tests/integration/exam-answer-contention.test.ts", "--reporter=verbose"], { encoding: "utf8", stdio: "pipe", env: { ...process.env, DATABASE_URL: url.toString(), EXAM_B0A_DB_TEST: "1" } });

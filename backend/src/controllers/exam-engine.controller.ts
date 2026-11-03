@@ -2,7 +2,8 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
 import { AppError } from "../utils/AppError";
-import { validateSubmissionBody, validateDraft } from "../services/exam-answer.rules";
+import { submissionConfirmation, IncompleteExamSubmissionError } from "../services/exam-finalization.rules";
+import { validateDraft } from "../services/exam-answer.rules";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -42,15 +43,26 @@ export class ExamEngineController {
 
     submitAnswers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const answers = validateSubmissionBody(req.body);
+            const confirmation = submissionConfirmation(req.body);
             const appId = req.params.applicationId as string;
-            const result = await this.service.submitAnswers(appId, answers, req.user!.userId);
+            const result = await this.service.submitAnswers(appId, confirmation, req.user!.userId);
 
             res.status(200).json(result);
         } catch (error: unknown) {
-            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not submit answers." });
+            res.status(error instanceof AppError ? error.statusCode : 500).json({
+                error: error instanceof AppError ? error.message : "Could not submit answers.",
+                ...(error instanceof IncompleteExamSubmissionError ? { code: error.code, answeredCount: error.answeredCount, unansweredCount: error.unansweredCount } : {}),
+            });
         }
     }
+
+    readFinalization = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            res.status(200).json(await this.service.readFinalization(req.params.applicationId as string, req.user!.userId));
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not retrieve examination receipt." });
+        }
+    };
 
     getAllQuestionsForAdmin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
