@@ -934,14 +934,14 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B5 implementation checkpoint — Applicant drafts and acknowledged recovery
 
-**2026-11-03: IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING.** [B5 evidence](../reports/2026-11-03-exam-b5-draft-recovery.md). This supersedes the historical B4 transitional answer/interval limitation above; B4 timing/content authority is preserved. B5 is not accepted and is not an Approved Reference Implementation.
+**2026-11-04: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B5 evidence](../reports/2026-11-03-exam-b5-draft-recovery.md). This supersedes the historical B4 transitional answer/interval limitation above; B4 timing/content authority is preserved. Project-owner manual/browser QA remains deferred to the consolidated Phase B gate. This is not an Approved Reference Implementation or production acceptance.
 
 - Exact active application draft hydration restores MCQ choices, essay text and Question Navigator answered state before editing. The server owns acknowledged recovery; no protected local persistent cache is added.
 - MCQ selection/change/explicit Clear answer and essay typing/blank clear use a serialized versioned queue. Continuous essay typing has bounded max-wait persistence. Navigation, essay blur and visibility transitions attempt synchronization.
 - Inline **Unsaved changes / Saving… / Saved / Save failed / Answers changed elsewhere** feedback distinguishes local edits from acknowledgments. No ordinary UI version numbers, routine manual Save button or per-keystroke toasts. Retry resolves current authority first; explicit **Refresh saved answers** explains replacing local edits after conflict.
 - Reconnect/focus refreshes B4 execution before draft recovery. Failed local values remain mounted; stale competing work cannot be silently resent or merged. Submission confirmation waits for resync/drain, locks editing and rechecks before final snapshot submission. B4 deadline expiry still locks access; no timeout finalization is claimed.
 - Automated component/handler/queue/HTTP contracts, exam-domain regressions, MariaDB contention/rehearsal and static/build checks passed as recorded in the report. These are not manual/browser or visual acceptance.
-- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. Owner gate must include saved MCQ/essay refresh, both clears, long continuous typing, offline/online, two tabs/devices, stale conflict and immediate submit with save in flight. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B5 review is the current gate; B6 remains unauthorized.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. Owner gate must include saved MCQ/essay refresh, both clears, long continuous typing, offline/online, two tabs/devices, stale conflict and immediate submit with save in flight. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B5 review is complete; B6 is the next package but its implementation remains gated on PD-4 owner confirmation.
 
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 

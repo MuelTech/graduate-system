@@ -2,8 +2,7 @@
 
 Date: 2026-11-03, Asia/Manila.
 
-**IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING**. This is not B5 acceptance,
-an Approved Reference Implementation, or examination production readiness.
+**ACCEPTED FOR PHASE B PROGRESSION — 2026-11-04.** Independent remote source review: **PASS — no blocking issue found**. Project-owner manual/browser QA remains **DEFERRED / NOT EXECUTED** for the consolidated Phase B lifecycle/manual acceptance gate. This is not an Approved Reference Implementation or examination production readiness.
 
 ## Starting state and delivery scope
 
@@ -266,7 +265,4 @@ remain protected. No source-bank/configuration/canonical asset mutation, score
 policy, passing threshold, grading, result publication, retake/period rule, appeal,
 reschedule or reconsideration change.
 
-B6 still owns timeout auto-submit, workers/no-browser finalization, immutable
-receipt, finalization reason and submit-vs-expire state machine. B7/B8/B9/B10 and
-unrelated features were not implemented or authorized. **STOP after normal B5
-commit/push; independent review remains pending. Do not begin B6.**
+B6 still owns timeout auto-submit, workers/no-browser finalization, immutable receipt, finalization reason and submit-vs-expire state machine. B7/B8/B9/B10 and unrelated features were not implemented. Independent B5 review is complete with no blocking issue and B5 is accepted for Phase B progression. **B6 implementation remains gated on owner-confirmed PD-4 incomplete/timeout/no-show semantics.**
