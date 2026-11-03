@@ -945,14 +945,14 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B6 implementation checkpoint — explicit confirmation and immutable receipt
 
-**2026-11-04: IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING.** [B6 evidence](../reports/2026-11-04-exam-b6-finalization.md). This supersedes only the historical B4/B5 final snapshot/expiry limitation. It is not an Approved Reference Implementation or production acceptance.
+**2026-11-04: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B6 evidence](../reports/2026-11-04-exam-b6-finalization.md). This supersedes only the historical B4/B5 final snapshot/expiry limitation. Project-owner manual/browser QA remains deferred to the consolidated Phase B gate. This is not an Approved Reference Implementation or production acceptance.
 
 - The existing Applicant exam page resolves/drains B5 saves before confirmation and again before finalization. Incomplete confirmation states the unanswered count and that these items remain unanswered. The server independently checks completeness and requires `acknowledgeIncomplete` when needed.
 - The final request sends confirmation metadata only. Editing is locked during preparation/confirmation/commit; duplicate clicks are suppressed. The server consumes only persisted drafts and never invents unsaved values.
 - Successful explicit or timeout finalization shows the authoritative receipt, reason in plain language, finalization/start/deadline timestamps and answered/unanswered summary. Questions are no longer editable. Reopen/polling restores the same receipt; a failed final response locks editing until exact-record readback resolves status.
 - Zero time immediately locks content and says final status is being retrieved. It never claims submission is complete before an authoritative receipt exists. Background polling and explicit retrieval recover the final state; closed-browser expiry is server-owned.
 - Existing B5 Saved/error/conflict controls and B4 monotonic countdown remain. Controlled React/component/handler, HTTP, queue and real-database checks are automated evidence only.
-- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. The gate includes complete/incomplete submit, near-deadline contention, browser closure/disconnect, reopen after timeout, restart catch-up, lost response/retry, receipt recovery and attempted later edits. Hosted CI: NOT EXECUTED / no hosted PASS claimed. B7/B8 scoring/evaluation and B9 no-show/amendments remain outside this package.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. The gate includes complete/incomplete submit, near-deadline contention, browser closure/disconnect, reopen after timeout, restart catch-up, lost response/retry, receipt recovery and attempted later edits. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B6 review is complete; B7/B8 scoring/evaluation and B9 no-show/amendments remain outside this package and require separate authorization.
 
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 
