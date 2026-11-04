@@ -25,7 +25,7 @@ describe.skipIf(process.env.EXAM_B5_DB_TEST !== "1")("B5 real MariaDB execution/
   const migration = "20261103010000_exam_answer_draft_revision";
   const ids = Object.fromEntries(["user", "admin", "student", "program", "slot", "app", "legacy", "completed", "q", "essay", "revision", "media"].map(key => [key, randomUUID()]));
   const repo = new ExamExecutionRepository(), answers = new ExamEngineRepository();
-  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: null, passingThreshold: null };
+  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25, passingThreshold: 75 };
   const tables = ["exam_questions", "exam_options", "exam_media", "exam_content_imports", "applicant_answers", "exam_slots", "entrance_exam_applications", "exam_content_revisions", "exam_revision_questions", "exam_revision_options", "exam_revision_media", "exam_question_selection", "entrance_exam_scores", "system_settings"];
   let source: Connection, admin: Connection, observer: PrismaClient, workers: PrismaClient[] = [];
   let original: string, before: string, created = false, folder: string, prismaConfig: string, url: URL;

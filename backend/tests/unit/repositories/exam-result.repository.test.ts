@@ -1,3 +1,4 @@
+import { evaluationAuthoritySelect } from "../../../src/repositories/exam-essay-evaluation.projection";
 import { evaluationApplication } from "../../fixtures/exam-essay-evaluation";
 import { executionIds as ids } from "../../fixtures/exam-execution";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,13 +17,14 @@ beforeEach(() => {
 
 describe("B0B bounded result queries and B7 superseded legacy grading", () => {
   it("selects the authenticated user's latest scored application, retaining PENDING for service checks", async () => {
-    db.entranceExamApplication.findFirst.mockResolvedValue({ id: "owned-app", status: "TAKEN", score: { status: "PENDING" }, program: { examMcqTotal: 10, examEssayTotal: 40, examPassingScore: 9 } });
+    db.entranceExamApplication.findFirst.mockResolvedValue({ id: "owned-app", status: "TAKEN", score: { status: "PENDING" } });
     db.examQuestion.count.mockResolvedValue(72);
     const result = await repo.getLatestResult("jwt-user");
-    expect(db.entranceExamApplication.findFirst).toHaveBeenCalledWith({ where: { student: { userId: "jwt-user" }, score: { isNot: null } }, include: { score: true, slot: true, program: true }, orderBy: { createdAt: "desc" } });
+    expect(db.entranceExamApplication.findFirst).toHaveBeenCalledWith({ where: { student: { userId: "jwt-user" }, score: { isNot: null } }, include: { score: true, slot: true }, orderBy: { createdAt: "desc" } });
     expect(result?.score.status).toBe("PENDING");
-    // Explicitly preserve the existing live denominator/30/75% behavior for B8.
-    expect(result?.program).toMatchObject({ examMcqTotal: 72, examEssayTotal: 30, examPassingScore: 76 });
+    // B8 never consults or invents a mutable denominator.
+    expect(result).not.toHaveProperty("program");
+    expect(db.examQuestion.count).not.toHaveBeenCalled();
   });
 
   it("returns no record without computing denominator data", async () => {
@@ -34,7 +36,7 @@ describe("B0B bounded result queries and B7 superseded legacy grading", () => {
   it("loads only the exact application's result agreement and authoritative recipient", async () => {
     await repo.getApplicationDetailsForEmail("exact-app");
     expect(db.entranceExamApplication.findUnique).toHaveBeenCalledWith({ where: { id: "exact-app" }, select: {
-      id: true, status: true, score: { select: { status: true } }, student: { select: { user: { select: { email: true, firstName: true } } } },
+      id: true, status: true, ...evaluationAuthoritySelect, score: true, student: { select: { user: { select: { email: true, firstName: true } } } },
     } });
     expect(JSON.stringify(db.entranceExamApplication.findUnique.mock.calls)).not.toMatch(/passwordHash|answers|isCorrect|storageKey/);
   });

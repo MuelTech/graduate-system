@@ -29,7 +29,7 @@ describe.skipIf(process.env.EXAM_B7_DB_TEST !== "1")("B7 real MariaDB execution/
   const migration = "20261104010000_exam_essay_evaluation";
   const ids = Object.fromEntries(["user", "admin", "admin2", "student", "program", "slot", "app", "clean", "legacy", "completed", "failed", "q", "essay", "revision", "preRevision", "media"].map(key => [key, randomUUID()]));
   const repo = new ExamExecutionRepository(), answers = new ExamEngineRepository();
-  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25.5, passingThreshold: null };
+  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25.5, passingThreshold: 75 };
   const tables = ["exam_questions", "exam_options", "exam_media", "exam_content_imports", "applicant_answers", "exam_slots", "entrance_exam_applications", "exam_content_revisions", "exam_revision_questions", "exam_revision_options", "exam_revision_media", "exam_question_selection", "entrance_exam_scores", "system_settings"];
   let source: Connection, admin: Connection, observer: PrismaClient, workers: PrismaClient[] = [];
   let original: string, before: string, created = false, folder: string, prismaConfig: string, url: URL;
@@ -69,7 +69,7 @@ describe.skipIf(process.env.EXAM_B7_DB_TEST !== "1")("B7 real MariaDB execution/
     await admin.execute("INSERT INTO exam_content_revisions (id,published_by_id) VALUES (?,?)", [ids.preRevision, ids.admin]);
     const preContent = { ...setQuestion(ids.essay), type: "ESSAY", options: [] };
     await admin.execute("INSERT INTO exam_revision_questions (revision_id,question_id,position,content) VALUES (?,?,0,?)", [ids.preRevision, ids.essay, JSON.stringify(preContent)]);
-    await admin.execute("UPDATE entrance_exam_applications SET actual_started_at=DATE_SUB(NOW(3), INTERVAL 60 MINUTE), deadline_at=DATE_ADD(NOW(3), INTERVAL 60 MINUTE), execution_configuration=?, content_revision_id=? WHERE application_id=?", [JSON.stringify({ ...config, timezone: "Asia/Manila", passingThresholdUnit: null }), ids.preRevision, ids.app]);
+    await admin.execute("UPDATE entrance_exam_applications SET actual_started_at=DATE_SUB(NOW(3), INTERVAL 60 MINUTE), deadline_at=DATE_ADD(NOW(3), INTERVAL 60 MINUTE), execution_configuration=?, content_revision_id=? WHERE application_id=?", [JSON.stringify({ ...config, passingThreshold: null, timezone: "Asia/Manila", passingThresholdUnit: null }), ids.preRevision, ids.app]);
     await admin.execute("INSERT INTO entrance_exam_scores (score_id,application_id,status,multiple_choice_score) VALUES (?,?,'PENDING',0)", [randomUUID(), ids.completed]);
     await admin.execute("UPDATE entrance_exam_applications SET finalized_at=DATE_ADD(actual_started_at, INTERVAL 10 MINUTE),finalization_reason='APPLICANT_SUBMITTED',finalization_receipt_id=?,finalization_answered_count=0,finalization_question_count=1 WHERE application_id=?", [randomUUID(), ids.app]);
     await admin.execute("INSERT INTO entrance_exam_scores (score_id,application_id,status,multiple_choice_score) VALUES (?,?,'PENDING',0)", [randomUUID(), ids.app]);
@@ -202,11 +202,11 @@ describe.skipIf(process.env.EXAM_B7_DB_TEST !== "1")("B7 real MariaDB execution/
     expect(Number(historical.essayScore)).toBe(18.25); expect(Number(historical.totalScore)).toBe(80);
     expect((await observer.applicantAnswer.findFirstOrThrow({ where: { applicationId: ids.legacy } })).essayAnswer).toBe("Preserve legacy evidence");
   });
-  it.each([0, 18.25, 25.5])("B6-finalized evaluation accepts %s without total/result changes", async value => {
+  it.each([0, 18.25, 25.5])("B6-finalized evaluation accepts %s with atomic B8 result", async value => {
     await finalize(); const before = await observer.applicantAnswer.findMany({ where: { applicationId: ids.app } });
     expect(await grade(value)).toMatchObject({ status: "COMPLETED", essayScore: value, maximumScore: 25.5, evaluator: { id: ids.admin } });
-    expect(await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: ids.app } })).toMatchObject({ status: "TAKEN" });
-    expect(await stored()).toMatchObject({ status: "PENDING", totalScore: null, gradedById: ids.admin, essayEvaluatedAt: expect.any(Date) });
+    expect(await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: ids.app } })).toMatchObject({ status: value === 25.5 ? "PASSED" : "FAILED" });
+    expect(await stored()).toMatchObject({ status: value === 25.5 ? "PASSED" : "FAILED", scoredAt: expect.any(Date), gradedById: ids.admin, essayEvaluatedAt: expect.any(Date) });
     expect(await observer.applicantAnswer.findMany({ where: { applicationId: ids.app } })).toEqual(before);
   });
   it.each([26, -1, NaN, Infinity, null, "18", "", 1e-31]) ("invalid score %# rejects without evaluation", async value => {
@@ -251,7 +251,7 @@ describe.skipIf(process.env.EXAM_B7_DB_TEST !== "1")("B7 real MariaDB execution/
     // Test-only historical authority, not an application repair operation.
     const now = new Date(), started = new Date(now.getTime() - 60000);
     await observer.entranceExamApplication.update({ where: { id: ids.app }, data: { status: "TAKEN", actualStartedAt: started, deadlineAt: new Date(started.getTime() + 120 * 60000), contentRevisionId: invalid.id,
-      executionConfiguration: { ...config, timezone: "Asia/Manila", passingThresholdUnit: null }, finalizedAt: now, finalizationReason: "APPLICANT_SUBMITTED", finalizationReceiptId: randomUUID(), finalizationAnsweredCount: 0, finalizationQuestionCount: count + 1 } });
+      executionConfiguration: { ...config, timezone: "Asia/Manila", passingThresholdUnit: "PERCENT" }, finalizedAt: now, finalizationReason: "APPLICANT_SUBMITTED", finalizationReceiptId: randomUUID(), finalizationAnsweredCount: 0, finalizationQuestionCount: count + 1 } });
     await observer.entranceExamScore.create({ data: { applicationId: ids.app, status: "PENDING", multipleChoiceScore: 0 } });
     await expect(grade()).rejects.toMatchObject({ statusCode: 409 }); expect((await detail())!.essayEvaluation.status).toBe("STAFF_REVIEW");
     expect(await observer.examRevisionQuestion.findMany({ where: { revisionId: invalid.id } })).toEqual(before);
@@ -286,10 +286,10 @@ describe.skipIf(process.env.EXAM_B7_DB_TEST !== "1")("B7 real MariaDB execution/
     } })), options));
     await expect(grade()).rejects.toThrow("B7 injected"); expect(await stored()).toEqual(original);
   });
-  it("TIME_EXPIRED finalization is reviewable; result endpoint and email remain unavailable after evaluation", async () => {
+  it("TIME_EXPIRED finalization is reviewable and B8 publishes only after evaluation", async () => {
     await finalize("Timeout response", true); expect(await grade()).toMatchObject({ status: "COMPLETED", responseText: "Timeout response" });
-    await expect(new ExamService().getExamResult(ids.user)).rejects.toMatchObject({ statusCode: 409 });
-    await expect(new ExamService().confirmResultAndEmail(ids.app)).rejects.toMatchObject({ statusCode: 409 });
+    await expect(new ExamService().getExamResult(ids.user)).resolves.toMatchObject({ provenance: "B8", status: "failed" });
+    await expect(new ExamService().confirmResultAndEmail(ids.app)).resolves.toMatchObject({ success: true });
   });
   it("legacy TAKEN/PASSED records never gain B7 completion evidence or grade actions", async () => {
     for (const id of [ids.legacy, ids.completed, ids.failed]) {

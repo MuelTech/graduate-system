@@ -28,6 +28,7 @@ const request = vi.fn();
 const tag = (name: string) => ({ children, ...props }: any) => createElement(name, props, children);
 const Page = load("src/app/(portal)/applicant/results/page.tsx", {
   "react/jsx-runtime": jsxRuntime,
+  "@/components/exam-content/result-breakdown": load("src/components/exam-content/result-breakdown.tsx", { "react/jsx-runtime": jsxRuntime }),
   "next/link": { __esModule: true, default: tag("a") },
   "@/components/ui/card": { Card: tag("div"), CardContent: tag("div"), CardHeader: tag("header"), CardTitle: tag("h3") },
   "@/components/ui/badge": { Badge: tag("span") },
@@ -37,7 +38,7 @@ const Page = load("src/app/(portal)/applicant/results/page.tsx", {
   "@/lib/api.client": { ApiError: api.ApiError, apiClientRequest: request },
 }).default;
 
-const finalResult = (status: string) => ({ status, mcqScore: 63, mcqTotal: 72, essayScore: 20, essayTotal: 30, totalScore: 83, totalPossible: 102, passingScore: 76, examDate: "2026-11-02T00:00:00Z" });
+const finalResult = (status: string) => ({ provenance: "B8", percentage: "81.37", passingThreshold: "75", scoredAt: null, mcqCorrectCount: 63, mcqQuestionCount: 72, status, mcqScore: 63, mcqTotal: 72, essayScore: 20, essayTotal: 30, totalScore: 83, totalPossible: 102, passingScore: 76, examDate: "2026-11-02T00:00:00Z" });
 const render = (data?: unknown, error?: Error, isLoading = false) => {
   query.mockReturnValue({ data, error, isLoading });
   return renderToStaticMarkup(createElement(Page));
@@ -90,7 +91,7 @@ describe("B0B real Applicant Results component state rendering", () => {
     const options = query.mock.calls[0][0];
     expect(options.queryKey).toEqual(["examResult", "own-user"]);
     await options.queryFn();
-    expect(request).toHaveBeenCalledExactlyOnceWith("/exam/result", { method: "GET" });
+    expect(request).toHaveBeenCalledExactlyOnceWith("/exam/result", { method: "GET", cache: "no-store" });
   });
 
   it("preserves accepted Admin Exam Record state semantics", () => {

@@ -309,6 +309,10 @@ model EntranceExamScore {
   multipleChoiceScore Decimal?                @map("multiple_choice_score")
   essayScore          Decimal?                @map("essay_score")
   essayEvaluatedAt    DateTime?               @map("essay_evaluated_at") @db.DateTime(3)
+  scoredAt            DateTime?               @map("scored_at") @db.DateTime(3)
+  scoringBasis        Json?                   @map("scoring_basis")
+  resultEmailQueuedAt DateTime?               @map("result_email_queued_at") @db.DateTime(3)
+  resultEmailTemplateKey String?               @map("result_email_template_key") @db.VarChar(64)
   totalScore          Decimal?                @map("total_score")
   status              ExamResult
   createdAt           DateTime                @default(now()) @map("created_at")

@@ -6,7 +6,7 @@ export const executionIds = {
   program: "55555555-5555-4555-8555-555555555555", admin: "66666666-6666-4666-8666-666666666666",
   revision: "77777777-7777-4777-8777-777777777777",
 };
-export const configuration = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25, passingThreshold: null };
+export const configuration = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25, passingThreshold: 75 };
 export function executionApplication() {
   const ids = executionIds;
   const date = new Date("2026-11-03T00:00:00Z"), time = new Date("1970-01-01T09:00:00Z");

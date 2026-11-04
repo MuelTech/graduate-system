@@ -5,7 +5,7 @@ describe("B1 typed draft configuration contract", () => {
   it("represents missing values without legacy defaults", () => {
     expect(examConfigurationDto(validateExamConfiguration({ passingThreshold: null }))).toEqual({
       examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null,
-      passingThreshold: null, passingThresholdUnit: null, timezone: "Asia/Manila", isComplete: false,
+      passingThreshold: null, passingThresholdUnit: "PERCENT", timezone: "Asia/Manila", isComplete: false,
     });
   });
 
@@ -18,15 +18,15 @@ describe("B1 typed draft configuration contract", () => {
   it("keeps all representable values incomplete while threshold semantics are unresolved", () => {
     expect(examConfigurationDto(validateExamConfiguration({ examDurationMinutes: 95, mcqPointsPerCorrectItem: 2.5, essayMaximumScore: 42, passingThreshold: null }))).toEqual({
       examDurationMinutes: 95, mcqPointsPerCorrectItem: 2.5, essayMaximumScore: 42,
-      passingThreshold: null, passingThresholdUnit: null, timezone: "Asia/Manila", isComplete: false,
+      passingThreshold: null, passingThresholdUnit: "PERCENT", timezone: "Asia/Manila", isComplete: false,
     });
   });
 
-  it.each([null, undefined, {}, [], "value", 1, true, { timezone: "UTC" }, { isComplete: true }, { active: true }, { programId: "other" }, { passingThreshold: 75 }, { passingThreshold: { value: 75, unit: "PERCENT" } }, { passingThresholdUnit: "POINTS" }])("rejects malformed/unsupported or unapproved authority %#", value => {
+  it.each([null, undefined, {}, [], "value", 1, true, { timezone: "UTC" }, { isComplete: true }, { active: true }, { programId: "other" }, { passingThreshold: 101 }, { passingThreshold: { value: 75, unit: "PERCENT" } }, { passingThresholdUnit: "POINTS" }])("rejects malformed/unsupported or unapproved authority %#", value => {
     expect(() => validateExamConfiguration(value)).toThrow();
   });
 
-  for (const field of ["examDurationMinutes", "mcqPointsPerCorrectItem", "essayMaximumScore"]) {
+  for (const field of ["examDurationMinutes", "mcqPointsPerCorrectItem", "essayMaximumScore", "passingThreshold"]) {
     it.each(["12", "abc", "", false, {}, [], -1, 0, -Infinity, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1])(`rejects invalid ${field} %#`, value => {
       expect(() => validateExamConfiguration({ [field]: value })).toThrow();
     });

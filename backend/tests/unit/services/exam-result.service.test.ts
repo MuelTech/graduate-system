@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
-const repo = vi.hoisted(() => ({ getLatestResult: vi.fn(), getApplicationDetailsForEmail: vi.fn() }));
+const repo = vi.hoisted(() => ({ getLatestResult: vi.fn(), queueResultEmail: vi.fn() }));
 const sendEmail = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/repositories/exam.repository", () => ({ ExamRepository: class {
   getLatestResult = repo.getLatestResult;
-  getApplicationDetailsForEmail = repo.getApplicationDetailsForEmail;
+  queueResultEmail = repo.queueResultEmail;
 } }));
 vi.mock("../../../src/services/email.service", () => ({ EmailService: { sendTemplateEmail: sendEmail } }));
 import { ExamService } from "../../../src/services/exam.service";
@@ -35,9 +35,7 @@ describe("B0B result finality", () => {
   it.each(combinations)("contains application $status / score $scoreStatus before result publication or email", async ({ status, scoreStatus }) => {
     const app = record(status, scoreStatus);
     repo.getLatestResult.mockResolvedValue(app);
-    repo.getApplicationDetailsForEmail.mockResolvedValue(app);
     await expect(service.getExamResult("jwt-user")).rejects.toMatchObject({ statusCode: scoreStatus === null ? 404 : 409 });
-    await expect(service.confirmResultAndEmail("exact-app")).rejects.toMatchObject({ statusCode: 409 });
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
@@ -45,7 +43,7 @@ describe("B0B result finality", () => {
     const app = record(status, status);
     app.score = { ...app.score!, essayScore: new Prisma.Decimal("17.5"), totalScore: new Prisma.Decimal("80.5") };
     repo.getLatestResult.mockResolvedValue(app);
-    expect(await service.getExamResult("jwt-user")).toEqual({ status: status.toLowerCase(), mcqScore: 63, mcqTotal: 72, essayScore: 17.5, essayTotal: 30, totalScore: 80.5, totalPossible: 102, passingScore: 76, examDate: app.slot.examDate });
+    expect(await service.getExamResult("jwt-user")).toMatchObject({ provenance: "LEGACY", status: status.toLowerCase(), mcqScore: "63", mcqTotal: null, essayScore: "17.5", essayTotal: null, totalScore: "80.5", totalPossible: null, passingThreshold: null, examDate: app.slot.examDate });
     // Even an existing FAILED score above this read's threshold stays FAILED.
     expect(sendEmail).not.toHaveBeenCalled();
   });
@@ -55,22 +53,16 @@ describe("B0B result finality", () => {
     await expect(service.getExamResult("jwt-user")).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining("awaiting evaluation") });
   });
 
-  it("rejects a missing email application before queueing", async () => {
-    repo.getApplicationDetailsForEmail.mockResolvedValue(null);
-    await expect(service.confirmResultAndEmail("missing")).rejects.toMatchObject({ statusCode: 404 });
-    expect(sendEmail).not.toHaveBeenCalled();
+  it("hands queue identity and retention options from the locked repository to EmailService", async () => {
+    repo.queueResultEmail.mockImplementation(async (_id, enqueue) => {
+      await enqueue("authoritative@example.invalid", "ecat_result_pass", "Synthetic", "exam-result-exact-identity");
+      return { success: true, message: "Result email queued." };
+    });
+    expect(await service.confirmResultAndEmail("exact-app")).toHaveProperty("success", true);
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith("authoritative@example.invalid", "ecat_result_pass", { student_name: "Synthetic", portal_link: process.env.FRONTEND_URL || "http://localhost:3000" }, { jobId: "exam-result-exact-identity", removeOnComplete: false, removeOnFail: false });
   });
-
-  it.each([["PASSED", "ecat_result_pass"], ["FAILED", "ecat_result_fail"]])("queues only the authoritative template for %s", async (status, template) => {
-    repo.getApplicationDetailsForEmail.mockResolvedValue(record(status, status));
-    await expect(service.confirmResultAndEmail("exact-app")).resolves.toMatchObject({ success: true, message: expect.stringContaining("queue") });
-    expect(repo.getApplicationDetailsForEmail).toHaveBeenCalledWith("exact-app");
-    expect(sendEmail).toHaveBeenCalledExactlyOnceWith("authoritative@example.invalid", template, { student_name: "Synthetic", portal_link: process.env.FRONTEND_URL || "http://localhost:3000" });
-  });
-
-  it("propagates queue failure instead of returning success", async () => {
-    repo.getApplicationDetailsForEmail.mockResolvedValue(record("PASSED", "PASSED"));
-    sendEmail.mockRejectedValue(new Error("Queue unavailable"));
+  it("propagates queue failure without claiming success", async () => {
+    repo.queueResultEmail.mockRejectedValue(new Error("Queue unavailable"));
     await expect(service.confirmResultAndEmail("exact-app")).rejects.toThrow("Queue unavailable");
   });
 });

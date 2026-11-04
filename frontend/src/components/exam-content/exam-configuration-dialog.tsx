@@ -33,6 +33,7 @@ function ConfigurationForm({
   const [draft, setDraft] = useState(() => configurationDraft(configuration));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [complete, setComplete] = useState(configuration.isComplete);
   const saving = useRef(false);
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -67,6 +68,7 @@ function ConfigurationForm({
       const current = await mutation.mutateAsync(payload);
       // Reconcile from the server's persisted response, not the submitted draft.
       setDraft(configurationDraft(current));
+      setComplete(current.isComplete);
       queryClient.setQueryData(queryKey, current);
       setSaved(true);
     } catch (error) {
@@ -92,9 +94,14 @@ function ConfigurationForm({
         id="configuration-draft-help"
         className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-sm text-(--earist-body-text)"
       >
-        Duration applies to new examination starts. Scoring settings remain
-        draft. Leave unresolved values blank. Started examinations keep their
-        original settings.
+        All four values are required before a new examination can start. Passing
+        Threshold is a percentage greater than 0 and at most 100. Started
+        examinations keep their original settings.
+      </p>
+      <p className="text-sm text-(--earist-body-text)">
+        {complete
+          ? "Current saved configuration is complete."
+          : "Current saved configuration is incomplete. New examination starts are blocked."}
       </p>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -103,7 +110,9 @@ function ConfigurationForm({
       ) : null}
       {saved ? (
         <p role="status" className="text-sm text-(--earist-success)">
-          Draft configuration saved.
+          {complete
+            ? "Complete configuration saved."
+            : "Incomplete configuration saved. New examination starts are blocked."}
         </p>
       ) : null}
       <fieldset
@@ -120,6 +129,7 @@ function ConfigurationForm({
               id={`configuration-${field.key}`}
               type="number"
               min="0"
+              max={field.key === "passingThreshold" ? 100 : undefined}
               step={field.integer ? "1" : "any"}
               value={draft[field.key]}
               placeholder="Unconfigured"
@@ -130,22 +140,6 @@ function ConfigurationForm({
             />
           </div>
         ))}
-        <div className="space-y-2">
-          <Label htmlFor="configuration-threshold">Passing Threshold</Label>
-          <Input
-            id="configuration-threshold"
-            value=""
-            disabled
-            placeholder="Unconfigured"
-            aria-describedby="configuration-threshold-help"
-          />
-          <p
-            id="configuration-threshold-help"
-            className="text-sm text-(--earist-body-text)"
-          >
-            The threshold unit and value require policy confirmation.
-          </p>
-        </div>
       </fieldset>
       <dl className="space-y-1 text-sm">
         <dt className="font-medium">Institutional Timezone</dt>
@@ -158,7 +152,7 @@ function ConfigurationForm({
       </dl>
       <div className="flex justify-end">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save draft"}
+          {mutation.isPending ? "Saving…" : "Save configuration"}
         </Button>
       </div>
     </form>
@@ -190,8 +184,7 @@ export function ExamConfigurationDialog({ onClose }: { onClose: () => void }) {
         <DialogHeader>
           <DialogTitle>Exam Configuration</DialogTitle>
           <DialogDescription>
-            Prepare the current entrance examination settings. Unresolved policy
-            values remain unconfigured.
+            Configure timing and scoring for new entrance examinations.
           </DialogDescription>
         </DialogHeader>
         {query.isLoading || query.isFetching ? (

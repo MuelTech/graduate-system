@@ -46,6 +46,7 @@ router.get('/result', authenticateJWT, requireRole(['APPLICANT']), examControlle
 // together with the Score Management workspace. The mutations below are
 // intentionally retained (and keep the /exam/scores namespace).
 router.post('/scores/:id/grade', authenticateJWT, requireRole(['ADMIN']), examController.gradeEssay);
+router.post('/scores/:id/finalize', authenticateJWT, requireRole(['ADMIN']), examController.finalizeResult);
 router.post('/scores/:id/send-email', authenticateJWT, requireRole(['ADMIN']), examController.confirmResultAndEmail);
 
 export default router;

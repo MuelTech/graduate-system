@@ -2,11 +2,11 @@ export interface ExamConfigurationValues {
   examDurationMinutes: number | null;
   mcqPointsPerCorrectItem: number | null;
   essayMaximumScore: number | null;
-  passingThreshold: null;
+  passingThreshold: number | null;
 }
 
 export interface ExamConfiguration extends ExamConfigurationValues {
-  passingThresholdUnit: null;
+  passingThresholdUnit: "PERCENT";
   timezone: "Asia/Manila";
-  isComplete: false;
+  isComplete: boolean;
 }

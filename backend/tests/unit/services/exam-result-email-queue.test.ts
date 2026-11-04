@@ -15,10 +15,15 @@ beforeEach(() => {
 });
 
 describe("B0B existing email queue handoff", () => {
+  it("preserves the exact B8 result job identity and retains completed/failed jobs for deduplication", async () => {
+    const options = { jobId: "exam-result-exact-identity", removeOnComplete: false, removeOnFail: false };
+    await EmailService.sendTemplateEmail("owner@example.invalid", "ecat_result_pass", {}, options);
+    expect(mocks.queueAdd).toHaveBeenCalledExactlyOnceWith("send-single-email", expect.objectContaining({ templateKey: "ecat_result_pass" }), options);
+  });
   it.each(["ecat_result_pass", "ecat_result_fail"])("awaits the queue handoff for %s without claiming delivery", async template => {
     await EmailService.sendTemplateEmail("owner@example.invalid", template, { student_name: "Synthetic", portal_link: "https://example.invalid" });
     expect(mocks.template).toHaveBeenCalledWith(template);
-    expect(mocks.queueAdd).toHaveBeenCalledExactlyOnceWith("send-single-email", { to: "owner@example.invalid", subject: "Synthetic result", html: "<p>Synthetic result</p>", templateKey: template });
+    expect(mocks.queueAdd).toHaveBeenCalledExactlyOnceWith("send-single-email", { to: "owner@example.invalid", subject: "Synthetic result", html: "<p>Synthetic result</p>", templateKey: template }, undefined);
     expect(mocks.createLog).not.toHaveBeenCalled();
   });
 

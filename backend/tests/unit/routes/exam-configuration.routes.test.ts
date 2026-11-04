@@ -45,7 +45,7 @@ describe("B1 actual Admin configuration HTTP authority", () => {
   it("allows ADMIN to read an unconfigured contract without fake defaults", async () => {
     const response = await request("ADMIN"); expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(await response.json()).toEqual({ examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null, passingThreshold: null, passingThresholdUnit: null, timezone: "Asia/Manila", isComplete: false });
+    expect(await response.json()).toEqual({ examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null, passingThreshold: null, passingThresholdUnit: "PERCENT", timezone: "Asia/Manila", isComplete: false });
     expect(db.systemSetting.upsert).not.toHaveBeenCalled();
   });
 
@@ -59,7 +59,7 @@ describe("B1 actual Admin configuration HTTP authority", () => {
     expect(JSON.stringify(saved)).not.toMatch(/settingKey|lastModifiedBy|settingValue/);
   });
 
-  it.each([null, [], { examDurationMinutes: "95" }, { essayMaximumScore: -2 }, { passingThreshold: 75 }, { passingThresholdUnit: "PERCENT" }, { timezone: "UTC" }, { isComplete: true }])("rejects invalid or unsupported mutation %# before persistence", async body => {
+  it.each([null, [], { examDurationMinutes: "95" }, { essayMaximumScore: -2 }, { passingThreshold: 101 }, { passingThresholdUnit: "PERCENT" }, { timezone: "UTC" }, { isComplete: true }])("rejects invalid or unsupported mutation %# before persistence", async body => {
     const response = await request("ADMIN", "PUT", body); expect(response.status).toBe(400);
     expect(db.systemSetting.upsert).not.toHaveBeenCalled();
   });

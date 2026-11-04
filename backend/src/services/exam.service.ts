@@ -6,11 +6,7 @@ import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
 import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
 import { essayScoreValue } from "./exam-essay-evaluation.rules";
-
-function completedResultStatus(application: { status: string; score: { status: string } | null }): "PASSED" | "FAILED" | null {
-  const status = application.status;
-  return (status === "PASSED" || status === "FAILED") && application.score?.status === status ? status : null;
-}
+import { completedResultStatus, resultProjection } from "./exam-result.rules";
 
 function assignmentBlockReason(student: {
   admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
@@ -269,8 +265,10 @@ export class ExamService {
       program: {
         id: app.program.id,
         programName: app.program.programName,
-        examMcqTotal: app.program.examMcqTotal,
-        examEssayTotal: app.program.examEssayTotal,
+        // Compatibility fields are deliberately unknown; Program settings are
+        // not an examination's historical denominator. Use result below.
+        examMcqTotal: null,
+        examEssayTotal: null,
       },
       slot: {
         id: app.slot.id,
@@ -301,6 +299,8 @@ export class ExamService {
         essayAnswer: answer.essayAnswer,
       })),
       essayEvaluation: app.essayEvaluation,
+      result: completedResultStatus(app) ? resultProjection(app) : null,
+      resultEmailEligible: completedResultStatus(app) !== null,
     };
   }
 
@@ -361,28 +361,10 @@ export class ExamService {
     const finalStatus = completedResultStatus(app);
     if (!finalStatus) throw new AppError("Your examination result is not yet available. It may still be awaiting evaluation.", 409);
 
-    const mcqTotal = app.program?.examMcqTotal ?? 0;
-    const essayTotal = app.program?.examEssayTotal ?? 0;
-    const passingScore = app.program?.examPassingScore ?? 0;
-
-    const totalPossible = mcqTotal + essayTotal;
-
-    if (totalPossible <= 0) {
-      throw new Error(
-        "Exam scoring configuration is incomplete. Total possible score must be greater than zero.",
-      );
-    }
-
     return {
-      status: finalStatus.toLowerCase(),
-      mcqScore: Number(app.score.multipleChoiceScore || 0),
-      mcqTotal: mcqTotal,
-      essayScore: Number(app.score.essayScore || 0),
-      essayTotal: essayTotal,
-      totalScore: Number(app.score.totalScore || 0),
-      totalPossible: totalPossible,
-      passingScore: passingScore,
+      ...resultProjection(app),
       examDate: app.slot?.examDate,
+      finalizedAt: app.finalizedAt?.toISOString() ?? null,
     };
   }
 
@@ -395,23 +377,11 @@ export class ExamService {
   }
 
   async confirmResultAndEmail(applicationId: string) {
-    const application = await this.examRepo.getApplicationDetailsForEmail(applicationId);
-    if (!application) throw new AppError("Exam record not found.", 404);
-
-    const finalStatus = completedResultStatus(application);
-    if (!finalStatus) throw new AppError("A completed, consistent examination result is required before queueing a result email.", 409);
-    const template = finalStatus === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
-
-     // Dispatch actual email via BullMQ
-    await EmailService.sendTemplateEmail(application.student.user.email, template, {
-        student_name: application.student.user.firstName,
-        portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
-    });
-
-    return {
-      success: true,
-      message: "Grade confirmed and email successfully dispatched to the queue."
-    };
-    
+    return this.examRepo.queueResultEmail(applicationId, (recipient, template, firstName, jobId) =>
+      EmailService.sendTemplateEmail(recipient, template, {
+        student_name: firstName, portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+      }, { jobId, removeOnComplete: false, removeOnFail: false }));
   }
+
+  finalizeResult(applicationId: string, adminId: string) { return this.examRepo.finalizeResult(applicationId, adminId); }
 }

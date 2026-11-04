@@ -4,6 +4,8 @@ import { AppError } from '../utils/AppError';
 import { scheduleIdentifier } from '../services/exam-schedule.rules';
 import { essayScoreValue } from '../services/exam-essay-evaluation.rules';
 import { essayReviewProjection, requireEssayReview, evaluationAuthoritySelect, evaluationScoreSelect } from './exam-essay-evaluation.projection';
+import { scoreLockedApplication } from './exam-result.repository';
+import { completedResultStatus } from '../services/exam-result.rules';
 
 // Type for the transaction client that Prisma provides inside $transaction
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -193,8 +195,6 @@ export class ExamRepository {
                         select: {
                             id: true,
                             programName: true,
-                            examMcqTotal: true,
-                            examEssayTotal: true,
                         },
                     },
                     slot: {
@@ -300,25 +300,14 @@ export class ExamRepository {
             },
             include: {
                 score: true,
-                slot: true,
-                program: true
+                slot: true
             },
             orderBy: { createdAt: 'desc' }
         });
 
         if (!app) return null;
 
-        const mcqTotal = await prisma.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-        
-        return {
-            ...app,
-            program: {
-                ...app.program,
-                examMcqTotal: mcqTotal,
-                examEssayTotal: 30, // Default max essay score
-                examPassingScore: Math.floor((mcqTotal + 30) * 0.75) // 75% dynamic passing score
-            }
-        };
+        return app;
     }
 
     async gradeEssay(applicationId: string, essayScore: number, adminId: string) {
@@ -344,7 +333,9 @@ export class ExamRepository {
             const score = await tx.entranceExamScore.update({ where: { applicationId: id }, data: {
                 essayScore, gradedById: adminId, essayEvaluatedAt: new Date(),
             }, select: evaluationScoreSelect });
-            return await requireEssayReview(tx, { ...application, score });
+            const evaluated = await requireEssayReview(tx, { ...application, score });
+            const result = await scoreLockedApplication(tx, id);
+            return { ...evaluated, result };
         }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     }
 
@@ -356,7 +347,8 @@ export class ExamRepository {
             select: {
                 id: true,
                 status: true,
-                score: { select: { status: true } },
+                ...evaluationAuthoritySelect,
+                score: true,
                 student: {
                     select: {
                         user: { select: { email: true, firstName: true } }
@@ -364,5 +356,39 @@ export class ExamRepository {
                 }
             }
         });
+    }
+
+    async finalizeResult(applicationId: string, adminId: string) {
+        const id = scheduleIdentifier(applicationId, "applicationId");
+        return prisma.$transaction(async tx => {
+            const rows = await tx.$queryRaw`SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;
+            if (!(rows as unknown[]).length) throw new AppError("Exam record not found.", 404);
+            const admin = await tx.user.findUnique({ where: { id: adminId }, select: { role: true, isActive: true } });
+            if (admin?.role !== "ADMIN" || !admin.isActive) throw new AppError("Only an active Admin may finalize a result.", 403);
+            return scoreLockedApplication(tx, id);
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+    }
+
+    async queueResultEmail(applicationId: string, enqueue: (recipient: string, template: string, firstName: string, jobId: string) => Promise<void>) {
+        const id = scheduleIdentifier(applicationId, "applicationId");
+        return prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE`;
+            const app = await tx.entranceExamApplication.findUnique({ where: { id }, include: {
+                score: true, student: { select: { user: { select: { email: true, firstName: true } } } },
+            } });
+            if (!app) throw new AppError("Exam record not found.", 404);
+            const status = completedResultStatus(app);
+            if (!status || !app.score) throw new AppError("A completed, consistent examination result is required before queueing a result email.", 409);
+            const template = status === "PASSED" ? "ecat_result_pass" : "ecat_result_fail";
+            const score = app.score;
+            if ((score.resultEmailQueuedAt === null) !== (score.resultEmailTemplateKey === null) ||
+                (score.resultEmailTemplateKey !== null && score.resultEmailTemplateKey !== template)) throw new AppError("Result email evidence requires staff review.", 409);
+            if (score.resultEmailQueuedAt) return { success: true, alreadyQueued: true, message: "Result email already queued." };
+            // Retained BullMQ identity also covers queue acceptance followed by DB failure.
+            const jobId = `exam-result-${app.id}-${score.id}-${score.scoredAt?.getTime() ?? "legacy"}-${template}`;
+            await enqueue(app.student.user.email, template, app.student.user.firstName, jobId);
+            await tx.entranceExamScore.update({ where: { id: score.id }, data: { resultEmailQueuedAt: new Date(), resultEmailTemplateKey: template } });
+            return { success: true, alreadyQueued: false, message: "Result email queued for delivery." };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     }
 }

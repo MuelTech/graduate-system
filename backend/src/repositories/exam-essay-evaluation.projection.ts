@@ -5,6 +5,7 @@ import { finalizationReceipt } from "../services/exam-finalization.rules";
 import { singleEssay } from "../services/exam-essay-evaluation.rules";
 import { binding } from "./exam-execution.repository";
 import { ExamQuestionSetRepository } from "./exam-question-set.repository";
+import { completedResultStatus } from "../services/exam-result.rules";
 
 export const evaluationAuthoritySelect = {
   actualStartedAt: true, deadlineAt: true, contentRevisionId: true, executionConfiguration: true,
@@ -12,6 +13,7 @@ export const evaluationAuthoritySelect = {
   finalizationAnsweredCount: true, finalizationQuestionCount: true,
 } as const;
 export const evaluationScoreSelect = {
+  multipleChoiceScore: true, scoredAt: true, scoringBasis: true,
   essayScore: true, gradedById: true, essayEvaluatedAt: true, totalScore: true, status: true,
   gradedBy: { select: { id: true, firstName: true, lastName: true } },
 } as const;
@@ -23,7 +25,8 @@ type ReviewApplication = Pick<EntranceExamApplication, "id" | "status" | keyof t
 export async function requireEssayReview(db: Prisma.TransactionClient, app: ReviewApplication): Promise<Extract<EssayEvaluation, { status: "PENDING" | "COMPLETED" }>> {
   const receipt = finalizationReceipt(app);
   if (!receipt) throw new AppError("This record has no finalized examination evidence. Essay evaluation is unavailable.", 409);
-  if (app.status !== "TAKEN" || !app.score || app.score.status !== "PENDING" || app.score.totalScore !== null) {
+  const computed = completedResultStatus(app);
+  if (!computed && (app.status !== "TAKEN" || !app.score || app.score.status !== "PENDING" || app.score.totalScore !== null)) {
     throw new AppError("Essay evaluation requires a finalized Taken record with a pending assessment. Staff review is required.", 409);
   }
   if (!["APPLICANT_SUBMITTED", "TIME_EXPIRED"].includes(receipt.finalizationReason) ||
@@ -51,7 +54,7 @@ export async function requireEssayReview(db: Prisma.TransactionClient, app: Revi
   if (answer && (answer.selectedOptionId !== null || typeof answer.essayAnswer !== "string")) {
     throw new AppError("The finalized essay response requires staff review.", 409);
   }
-  const score = app.score;
+  const score = app.score!;
   const evidence = [score.essayScore, score.gradedById, score.essayEvaluatedAt];
   const completed = evidence.every(value => value !== null);
   if (!completed && evidence.some(value => value !== null)) throw new AppError("Incomplete essay evaluation evidence requires staff review.", 409);

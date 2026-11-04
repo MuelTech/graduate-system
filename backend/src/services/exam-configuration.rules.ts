@@ -9,15 +9,15 @@ export function validateExamConfiguration(value: unknown): ExamConfigurationValu
   const data = value as Record<string, unknown>;
   if (Object.keys(data).length === 0) throw new AppError("Supply at least one configuration field; use null for unconfigured values.", 400);
   if (Object.keys(data).some(key => !fields.includes(key))) throw new AppError("Exam configuration contains unsupported fields.", 400);
-  if (data.passingThreshold !== undefined && data.passingThreshold !== null) {
-    throw new AppError("Passing threshold units and value require policy confirmation.", 400);
-  }
   function number(name: string, integer = false): number | null {
     const entry = data[name];
     if (entry === null || entry === undefined) return null;
+    if (name === "passingThreshold" && typeof entry === "number" && entry > 100) {
+      throw new AppError("Passing Threshold must be greater than 0 and at most 100 percent, or null.", 400);
+    }
     if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0 || entry > Number.MAX_SAFE_INTEGER ||
       (integer && (!Number.isSafeInteger(entry) || !Number.isSafeInteger(entry * 60_000)))) {
-      const label = name === "examDurationMinutes" ? "Exam Duration" : name === "mcqPointsPerCorrectItem" ? "MCQ Points per Correct Item" : "Essay Maximum Score";
+      const label = name === "examDurationMinutes" ? "Exam Duration" : name === "mcqPointsPerCorrectItem" ? "MCQ Points per Correct Item" : name === "passingThreshold" ? "Passing Threshold (%)" : "Essay Maximum Score";
       throw new AppError(`${label} must be a positive ${integer ? "whole number of minutes within safe arithmetic limits" : "finite number within safe arithmetic limits"}, or null.`, 400);
     }
     return entry;
@@ -26,11 +26,11 @@ export function validateExamConfiguration(value: unknown): ExamConfigurationValu
     examDurationMinutes: number("examDurationMinutes", true),
     mcqPointsPerCorrectItem: number("mcqPointsPerCorrectItem"),
     essayMaximumScore: number("essayMaximumScore"),
-    passingThreshold: null,
+    passingThreshold: number("passingThreshold"),
   };
 }
 
 export function examConfigurationDto(values: ExamConfigurationValues): ExamConfiguration {
-  // Threshold semantics are unresolved, so no representable B1 draft is complete.
-  return { ...values, passingThresholdUnit: null, timezone: "Asia/Manila", isComplete: false };
+  return { ...values, passingThresholdUnit: "PERCENT", timezone: "Asia/Manila",
+    isComplete: Object.values(values).every(value => value !== null) };
 }

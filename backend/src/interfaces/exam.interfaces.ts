@@ -27,6 +27,8 @@ export interface ExamRecordEssayAnswer {
 }
 
 export interface ExamRecordDetail {
+  result: ReturnType<typeof import("../services/exam-result.rules").resultProjection> | null;
+  resultEmailEligible: boolean;
   id: string;
   status: string;
   student: {

@@ -11,7 +11,7 @@ import { executionIds as ids } from "../../fixtures/exam-execution";
 const db = vi.hoisted(() => ({ $transaction: vi.fn(), $queryRaw: vi.fn(),
   entranceExamApplication: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   entranceExamScore: { update: vi.fn() }, user: { findUnique: vi.fn() },
-  examContentRevision: { findUnique: vi.fn() }, applicantAnswer: { findUnique: vi.fn() }, examQuestion: { count: vi.fn() },
+  examContentRevision: { findUnique: vi.fn() }, applicantAnswer: { findUnique: vi.fn(), findMany: vi.fn() }, examQuestion: { count: vi.fn() },
 }));
 const email = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/config/database", () => ({ default: db }));
@@ -36,8 +36,14 @@ beforeEach(() => {
   db.entranceExamApplication.findFirst.mockImplementation(() => app);
   db.examContentRevision.findUnique.mockImplementation(() => revision);
   db.applicantAnswer.findUnique.mockImplementation(() => answer);
+  db.applicantAnswer.findMany.mockImplementation(() => {
+    const rows = answer ? [{ ...answer, questionId: essayId }] : [];
+    app.finalizationAnsweredCount = answer?.essayAnswer?.trim() ? 1 : 0;
+    return rows;
+  });
+  db.entranceExamApplication.update.mockImplementation(({ data }) => Object.assign(app, data));
   db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true });
-  db.entranceExamScore.update.mockImplementation(({ data }) => Object.assign(app.score, data, { gradedBy: { id: data.gradedById, firstName: "Admin", lastName: "Fixture" } }));
+  db.entranceExamScore.update.mockImplementation(({ data }) => Object.assign(app.score, data, { gradedBy: { id: app.score.gradedById ?? data.gradedById, firstName: "Admin", lastName: "Fixture" } }));
 });
 function request(body: unknown = { essayScore: 18 }, role: string | null = "ADMIN", id = ids.app, method = "POST", suffix = "grade") {
   const token = role === "invalid" ? "invalid" : role ? jwt.sign({ userId: ids.admin, role }, secret) : null;
@@ -48,6 +54,23 @@ function request(body: unknown = { essayScore: 18 }, role: string | null = "ADMI
 }
 const noWrites = () => expect(db.entranceExamScore.update).not.toHaveBeenCalled();
 describe("B7 actual HTTP/transaction authority", () => {
+  it.each([[null,401],["APPLICANT",403],["STUDENT",403],["PANELIST",403]])("B8 recovery denies %s before database access", async (role,status) => {
+    expect((await request({},role as string | null,ids.app,"POST","finalize")).status).toBe(status);
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+  it("B8 recovery rejects score editing and evaluates no essay; completed recovery is idempotent", async () => {
+    expect((await request({ totalScore: 99 },"ADMIN",ids.app,"POST","finalize")).status).toBe(400);
+    noWrites();
+    expect((await request({},"ADMIN",ids.app,"POST","finalize")).status).toBe(409);
+    app.score.essayScore = new Prisma.Decimal("25.5"); app.score.gradedById = ids.admin;
+    app.score.gradedBy = { id: ids.admin, firstName: "Admin", lastName: "Fixture" }; app.score.essayEvaluatedAt = new Date();
+    const result = await request({},"ADMIN",ids.app,"POST","finalize"); expect(result.status).toBe(200);
+    const dto = await result.json(); expect(dto).toMatchObject({ provenance: "B8", essayScore: "25.5", mcqTotal: "2", passingThreshold: "75" });
+    const writes = db.entranceExamScore.update.mock.calls.length;
+    expect(await (await request({},"ADMIN",ids.app,"POST","finalize")).json()).toEqual(dto);
+    expect(db.entranceExamScore.update).toHaveBeenCalledTimes(writes);
+    expect(app.score.essayEvaluatedAt).toBeInstanceOf(Date);
+  });
   it.each([[null, 401], ["invalid", 403], ["APPLICANT", 403], ["STUDENT", 403], ["PANELIST", 403]])("denies %s before DB access", async (role, status) => {
     expect((await request(undefined, role as string | null)).status).toBe(status); expect(db.$transaction).not.toHaveBeenCalled();
   });
@@ -58,13 +81,13 @@ describe("B7 actual HTTP/transaction authority", () => {
   it.each([0, 18.25, 25.5])("evaluates %s once, writes only essay/evaluator/time, keeps final result pending", async value => {
     const response = await request({ essayScore: value }); expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toBe("private, no-store");
     const result = await response.json(); expect(result).toMatchObject({ status: "COMPLETED", essayScore: value, maximumScore: 25.5, evaluator: { id: ids.admin }, responseText: answer.essayAnswer });
-    expect(result.evaluatedAt).toBeTruthy(); expect(app.status).toBe("TAKEN"); expect(app.score.status).toBe("PENDING"); expect(app.score.totalScore).toBeNull();
+    expect(result.evaluatedAt).toBeTruthy(); expect(["PASSED", "FAILED"]).toContain(app.status); expect(app.score.status).toBe(app.status); expect(app.score.totalScore).not.toBeNull();
     expect(Object.keys(db.entranceExamScore.update.mock.calls[0][0].data).sort()).toEqual(["essayEvaluatedAt", "essayScore", "gradedById"]);
     expect(db.$transaction.mock.calls[0][1]).toEqual({ isolationLevel: "ReadCommitted" });
-    expect(String(db.$queryRaw.mock.calls[0][0])).toContain("FOR UPDATE"); expect(db.entranceExamApplication.update).not.toHaveBeenCalled();
+    expect(String(db.$queryRaw.mock.calls[0][0])).toContain("FOR UPDATE"); expect(db.entranceExamApplication.update).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(result)).not.toMatch(/isCorrect|answerKey|correctOption|executionConfiguration|storageKey/);
     expect((await request({ essayScore: value })).status).toBe(409); expect((await request({ essayScore: value + 1 })).status).toBe(409);
-    expect(db.entranceExamScore.update).toHaveBeenCalledTimes(1);
+    expect(db.entranceExamScore.update).toHaveBeenCalledTimes(2);
   });
   it.each(["PENDING", "APPROVED", "PASSED", "FAILED", "APPEALED", "DISQUALIFIED"])("rejects application %s", async status => {
     app.status = status; expect((await request()).status).toBe(409); noWrites();
@@ -128,8 +151,7 @@ describe("B7 actual HTTP/transaction authority", () => {
     const result = await new ExamRepository().getApplicationDetail(ids.app); expect(result?.essayEvaluation.status).toBe("LEGACY"); expect(result?.score?.essayEvaluatedAt).toBeNull();
     expect((await request()).status).toBe(409); noWrites();
   });
-  it("B0B Applicant result and result email remain unavailable after evaluation", async () => {
-    expect((await request()).status).toBe(200); expect((await request({}, "ADMIN", ids.app, "POST", "send-email")).status).toBe(409); expect(email).not.toHaveBeenCalled();
+  it("B0B Applicant result and result email remain unavailable before evaluation", async () => { expect((await request({}, "ADMIN", ids.app, "POST", "send-email")).status).toBe(409); expect(email).not.toHaveBeenCalled();
     const token = jwt.sign({ userId: ids.user, role: "APPLICANT" }, secret);
     const response = await fetch(`${base}/result`, { headers: { Authorization: `Bearer ${token}` } });
     expect(response.status).toBe(409); expect(await response.json()).toMatchObject({ error: expect.stringContaining("not yet available") });

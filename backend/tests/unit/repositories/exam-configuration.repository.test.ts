@@ -60,13 +60,13 @@ describe("B1 persisted current document with bounded projection", () => {
     // No raw SQL/transaction/other model exists on this gateway; any such write fails this actual service/repository execution.
   });
 
-  it.each([{ settingType: "STRING", settingValue: "95" }, { settingType: "JSON", settingValue: null }, { settingType: "JSON", settingValue: "broken-json" }, { settingType: "JSON", settingValue: '{"passingThreshold":75}' }])("fails closed on corrupt persistence %#", async row => {
+  it.each([{ settingType: "STRING", settingValue: "95" }, { settingType: "JSON", settingValue: null }, { settingType: "JSON", settingValue: "broken-json" }, { settingType: "JSON", settingValue: '{"passingThreshold":101}' }])("fails closed on corrupt persistence %#", async row => {
     db.systemSetting.findUnique.mockResolvedValue(row);
     await expect(service.getCurrent()).rejects.toMatchObject({ statusCode: 500, message: "Exam configuration could not be read. Contact the system administrator." });
   });
 
   it("rejects invalid writes without replacing the persisted document", async () => {
-    await expect(service.replaceCurrent({ passingThreshold: 75 }, "admin-1")).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.replaceCurrent({ passingThreshold: 101 }, "admin-1")).rejects.toMatchObject({ statusCode: 400 });
     expect(db.systemSetting.upsert).not.toHaveBeenCalled();
   });
 });

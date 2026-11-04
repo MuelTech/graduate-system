@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
+import { ResultBreakdown } from "@/components/exam-content/result-breakdown";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,7 +13,6 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EssayEvaluationPanel } from "@/components/admin/exam/essay-evaluation-panel";
-import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
 import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
   deriveExamState,
@@ -31,8 +32,6 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-
-const MISSING = "—";
 
 /* -------------------------------------------------------------- small parts */
 
@@ -81,29 +80,6 @@ function DataRow({
         {children}
       </dd>
     </div>
-  );
-}
-
-function ScoreValue({
-  value,
-  max,
-}: {
-  value: number | null;
-  max: number | null;
-}) {
-  if (value === null) {
-    return <span className="text-sm text-(--earist-body-text)">{MISSING}</span>;
-  }
-  return (
-    <span className="text-lg font-semibold text-(--earist-primary)">
-      {value}
-      {max !== null ? (
-        <span className="text-sm font-normal text-(--earist-body-text)">
-          {" "}
-          / {max}
-        </span>
-      ) : null}
-    </span>
   );
 }
 
@@ -245,6 +221,7 @@ function AssessmentUnavailable({ state }: { state: string }) {
 export default function ExamRecordDetailPage() {
   const params = useParams();
   const applicationId = params.id as string;
+  const queryClient = useQueryClient();
 
   const recordQuery = useQuery<ExamRecordDetail>({
     queryKey: ["examRecord", applicationId],
@@ -252,12 +229,39 @@ export default function ExamRecordDetailPage() {
     retry: false,
   });
 
+  const emailBusy = useRef(false);
+  const finalizeBusy = useRef(false);
+  const finalizeMutation = useMutation({
+    mutationFn: () =>
+      apiClientRequest(`/exam/scores/${applicationId}/finalize`, {
+        method: "POST",
+        body: "{}",
+      }),
+    onSuccess: () => toast.success("Result finalized."),
+    onError: (error: Error) => toast.error(error.message),
+    onSettled: async () => {
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["examRecord", applicationId],
+          }),
+          queryClient.invalidateQueries({ queryKey: ["examRecords"] }),
+        ]);
+      } finally {
+        finalizeBusy.current = false;
+      }
+    },
+  });
   const emailMutation = useMutation({
     mutationFn: () =>
       apiClientRequest(`/exam/scores/${applicationId}/send-email`, {
         method: "POST",
       }),
-    onSuccess: () => toast.success("Result email queued."),
+    onSuccess: (response: { message: string }) =>
+      toast.success(response.message),
+    onSettled: () => {
+      emailBusy.current = false;
+    },
     onError: (error: Error) =>
       toast.error(error.message || "Failed to queue result email."),
   });
@@ -292,8 +296,6 @@ export default function ExamRecordDetailPage() {
     `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
   const pinnacleId = record.student.pinnacleApplicantId || "No Pinnacle ID";
   const programName = record.program.programName;
-  const essayMax = record.program.examEssayTotal;
-  const mcqMax = record.program.examMcqTotal;
   const schedule = `${formatExamDate(record.slot.examDate)} · ${formatExamTime(
     record.slot.examTime,
   )}`;
@@ -368,50 +370,52 @@ export default function ExamRecordDetailPage() {
             evaluation={record.essayEvaluation}
           />
         ) : isCompleted ? (
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DataRow label="Multiple Choice">
-              <ScoreValue
-                value={record.score?.multipleChoiceScore ?? null}
-                max={mcqMax}
-              />
-              <span className="ml-2 text-xs text-(--earist-body-text)">
-                Auto-graded
-              </span>
-            </DataRow>
-            <DataRow label="Essay">
-              <ScoreValue
-                value={record.score?.essayScore ?? null}
-                max={essayMax}
-              />
-            </DataRow>
-            <DataRow label="Total">
-              <span className="text-lg font-semibold text-(--earist-primary)">
-                {record.score?.totalScore ?? MISSING}
-              </span>
-            </DataRow>
-            <DataRow label="Result">
-              <ExamStateBadge state={state} />
-            </DataRow>
-            <DataRow label="Graded by">
-              {record.score?.gradedBy
-                ? `${record.score.gradedBy.firstName} ${record.score.gradedBy.lastName}`
-                : "Not recorded"}
-            </DataRow>
-          </dl>
+          <div className="space-y-5">
+            {record.result ? (
+              <ResultBreakdown result={record.result} />
+            ) : (
+              <p role="alert">
+                Result evidence requires staff review. Publication is
+                unavailable.
+              </p>
+            )}
+            <EssayEvaluationPanel
+              applicationId={applicationId}
+              evaluation={record.essayEvaluation}
+              finalResult={record.result !== null}
+            />
+          </div>
         ) : (
           <AssessmentUnavailable state={state} />
         )}
       </SectionCard>
 
+      {isTaken && record.essayEvaluation?.status === "COMPLETED" ? (
+        <Button
+          disabled={finalizeMutation.isPending}
+          onClick={() => {
+            if (finalizeBusy.current) return;
+            finalizeBusy.current = true;
+            finalizeMutation.mutate();
+          }}
+        >
+          {finalizeMutation.isPending ? "Finalizing…" : "Finalize Result"}
+        </Button>
+      ) : null}
+
       {/* Result Notification */}
-      {isCompleted ? (
+      {isCompleted && record.resultEmailEligible ? (
         <SectionCard
           title="Result Notification"
           description="Queue the official result email to the applicant."
           action={
             <Button
               variant="outline"
-              onClick={() => emailMutation.mutate()}
+              onClick={() => {
+                if (emailBusy.current) return;
+                emailBusy.current = true;
+                emailMutation.mutate();
+              }}
               disabled={emailMutation.isPending}
             >
               <Send className="mr-2 h-4 w-4" aria-hidden="true" />

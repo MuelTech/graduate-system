@@ -2,13 +2,19 @@ export interface ExamConfiguration {
   examDurationMinutes: number | null;
   mcqPointsPerCorrectItem: number | null;
   essayMaximumScore: number | null;
-  passingThreshold: null;
-  passingThresholdUnit: null;
+  passingThreshold: number | null;
+  passingThresholdUnit: "PERCENT";
   timezone: "Asia/Manila";
-  isComplete: false;
+  isComplete: boolean;
 }
 
 export const CONFIGURATION_FIELDS = [
+  {
+    key: "passingThreshold",
+    label: "Passing Threshold",
+    unit: "%",
+    integer: false,
+  },
   {
     key: "examDurationMinutes",
     label: "Exam Duration",
@@ -38,6 +44,7 @@ export function configurationDraft(
   config: ExamConfiguration,
 ): ConfigurationDraft {
   return {
+    passingThreshold: config.passingThreshold?.toString() ?? "",
     examDurationMinutes: config.examDurationMinutes?.toString() ?? "",
     mcqPointsPerCorrectItem: config.mcqPointsPerCorrectItem?.toString() ?? "",
     essayMaximumScore: config.essayMaximumScore?.toString() ?? "",
@@ -58,14 +65,17 @@ export function configurationPayload(draft: ConfigurationDraft) {
       !Number.isFinite(value) ||
       value <= 0 ||
       value > Number.MAX_SAFE_INTEGER ||
+      (field.key === "passingThreshold" && value > 100) ||
       (field.integer &&
         (!Number.isSafeInteger(value) || !Number.isSafeInteger(value * 60_000)))
     ) {
       throw new Error(
-        `${field.label} must be a positive ${field.integer ? "whole number of minutes" : "number of points"} within safe arithmetic limits, or left blank.`,
+        field.key === "passingThreshold"
+          ? "Passing Threshold must be greater than 0 and at most 100 percent, or left blank."
+          : `${field.label} must be a positive ${field.integer ? "whole number of minutes" : "number of points"} within safe arithmetic limits, or left blank.`,
       );
     }
     values[field.key] = value;
   }
-  return { ...values, passingThreshold: null };
+  return values;
 }

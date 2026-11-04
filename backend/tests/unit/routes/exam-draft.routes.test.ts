@@ -19,7 +19,7 @@ beforeAll(async () => {
 afterAll(() => { server.closeAllConnections(); server.close(); vi.unstubAllEnvs(); });
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubEnv("JWT_SECRET", secret); app = executionApplication(); saved = null; revision = executionRevision();
-  app.actualStartedAt = new Date(); app.deadlineAt = new Date(app.actualStartedAt.getTime() + 120 * 60_000); app.executionConfiguration = { ...configuration, timezone: "Asia/Manila", passingThresholdUnit: null }; app.contentRevisionId = ids.revision;
+  app.actualStartedAt = new Date(); app.deadlineAt = new Date(app.actualStartedAt.getTime() + 120 * 60_000); app.executionConfiguration = { ...configuration, timezone: "Asia/Manila", passingThresholdUnit: "PERCENT" }; app.contentRevisionId = ids.revision;
   db.$transaction.mockImplementation(fn => fn(db)); db.$queryRaw.mockResolvedValue([{ status: "PENDING" }]);
   db.entranceExamApplication.findUnique.mockImplementation(async () => app); db.examContentRevision.findUnique.mockImplementation(async () => revision);
   db.applicantAnswer.findUnique.mockImplementation(async () => saved);

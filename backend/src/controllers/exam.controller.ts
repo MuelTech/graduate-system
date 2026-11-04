@@ -228,6 +228,7 @@ export class ExamController {
     req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const userId = req.user?.userId;
 
@@ -261,7 +262,18 @@ export class ExamController {
     }
   }
 
+    finalizeResult = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
+    try {
+      if (req.body != null && (typeof req.body !== "object" || Array.isArray(req.body) || Object.keys(req.body).length !== 0)) throw new AppError("Finalize Result accepts no scoring values.", 400);
+      res.status(200).json(await this.examService.finalizeResult(req.params.id as string, req.user!.userId));
+    } catch (error: unknown) {
+      res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not finalize the result." });
+    }
+  };
+
     confirmResultAndEmail = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const applicationId = req.params.id as string;
       const result = await this.examService.confirmResultAndEmail(applicationId);

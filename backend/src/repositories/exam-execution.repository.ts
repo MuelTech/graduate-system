@@ -40,7 +40,10 @@ export function binding(app: Pick<Application, "actualStartedAt" | "deadlineAt" 
   const snapshot = app.executionConfiguration as Record<string, unknown>;
   const { timezone, passingThresholdUnit, ...values } = snapshot;
   const config = validateExamConfiguration(values);
-  if (timezone !== "Asia/Manila" || passingThresholdUnit !== null || !config.examDurationMinutes ||
+  // Historical B4 attempts may retain the original null threshold/unit pair.
+  // Timing, drafts, receipts and B7 reads must keep working for those records.
+  if (timezone !== "Asia/Manila" ||
+      !(passingThresholdUnit === "PERCENT" || (passingThresholdUnit === null && config.passingThreshold === null)) || !config.examDurationMinutes ||
       app.deadlineAt.getTime() !== app.actualStartedAt.getTime() + config.examDurationMinutes * 60_000) {
     throw new AppError("Examination timing authority is invalid. Contact Graduate School staff.", 409);
   }
@@ -171,6 +174,7 @@ export class ExamExecutionRepository {
       requireNewStart(app, new Date());
       requireConsistentCapacity(app.slot, await tx.entranceExamApplication.count({ where: { slotId: app.slotId } }));
       const config = await new ExamConfigurationRepository().getCurrent(tx);
+      if (!examConfigurationDto(config).isComplete) throw new AppError("Complete Exam Configuration, including the passing percentage, before starting.", 409);
       if (!config.examDurationMinutes) throw new AppError("Configure a valid examination duration before starting.", 409);
       const revision = await tx.examContentRevision.findFirst({ orderBy: [{ publishedAt: "desc" }, { id: "desc" }], select: { id: true } });
       if (!revision) throw new AppError("Publish a valid Question Set before starting.", 409);

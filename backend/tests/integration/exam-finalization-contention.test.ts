@@ -26,7 +26,7 @@ describe.skipIf(process.env.EXAM_B6_DB_TEST !== "1")("B6 real MariaDB execution/
   const migration = "20261104000000_exam_finalization_authority";
   const ids = Object.fromEntries(["user", "admin", "student", "program", "slot", "app", "clean", "legacy", "completed", "q", "essay", "revision", "preRevision", "media"].map(key => [key, randomUUID()]));
   const repo = new ExamExecutionRepository(), answers = new ExamEngineRepository();
-  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: null, passingThreshold: null };
+  const config = { examDurationMinutes: 120, mcqPointsPerCorrectItem: 2, essayMaximumScore: 25, passingThreshold: 75 };
   const tables = ["exam_questions", "exam_options", "exam_media", "exam_content_imports", "applicant_answers", "exam_slots", "entrance_exam_applications", "exam_content_revisions", "exam_revision_questions", "exam_revision_options", "exam_revision_media", "exam_question_selection", "entrance_exam_scores", "system_settings"];
   let source: Connection, admin: Connection, observer: PrismaClient, workers: PrismaClient[] = [];
   let original: string, before: string, created = false, folder: string, prismaConfig: string, url: URL;
@@ -66,7 +66,7 @@ describe.skipIf(process.env.EXAM_B6_DB_TEST !== "1")("B6 real MariaDB execution/
     await admin.execute("INSERT INTO exam_content_revisions (id,published_by_id) VALUES (?,?)", [ids.preRevision, ids.admin]);
     const preContent = { ...setQuestion(ids.essay), type: "ESSAY", options: [] };
     await admin.execute("INSERT INTO exam_revision_questions (revision_id,question_id,position,content) VALUES (?,?,0,?)", [ids.preRevision, ids.essay, JSON.stringify(preContent)]);
-    await admin.execute("UPDATE entrance_exam_applications SET actual_started_at=NOW(3), deadline_at=DATE_ADD(NOW(3), INTERVAL 120 MINUTE), execution_configuration=?, content_revision_id=? WHERE application_id=?", [JSON.stringify({ ...config, timezone: "Asia/Manila", passingThresholdUnit: null }), ids.preRevision, ids.app]);
+    await admin.execute("UPDATE entrance_exam_applications SET actual_started_at=NOW(3), deadline_at=DATE_ADD(NOW(3), INTERVAL 120 MINUTE), execution_configuration=?, content_revision_id=? WHERE application_id=?", [JSON.stringify({ ...config, passingThreshold: null, timezone: "Asia/Manila", passingThresholdUnit: null }), ids.preRevision, ids.app]);
     await admin.execute("INSERT INTO entrance_exam_scores (score_id,application_id,status,multiple_choice_score) VALUES (?,?,'PENDING',0)", [randomUUID(), ids.completed]);
     // Snapshot every preexisting column, including legacy answer and terminal record.
     before = await snapshot(admin);

@@ -801,6 +801,8 @@ export type EssayEvaluation = {
 } | { status: "STAFF_REVIEW" | "LEGACY" | "UNAVAILABLE"; reason: string };
 
 export interface ExamRecordDetail {
+  result: import("@/components/exam-content/result-breakdown").ExamResult | null;
+  resultEmailEligible: boolean;
   essayEvaluation: EssayEvaluation;
   id: string;
   status: string;

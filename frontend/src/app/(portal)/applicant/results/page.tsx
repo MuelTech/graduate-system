@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import {
+  ResultBreakdown,
+  type ExamResult,
+} from "@/components/exam-content/result-breakdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -12,10 +16,9 @@ import {
   ExternalLink,
   ArrowRight,
   ArrowLeft,
-  FileText,
   Upload,
   ClipboardList,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 
@@ -25,9 +28,10 @@ export default function ApplicantResultsPage() {
     data: result,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<ExamResult & { examDate: string }>({
     queryKey: ["examResult", session?.user?.id || session?.user?.email], // Ensures cache isolation
-    queryFn: async () => apiClientRequest("/exam/result", { method: "GET" }),
+    queryFn: async () =>
+      apiClientRequest("/exam/result", { method: "GET", cache: "no-store" }),
   });
 
   if (isLoading) {
@@ -37,12 +41,16 @@ export default function ApplicantResultsPage() {
       </div>
     );
   }
-  const isFinalResult = result?.status === "passed" || result?.status === "failed";
+  const isFinalResult =
+    result?.status === "passed" || result?.status === "failed";
   if (error || !isFinalResult) {
-    const isExpectedEmptyState = !error ||
-      (error instanceof ApiError && (error.statusCode === 404 || error.statusCode === 409));
+    const isExpectedEmptyState =
+      !error ||
+      (error instanceof ApiError &&
+        (error.statusCode === 404 || error.statusCode === 409));
     const errorMsg = isExpectedEmptyState
-      ? error?.message || "Your examination result is not yet available. It may still be awaiting evaluation."
+      ? error?.message ||
+        "Your examination result is not yet available. It may still be awaiting evaluation."
       : "We could not load your examination results. Please try again later.";
 
     return (
@@ -92,12 +100,6 @@ export default function ApplicantResultsPage() {
       </div>
     );
   }
-  // We safe-guard division by zero if totalPossible is 0
-  const percentage =
-    result.totalPossible > 0
-      ? Math.round((result.totalScore / result.totalPossible) * 100)
-      : 0;
-
   const formattedDate = new Date(result.examDate).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -159,113 +161,7 @@ export default function ApplicantResultsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {/* MCQ Score */}
-            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-gray) p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded bg-blue-50">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-(--earist-primary)">
-                    MCQ Score
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Multiple Choice Questions
-                  </p>
-                </div>
-              </div>
-              <p className="text-lg font-bold text-(--earist-primary)">
-                {result.mcqScore}
-                <span className="text-sm font-normal text-(--earist-body-text)">
-                  {" "}
-                  / {result.mcqTotal}
-                </span>
-              </p>
-            </div>
-
-            {/* Essay Score */}
-            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-gray) p-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded bg-purple-50">
-                  <FileText className="h-4 w-4 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-(--earist-primary)">
-                    Essay Score
-                  </p>
-                  <p className="text-xs text-(--earist-body-text)">
-                    Program Chair Evaluation
-                  </p>
-                </div>
-              </div>
-              <p className="text-lg font-bold text-(--earist-primary)">
-                {result.essayScore}
-                <span className="text-sm font-normal text-(--earist-body-text)">
-                  {" "}
-                  / {result.essayTotal}
-                </span>
-              </p>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-(--earist-border-gray)" />
-
-            {/* Total Score */}
-            <div className="flex items-center justify-between rounded-lg bg-(--earist-surface-light-red) p-3">
-              <div>
-                <p className="text-sm font-semibold text-(--earist-primary)">
-                  Total Score
-                </p>
-                <p className="text-xs text-(--earist-body-text)">
-                  Passing Score: {result.passingScore} / {result.totalPossible}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-(--earist-primary)">
-                  {result.totalScore}
-                  <span className="text-base font-normal text-(--earist-body-text)">
-                    {" "}
-                    / {result.totalPossible}
-                  </span>
-                </p>
-                <p className="text-xs font-medium text-(--earist-body-text)">
-                  {percentage}%
-                </p>
-              </div>
-            </div>
-
-            {/* Score Bar */}
-            <div>
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="text-(--earist-body-text)">Your Score</span>
-                <span className="font-medium text-(--earist-primary)">
-                  {percentage}%
-                </span>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-(--earist-border-gray)">
-                <div
-                  className={`h-full rounded-full ${
-                    result.status === "passed" ? "bg-green-500" : "bg-red-500"
-                  }`}
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-              <div className="mt-1 flex items-center justify-between text-[11px] text-(--earist-body-text)">
-                <span>0</span>
-                {result.totalPossible > 0 && (
-                  <span>
-                    Passing:{" "}
-                    {Math.round(
-                      (result.passingScore / result.totalPossible) * 100,
-                    )}
-                    %
-                  </span>
-                )}
-                <span>100%</span>
-              </div>
-            </div>
-          </div>
+          <ResultBreakdown result={result!} />
         </CardContent>
       </Card>
 

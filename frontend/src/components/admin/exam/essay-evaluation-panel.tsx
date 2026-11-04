@@ -8,20 +8,23 @@ import { Input } from "@/components/ui/input";
 import { SemanticText } from "@/components/exam-content/semantic-text";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import type { EssayEvaluation, ExamRecordDetail } from "@/types";
+import type { ExamResult } from "@/components/exam-content/result-breakdown";
 import { toast } from "sonner";
 
 export function EssayEvaluationPanel({
   applicationId,
   evaluation,
+  finalResult = false,
 }: {
   applicationId: string;
   evaluation: EssayEvaluation;
+  finalResult?: boolean;
 }) {
   const [score, setScore] = useState("");
   const saving = useRef(false);
   const client = useQueryClient();
   const mutation = useMutation({
-    mutationFn: async (): Promise<EssayEvaluation> =>
+    mutationFn: async (): Promise<EssayEvaluation & { result: ExamResult }> =>
       apiClientRequest(`/exam/scores/${applicationId}/grade`, {
         method: "POST",
         body: JSON.stringify({ essayScore: Number(score) }),
@@ -30,10 +33,27 @@ export function EssayEvaluationPanel({
       client.setQueryData<ExamRecordDetail>(
         ["examRecord", applicationId],
         (current) =>
-          current ? { ...current, essayEvaluation: saved } : current,
+          current
+            ? {
+                ...current,
+                essayEvaluation: saved,
+                result: saved.result,
+                status: saved.result.status.toUpperCase(),
+                resultEmailEligible: true,
+                score: current.score
+                  ? {
+                      ...current.score,
+                      status: saved.result.status.toUpperCase(),
+                      multipleChoiceScore: Number(saved.result.mcqScore),
+                      essayScore: Number(saved.result.essayScore),
+                      totalScore: Number(saved.result.totalScore),
+                    }
+                  : null,
+              }
+            : current,
       );
       setScore("");
-      toast.success("Essay evaluation saved. Final result pending.");
+      toast.success("Essay evaluation saved and result computed.");
     },
     onError: (error: Error) =>
       toast.error(error.message || "Could not save the essay evaluation."),
@@ -116,7 +136,9 @@ export function EssayEvaluationPanel({
       {evaluation.status === "COMPLETED" ? (
         <div className="space-y-2" role="status">
           <p className="font-semibold text-(--earist-primary)">
-            Essay Evaluated — Final Result Pending
+            {finalResult
+              ? "Essay Evaluated"
+              : "Essay Evaluated — Final Result Pending"}
           </p>
           <p>
             Essay Score: {evaluation.essayScore} / {maximum}

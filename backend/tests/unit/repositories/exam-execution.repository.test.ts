@@ -34,7 +34,7 @@ describe("B4 exact server-owned execution", () => {
   it("starts normally after schedule, records actual server instant and full configured duration", async () => {
     const result = await repo.start(ids.user, ids.app);
     expect(result).toMatchObject({ state: "ACTIVE", actualStartedAt: "2026-11-03T02:17:00.000Z", deadlineAt: "2026-11-03T04:17:00.000Z", remainingSeconds: 7200, contentRevisionId: ids.revision });
-    expect(app.executionConfiguration).toEqual({ ...configuration, timezone: "Asia/Manila", passingThresholdUnit: null });
+    expect(app.executionConfiguration).toEqual({ ...configuration, timezone: "Asia/Manila", passingThresholdUnit: "PERCENT" });
     expect(db.$transaction.mock.calls[0][1]).toEqual({ isolationLevel: "ReadCommitted" });
     expect(db.$queryRaw.mock.calls.map(call => String(call[0]))).toEqual([expect.stringContaining("FROM students"), expect.stringContaining("FROM exam_slots"), expect.stringContaining("FROM entrance_exam_applications")]);
   });

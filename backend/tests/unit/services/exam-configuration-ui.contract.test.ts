@@ -22,7 +22,7 @@ const close = vi.fn();
 let pending = false;
 class ApiError extends Error { constructor(message: string, public statusCode: number) { super(message); } }
 const tag = (name: string) => ({ children, showCloseButton: _show, onOpenChange: _change, ...props }: any) => createElement(name, props, children);
-const values: helpers.ExamConfiguration = { examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null, passingThreshold: null, passingThresholdUnit: null, timezone: "Asia/Manila", isComplete: false };
+const values: helpers.ExamConfiguration = { examDurationMinutes: null, mcqPointsPerCorrectItem: null, essayMaximumScore: null, passingThreshold: null, passingThresholdUnit: "PERCENT", timezone: "Asia/Manila", isComplete: false };
 const code = ts.transpileModule(readFileSync(path.resolve("../frontend/src/components/exam-content/exam-configuration-dialog.tsx"), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
@@ -69,14 +69,25 @@ beforeEach(() => {
 });
 
 describe("B1 Admin draft values and state contract", () => {
+  it.each(["0","-1","100.01","NaN","Infinity","abc"])("invalid percentage %s is rejected before a save", value => {
+    expect(() => helpers.configurationPayload({ ...helpers.configurationDraft(values), passingThreshold: value })).toThrow();
+  });
+  it("restores a fractional threshold and reports complete persisted readback", async () => {
+    const configuration = { ...values, examDurationMinutes: 60, mcqPointsPerCorrectItem: 0.125, essayMaximumScore: 12.5, passingThreshold: 62.5, isComplete: true };
+    query.mockReturnValue({ data: configuration }); mutate.mockResolvedValue(configuration);
+    const element = form(); expect(state[1].passingThreshold).toBe("62.5");
+    await element.props.onSubmit({ preventDefault: vi.fn() });
+    expect(html()).toContain("Complete configuration saved.");
+    expect(helpers.configurationPayload(helpers.configurationDraft(configuration)).passingThreshold).toBe(62.5);
+  });
   it("leaves missing values blank and passes explicit nulls without legacy defaults", () => {
     const draft = helpers.configurationDraft(values);
-    expect(Object.values(draft)).toEqual(["", "", ""]);
+    expect(Object.values(draft)).toEqual(["", "", "", ""]);
     expect(helpers.configurationPayload(draft)).toEqual(validateExamConfiguration({ passingThreshold: null }));
   });
 
   it("preserves entered finite values through the server validator", () => {
-    const payload = helpers.configurationPayload({ examDurationMinutes: "95", mcqPointsPerCorrectItem: "2.5", essayMaximumScore: "42" });
+    const payload = helpers.configurationPayload({ examDurationMinutes: "95", mcqPointsPerCorrectItem: "2.5", essayMaximumScore: "42", passingThreshold: "75" });
     expect(validateExamConfiguration(payload)).toEqual(payload);
   });
 
@@ -87,21 +98,22 @@ describe("B1 Admin draft values and state contract", () => {
   it("renders loading without editable fields or fake values", () => {
     query.mockReturnValue({ isLoading: true });
     expect(html()).toContain("Loading exam configuration");
-    expect(html()).not.toContain("Save draft");
+    expect(html()).not.toContain("Save configuration");
   });
 
   it("renders load failure with executable Retry and no save action", async () => {
     const retry = vi.fn(); query.mockReturnValue({ isLoading: false, isError: true, refetch: retry });
     expect(html()).toContain("Could not load exam configuration");
-    expect(html()).not.toContain("Save draft");
+    expect(html()).not.toContain("Save configuration");
     await walk(tree(), node => node.props?.onClick)[0].props.onClick();
     expect(retry).toHaveBeenCalledOnce();
   });
 
   it("shows explicit draft context, disabled threshold and fixed read-only timezone", () => {
     const rendered = html();
-    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Asia/Manila", "system-defined, read-only", "policy confirmation", "Scoring settings remain draft", "Duration applies to new examination starts"]) expect(rendered).toContain(text);
-    expect(rendered).toMatch(/id="configuration-threshold"[^>]*disabled/);
+    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Asia/Manila", "system-defined, read-only", "All four values are required", "Passing Threshold is a percentage"]) expect(rendered).toContain(text);
+    expect(rendered).toMatch(/id="configuration-passingThreshold"/);
+    expect(rendered).not.toMatch(/id="configuration-passingThreshold"[^>]*disabled/);
     expect(rendered).not.toMatch(/value="(?:180|30|75|1)"|<select|settingKey|entrance_exam_configuration/);
   });
 
@@ -114,7 +126,7 @@ describe("B1 Admin draft values and state contract", () => {
   });
 
   it("prevents duplicate saves, blocks close while pending and reconciles persisted readback", async () => {
-    form(); state[1] = { examDurationMinutes: "95", mcqPointsPerCorrectItem: "2.5", essayMaximumScore: "42" };
+    form(); state[1] = { examDurationMinutes: "95", mcqPointsPerCorrectItem: "2.5", essayMaximumScore: "42", passingThreshold: "75" };
     const saved = { ...values, examDurationMinutes: 96, mcqPointsPerCorrectItem: 2.5, essayMaximumScore: 42 };
     const wait = deferred(); mutate.mockReturnValue(wait.promise);
     const element = form();
@@ -128,7 +140,7 @@ describe("B1 Admin draft values and state contract", () => {
     wait.resolve(saved); await first; pending = false;
     expect(state[1]).toEqual(helpers.configurationDraft(saved));
     expect(setQueryData).toHaveBeenCalledWith(["adminExamConfiguration"], saved);
-    expect(html()).toContain("Draft configuration saved.");
+    expect(html()).toContain("Incomplete configuration saved.");
     tree().props.onOpenChange(false); expect(close).toHaveBeenCalledOnce();
   });
 

@@ -64,7 +64,7 @@ describe("ExamRepository.getApplicationDetail bounded read model", () => {
     });
   });
 
-  it("exposes configured program maximums and the schedule slot", async () => {
+  it("exposes program identity and schedule without mutable score maximums", async () => {
     const repo = new ExamRepository();
 
     await repo.getApplicationDetail("app-9");
@@ -74,8 +74,6 @@ describe("ExamRepository.getApplicationDetail bounded read model", () => {
     expect(select.program.select).toEqual({
       id: true,
       programName: true,
-      examMcqTotal: true,
-      examEssayTotal: true,
     });
     expect(select.slot.select).toEqual({
       id: true,

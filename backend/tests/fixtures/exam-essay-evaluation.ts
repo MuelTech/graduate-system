@@ -5,10 +5,10 @@ export function evaluationApplication(): any {
   const started = new Date("2026-11-01T01:00:00Z");
   return { ...executionApplication(), status: "TAKEN", actualStartedAt: started,
     deadlineAt: new Date(started.getTime() + 120 * 60_000), contentRevisionId: executionIds.revision,
-    executionConfiguration: { ...configuration, essayMaximumScore: 25.5, timezone: "Asia/Manila", passingThresholdUnit: null },
+    executionConfiguration: { ...configuration, essayMaximumScore: 25.5, timezone: "Asia/Manila", passingThresholdUnit: "PERCENT" },
     finalizedAt: new Date("2026-11-01T02:00:00Z"), finalizationReason: "APPLICANT_SUBMITTED",
     finalizationReceiptId: executionIds.app, finalizationAnsweredCount: 1, finalizationQuestionCount: 2,
-    score: { multipleChoiceScore: 0, essayScore: null, totalScore: null, status: "PENDING", gradedById: null, gradedBy: null, essayEvaluatedAt: null },
+    score: { multipleChoiceScore: 0, essayScore: null, totalScore: null, status: "PENDING", gradedById: null, gradedBy: null, essayEvaluatedAt: null, scoredAt: null, scoringBasis: null, resultEmailQueuedAt: null, resultEmailTemplateKey: null },
     answers: [],
   };
 }
