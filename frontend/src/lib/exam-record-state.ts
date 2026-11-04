@@ -9,6 +9,7 @@
 export type ExamStateKey =
   | "SCHEDULED"
   | "NEEDS_GRADING"
+  | "FINAL_RESULT_PENDING"
   | "PASSED"
   | "FAILED"
   | "APPEAL_PENDING"
@@ -17,13 +18,13 @@ export type ExamStateKey =
 
 export type ExamStateFilter = "ALL" | Exclude<ExamStateKey, "UNKNOWN">;
 
-export function deriveExamState(status: string): ExamStateKey {
+export function deriveExamState(status: string, essayEvaluationCompleted = false): ExamStateKey {
   switch (status) {
     case "PENDING":
     case "APPROVED":
       return "SCHEDULED";
     case "TAKEN":
-      return "NEEDS_GRADING";
+      return essayEvaluationCompleted ? "FINAL_RESULT_PENDING" : "NEEDS_GRADING";
     case "PASSED":
       return "PASSED";
     case "FAILED":
@@ -40,6 +41,7 @@ export function deriveExamState(status: string): ExamStateKey {
 export const EXAM_STATE_LABEL: Record<ExamStateKey, string> = {
   SCHEDULED: "Scheduled",
   NEEDS_GRADING: "Needs Essay Grading",
+  FINAL_RESULT_PENDING: "Essay Evaluated — Final Result Pending",
   PASSED: "Passed",
   FAILED: "Failed",
   APPEAL_PENDING: "Appeal Pending",
@@ -51,6 +53,7 @@ export const EXAM_STATE_LABEL: Record<ExamStateKey, string> = {
 export const EXAM_STATE_BADGE_CLASS: Record<ExamStateKey, string> = {
   SCHEDULED: "text-(--earist-secondary)",
   NEEDS_GRADING: "text-(--earist-warning)",
+  FINAL_RESULT_PENDING: "text-(--earist-secondary)",
   PASSED: "text-(--earist-success)",
   FAILED: "text-destructive",
   APPEAL_PENDING: "text-(--earist-warning)",
@@ -60,6 +63,7 @@ export const EXAM_STATE_BADGE_CLASS: Record<ExamStateKey, string> = {
 
 export const EXAM_STATE_DESCRIPTION: Record<ExamStateKey, string> = {
   SCHEDULED: "The applicant is scheduled to take the entrance examination.",
+  FINAL_RESULT_PENDING: "The essay evaluation is recorded. The final examination result is pending.",
   NEEDS_GRADING:
     "The examination has been submitted. The essay response requires Admin grading.",
   PASSED:
@@ -77,6 +81,7 @@ export const EXAM_STATE_FILTERS: { value: ExamStateFilter; label: string }[] = [
   { value: "ALL", label: "All States" },
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "NEEDS_GRADING", label: "Needs Essay Grading" },
+  { value: "FINAL_RESULT_PENDING", label: "Final Result Pending" },
   { value: "PASSED", label: "Passed" },
   { value: "FAILED", label: "Failed" },
   { value: "APPEAL_PENDING", label: "Appeal Pending" },

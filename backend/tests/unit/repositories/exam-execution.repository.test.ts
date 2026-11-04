@@ -17,12 +17,20 @@ beforeEach(() => {
   db.entranceExamApplication.update.mockImplementation(async ({ data }) => { Object.assign(app, data); return app; });
   db.entranceExamApplication.count.mockResolvedValue(1); db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true });
   db.systemSetting.findUnique.mockResolvedValue({ settingType: "JSON", settingValue: JSON.stringify(configuration) });
-  db.examContentRevision.findFirst.mockResolvedValue({ id: ids.revision }); db.examContentRevision.findUnique.mockResolvedValue(executionRevision());
+  db.examContentRevision.findFirst.mockResolvedValue({ id: ids.revision }); db.examContentRevision.findUnique.mockResolvedValue(executionRevision(ids.revision, true));
   db.student.findUnique.mockResolvedValue({ id: ids.student }); db.entranceExamApplication.findMany.mockResolvedValue([{ id: ids.app }]);
 });
 afterEach(() => vi.useRealTimers());
 
 describe("B4 exact server-owned execution", () => {
+  it.each([0, 2])("B7 independently rejects a historical latest revision with %s essays before new start authority", async count => {
+    const revision = executionRevision(ids.revision, true);
+    if (count === 0) revision.questions.pop();
+    else revision.questions.push({ ...revision.questions[1], questionId: ids.admin, position: 2, content: { ...revision.questions[1].content, id: ids.admin } });
+    db.examContentRevision.findUnique.mockResolvedValue(revision);
+    await expect(repo.start(ids.user, ids.app)).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining("exactly one essay") });
+    expect(db.entranceExamApplication.update).not.toHaveBeenCalled(); expect(app.actualStartedAt).toBeNull();
+  });
   it("starts normally after schedule, records actual server instant and full configured duration", async () => {
     const result = await repo.start(ids.user, ids.app);
     expect(result).toMatchObject({ state: "ACTIVE", actualStartedAt: "2026-11-03T02:17:00.000Z", deadlineAt: "2026-11-03T04:17:00.000Z", remainingSeconds: 7200, contentRevisionId: ids.revision });
@@ -77,8 +85,8 @@ describe("B4 exact server-owned execution", () => {
   it("rejects absent configuration, missing publication and invalid/empty published content", async () => {
     db.systemSetting.findUnique.mockResolvedValueOnce(null); await expect(repo.start(ids.user, ids.app)).rejects.toMatchObject({ statusCode: 409 });
     db.examContentRevision.findFirst.mockResolvedValueOnce(null); await expect(repo.start(ids.user, ids.app)).rejects.toMatchObject({ statusCode: 409 });
-    db.examContentRevision.findUnique.mockResolvedValueOnce({ ...executionRevision(), questions: [] }); await expect(repo.start(ids.user, ids.app)).rejects.toMatchObject({ statusCode: 409 });
-    db.examContentRevision.findUnique.mockResolvedValueOnce({ ...executionRevision(), questions: [{ questionId: qid, content: { bad: true } }] }); await expect(repo.start(ids.user, ids.app)).rejects.toThrow();
+    db.examContentRevision.findUnique.mockResolvedValueOnce({ ...executionRevision(ids.revision, true), questions: [] }); await expect(repo.start(ids.user, ids.app)).rejects.toMatchObject({ statusCode: 409 });
+    db.examContentRevision.findUnique.mockResolvedValueOnce({ ...executionRevision(ids.revision, true), questions: [{ questionId: qid, content: { bad: true } }] }); await expect(repo.start(ids.user, ids.app)).rejects.toThrow();
     expect(app.actualStartedAt).toBeNull();
   });
   it.each(["program", "alignment", "role", "inactive", "admission", "pinnacle", "slot", "copy", "counter", "capacity"])("retains the %s guard", async guard => {

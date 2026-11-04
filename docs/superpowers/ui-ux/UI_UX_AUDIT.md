@@ -954,6 +954,17 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 - Existing B5 Saved/error/conflict controls and B4 monotonic countdown remain. Controlled React/component/handler, HTTP, queue and real-database checks are automated evidence only.
 - **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. The gate includes complete/incomplete submit, near-deadline contention, browser closure/disconnect, reopen after timeout, restart catch-up, lost response/retry, receipt recovery and attempted later edits. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B6 review is complete; B7/B8 scoring/evaluation and B9 no-show/amendments remain outside this package and require separate authorization.
 
+### B7 implementation checkpoint — immutable essay evaluation on the existing Exam Record
+
+**2026-11-05: IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING.** [B7 evidence](../reports/2026-11-04-exam-b7-essay-evaluation.md). This is not B7 acceptance, an additional Approved Reference Implementation, or production acceptance.
+
+- Existing Admin → Entrance Exam Records → individual Exam Record owns review and **Save Essay Evaluation**. B4 Start Authorization, Breadcrumb/PageHeader and record layout remain intact. No destination, grading queue or Score Management page is added.
+- Valid B6-finalized TAKEN records render the exact frozen essay question with accepted semantic text/stimulus renderers, the exact finalized response and captured essay maximum. Missing/empty/whitespace response visibly says **No response submitted.** No grade is assigned automatically; zero and valid decimals require explicit entry.
+- Invalid/legacy/partial authority has no grading control and gives a bounded unavailable/staff-review message. Mutable Program totals and live Question Bank text cannot authorize grading.
+- Successful evaluation immediately replaces editing with read-only score/max, evaluator and actual evaluation time. **Essay Evaluated — Final Result Pending** replaces the stale needs-grading wording on detail and list through presentation-only projection. No persisted status is added; TAKEN/PENDING remain. No final result or result-email action is enabled.
+- The transaction rejects another Admin or a repeated request after the first evaluation. UI has synchronous duplicate-click/pending protection and refreshes exact record/list authority after settlement, including conflict or a lost response. Controlled React/handler tests and static rendering are automated evidence only.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate.** The owner gate includes finalized essay display, missing/blank response, valid grade/zero/max bounds, refresh, repeated/second-Admin grading, frozen prompt after bank edits, captured maximum after configuration/Program edits and the still-pending final result. Hosted CI is separate; no hosted PASS claimed. B8/B9/B10 remain unauthorized.
+
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 
 - Manually accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316`; initial detail/read model `ecb35b3`, accepted dead-space balance fix `d80b95c`.

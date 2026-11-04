@@ -5,6 +5,20 @@
  * the Admin detail page. It never includes correct-answer/option data.
  */
 
+import type { ApplicantExamQuestion } from "./exam-content.interfaces";
+
+export type EssayEvaluation = {
+  status: "PENDING" | "COMPLETED";
+  questionId: string;
+  question: ApplicantExamQuestion;
+  responseText: string | null;
+  responseState: "SUBMITTED" | "BLANK" | "MISSING";
+  maximumScore: number;
+  essayScore: number | null;
+  evaluator: { id: string; firstName: string; lastName: string } | null;
+  evaluatedAt: string | null;
+} | { status: "STAFF_REVIEW" | "LEGACY" | "UNAVAILABLE"; reason: string };
+
 export interface ExamRecordEssayAnswer {
   questionId: string;
   questionText: string;
@@ -36,4 +50,5 @@ export interface ExamRecordDetail {
     gradedBy: { id: string; firstName: string; lastName: string } | null;
   } | null;
   essayAnswers: ExamRecordEssayAnswer[];
+  essayEvaluation: EssayEvaluation;
 }

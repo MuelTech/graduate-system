@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { qid, otherId, mediaId, setQuestion } from "../../fixtures/exam-question-set";
+import { qid, otherId, mediaId, setQuestion, setEssay, essayId } from "../../fixtures/exam-question-set";
 import { selectionIds } from "../../../src/services/exam-question-set.rules";
 import { applicantQuestionSelect } from "../../../src/repositories/exam-content.projection";
 const db = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ import { ExamEngineRepository } from "../../../src/repositories/exam-engine.repo
 const repo = new ExamQuestionSetRepository();
 let bank: any[]; let membership: string[]; let revisions: any[];
 beforeEach(() => {
-  vi.resetAllMocks(); bank = [setQuestion(qid), setQuestion(otherId, 3)]; membership = []; revisions = [];
+  vi.resetAllMocks(); bank = [setQuestion(qid), setQuestion(otherId, 3), setEssay()]; membership = []; revisions = [];
   db.$transaction.mockImplementation(fn => fn(db));
   db.examQuestion.findMany.mockImplementation(({ where }) => bank.filter(q => where?.id ? where.id.in.includes(q.id) : membership.includes(q.id)).slice().sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)));
   db.examQuestionSelection.findMany.mockImplementation(() => membership.map(questionId => ({ questionId })));
@@ -33,6 +33,19 @@ beforeEach(() => {
 });
 
 describe("B2 explicit selection, publication and exact binding", () => {
+  it("B7 permits draft editing but rejects zero/two essays before creating a revision", async () => {
+    await repo.replaceSelection({ questionIds: [qid] });
+    await expect(repo.publish({ questionIds: [qid] }, "admin")).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining("exactly one essay") });
+    bank[0] = setEssay(qid); await repo.replaceSelection({ questionIds: [qid, essayId] });
+    await expect(repo.publish({ questionIds: [qid, essayId] }, "admin")).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.examContentRevision.create).not.toHaveBeenCalled();
+    await repo.replaceSelection({ questionIds: [essayId] });
+    await repo.publish({ questionIds: [essayId] }, "admin");
+    const original = structuredClone(revisions);
+    await repo.replaceSelection({ questionIds: [qid, essayId] });
+    await expect(repo.publish({ questionIds: [qid, essayId] }, "admin")).rejects.toThrow("exactly one essay");
+    expect(revisions).toEqual(original);
+  });
   it("starts empty without creating membership or history", async () => {
     expect(await repo.getCurrent()).toEqual({ questionIds: [], questions: [], latestPublication: null });
     expect(db.examQuestionSelection.createMany).not.toHaveBeenCalled(); expect(db.examContentRevision.create).not.toHaveBeenCalled();
@@ -52,32 +65,32 @@ describe("B2 explicit selection, publication and exact binding", () => {
     expect(bank).toEqual(before); expect(db.examQuestion.update).not.toHaveBeenCalled();
   });
   it("breaks tied question orders by identity and freezes exact membership and all option identities", async () => {
-    bank[1].order = 7; await repo.replaceSelection({ questionIds: [otherId, qid] });
-    await repo.publish({ questionIds: [otherId, qid] }, "admin");
-    expect(revisions[0].questions.map((q: any) => q.questionId)).toEqual([qid, otherId]);
+    bank[1].order = 7; await repo.replaceSelection({ questionIds: [otherId, qid, essayId] });
+    await repo.publish({ questionIds: [otherId, qid, essayId] }, "admin");
+    expect(revisions[0].questions.map((q: any) => q.questionId)).toEqual([qid, otherId, essayId]);
     expect(revisions[0].questions[0].options.create).toEqual(bank[0].options.map((o: any) => ({ optionId: o.id })));
     expect(db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   });
   it("rejects empty publication and a stale expected selection", async () => {
     await expect(repo.publish({ questionIds: [] }, "admin")).rejects.toThrow("Select and save");
-    membership = [qid]; await expect(repo.publish({ questionIds: [otherId] }, "admin")).rejects.toThrow("selection changed"); expect(revisions).toHaveLength(0);
+    membership = [qid, essayId]; await expect(repo.publish({ questionIds: [otherId] }, "admin")).rejects.toThrow("selection changed"); expect(revisions).toHaveLength(0);
   });
   it("does not publish missing or invalid content", async () => {
     membership = [mediaId]; await expect(repo.publish({ questionIds: membership }, "admin")).rejects.toThrow("content changed");
-    membership = [qid]; bank[0].options[1].isCorrect = true;
+    membership = [qid, essayId]; bank[0].options[1].isCorrect = true;
     await expect(repo.publish({ questionIds: membership }, "admin")).rejects.toThrow(); expect(revisions).toHaveLength(0);
   });
   it("old content/key/order/media/emphasis remains unchanged after source edits, deselection and later publication", async () => {
     bank[0].stimulusType = "IMAGE"; bank[0].stimulusMediaId = mediaId;
-    membership = [qid]; const first = await repo.publish({ questionIds: membership }, "admin");
+    membership = [qid, essayId]; const first = await repo.publish({ questionIds: membership }, "admin");
     const before = await repo.getForBinding(first.id);
     bank[0].questionText = "Different text"; bank[0].questionTextEmphasis = null;
     bank[0].options[0].isCorrect = false; bank[0].options[1].isCorrect = true;
     bank[0].options[0].optionText = "Edited"; bank[0].options[0].order = 50;
     bank[0].options.reverse(); bank[0].order = 22; bank[0].stimulusType = "NONE"; bank[0].stimulusMediaId = null;
-    await repo.replaceSelection({ questionIds: [otherId] }); const second = await repo.publish({ questionIds: [otherId] }, "admin");
+    await repo.replaceSelection({ questionIds: [otherId, essayId] }); const second = await repo.publish({ questionIds: [otherId, essayId] }, "admin");
     expect(await repo.getForBinding(first.id)).toEqual(before);
-    expect((await repo.getForBinding(second.id)).questions.map(q => q.id)).toEqual([otherId]);
+    expect((await repo.getForBinding(second.id)).questions.map(q => q.id)).toEqual([otherId, essayId]);
     expect(before.answerKey[0].correctOptionIds).toEqual([`${qid.slice(0, -1)}1`]); expect(before.mediaIds).toEqual([mediaId]);
     expect(JSON.stringify(before.applicantQuestions)).not.toMatch(/isCorrect|correctOption|storageKey|checksum|sourceImport|publishedBy|position/);
     expect(before.applicantQuestions[0].questionTextEmphasis).toEqual(setQuestion().questionTextEmphasis);
@@ -89,7 +102,7 @@ describe("B2 explicit selection, publication and exact binding", () => {
     const marks = [{ index: 0, ...(type === "MATRIX" || type === "GROUPED_NUMBER_ROWS" ? { row: 0, column: 0 } : {}), spans: [{ start: 0, end: 1, style: "BOLD" }] }];
     // Cell layouts use row/column addresses rather than item indexes.
     bank[0].structuredStimulusEmphasis = type === "MATRIX" || type === "GROUPED_NUMBER_ROWS" || type === "NUMBER_SEQUENCE" ? null : marks;
-    membership = [qid]; const pub = await repo.publish({ questionIds: membership }, "admin");
+    membership = [qid, essayId]; const pub = await repo.publish({ questionIds: membership }, "admin");
     const safe = (await repo.getForBinding(pub.id)).applicantQuestions[0];
     expect(safe.structuredStimulus).toEqual(structured); expect(safe.structuredStimulusEmphasis).toEqual(bank[0].structuredStimulusEmphasis);
     expect(JSON.stringify(safe)).not.toContain("isCorrect");
@@ -97,7 +110,7 @@ describe("B2 explicit selection, publication and exact binding", () => {
   it("preserves image option IDs without storage/key leakage", async () => {
     bank[0].options[0].mediaId = mediaId; bank[0].options[0].optionText = null; bank[0].options[0].optionTextEmphasis = null;
     bank[0].storageKey = "secret"; bank[0].sourceImportId = "secret";
-    membership = [qid]; const pub = await repo.publish({ questionIds: membership }, "admin");
+    membership = [qid, essayId]; const pub = await repo.publish({ questionIds: membership }, "admin");
     expect((await repo.getForBinding(pub.id)).applicantQuestions[0].options[0]).toMatchObject({ mediaId, label: "F", optionText: null });
     expect(JSON.stringify(revisions)).not.toContain("secret");
   });
@@ -110,15 +123,15 @@ describe("B2 explicit selection, publication and exact binding", () => {
     expect(revision.answerKey[0].correctOptionIds).toEqual([]);
   });
   it("retains tied legacy option order and manual labels exactly", async () => {
-    bank[0].options[1].order = bank[0].options[0].order; membership = [qid];
+    bank[0].options[1].order = bank[0].options[0].order; membership = [qid, essayId];
     const publication = await repo.publish({ questionIds: membership }, "admin");
     expect((await repo.getForBinding(publication.id)).applicantQuestions[0].options.map(o => [o.label, o.order])).toEqual([["F", 2], ["K", 2]]);
   });
   it("B4 cutover retains exact published content after draft deselection", async () => {
-    membership = [qid]; const published = await repo.publish({ questionIds: membership }, "admin");
+    membership = [qid, essayId]; const published = await repo.publish({ questionIds: membership }, "admin");
     await repo.replaceSelection({ questionIds: [] });
     const questions = (await repo.getForBinding(published.id)).applicantQuestions;
-    expect(questions.map(q => q.id)).toEqual([qid]);
+    expect(questions.map(q => q.id)).toEqual([qid, essayId]);
     expect(db.examContentRevision.findUnique).toHaveBeenCalled();
   });  it("contains transaction conflicts without leaking database details", async () => {
     db.$transaction.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("secret", { code: "P2034", clientVersion: "test" }));

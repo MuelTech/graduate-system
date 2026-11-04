@@ -781,13 +781,27 @@ export interface ApiApplication {
     programName: string;
   };
   status: string;
+  essayEvaluationCompleted?: boolean;
 }
 
 /**
  * Bounded ADMIN read model for a single Entrance Exam Record detail.
  * Never includes correct-answer/option data.
  */
+export type EssayEvaluation = {
+  status: "PENDING" | "COMPLETED";
+  questionId: string;
+  question: ExamQuestion;
+  responseText: string | null;
+  responseState: "SUBMITTED" | "BLANK" | "MISSING";
+  maximumScore: number;
+  essayScore: number | null;
+  evaluator: { id: string; firstName: string; lastName: string } | null;
+  evaluatedAt: string | null;
+} | { status: "STAFF_REVIEW" | "LEGACY" | "UNAVAILABLE"; reason: string };
+
 export interface ExamRecordDetail {
+  essayEvaluation: EssayEvaluation;
   id: string;
   status: string;
   student: {

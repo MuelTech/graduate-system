@@ -5,6 +5,7 @@ import type { AdminExamQuestion } from "../interfaces/exam-content.interfaces";
 import { validateExamQuestion } from "../services/exam-content.rules";
 import { selectionIds } from "../services/exam-question-set.rules";
 import { AppError } from "../utils/AppError";
+import { singleEssay } from "../services/exam-essay-evaluation.rules";
 
 const orderBy = [{ order: "asc" }, { id: "asc" }] as const;
 const revisionSummary = { id: true, publishedAt: true, _count: { select: { questions: true } } } as const;
@@ -60,6 +61,7 @@ export class ExamQuestionSetRepository {
       const rows = await tx.examQuestion.findMany({ where: { id: { in: members.map(m => m.questionId) } }, orderBy: [...orderBy], select: adminQuestionSelect });
       if (rows.length !== members.length) throw new AppError("Selected content changed. Reload and try again.", 409);
       const questions = rows.map(checkedContent);
+      singleEssay(questions);
       const revision = await tx.examContentRevision.create({ data: {
         publishedById: actorId,
         questions: { create: questions.map((q, position) => ({

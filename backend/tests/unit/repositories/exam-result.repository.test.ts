@@ -1,8 +1,10 @@
+import { evaluationApplication } from "../../fixtures/exam-essay-evaluation";
+import { executionIds as ids } from "../../fixtures/exam-execution";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   entranceExamApplication: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-  entranceExamScore: { update: vi.fn() }, examQuestion: { count: vi.fn() }, $transaction: vi.fn(),
+  user: { findUnique: vi.fn() }, $queryRaw: vi.fn(), entranceExamScore: { update: vi.fn() }, examQuestion: { count: vi.fn() }, $transaction: vi.fn(),
 }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 import { ExamRepository } from "../../../src/repositories/exam.repository";
@@ -12,7 +14,7 @@ beforeEach(() => {
   db.$transaction.mockImplementation(callback => callback(db));
 });
 
-describe("B0B bounded result queries and retained grading", () => {
+describe("B0B bounded result queries and B7 superseded legacy grading", () => {
   it("selects the authenticated user's latest scored application, retaining PENDING for service checks", async () => {
     db.entranceExamApplication.findFirst.mockResolvedValue({ id: "owned-app", status: "TAKEN", score: { status: "PENDING" }, program: { examMcqTotal: 10, examEssayTotal: 40, examPassingScore: 9 } });
     db.examQuestion.count.mockResolvedValue(72);
@@ -37,11 +39,16 @@ describe("B0B bounded result queries and retained grading", () => {
     expect(JSON.stringify(db.entranceExamApplication.findUnique.mock.calls)).not.toMatch(/passwordHash|answers|isCorrect|storageKey/);
   });
 
-  it.each([[63, 20, "PASSED"], [10, 5, "FAILED"]])("retains current grade writes for MCQ %i + essay %i", async (mcq, essay, status) => {
-    db.entranceExamApplication.findUnique.mockResolvedValue({ status: "TAKEN", score: { status: "PENDING", multipleChoiceScore: mcq }, program: { examEssayTotal: 30 } });
-    db.examQuestion.count.mockResolvedValue(72);
-    await repo.gradeEssay("exact-app", essay, "admin-user");
-    expect(db.entranceExamScore.update).toHaveBeenCalledWith({ where: { applicationId: "exact-app" }, data: { essayScore: essay, totalScore: mcq + essay, status, gradedById: "admin-user" } });
-    expect(db.entranceExamApplication.update).toHaveBeenCalledWith({ where: { id: "exact-app" }, data: { status } });
+  it.each([[63, 20], [10, 5]])("B7 rejects legacy MCQ %i / essay %i instead of immediately computing PASS/FAIL", async (mcq, essay) => {
+    const application = evaluationApplication();
+    Object.assign(application, { finalizedAt: null, finalizationReason: null, finalizationReceiptId: null, finalizationAnsweredCount: null, finalizationQuestionCount: null });
+    application.score.multipleChoiceScore = mcq;
+    db.$queryRaw.mockResolvedValue([{ status: "TAKEN" }]);
+    db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true });
+    db.entranceExamApplication.findUnique.mockResolvedValue(application);
+    await expect(repo.gradeEssay(ids.app, essay, ids.admin)).rejects.toMatchObject({ statusCode: 409 });
+    expect(db.entranceExamScore.update).not.toHaveBeenCalled();
+    expect(db.entranceExamApplication.update).not.toHaveBeenCalled();
+    expect(db.examQuestion.count).not.toHaveBeenCalled();
   });
 });

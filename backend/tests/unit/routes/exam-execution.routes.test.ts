@@ -25,7 +25,7 @@ beforeEach(() => {
   db.entranceExamApplication.findUnique.mockImplementation(async () => app); db.entranceExamApplication.count.mockResolvedValue(1);
   db.entranceExamApplication.update.mockImplementation(async ({ data }) => { Object.assign(app, data); return app; });
   db.user.findUnique.mockResolvedValue({ role: "ADMIN", isActive: true }); db.systemSetting.findUnique.mockResolvedValue({ settingType: "JSON", settingValue: JSON.stringify(configuration) });
-  db.examContentRevision.findFirst.mockResolvedValue({ id: ids.revision }); db.examContentRevision.findUnique.mockResolvedValue(executionRevision());
+  db.examContentRevision.findFirst.mockResolvedValue({ id: ids.revision }); db.examContentRevision.findUnique.mockResolvedValue(executionRevision(ids.revision, true));
 });
 function request(method: string, route: string, role?: string, body: unknown = {}, userId = role === "ADMIN" ? ids.admin : ids.user) {
   const token = role === "invalid" ? "invalid" : role ? jwt.sign({ userId, role }, secret) : null;

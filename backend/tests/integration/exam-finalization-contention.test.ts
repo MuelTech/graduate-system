@@ -72,7 +72,7 @@ describe.skipIf(process.env.EXAM_B6_DB_TEST !== "1")("B6 real MariaDB execution/
     before = await snapshot(admin);
     const foreignKeySql = "SELECT CONSTRAINT_NAME,COLUMN_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('entrance_exam_applications','applicant_answers','entrance_exam_scores') AND REFERENCED_TABLE_NAME IS NOT NULL ORDER BY TABLE_NAME,CONSTRAINT_NAME,ORDINAL_POSITION";
     const [foreignKeysBefore] = await admin.query(foreignKeySql);
-    for (const item of readdirSync("prisma/migrations")) if (item >= migration && item !== "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    for (const item of readdirSync("prisma/migrations")) if (item === migration) cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
     const output = migrate(); expect(output).toContain(migration);
     const [oldApps] = await admin.query("SELECT finalized_at, finalization_reason, finalization_receipt_id FROM entrance_exam_applications");
     expect((oldApps as any[]).every(row => Object.values(row).every(value => value === null))).toBe(true);
@@ -84,6 +84,9 @@ describe.skipIf(process.env.EXAM_B6_DB_TEST !== "1")("B6 real MariaDB execution/
       return (sql: string) => target.query(sql === "SELECT * FROM `entrance_exam_applications`" ? `SELECT ${(columns as any[]).filter(c => !["finalized_at", "finalization_reason", "finalization_receipt_id", "finalization_answered_count", "finalization_question_count"].includes(c.Field)).map(c => `\`${c.Field}\``).join(",")} FROM entrance_exam_applications` : sql);
     } });
     expect(await snapshot(projected)).toBe(before);
+    // Rehearse B6 original columns before installing successor migrations.
+    for (const item of readdirSync("prisma/migrations")) if (item > migration && item !== "migration_lock.toml") cpSync(path.resolve("prisma/migrations", item), path.join(migrations, item), { recursive: true });
+    migrate();
     const status = execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "status", "--config", prismaConfig], { encoding: "utf8", stdio: "pipe" });
     expect(status).toContain("up to date"); expect(migrate()).toContain("No pending migrations");
     const client = () => new PrismaClient({ adapter: new PrismaMariaDb(url.toString().replace("mysql://", "mariadb://")) });

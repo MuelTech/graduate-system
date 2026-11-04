@@ -4,7 +4,7 @@ import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import jwt from "jsonwebtoken";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { qid, setQuestion } from "../../fixtures/exam-question-set";
+import { qid, setEssay } from "../../fixtures/exam-question-set";
 const db = vi.hoisted(() => ({ $transaction: vi.fn(), examQuestion: { findMany: vi.fn() }, examQuestionSelection: { findMany: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() }, examContentRevision: { findFirst: vi.fn(), create: vi.fn() } }));
 vi.mock("../../../src/config/database", () => ({ default: db }));
 import router from "../../../src/routes/exam-engine.routes";
@@ -18,7 +18,7 @@ beforeAll(async () => {
 afterAll(async () => { server.closeAllConnections(); server.close(); vi.unstubAllEnvs(); });
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubEnv("JWT_SECRET", secret);
-  db.$transaction.mockImplementation(fn => fn(db)); db.examQuestion.findMany.mockResolvedValue([setQuestion()]);
+  db.$transaction.mockImplementation(fn => fn(db)); db.examQuestion.findMany.mockResolvedValue([setEssay(qid)]);
   db.examQuestionSelection.findMany.mockResolvedValue([{ questionId: qid }]); db.examContentRevision.findFirst.mockResolvedValue(null);
   db.examContentRevision.create.mockResolvedValue({ id: "published-id", publishedAt: new Date(), _count: { questions: 1 } });
 });

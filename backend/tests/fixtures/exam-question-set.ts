@@ -9,3 +9,8 @@ export function setQuestion(id = qid, order = 7): AdminExamQuestion {
     options: [{ id: `${id.slice(0, -1)}1`, questionId: id, label: "F", order: 2, optionText: "First", optionTextEmphasis: [{ start: 0, end: 5, style: "ITALIC" }], mediaId: null, isCorrect: true },
       { id: `${id.slice(0, -1)}2`, questionId: id, label: "K", order: 9, optionText: "Second", optionTextEmphasis: null, mediaId: null, isCorrect: false }] };
 }
+
+export const essayId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+export function setEssay(id = essayId, order = 99): AdminExamQuestion {
+  return { ...setQuestion(id, order), type: "ESSAY", questionText: "Synthetic frozen essay prompt", questionTextEmphasis: null, options: [] };
+}

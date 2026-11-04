@@ -58,7 +58,7 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
       sourceImportId: "b2-synthetic-existing", sourceQuestionNumber: 1, stimulusType: "IMAGE", stimulusMediaId: ids.media,
       options: { create: [{ label: "F", order: 3, optionText: "Correct", isCorrect: true }, { label: "K", order: 8, optionText: null, mediaId: ids.media, isCorrect: false }] } }, include: { options: { orderBy: { order: "asc" } } } });
     optionIds = q.options.map(o => o.id);
-    await db.examQuestion.create({ data: { id: ids.answerQ, questionText: "Existing synthetic answer prompt", type: "ESSAY" } });
+    await db.examQuestion.create({ data: { id: ids.answerQ, questionText: "Existing synthetic answer prompt", type: "ESSAY", order: 3 } });
     // Rehearse the historical answer columns, independently of B5 client fields.
     await admin.execute("INSERT INTO applicant_answers (answer_id,application_id,question_id,essay_answer) VALUES (?,?,?,?)", [ids.answer, ids.app, ids.answerQ, "Preserved existing history"]);
     beforeMigration = await snapshot(admin);
@@ -88,17 +88,17 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
     console.log("B2 migration preservation: 2 questions, 2 options, 1 media, 1 import, 1 ApplicantAnswer; exact rows/IDs unchanged; empty selection/revisions.");
   });
   it("rolls back a real revision/member/option/media write if publication fails before commit", async () => {
-    await repo.replaceSelection({ questionIds: [ids.q] });
+    await repo.replaceSelection({ questionIds: [ids.q, ids.answerQ] });
     gateway.$transaction.mockImplementationOnce((fn, options) => db.$transaction(tx => fn(new Proxy(tx, { get(target, key) {
       if (key === "examContentRevision") return { ...target.examContentRevision, create: async (args: any) => { await target.examContentRevision.create(args); throw new Error("injected after real nested writes"); } };
       return Reflect.get(target, key);
     } })), options));
-    await expect(repo.publish({ questionIds: [ids.q] }, ids.user)).rejects.toThrow("injected");
+    await expect(repo.publish({ questionIds: [ids.q, ids.answerQ] }, ids.user)).rejects.toThrow("injected");
     expect(await db.examContentRevision.count()).toBe(0); expect(await db.examRevisionQuestion.count()).toBe(0); expect(await db.examRevisionOption.count()).toBe(0); expect(await db.examRevisionMedia.count()).toBe(0);
   });
   it("publishes immutable exact content/key and rejects physical historical identity deletion with real foreign keys", async () => {
-    const publication = await repo.publish({ questionIds: [ids.q] }, ids.user); const received = await repo.getForBinding(publication.id);
-    expect(received.questions.map(q => q.id)).toEqual([ids.q]); expect(received.questions[0].options.map(o => o.id)).toEqual(optionIds);
+    const publication = await repo.publish({ questionIds: [ids.q, ids.answerQ] }, ids.user); const received = await repo.getForBinding(publication.id);
+    expect(received.questions.map(q => q.id)).toEqual([ids.q, ids.answerQ]); expect(received.questions[0].options.map(o => o.id)).toEqual(optionIds);
     expect(received.answerKey[0].correctOptionIds).toEqual([optionIds[0]]);
     await expect(db.examQuestion.delete({ where: { id: ids.answerQ } })).rejects.toMatchObject({ code: "P2003" });
     await expect(db.examQuestion.delete({ where: { id: ids.q } })).rejects.toMatchObject({ code: "P2003" });
@@ -121,7 +121,7 @@ describe.skipIf(process.env.EXAM_B2_DB_TEST !== "1")("B2 local migration rehears
     const manual = await db.examQuestion.create({ data: { questionText: "Unused synthetic question" } });
     expect(await db.examQuestionSelection.count()).toBe(0); expect(await db.examContentRevision.findMany({ include: { questions: true, media: true } })).toEqual(publications);
     await new ExamEngineRepository().deleteQuestion(manual.id); expect(await db.examQuestion.count({ where: { id: manual.id } })).toBe(0);
-    const second = await repo.replaceSelection({ questionIds: [ids.q] }); const publication = await repo.publish({ questionIds: second.questionIds }, ids.user);
+    const second = await repo.replaceSelection({ questionIds: [ids.q, ids.answerQ] }); const publication = await repo.publish({ questionIds: second.questionIds }, ids.user);
     expect((await repo.getForBinding(publication.id)).answerKey[0].correctOptionIds).toEqual([optionIds[1]]);
     await admin.execute("INSERT INTO applicant_answers (answer_id,application_id,question_id,selected_option_id) VALUES (?,?,?,?)", [randomUUID(), ids.app, ids.q, optionIds[0]]);
     await expect(db.examOption.delete({ where: { id: optionIds[0] } })).rejects.toMatchObject({ code: "P2003" });

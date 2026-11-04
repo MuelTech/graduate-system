@@ -5,6 +5,7 @@ import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
 import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
 import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
+import { essayScoreValue } from "./exam-essay-evaluation.rules";
 
 function completedResultStatus(application: { status: string; score: { status: string } | null }): "PASSED" | "FAILED" | null {
   const status = application.status;
@@ -299,6 +300,7 @@ export class ExamService {
         order: answer.question.order,
         essayAnswer: answer.essayAnswer,
       })),
+      essayEvaluation: app.essayEvaluation,
     };
   }
 
@@ -389,11 +391,7 @@ export class ExamService {
     essayScore: number,
     adminId: string
   ) {
-    if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > 30) {
-      throw new Error("Essay score must be a valid number between 0 and 30.");
-    }
-
-    return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
+    return this.examRepo.gradeEssay(applicationId, essayScoreValue(essayScore), adminId);
   }
 
   async confirmResultAndEmail(applicationId: string) {

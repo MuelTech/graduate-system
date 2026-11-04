@@ -1,4 +1,4 @@
-import { setQuestion, mediaId } from "./exam-question-set";
+import { setQuestion, setEssay, mediaId } from "./exam-question-set";
 
 export const executionIds = {
   app: "11111111-1111-4111-8111-111111111111", user: "22222222-2222-4222-8222-222222222222",
@@ -18,6 +18,6 @@ export function executionApplication() {
     program: { programName: "Synthetic Graduate Program" }, score: null, _count: { answers: 0 },
   };
 }
-export function executionRevision(id = executionIds.revision) {
-  return { id, publishedAt: new Date("2026-11-02T00:00:00Z"), questions: [{ questionId: setQuestion().id, position: 0, content: setQuestion() }], media: [{ mediaId }] };
+export function executionRevision(id = executionIds.revision, withEssay = false) {
+  return { id, publishedAt: new Date("2026-11-02T00:00:00Z"), questions: [{ questionId: setQuestion().id, position: 0, content: setQuestion() }, ...(withEssay ? [{ questionId: setEssay().id, position: 1, content: setEssay() }] : [])], media: [{ mediaId }] };
 }

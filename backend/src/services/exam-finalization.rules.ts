@@ -20,7 +20,7 @@ export class IncompleteExamSubmissionError extends AppError {
 }
 
 /** Allowlisted, immutable evidence only. No answer key, grades or private config. */
-export function finalizationReceipt(app: EntranceExamApplication) {
+export function finalizationReceipt(app: Pick<EntranceExamApplication, "id" | "actualStartedAt" | "deadlineAt" | "contentRevisionId" | "finalizedAt" | "finalizationReason" | "finalizationReceiptId" | "finalizationAnsweredCount" | "finalizationQuestionCount">) {
   if (!app.finalizedAt && !app.finalizationReason && !app.finalizationReceiptId &&
       app.finalizationAnsweredCount == null && app.finalizationQuestionCount == null) return null;
   if (!app.finalizedAt || !app.finalizationReason || !app.finalizationReceiptId ||

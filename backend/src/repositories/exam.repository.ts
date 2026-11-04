@@ -1,6 +1,9 @@
 import prisma from '../config/database';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/AppError';
+import { scheduleIdentifier } from '../services/exam-schedule.rules';
+import { essayScoreValue } from '../services/exam-essay-evaluation.rules';
+import { essayReviewProjection, requireEssayReview, evaluationAuthoritySelect, evaluationScoreSelect } from './exam-essay-evaluation.projection';
 
 // Type for the transaction client that Prisma provides inside $transaction
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -126,8 +129,9 @@ export class ExamRepository {
     }
 
     async getAllApplications() {
-        return prisma.entranceExamApplication.findMany({
+        const applications = await prisma.entranceExamApplication.findMany({
             include: {
+                score: { select: { essayScore: true, gradedById: true, essayEvaluatedAt: true, status: true, totalScore: true } },
                 student: {
                     include: {
                         user: true,
@@ -140,6 +144,16 @@ export class ExamRepository {
                 createdAt: 'desc'
             }
         });
+        return applications.map(({ score, ...application }) => ({ ...application,
+            // Presentation only. The locked B7 resolver remains grading authority.
+            essayEvaluationCompleted: application.status === "TAKEN" && application.finalizedAt !== null &&
+                application.finalizationReceiptId !== null && application.finalizationReason !== null &&
+                application.finalizationAnsweredCount !== null && application.finalizationQuestionCount !== null &&
+                application.actualStartedAt !== null && application.deadlineAt !== null &&
+                application.contentRevisionId !== null && application.executionConfiguration !== null &&
+                score?.status === "PENDING" && score.totalScore === null && score.essayScore !== null &&
+                score.gradedById !== null && score.essayEvaluatedAt !== null,
+        }));
     }
 
     async updateApplication(applicationId: string, data: Prisma.EntranceExamApplicationUncheckedUpdateInput) {
@@ -155,79 +169,85 @@ export class ExamRepository {
      * ordered; no correct-answer/option data is selected.
      */
     async getApplicationDetail(applicationId: string) {
-        return prisma.entranceExamApplication.findUnique({
-            where: { id: applicationId },
-            select: {
-                id: true,
-                status: true,
-                student: {
-                    select: {
-                        id: true,
-                        pinnacleApplicantId: true,
-                        user: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true,
+        return prisma.$transaction(async tx => {
+            const app = await tx.entranceExamApplication.findUnique({
+                where: { id: applicationId },
+                select: {
+                    id: true,
+                    status: true,
+                    ...evaluationAuthoritySelect,
+                    student: {
+                        select: {
+                            id: true,
+                            pinnacleApplicantId: true,
+                            user: {
+                                select: {
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                },
                             },
                         },
                     },
-                },
-                program: {
-                    select: {
-                        id: true,
-                        programName: true,
-                        examMcqTotal: true,
-                        examEssayTotal: true,
+                    program: {
+                        select: {
+                            id: true,
+                            programName: true,
+                            examMcqTotal: true,
+                            examEssayTotal: true,
+                        },
                     },
-                },
-                slot: {
-                    select: {
-                        id: true,
-                        examDate: true,
-                        examTime: true,
+                    slot: {
+                        select: {
+                            id: true,
+                            examDate: true,
+                            examTime: true,
+                        },
                     },
-                },
-                score: {
-                    select: {
-                        multipleChoiceScore: true,
-                        essayScore: true,
-                        totalScore: true,
-                        status: true,
-                        gradedBy: {
-                            select: {
-                                id: true,
-                                firstName: true,
-                                lastName: true,
+                    score: {
+                        select: {
+                            ...evaluationScoreSelect,
+                            multipleChoiceScore: true,
+                            essayScore: true,
+                            totalScore: true,
+                            status: true,
+                            gradedBy: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                },
                             },
                         },
                     },
-                },
-                answers: {
-                    where: {
-                        question: {
-                            type: "ESSAY",
-                        },
-                    },
-                    select: {
-                        questionId: true,
-                        essayAnswer: true,
-                        question: {
-                            select: {
-                                id: true,
-                                questionText: true,
-                                order: true,
-                                type: true,
+                    answers: {
+                        where: {
+                            question: {
+                                type: "ESSAY",
                             },
                         },
+                        select: {
+                            questionId: true,
+                            essayAnswer: true,
+                            question: {
+                                select: {
+                                    id: true,
+                                    questionText: true,
+                                    order: true,
+                                    type: true,
+                                },
+                            },
+                        },
+                        orderBy: [
+                            { question: { order: "asc" } },
+                            { questionId: "asc" },
+                        ],
                     },
-                    orderBy: [
-                        { question: { order: "asc" } },
-                        { questionId: "asc" },
-                    ],
                 },
-            },
-        });
+            });
+            if (!app) return null;
+            return { ...app, answers: app.contentRevisionId ? [] : app.answers, essayEvaluation: await essayReviewProjection(tx, app) };
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     }
 
         async getAppealedExams() {
@@ -301,54 +321,31 @@ export class ExamRepository {
         };
     }
 
-    async gradeEssay(
-        applicationId: string,
-        essayScore: number,
-        adminId: string
-    ) {
-        return prisma.$transaction(async (tx) => {
-            const application = await tx.entranceExamApplication.findUnique({
-                where: {
-                    id: applicationId
-                },
-                include: {
-                    score: true,
-                    program: true
-                }
-            });
-
-            if (!application || !application.score) throw new Error("Application or pending score not found.");
-
-            const essayTotal = application.program?.examEssayTotal || 30; // Dynamic fallback instead of hardcoded 30
-            if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > essayTotal) {
-                 throw new Error(`Invalid essay score. Must be a number between 0 and ${essayTotal}.`);
-            }
-
-            // Dynamically calculate passing score (e.g., 75% of total possible points)
-            const mcqTotal = await tx.examQuestion.count({ where: { type: 'MULTIPLE_CHOICE' } });
-            const dynamicPassingScore = Math.floor((mcqTotal + essayTotal) * 0.75);
-
-            const mcqScore = Number(application.score.multipleChoiceScore || 0);
-            const totalScore = mcqScore + essayScore;
-            const finalStatus = totalScore >= dynamicPassingScore ? 'PASSED' : 'FAILED';
-
-            // Update the score record with the admin's grade and ID
-            await tx.entranceExamScore.update({
-                where: { applicationId },
-                data: {
-                    essayScore,
-                    totalScore,
-                    status: finalStatus,
-                    gradedById: adminId
-                }
-            });
-
-            // Update the application status
-            return tx.entranceExamApplication.update({
-                where: { id: applicationId },
-                data: { status: finalStatus }
-            });
-        });
+    async gradeEssay(applicationId: string, essayScore: number, adminId: string) {
+        const id = scheduleIdentifier(applicationId, "applicationId");
+        essayScoreValue(essayScore);
+        return prisma.$transaction(async tx => {
+            const rows = await tx.$queryRaw<{ status: string }[]>`
+                SELECT status FROM entrance_exam_applications WHERE application_id = ${id} FOR UPDATE
+            `;
+            if (!rows.length) throw new AppError("Exam record not found.", 404);
+            const application = await tx.entranceExamApplication.findUnique({ where: { id }, select: {
+                id: true, status: true, ...evaluationAuthoritySelect, score: { select: evaluationScoreSelect },
+            } });
+            if (!application) throw new AppError("Exam record not found.", 404);
+            const admin = await tx.user.findUnique({ where: { id: adminId }, select: { role: true, isActive: true } });
+            if (admin?.role !== "ADMIN" || !admin.isActive) throw new AppError("Only an active Admin may evaluate this essay.", 403);
+            const evaluation = await requireEssayReview(tx, application);
+            if (evaluation.status === "COMPLETED") throw new AppError("This essay has already been evaluated. Direct regrading is unavailable.", 409);
+            if (essayScore > evaluation.maximumScore) throw new AppError(`Essay score cannot exceed the recorded maximum of ${evaluation.maximumScore}.`, 400);
+            // The existing score column is DECIMAL(65,30). Reject loss of precision
+            // rather than silently letting the database round a submitted value.
+            if (new Prisma.Decimal(essayScore).decimalPlaces() > 30) throw new AppError("Essay score exceeds the supported decimal precision.", 400);
+            const score = await tx.entranceExamScore.update({ where: { applicationId: id }, data: {
+                essayScore, gradedById: adminId, essayEvaluatedAt: new Date(),
+            }, select: evaluationScoreSelect });
+            return await requireEssayReview(tx, { ...application, score });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     }
 
     async getApplicationDetailsForEmail(applicationId: string) {

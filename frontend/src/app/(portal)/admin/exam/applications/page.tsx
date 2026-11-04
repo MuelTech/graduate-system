@@ -71,7 +71,7 @@ function toRow(app: ApiApplication): ExamRecordRow {
     programName: app.program?.programName ?? MISSING,
     examDate: app.slot?.examDate ?? null,
     examTime: app.slot?.examTime ?? null,
-    state: deriveExamState(app.status),
+    state: deriveExamState(app.status, app.essayEvaluationCompleted),
   };
 }
 

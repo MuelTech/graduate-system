@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClientRequest, ApiError } from "@/lib/api.client";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { EssayEvaluationPanel } from "@/components/admin/exam/essay-evaluation-panel";
 import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
 import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
@@ -246,32 +245,11 @@ function AssessmentUnavailable({ state }: { state: string }) {
 export default function ExamRecordDetailPage() {
   const params = useParams();
   const applicationId = params.id as string;
-  const queryClient = useQueryClient();
-
-  const [essayScore, setEssayScore] = useState("");
 
   const recordQuery = useQuery<ExamRecordDetail>({
     queryKey: ["examRecord", applicationId],
     queryFn: () => apiClientRequest(`/exam/applications/${applicationId}`),
     retry: false,
-  });
-
-  const gradeMutation = useMutation({
-    mutationFn: () =>
-      apiClientRequest(`/exam/scores/${applicationId}/grade`, {
-        method: "POST",
-        body: JSON.stringify({ essayScore: Number(essayScore) }),
-      }),
-    onSuccess: () => {
-      toast.success("Essay grade saved.");
-      setEssayScore("");
-      queryClient.invalidateQueries({
-        queryKey: ["examRecord", applicationId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["examRecords"] });
-    },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to save essay grade."),
   });
 
   const emailMutation = useMutation({
@@ -306,7 +284,10 @@ export default function ExamRecordDetailPage() {
   }
 
   const record = recordQuery.data;
-  const state = deriveExamState(record.status);
+  const state = deriveExamState(
+    record.status,
+    record.essayEvaluation?.status === "COMPLETED",
+  );
   const fullName =
     `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
   const pinnacleId = record.student.pinnacleApplicantId || "No Pinnacle ID";
@@ -318,25 +299,7 @@ export default function ExamRecordDetailPage() {
   )}`;
 
   const isCompleted = state === "PASSED" || state === "FAILED";
-  const isGrading = state === "NEEDS_GRADING";
-
-  // Essay-score validation (client-side; the backend remains authoritative).
-  const trimmedScore = essayScore.trim();
-  const numericScore = Number(trimmedScore);
-  const essayValidationError =
-    trimmedScore === ""
-      ? null
-      : !Number.isFinite(numericScore)
-        ? "Enter a valid number."
-        : numericScore < 0
-          ? "Score cannot be negative."
-          : essayMax !== null && numericScore > essayMax
-            ? `Score cannot exceed ${essayMax}.`
-            : null;
-  const canSave =
-    trimmedScore !== "" &&
-    essayValidationError === null &&
-    !gradeMutation.isPending;
+  const isTaken = record.status === "TAKEN";
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -398,97 +361,12 @@ export default function ExamRecordDetailPage() {
 
       {/* Assessment */}
       <SectionCard title="Assessment">
-        {isGrading ? (
-          <div className="space-y-5">
-            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-              <p className="text-xs text-(--earist-body-text)">
-                Multiple Choice
-              </p>
-              <ScoreValue
-                value={record.score?.multipleChoiceScore ?? null}
-                max={mcqMax}
-              />
-              <p className="mt-1 text-xs text-(--earist-body-text)">
-                Auto-graded
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-(--earist-secondary)">
-                Essay Response
-              </h3>
-              {record.essayAnswers.length === 0 ? (
-                <p className="text-sm text-(--earist-body-text)">
-                  No essay response recorded.
-                </p>
-              ) : (
-                <ol className="space-y-4">
-                  {record.essayAnswers.map((answer, index) => (
-                    <li key={answer.questionId} className="space-y-1.5">
-                      <p className="text-sm font-medium text-(--earist-secondary)">
-                        Question {index + 1}
-                      </p>
-                      <p className="text-sm break-words text-(--earist-body-text)">
-                        {answer.questionText}
-                      </p>
-                      <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                        <p className="text-sm break-words whitespace-pre-wrap text-foreground">
-                          {answer.essayAnswer?.trim()
-                            ? answer.essayAnswer
-                            : "No response submitted."}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="essay-score"
-                className="block text-sm font-medium text-(--earist-secondary)"
-              >
-                Essay Score
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="essay-score"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={essayMax ?? undefined}
-                  step="1"
-                  value={essayScore}
-                  onChange={(event) => setEssayScore(event.target.value)}
-                  className="w-28 text-center"
-                  aria-invalid={essayValidationError !== null}
-                  aria-describedby={
-                    essayValidationError ? "essay-score-error" : undefined
-                  }
-                  placeholder="0"
-                />
-                {essayMax !== null ? (
-                  <span className="text-sm text-(--earist-body-text)">
-                    / {essayMax}
-                  </span>
-                ) : null}
-              </div>
-              {essayValidationError ? (
-                <p
-                  id="essay-score-error"
-                  className="text-xs text-destructive"
-                  role="alert"
-                >
-                  {essayValidationError}
-                </p>
-              ) : null}
-            </div>
-
-            <Button onClick={() => gradeMutation.mutate()} disabled={!canSave}>
-              {gradeMutation.isPending ? "Saving…" : "Save Essay Grade"}
-            </Button>
-          </div>
+        {isTaken ? (
+          <EssayEvaluationPanel
+            key={applicationId}
+            applicationId={applicationId}
+            evaluation={record.essayEvaluation}
+          />
         ) : isCompleted ? (
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DataRow label="Multiple Choice">

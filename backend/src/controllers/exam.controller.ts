@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamService } from "../services/exam.service";
 import { AppError } from "../utils/AppError";
 import { validateAssignmentBody, validateBookingBody, validateBookingStatusBody } from "../services/exam-schedule.rules";
+import { essayEvaluationBody } from "../services/exam-essay-evaluation.rules";
 
 function schedulingError(res: Response, error: unknown): void {
   res.status(error instanceof AppError ? error.statusCode : 500).json({
@@ -157,6 +158,7 @@ export class ExamController {
     req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const id = req.params.id as string;
       const detail = await this.examService.getApplicationDetail(id);
@@ -164,10 +166,8 @@ export class ExamController {
     } catch (error: unknown) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
       } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
+        res.status(500).json({ error: "Could not load the examination record." });
       }
     }
   };
@@ -248,22 +248,16 @@ export class ExamController {
   };
 
     gradeEssay = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const applicationId = req.params.id as string;
-      const { essayScore } = req.body;
-      const adminId = req.user!.userId; // We capture who graded it for the audit log
-
-      const essayScoreNum = Number(essayScore);
-      if (typeof essayScoreNum !== 'number' || isNaN(essayScoreNum) || essayScoreNum < 0 || essayScoreNum > 30) {
-        res.status(400).json({ error: "Invalid essay score. Must be a number between 0 and 30." });
-        return;
-      }
-
-      const result = await this.examService.gradeEssay(applicationId, essayScoreNum, adminId);
+      const essayScore = essayEvaluationBody(req.body);
+      const result = await this.examService.gradeEssay(applicationId, essayScore, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
-      console.error("Unexpected error in gradeEssay:", error);
-      res.status(400).json({ error: "An unexpected error occurred." });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({
+        error: error instanceof AppError ? error.message : "Could not save the essay evaluation.",
+      });
     }
   }
 

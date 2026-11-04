@@ -308,6 +308,7 @@ model EntranceExamScore {
   gradedById          String?                 @map("graded_by")
   multipleChoiceScore Decimal?                @map("multiple_choice_score")
   essayScore          Decimal?                @map("essay_score")
+  essayEvaluatedAt    DateTime?               @map("essay_evaluated_at") @db.DateTime(3)
   totalScore          Decimal?                @map("total_score")
   status              ExamResult
   createdAt           DateTime                @default(now()) @map("created_at")

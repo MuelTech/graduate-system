@@ -7,6 +7,7 @@ import { examConfigurationDto, validateExamConfiguration } from "../services/exa
 import { requireConsistentCapacity, scheduleIdentifier } from "../services/exam-schedule.rules";
 import { manilaCalendarDate, scheduleStartInstant } from "../services/exam-schedule-time";
 import { finalizationReceipt } from "../services/exam-finalization.rules";
+import { singleEssay } from "../services/exam-essay-evaluation.rules";
 
 const include = {
   student: { include: { user: { select: { role: true, isActive: true } } } }, slot: true, program: true,
@@ -32,7 +33,7 @@ export function validateExecutionIdentity(app: Application, requireActiveSlot = 
   return scheduled;
 }
 
-function binding(app: Application) {
+export function binding(app: Pick<Application, "actualStartedAt" | "deadlineAt" | "contentRevisionId" | "executionConfiguration">) {
   if (!app.actualStartedAt || !app.deadlineAt || !app.contentRevisionId || !app.executionConfiguration) {
     throw new AppError("No authoritative examination start is recorded. Start Examination first, or contact Graduate School staff for a legacy record.", 409);
   }
@@ -173,7 +174,8 @@ export class ExamExecutionRepository {
       if (!config.examDurationMinutes) throw new AppError("Configure a valid examination duration before starting.", 409);
       const revision = await tx.examContentRevision.findFirst({ orderBy: [{ publishedAt: "desc" }, { id: "desc" }], select: { id: true } });
       if (!revision) throw new AppError("Publish a valid Question Set before starting.", 409);
-      await new ExamQuestionSetRepository().getForBinding(revision.id, tx);
+      const content = await new ExamQuestionSetRepository().getForBinding(revision.id, tx);
+      singleEssay(content.questions);
       const actualStartedAt = new Date();
       requireNewStart(app, actualStartedAt); // Includes midnight/lock-wait boundary.
       const deadlineAt = new Date(actualStartedAt.getTime() + config.examDurationMinutes * 60_000);
