@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** B0A/B0B/B1/B2/B3/B4/B5/B6/B7 ACCEPTED FOR PHASE B PROGRESSION; B8 IS THE NEXT PACKAGE BUT IMPLEMENTATION IS GATED ON OWNER-CONFIRMED PD-2/PD-3 SCORING VALUES/UNITS/ROUNDING; B9 AND LATER UNAUTHORIZED
+**Status:** B0A/B0B/B1/B2/B3/B4/B5/B6/B7 ACCEPTED FOR PHASE B PROGRESSION; EXAM-B8 AUTHORIZED AS THE NEXT BOUNDED PACKAGE UNDER THE OWNER-CONFIRMED CONFIGURATION-DRIVEN SCORING POLICY BELOW; B9 AND LATER UNAUTHORIZED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
@@ -292,7 +292,7 @@ B4 requires a valid configured duration and freezes all representable B1 scoring
 | Automated verification | Approved thresholds/rounding/weights and edge values, blanks, maximum totals, duplicate defense retained, bank/key/config edits after start, zero/multiple essay completion, identical Admin/Applicant basis, pending/final publication/email states and unauthorized requests. |
 | Owner / manual QA | Review approved sample calculations, configured maxima vs displayed values, pending-to-final, historical result after bank/config change, correct queued pass/fail notification. |
 | Stop / acceptance | One reproducible assessment basis, consistent views and final-result publication. No appeal/regrade exception machinery added. |
-| Dependencies / policy | B1/B2/B6/B7 and B0B; PD-2/3 values and rounding approved. |
+| Dependencies / policy | B1/B2/B4/B6/B7 and B0B. **Owner-confirmed B8 policy, 2026-11-05:** scoring is configuration-driven, not hard-coded. MCQ earned points = frozen correct-MCQ count × frozen `mcqPointsPerCorrectItem`; essay contribution = the exact B7 essay score; maximum possible = frozen MCQ count × frozen MCQ points + frozen `essayMaximumScore`. Passing threshold is a frozen Admin-configured percentage in the range `(0,100]`, with fixed unit `PERCENT`. PASS/FAIL compares the exact decimal ratio against that percentage without rounding before the decision. Display rounding is presentation-only. New starts require a complete scoring configuration; already-started attempts with null/invalid frozen scoring fields fail closed and must never borrow current settings. No fixed 1-point MCQ, fixed 30-point essay, or fixed 75% threshold is encoded by B8; Admin may configure 1 point if that is the institutional setting. |
 
 ## 13. EXAM-B9 — Schedule amendments, appeals and FAILED-result reconsideration
 
