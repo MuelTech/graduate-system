@@ -46,6 +46,18 @@ interface AssignmentOptions {
   }[];
 }
 
+// Presentation only: eligibility and assignment remain server-authoritative.
+function assignmentMessage(reason: string | null) {
+  switch (reason) {
+    case "This Applicant already has an examination record that prevents another assignment.":
+      return "This Applicant already has an examination record.";
+    case "Program alignment or bridging waiver clearance is required before assignment.":
+      return "Program alignment or waiver clearance is required before assignment.";
+    default:
+      return reason;
+  }
+}
+
 export function AssignApplicantDialog({
   onAssigned,
 }: {
@@ -140,7 +152,7 @@ function AssignmentForm({
     },
     onError: (failure: Error) => {
       setError(
-        failure.message ||
+        assignmentMessage(failure.message) ||
           "Assignment could not be completed. Review the Applicant and schedule again.",
       );
       setReview(false);
@@ -313,8 +325,8 @@ function AssignmentForm({
           </dl>
           <p role="status">
             {data.eligible
-              ? "Eligible for assignment · No examination record prevents assignment."
-              : data.reason}
+              ? "Eligible for assignment."
+              : assignmentMessage(data.reason)}
           </p>
           {data.eligible && !review && (
             <fieldset className="space-y-2">
@@ -323,8 +335,7 @@ function AssignmentForm({
               </legend>
               {data.slots.length === 0 && (
                 <p>
-                  No eligible same-day schedules have seats available. Contact
-                  the schedule administrator.
+                  No schedules are available for this Applicant’s Program.
                 </p>
               )}
               {data.slots.map((slot) => (
@@ -359,7 +370,7 @@ function AssignmentForm({
           )}
           {review && selectedSlot && (
             <div className="space-y-2 rounded-md border p-4">
-              <p className="font-medium">Original scheduled date and time</p>
+              <p className="font-medium">Scheduled Examination</p>
               <p>
                 {formatScheduleDate(selectedSlot.examDate)} ·{" "}
                 {formatScheduleTime(selectedSlot.examTime)}
@@ -367,9 +378,6 @@ function AssignmentForm({
               <p>
                 {selectedSlot.slotsTaken} / {selectedSlot.maxSlots} booked ·{" "}
                 {selectedSlot.remainingSeats} seats remaining
-              </p>
-              <p>
-                The schedule&apos;s original date and time remain unchanged.
               </p>
             </div>
           )}

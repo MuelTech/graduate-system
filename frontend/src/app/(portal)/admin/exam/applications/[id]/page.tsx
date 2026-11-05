@@ -19,11 +19,8 @@ import {
   deriveExamState,
   EXAM_STATE_LABEL,
   EXAM_STATE_DESCRIPTION,
+  EXAM_STATE_BADGE_CLASS,
 } from "@/lib/exam-record-state";
-import {
-  formatScheduleDate as formatExamDate,
-  formatScheduleTime as formatExamTime,
-} from "@/lib/admin-exam-schedules";
 import type { ExamRecordDetail } from "@/types";
 import { toast } from "sonner";
 import {
@@ -64,23 +61,6 @@ function SectionCard({
         {children}
       </CardContent>
     </Card>
-  );
-}
-
-function DataRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0 space-y-0.5">
-      <dt className="text-sm text-(--earist-body-text)">{label}</dt>
-      <dd className="text-sm font-medium break-words text-foreground">
-        {children}
-      </dd>
-    </div>
   );
 }
 
@@ -193,30 +173,6 @@ function ErrorState({
   );
 }
 
-/* --------------------------------------------------------------- assessment */
-
-function AssessmentUnavailable({ state }: { state: string }) {
-  const message =
-    state === "SCHEDULED"
-      ? "Scores will become available after the applicant completes the entrance examination."
-      : state === "APPEAL_PENDING"
-        ? "Assessment is not available while a missed-exam appeal is pending."
-        : state === "DISQUALIFIED"
-          ? "Assessment is not available for a disqualified record."
-          : "Assessment is not available for the current exam state.";
-
-  return (
-    <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-      <p className="text-sm font-medium text-(--earist-secondary)">
-        {state === "SCHEDULED"
-          ? "Assessment not available yet"
-          : "Assessment not available"}
-      </p>
-      <p className="mt-1 text-sm text-(--earist-body-text)">{message}</p>
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------------- page */
 
 export default function ExamRecordDetailPage() {
@@ -298,10 +254,6 @@ export default function ExamRecordDetailPage() {
     `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
   const pinnacleId = record.student.pinnacleApplicantId || "No Pinnacle ID";
   const programName = record.program.programName;
-  const schedule = `${formatExamDate(record.slot.examDate)} · ${formatExamTime(
-    record.slot.examTime,
-  )}`;
-
   const isCompleted = record.status === "PASSED" || record.status === "FAILED";
   const isTaken = record.status === "TAKEN";
 
@@ -328,84 +280,72 @@ export default function ExamRecordDetailPage() {
         }
       />
 
-      {/* Current Exam State */}
-      <Card>
-        <CardContent className="space-y-3">
-          <p className="text-xs font-semibold text-(--earist-body-text)">
-            Current Exam State
+      <SectionCard title="Examination Result">
+        <div className="space-y-1">
+          {isCompleted && record.result && state !== "PASSED_RECONSIDERED" ? (
+            <p className="text-xs text-muted-foreground">Computed Result</p>
+          ) : null}
+          <p
+            className={cn(
+              "text-xl font-semibold",
+              EXAM_STATE_BADGE_CLASS[state],
+            )}
+          >
+            {state === "PASSED_RECONSIDERED"
+              ? "Final Decision: Passed — Reconsidered"
+              : EXAM_STATE_LABEL[state]}
           </p>
-          <p className="text-lg font-semibold text-(--earist-primary)">
-            {EXAM_STATE_LABEL[state]}
-          </p>
-          <p className="max-w-2xl text-sm text-(--earist-body-text)">
-            {EXAM_STATE_DESCRIPTION[state]}
-          </p>
-          <p className="text-sm text-(--earist-body-text)">{schedule}</p>
-        </CardContent>
-      </Card>
-
-      <StartAuthorization
-        applicationId={applicationId}
-        applicantName={fullName}
-      />
-
-      <ExamRecordActions record={record} />
-
-      {/* Exam Information */}
-      <SectionCard title="Exam Information">
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <DataRow label="Program">{programName}</DataRow>
-          <DataRow label="Exam Date">
-            {formatExamDate(record.slot.examDate)}
-          </DataRow>
-          <DataRow label="Exam Time">
-            {formatExamTime(record.slot.examTime)}
-          </DataRow>
-          <DataRow label="Exam State">{EXAM_STATE_LABEL[state]}</DataRow>
-        </dl>
+          {!isCompleted && !isTaken ? (
+            <p className="text-sm text-muted-foreground">
+              {EXAM_STATE_DESCRIPTION[state]}
+            </p>
+          ) : null}
+        </div>
+        {isCompleted ? (
+          record.result ? (
+            <ResultBreakdown
+              result={record.result}
+              showComputedResult={state === "PASSED_RECONSIDERED"}
+            />
+          ) : (
+            <p role="alert" className="text-sm">
+              Result evidence requires staff review. Publication is unavailable.
+            </p>
+          )
+        ) : null}
       </SectionCard>
 
-      {/* Assessment */}
-      <SectionCard title="Assessment">
-        {isTaken ? (
+      <div className="space-y-4">
+        <StartAuthorization
+          applicationId={applicationId}
+          applicantName={fullName}
+        />
+        <ExamRecordActions record={record} section="appointment" />
+      </div>
+
+      {isTaken || isCompleted ? (
+        <SectionCard title="Essay Evaluation">
           <EssayEvaluationPanel
             key={applicationId}
             applicationId={applicationId}
             evaluation={record.essayEvaluation}
           />
-        ) : isCompleted ? (
-          <div className="space-y-5">
-            {record.result ? (
-              <ResultBreakdown result={record.result} />
-            ) : (
-              <p role="alert">
-                Result evidence requires staff review. Publication is
-                unavailable.
-              </p>
-            )}
-            <EssayEvaluationPanel
-              applicationId={applicationId}
-              evaluation={record.essayEvaluation}
-              finalResult={record.result !== null}
-            />
-          </div>
-        ) : (
-          <AssessmentUnavailable state={state} />
-        )}
-      </SectionCard>
-
-      {isTaken && record.essayEvaluation?.status === "COMPLETED" ? (
-        <Button
-          disabled={finalizeMutation.isPending}
-          onClick={() => {
-            if (finalizeBusy.current) return;
-            finalizeBusy.current = true;
-            finalizeMutation.mutate();
-          }}
-        >
-          {finalizeMutation.isPending ? "Finalizing…" : "Finalize Result"}
-        </Button>
+          {isTaken && record.essayEvaluation?.status === "COMPLETED" ? (
+            <Button
+              disabled={finalizeMutation.isPending}
+              onClick={() => {
+                if (finalizeBusy.current) return;
+                finalizeBusy.current = true;
+                finalizeMutation.mutate();
+              }}
+            >
+              {finalizeMutation.isPending ? "Finalizing…" : "Finalize Result"}
+            </Button>
+          ) : null}
+        </SectionCard>
       ) : null}
+
+      <ExamRecordActions record={record} section="reconsideration" />
 
       {/* Result Notification */}
       {isCompleted && record.resultEmailEligible ? (
@@ -432,8 +372,6 @@ export default function ExamRecordDetailPage() {
           </p>
         </SectionCard>
       ) : null}
-
-
     </div>
   );
 }

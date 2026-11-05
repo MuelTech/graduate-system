@@ -64,7 +64,7 @@ export function StartAuthorization({
   if (query.isError || !query.data)
     return (
       <div role="alert" className="space-y-2 text-sm">
-        Examination start details could not be loaded.{" "}
+        Exam Timing could not be loaded.{" "}
         <Button variant="outline" onClick={() => query.refetch()}>
           Retry
         </Button>
@@ -75,25 +75,17 @@ export function StartAuthorization({
   return (
     <Card>
       <CardContent className="space-y-3">
-        <h2 className="text-base font-semibold">Examination Start</h2>
-        <dl className="space-y-2 text-sm">
+        <h2 className="text-base font-semibold">Exam Timing</h2>
+        <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">Original appointment</dt>
+            <dt className="text-muted-foreground">Scheduled</dt>
             <dd>
               {formatScheduleDate(execution.appointment.examDate)} ·{" "}
               {formatScheduleTime(execution.appointment.examTime)}
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Start Now authorization</dt>
-            <dd>
-              {execution.authorization
-                ? `Authorized${actor ? ` by ${actor.firstName} ${actor.lastName}` : ""} · ${examinationTimestamp(execution.authorization.authorizedAt)}`
-                : "Not authorized"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Actual examination start</dt>
+            <dt className="text-muted-foreground">Started</dt>
             <dd>
               {execution.actualStartedAt
                 ? examinationTimestamp(execution.actualStartedAt)
@@ -104,7 +96,7 @@ export function StartAuthorization({
           </div>
           {execution.deadlineAt && (
             <div>
-              <dt className="text-muted-foreground">Individual deadline</dt>
+              <dt className="text-muted-foreground">Ends</dt>
               <dd>{examinationTimestamp(execution.deadlineAt)}</dd>
             </div>
           )}
@@ -121,7 +113,8 @@ export function StartAuthorization({
         )}
         {execution.authorization && !execution.actualStartedAt && (
           <p className="text-sm text-muted-foreground">
-            Authorized to start. The Applicant has not started the examination.
+            Authorized{actor ? ` by ${actor.firstName} ${actor.lastName}` : ""} ·{" "}
+            {examinationTimestamp(execution.authorization.authorizedAt)}
           </p>
         )}
         <Dialog
@@ -136,7 +129,7 @@ export function StartAuthorization({
                 Authorize Start Now for {applicantName}?
               </DialogTitle>
               <DialogDescription>
-                The original appointment stays unchanged. The timer begins only
+                The scheduled date and time stay unchanged. The timer begins only
                 when this Applicant clicks Start Examination today.
               </DialogDescription>
             </DialogHeader>

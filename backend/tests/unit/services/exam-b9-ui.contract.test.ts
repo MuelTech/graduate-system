@@ -316,7 +316,7 @@ describe("B9 existing Admin Exam Record controls", () => {
     expect(html(actions())).toContain("Admin reason");
     expect(button(actions(), "Approve Appeal")).toBeUndefined();
   });
-  it("reconsideration shows immutable computed FAILED separately with actor/time/reason and no editor/revoke", () => {
+  it("reconsideration evidence has actor/time/reason without duplicating the result summary or adding an editor/revoke", () => {
     record.status = "FAILED";
     record.reconsideration = {
       reason: "Institutional justification",
@@ -325,15 +325,17 @@ describe("B9 existing Admin Exam Record controls", () => {
     };
     const text = html(actions());
     for (const value of [
-      "Computed Result: FAILED",
-      "PASSED — RECONSIDERED",
+      "Reconsideration",
+      "Reason",
+      "Decided by",
+      "Decision date",
       "Institutional justification",
       "Ana Admin",
     ])
       expect(text).toContain(value);
     expect(button(actions(), "Reconsider Result")).toBeUndefined();
     expect(text).not.toMatch(
-      /Mark as Passed|Revoke|essay-score|Send Result Email/,
+      /Computed Result|PASSED — RECONSIDERED|Mark as Passed|Revoke|essay-score|Send Result Email/,
     );
   });
   it.each(["MISSED", "RESCHEDULED", "CANCELLED"])(

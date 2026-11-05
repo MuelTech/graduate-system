@@ -14,11 +14,9 @@ import { toast } from "sonner";
 export function EssayEvaluationPanel({
   applicationId,
   evaluation,
-  finalResult = false,
 }: {
   applicationId: string;
   evaluation: EssayEvaluation;
-  finalResult?: boolean;
 }) {
   const [score, setScore] = useState("");
   const saving = useRef(false);
@@ -106,7 +104,7 @@ export function EssayEvaluationPanel({
     <div className="space-y-5">
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-(--earist-secondary)">
-          Essay Question
+          Question
         </h3>
         <p className="text-sm break-words whitespace-pre-wrap text-foreground">
           <SemanticText
@@ -123,7 +121,7 @@ export function EssayEvaluationPanel({
           }
         />
         <h3 className="text-sm font-semibold text-(--earist-secondary)">
-          Finalized Essay Response
+          Applicant response
         </h3>
         <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
           <p className="text-sm break-words whitespace-pre-wrap text-foreground">
@@ -134,32 +132,34 @@ export function EssayEvaluationPanel({
         </div>
       </div>
       {evaluation.status === "COMPLETED" ? (
-        <div className="space-y-2" role="status">
-          <p className="font-semibold text-(--earist-primary)">
-            {finalResult
-              ? "Essay Evaluated"
-              : "Essay Evaluated — Final Result Pending"}
-          </p>
-          <p>
-            Essay Score: {evaluation.essayScore} / {maximum}
-          </p>
-          <p>
-            Evaluated by:{" "}
-            {evaluation.evaluator
-              ? `${evaluation.evaluator.firstName} ${evaluation.evaluator.lastName}`
-              : "Not recorded"}
-          </p>
-          <p>
-            Evaluation Time:{" "}
-            {evaluation.evaluatedAt
-              ? new Date(evaluation.evaluatedAt).toLocaleString("en-PH", {
-                  timeZone: "Asia/Manila",
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })
-              : "Not recorded"}
-          </p>
-        </div>
+        <dl className="grid gap-4 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-muted-foreground">Score</dt>
+            <dd className="font-medium">
+              {evaluation.essayScore} / {maximum}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Evaluated by</dt>
+            <dd className="break-words">
+              {evaluation.evaluator
+                ? `${evaluation.evaluator.firstName} ${evaluation.evaluator.lastName}`
+                : "Not recorded"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Evaluated on</dt>
+            <dd>
+              {evaluation.evaluatedAt
+                ? new Date(evaluation.evaluatedAt).toLocaleString("en-PH", {
+                    timeZone: "Asia/Manila",
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "Not recorded"}
+            </dd>
+          </div>
+        </dl>
       ) : (
         <div className="space-y-3">
           <label

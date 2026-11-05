@@ -55,7 +55,13 @@ type SlotOption = {
 const dateTime = (value: string) =>
   new Date(value).toLocaleString("en-PH", { timeZone: "Asia/Manila" });
 
-export function ExamRecordActions({ record }: { record: ExamRecordDetail }) {
+export function ExamRecordActions({
+  record,
+  section = "all",
+}: {
+  record: ExamRecordDetail;
+  section?: "appointment" | "reconsideration" | "all";
+}) {
   const [action, setAction] = useState<Action | null>(null);
   const [reason, setReason] = useState("");
   const [slot, setSlot] = useState("");
@@ -134,9 +140,10 @@ export function ExamRecordActions({ record }: { record: ExamRecordDetail }) {
     (!action || !actions[action].target || !!slot);
   return (
     <>
-      {record.canAmendAppointment ||
-      amendment ||
-      record.replacementOfApplicationId ? (
+      {section !== "reconsideration" &&
+      (record.canAmendAppointment ||
+        amendment ||
+        record.replacementOfApplicationId) ? (
         <Card>
           <CardContent className="space-y-3">
             <h2 className="text-base font-semibold">Appointment Changes</h2>
@@ -227,21 +234,31 @@ export function ExamRecordActions({ record }: { record: ExamRecordDetail }) {
           </CardContent>
         </Card>
       ) : null}
-      {record.canReconsiderResult || record.reconsideration ? (
+      {section !== "appointment" &&
+      (record.canReconsiderResult || record.reconsideration) ? (
         <Card>
           <CardContent className="space-y-3">
-            <h2 className="text-base font-semibold">Institutional Decision</h2>
-            <p className="text-sm">Computed Result: FAILED</p>
+            <h2 className="text-base font-semibold">Reconsideration</h2>
             {record.reconsideration ? (
-              <div className="space-y-2 text-sm">
-                <p className="font-semibold">PASSED — RECONSIDERED</p>
-                <p>{record.reconsideration.reason}</p>
-                <p>
-                  {record.reconsideration.decidedBy.firstName}{" "}
-                  {record.reconsideration.decidedBy.lastName} ·{" "}
-                  {dateTime(record.reconsideration.decidedAt)}
-                </p>
-              </div>
+              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                <div className="min-w-0 break-words sm:col-span-2">
+                  <dt className="text-muted-foreground">Reason</dt>
+                  <dd className="whitespace-pre-wrap">
+                    {record.reconsideration.reason}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Decided by</dt>
+                  <dd className="break-words">
+                    {record.reconsideration.decidedBy.firstName}{" "}
+                    {record.reconsideration.decidedBy.lastName}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Decision date</dt>
+                  <dd>{dateTime(record.reconsideration.decidedAt)}</dd>
+                </div>
+              </dl>
             ) : (
               <Button variant="outline" onClick={() => begin("reconsider")}>
                 Reconsider Result
@@ -274,10 +291,12 @@ export function ExamRecordActions({ record }: { record: ExamRecordDetail }) {
                     : "Confirm a future replacement appointment. The original appointment remains in history."}
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm">
-            Original appointment: {formatScheduleDate(record.slot.examDate)} ·{" "}
-            {formatScheduleTime(record.slot.examTime)}
-          </p>
+          {action !== "reconsider" && (
+            <p className="text-sm">
+              Original appointment: {formatScheduleDate(record.slot.examDate)} ·{" "}
+              {formatScheduleTime(record.slot.examTime)}
+            </p>
+          )}
           {action && actions[action].target ? (
             <div className="space-y-2">
               <Label htmlFor="amendment-slot">Replacement Appointment</Label>

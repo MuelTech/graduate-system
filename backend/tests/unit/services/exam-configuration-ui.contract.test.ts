@@ -98,20 +98,21 @@ describe("B1 Admin draft values and state contract", () => {
   it("renders loading without editable fields or fake values", () => {
     query.mockReturnValue({ isLoading: true });
     expect(html()).toContain("Loading exam configuration");
-    expect(html()).not.toContain("Save configuration");
+    expect(html()).not.toContain("Save Configuration");
   });
 
   it("renders load failure with executable Retry and no save action", async () => {
     const retry = vi.fn(); query.mockReturnValue({ isLoading: false, isError: true, refetch: retry });
     expect(html()).toContain("Could not load exam configuration");
-    expect(html()).not.toContain("Save configuration");
+    expect(html()).not.toContain("Save Configuration");
     await walk(tree(), node => node.props?.onClick)[0].props.onClick();
     expect(retry).toHaveBeenCalledOnce();
   });
 
   it("shows explicit draft context, disabled threshold and fixed read-only timezone", () => {
     const rendered = html();
-    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Asia/Manila", "system-defined, read-only", "All four values are required", "Passing Threshold is a percentage"]) expect(rendered).toContain(text);
+    for (const text of ["Exam Duration", "MCQ Points per Correct Item", "Essay Maximum Score", "Passing Threshold", "Timezone", "Philippine Time (Asia/Manila)", "Complete all fields", "Changes apply only to new examinations."]) expect(rendered).toContain(text);
+    expect(rendered).not.toMatch(/Institutional Timezone|system-defined|read-only/);
     expect(rendered).toMatch(/id="configuration-passingThreshold"/);
     expect(rendered).not.toMatch(/id="configuration-passingThreshold"[^>]*disabled/);
     expect(rendered).not.toMatch(/value="(?:180|30|75|1)"|<select|settingKey|entrance_exam_configuration/);

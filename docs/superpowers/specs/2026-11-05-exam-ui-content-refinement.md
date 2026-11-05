@@ -1,6 +1,6 @@
 # EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement
 
-**Status:** MANUAL QA FINDINGS RECORDED — IMPLEMENTATION NOT YET AUTHORIZED  
+**Status:** IMPLEMENTED — INDEPENDENT REVIEW AND PROJECT-OWNER VISUAL ACCEPTANCE PENDING
 **Date:** 2026-11-05  
 **Branch:** `feat/exam-engine-scheduling`
 
@@ -303,8 +303,17 @@ A future bounded implementation should prove:
 - wording matches `USER_FACING_COPY_SOURCE_OF_TRUTH.md`;
 - Email Integration remains deferred.
 
-## 8. Current decision
+## 8. Original documentation decision
 
 These manual-QA findings **block final visual/content acceptance of B10**, but they do not invalidate the already-passed automated core examination behavior.
 
 Implementation of this refinement is **not authorized by this documentation commit alone**. A separately bounded correction package should be authorized after owner review of this specification.
+
+## 9. Owner-authorized implementation — 2026-11-06
+
+The project owner separately authorized EXAM-B10-MQA-UI on the existing feature
+branch. [Implementation, page-specific decisions and verification evidence](../reports/2026-11-06-exam-b10-mqa-ui.md): eight frontend files, no backend/read-model
+change, six focused UI contract files / 136 tests PASS; TypeScript, scoped ESLint,
+production build and diff check PASS. Canonical copy and the information hierarchy
+above are applied. Independent review and owner manual/browser visual acceptance
+remain pending. Email Integration remains deferred; B10/Phase B is not complete.

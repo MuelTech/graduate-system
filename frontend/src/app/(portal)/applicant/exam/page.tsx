@@ -13,7 +13,7 @@ import Link from "next/link";
 import { apiClientRequest } from "@/lib/api.client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
@@ -308,29 +308,61 @@ export default function ApplicantExamPage() {
 
   if (finalReceipt)
     return (
-      <Card>
-        <CardContent className="space-y-3" role="status">
-          <PageHeader title="Examination Submitted" />
-          <p>
-            {finalReceipt.finalizationReason === "TIME_EXPIRED"
-              ? "Your examination was finalized after time expired, using your last saved answers."
-              : "Your examination has been submitted."}
-          </p>
-          <p className="break-all">Receipt: {finalReceipt.receiptId}</p>
-          <p>Finalized: {examinationTimestamp(finalReceipt.finalizedAt)}</p>
-          <p>Started: {examinationTimestamp(finalReceipt.actualStartedAt)}</p>
-          <p>Deadline: {examinationTimestamp(finalReceipt.deadlineAt)}</p>
-          <p>
-            {finalReceipt.answeredCount} answered;{" "}
-            {finalReceipt.unansweredCount} unanswered.
-          </p>
-          <p>
-            Unanswered items remain unanswered. View examination status for
-            grading and final results.
-          </p>
-          <Link href="/applicant/results">View examination status</Link>
-        </CardContent>
-      </Card>
+      <div className="mx-auto w-full max-w-3xl space-y-6">
+        <PageHeader title="Examination Submitted" />
+        <Card>
+          <CardContent className="space-y-6">
+            <div className="space-y-2" role="status">
+              <CheckCircle2
+                className="h-8 w-8 text-(--earist-success)"
+                aria-hidden="true"
+              />
+              <p className="text-sm">
+                {finalReceipt.finalizationReason === "TIME_EXPIRED"
+                  ? "Your examination was submitted when time expired, using your last saved answers."
+                  : "Your examination has been submitted."}
+              </p>
+            </div>
+            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground">Submitted</dt>
+                <dd className="font-medium">
+                  {examinationTimestamp(finalReceipt.finalizedAt)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Questions answered</dt>
+                <dd className="font-medium">
+                  {finalReceipt.unansweredCount === 0
+                    ? `All ${finalReceipt.questionCount} questions were answered.`
+                    : `${finalReceipt.answeredCount} of ${finalReceipt.questionCount} questions answered. ${finalReceipt.unansweredCount} questions were left unanswered.`}
+                </dd>
+              </div>
+            </dl>
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-sm font-medium">Awaiting evaluation</p>
+              <Link href="/applicant/results" className={buttonVariants()}>
+                View Examination Status
+              </Link>
+            </div>
+            <details className="border-t pt-4 text-sm">
+              <summary className="cursor-pointer font-medium focus-visible:outline-2 focus-visible:outline-ring">
+                Submission details
+              </summary>
+              <dl className="mt-3 space-y-3 text-muted-foreground">
+                <div>
+                  <dt>Submission Reference</dt>
+                  <dd className="break-all">{finalReceipt.receiptId}</dd>
+                </div>
+                <div>
+                  <dt>Started</dt>
+                  <dd>{examinationTimestamp(finalReceipt.actualStartedAt)}</dd>
+                </div>
+              </dl>
+            </details>
+          </CardContent>
+        </Card>
+      </div>
     );
   if (submissionUncertain)
     return (
@@ -401,9 +433,8 @@ export default function ApplicantExamPage() {
                 )
                 ? "Your examination has been submitted."
                 : "This examination is no longer available for answering."
-              : "This legacy record has no recorded examination start or content binding."}
+              : "This examination record requires Graduate School staff review."}
           </p>
-          {execution.reason && <p>{execution.reason}</p>}
           <Link href="/applicant/results">View examination status</Link>
         </CardContent>
       </Card>
@@ -448,47 +479,49 @@ export default function ApplicantExamPage() {
   if (execution.state !== "ACTIVE")
     return (
       <ApplicantAppointmentGate>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <PageHeader title="Entrance Examination" />
-        <Card>
-          <CardContent className="space-y-4">
-            <h2 className="text-base font-semibold">Original appointment</h2>
-            <p>{execution.appointment.programName}</p>
-            <p>
-              {formatScheduleDate(execution.appointment.examDate)} ·{" "}
-              {formatScheduleTime(execution.appointment.examTime)}
-            </p>
-            <p>Examination not started.</p>
-            {execution.authorization && (
-              <p>Start Now authorized. Your timer has not started.</p>
-            )}
-            {execution.reason && <p role="status">{execution.reason}</p>}
-            <p className="text-sm text-muted-foreground">
-              Your allotted time begins when you click Start Examination.
-              Refreshing restores the same deadline, questions and saved
-              answers.
-            </p>
-            {start.isError && (
-              <p role="alert" className="text-sm text-destructive">
-                {start.error.message}
+        <div className="mx-auto max-w-3xl space-y-6">
+          <PageHeader title="Entrance Examination" />
+          <Card>
+            <CardContent className="space-y-4">
+              <h2 className="text-base font-semibold">Scheduled Examination</h2>
+              <p>{execution.appointment.programName}</p>
+              <p>
+                {formatScheduleDate(execution.appointment.examDate)} ·{" "}
+                {formatScheduleTime(execution.appointment.examTime)}
               </p>
-            )}
-            <Button
-              disabled={!execution.canStart || start.isPending}
-              onClick={() => {
-                if (startBusy.current) return;
-                startBusy.current = true;
-                start.mutate();
-              }}
-            >
-              {start.isPending ? "Starting…" : "Start Examination"}
-            </Button>
-            <Button variant="outline" onClick={() => refetchExecution()}>
-              Refresh status
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+              <p role="status" className="text-sm font-medium">
+                {start.isError
+                  ? "The examination is not available yet."
+                  : execution.canStart
+                    ? "You may start your examination now."
+                    : execution.reason ===
+                        "Your scheduled start time has not arrived. Start Now authorization is required for early entry."
+                      ? `You can start your examination at ${formatScheduleTime(execution.appointment.examTime)}.`
+                      : "The examination is not available yet."}
+              </p>
+              {start.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  Please refresh examination status and try again.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={!execution.canStart || start.isPending}
+                  onClick={() => {
+                    if (startBusy.current) return;
+                    startBusy.current = true;
+                    start.mutate();
+                  }}
+                >
+                  {start.isPending ? "Starting…" : "Start Examination"}
+                </Button>
+                <Button variant="outline" onClick={() => refetchExecution()}>
+                  Refresh status
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </ApplicantAppointmentGate>
     );
   if (questionsQuery.isPending) return <Skeleton className="h-64 w-full" />;
@@ -521,7 +554,7 @@ export default function ApplicantExamPage() {
     <ExamExecutionContext.Provider value={execution.applicationId}>
       <div className="space-y-4 relative">
         <p className="text-sm text-muted-foreground">
-          Original appointment:{" "}
+          Scheduled Examination:{" "}
           {formatScheduleDate(execution.appointment.examDate)} ·{" "}
           {formatScheduleTime(execution.appointment.examTime)}. Deadline:{" "}
           {examinationTimestamp(execution.deadlineAt!)}.

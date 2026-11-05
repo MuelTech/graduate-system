@@ -43,7 +43,7 @@ const panel = compile("../frontend/src/components/admin/exam/essay-evaluation-pa
 modules["@/components/admin/exam/essay-evaluation-panel"] = { EssayEvaluationPanel: panel };
 const page = compile("../frontend/src/app/(portal)/admin/exam/applications/[id]/page.tsx").default;
 function evaluation(overrides: any = {}) { return { status: "PENDING", questionId: "frozen-question", question: { id: "frozen-question", questionText: "Frozen essay prompt", type: "ESSAY", options: [], stimulusType: "NONE" }, responseText: "Exact response\nwith spaces  ", responseState: "SUBMITTED", maximumScore: 25.5, essayScore: null, evaluator: null, evaluatedAt: null, ...overrides }; }
-function renderPanel() { cursor = 0; return panel({ applicationId: "application", evaluation: record.essayEvaluation, finalResult: record.result !== null }); }
+function renderPanel() { cursor = 0; return panel({ applicationId: "application", evaluation: record.essayEvaluation }); }
 function nodes(tree: any): any[] { if (Array.isArray(tree)) return tree.flatMap(nodes); if (!tree?.props) return []; return [tree, ...nodes(tree.props.children)]; }
 function label(tree: any): string { if (Array.isArray(tree)) return tree.map(label).join(""); if (tree == null || typeof tree === "boolean") return ""; return typeof tree === "object" ? label(tree.props?.children) : String(tree); }
 const input = (tree: any) => nodes(tree).find(n => n.props.id === "essay-score");
@@ -92,7 +92,7 @@ describe("B7 existing Exam Record evaluation UI", () => {
   it("successful authoritative evaluation immediately replaces editing with score/evaluator/time and refreshes exact record/list", async () => {
     renderPanel(); const completed = evaluation({ status: "COMPLETED", essayScore: 0, evaluator: { firstName: "Maria", lastName: "Admin" }, evaluatedAt: "2026-11-04T12:00:00Z" });
     mutation.onSuccess({ ...completed, result: { provenance: "B8", status: "failed", mcqScore: "0", mcqTotal: "2", essayScore: "0", essayTotal: "25.5", totalScore: "0", totalPossible: "27.5", passingThreshold: "75", percentage: "0.00", scoredAt: null, mcqCorrectCount: 0, mcqQuestionCount: 1 } }); await mutation.onSettled(); const tree = renderPanel(), html = renderToStaticMarkup(tree);
-    expect(html).toContain("Essay Evaluated"); expect(html).not.toContain("Final Result Pending"); expect(html).toContain("0 / 25.5"); expect(html).toContain("Maria Admin"); expect(html).toContain("Nov 4, 2026");
+    expect(html).toContain("Evaluated on"); expect(html).not.toContain("Final Result Pending"); expect(html).toContain("0 / 25.5"); expect(html).toContain("Maria Admin"); expect(html).toContain("Nov 4, 2026");
     expect(input(tree)).toBeUndefined(); expect(save(tree)).toBeUndefined(); expect(invalidate).toHaveBeenCalledWith({ queryKey: ["examRecord", "application"] }); expect(invalidate).toHaveBeenCalledWith({ queryKey: ["examRecords"] });
   });
   it("conflict/lost-response settlement refreshes authority before another attempt", async () => {

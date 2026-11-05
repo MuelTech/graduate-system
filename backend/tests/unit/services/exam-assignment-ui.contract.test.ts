@@ -137,7 +137,7 @@ describe("Admin same-day assignment dialog", () => {
     expect(text(tree)).toMatch(/9:00\s*AM/);
     button(tree, "Review Assignment").props.onClick(); tree = render();
     expect(text(tree)).toContain("Confirm Applicant Assignment");
-    expect(text(tree)).toContain("original date and time remain unchanged");
+    expect(text(tree)).toContain("Scheduled Examination");
     expect(button(tree, "Confirm Assignment").props.disabled).toBe(false);
   });
   it("prevents two clicks before rerender and disables actions/close during mutation", async () => {
@@ -172,7 +172,7 @@ describe("Admin same-day assignment dialog", () => {
   });
   it("missing slots, options error and background refetch each prevent confirmation", () => {
     chooseApplicant(); optionsResult.data.slots = [];
-    expect(text(render())).toContain("No eligible same-day schedules");
+    expect(text(render())).toContain("No schedules are available for this Applicant’s Program.");
     optionsResult.isError = true; optionsResult.error = new Error("Applicant not found.");
     expect(text(render())).toContain("Applicant not found.");
     optionsResult.isError = false; optionsResult.isFetching = true;
@@ -183,6 +183,24 @@ describe("Admin same-day assignment dialog", () => {
     expect(text(render())).toContain("Applicants could not be loaded.");
     searchResult.isError = false; searchResult.data = { applicants: [], total: 0 };
     expect(text(render())).toContain("No registered Applicants match");
+  });
+  it("uses canonical eligibility and blocker copy without inverse conditions or role-confusing escalation", () => {
+    chooseApplicant();
+    expect(text(render())).toContain("Eligible for assignment.");
+    expect(text(render())).not.toContain("No examination record prevents assignment");
+    optionsResult.data.eligible = false;
+    for (const [reason, expected] of [
+      ["This Applicant already has an examination record that prevents another assignment.", "This Applicant already has an examination record."],
+      ["Program alignment or bridging waiver clearance is required before assignment.", "Program alignment or waiver clearance is required before assignment."],
+    ]) {
+      optionsResult.data.reason = reason;
+      const tree = render();
+      expect(text(tree)).toContain(expected);
+      expect(text(tree)).not.toContain(reason);
+      expect(button(tree, "Review Assignment").props.disabled).toBe(true);
+    }
+    optionsResult.data.eligible = true; optionsResult.data.slots = [];
+    expect(text(render())).not.toContain("Contact the schedule administrator");
   });
   it("retains responsive shared Dialog semantics, labels, native radio group and no browser confirmations", () => {
     expect(dialogSource).toContain("DialogTitle"); expect(dialogSource).toContain("DialogDescription");

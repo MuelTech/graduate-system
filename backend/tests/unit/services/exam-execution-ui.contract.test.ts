@@ -12,7 +12,7 @@ const { createElement } = requireFrontend("react");
 const { renderToStaticMarkup } = requireFrontend("react-dom/server");
 let states: any[], cursor: number, queries: any[], mutations: any[], queryResult: any, questions: any[], pending: boolean;
 const request = vi.fn(), mutate = vi.fn(), refetch = vi.fn(), invalidate = vi.fn();
-let draftState: any;
+let draftState: any, startError: Error | null;
 const draftChange = vi.fn(), draftFlush = vi.fn(), draftPrepare = vi.fn(), draftResync = vi.fn();
 const draftQueue = { snapshot: () => draftState, subscribe: () => () => {}, activate: vi.fn(), pause: vi.fn(), change: draftChange, flush: draftFlush, prepare: draftPrepare, resync: draftResync };
 const primitive = (name: string) => ({ children }: any) => createElement(name, {}, children);
@@ -28,13 +28,13 @@ const modules: Record<string, any> = {
   },
   "@tanstack/react-query": {
     useQuery: (options: any) => { queries.push(options); return options.queryKey[0] === "applicant-bound-exam-questions" ? { data: questions } : queryResult; },
-    useMutation: (options: any) => { mutations.push(options); return { isPending: pending, mutate, reset: vi.fn() }; },
+    useMutation: (options: any) => { mutations.push(options); return { isPending: pending, isError: mutations.length === 1 && !!startError, error: startError, mutate, reset: vi.fn() }; },
     useQueryClient: () => ({ invalidateQueries: invalidate }),
   },
   "@/lib/api.client": { apiClientRequest: request }, "@/lib/exam-execution": executionHelpers, "@/lib/admin-exam-schedules": scheduleHelpers,
   "@/lib/applicant-exam-content": { withApplicantAnswer: (before: any, id: string, option: string) => ({ ...before, [id]: option }) },
   "@/lib/exam-drafts": { ExamDraftQueue: class { constructor() { return draftQueue; } }, draftStatusText: { saved: "Saved", unsaved: "Unsaved changes", saving: "Saving…", error: "Save failed", conflict: "Answers changed elsewhere" } },
-  "@/components/ui/button": { Button: primitive("button") }, "@/components/ui/card": primitives(["Card", "CardContent", "CardHeader", "CardTitle"]),
+  "@/components/ui/button": { Button: primitive("button"), buttonVariants: () => "button" }, "@/components/ui/card": primitives(["Card", "CardContent", "CardHeader", "CardTitle"]),
   "@/components/ui/dialog": primitives(["Dialog", "DialogContent", "DialogHeader", "DialogTitle", "DialogDescription", "DialogFooter"]),
   "@/components/ui/badge": primitives(["Badge"]), "@/components/ui/alert": primitives(["Alert", "AlertDescription"]), "@/components/ui/skeleton": primitives(["Skeleton"]),
   "@/components/ui/page-header": { PageHeader: ({ title }: any) => createElement("h1", {}, title) },
@@ -62,26 +62,50 @@ function execution(patch: Partial<ExamExecution> = {}): ExamExecution {
 }
 beforeEach(() => {
   vi.clearAllMocks(); states = []; cursor = 0; queries = []; mutations = []; pending = false; questions = [];
-  draftState = { values: {}, status: "saved", ready: true }; draftPrepare.mockResolvedValue(true);
+  draftState = { values: {}, status: "saved", ready: true }; draftPrepare.mockResolvedValue(true); startError = null;
   queryResult = { data: { execution: execution(), receivedAt: 100 }, refetch }; refetch.mockResolvedValue({ isError: false });
 });
 describe("B4 Applicant server execution UI", () => {
-  it("pre-start displays original appointment and explicit Start without fetching protected content", () => {
-    const tree = render(); expect(text(tree)).toContain("Examination not started."); expect(text(tree)).toContain("9:00 AM"); expect(button(tree, "Start Examination").props.disabled).toBe(false); expect(queries[1].enabled).toBe(false);
-    expect(renderToStaticMarkup(tree)).toContain("saved answers");
+  it("pre-start displays the scheduled examination and available Start without fetching protected content", () => {
+    const tree = render(); expect(text(tree)).toContain("Scheduled Examination"); expect(text(tree)).toContain("9:00 AM"); expect(button(tree, "Start Examination").props.disabled).toBe(false); expect(queries[1].enabled).toBe(false);
+    expect(renderToStaticMarkup(tree)).toContain("You may start your examination now.");
+    expect(text(tree)).not.toMatch(/Original appointment|Examination not started|authorization|Refreshing restores|server-owned/);
   });
   it("does not unlock from device time when the server blocks early entry", () => {
-    queryResult.data.execution = execution({ state: "BLOCKED", canStart: false, reason: "Scheduled time has not arrived" });
-    expect(button(render(), "Start Examination").props.disabled).toBe(true);
+    queryResult.data.execution = execution({ state: "BLOCKED", canStart: false, reason: "Your scheduled start time has not arrived. Start Now authorization is required for early entry." });
+    const tree = render();
+    expect(button(tree, "Start Examination").props.disabled).toBe(true);
+    expect(text(tree)).toContain("You can start your examination at 9:00 AM.");
+    expect(text(tree)).not.toContain("authorization");
   });
   it("Start is an exact authenticated mutation with synchronous repeated-click suppression", async () => {
     const tree = render(); button(tree, "Start Examination").props.onClick(); button(tree, "Start Examination").props.onClick(); expect(mutate).toHaveBeenCalledTimes(1);
     await mutations[0].mutationFn(); expect(request).toHaveBeenCalledWith("/exam-engine/applications/exact-application/start", { method: "POST", body: "{}" });
     await mutations[0].onSettled(); expect(refetch).toHaveBeenCalled();
   });
+  it("keeps Admin configuration and content failures out of Applicant start feedback", () => {
+    for (const reason of [
+      "Complete Exam Configuration, including the passing percentage, before starting.",
+      "Publish a valid Question Set before starting.",
+      "Configure a valid examination duration before starting.",
+    ]) {
+      startError = new Error(reason);
+      const tree = render();
+      expect(text(tree)).toContain("The examination is not available yet.");
+      expect(text(tree)).not.toContain(reason);
+      expect(text(tree)).not.toContain("You may start your examination now.");
+      expect(queries[1].enabled).toBe(false);
+    }
+  });
+  it("an unknown pre-start blocker has safe copy and retains the server-disabled Start", () => {
+    queryResult.data.execution = execution({ state: "BLOCKED", canStart: false, reason: "Incomplete examination authority requires staff review." });
+    const tree = render(); expect(button(tree, "Start Examination").props.disabled).toBe(true);
+    expect(text(tree)).toContain("The examination is not available yet.");
+    expect(text(tree)).not.toContain("authority");
+  });
   it("pending Start disables action and changing server authorization never implies started", () => {
     pending = true; queryResult.data.execution.authorization = { authorizedAt: "2026-11-03T01:00:00Z", authorizedBy: null };
-    const tree = render(); expect(button(tree, "Starting…").props.disabled).toBe(true); expect(text(tree)).toContain("Your timer has not started");
+    const tree = render(); expect(button(tree, "Starting…").props.disabled).toBe(true); expect(text(tree)).toContain("You may start your examination now."); expect(queries[1].enabled).toBe(false);
   });
   it("started render restores the server deadline, bound content and exact media context", () => {
     queryResult.data.execution = execution({ state: "ACTIVE", actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", contentRevisionId: "revision1", remainingSeconds: 7200 });
@@ -128,9 +152,9 @@ describe("B4 exact per-record Admin start authorization", () => {
   });
   it("shows actor/time and Authorized separately from actual Not started", () => {
     queryResult.data = execution({ authorization: { authorizedAt: "2026-11-03T01:00:00Z", authorizedBy: { id: "a", firstName: "Admin", lastName: "Fixture" } } });
-    expect(text(render(admin))).toContain("Authorized by Admin Fixture"); expect(text(render(admin))).toContain("The Applicant has not started");
+    expect(text(render(admin))).toContain("Authorized by Admin Fixture"); expect(text(render(admin))).toContain("Not started");
     queryResult.data = execution({ actualStartedAt: "2026-11-03T02:17:00Z", deadlineAt: "2026-11-03T04:17:00Z", canAuthorize: false });
-    const tree = render(admin); expect(text(tree)).toContain("Individual deadline"); expect(text(tree)).not.toContain("The Applicant has not started");
+    const tree = render(admin); expect(text(tree)).toContain("Ends"); expect(text(tree)).not.toContain("Not started");
   });
 });
 
@@ -205,7 +229,7 @@ describe("B6 Applicant finalization and recovery", () => {
   });
   it.each(["APPLICANT_SUBMITTED", "TIME_EXPIRED"])("reopen %s shows authoritative receipt and no editable questions", reason => {
     queryResult.data.execution = execution({ state: "TERMINAL", finalization: { ...receipt, finalizationReason: reason as any } });
-    const tree = render(); expect(text(tree)).toContain("stable-receipt"); expect(text(tree)).toContain("1 answered; 1 unanswered"); expect(nodes(tree).some(n => n.type === "fieldset")).toBe(false);
+    const tree = render(); expect(text(tree)).toContain("stable-receipt"); expect(text(tree)).toContain("1 of 2 questions answered. 1 questions were left unanswered."); expect(nodes(tree).some(n => n.type === "fieldset")).toBe(false);
     expect(queries[1].enabled).toBe(false);
   });
   it("successful response renders a receipt even before the execution query refresh", () => {
@@ -221,5 +245,24 @@ describe("B6 Applicant finalization and recovery", () => {
   it("timeout zero truthfully waits for receipt and keeps content disabled", () => {
     queryResult.data.execution = execution({ state: "ACTIVE", deadlineAt: "2026-11-03T02:17:00Z" });
     const tree = render(); expect(text(tree)).toContain("Retrieving final status"); expect(text(tree)).toContain("Submission is confirmed only when your receipt is available"); expect(text(tree)).not.toContain("Examination Submitted"); expect(queries[1].enabled).toBe(false);
+  });
+  it("complete submission puts confirmation, summary and next action ahead of secondary evidence", () => {
+    queryResult.data.execution = execution({ state: "TERMINAL", finalization: { ...receipt, answeredCount: 73, unansweredCount: 0, questionCount: 73 } as any });
+    const tree = render(), content = text(tree);
+    expect(content).toContain("All 73 questions were answered.");
+    expect(content).toContain("Awaiting evaluation");
+    expect(content).not.toMatch(/unanswered|Finalized:|Deadline:/);
+    const details = nodes(tree).find(n => n.type === "details");
+    expect(details.props.open).toBeUndefined();
+    expect(text(details)).toContain("Submission Referencestable-receipt");
+    expect(text(details)).toContain("Started");
+    expect(content.indexOf("Awaiting evaluation")).toBeLessThan(content.indexOf("View Examination Status"));
+    expect(content.indexOf("View Examination Status")).toBeLessThan(content.indexOf("Submission details"));
+    expect(nodes(tree).filter(n => text(n) === "View Examination Status" && n.props.href === "/applicant/results")).toHaveLength(1);
+  });
+  it("partial submission uses receipt counts and keeps the deadline out of the success state", () => {
+    queryResult.data.execution = execution({ state: "TERMINAL", finalization: { ...receipt, answeredCount: 68, unansweredCount: 5, questionCount: 73 } as any });
+    expect(text(render())).toContain("68 of 73 questions answered. 5 questions were left unanswered.");
+    expect(text(render())).not.toMatch(/Deadline|Unanswered items remain unanswered/);
   });
 });

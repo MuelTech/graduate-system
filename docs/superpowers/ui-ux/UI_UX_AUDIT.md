@@ -1753,7 +1753,7 @@ Do not implement the entire audit as one package.
 
 ## UX-MQA-EXAM-01 — Entrance Examination surfaces expose correct state with poor content hierarchy
 
-**Status:** OPEN — project-owner manual QA finding, 2026-11-05  
+**Status:** IMPLEMENTED — INDEPENDENT REVIEW AND OWNER VISUAL RECHECK PENDING, 2026-11-06
 **Priority:** P1  
 **Area:** Entrance Examination / content design / information architecture
 
@@ -1789,3 +1789,9 @@ Canonical wording:
 [USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md)
 
 Final B10 owner/manual acceptance must remain open until this presentation/content finding is resolved and rechecked.
+
+Owner-authorized [EXAM-B10-MQA-UI implementation and focused verification](../reports/2026-11-06-exam-b10-mqa-ui.md)
+applies the canonical copy and page-specific hierarchy without backend/domain or
+email changes. Six UI contract files / 136 tests, TypeScript, scoped lint, build
+and diff check PASS. Manual/browser QA: NOT EXECUTED — PROJECT OWNER. Independent
+review and final visual acceptance remain open; no new Approved Reference is claimed.

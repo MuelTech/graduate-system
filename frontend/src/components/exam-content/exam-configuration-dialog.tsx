@@ -94,15 +94,16 @@ function ConfigurationForm({
         id="configuration-draft-help"
         className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3 text-sm text-(--earist-body-text)"
       >
-        All four values are required before a new examination can start. Passing
-        Threshold is a percentage greater than 0 and at most 100. Started
-        examinations keep their original settings.
+        Complete all fields to enable new examinations. Passing Threshold must
+        be between 0% and 100%. Changes apply only to new examinations.
       </p>
-      <p className="text-sm text-(--earist-body-text)">
-        {complete
-          ? "Current saved configuration is complete."
-          : "Current saved configuration is incomplete. New examination starts are blocked."}
-      </p>
+      {!saved && (
+        <p className="text-sm text-(--earist-body-text)">
+          {complete
+            ? "Current saved configuration is complete."
+            : "Current saved configuration is incomplete. New examination starts are blocked."}
+        </p>
+      )}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -142,17 +143,12 @@ function ConfigurationForm({
         ))}
       </fieldset>
       <dl className="space-y-1 text-sm">
-        <dt className="font-medium">Institutional Timezone</dt>
-        <dd>
-          {configuration.timezone}{" "}
-          <span className="text-(--earist-body-text)">
-            — system-defined, read-only
-          </span>
-        </dd>
+        <dt className="font-medium">Timezone</dt>
+        <dd>Philippine Time (Asia/Manila)</dd>
       </dl>
       <div className="flex justify-end">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save configuration"}
+          {mutation.isPending ? "Saving…" : "Save Configuration"}
         </Button>
       </div>
     </form>
