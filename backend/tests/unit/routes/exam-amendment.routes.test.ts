@@ -90,6 +90,26 @@ function request(
   });
 }
 describe("B9 actual route/authentication/repository boundary", () => {
+  it.each([
+    "missed-appeal/approve", "missed-appeal/reject", "reschedule",
+    "cancel-appointment", "reconsider-result", "amendment-options",
+  ])("B10 %s revalidates inactive/demoted Admin before domain writes", async suffix => {
+    for (const actor of [{ role: "ADMIN", isActive: false }, { role: "APPLICANT", isActive: true }]) {
+      db.user.findUnique.mockResolvedValue(actor);
+      const body = { reason: "B10 current actor", ...(["reschedule", "missed-appeal/approve"].includes(suffix) ? { targetSlotId: ids.slot } : {}) };
+      expect((await request(suffix, body, "ADMIN", ids.app, suffix === "amendment-options" ? "GET" : "POST")).status).toBe(403);
+    }
+    expect(db.entranceExamApplication.updateMany).not.toHaveBeenCalled();
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+    expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+  it.each(["inactive", "demoted"])("B10 missed appeal revalidates %s Applicant persistence", async state => {
+    if (state === "inactive") app.student.user.isActive = false;
+    else app.student.user.role = "STUDENT";
+    expect((await request("missed-appeal", { reason: "B10 Applicant actor" }, "APPLICANT", ids.app, "POST", ids.user)).status).toBe(403);
+    expect(db.entranceExamApplication.updateMany).not.toHaveBeenCalled();
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
   const adminRoutes = [
     "missed-appeal/approve",
     "missed-appeal/reject",
@@ -98,6 +118,20 @@ describe("B9 actual route/authentication/repository boundary", () => {
     "reconsider-result",
     "amendment-options",
   ];
+  it.each([...adminRoutes, "missed-appeal"])("B10 %s rejects a missing exact application", async suffix => {
+    db.entranceExamApplication.findUnique.mockResolvedValue(null);
+    const body = { reason: "B10 missing record", ...(["reschedule", "missed-appeal/approve"].includes(suffix) ? { targetSlotId: ids.slot } : {}) };
+    expect((await request(suffix, body, suffix === "missed-appeal" ? "APPLICANT" : "ADMIN", ids.app, suffix === "amendment-options" ? "GET" : "POST", suffix === "missed-appeal" ? ids.user : ids.admin)).status).toBe(404);
+    expect(db.entranceExamApplication.updateMany).not.toHaveBeenCalled();
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
+  it.each([...adminRoutes, "missed-appeal"])("B10 %s rejects stale TAKEN authority without schedule writes", async suffix => {
+    app.status = "TAKEN";
+    const body = { reason: "B10 stale record", ...(["reschedule", "missed-appeal/approve"].includes(suffix) ? { targetSlotId: ids.slot } : {}) };
+    expect((await request(suffix, body, suffix === "missed-appeal" ? "APPLICANT" : "ADMIN", ids.app, suffix === "amendment-options" ? "GET" : "POST", suffix === "missed-appeal" ? ids.user : ids.admin)).status).toBe(409);
+    expect(db.entranceExamApplication.updateMany).not.toHaveBeenCalled();
+    expect(db.examSlot.updateMany).not.toHaveBeenCalled();
+  });
   it.each(adminRoutes)(
     "%s rejects missing/invalid or non-Admin JWT before database access",
     async (suffix) => {

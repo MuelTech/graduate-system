@@ -42,6 +42,11 @@ function request(body: unknown = {}, method = "POST", userId = ids.user, role = 
 const answer = () => ({ questionId: q().id, selectedOptionId: q().options[0].id, essayAnswer: null, draftRevision: 3 });
 function noWrites() { expect(db.entranceExamApplication.update).not.toHaveBeenCalled(); expect(db.applicantAnswer.upsert).not.toHaveBeenCalled(); expect(db.entranceExamScore.create).not.toHaveBeenCalled(); }
 describe("B6 exact submission HTTP / B4 binding / persisted B5 answers", () => {
+  it("B10 active explicit submit rejects a demoted Applicant without changing saved state", async () => {
+    app.student.user.role = "STUDENT";
+    expect((await request({ acknowledgeIncomplete: true })).status).toBe(409);
+    noWrites();
+  });
   it.each(["ADMIN", "STUDENT", "PANELIST"])("rejects %s", async role => { expect((await request({}, "POST", ids.user, role)).status).toBe(403); noWrites(); });
   it("rejects anonymous access", async () => { expect((await fetch(`${base}/applications/${ids.app}/finalization`)).status).toBe(401); noWrites(); });
   for (const method of ["POST", "GET"]) {

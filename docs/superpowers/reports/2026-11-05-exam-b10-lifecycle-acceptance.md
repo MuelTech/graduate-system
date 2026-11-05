@@ -2,7 +2,14 @@
 
 Date: 2026-11-05, Asia/Manila.
 
-**B10 CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED**
+**B10 CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED**
+
+The resumed core behavior, real-database, migration and content checks passed.
+The declared relevant frontend ESLint gate failed on an existing JSX apostrophe
+at `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`.
+No production source was changed to remove it. Therefore the overall core
+automated gate is **not PASS**. See section 11 for the authoritative resumed-run
+results; sections 1–8 and 10 preserve the first-run evidence and its stop point.
 
 Production source, schema, migrations, dependencies and canonical content were unchanged by the first B10 diagnostic run. The run correctly stopped after reproducing the result-email authorization defect. The project owner subsequently clarified that collaborator-owned email integration is not yet functional/accepted and is outside the agreed core Exam Phase B acceptance scope. The defect remains documented below as a known deferred Email Integration issue; it is not fixed. B10 may resume the remaining core examination lifecycle gates. B10 is not yet accepted; Phase B remains incomplete.
 
@@ -326,3 +333,328 @@ and real Redis/SMTP delivery remain operational/cutover concerns. Legacy unknown
 authority stays unknown; no generic retake, revoke/regrade or new notification.
 
 **B10 CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.** The known result-email authorization defect remains open for the dedicated Email Integration feature and must not be represented as fixed or production-ready. Resume the remaining automated/static/real-DB/legacy/content gates for the core examination lifecycle. Project-owner manual/browser QA: **PENDING OWNER EXECUTION** for the non-email journeys. B10 is not yet accepted and Phase B is not complete.
+
+## 11. Resumed core gate — 2026-11-05
+
+### 11.1 Baseline, owner scope and protected changes
+
+Local HEAD, upstream and live feature HEAD all matched
+`a54fb13591ca82441e9888c1f3c2ababdf5b9156`; local/tracking/live main remained
+`a6dc6f57c6e8130482c814e90703765972fddaa9`. Worktree clean, feature 49 ahead /
+0 behind main, tracking divergence 0/0. Live refs were verified with
+`git ls-remote origin`. Fully reread the updated checklist, Phase B plan, UI audit
+and this report before resuming automation.
+
+Owner decision: **CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED**.
+Removed `backend/tests/unit/routes/exam-b10-result-email-authorization.test.ts`
+from the active suite exactly as requested. Its expectations were neither inverted
+nor skipped. Original reproduction, source, observed 200/queue/write and
+1-positive/2-negative-failure evidence remain in section 2 and in commit
+`16abd17fb8c97c8582e24411bcb0098101052e3f`. Removal is a scope decision,
+**not a fix**. The final sentence in section 2 about blocking describes the first
+run only; the owner decision supersedes it for core acceptance.
+
+The separate collaborator-owned Email Integration feature remains responsible
+for current actor authorization, queue/worker startup, Redis/BullMQ, SMTP,
+delivery/retries/failures, recipients/templates and operational visibility.
+Neither result-email mutation nor delivery is part of the core PASS claim.
+Existing email-related checks embedded in accepted suites were left intact;
+their execution supplies no Email Integration acceptance or security claim.
+
+Production runtime source, schema, all 53 migrations, dependencies/lockfiles,
+canonical questions/assets/emphasis, email code and frontend code are unchanged
+from the resume baseline. No new branch, main modification, reset, rebase, force
+push, PR or merge. No new core functional defect was reproduced.
+
+### 11.2 Exact final automated results
+
+| Gate | Final resumed result |
+| --- | --- |
+| Complete backend unit suite, including 33 additional core HTTP cases | **258 files PASS; 3,958 passed / 0 failed / 5 skipped**; 30.33 seconds |
+| Standalone Phase A UI verifier | **11 passed / 0 failed / 0 skipped** |
+| B3 real DB | **18 passed / 0 failed / 0 skipped** |
+| B6 real DB outer harness | **20 passed / 0 failed / 0 skipped**: 19 direct checks + one regression wrapper |
+| B5, nested under B6 | **11 passed**: 10 direct checks + one B4 wrapper |
+| B4, nested under B5 | **11 passed**: nine direct checks + B0A and B2 wrappers |
+| B0A, nested under B4 | **5 passed**, against the parent's generated disposable DB |
+| B2, nested under B4 | **4 passed**, with its own generated disposable migration DB |
+| B7 real DB | **26 passed / 0 failed / 0 skipped** |
+| B8 real DB, extended with three B10 journeys | **36 passed / 0 failed / 0 skipped**; original 33 + three integrated journeys |
+| B9 real DB | **51 passed / 0 failed / 0 skipped** |
+| Frontend standalone `tsc --noEmit` | PASS |
+| Relevant frontend ESLint | **FAIL: one existing error, five warnings**; see 11.8 |
+| Frontend production build | PASS; 68 pages generated |
+| Prisma generate/validate and backend build | First-run PASS retained; corresponding production/schema/dependency files are unchanged, so no duplicate run |
+| `git diff --check` | PASS |
+
+Top-level DB invocations contain **151 passing harness checks**. Nested runners
+are reported separately above, not added to that top-level total. Across the nine
+distinct DB suites there are **178 direct checks**, excluding four wrapper checks;
+this is not added again to 151. Some unchanged suites contain incidental deferred
+email checks; these totals are execution counts, not a core-only email acceptance.
+The five existing environment-conditional unit skips remain skips, not passes.
+
+The new test-only integration cases reuse the B8 disposable setup, real services
+and repositories. A first attempt omitted a real-client argument for one internal
+B2 assertion; the harness was corrected. A new missing-record unit fixture initially
+returned a locking row for an absent application; it was corrected to return zero
+rows. Neither was a production defect; no runtime behavior or guard was changed.
+Only the final successful runs above establish PASS.
+
+### 11.3 Commands and reproducible harness routing
+
+Run database harnesses sequentially so protected source snapshots do not overlap.
+Each direct harness generates and removes only its exact disposable database.
+Do not run B0A alone against the configured URL; B4 supplies its isolated parent.
+
+```powershell
+# backend
+npm test -- tests/unit --maxWorkers=4
+$env:EXAM_B3_DB_TEST = '1'
+npm test -- tests/integration/exam-booking-contention.test.ts --reporter=verbose
+$env:EXAM_B8_DB_TEST = '1'
+npm test -- tests/integration/exam-result-scoring-contention.test.ts --reporter=verbose
+$env:EXAM_B6_DB_TEST = '1'
+npm test -- tests/integration/exam-finalization-contention.test.ts --reporter=verbose
+# B6 -> B5 -> B4 -> B0A and B2, with DATABASE_URL set by each parent
+$env:EXAM_B7_DB_TEST = '1'
+npm test -- tests/integration/exam-essay-evaluation-contention.test.ts --reporter=verbose
+$env:EXAM_B9_DB_TEST = '1'
+npm test -- tests/integration/exam-amendments-reconsideration-contention.test.ts --reporter=verbose
+# frontend
+npx tsc --noEmit
+npx eslint 'src/app/(portal)/admin/exam' 'src/app/(portal)/applicant' src/components/admin/exam src/components/exam-content src/lib/exam-configuration.ts src/lib/exam-question-set.ts src/lib/exam-execution.ts src/lib/exam-drafts.ts src/lib/exam-media.client.ts src/lib/exam-content.ts src/lib/applicant-exam-content.ts src/lib/exam-record-state.ts src/lib/admin-exam-schedules.ts
+node --test scripts/verify-exam-content-6-ui-follow-up.mjs
+npm run build
+# root
+git diff --check
+```
+
+The accepted nested commands use the same Node/Vitest binary, exact suite path,
+opt-in environment and generated parent `DATABASE_URL`; their assertions require
+the recorded nested pass counts. No configured-database deploy/reset/db-push.
+
+### 11.4 Integrated core journeys and cross-package evidence
+
+Three new cases in `tests/integration/exam-result-scoring-contention.test.ts`:
+`B10 configuration/publication/booking/start/recovery/{complete,incomplete,timeout}/evaluation/result journey`.
+They create isolated Applicant identities and use actual configuration replacement,
+B2 saved selection/publication, slot creation, booking, B4 start, versioned drafts,
+B6 finalization/sweep, B7 grading and B8 result projections. No second scorer,
+finalizer or booking implementation is embedded in the tests.
+
+They verify pre-schedule start rejection, normal server start at the scheduled
+instant, captured 60-minute deadline, deterministic exact published membership,
+Applicant key/privacy allowlist, exact private media reference, MCQ save/clear/
+change, blank/edit essay, stale revision rejection, fresh-instance draft/execution
+recovery, no result before completion, preserved frozen config/key/prompt after
+live edits, explicit incomplete rejection/acknowledgment, stable receipt/retry,
+later write rejection and byte-identical final answers. Timeout advances the
+**test-only JavaScript Date clock**, runs the actual sweep with no browser,
+and repeats it without another finalization. It never changes the machine clock
+or development database. Complete scoring passes at exact 75% equality;
+incomplete and timed-out cases fail below threshold. Fractional points are exact;
+both roles receive the same persisted breakdown. Browser reconnect/drain is
+additionally covered by the existing executable queue/React tests, not inferred
+from the database journey.
+
+In the matrix below, paths are relative to `backend/tests`, U = `unit`, I =
+`integration`. Every named U file ran in the final complete suite. All behavioral
+rows passed; the shared frontend lint limitation in 11.8 prevents overall gate PASS.
+Owner letters refer to section 9, which remains pending except deferred F4/I4.
+
+| Package/invariant | Actual automated verifier/harness | Proven core authority | Owner/limitation |
+| --- | --- | --- | --- |
+| B0A answer/finality | U/repositories/exam-answer.repository.test.ts; U/controllers/exam-answer.controller.test.ts; I/exam-answer-contention.test.ts (nested 5) | Type/member/payload containment, terminal locking, both draft/final orders and rollback | D pending |
+| B0B result containment | U/services/exam-result.service.test.ts; U/routes/exam-result.routes.test.ts; U/services/applicant-results.contract.test.ts; B10 journeys | Pending/inconsistent result unavailable; no fake FAILED | F pending; email deferred |
+| B1 configuration | U/services/exam-configuration.rules.test.ts; U/routes/exam-configuration.routes.test.ts; U/repositories/exam-configuration.repository.test.ts; B10 journeys | Strict typed settings, complete new-start requirement, captured basis | A pending |
+| B2 content authority | U/repositories/exam-question-set.repository.test.ts; U/routes/exam-question-set.routes.test.ts; I/exam-question-set.test.ts (nested 4); B10 journeys | Explicit membership, immutable correctness/order/media, real restrictive FKs, one essay | A/F pending |
+| B3 booking/capacity | U/routes/exam-schedule.routes.test.ts; U/services/exam-schedule.service.test.ts; I/exam-booking-contention.test.ts (18) | Last seat, same Student, rollback, counters, original appointment | A pending |
+| B3 same-day assignment | U/services/exam-assignment-ui.contract.test.ts; same B3 I harness | Same-day past-time exception, unchanged original time, mixed self/Admin contention, exact capacity | A pending |
+| B4 timing/execution | U/repositories/exam-execution.repository.test.ts; U/routes/exam-execution.routes.test.ts; U/services/exam-execution-ui.contract.test.ts; I/exam-execution-contention.test.ts (nested 11) | Early authorization, normal/late same-date start, different-date rejection, stable actual-start/deadline, across midnight, wall-clock-independent monotonic UI | B pending |
+| B5 drafts/recovery | U/routes/exam-draft.routes.test.ts; U/services/exam-draft-queue.test.ts; U/services/exam-execution-ui.contract.test.ts; I/exam-draft-contention.test.ts (nested 11); B10 journeys | Select/change/null clear, essay blank/edit, version conflict, recovery/reconnect/drain, no local-storage authority | C/D pending |
+| B6 explicit/timeout | U/routes/exam-finalization.routes.test.ts; U/services/exam-expiry-worker.test.ts; I/exam-finalization-contention.test.ts (20); B10 journeys | Acknowledgment, stable receipt, no fabricated answer, boundary precedence, no-browser expiry, restart catch-up and repeated workers | D/E pending |
+| B7 essay | U/routes/exam-essay-evaluation.routes.test.ts; U/services/exam-essay-evaluation-ui.contract.test.ts; I/exam-essay-evaluation-contention.test.ts (26) | One essay, exact frozen prompt/response/max, missing/blank truth, zero/decimal/max bounds, one evaluator | F pending |
+| B8 scoring/projection | U/services/exam-result-scoring.rules.test.ts; U/services/exam-record-detail.service.test.ts; I/exam-result-scoring-contention.test.ts (36) | Frozen points/max/threshold/key, exact Decimal, equality PASS/below FAIL without rounding, raw-count mismatch fail-closed, config/bank/Program independence, matching role numbers | F pending; email excluded |
+| B9 appeals/amendments | U/routes/exam-amendment.routes.test.ts; U/services/exam-b9-ui.contract.test.ts; I/exam-amendments-reconsideration-contention.test.ts (51) | Prior-date filing, same-day Start boundary, one release, reasoned target/capacity/approval/rejection, direct cancel/reschedule, preserved history/no retake | G/H pending |
+| B9 reconsideration | U/services/applicant-results.contract.test.ts; U/repositories/cor.repository.lifecycle.test.ts; U/repositories/admin-applicant.repository.test.ts; same B9 I harness | One decision, unchanged original FAILED/answers/numbers/basis/scoredAt, Result/profile, COR preliminary+transaction, Admin list/count/filter/detail, scheduling block | I pending; I4 deferred |
+| Phase A | U/services/exam-content-real-package.test.ts; U/services/exam-emphasis-real-map.test.ts; U/services/exam-media-access.test.ts; U/services/exam-media-client.contract.test.ts; U/services/applicant-exam-content.contract.test.ts; standalone frontend verifier | 72 VERIFIED questions, 108 real images, canonical source checks, emphasis/rendering/private-media contracts; 11 standalone UI checks | A/B/F/J pending; no owner visual PASS |
+
+### 11.5 Real InnoDB race matrix
+
+MariaDB **10.4.32**, InnoDB; host default REPEATABLE-READ. Accepted mutations
+explicitly use READ COMMITTED. Independent worker connections execute actual
+parameterized `FOR UPDATE`; harnesses observe blocked queries through
+`SHOW FULL PROCESSLIST` before releasing the first holder.
+
+| Core race | Passing actual verifier | Resumed-run observed connections where printed |
+| --- | --- | --- |
+| Last seat / two Applicants | B3 `two Applicants contend for the final seat` | 542 / 528 |
+| Self-booking versus Admin assignment | B3 `Admin and Applicant self-booking share the same Student lock` | 529 / 525 |
+| Duplicate Start | Nested B4 `concurrent Start` case | Nested runner asserts independent IDs and actual wait; stdout retained internally by parent |
+| Stale draft | Nested B5 MCQ/essay competing-revision cases | Nested runner asserts actual wait |
+| Draft versus submit | B6 `draft lock first` and `explicit lock first` cases | 644 / 654; 650 / 657 |
+| Submit versus timeout | B6 explicit-first/expiry-first and wait-across-deadline cases | 661 / 648; 667 / 651; 670 / 663 |
+| Draft versus expiry | B6 expiry-first and delayed-draft cases | 658 / 660; 650 / 666 |
+| Expiry worker concurrency | B6 `two independent sweep services recover one result` | 670 / 669 |
+| Concurrent essay graders | B7 `two real concurrent ADMIN evaluations` | 1049 / 1045 |
+| Duplicate scoring/finalization | B8 `competing exact-application scorers`; B6 submit/submit | 612 / 603; 655 / 645 |
+| Same-day/prior-date appeal versus Start | B9 `same-day-start` / `prior-date-appeal` | 1102 / 1096; 1105 / 1099 |
+| Cancel versus Start, both orders | B9 `start-first` / `cancel-first` | 1095 / 1090; 1098 / 1093 |
+| Replacement versus booking | B9 `reschedule and Applicant booking share the Student lock` | 1108 / 1101 |
+| Two Admin appeal approvals | B9 `two Admin approvals serialize` | 1092 / 1087 |
+| Two-slot reschedule | B9 `two-target-slot contention uses sorted slots` | 1111 / 1104 |
+| Last replacement seat | B9 `two Students competing for the final replacement seat` | 1114 / 1107 |
+| Concurrent reconsideration | B9 `two concurrent Admin reconsiderations` | 1111 / 1109 |
+
+B6's separate Node startup process caught up an overdue examination and preserved
+the last acknowledged response; receipt `d02e5546-0034-4b4c-8843-1e27c647d49e`.
+This is automated restart evidence, not owner/manual restart QA. Email queue races
+are excluded from this core matrix even when unchanged suites execute them.
+
+### 11.6 Migration chain, legacy integrity and configured-data protection
+
+The accepted B4/B5/B6/B7/B8/B9 migration harnesses were rerun (B4/B5 nested).
+Each starts with a generated empty database, deploys the full committed prefix
+from the earliest migration, inserts representative pre-cutover evidence,
+applies its exact cutover migration, compares all original projected values,
+then applies successors through B9. `prisma migrate status` and a second isolated
+deploy verify up-to-date/no pending migrations. No new migration is needed.
+This is staged preservation evidence across fresh databases, not a claim that
+all cutover fixtures were inserted into one database at once.
+
+| Cutover | Preserved / not fabricated |
+| --- | --- |
+| B2 (nested) | Existing questions/options/media/import/answers; initially empty selection/revisions; restrictive historical identity/media retention |
+| B4 (nested) | Unbound clean and answer-bearing PENDING, legacy TAKEN; all six new start/authorization/deadline/content/config fields remain null |
+| B5 (nested) | Original answer text/choice and application history; revision zero is technical baseline, not an invented edit history |
+| B6 | Started/legacy/pending score and saved drafts preserved; historical receipt/time/reason/counts stay null |
+| B7 | Legacy TAKEN/PASSED/FAILED scores preserved; no fabricated essay evaluation timestamp |
+| B8 | Existing receipts/evaluation/answer revisions and null-threshold bindings preserved; no fabricated scoredAt/basis or historical denominator |
+| B9 | Future/past unbound PENDING, old APPEALED, legacy FAILED, B8 PASSED/FAILED and existing B5–B8 evidence preserved; no seat-release/amendment/reconsideration backfill |
+
+Original-column SHA-256 values printed by direct resumed harnesses:
+
+- B6: `c980ec7172d553a0052549833229389984668b2055f2e3d9dfa4f764fcbafed1`.
+- B7: `75802877ee8bae2efd67ded7c9c4c13ad989f20db7031aba5af500b42ca28666`.
+- B8: `83ccbc42e52a393d9a917aafafdb468b93673f66428e9471f8b71bf05c3f1edb`.
+- B9: `6796a917dbf35b0bc2f641efe9024f1e9cb1b68a06ed3ee15150a6fdc9cb92cf`.
+
+Runtime legacy checks fail closed for unsafe new starts/answers/grades/scoring/
+amendments and reconsideration, while valid historical results retain recorded
+status/totals with unknown provenance/maxima/threshold. Old APPEALED records do
+not become new reasoned appeals. B2's real reference tests and B10's exact-bound
+media checks retain private question/option/media identities without source reimport.
+
+Configured protected snapshot before/after direct B6/B7/B8/B9 harnesses:
+`2da7a10cc8b91fdf49175b98b52db8e317157730117b0d310d1ebbb4f320e33e`.
+B3's wider/different protected projection:
+`0d93df51584448813dd62ff3350c4ed75ec9633e910f3c9e7c94559b27fe3b2e`.
+Nested B0A runs only on its generated parent; nested B2 creates a separate generated
+database. All exact cleanup/absence assertions passed. No configured fixtures,
+deploy, reset, db-push or cleanup. The owner's reported 53 applied dev migrations
+remain owner-reported evidence, not independently inspected migration state.
+
+### 11.7 Core authorization / wrong-record matrix
+
+All route suites below execute real Express/JWT/role/controller paths; core
+transaction/read/write boundaries use controlled persistence. Database race and
+cross-package authority evidence is independently covered by the real suites.
+Added **33 core cases** across five existing route files. No email diagnostic is
+in this matrix. Admin record access to another Applicant is legitimate Admin
+authority, not a wrong-ownership failure; Applicant routes use exact JWT ownership.
+
+| Core mutation | Actual verifier(s) and passed negatives | Current persistence behavior / applicability |
+| --- | --- | --- |
+| Self-booking | `exam-schedule.routes.test.ts`, `exam-schedule.service.test.ts`, B3 DB: anonymous/wrong role, forged Student/Program, malformed slot/body, foreign Program, inactive/full/past/drifting slot, blocking status | JWT user resolves Student; no general current-role/activity lookup is claimed for this accepted B3 path |
+| Same-day assignment | Same suites plus assignment UI/B3 DB: anonymous/wrong JWT role, malformed selected Student/slot, forged capacity/time, invalid registration/alignment/Program/status/date | Selected Applicant role/registration is revalidated; no current Admin activity lookup is claimed where the path relies on JWT role |
+| Start authorization | `exam-execution.routes.test.ts`, execution repository suite: malformed/missing ID, unsupported timing/config, stale started/terminal state, inactive/demoted Admin | New B10 cases prove current active ADMIN check before execution writes |
+| Applicant Start | Same execution suites: anonymous/wrong role/owner, malformed/missing exact ID, unsupported body, stale state/date/binding, inactive/demoted Applicant | Current Applicant identity is revalidated before new execution |
+| Draft write | `exam-draft.routes.test.ts`, answer repository: anonymous/wrong role/owner, malformed/missing application, foreign question/option/type, forged authority, stale revision/state, inactive/demoted Applicant | Current identity checked under active binding; no upsert on rejection |
+| Submit | `exam-finalization.routes.test.ts`: anonymous/wrong role/owner, malformed exact ID/body, forged answers/actor/time/status authority, incomplete acknowledgment, stale terminal/partial receipt, inactive/demoted active Applicant | Before deadline current identity is required. At expiry, persisted execution may close despite later inactivity, per accepted B6 policy; this is not a fresh-start bypass |
+| Essay evaluation | `exam-essay-evaluation.routes.test.ts`: anonymous/wrong JWT role, malformed/missing exact record, unsupported score/status fields, stale/nonfinal/partial evidence, invalid grade, inactive/demoted evaluator | Current active ADMIN required; Admin may grade another Applicant's exact authorized record |
+| Finalize Result | Same suite and B8 DB: anonymous/wrong JWT role, malformed/missing record, unsupported scoring body, pending/corrupt/legacy basis, inactive/demoted Admin | New B10 cases prove current ADMIN check; valid completed repeat is idempotent by policy |
+| Missed appeal | `exam-amendment.routes.test.ts`, B9 DB: anonymous/wrong role/owner, malformed/missing ID, forged actor/time/status/score, empty/oversized reason, stale TAKEN/same-day/started state, inactive/demoted Applicant | Current owned Applicant required; new missing/stale cases verify no schedule writes |
+| Approve/reject appeal | Same suite/B9 DB: anonymous/wrong role, malformed/missing ID, unsupported authority/reason/target, stale TAKEN/duplicate decision/invalid targets, inactive/demoted Admin | Current ADMIN required; no double release/replacement |
+| Cancel/reschedule | Same suite/B9 DB: anonymous/wrong role, malformed/missing ID, unsupported authority, stale TAKEN/started/finalized, invalid target/capacity/history, inactive/demoted Admin | Current ADMIN required; new route cases assert no application/seat writes |
+| Reconsideration | Same suite/B9 DB: anonymous/wrong role, malformed/missing ID, client actor/time/status/score/basis, missing reason, stale TAKEN/PASSED/legacy/corrupt/prior decision, inactive/demoted Admin | Current ADMIN and valid B8 FAILED required; one separate decision, raw FAILED unchanged |
+
+Malformed vs stale/missing cases use the accepted bounded 400/403/404/409
+responses. Tests do not introduce a global session-revocation policy or broaden
+current-account checks beyond the production paths named above. Result-email
+current-actor authorization remains the explicitly known deferred defect.
+
+### 11.8 Frontend static gate, warnings and remaining acceptance issue
+
+`npx tsc --noEmit`: PASS. Production `npm run build`: PASS, 68 pages. Directly
+affected React/handler/queue/contract tests ran in the full backend unit suite.
+Standalone Phase A `node --test scripts/verify-exam-content-6-ui-follow-up.mjs`:
+**11/11 PASS**, preserving pagination and neutral/shared semantic rendering.
+Read-only canonical content/real-emphasis tests also passed in the unit suite:
+**72 VERIFIED questions / 108 actual images**. No content or image changed.
+
+The exact declared relevant ESLint command in 11.3 exits **1**:
+
+```text
+frontend/src/components/exam-content/applicant-appointment-gate.tsx
+137:37 error: apostrophe must be escaped (react/no-unescaped-entities)
+```
+
+The text is `the missed appointment's seat; staff choose any approved` in the
+missed-appeal dialog. `git show a54fb13591ca82441e9888c1f3c2ababdf5b9156:<path>`
+confirms the same text existed at the resume baseline. This is a production JSX
+lint error, **not a new core functional defect or merely a warning**. No rule was
+disabled and the file was not excluded to manufacture a PASS. No runtime source
+edit was authorized, so it remains unchanged. A separately authorized bounded
+presentation correction is needed before the requested full core automated PASS
+can be recorded; no correction package was begun.
+
+Five existing nonfatal unused-variable/import warnings: Applicant alignment's
+`isWaiverLoading`; Dashboard's `Button`/`Download`; Applicant layout's
+`useEffect`/`setUnreadNotifications`. Existing Vite config and Next middleware/
+Node module-registration advisories are nonblocking. No framework/dependency
+upgrade or unrelated cleanup.
+
+**No new core functional blocker was found. The overall B10 core automated
+gate remains INCOMPLETE because the declared ESLint gate failed.** The success
+wording requested by the owner is conditional on all gates passing and is not used.
+
+### 11.9 Delivery, owner QA, hosted CI and stop
+
+Section 9's core journeys remain **PENDING OWNER EXECUTION**. F4 and I4 remain
+**DEFERRED — EMAIL INTEGRATION FEATURE**, not owner prerequisites for core B10.
+No browser automation, screenshot or controlled React test is called owner QA.
+Independent review remains pending. Phase B is not complete; no production-ready
+system or accepted Email Integration claim is made.
+
+Exact resume changes:
+
+```text
+M backend/tests/integration/exam-result-scoring-contention.test.ts
+M backend/tests/unit/routes/exam-amendment.routes.test.ts
+D backend/tests/unit/routes/exam-b10-result-email-authorization.test.ts
+M backend/tests/unit/routes/exam-draft.routes.test.ts
+M backend/tests/unit/routes/exam-essay-evaluation.routes.test.ts
+M backend/tests/unit/routes/exam-execution.routes.test.ts
+M backend/tests/unit/routes/exam-finalization.routes.test.ts
+M docs/superpowers/GSIS_IMPLEMENTATION_CHECKLIST.md
+M docs/superpowers/plans/2026-11-01-exam-engine-scheduling-phase-b.md
+M docs/superpowers/reports/2026-11-05-exam-b10-lifecycle-acceptance.md
+M docs/superpowers/ui-ux/UI_UX_AUDIT.md
+```
+
+Long outputs use only OS-temp `exam-b10-resume-{units,b3,b6,b7,b8,b9,frontend-lint,build}.txt`.
+No new `.log` or `.txt` artifact inside the repository; pre-existing user files
+remain. Generated databases and temporary migration directories were removed by
+the exact harness cleanup. Normal commit/push remains on the existing branch;
+the final chat records exact local/tracking/live HEAD, unchanged main,
+ahead/behind and clean-worktree evidence without a self-referential commit hash.
+
+**Hosted CI: NOT EXECUTED / no hosted PASS claimed.** Exact pushed-commit
+workflow/status queries are checked at delivery and reported in the final chat.
+Current workflow triggers main pushes and PRs targeting main; neither is created.
+
+**STOP after evidence delivery.** A bounded authorization is needed for the
+existing lint error before resuming the final automated PASS decision. No new
+implementation package is started. Email Integration remains
+**DEFERRED — NOT PART OF B10 CORE ACCEPTANCE**; its known security finding is open.

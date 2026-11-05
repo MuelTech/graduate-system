@@ -54,6 +54,22 @@ function request(body: unknown = { essayScore: 18 }, role: string | null = "ADMI
 }
 const noWrites = () => expect(db.entranceExamScore.update).not.toHaveBeenCalled();
 describe("B7 actual HTTP/transaction authority", () => {
+  it.each(["grade", "finalize"])("B10 %s rejects malformed IDs and missing exact records", async suffix => {
+    const body = suffix === "grade" ? { essayScore: 0 } : {};
+    expect((await request(body, "ADMIN", "bad", "POST", suffix)).status).toBe(400);
+    db.entranceExamApplication.findUnique.mockResolvedValue(null);
+    db.$queryRaw.mockResolvedValue([]);
+    expect((await request(body, "ADMIN", ids.app, "POST", suffix)).status).toBe(404);
+    noWrites();
+  });
+  it.each([
+    { role: "ADMIN", isActive: false },
+    { role: "PANELIST", isActive: true },
+  ])("B10 Finalize Result rejects current actor $role/$isActive", async actor => {
+    db.user.findUnique.mockResolvedValue(actor);
+    expect((await request({}, "ADMIN", ids.app, "POST", "finalize")).status).toBe(403);
+    noWrites();
+  });
   it.each([[null,401],["APPLICANT",403],["STUDENT",403],["PANELIST",403]])("B8 recovery denies %s before database access", async (role,status) => {
     expect((await request({},role as string | null,ids.app,"POST","finalize")).status).toBe(status);
     expect(db.$transaction).not.toHaveBeenCalled();

@@ -10,7 +10,7 @@ import { parse } from "dotenv";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-const gateway = vi.hoisted(() => ({ $transaction: vi.fn(), systemSetting: { findUnique: vi.fn(), upsert: vi.fn() }, entranceExamApplication: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() } }));
+const gateway = vi.hoisted(() => ({ $transaction: vi.fn(), systemSetting: { findUnique: vi.fn(), upsert: vi.fn() }, entranceExamApplication: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() }, examQuestion: { count: vi.fn() }, program: { findUnique: vi.fn() }, examSlot: { create: vi.fn() } }));
 vi.mock("../../src/config/database", () => ({ default: gateway }));
 vi.mock("../../src/services/email.service", () => ({ EmailService: { sendTemplateEmail: vi.fn() } }));
 import { ExamRepository } from "../../src/repositories/exam.repository";
@@ -18,7 +18,9 @@ import { ExamService } from "../../src/services/exam.service";
 import { ExamExecutionRepository } from "../../src/repositories/exam-execution.repository";
 import { ExamFinalizationRepository } from "../../src/repositories/exam-finalization.repository";
 import { ExamEngineRepository } from "../../src/repositories/exam-engine.repository";
-import { manilaCalendarDate } from "../../src/services/exam-schedule-time";
+import { manilaCalendarDate, scheduleStartInstant } from "../../src/services/exam-schedule-time";
+import { ExamQuestionSetRepository } from "../../src/repositories/exam-question-set.repository";
+import { sweepExpiredExaminations } from "../../src/workers/exam-expiry.worker";
 import { ExamConfigurationService } from "../../src/services/exam-configuration.service";
 import { EXAM_CONFIGURATION_KEY } from "../../src/services/exam-configuration.rules";
 import { setQuestion } from "../fixtures/exam-question-set";
@@ -135,6 +137,8 @@ describe.skipIf(process.env.EXAM_B8_DB_TEST !== "1")("B8 real MariaDB execution/
     }
   }, 20_000);
   beforeEach(async () => {
+    gateway.program.findUnique.mockImplementation(args => observer.program.findUnique(args));
+    gateway.examSlot.create.mockImplementation(args => observer.examSlot.create(args));
     gateway.systemSetting.findUnique.mockImplementation(args => observer.systemSetting.findUnique(args));
     gateway.systemSetting.upsert.mockImplementation(args => observer.systemSetting.upsert(args));
     gateway.entranceExamApplication.findMany.mockImplementation(args => observer.entranceExamApplication.findMany(args));
@@ -355,4 +359,97 @@ describe.skipIf(process.env.EXAM_B8_DB_TEST !== "1")("B8 real MariaDB execution/
     expect(await stored()).toMatchObject({ resultEmailQueuedAt: null, resultEmailTemplateKey: null });
     await evaluation.queueResultEmail(ids.app,enqueue); expect(identities).toHaveLength(2); expect(new Set(identities).size).toBe(1);
   });
+  // B10-only cross-package journeys reuse this disposable database and real
+  // repositories. Date-only fake timers advance the test server's clock; no
+  // operating-system clock or configured development data is changed.
+  it.each(["complete", "incomplete", "timeout"] as const)(
+    "B10 configuration/publication/booking/start/recovery/%s/evaluation/result journey",
+    async mode => {
+      const userId = randomUUID(), studentId = randomUUID();
+      let applicationId: string | undefined, slotId: string | undefined;
+      const service = new ExamService();
+      const sets = new ExamQuestionSetRepository();
+      try {
+        await observer.user.create({ data: { id: userId, email: `${userId}@example.invalid`, passwordHash: "unusable", firstName: "B10", lastName: "Journey", role: "APPLICANT" } });
+        await observer.student.create({ data: { id: studentId, userId, programId: ids.program, pinnacleApplicantId: `B10-${studentId}`, alignmentStatus: "ALIGNED" } });
+        await new ExamConfigurationService().replaceCurrent({ examDurationMinutes: 60, mcqPointsPerCorrectItem: 0.125, essayMaximumScore: 0.375, passingThreshold: 75 }, ids.admin);
+        // Attach exact synthetic private media, then publish through actual B2.
+        await observer.examQuestion.update({ where: { id: ids.q }, data: { stimulusType: "IMAGE", stimulusMediaId: ids.media } });
+        await sets.replaceSelection({ questionIds: [ids.essay, ids.q] });
+        const publication = await sets.publish({ questionIds: [ids.q, ids.essay] }, ids.admin);
+        const tomorrow = new Date(`${manilaCalendarDate()}T00:00:00Z`);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        const slot = await service.createSlot({ programId: ids.program, examDate: tomorrow.toISOString().slice(0, 10), examTime: "1970-01-01T09:00:00.000Z", maxSlots: 1 });
+        slotId = slot.id;
+        const application = await service.scheduleExam(userId, slot.id);
+        applicationId = application.id;
+        expect(await observer.examSlot.findUniqueOrThrow({ where: { id: slot.id } })).toMatchObject({ slotsTaken: 1, maxSlots: 1 });
+        await expect(service.getExamResult(userId)).rejects.toMatchObject({ statusCode: 404 });
+        await expect(repo.start(userId, application.id)).rejects.toMatchObject({ statusCode: 409 });
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(scheduleStartInstant(slot.examDate, slot.examTime));
+        const started = await repo.start(userId, application.id);
+        expect(started).toMatchObject({ state: "ACTIVE", applicationId: application.id, contentRevisionId: publication.id });
+        expect(Date.parse(started.deadlineAt!) - Date.parse(started.actualStartedAt!)).toBe(60 * 60_000);
+        const received = await repo.questions(userId, application.id);
+        const mcq = received.find(q => q.id === ids.q)!;
+        expect(mcq.stimulusMediaId).toBe(ids.media);
+        expect(received.map(q => q.id)).toEqual((await sets.getForBinding(publication.id, observer)).applicantQuestions.map(q => q.id));
+        expect(JSON.stringify(received)).not.toMatch(/isCorrect|answerKey|storageKey|checksum|sourceImport/);
+        expect(await repo.media(userId, application.id, ids.media)).toBe(publication.id);
+        const correct = question.options.find(o => o.isCorrect)!.id;
+        await answers.saveDraft(application.id, { questionId: ids.q, selectedOptionId: correct, expectedRevision: 0 }, userId);
+        await answers.saveDraft(application.id, { questionId: ids.q, selectedOptionId: null, expectedRevision: 1 }, userId);
+        if (mode === "complete") await answers.saveDraft(application.id, { questionId: ids.q, selectedOptionId: correct, expectedRevision: 2 }, userId);
+        await answers.saveDraft(application.id, { questionId: ids.essay, essayAnswer: "", expectedRevision: 0 }, userId);
+        await answers.saveDraft(application.id, { questionId: ids.essay, essayAnswer: "Exact acknowledged B10 response", expectedRevision: 1 }, userId);
+        // A new repository instance recovers the same persisted execution/drafts.
+        const recovered = await new ExamEngineRepository().readDrafts(application.id, userId);
+        expect(recovered).toEqual(await answers.readDrafts(application.id, userId));
+        expect(recovered).toContainEqual({ questionId: ids.essay, revision: 2, essayAnswer: "Exact acknowledged B10 response" });
+        expect((await new ExamExecutionRepository().read(userId, application.id)).deadlineAt).toBe(started.deadlineAt);
+        await expect(answers.saveDraft(application.id, { questionId: ids.q, selectedOptionId: correct, expectedRevision: 0 }, userId)).rejects.toMatchObject({ statusCode: 409 });
+        // Later live settings/key/prompt edits cannot change bound authority.
+        await new ExamConfigurationService().replaceCurrent(config, ids.admin);
+        await observer.examOption.updateMany({ where: { questionId: ids.q }, data: { isCorrect: false } });
+        await observer.examQuestion.update({ where: { id: ids.essay }, data: { questionText: "Later mutable prompt" } });
+        const beforeAnswers = await observer.applicantAnswer.findMany({ where: { applicationId: application.id }, orderBy: { questionId: "asc" } });
+        let receipt;
+        if (mode === "timeout") {
+          vi.setSystemTime(new Date(started.deadlineAt!));
+          expect(await sweepExpiredExaminations()).toMatchObject({ finalized: 1 });
+          receipt = (await finalizer.read(application.id, userId)).receipt!;
+          expect(receipt.finalizationReason).toBe("TIME_EXPIRED");
+          expect(await sweepExpiredExaminations()).toMatchObject({ finalized: 0 });
+        } else {
+          if (mode === "incomplete") await expect(finalizer.submit(application.id, {}, userId)).rejects.toMatchObject({ statusCode: 409 });
+          receipt = await finalizer.submit(application.id, mode === "incomplete" ? { acknowledgeIncomplete: true } : {}, userId);
+          expect(receipt.finalizationReason).toBe("APPLICANT_SUBMITTED");
+        }
+        expect(receipt).toMatchObject({ answeredCount: mode === "complete" ? 2 : 1, unansweredCount: mode === "complete" ? 0 : 1, questionCount: 2 });
+        expect(await finalizer.submit(application.id, { acknowledgeIncomplete: true }, userId)).toEqual(receipt);
+        await expect(answers.saveDraft(application.id, { questionId: ids.essay, essayAnswer: "Late edit", expectedRevision: 2 }, userId)).rejects.toMatchObject({ statusCode: 409 });
+        await expect(service.getExamResult(userId)).rejects.toMatchObject({ statusCode: 409 });
+        const gradeResult = await service.gradeEssay(application.id, 0.25, ids.admin);
+        expect(gradeResult).toMatchObject({ status: "COMPLETED" });
+        const applicant = await service.getExamResult(userId);
+        const adminDetail = await service.getApplicationDetail(application.id);
+        const expectedStatus = mode === "complete" ? "passed" : "failed";
+        expect(adminDetail.result).toMatchObject({ status: expectedStatus, totalScore: mode === "complete" ? "0.375" : "0.25", totalPossible: "0.5", passingThreshold: "75" });
+        expect(applicant).toMatchObject(adminDetail.result!);
+        expect(await observer.applicantAnswer.findMany({ where: { applicationId: application.id }, orderBy: { questionId: "asc" } })).toEqual(beforeAnswers);
+        expect(await observer.entranceExamApplication.findUniqueOrThrow({ where: { id: application.id } })).toMatchObject({ status: expectedStatus.toUpperCase(), contentRevisionId: publication.id });
+      } finally {
+        vi.useRealTimers();
+        if (applicationId) {
+          await observer.entranceExamScore.deleteMany({ where: { applicationId } });
+          await observer.applicantAnswer.deleteMany({ where: { applicationId } });
+          await observer.entranceExamApplication.delete({ where: { id: applicationId } });
+        }
+        if (slotId) await observer.examSlot.delete({ where: { id: slotId } });
+        await observer.student.deleteMany({ where: { id: studentId } });
+        await observer.user.deleteMany({ where: { id: userId } });
+      }
+    }, 20_000,
+  );
 });

@@ -32,6 +32,20 @@ function request(method: string, route: string, role?: string, body: unknown = {
   return fetch(`${base}/exam-engine${route}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(method === "GET" ? {} : { body: JSON.stringify(body) }) });
 }
 describe("B4 actual HTTP role and identity boundaries", () => {
+  it.each([
+    { role: "ADMIN", isActive: false },
+    { role: "PANELIST", isActive: true },
+  ])("B10 Start authorization revalidates current actor $role/$isActive", async actor => {
+    db.user.findUnique.mockResolvedValue(actor);
+    expect((await request("POST", `/admin/applications/${ids.app}/start-authorization`, "ADMIN")).status).toBe(403);
+    expect(db.entranceExamApplication.update).not.toHaveBeenCalled();
+  });
+  it.each(["inactive", "demoted"])("B10 new Start rejects %s Applicant persistence", async state => {
+    if (state === "inactive") app.student.user.isActive = false;
+    else app.student.user.role = "STUDENT";
+    expect((await request("POST", `/applications/${ids.app}/start`, "APPLICANT")).status).toBe(409);
+    expect(db.entranceExamApplication.update).not.toHaveBeenCalled();
+  });
   for (const [method, route, allowed] of [
     ["POST", `/admin/applications/${ids.app}/start-authorization`, "ADMIN"], ["GET", `/admin/applications/${ids.app}/execution`, "ADMIN"],
     ["POST", `/applications/${ids.app}/start`, "APPLICANT"], ["GET", `/applications/${ids.app}/execution`, "APPLICANT"],

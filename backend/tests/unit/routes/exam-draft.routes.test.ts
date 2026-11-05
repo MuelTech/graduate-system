@@ -27,12 +27,23 @@ beforeEach(() => {
   db.applicantAnswer.upsert.mockImplementation(async ({ create }) => { saved = create; return saved; });
 });
 const q = () => revision.questions[0].content;
-function request(method = "GET", body?: unknown, role: string | undefined = "APPLICANT", userId = ids.user, route = "drafts") {
+function request(method = "GET", body?: unknown, role: string | undefined = "APPLICANT", userId = ids.user, route = "drafts", applicationId = ids.app) {
   const token = role === "invalid" ? "invalid" : role ? jwt.sign({ userId, role }, secret) : null;
-  return fetch(`${base}/applications/${ids.app}/${route}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(method === "GET" ? {} : { body: JSON.stringify(body) }) });
+  return fetch(`${base}/applications/${applicationId}/${route}`, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(method === "GET" ? {} : { body: JSON.stringify(body) }) });
 }
 const payload = () => ({ questionId: q().id, selectedOptionId: q().options[0].id, expectedRevision: 0 });
 describe("B5 real router/controller/repository authority and contract", () => {
+  it("B10 draft writes reject malformed application IDs and missing exact records", async () => {
+    expect((await request("PATCH", payload(), "APPLICANT", ids.user, "drafts", "bad")).status).toBe(400);
+    db.entranceExamApplication.findUnique.mockResolvedValue(null);
+    expect((await request("PATCH", payload())).status).toBe(404);
+    expect(db.applicantAnswer.upsert).not.toHaveBeenCalled();
+  });
+  it("B10 demoted Applicant cannot write with a previously issued Applicant JWT", async () => {
+    app.student.user.role = "STUDENT";
+    expect((await request("PATCH", payload())).status).toBe(409);
+    expect(db.applicantAnswer.upsert).not.toHaveBeenCalled();
+  });
   for (const method of ["GET", "PATCH"]) it.each([undefined, "invalid", "ADMIN", "STUDENT", "PANELIST", "CUSTOM"])(`${method} rejects role %s`, async role => {
     // Explicit undefined must avoid the request helper's default.
     const response = role === undefined ? await fetch(`${base}/applications/${ids.app}/drafts`, { method }) : await request(method, payload(), role);

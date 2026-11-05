@@ -526,6 +526,21 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
+**2026-11-05 resumed B10 checkpoint: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
+Core behavior checks passed: full backend unit suite **258 files / 3,958 passed /
+5 skipped / 0 failed**; real MariaDB B3 **18**, B6 **20** with nested B5 **11** /
+B4 **11** / B0A **5** / B2 **4**, B7 **26**, extended B8 **36**, B9 **51**;
+standalone Phase A verifier **11/11**, frontend TypeScript and production build
+PASS. Added three integrated core DB journeys and 33 core HTTP cases; removed the
+diagnostic email test from the active suite after explicit owner deferral. The
+email defect remains open and no runtime source changed. Relevant ESLint failed
+on the existing unescaped apostrophe in `applicant-appointment-gate.tsx:137`
+(one error, five unrelated unused-variable warnings). No overall automated PASS
+or new core functional defect is claimed. See the
+[resumed evidence matrix](reports/2026-11-05-exam-b10-lifecycle-acceptance.md#11-resumed-core-gate--2026-11-05).
+Independent review and core owner manual/browser QA remain pending; Email
+Integration is deferred. Phase B is incomplete.
+
 **2026-11-05 B10 scope decision: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
 The first B10 run correctly found a real current-actor authorization gap in the result-email queue path. The project owner clarified that email integration is collaborator-owned, not yet functional/accepted, and belongs to the separate Email Integration feature rather than an Exam Phase B correction. The finding remains documented and is not treated as fixed. **Result-email queue/delivery/current-actor behavior is excluded from B10 core-exam acceptance and from any Phase B production-readiness claim.** B10 now resumes the remaining core examination lifecycle gates. The deliberately failing B10 email regression is diagnostic evidence for the future Email Integration feature, not a required core-gate PASS. Phase B remains incomplete until the resumed core automated gate, independent review and project-owner manual/browser QA pass for the agreed non-email scope.
 

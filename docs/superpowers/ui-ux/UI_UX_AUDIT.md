@@ -977,6 +977,18 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B9 implementation checkpoint — appointment amendments and separate reconsidered pass
 
+**Resumed B10 evidence, 2026-11-05: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
+Core full unit/controlled React and all real-DB harnesses passed; three added
+integrated journeys and 33 core HTTP negatives preserve lifecycle/result authority.
+Standalone Phase A verifier **11/11**, frontend TypeScript and production build
+PASS. Relevant ESLint fails on the existing unescaped apostrophe at
+`applicant-appointment-gate.tsx:137`; this is a failed static gate, not a visual
+or browser finding. No production/UI source was changed. The
+[resumed B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md#11-resumed-core-gate--2026-11-05)
+keeps every core owner journey **PENDING OWNER EXECUTION** and F4/I4
+**DEFERRED — EMAIL INTEGRATION FEATURE**. No owner QA, new Approved Reference,
+overall automated PASS or Phase B completion is claimed.
+
 **Subsequent B10 scope decision, 2026-11-05: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
 The first B10 run found a real result-email current-actor authorization gap for an earlier valid ADMIN token after deactivation/demotion. Production/UI source was not changed. The project owner clarified that collaborator-owned email integration is not yet functional/accepted and belongs to the separate Email Integration feature. The [B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md) retains the diagnostic evidence. B10 resumes only the core examination lifecycle acceptance matrix; result-email queue/delivery/current-actor scenarios are explicitly deferred and must not be claimed accepted or production-ready. Owner browser/manual QA remains pending for the non-email core journeys.
 

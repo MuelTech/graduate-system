@@ -8,7 +8,7 @@
 
 **Audit branch:** `feat/exam-engine-scheduling-audit`
 
-**Status:** B0A/B0B/B1/B2/B3/B4/B5/B6/B7/B8/B9 ACCEPTED FOR PHASE B PROGRESSION; B10 BLOCKED — functional defect found; OWNER MANUAL/BROWSER QA PENDING
+**Status:** B0A/B0B/B1/B2/B3/B4/B5/B6/B7/B8/B9 ACCEPTED FOR PHASE B PROGRESSION; B10 CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR; INDEPENDENT REVIEW / OWNER MANUAL QA PENDING; EMAIL INTEGRATION DEFERRED
 
 **2026-11-02 implementation checkpoint:** The owner explicitly authorized EXAM-B0A only on `feat/exam-engine-scheduling`, created from verified merged audit `main` at `a6dc6f57c6e8130482c814e90703765972fddaa9`. Implementation commit `e44aa9d177ad85b8828cdd3cee93b0aaf7db7fdb` passed focused verification and real-database contention checks, and the subsequent independent remote review found no blocking issue. The project owner accepted B0A for Phase B progression and explicitly deferred manual/browser QA to a later consolidated Phase B gate; that QA is **not** reported as PASS. See [B0A implementation and verification evidence](../reports/2026-11-02-exam-b0a-answer-containment.md). Audit-only delivery/authorization statements below describe the historical audit session; the later authorization/acceptance supersedes them only for B0A. No B0B or later implementation is authorized by this checkpoint.
 
@@ -314,6 +314,19 @@ B4 requires a valid configured duration and freezes all representable B1 scoring
 | Dependencies / policy | B3/B4/B6/B8. **Owner-confirmed B9 policy, 2026-11-05:** (1) no ExamPeriod/retake/reset model is introduced; B9 schedule changes apply only to never-started applications and preserve the original application/slot history; (2) Applicant missed-exam appeal requires the exact owned application, a reason, no start/answer/score/finalization evidence, and an original appointment on an earlier Asia/Manila calendar date—same-day late arrival remains B4; filing moves the record to APPEALED and releases its stale seat once; approval requires active ADMIN, reason and a valid future active same-Program target slot, creates a new PENDING application and marks the original RESCHEDULED; rejection marks the original MISSED with no new application; (3) active ADMIN may directly cancel or reschedule an eligible never-started application with required reason; cancellation marks the original CANCELLED and releases its seat, while reschedule creates a new PENDING application and marks the original RESCHEDULED; (4) FAILED and MISSED remain blocking so B9 does not silently create a retake policy, while CANCELLED/RESCHEDULED history does not block its replacement; (5) B8-managed computed FAILED may receive one separate ADMIN-authored PASSED — RECONSIDERED decision with required reason/actor/time, without changing the original computed FAILED application/score/basis; legacy FAILED is not automatically eligible; no revoke/review path is introduced; (6) downstream pass/COR/Applicant/Admin result projections must recognize the separate reconsidered decision, while any already-queued original result email remains historical and the generic B8 result-email action must not queue a contradictory original FAILED email after reconsideration. |
 
 ## 14. EXAM-B10 — Focused lifecycle regression and acceptance gate
+
+**2026-11-05 resumed execution checkpoint: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
+The [resumed report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md#11-resumed-core-gate--2026-11-05)
+records 3,958 unit passes / 5 conditional skips, all nine accepted real-DB suites
+(including nested runners), three new integrated complete/incomplete/timeout
+journeys, 33 new core HTTP cases, full staged migration/cutover rehearsal and
+11/11 standalone Phase A verification. Frontend TypeScript/build pass. Relevant
+ESLint fails on pre-existing `applicant-appointment-gate.tsx:137` unescaped JSX
+apostrophe. This is a static failure, not a newly reproduced core functional
+defect; production source remains unchanged and no rule was bypassed. The active
+diagnostic email test was removed by explicit owner instruction; the real email
+defect remains deferred. The overall core automated gate is not PASS. Independent
+review and core owner/manual execution remain pending. No next package is begun.
 
 **2026-11-05 owner scope decision after first B10 run: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
 [B10 evidence and diagnostic report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md).
