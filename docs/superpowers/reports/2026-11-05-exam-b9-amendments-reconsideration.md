@@ -3,8 +3,8 @@
 **Date:** 2026-11-05
 **Repository:** `MuelTech/graduate-system`
 **Branch:** `feat/exam-engine-scheduling`
-**Status:** IMPLEMENTED / PUSHED — INDEPENDENT REVIEW PENDING
-**Acceptance:** B9 is not accepted. B10 has not been started.
+**Status:** ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05
+**Acceptance:** Independent remote source review: **PASS — no blocking issue found**. B10 is the authorized final Phase B regression/manual acceptance gate.
 **Policy:** [Owner-confirmed B9 policy](2026-11-05-exam-b9-owner-policy.md)
 
 ## Delivery and verified baseline
@@ -25,7 +25,7 @@ One additive migration, `20261105010000_exam_amendments_reconsideration`, adds:
 
 No B5–B8 migration was edited. There is no data rewrite, decision fabrication, seat-release backfill, legacy-appeal interpretation, `db push`, ExamPeriod or attempt-number model. All existing seat markers migrate to null; both new tables start empty.
 
-**Configured development DB protection:** the owner reported migrations through B8. Codex did not deploy B9 or write fixtures to that database. All B9 and affected real-database mutation/rehearsal work used generated disposable MariaDB databases. The owner will apply the committed B9 migration separately after independent review.
+**Configured development DB protection:** the owner reported migrations through B8. Codex did not deploy B9 or write fixtures to that database. All B9 and affected real-database mutation/rehearsal work used generated disposable MariaDB databases. After independent B9 review, the B9 migration remains owner-action pending / not independently confirmed applied. It must be applied before the B10 owner/browser runtime walkthrough.
 
 ## Appointment authority and capacity
 
@@ -102,7 +102,7 @@ Related suites were broadened because B9 changes schema, scheduling locks/capaci
 | Diff | `git diff --check` and staged diff check PASS. |
 | Project-owner manual/browser QA | **DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate.** Automated static rendering/handlers are not browser or visual acceptance. |
 | Hosted CI | **NOT EXECUTED / no hosted PASS claimed.** Existing workflow triggers pushes to main and PRs targeting main; this package creates neither. |
-| Independent review | **PENDING. B9 is not accepted.** |
+| Independent review | **PASS — no blocking issue found. B9 accepted for Phase B progression.** |
 
 One earlier parallel 76-file run hit the existing 5-second timeout in the read-only verified-content package check. That file passed alone (72 verified questions / 108 images), and the final four-worker 76-file run passed all 1,413 tests. Initial B9 synchronous-validation assertion and UI date/encoding expectation failures were corrected before the passing final runs. Existing Vitest configuration, Next middleware deprecation and Node runtime warnings do not change the successful check results; no unrelated framework migration was made.
 
@@ -120,9 +120,9 @@ B3 uses a separately defined wider protected-table projection and also verified 
 
 ## Remaining boundary
 
-Independent source review and explicit owner acceptance remain necessary. Owner-applied migration and the consolidated manual/browser lifecycle walkthrough remain pending. That later gate includes same-day Start, prior-date appeals/reasons, approval/rejection, old/new history and released capacity, direct amendments, started-attempt protection, FAILED/MISSED booking blocks, separate reconsidered display, immutable scores, COR/Applicant stage and result-email behavior, plus mobile/keyboard/dialog checks.
+Independent source review is complete and B9 is accepted for Phase B progression. The owner-applied B9 migration and consolidated manual/browser lifecycle walkthrough remain pending as B10 prerequisites/gates. That walkthrough includes same-day Start, prior-date appeals/reasons, approval/rejection, old/new history and released capacity, direct amendments, started-attempt protection, FAILED/MISSED booking blocks, separate reconsidered display, immutable scores, COR/Applicant stage and result-email behavior, plus mobile/keyboard/dialog checks.
 
-B10 regression/acceptance implementation, production readiness, generic retakes/resets, Program Chair/Faculty authority, revoke/regrade and notification-template expansion are outside this delivery. **STOP at B9.**
+B10 regression/acceptance is now authorized as the final Phase B gate. B10 must not introduce generic retakes/resets, Program Chair/Faculty authority, revoke/regrade or notification-template expansion. Phase B is not complete or production-ready until B10 automated evidence, independent review and explicit project-owner manual/browser acceptance are recorded.
 
 ## Exact changed files and commits
 
