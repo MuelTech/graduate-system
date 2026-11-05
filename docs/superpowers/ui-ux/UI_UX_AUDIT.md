@@ -1261,7 +1261,7 @@ Examples from the Entrance Exam **Assign Applicant** manual QA:
 
 These are presentation/content rules only. They do not weaken eligibility, schedule, capacity, program-alignment, or record-authority rules.
 
-Every UI/UX package that changes visible copy should include a microcopy review for redundancy, inverse-condition wording, role context, internal terminology, and unnecessary consequence narration before acceptance.
+Every UI/UX package that changes visible copy should include a microcopy review before acceptance. Canonical wording rules and accepted examples live in [USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md); this audit records findings rather than duplicating that source.
 
 ---
 

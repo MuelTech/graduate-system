@@ -1132,7 +1132,7 @@ Current repository facts:
 
 This is a cross-cutting UI/UX requirement. The system should not expose inconsistent, overly technical, stale, or role-confusing language even when the underlying workflow is correct.
 
-Canonical wording guidance already exists in the UI/UX playbook. This checklist tracks the remaining system-wide application of those rules.
+Canonical wording guidance is governed by [USER_FACING_COPY_SOURCE_OF_TRUTH.md](USER_FACING_COPY_SOURCE_OF_TRUTH.md). The UI/UX playbook references that source for visible wording; this checklist tracks remaining system-wide application.
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
@@ -1151,39 +1151,10 @@ Canonical wording guidance already exists in the UI/UX playbook. This checklist 
 | ⏳ | Accessibility/plain-language pass | Labels, instructions, and validation messages should remain concise, understandable, and compatible with accessible controls. |
 | ⏳ | Wording regression review | Every UI/UX package should include a terminology/copy check so fixed wording does not drift back on later pages. |
 
-## Wording guardrails
+## Wording authority
 
-Prefer:
+Use [USER_FACING_COPY_SOURCE_OF_TRUTH.md](USER_FACING_COPY_SOURCE_OF_TRUTH.md) for canonical microcopy rules, approved examples, role-aware information boundaries, and the required copy-review gate.
 
-```text
-clear task label
-+ authoritative status
-+ available action
-+ concise consequence / recovery guidance when needed
-```
-
-Avoid:
-
-```text
-raw enum names
-database/model terminology
-route/API language
-engineering implementation details
-duplicated explanatory paragraphs
-inverse-condition restatements (for example, “Eligible … no blocker prevents …”)
-obvious consequences already communicated by disabled/unavailable actions
-role-confusing instructions that tell the current actor to contact itself
-different names for the same system concept
-```
-
-Examples of already accepted direction include:
-
-- **Eligible for assignment.** instead of **Eligible for assignment · No examination record prevents assignment.**;
-- **This Applicant already has an examination record.** instead of appending the obvious consequence that another assignment is prevented;
-- **No schedules are available for this Applicant’s Program.** instead of verbose/role-confusing Admin empty-state guidance;
-- **Committee Report** instead of exposing internal `RapReport` terminology to ordinary Faculty users;
-- **Finalize Committee Report** instead of engineering wording such as “freeze”;
-- **Ready for Signatures / Awaiting Signatures** instead of exposing raw report-state enums;
-- technical hashes, snapshot versions, and internal version counters remain hidden unless an Admin/audit/debug context genuinely needs them.
+This checklist should track completion/status only; do not duplicate detailed examples here because duplicate wording guidance can drift.
 
 The wording audit must preserve institutional and academic terminology. It is a consistency/refinement task, not permission to rename confirmed EARIST concepts casually.

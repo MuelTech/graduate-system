@@ -286,54 +286,11 @@ That sentence is domain-correct but unnecessary in the Rapporteur confirmation U
 
 This principle applies system-wide. Existing screens do not need a mass rewrite solely because this rule was documented; apply it when a surface is next implemented/refined, or when a specific copy issue materially harms clarity.
 
-### 8.2.3 Microcopy compression and state-message rules
+### 8.2.3 User-facing wording authority
 
-For ordinary status, helper, empty-state, validation, and blocked-state copy, use the **shortest wording that communicates the authoritative state without losing necessary recovery guidance**.
+Detailed microcopy, status-message, error, empty-state, role-boundary, and confirmation wording rules are governed by the canonical [User-Facing Copy Source of Truth](../USER_FACING_COPY_SOURCE_OF_TRUTH.md).
 
-Rules:
-
-- **one state, one message** — do not describe both the current state and the inverse condition that is already implied;
-- a positive state should usually state only the positive state;
-- a blocked state should name the blocker directly; do not append the obvious consequence when the disabled/missing action already communicates it;
-- do not repeat the page/dialog purpose inside its status message;
-- do not tell the current role to contact itself or another generic role when the current user already owns the next action;
-- add a next action only when it is genuinely useful and not already obvious from nearby controls;
-- prefer user-facing state language over backend/business-rule phrasing;
-- keep institutional/academic terminology exact when it carries real policy meaning;
-- do not compress away a necessary irreversible consequence, recovery step, ownership boundary, or safety-critical explanation.
-
-Prefer:
-
-| Situation | Preferred copy |
-|---|---|
-| positive eligibility | **Eligible for assignment.** |
-| blocking existing record | **This Applicant already has an examination record.** |
-| no matching schedule | **No schedules are available for this Applicant’s Program.** |
-| alignment blocked | **Program alignment or waiver clearance is required before assignment.** |
-| full schedule | **This schedule is full.** |
-| closed schedule | **This schedule is closed for booking.** |
-
-Avoid:
-
-| Avoid | Why |
-|---|---|
-| **Eligible for assignment · No examination record prevents assignment.** | the second clause merely explains the inverse condition already implied by eligibility |
-| **This Applicant already has an examination record that prevents another assignment.** | the disabled/unavailable assignment action already communicates the consequence |
-| **No eligible same-day schedules have seats available. Contact the schedule administrator.** | verbose and role-confusing on an Admin-owned scheduling surface |
-
-A UI/UX package that adds or changes visible copy must include an explicit **microcopy review** before acceptance:
-
-```text
-□ shortest truthful wording
-□ no inverse-condition restatement
-□ no duplicated screen/dialog context
-□ no backend/internal phrasing
-□ role-aware responsibility
-□ next action only when useful
-□ canonical terminology preserved
-```
-
-Do not turn these examples into brittle exact-string tests for every screen. Automated tests should verify the correct state/meaning and critical normative labels; project-owner/manual UI review remains the final quality check for naturalness, redundancy, and role context.
+Any UI/UX package that adds or changes visible wording must read that document before implementation and apply its microcopy review gate. Keep this playbook focused on layout, hierarchy, interaction, and structural workflow presentation; do not duplicate the detailed copy rules here.
 
 **Autosave vs manual Save — reusable rule:** Do not expose a manual **Save** action when routine persistence is already reliably handled by autosave, unless manual Save serves a distinct user need. Keep visible save-state feedback and the recovery actions required for offline, error, or conflict handling.
 
