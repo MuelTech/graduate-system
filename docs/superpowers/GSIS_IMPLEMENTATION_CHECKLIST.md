@@ -526,6 +526,18 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
+**2026-11-05 B10 checkpoint: B10 BLOCKED — functional defect found.**
+The new actual-route regression reproduces result-email queueing and queued-evidence
+writes by an inactive or demoted actor holding an earlier valid ADMIN token; the
+email path never checks the current user. Production source is unchanged. Existing
+full unit suite: 3,925 passed / 5 skipped; B9 disposable MariaDB: 51 passed; new
+B10 regression: 1 passed / 2 failed. Remaining acceptance gates stopped. See the
+[B10 lifecycle/blocker report and pending owner checklist](reports/2026-11-05-exam-b10-lifecycle-acceptance.md).
+Proposed correction `EXAM-B8-CORR-1 — Result-email current actor authorization`
+requires separate owner authorization. B10 is not accepted; Phase B is incomplete;
+project-owner manual/browser QA remains **PENDING OWNER EXECUTION**. Historical
+accepted package checkpoints below remain valid for their bounded scope.
+
 **Phase A is accepted as of 2026-10-31. Initial Phase B source audit completed 2026-11-01 on `feat/exam-engine-scheduling-audit` from verified `main` at `9ab8aa037b9c5a9f746bd0e6aef72478a3b76564`; independent review of the audit/plan is PASS. Owner clarifications for timezone, essay composition, scoring configuration, lifecycle recovery, Applicant self-registration, and same-day Admin assignment/Start Now exceptions are recorded in the Phase B plan and [admission clarification report](reports/2026-11-02-exam-admission-owner-clarifications.md). EXAM-B0A is implemented and independently reviewed on the separately authorized `feat/exam-engine-scheduling` branch from merged audit baseline `a6dc6f57c6e8130482c814e90703765972fddaa9`. The independent remote source review is PASS, and the project owner accepted B0A for Phase B progression on 2026-11-02 while explicitly deferring manual/browser QA to a later consolidated Phase B gate. EXAM-B0A, EXAM-B0B, EXAM-B1, EXAM-B2 and EXAM-B3 are accepted for Phase B progression; Phase B as a whole remains incomplete and not production-ready.**
 
 - Audit report: [Exam engine / scheduling findings](reports/2026-11-01-exam-engine-scheduling-phase-b-audit.md).

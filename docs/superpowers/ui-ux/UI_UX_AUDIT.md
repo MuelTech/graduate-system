@@ -977,6 +977,16 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B9 implementation checkpoint — appointment amendments and separate reconsidered pass
 
+**Subsequent B10 gate, 2026-11-05: B10 BLOCKED — functional defect found.**
+The actual result-email route lacks current active-ADMIN verification and accepts
+an earlier valid ADMIN token for an inactive/demoted actor. Production/UI source
+was not changed; no browser/manual PASS is claimed. The
+[B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md) records the
+failing automated regression, completed evidence, remaining gates and exact
+journeys A–J, all **PENDING OWNER EXECUTION**. Separate bounded correction and
+review are required before resuming acceptance. The accepted B9 checkpoint below
+is retained; B10 is not accepted and Phase B remains incomplete.
+
 **2026-11-05: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B9 implementation and verification evidence](../reports/2026-11-05-exam-b9-amendments-reconsideration.md). This is accepted functional work on the existing screens, not a new Approved Reference Implementation or production acceptance. B10 remains the required consolidated owner/browser acceptance gate.
 
 - Existing Applicant Examination shows **Appeal Missed Exam** only from the exact server-owned status flag for an earlier Manila calendar date. The reason dialog identifies the original appointment, explains same-day Start semantics and submits its exact application. No Applicant target selector. Pending/rejected states withhold duplicate/retry booking actions; active exam, saved drafts, timer and final receipt remain intact.
