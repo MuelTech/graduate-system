@@ -134,7 +134,7 @@ export function ApplicantAppointmentGate({
             <DialogDescription>
               Use this appeal for an appointment on an earlier calendar date.
               Same-day late arrival follows Start Examination. Filing releases
-              the missed appointment's seat; staff choose any approved
+              the missed appointment&apos;s seat; staff choose any approved
               replacement.
             </DialogDescription>
           </DialogHeader>

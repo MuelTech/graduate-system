@@ -526,6 +526,18 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
+**2026-11-05 EXAM-B10-CORR-1 result: B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED.**
+The owner-authorized presentation-only apostrophe escape at
+`frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`
+resolves the pre-existing ESLint error. Focused relevant ESLint passed with
+0 errors / 5 unchanged warnings; frontend TypeScript, production build (68 pages),
+affected UI contracts (2 files / 55 tests) and `git diff --check` passed.
+No behavior/API/schema/data/email change. The
+[bounded correction evidence](reports/2026-11-05-exam-b10-lifecycle-acceptance.md#12-exam-b10-corr-1--applicant-missed-appeal-jsx-lint-correction)
+supersedes the historical incomplete lint status below. Owner manual/browser QA:
+**PENDING OWNER EXECUTION**; F4/I4 remain **DEFERRED — EMAIL INTEGRATION FEATURE**.
+B10 is not accepted and Phase B is incomplete.
+
 **2026-11-05 resumed B10 checkpoint: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
 Core behavior checks passed: full backend unit suite **258 files / 3,958 passed /
 5 skipped / 0 failed**; real MariaDB B3 **18**, B6 **20** with nested B5 **11** /
@@ -586,7 +598,7 @@ The first B10 run correctly found a real current-actor authorization gap in the 
 | 🔍 | Question activation / selection | B2 foundation implemented; independent review / owner acceptance pending. Explicit saved membership and immutable publication are available to Admin. Applicant selection activation requires B4 exact attempt binding; the live legacy bank path is intentionally retained in B2. |
 | ✅ | Scoring / answer integrity | **B8 accepted for Phase B progression.** New results use frozen B2/B4/B6/B7 evidence, exact Decimal arithmetic, configured MCQ points/essay maximum/percentage threshold and immutable scoring basis; later bank/config changes cannot retroactively alter the computed result. Legacy final records retain honest unknown provenance where B8 evidence is absent. |
 | ✅ | Finalized FAILED-result reconsideration | **B9 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Current active ADMIN may record one separate **PASSED — RECONSIDERED** decision only for valid B8 computed FAILED. Original application/score FAILED, answers, numbers, basis, threshold and scoredAt remain unchanged. Applicant/Admin projections, both COR gates, Admin Applicant list/filter/count/detail and Applicant progression recognize validated effective pass. Existing queued-email evidence is retained; generic B8 result-email action rejects after decision. Reason/actor/time/audit required; no revoke/regrade, Program Chair authority or legacy reinterpretation. |
-| 🔍 | Automated regression coverage | **B10 CORE EXAM GATE RESUMPTION AUTHORIZED.** Core behavioral/real-DB/migration/content evidence passed, but the declared frontend ESLint gate is incomplete due solely to the pre-existing unescaped apostrophe in `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`. **EXAM-B10-CORR-1 is owner-authorized** as a presentation-only JSX lint correction: escape/rephrase that one apostrophe without changing appeal behavior, text meaning, API, schema or data. After the focused fix, rerun relevant ESLint, TypeScript, production build, affected tests and `git diff --check`; if all pass, return to B10 automated-gate closure. Email Integration remains separately deferred. |
+| 🔍 | Automated regression coverage | **B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED.** Owner-authorized EXAM-B10-CORR-1 resolves the pre-existing apostrophe lint error with one JSX text escape and no behavior/API/schema/data change. Relevant ESLint (0 errors / 5 existing warnings), TypeScript, production build, 55 affected UI tests and `git diff --check` pass. Preserved B10 core behavioral/real-DB/migration/content evidence remains applicable. Owner QA is **PENDING OWNER EXECUTION**. B10 is not accepted; Phase B is incomplete. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 
 Do not mark the Applicant Entrance Examination production-ready until Phase B has been completed and accepted.

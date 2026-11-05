@@ -2,14 +2,15 @@
 
 Date: 2026-11-05, Asia/Manila.
 
-**B10 CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED**
+**B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED**
 
 The resumed core behavior, real-database, migration and content checks passed.
-The declared relevant frontend ESLint gate failed on an existing JSX apostrophe
-at `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`.
-No production source was changed to remove it. Therefore the overall core
-automated gate is **not PASS**. See section 11 for the authoritative resumed-run
-results; sections 1–8 and 10 preserve the first-run evidence and its stop point.
+EXAM-B10-CORR-1 resolves the pre-existing JSX apostrophe lint error at
+`frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`.
+All required focused correction checks passed; see section 12. Section 11
+preserves the resumed-run evidence and its then-incomplete lint gate; sections
+1–8 and 10 preserve the first-run evidence and its stop point. Those historical
+stop/status statements are superseded only by section 12's bounded result.
 
 Production source, schema, migrations, dependencies and canonical content were unchanged by the first B10 diagnostic run. The run correctly stopped after reproducing the result-email authorization defect. The project owner subsequently clarified that collaborator-owned email integration is not yet functional/accepted and is outside the agreed core Exam Phase B acceptance scope. The defect remains documented below as a known deferred Email Integration issue; it is not fixed. B10 may resume the remaining core examination lifecycle gates. B10 is not yet accepted; Phase B remains incomplete.
 
@@ -658,3 +659,78 @@ Current workflow triggers main pushes and PRs targeting main; neither is created
 existing lint error before resuming the final automated PASS decision. No new
 implementation package is started. Email Integration remains
 **DEFERRED — NOT PART OF B10 CORE ACCEPTANCE**; its known security finding is open.
+
+## 12. EXAM-B10-CORR-1 — Applicant missed-appeal JSX lint correction
+
+Date: 2026-11-05, Asia/Manila. Owner authorization is recorded in the current
+checklist, Phase B plan, section 11.8 and the explicit correction request.
+Verified starting local/tracking/live feature HEAD:
+`88f218859a8c2c8db69fb9bb3c04cce022824892`; local/tracking/live main:
+`a6dc6f57c6e8130482c814e90703765972fddaa9`. Feature was 51 ahead / 0 behind
+main, with 0/0 upstream divergence and a clean worktree after fast-forwarding
+the existing branch from `179eb9b1f2f0825655bf0bd415184c6ec61679f8`.
+
+### 12.1 Exact correction and scope
+
+At `frontend/src/components/exam-content/applicant-appointment-gate.tsx:137`,
+changed only `the missed appointment's seat` to
+`the missed appointment&apos;s seat`. JSX renders the same apostrophe and message:
+an earlier-calendar-date appointment uses this appeal; same-day late arrival
+uses Start Examination; filing releases the missed appointment's seat; staff
+choose the approved replacement. No policy or workflow instruction changed.
+
+This is one presentation-only JSX text escape. No logic, API, schema, migration,
+data behavior, backend source, application state, capacity/release behavior,
+scoring, auth, email, dependency/lockfile, canonical content or asset changed.
+Only this source file and the three canonical B10 documents changed. No database
+suite or configured-data mutation was needed or performed.
+An in-memory TypeScript `transpileModule` comparison of the source at the verified
+starting HEAD against the corrected file produced identical emitted JavaScript.
+
+### 12.2 Focused commands and actual results
+
+```powershell
+# frontend
+npx eslint 'src/app/(portal)/admin/exam' 'src/app/(portal)/applicant' src/components/admin/exam src/components/exam-content src/lib/exam-configuration.ts src/lib/exam-question-set.ts src/lib/exam-execution.ts src/lib/exam-drafts.ts src/lib/exam-media.client.ts src/lib/exam-content.ts src/lib/applicant-exam-content.ts src/lib/exam-record-state.ts src/lib/admin-exam-schedules.ts
+npx tsc --noEmit
+npm run build
+# backend: controlled UI/contract tests only, no database suite
+npm test -- tests/unit/services/exam-b9-ui.contract.test.ts tests/unit/services/exam-execution-ui.contract.test.ts --reporter=verbose
+# repository root
+git diff --check
+```
+
+| Gate | Correction result |
+| --- | --- |
+| Exact relevant frontend ESLint | PASS, exit 0; **0 errors / 5 existing warnings** |
+| Frontend TypeScript | PASS, exit 0 |
+| Frontend production build | PASS, exit 0; **68 pages generated** |
+| B9 Applicant missed-appeal dialog / Exam Record UI contract | **21 passed / 0 failed / 0 skipped** |
+| Applicant Examination execution/recovery/finalization UI contract | **34 passed / 0 failed / 0 skipped** |
+| Combined affected UI tests | **2 files / 55 passed / 0 failed / 0 skipped**; exit 0 |
+| `git diff --check` | PASS, exit 0 |
+
+The five ESLint warnings remain untouched: alignment `isWaiverLoading`, Dashboard
+`Button` and `Download`, Applicant layout `useEffect` and `setUnreadNotifications`.
+Nonfatal output also included the Vite native-config advisory, the controlled UI
+harness React `showCloseButton` DOM-prop warning, Next middleware deprecation
+and Node `module.register()` deprecation. No warnings were suppressed or fixed.
+
+### 12.3 Current automated status and delivery boundary
+
+**B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED**
+
+This status combines section 11's preserved passing core automated evidence with
+the focused correction results above; it does not claim a fresh full-suite or
+real-database rerun. The pre-existing ESLint error is resolved by EXAM-B10-CORR-1.
+B10 is not accepted; Phase B remains incomplete. Independent review is pending.
+Owner manual/browser QA remains **PENDING OWNER EXECUTION**; none was performed.
+F4 and I4 remain **DEFERRED — EMAIL INTEGRATION FEATURE**. Email Integration is
+**DEFERRED — NOT PART OF B10 CORE ACCEPTANCE**; the known authorization finding
+is unchanged and unresolved. Hosted CI was not executed by this correction.
+
+Normal commit/push is limited to `feat/exam-engine-scheduling`. The final chat
+records exact delivered local/tracking/live feature HEAD, unchanged main, changed
+files, clean worktree and ahead/behind, avoiding a self-referential commit hash.
+No branch creation, history rewrite, merge to main, force push or PR. Stop after
+this correction delivery; do not begin owner QA or another package.
