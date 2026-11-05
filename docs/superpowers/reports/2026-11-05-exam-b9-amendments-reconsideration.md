@@ -118,9 +118,11 @@ The suite verifies reason/ownership, every partial execution/finalization field,
 
 B3 uses a separately defined wider protected-table projection and also verified its unchanged configured snapshot. These are integrity checks, not a claim that Codex applied B9 to the development DB.
 
+**Owner-reported configured dev DB deployment, 2026-11-05:** after pulling the accepted B9 branch, the project owner ran `npx prisma migrate deploy` against local MySQL `graduate_system`. Prisma applied `20261105010000_exam_amendments_reconsideration` and reported **All migrations have been successfully applied**. This is owner-reported runtime evidence, not an independently inspected database state. The Prisma 8 upgrade notice is informational and outside B10 scope.
+
 ## Remaining boundary
 
-Independent source review is complete and B9 is accepted for Phase B progression. The owner-applied B9 migration and consolidated manual/browser lifecycle walkthrough remain pending as B10 prerequisites/gates. That walkthrough includes same-day Start, prior-date appeals/reasons, approval/rejection, old/new history and released capacity, direct amendments, started-attempt protection, FAILED/MISSED booking blocks, separate reconsidered display, immutable scores, COR/Applicant stage and result-email behavior, plus mobile/keyboard/dialog checks.
+Independent source review is complete and B9 is accepted for Phase B progression. The project owner reports the B9 migration is now applied on the configured development DB; the consolidated manual/browser lifecycle walkthrough remains pending as the B10 acceptance gate. That walkthrough includes same-day Start, prior-date appeals/reasons, approval/rejection, old/new history and released capacity, direct amendments, started-attempt protection, FAILED/MISSED booking blocks, separate reconsidered display, immutable scores, COR/Applicant stage and result-email behavior, plus mobile/keyboard/dialog checks.
 
 B10 regression/acceptance is now authorized as the final Phase B gate. B10 must not introduce generic retakes/resets, Program Chair/Faculty authority, revoke/regrade or notification-template expansion. Phase B is not complete or production-ready until B10 automated evidence, independent review and explicit project-owner manual/browser acceptance are recorded.
 
