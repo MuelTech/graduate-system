@@ -53,6 +53,10 @@ function assignmentMessage(reason: string | null) {
       return "This Applicant already has an examination record.";
     case "Program alignment or bridging waiver clearance is required before assignment.":
       return "Program alignment or waiver clearance is required before assignment.";
+    case "This slot is fully booked.":
+      return "This schedule is full.";
+    case "This schedule's booked-seat information needs review. Contact the schedule administrator.":
+      return "This schedule's booked-seat information needs review.";
     default:
       return reason;
   }

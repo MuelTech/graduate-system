@@ -156,13 +156,22 @@ describe("Admin same-day assignment dialog", () => {
     expect(assigned).toHaveBeenCalledOnce(); expect(close).toHaveBeenCalledOnce(); expect(pendingRef.current).toBe(false);
     expect(toast).toHaveBeenCalledOnce();
   });
-  it("rejection retains bounded server reason, clears selection and refreshes authority without override", () => {
-    chooseApplicant(); chooseSlot(); button(render(), "Review Assignment").props.onClick(); render();
-    mutation.onError(new Error("This slot is fully booked.")); mutation.onSettled();
-    const tree = render(); expect(text(tree)).toContain("This slot is fully booked.");
+  it.each([
+    ["This slot is fully booked.", "This schedule is full."],
+    ["This schedule's booked-seat information needs review. Contact the schedule administrator.", "This schedule's booked-seat information needs review."],
+  ])("mutation rejection %s uses Admin copy, clears selection and refetches without override", (serverReason, visibleReason) => {
+    chooseApplicant(); chooseSlot(); button(render(), "Review Assignment").props.onClick();
+    button(render(), "Confirm Assignment").props.onClick();
+    expect(mutate).toHaveBeenCalledOnce();
+    mutation.onError(new Error(serverReason)); mutation.onSettled();
+    const tree = render();
+    expect(nodes(tree).some(node => node.props.role === "alert" && text(node) === visibleReason)).toBe(true);
+    expect(text(tree)).not.toContain(serverReason);
+    expect(text(tree)).not.toContain("Contact the schedule administrator.");
     expect(states[4]).toBe(""); expect(states[5]).toBe(false); expect(close).not.toHaveBeenCalled(); expect(refetch).toHaveBeenCalledOnce();
-    expect(nodes(tree).some(node => node.props.role === "alert")).toBe(true);
     expect(button(tree, "Review Assignment").props.disabled).toBe(true);
+    expect(mutation.retry).toBe(false); expect(mutate).toHaveBeenCalledOnce();
+    expect(assigned).not.toHaveBeenCalled(); expect(toast).not.toHaveBeenCalled();
   });
   it("blocked Applicant has a truthful reason and cannot select a schedule", () => {
     chooseApplicant(); optionsResult.data.eligible = false; optionsResult.data.reason = "Program clearance is required.";
