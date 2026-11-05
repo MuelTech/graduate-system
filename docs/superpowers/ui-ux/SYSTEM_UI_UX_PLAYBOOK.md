@@ -1417,7 +1417,9 @@ This reference establishes the accepted entrance-exam **main-list** baseline. Th
   - the exact Assessment composition where another workflow has different authority;
   - score-derived PASS/FAIL behavior as a generic UI rule.
 
-This reference establishes the accepted entrance-exam **detail + grading/result** pattern while preserving backend/domain authority and keeping legacy implementation details out of the user-facing information architecture.
+This reference establishes the historical entrance-exam **detail + grading/result** baseline while preserving backend/domain authority.
+
+**2026-11-05 manual-QA supersession note:** project-owner runtime review found that the current detail composition is not sufficient for final visual/content acceptance. The implementation repeats Program/date/time/result across multiple equal-weight cards, exposes verification/internal timing language, and gives insufficient hierarchy to the effective result versus the original computed result after reconsideration. Do **not** reuse the current composition as the final Exam Record pattern. The correction target is defined in [EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement](../specs/2026-11-05-exam-ui-content-refinement.md). The historical backend/domain authority above remains valid; only presentation/information architecture is under correction.
 
 
 ### Reference: Admin Students List — UIUX-2F

@@ -1747,3 +1747,45 @@ Use docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md as the canonical implementat
 Then select one bounded UI/UX iteration at a time from this audit.
 
 Do not implement the entire audit as one package.
+
+
+---
+
+## UX-MQA-EXAM-01 — Entrance Examination surfaces expose correct state with poor content hierarchy
+
+**Status:** OPEN — project-owner manual QA finding, 2026-11-05  
+**Priority:** P1  
+**Area:** Entrance Examination / content design / information architecture
+
+Manual/browser QA of the Phase B Entrance Examination flow confirmed that several authoritative behaviors work while the visible Applicant/Admin presentation remains too verbose, repetitive, or implementation-oriented for final acceptance.
+
+Observed surfaces include:
+
+- Admin **Assign Applicant** status and empty-state wording;
+- Applicant pre-start examination state;
+- Applicant incomplete-configuration error;
+- Admin **Exam Configuration** helper/timezone wording;
+- Applicant **Examination Submitted** terminal state;
+- Admin **Exam Record** timing;
+- Admin result/assessment/reconsideration presentation.
+
+Primary problems:
+
+- inverse-condition explanation;
+- internal authorization/configuration mechanics exposed to Applicants;
+- raw lifecycle/audit terminology used as ordinary labels;
+- repeated Program/date/time/result in multiple cards;
+- equal visual weight for primary academic decision and secondary evidence;
+- technical verification copy such as display-rounding/exact-comparison explanation;
+- effective **PASSED — RECONSIDERED** and original computed **FAILED** presented without a sufficiently clear hierarchy;
+- flat technical success/receipt presentation after Applicant submission.
+
+The underlying Phase B exam authority is not rejected by this finding. The required correction is presentation-only unless a separate functional defect is discovered.
+
+Canonical correction target:
+[EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement](../specs/2026-11-05-exam-ui-content-refinement.md)
+
+Canonical wording:
+[USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md)
+
+Final B10 owner/manual acceptance must remain open until this presentation/content finding is resolved and rechecked.

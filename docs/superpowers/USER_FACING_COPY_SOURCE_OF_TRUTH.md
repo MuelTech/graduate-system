@@ -278,6 +278,17 @@ These decisions come from project-owner manual QA on 2026-11-05 and are canonica
 | Active exam save reassurance when needed | **Your answers are saved automatically.** |
 | Admin timezone label | **Timezone** |
 | Admin timezone value | **Philippine Time (Asia/Manila)** |
+| Applicant submitted heading | **Examination Submitted** |
+| Applicant submitted timestamp | **Submitted** |
+| Applicant complete answer summary | **All [N] questions were answered.** |
+| Applicant incomplete answer summary | **[X] of [N] questions answered. [Y] questions were left unanswered.** |
+| Applicant post-submit state | **Awaiting evaluation** |
+| Admin timing section | **Exam Timing** |
+| Admin scheduled timestamp | **Scheduled** |
+| Admin actual-start timestamp | **Started** |
+| Admin deadline timestamp | **Ends** |
+| Admin computed academic outcome | **Computed Result** |
+| Admin reconsidered authority | **Final Decision: Passed — Reconsidered** |
 
 The following are not approved ordinary portal wording:
 
@@ -288,6 +299,12 @@ The following are not approved ordinary portal wording:
 - **Complete Exam Configuration, including the passing percentage, before starting.** shown to an Applicant.
 - **Asia/Manila — system-defined, read-only.**
 - **Original appointment** when there is no replacement/history comparison context.
+- **Finalized:** as the ordinary Applicant submission timestamp label.
+- **Individual deadline** as ordinary Admin-facing timing language.
+- **Actual examination start** when **Started** communicates the same fact.
+- **Percentage (display rounded)** in ordinary result presentation.
+- **The result uses the exact score comparison before display rounding.** in ordinary portal UI.
+- raw receipt UUID as primary Applicant-facing success content; use **Submission Reference** only in secondary details when needed.
 
 ## 16. Required microcopy review gate
 

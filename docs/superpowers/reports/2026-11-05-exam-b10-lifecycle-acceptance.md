@@ -734,3 +734,32 @@ records exact delivered local/tracking/live feature HEAD, unchanged main, change
 files, clean worktree and ahead/behind, avoiding a self-referential commit hash.
 No branch creation, history rewrite, merge to main, force push or PR. Stop after
 this correction delivery; do not begin owner QA or another package.
+
+
+## 13. Project-owner manual QA — UI/content findings
+
+**Status:** MANUAL QA IN PROGRESS — PRESENTATION/CONTENT CORRECTION REQUIRED
+
+After the automated core gate and independent review, project-owner browser QA began on the configured development environment. Core exam behavior has not been rejected, but the owner identified repeated presentation/content problems that prevent final visual/manual acceptance.
+
+Recorded findings include:
+
+- Admin Assign Applicant copy over-explains positive/blocked states and uses role-confusing empty-state wording;
+- Applicant pre-start UI exposes internal **Start Now authorization**, recovery/deadline implementation wording, and Admin-only configuration detail;
+- Admin Exam Configuration exposes implementation-oriented wording such as **system-defined, read-only**;
+- Applicant submitted state is a flat technical evidence list with weak success/next-action hierarchy;
+- Admin Exam Record repeats Program/date/time/result across multiple cards;
+- timing labels such as **Original appointment**, **Actual examination start**, and **Individual deadline** are overly technical or contextually unnecessary;
+- result presentation repeats FAILED/PASSED — RECONSIDERED across Current State, Institutional Decision, Exam Information and Assessment;
+- technical verification copy such as **Percentage (display rounded)** and exact-comparison narration is too prominent;
+- reconsideration needs a clear visual distinction between immutable **Computed Result** and separate **Final Decision**;
+- Result Email remains outside this correction because Email Integration is separately deferred.
+
+These are documented in:
+
+- `docs/superpowers/specs/2026-11-05-exam-ui-content-refinement.md`
+- `docs/superpowers/USER_FACING_COPY_SOURCE_OF_TRUTH.md`
+
+The findings are currently classified as **presentation/content and information-architecture corrections**, not evidence that B3-B9 core exam logic must be reimplemented.
+
+**B10 owner/manual acceptance remains OPEN. Phase B is not complete.**
