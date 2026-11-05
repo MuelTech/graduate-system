@@ -1,6 +1,6 @@
 # EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement
 
-**Status:** IMPLEMENTED — INDEPENDENT REVIEW AND PROJECT-OWNER VISUAL ACCEPTANCE PENDING
+**Status:** ACCEPTED — INDEPENDENT REMOTE REVIEW PASS; PROJECT-OWNER FUNCTIONAL/MANUAL AND VISUAL ACCEPTANCE PASS — 2026-11-06
 **Date:** 2026-11-05  
 **Branch:** `feat/exam-engine-scheduling`
 
@@ -315,5 +315,21 @@ The project owner separately authorized EXAM-B10-MQA-UI on the existing feature
 branch. [Implementation, page-specific decisions and verification evidence](../reports/2026-11-06-exam-b10-mqa-ui.md): eight frontend files, no backend/read-model
 change, six focused UI contract files / 136 tests PASS; TypeScript, scoped ESLint,
 production build and diff check PASS. Canonical copy and the information hierarchy
-above are applied. Independent review and owner manual/browser visual acceptance
-remain pending. Email Integration remains deferred; B10/Phase B is not complete.
+above are applied. Independent remote review passed, and the project owner confirmed
+both functional/manual correctness and visual/UI satisfaction on 2026-11-06. Email
+Integration remains deferred outside the accepted core Exam scope.
+
+
+## 10. Acceptance closure — 2026-11-06
+
+EXAM-B10-MQA-UI and its bounded FIX-1 are **ACCEPTED**. Independent remote review
+passed at implementation HEAD
+`a1947677ca8bbdeb31cd3a02c1cef32c8ff8515b`, and the project owner confirmed
+that the reviewed examination functionality is correct and the resulting UI is
+satisfactory.
+
+This acceptance closes the presentation/content finding for the agreed core Exam
+scope. It does not expand the package into Email Integration, scheduling-policy
+changes, schema changes, or new workflow authority. Coding-agent browser/manual
+QA was not executed; project-owner acceptance is recorded separately and no
+exhaustive hosted-browser/accessibility matrix is implied beyond that acceptance.

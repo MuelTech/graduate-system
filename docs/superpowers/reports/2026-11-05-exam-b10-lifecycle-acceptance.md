@@ -2,7 +2,7 @@
 
 Date: 2026-11-05, Asia/Manila.
 
-**B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED**
+**B10 CORE NON-EMAIL SCOPE ACCEPTED — INDEPENDENT REMOTE REVIEW PASS — PROJECT-OWNER FUNCTIONAL/MANUAL + VISUAL ACCEPTANCE PASS — EMAIL INTEGRATION DEFERRED**
 
 The resumed core behavior, real-database, migration and content checks passed.
 EXAM-B10-CORR-1 resolves the pre-existing JSX apostrophe lint error at
@@ -12,7 +12,7 @@ preserves the resumed-run evidence and its then-incomplete lint gate; sections
 1–8 and 10 preserve the first-run evidence and its stop point. Those historical
 stop/status statements are superseded only by section 12's bounded result.
 
-Production source, schema, migrations, dependencies and canonical content were unchanged by the first B10 diagnostic run. The run correctly stopped after reproducing the result-email authorization defect. The project owner subsequently clarified that collaborator-owned email integration is not yet functional/accepted and is outside the agreed core Exam Phase B acceptance scope. The defect remains documented below as a known deferred Email Integration issue; it is not fixed. B10 may resume the remaining core examination lifecycle gates. B10 is not yet accepted; Phase B remains incomplete.
+Production source, schema, migrations, dependencies and canonical content were unchanged by the first B10 diagnostic run. The run correctly stopped after reproducing the result-email authorization defect. The project owner subsequently clarified that collaborator-owned email integration is not yet functional/accepted and is outside the agreed core Exam Phase B acceptance scope. The defect remains documented below as a known deferred Email Integration issue; it is not fixed. Sections 1–13 preserve the historical B10 checkpoints and their then-current pending statements. Final acceptance of the agreed non-email core Exam scope is recorded in section 14.
 
 ## 1. Verified starting refs and accepted chain
 
@@ -763,3 +763,34 @@ These are documented in:
 The findings are currently classified as **presentation/content and information-architecture corrections**, not evidence that B3-B9 core exam logic must be reimplemented.
 
 **B10 owner/manual acceptance remains OPEN. Phase B is not complete.**
+
+
+## 14. Final non-email core Exam acceptance — 2026-11-06
+
+This section supersedes the acceptance-state wording of the historical checkpoints
+above without rewriting their evidence or chronology.
+
+Final accepted implementation HEAD before documentation closure:
+`a1947677ca8bbdeb31cd3a02c1cef32c8ff8515b`.
+
+Acceptance evidence:
+
+- B10 core automated gate: **PASS**, using the preserved evidence in sections
+  11–12 and the previously accepted B0A–B9 package evidence;
+- EXAM-B10-MQA-UI focused verification: **6 files / 136 tests PASS** plus
+  frontend TypeScript, scoped ESLint, production build (68 pages) and diff check;
+- EXAM-B10-MQA-UI-FIX-1 focused assignment contract: **13/13 PASS**, TypeScript,
+  scoped ESLint and diff check PASS;
+- independent remote source/diff review of EXAM-B10-MQA-UI + FIX-1: **PASS**;
+- project-owner functional/manual acceptance: **PASS — 2026-11-06**;
+- project-owner visual/UI acceptance: **PASS — 2026-11-06**.
+
+Therefore **B10 and the agreed Phase B core Entrance Examination scope are
+ACCEPTED FOR MERGE**. The owner acceptance is a separate evidence class from the
+coding-agent checks; coding-agent browser/manual QA is not claimed.
+
+Email Integration remains **DEFERRED — OUTSIDE THE ACCEPTED CORE EXAM SCOPE**.
+The known result-email authorization/integration limitation remains unresolved
+for that future feature. Hosted CI is not claimed by this closure, and this
+acceptance does not assert Email Integration readiness or whole-system
+production readiness.

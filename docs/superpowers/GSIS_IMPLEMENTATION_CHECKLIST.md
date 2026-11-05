@@ -526,14 +526,21 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**2026-11-06 EXAM-B10-MQA-UI: IMPLEMENTED — INDEPENDENT REVIEW AND OWNER VISUAL RECHECK PENDING.**
-The owner-authorized [presentation/content refinement](reports/2026-11-06-exam-b10-mqa-ui.md)
-applies canonical wording, Applicant submission hierarchy and Admin record
-information architecture. No backend/read-model/domain/email changes. Focused UI
-contracts: **6 files / 136 tests PASS**; frontend TypeScript, scoped ESLint,
-production build (68 pages) and diff check PASS. **Manual/browser QA: NOT EXECUTED
-— PROJECT OWNER.** B10/Phase B final acceptance stays open; Email Integration and
-the known result-email authorization defect remain deferred.
+**2026-11-06 B10 / PHASE B CORE EXAM ACCEPTANCE: ACCEPTED FOR MERGE — EMAIL INTEGRATION DEFERRED.**
+The owner-authorized [EXAM-B10-MQA-UI presentation/content refinement](reports/2026-11-06-exam-b10-mqa-ui.md)
+and bounded FIX-1 are accepted at implementation HEAD
+`a1947677ca8bbdeb31cd3a02c1cef32c8ff8515b`. The package applies canonical
+wording, Applicant submission hierarchy and Admin record information architecture
+without backend/domain/schema/email changes. Focused UI contracts: **6 files /
+136 tests PASS**; FIX-1 assignment contract: **13/13 PASS**; frontend TypeScript,
+scoped ESLint, production build (68 pages for the main UI package) and diff checks
+PASS. Independent remote review: **PASS**. Project-owner functional/manual
+acceptance: **PASS — 2026-11-06**. Project-owner visual/UI acceptance:
+**PASS — 2026-11-06**. Coding-agent browser/manual QA remains unclaimed.
+The agreed B10/Phase B core Entrance Examination scope is **ACCEPTED FOR MERGE**.
+Email Integration and the known result-email authorization/integration limitation
+remain **DEFERRED — OUTSIDE THE ACCEPTED CORE EXAM SCOPE**; hosted CI and
+whole-system production readiness are not claimed.
 
 **2026-11-05 EXAM-B10-CORR-1 result: B10 CORE AUTOMATED GATE PASS — INDEPENDENT REVIEW PENDING — OWNER MANUAL/BROWSER QA PENDING — EMAIL INTEGRATION DEFERRED.**
 The owner-authorized presentation-only apostrophe escape at

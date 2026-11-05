@@ -1753,7 +1753,7 @@ Do not implement the entire audit as one package.
 
 ## UX-MQA-EXAM-01 — Entrance Examination surfaces expose correct state with poor content hierarchy
 
-**Status:** IMPLEMENTED — INDEPENDENT REVIEW AND OWNER VISUAL RECHECK PENDING, 2026-11-06
+**Status:** RESOLVED / ACCEPTED — INDEPENDENT REMOTE REVIEW PASS; OWNER FUNCTIONAL/MANUAL + VISUAL ACCEPTANCE PASS, 2026-11-06
 **Priority:** P1  
 **Area:** Entrance Examination / content design / information architecture
 
@@ -1788,10 +1788,12 @@ Canonical correction target:
 Canonical wording:
 [USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md)
 
-Final B10 owner/manual acceptance must remain open until this presentation/content finding is resolved and rechecked.
+This presentation/content finding was resolved by EXAM-B10-MQA-UI + FIX-1 and accepted after independent remote review and project-owner functional/manual and visual recheck on 2026-11-06.
 
 Owner-authorized [EXAM-B10-MQA-UI implementation and focused verification](../reports/2026-11-06-exam-b10-mqa-ui.md)
 applies the canonical copy and page-specific hierarchy without backend/domain or
 email changes. Six UI contract files / 136 tests, TypeScript, scoped lint, build
-and diff check PASS. Manual/browser QA: NOT EXECUTED — PROJECT OWNER. Independent
-review and final visual acceptance remain open; no new Approved Reference is claimed.
+and diff check PASS. FIX-1 adds a focused 13/13 PASS assignment-copy regression.
+Coding-agent browser/manual QA was not executed. Independent remote review: **PASS**;
+project-owner functional/manual and visual acceptance: **PASS — 2026-11-06**.
+No new Approved Reference is claimed.
