@@ -526,17 +526,8 @@ Use this single branch for EXAM-CONTENT-1 through EXAM-CONTENT-7. Each package s
 
 ## 7.2 Phase B — Exam Engine / Scheduling Audit
 
-**2026-11-05 B10 checkpoint: B10 BLOCKED — functional defect found.**
-The new actual-route regression reproduces result-email queueing and queued-evidence
-writes by an inactive or demoted actor holding an earlier valid ADMIN token; the
-email path never checks the current user. Production source is unchanged. Existing
-full unit suite: 3,925 passed / 5 skipped; B9 disposable MariaDB: 51 passed; new
-B10 regression: 1 passed / 2 failed. Remaining acceptance gates stopped. See the
-[B10 lifecycle/blocker report and pending owner checklist](reports/2026-11-05-exam-b10-lifecycle-acceptance.md).
-Proposed correction `EXAM-B8-CORR-1 — Result-email current actor authorization`
-requires separate owner authorization. B10 is not accepted; Phase B is incomplete;
-project-owner manual/browser QA remains **PENDING OWNER EXECUTION**. Historical
-accepted package checkpoints below remain valid for their bounded scope.
+**2026-11-05 B10 scope decision: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
+The first B10 run correctly found a real current-actor authorization gap in the result-email queue path. The project owner clarified that email integration is collaborator-owned, not yet functional/accepted, and belongs to the separate Email Integration feature rather than an Exam Phase B correction. The finding remains documented and is not treated as fixed. **Result-email queue/delivery/current-actor behavior is excluded from B10 core-exam acceptance and from any Phase B production-readiness claim.** B10 now resumes the remaining core examination lifecycle gates. The deliberately failing B10 email regression is diagnostic evidence for the future Email Integration feature, not a required core-gate PASS. Phase B remains incomplete until the resumed core automated gate, independent review and project-owner manual/browser QA pass for the agreed non-email scope.
 
 **Phase A is accepted as of 2026-10-31. Initial Phase B source audit completed 2026-11-01 on `feat/exam-engine-scheduling-audit` from verified `main` at `9ab8aa037b9c5a9f746bd0e6aef72478a3b76564`; independent review of the audit/plan is PASS. Owner clarifications for timezone, essay composition, scoring configuration, lifecycle recovery, Applicant self-registration, and same-day Admin assignment/Start Now exceptions are recorded in the Phase B plan and [admission clarification report](reports/2026-11-02-exam-admission-owner-clarifications.md). EXAM-B0A is implemented and independently reviewed on the separately authorized `feat/exam-engine-scheduling` branch from merged audit baseline `a6dc6f57c6e8130482c814e90703765972fddaa9`. The independent remote source review is PASS, and the project owner accepted B0A for Phase B progression on 2026-11-02 while explicitly deferring manual/browser QA to a later consolidated Phase B gate. EXAM-B0A, EXAM-B0B, EXAM-B1, EXAM-B2 and EXAM-B3 are accepted for Phase B progression; Phase B as a whole remains incomplete and not production-ready.**
 
@@ -580,7 +571,7 @@ accepted package checkpoints below remain valid for their bounded scope.
 | 🔍 | Question activation / selection | B2 foundation implemented; independent review / owner acceptance pending. Explicit saved membership and immutable publication are available to Admin. Applicant selection activation requires B4 exact attempt binding; the live legacy bank path is intentionally retained in B2. |
 | ✅ | Scoring / answer integrity | **B8 accepted for Phase B progression.** New results use frozen B2/B4/B6/B7 evidence, exact Decimal arithmetic, configured MCQ points/essay maximum/percentage threshold and immutable scoring basis; later bank/config changes cannot retroactively alter the computed result. Legacy final records retain honest unknown provenance where B8 evidence is absent. |
 | ✅ | Finalized FAILED-result reconsideration | **B9 ACCEPTED FOR PHASE B PROGRESSION — 2026-11-05.** Current active ADMIN may record one separate **PASSED — RECONSIDERED** decision only for valid B8 computed FAILED. Original application/score FAILED, answers, numbers, basis, threshold and scoredAt remain unchanged. Applicant/Admin projections, both COR gates, Admin Applicant list/filter/count/detail and Applicant progression recognize validated effective pass. Existing queued-email evidence is retained; generic B8 result-email action rejects after decision. Reason/actor/time/audit required; no revoke/regrade, Program Chair authority or legacy reinterpretation. |
-| 🔍 | Automated regression coverage | **B10 AUTHORIZED as the final Phase B gate.** Close remaining cross-package lifecycle gaps, rerun the declared broader exam/backend/frontend/real-DB matrix on isolated data, rehearse the complete migration chain, and produce an evidence matrix. Owner/browser manual QA is a separate required B10 gate and must not be inferred from automation; apply the B9 dev migration before that runtime walkthrough. |
+| 🔍 | Automated regression coverage | **B10 CORE EXAM GATE RESUMPTION AUTHORIZED.** Close remaining cross-package lifecycle gaps, rerun the declared broader exam/backend/frontend/real-DB matrix on isolated data, rehearse the complete migration chain, and produce an evidence matrix. Owner/browser manual QA is a separate required B10 gate and must not be inferred from automation. The B9 dev migration is owner-reported applied. Result-email integration/current-actor/delivery is explicitly deferred to the separate Email Integration feature and is not a B10 core-exam blocker or acceptance claim. |
 | ⏳ | Program Chair examination permissions | Future Faculty permission architecture should govern applicant exam checking/essay grading where appropriate. |
 
 Do not mark the Applicant Entrance Examination production-ready until Phase B has been completed and accepted.
@@ -593,7 +584,7 @@ These areas include collaborator-owned/currently evolving work. Do not mark them
 
 | Status | Item | Current / target state |
 | --- | --- | --- |
-| 🔍 | Email integration | Review end-to-end delivery for Applicants, Students, and future Faculty users. |
+| 🔍 | Email integration | **Explicitly deferred from Exam Phase B/B10 core acceptance.** Collaborator-owned email integration is not yet functional/accepted. Complete current-actor authorization, worker/queue startup, delivery/retry/failure behavior and end-to-end recipient/template verification in the dedicated Email Integration feature. The B10 stale-ADMIN-token finding remains open here and is not considered fixed. |
 | 🔍 | Email templates / triggers | Verify authoritative events, recipients, retries/failure behavior, and auditability. |
 | 🔍 | Notifications | Review collaborator implementation and role/audience correctness. |
 | 🔍 | Announcements | Review collaborator implementation and target audiences. |

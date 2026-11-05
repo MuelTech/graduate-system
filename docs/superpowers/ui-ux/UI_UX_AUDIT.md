@@ -977,15 +977,8 @@ This is a bounded extension to the accepted Exam Records / Applicant administrat
 
 ### B9 implementation checkpoint — appointment amendments and separate reconsidered pass
 
-**Subsequent B10 gate, 2026-11-05: B10 BLOCKED — functional defect found.**
-The actual result-email route lacks current active-ADMIN verification and accepts
-an earlier valid ADMIN token for an inactive/demoted actor. Production/UI source
-was not changed; no browser/manual PASS is claimed. The
-[B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md) records the
-failing automated regression, completed evidence, remaining gates and exact
-journeys A–J, all **PENDING OWNER EXECUTION**. Separate bounded correction and
-review are required before resuming acceptance. The accepted B9 checkpoint below
-is retained; B10 is not accepted and Phase B remains incomplete.
+**Subsequent B10 scope decision, 2026-11-05: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
+The first B10 run found a real result-email current-actor authorization gap for an earlier valid ADMIN token after deactivation/demotion. Production/UI source was not changed. The project owner clarified that collaborator-owned email integration is not yet functional/accepted and belongs to the separate Email Integration feature. The [B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md) retains the diagnostic evidence. B10 resumes only the core examination lifecycle acceptance matrix; result-email queue/delivery/current-actor scenarios are explicitly deferred and must not be claimed accepted or production-ready. Owner browser/manual QA remains pending for the non-email core journeys.
 
 **2026-11-05: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B9 implementation and verification evidence](../reports/2026-11-05-exam-b9-amendments-reconsideration.md). This is accepted functional work on the existing screens, not a new Approved Reference Implementation or production acceptance. B10 remains the required consolidated owner/browser acceptance gate.
 

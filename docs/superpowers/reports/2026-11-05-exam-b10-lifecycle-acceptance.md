@@ -2,11 +2,9 @@
 
 Date: 2026-11-05, Asia/Manila.
 
-**B10 BLOCKED — functional defect found**
+**B10 CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED**
 
-Production source, schema, migrations, dependencies and canonical content are unchanged.
-Remaining acceptance work stopped after reproducing the defect below, as explicitly
-required by the owner. B10 is not accepted; Phase B is incomplete.
+Production source, schema, migrations, dependencies and canonical content were unchanged by the first B10 diagnostic run. The run correctly stopped after reproducing the result-email authorization defect. The project owner subsequently clarified that collaborator-owned email integration is not yet functional/accepted and is outside the agreed core Exam Phase B acceptance scope. The defect remains documented below as a known deferred Email Integration issue; it is not fixed. B10 may resume the remaining core examination lifecycle gates. B10 is not yet accepted; Phase B remains incomplete.
 
 ## 1. Verified starting refs and accepted chain
 
@@ -33,7 +31,7 @@ is not reopened. Read current checklist, Phase B plan, UI audit, verification
 policy, content authority and accepted package reports, including B8/B9 and the
 B9 owner policy. Historical transitional text does not override later acceptance.
 
-## 2. Blocker: result-email mutation omits current actor authorization
+## 2. Deferred Email Integration finding: result-email mutation omits current actor authorization
 
 **Invariant:** the sensitive result-email action must reject an inactive user or
 a user whose current role is no longer ADMIN, despite a previously issued valid
@@ -41,9 +39,7 @@ ADMIN token. The B10 authorization gate explicitly requires inactive-user and
 wrong-role rejection. Existing grading, result finalization and B9 decision paths
 recheck current active ADMIN authority; this email path does not.
 
-**Classification:** previously uncovered authorization gap in the accepted
-B0B/B8 result-email path, retained through B9. B10 introduced no production
-regression. Separate authorization is required before correction.
+**Classification:** previously uncovered authorization gap in the B0B/B8 result-email path, retained through B9. B10 introduced no production regression. **Owner scope decision, 2026-11-05:** email integration is collaborator-owned and not yet functional/accepted, so this finding is deferred to the dedicated Email Integration feature. It is a real known defect, but no longer blocks the B10 **core examination lifecycle** gate. Result-email queue/delivery/current-actor behavior must remain excluded from Phase B production-readiness claims.
 
 **Affected source:**
 
@@ -86,7 +82,7 @@ active ADMIN authority within the locked repository transaction before enqueue o
 the already-queued return. Preserve scoring, deterministic queue identity,
 reconsideration/email containment, legacy result semantics and existing templates.
 Require regression checks for active, inactive, demoted and absent actors.
-This is a recommendation only; no correction was implemented or begun.
+This is a recommendation only; no correction was implemented or begun. The owner directed that the eventual correction be completed with the separate Email Integration feature rather than inside B10.
 
 Unsupported email body fields were also inspected. Existing accepted B0B route
 tests explicitly expect forged recipient/template fields to be ignored while
@@ -221,11 +217,7 @@ ownership boundaries with controlled persistence. B9's real suite additionally
 verifies wrong ownership, reason, current Admin, partial execution fields,
 invalid targets, corrupt decisions and exact history.
 
-**The requested full authorization matrix is incomplete/FAILED**: the new email
-test proves inactive/demoted actors can mutate queued evidence. Existing role
-claim tests did not cover this current-user check. Stale/wrong-record and
-unsupported-field coverage must be enumerated route by route after correction;
-no blanket negative-route PASS is claimed.
+The first-run authorization matrix exposed the deferred email defect above. For the resumed B10 core gate, enumerate and complete stale/wrong-record/current-actor coverage for **core examination mutations**. Do not count the result-email mutation in the core pass/fail matrix and do not claim it secure or accepted. Its diagnostic test/result remains historical evidence for the Email Integration feature.
 
 Legacy evidence in the B9 real run: answer-bearing/score-bearing never-started
 records reject amendments; historical FAILED without B8 basis rejects
@@ -262,9 +254,7 @@ hosted success. No new PR or CI workflow change.
 
 ## 9. Owner manual/browser checklist — pending, not acceptance evidence
 
-**Project-owner manual/browser QA: PENDING OWNER EXECUTION.** B10 is blocked;
-this checklist is retained for the eventual corrected gate, not an instruction
-to accept the defective package. Codex performed no owner/browser QA.
+**Project-owner manual/browser QA: PENDING OWNER EXECUTION.** The resumed B10 checklist applies to the core examination lifecycle only. Codex performed no owner/browser QA. Email sending/queue/delivery scenarios are explicitly deferred to the separate Email Integration feature and are not required for core B10 acceptance.
 
 Use separate ordinary UI-created Applicants for mutually exclusive journeys.
 Record exact application/schedule identity and expected/actual outcome per row.
@@ -295,7 +285,7 @@ If unavailable, replace the relevant pending entry with
 | F1 Essay review | Admin opens finalized exact record: frozen prompt and exact response, including No response submitted for blank/missing. Later mutable bank edits must not replace prompt. | PENDING OWNER EXECUTION |
 | F2 Evaluation | Enter valid decimal/zero where practical; reject negative/over captured maximum. Save once; second grading attempt cannot overwrite. Evaluator/time and result are read-only. | PENDING OWNER EXECUTION |
 | F3 Scoring/projection | Owner selects known settings/sample answers. Compare exact expected calculation, equality/below-threshold outcome and identical Admin/Applicant displayed breakdown. Later configuration/Program/bank edits do not alter old result. | PENDING OWNER EXECUTION |
-| F4 Result email | After separate correction, current active Admin queues eligible result once; repeat says already queued, not delivered. Inactive/demoted actor must reject. Pending results expose no result/email. Use owner-controlled email only. | PENDING OWNER EXECUTION |
+| F4 Result email | Collaborator-owned email integration is not yet functional/accepted. Current-actor authorization, queue startup, repeat behavior and delivery belong to the dedicated Email Integration feature. Preserve the known B10 diagnostic finding; do not exercise or claim this path in core B10. | DEFERRED — EMAIL INTEGRATION FEATURE |
 | G1 Same-day boundary | Today's late never-started record has no missed-appeal action; use B4 normal Start. | PENDING OWNER EXECUTION |
 | G2 Prior-date filing | Requires an actual prior-Manila-date never-started appointment. Applicant files exact reasoned appeal. APPEALED, original seat releases once, no replacement yet. | PENDING OWNER EXECUTION |
 | G3 Approval | Admin selects active future same-Program target with capacity and provides reason. Old RESCHEDULED, new PENDING linked; old appointment unchanged; exact old/new seat counts. | PENDING OWNER EXECUTION |
@@ -306,7 +296,7 @@ If unavailable, replace the relevant pending entry with
 | I1 Reconsideration | Valid B8 computed FAILED: Admin → exact Exam Record → Reconsider Result; required reason and confirmation. One PASSED — RECONSIDERED decision with actor/time. | PENDING OWNER EXECUTION |
 | I2 Preserved result | Compare before/after answers, MCQ/essay/total, threshold, basis/scored time and raw FAILED. Separate institutional pass appears; Applicant sees no internal reason. | PENDING OWNER EXECUTION |
 | I3 Propagation | Applicant Result/profile/COR next step, Admin Applicants stage/filter/count/detail recognize effective pass. Complete owner-controlled COR verification if appropriate. No retake/scheduling permission. | PENDING OWNER EXECUTION |
-| I4 Email | If original FAILED email was queued, its evidence remains unchanged. Generic email action is unavailable after decision; no new reconsideration email/template. | PENDING OWNER EXECUTION |
+| I4 Email | Reconsideration-specific email/queue behavior is outside core B10 because email integration is deferred. The B9 rule that no new reconsideration template is introduced remains documented, but no email QA PASS is required here. | DEFERRED — EMAIL INTEGRATION FEATURE |
 | J1 Responsive | At desktop and narrow/mobile widths inspect Question Bank, booking, active exam, receipt, Admin record/actions and Results. Critical controls/readable content remain visible without clipping. | PENDING OWNER EXECUTION |
 | J2 Keyboard/dialog | Tab order/focus, labeled controls, dialog focus return, Escape/cancel, disabled/loading duplicate protection and error/retry states are clear on those pages. | PENDING OWNER EXECUTION |
 
@@ -335,7 +325,4 @@ deployment elsewhere, private-media storage and backups, retained BullMQ identit
 and real Redis/SMTP delivery remain operational/cutover concerns. Legacy unknown
 authority stays unknown; no generic retake, revoke/regrade or new notification.
 
-**B10 BLOCKED — functional defect found.** Independent review and separately
-authorized bounded correction are required before resuming the remaining B10
-gates. Project-owner manual/browser QA: **PENDING OWNER EXECUTION**. No subsequent
-package is started; B10 is not accepted and Phase B is not complete.
+**B10 CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.** The known result-email authorization defect remains open for the dedicated Email Integration feature and must not be represented as fixed or production-ready. Resume the remaining automated/static/real-DB/legacy/content gates for the core examination lifecycle. Project-owner manual/browser QA: **PENDING OWNER EXECUTION** for the non-email journeys. B10 is not yet accepted and Phase B is not complete.

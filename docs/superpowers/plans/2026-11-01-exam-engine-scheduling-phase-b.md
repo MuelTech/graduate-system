@@ -315,18 +315,9 @@ B4 requires a valid configured duration and freezes all representable B1 scoring
 
 ## 14. EXAM-B10 — Focused lifecycle regression and acceptance gate
 
-**2026-11-05 execution checkpoint: B10 BLOCKED — functional defect found.**
-[B10 evidence and blocker report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md).
-Actual send-result-email route accepts a still-valid ADMIN JWT after its actor is
-inactive or demoted, queues email and writes queued evidence without current-user
-authorization. New regression: 1 positive control passed / 2 negative cases failed.
-Existing full unit suite (3,925 passed / 5 skipped), B9 real MariaDB (51 passed),
-Prisma/backend/frontend type/build checks passed before stopping; remaining gates
-are not claimed passed. No runtime fix or migration. Proposed bounded correction
-`EXAM-B8-CORR-1 — Result-email current actor authorization` needs separate owner
-authorization. Owner checklist remains **PENDING OWNER EXECUTION**. This checkpoint
-supersedes earlier not-started/unauthorized shorthand only for B10; acceptance of
-the prior packages does not imply B10 or Phase B acceptance.
+**2026-11-05 owner scope decision after first B10 run: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
+[B10 evidence and diagnostic report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md).
+The first B10 run found a genuine stale-token/current-actor authorization gap in the result-email queue mutation (1 positive control passed / 2 negative cases failed). No production source was changed. The project owner clarified that email integration is collaborator-owned and not yet functional/accepted; therefore the correction is deferred to the separate Email Integration feature instead of becoming an Exam Phase B correction package. Preserve the finding as a known limitation. B10 resumes the remaining **core examination lifecycle** gates and excludes result-email queue/delivery/current-actor behavior from automated acceptance and owner manual PASS claims. Phase B may only be completed for this explicitly agreed core scope; email integration remains separately incomplete and not production-ready.
 
 **2026-11-05 authorization checkpoint: B10 AUTHORIZED AS THE FINAL PHASE B GATE.** B0A/B0B/B1/B2/B3/B4/B5/B6/B7/B8/B9 are accepted for Phase B progression. B10 is not a new feature package: close only remaining regression/evidence gaps, run the declared isolated migration/content/concurrency/static/build matrix, and prepare the owner browser/manual walkthrough. Do not mutate the configured dev DB. The project owner reports the committed B9 migration is now applied to the configured development DB, so the manual/browser runtime portion is unblocked. B10 automation must still avoid mutating/resetting that configured DB and use isolated test data/databases. Any discovered functional defect must become a separately identified bounded correction and independently reviewed before B10 acceptance. Phase B remains incomplete until B10 automated evidence, independent review and explicit owner manual/browser acceptance are all recorded.
 
@@ -338,8 +329,8 @@ the prior packages does not imply B10 or Phase B acceptance.
 | Likely surfaces | Focused service/repository/API integration tests, isolated DB contention fixtures, Applicant/Admin browser journeys, lifecycle verification report and checklist references. Runtime fixes require a separately identified correction package. |
 | Protected / out of scope | Common protections; no wholesale unrelated test/CI overhaul, no live candidate data edits, no assumption that passing unit tests equals owner QA or hosted CI. |
 | Migration | None intended; rehearse combined required migrations and cutover on isolated representative legacy data. Confirm no fabricated history or broken private-media references. |
-| Automated verification | Settings → book → start/reload → save/recover → explicit/timeout terminal → essay review → score/result/email eligibility → finalized-FAILED reconsideration where authorized; unauthorized and wrong-record matrix; lost response/disconnect/restart; live DB last-seat, duplicate Start/submit and stale draft contention; received content/keys/media remain private and stable. Include directly affected Phase A regressions. |
-| Owner / manual QA | Real Admin/Applicant multi-tab/device walkthrough, no-show/appeal path, supported-browser timing, representative mixed-content display and historical records. Record exact scenarios and any explicit waiver, never inferred PASS. |
+| Automated verification | Settings → book → start/reload → save/recover → explicit/timeout terminal → essay review → authoritative score/result projection → finalized-FAILED reconsideration where authorized; unauthorized and wrong-record matrix for core exam mutations; lost response/disconnect/restart; live DB last-seat, duplicate Start/submit and stale draft contention; received content/keys/media remain private and stable. Include directly affected Phase A regressions. **Result-email queue/delivery/current-actor behavior is deferred to Email Integration and excluded from the core B10 pass/fail matrix.** |
+| Owner / manual QA | Real Admin/Applicant multi-tab/device walkthrough, no-show/appeal path, supported-browser timing, representative mixed-content display and historical records. Record exact scenarios and any explicit waiver, never inferred PASS. **Result-email sending/queueing/delivery QA is DEFERRED — Email Integration feature and is not required for B10 core acceptance.** |
 | Stop / acceptance | Independent remote review, owner-required QA and declared automated gates pass; remaining policy/deployment limits explicitly documented. Only owner acceptance can mark Phase B complete/production-ready for an agreed scope. |
 | Dependencies / policy | All required packages and decisions resolved; any deferred exception must remain unavailable and not undermine the base lifecycle. |
 
