@@ -1,6 +1,10 @@
 import type { TextEmphasisSpan, StructuredStimulusEmphasis } from "../lib/text-emphasis";
 // APPLICANT & EXAM INTERFACES
 export interface ApplicantStatus {
+  applicationId?: string | null;
+  examStatus?: string;
+  canBookExam?: boolean;
+  canAppealMissedExam?: boolean;
   alignmentStatus: string;
   programId: string;
   confirmedSlot?: {
@@ -8,10 +12,11 @@ export interface ApplicantStatus {
     examDate: string;
     examTime: string;
     programName: string;
-  };
+  } | null;
 }
 
 export interface ExamSlot {
+  _count?: { examApplications: number };
   id: string;
   programId: string;
   examDate: string;
@@ -763,6 +768,7 @@ export interface AdminStudentDetail {
 }
 
 export interface ApiApplication {
+  reconsidered?: boolean;
   id: string;
   slot?: {
     examDate: string;
@@ -781,13 +787,45 @@ export interface ApiApplication {
     programName: string;
   };
   status: string;
+  essayEvaluationCompleted?: boolean;
 }
 
 /**
  * Bounded ADMIN read model for a single Entrance Exam Record detail.
  * Never includes correct-answer/option data.
  */
+export type EssayEvaluation = {
+  status: "PENDING" | "COMPLETED";
+  questionId: string;
+  question: ExamQuestion;
+  responseText: string | null;
+  responseState: "SUBMITTED" | "BLANK" | "MISSING";
+  maximumScore: number;
+  essayScore: number | null;
+  evaluator: { id: string; firstName: string; lastName: string } | null;
+  evaluatedAt: string | null;
+} | { status: "STAFF_REVIEW" | "LEGACY" | "UNAVAILABLE"; reason: string };
+
 export interface ExamRecordDetail {
+  canAmendAppointment: boolean;
+  canReconsiderResult: boolean;
+  computedStatus: string;
+  effectiveStatus: string;
+  institutionalDecision: { decision: "PASSED_RECONSIDERED"; decidedAt: string } | null;
+  seatReleasedAt: string | null;
+  replacementOfApplicationId: string | null;
+  scheduleAmendment: {
+    id: string; type: string; status: string; reason: string; requestedAt: string;
+    requestedBy: { id: string; firstName: string; lastName: string };
+    decisionReason: string | null; decidedAt: string | null;
+    decidedBy: { id: string; firstName: string; lastName: string } | null;
+    replacementApplicationId: string | null;
+    targetSlot: { id: string; examDate: string; examTime: string } | null;
+  } | null;
+  reconsideration: { decision: "PASSED_RECONSIDERED"; decidedAt: string; reason: string; decidedBy: { id: string; firstName: string; lastName: string } } | null;
+  result: import("@/components/exam-content/result-breakdown").ExamResult | null;
+  resultEmailEligible: boolean;
+  essayEvaluation: EssayEvaluation;
   id: string;
   status: string;
   student: {

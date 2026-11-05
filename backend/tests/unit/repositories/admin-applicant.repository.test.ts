@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
   student: { findMany: vi.fn(), count: vi.fn() },
+  examResultDecision: { findMany: vi.fn(async () => []) },
 }));
 
 vi.mock("../../../src/config/database", () => ({ default: prismaMock }));

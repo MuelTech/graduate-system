@@ -433,7 +433,7 @@ export default function AdminExamSchedulesPage() {
   const programsFailed = programsQuery.isError;
 
   const editingBookedCount = editing?.slotsTaken ?? 0;
-  const isEditingBooked = editingBookedCount > 0;
+  const isEditingBooked = editingBookedCount > 0 || (editing?._count?.examApplications ?? 0) > 0;
   const isEditingPast =
     editing !== null &&
     isPastExamSchedule(editing.examDate, editing.examTime, now);

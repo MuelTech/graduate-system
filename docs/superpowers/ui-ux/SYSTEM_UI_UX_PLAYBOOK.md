@@ -176,6 +176,18 @@ Examples:
 
 Do not create a new sidebar destination merely because a database model exists.
 
+### 8.1.1 The playbook is a guardrail, not a fixed page template
+
+Existing accepted screens are **precedents, not mandatory layouts**.
+
+A coding/design agent must not mechanically copy the information architecture of an existing page merely because it is documented as an accepted reference. Reuse an existing page structure only when the new page has the same user task, authority model, data relationships, and action hierarchy.
+
+Every new or materially changed page/feature requires a page-specific information-architecture pass before implementation. The agent should determine the actor and primary task, the main question the page must answer, the primary action, which information must be immediately visible, which information is supporting or audit-only, where each fact has one primary home, what is duplicated, how meaningful workflow states change the layout, and whether the page remains clear responsively.
+
+The agent is expected to exercise page-specific UI/UX judgment within the system-wide design language. Consistency means shared terminology, components, spacing, accessibility, interaction behavior, role awareness, and content standards — **not making every page use the same cards, table structure, or section order**.
+
+Existing accepted pages are references for analogous components/interactions, not universal wireframes. Before delivery, the agent must review the changed page as a whole for hierarchy, duplication, role-appropriate information, microcopy, state clarity, responsive readability, and next-action clarity — not only compile/build/test correctness.
+
 Accepted Exam Management precedent: UIUX-2C uses the user-facing label **Exam Records** for the entrance-exam operational list while intentionally keeping the existing technical route `/admin/exam/applications` and backend application model/endpoint unchanged. One row represents one entrance-exam record, not a second Applicant profile. The list owns exam-specific schedule/state monitoring; person-level admission context remains with Applicants / Applicant Profile. A clearer user-facing task label may differ from a legacy technical route when domain behavior is unchanged and the distinction is documented.
 
 Accepted UIUX-2D and UIUX-2E complete that transition. **Exam Records is now the Admin operational workspace for entrance-exam monitoring, essay grading, completed assessment/result review, and result-email actions.** `TAKEN` records surface as **Needs Essay Grading** and open the nested Exam Record detail for grading; `PASSED` / `FAILED` records use the same detail surface for the recorded result and result-email action. The former Score Management destination is retired from Admin navigation; `/admin/exam/scores` remains only as a compatibility redirect to `/admin/exam/applications`. The legacy read endpoints `GET /exam/scores/queue` and `GET /exam/scores/review` are retired. The working mutations `POST /exam/scores/:id/grade` and `POST /exam/scores/:id/send-email` are intentionally retained under the `/exam/scores` namespace and do **not** require renaming merely because the UI action moved into Exam Records. Existing COR Validation and Waiver Validation placement/behavior remains unchanged by this precedent.
@@ -285,6 +297,12 @@ This explains the direct irreversible consequence of the action.
 That sentence is domain-correct but unnecessary in the Rapporteur confirmation UI. The parallel workflow is already communicated by independent Evaluation/Committee Report states and by the Chairman's Formal Verdict readiness surface.
 
 This principle applies system-wide. Existing screens do not need a mass rewrite solely because this rule was documented; apply it when a surface is next implemented/refined, or when a specific copy issue materially harms clarity.
+
+### 8.2.3 User-facing wording authority
+
+Detailed microcopy, status-message, error, empty-state, role-boundary, and confirmation wording rules are governed by the canonical [User-Facing Copy Source of Truth](../USER_FACING_COPY_SOURCE_OF_TRUTH.md).
+
+Any UI/UX package that adds or changes visible wording must read that document before implementation and apply its microcopy review gate. Keep this playbook focused on layout, hierarchy, interaction, and structural workflow presentation; do not duplicate the detailed copy rules here.
 
 **Autosave vs manual Save — reusable rule:** Do not expose a manual **Save** action when routine persistence is already reliably handled by autosave, unless manual Save serves a distinct user need. Keep visible save-state feedback and the recovery actions required for offline, error, or conflict handling.
 
@@ -1411,7 +1429,9 @@ This reference establishes the accepted entrance-exam **main-list** baseline. Th
   - the exact Assessment composition where another workflow has different authority;
   - score-derived PASS/FAIL behavior as a generic UI rule.
 
-This reference establishes the accepted entrance-exam **detail + grading/result** pattern while preserving backend/domain authority and keeping legacy implementation details out of the user-facing information architecture.
+This reference establishes the historical entrance-exam **detail + grading/result** baseline while preserving backend/domain authority.
+
+**2026-11-05 manual-QA supersession note:** project-owner runtime review found that the current detail composition is not sufficient for final visual/content acceptance. The implementation repeats Program/date/time/result across multiple equal-weight cards, exposes verification/internal timing language, and gives insufficient hierarchy to the effective result versus the original computed result after reconsideration. Do **not** reuse the current composition as the final Exam Record pattern. The correction target is defined in [EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement](../specs/2026-11-05-exam-ui-content-refinement.md). The historical backend/domain authority above remains valid; only presentation/information architecture is under correction.
 
 
 ### Reference: Admin Students List — UIUX-2F

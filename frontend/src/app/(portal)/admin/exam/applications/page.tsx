@@ -22,6 +22,7 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination";
 import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
+import { AssignApplicantDialog } from "@/components/admin/exam/assign-applicant-dialog";
 import {
   deriveExamState,
   EXAM_STATE_FILTERS,
@@ -70,7 +71,7 @@ function toRow(app: ApiApplication): ExamRecordRow {
     programName: app.program?.programName ?? MISSING,
     examDate: app.slot?.examDate ?? null,
     examTime: app.slot?.examTime ?? null,
-    state: deriveExamState(app.status),
+    state: deriveExamState(app.status, app.essayEvaluationCompleted, app.reconsidered),
   };
 }
 
@@ -306,6 +307,7 @@ export default function ExamRecordsPage() {
       <PageHeader
         title="Entrance Exam Records"
         description="Monitor entrance exam schedules, grading progress, and results."
+        actions={<AssignApplicantDialog onAssigned={clearFilters} />}
       />
 
       {/* Filters */}

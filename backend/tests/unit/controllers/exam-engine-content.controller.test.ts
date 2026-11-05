@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthenticatedRequest } from "../../../src/middlewares/auth.middleware";
 import { AppError } from "../../../src/utils/AppError";
 
-const service = vi.hoisted(() => ({ createQuestion: vi.fn(), updateQuestion: vi.fn() }));
+const service = vi.hoisted(() => ({ createQuestion: vi.fn(), updateQuestion: vi.fn(), deleteQuestion: vi.fn() }));
 vi.mock("../../../src/config/database", () => ({ default: {} }));
 vi.mock("../../../src/services/exam-engine.service", () => ({
   ExamEngineService: class {
     createQuestion = service.createQuestion;
     updateQuestion = service.updateQuestion;
+    deleteQuestion = service.deleteQuestion;
   },
 }));
 import { ExamEngineController } from "../../../src/controllers/exam-engine.controller";
@@ -21,6 +22,15 @@ function response() {
 beforeEach(() => vi.resetAllMocks());
 
 describe("question mutation HTTP boundary", () => {
+  it("returns the historical delete conflict and contains unexpected delete errors", async () => {
+    const req = { params: { id: "q1" } } as unknown as AuthenticatedRequest;
+    service.deleteQuestion.mockRejectedValue(new AppError("Deselect this question instead.", 409));
+    const denied = response(); await new ExamEngineController().deleteQuestion(req, denied as unknown as Response);
+    expect(denied.status).toHaveBeenCalledWith(409); expect(denied.json).toHaveBeenCalledWith({ error: "Deselect this question instead." });
+    service.deleteQuestion.mockRejectedValue(new Error("private database"));
+    const failed = response(); await new ExamEngineController().deleteQuestion(req, failed as unknown as Response);
+    expect(failed.json).toHaveBeenCalledWith({ error: "Could not delete question." });
+  });
   it.each([400, 404, 409])("returns operational update status %i", async status => {
     service.updateQuestion.mockRejectedValue(new AppError("Bounded error.", status));
     const res = response();

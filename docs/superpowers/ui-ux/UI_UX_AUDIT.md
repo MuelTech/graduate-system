@@ -904,6 +904,103 @@ The accepted entrance-exam detail establishes a second concrete detail-page patt
 - **Needs Essay Grading** replaces the old Essay Grading Queue entry point, while Passed/Failed Exam Record detail replaces the old Score Review workspace;
 - missed-exam appeal mutation behavior remains unresolved/read-only and outside this accepted package.
 
+### Pending B3/B4 UI follow-up — Applicant-specific same-day assignment and Start Now authorization
+
+**Status:** B3 SAME-DAY ASSIGNMENT **ACCEPTED FOR PHASE B PROGRESSION — 2026-11-02**. Independent remote source review: **PASS — no blocking issue found**. Project-owner browser/manual QA: **PASS after the bounded copy-only removal of redundant visible `Asia/Manila` labels**. B4 Start Now is implemented with independent review and owner acceptance pending; see the separate B4 checkpoint below. This B3 UI is accepted for its workflow, but is **not automatically promoted to an additional Approved Reference Implementation**. [Implementation and verification evidence](../reports/2026-11-02-exam-b3-same-day-admin-assignment.md).
+
+This is a bounded extension to the accepted Exam Records / Applicant administration experience. The accepted UIUX-2D/2E reference above remains unchanged.
+
+- **Entry point:** Add one **Assign Applicant** primary action in the upper-right action area of the existing **Entrance Exam Records** PageHeader. This is a page-level action on the operational Exam Records list, not a table-row action, Applicant Profile mutation, or individual Exam Record action.
+- **Why it belongs here:** the existing Exam Records table represents Applicants who already have an examination application. A registered Applicant with no booking/application has no row or individual Exam Record to open; the PageHeader action provides the entry point for creating that first record.
+- **Interaction:** clicking **Assign Applicant** opens a focused dialog using the existing shared Dialog pattern. Admin searches existing registered Applicants, selects an Applicant, reviews the authoritative identity/Program and eligibility information, chooses an eligible existing same-day ExamSlot, reviews the original scheduled date/time and available capacity, then confirms the assignment.
+- **Applicant eligibility:** the server remains authoritative for exact Student/Program ownership, ALIGNED/CLEARED eligibility, and existing blocking-application rules. The dialog must not treat client-side search results or displayed eligibility as permission to assign. Do not create or provision Applicant accounts; Applicants continue self-registering with an existing EARIST Pinnacle Applicant ID.
+- **Schedule choice:** show only a server-confirmed eligible existing active slot for the current Asia/Manila calendar date with consistent capacity and a remaining seat. Its scheduled wall-clock time may already have passed for this ADMIN-only assignment. Clearly retain/show the original schedule date/time; do not edit the slot or affect other Applicants sharing it.
+- **Confirmation and result:** confirm the assignment before mutation. On success, refresh the existing Exam Records query so the newly created record appears in the unchanged table. If the Applicant or slot is ineligible, blocked, closed, full, cross-Program/cross-date, or has counter drift, fail closed and explain the actual reason; never offer a capacity or eligibility override.
+- **Preserve existing UI:** retain the accepted PageHeader/table/filter/row-action composition. Do not add a sidebar destination, KPI layer, separate walk-in module, fake appointment, or assignment control to Applicant Profile. Do not assume an Exam Record exists before assignment.
+- **Workflow boundary:** an Applicant with an existing booking is not reassigned through this action; B4 handles that exact application's same-day Start Now authorization. A no-booking Applicant is assigned first under B3, then B4 authorization may follow. Different-date missed appointments remain B9 work.
+- **Implementation / evidence:** the page-level action/dialog now reuses registered Applicant search, reads exact selected-Applicant eligibility and same-day slots from the server, reviews original wall-clock/capacity, and prevents duplicate confirmation. Server rejection clears the slot/review and refreshes eligibility while retaining its reason. Success closes/resets the dialog, invalidates the existing Exam Records query and resets list filters/page so the new record is visible. Existing table/filter/View/pagination markup is preserved. Focused UI contract/component checks **11/11 PASS**; frontend TypeScript/scoped ESLint/production build **PASS**. Source/controlled-hook/static-render tests are not browser QA.
+- **QA / acceptance:** Project-owner manual/browser QA was **COMPLETED / PASS 2026-11-02**. The first pass identified redundant explicit `Asia/Manila` labels; bounded copy-only refinement `a2378d308387be476d532be1bfe5b4bc0c677211` removed them from the dialog description, same-day schedule legend, and review timestamp while preserving `Asia/Manila` as backend calendar/time authority. The owner rechecked the corrected UI and accepted it. This does not automatically promote the flow to a new Approved Reference Implementation. B4's authorization/timer flow is separate.
+
+### B4 implementation checkpoint — exact record Start Now and Applicant execution
+
+**2026-11-03: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. Project-owner manual/browser QA is intentionally **DEFERRED / NOT EXECUTED** and will be consolidated into the later Phase B lifecycle/manual acceptance gate. [B4 evidence](../reports/2026-11-02-exam-b4-server-owned-attempt.md). This is not an additional Approved Reference Implementation or production acceptance.
+
+- Existing individual Exam Record detail contains the per-application **Authorize Start Now** action and shared confirmation Dialog naming the Applicant. Original appointment, authorization actor/time, actual start and individual deadline are separate read-only facts. Permission does not start the timer. The existing list/assignment entry point and Applicant Profile remain unchanged.
+- Detail appointment formatting now reuses the accepted wall-clock helpers, avoiding a contradictory browser-offset display alongside B4's original-appointment panel. No stored schedule value changes.
+- Applicant examination opens in a server-reported pre-start/blocked/legacy/active/expired/terminal state. **Start Examination** is an explicit mutation with duplicate-click protection. Recovery reads the same exact application, content revision and persisted deadline. A monotonic display clock resynchronizes every 15 seconds and on focus/reconnect/visibility; synchronization failure locks access. Expiry is displayed honestly without claiming automatic finalization.
+- The owner clarified that normal starts at/after the appointment on that Manila date require no override; early starts require authorization. No extra late-entry cutoff is invented. Original appointment remains visible after actual start.
+- The page explicitly says answers are not restored after refresh. No incremental MCQ saving, hydration, stale-draft conflict UI or final expiry receipt is added. Existing best-effort essay interval remains transitional B5 work.
+- Controlled component/handler/static-render and clock-contract checks are automated evidence. **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED by owner decision.** Responsive/focus/keyboard runtime QA, local-clock/reconnect checks, and multi-device journeys remain required at the consolidated Phase B lifecycle/manual acceptance gate; they are not reported as PASS here.
+
+### B5 implementation checkpoint — Applicant drafts and acknowledged recovery
+
+**2026-11-04: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B5 evidence](../reports/2026-11-03-exam-b5-draft-recovery.md). This supersedes the historical B4 transitional answer/interval limitation above; B4 timing/content authority is preserved. Project-owner manual/browser QA remains deferred to the consolidated Phase B gate. This is not an Approved Reference Implementation or production acceptance.
+
+- Exact active application draft hydration restores MCQ choices, essay text and Question Navigator answered state before editing. The server owns acknowledged recovery; no protected local persistent cache is added.
+- MCQ selection/change/explicit Clear answer and essay typing/blank clear use a serialized versioned queue. Continuous essay typing has bounded max-wait persistence. Navigation, essay blur and visibility transitions attempt synchronization.
+- Inline **Unsaved changes / Saving… / Saved / Save failed / Answers changed elsewhere** feedback distinguishes local edits from acknowledgments. No ordinary UI version numbers, routine manual Save button or per-keystroke toasts. Retry resolves current authority first; explicit **Refresh saved answers** explains replacing local edits after conflict.
+- Reconnect/focus refreshes B4 execution before draft recovery. Failed local values remain mounted; stale competing work cannot be silently resent or merged. Submission confirmation waits for resync/drain, locks editing and rechecks before final snapshot submission. B4 deadline expiry still locks access; no timeout finalization is claimed.
+- Automated component/handler/queue/HTTP contracts, exam-domain regressions, MariaDB contention/rehearsal and static/build checks passed as recorded in the report. These are not manual/browser or visual acceptance.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. Owner gate must include saved MCQ/essay refresh, both clears, long continuous typing, offline/online, two tabs/devices, stale conflict and immediate submit with save in flight. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B5 review is complete; B6 is the next package but its implementation remains gated on PD-4 owner confirmation.
+
+### B6 implementation checkpoint — explicit confirmation and immutable receipt
+
+**2026-11-04: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B6 evidence](../reports/2026-11-04-exam-b6-finalization.md). This supersedes only the historical B4/B5 final snapshot/expiry limitation. Project-owner manual/browser QA remains deferred to the consolidated Phase B gate. This is not an Approved Reference Implementation or production acceptance.
+
+- The existing Applicant exam page resolves/drains B5 saves before confirmation and again before finalization. Incomplete confirmation states the unanswered count and that these items remain unanswered. The server independently checks completeness and requires `acknowledgeIncomplete` when needed.
+- The final request sends confirmation metadata only. Editing is locked during preparation/confirmation/commit; duplicate clicks are suppressed. The server consumes only persisted drafts and never invents unsaved values.
+- Successful explicit or timeout finalization shows the authoritative receipt, reason in plain language, finalization/start/deadline timestamps and answered/unanswered summary. Questions are no longer editable. Reopen/polling restores the same receipt; a failed final response locks editing until exact-record readback resolves status.
+- Zero time immediately locks content and says final status is being retrieved. It never claims submission is complete before an authoritative receipt exists. Background polling and explicit retrieval recover the final state; closed-browser expiry is server-owned.
+- Existing B5 Saved/error/conflict controls and B4 monotonic countdown remain. Controlled React/component/handler, HTTP, queue and real-database checks are automated evidence only.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate**. The gate includes complete/incomplete submit, near-deadline contention, browser closure/disconnect, reopen after timeout, restart catch-up, lost response/retry, receipt recovery and attempted later edits. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B6 review is complete; B7/B8 scoring/evaluation and B9 no-show/amendments remain outside this package and require separate authorization.
+
+### B7 implementation checkpoint — immutable essay evaluation on the existing Exam Record
+
+**2026-11-05: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B7 evidence](../reports/2026-11-04-exam-b7-essay-evaluation.md). This remains part of the existing Exam Record experience and is not an additional Approved Reference Implementation or production acceptance.
+
+- Existing Admin → Entrance Exam Records → individual Exam Record owns review and **Save Essay Evaluation**. B4 Start Authorization, Breadcrumb/PageHeader and record layout remain intact. No destination, grading queue or Score Management page is added.
+- Valid B6-finalized TAKEN records render the exact frozen essay question with accepted semantic text/stimulus renderers, the exact finalized response and captured essay maximum. Missing/empty/whitespace response visibly says **No response submitted.** No grade is assigned automatically; zero and valid decimals require explicit entry.
+- Invalid/legacy/partial authority has no grading control and gives a bounded unavailable/staff-review message. Mutable Program totals and live Question Bank text cannot authorize grading.
+- Successful evaluation immediately replaces editing with read-only score/max, evaluator and actual evaluation time. **Essay Evaluated — Final Result Pending** replaces the stale needs-grading wording on detail and list through presentation-only projection. No persisted status is added; TAKEN/PENDING remain. No final result or result-email action is enabled.
+- The transaction rejects another Admin or a repeated request after the first evaluation. UI has synchronous duplicate-click/pending protection and refreshes exact record/list authority after settlement, including conflict or a lost response. Controlled React/handler tests and static rendering are automated evidence only.
+- **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate.** The owner gate includes finalized essay display, missing/blank response, valid grade/zero/max bounds, refresh, repeated/second-Admin grading, frozen prompt after bank edits, captured maximum after configuration/Program edits and the still-pending final result. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B7 review is complete; B8 implementation remains gated on owner-confirmed scoring values/units/rounding.
+
+### B8 implementation checkpoint — configured scoring and authoritative results
+
+**2026-11-05: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B8 evidence](../reports/2026-11-05-exam-b8-authoritative-scoring.md). This supersedes B1's disabled threshold and B7's always-pending outcome for valid new attempts. No additional Approved Reference Implementation or production acceptance is claimed.
+
+- Question Bank → **Exam Configuration** remains the settings owner. **Passing Threshold (%)** is editable; all four settings are required for new examination starts. Saved complete/incomplete states are explicit, without fabricated defaults. Started examinations retain their original settings.
+- Saving a valid finalized essay evaluation immediately reconciles the committed final result, score and read-only evaluator/time on the same Exam Record. Final results use existing PASSED/FAILED states and do not retain **Essay Evaluated — Final Result Pending** wording. A legitimate already-evaluated TAKEN/PENDING record offers **Finalize Result**; missing frozen authority fails with staff-review guidance.
+- Admin and Applicant use one shared breakdown component with persisted decimal strings: MCQ earned/maximum and correct-count context, essay earned/maximum, total/possible, display-rounded percentage and frozen passing percentage. The backend decision precedes display rounding. Historical results show recorded totals and explicitly unknown scoring provenance/maxima/percentage/threshold, without a live-bank denominator.
+- Existing Breadcrumb/PageHeader, record/list ownership, B4 Start Authorization and B7 frozen response/review layout remain. Result email is available only when the server confirms a valid final result; repeated action truthfully reports already queued. Queue acceptance is never called delivered or sent.
+- Controlled React/handler/HTTP tests and static/build checks are automated evidence only. **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — consolidated Phase B lifecycle/manual acceptance gate.** Owner gate: complete/incomplete configuration, start blocking, sample/fractional calculations, equality/below-threshold, grade-to-result, matching role views, later configuration/bank changes, email/repeat queue and legacy results. Hosted CI: NOT EXECUTED / no hosted PASS claimed. Independent B8 review was followed by B9 implementation and acceptance; the project owner now reports the configured dev DB migrations are applied through B9. B10 is the authorized final Phase B gate.
+
+### B9 implementation checkpoint — appointment amendments and separate reconsidered pass
+
+**Resumed B10 evidence, 2026-11-05: CORE AUTOMATED GATE INCOMPLETE — EXISTING ESLINT ERROR.**
+Core full unit/controlled React and all real-DB harnesses passed; three added
+integrated journeys and 33 core HTTP negatives preserve lifecycle/result authority.
+Standalone Phase A verifier **11/11**, frontend TypeScript and production build
+PASS. Relevant ESLint fails on the existing unescaped apostrophe at
+`applicant-appointment-gate.tsx:137`; this is a failed static gate, not a visual
+or browser finding. No production/UI source was changed. The
+[resumed B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md#11-resumed-core-gate--2026-11-05)
+keeps every core owner journey **PENDING OWNER EXECUTION** and F4/I4
+**DEFERRED — EMAIL INTEGRATION FEATURE**. No owner QA, new Approved Reference,
+overall automated PASS or Phase B completion is claimed.
+
+**Subsequent B10 scope decision, 2026-11-05: CORE EXAM GATE RESUMPTION AUTHORIZED — EMAIL INTEGRATION DEFERRED.**
+The first B10 run found a real result-email current-actor authorization gap for an earlier valid ADMIN token after deactivation/demotion. Production/UI source was not changed. The project owner clarified that collaborator-owned email integration is not yet functional/accepted and belongs to the separate Email Integration feature. The [B10 report](../reports/2026-11-05-exam-b10-lifecycle-acceptance.md) retains the diagnostic evidence. B10 resumes only the core examination lifecycle acceptance matrix; result-email queue/delivery/current-actor scenarios are explicitly deferred and must not be claimed accepted or production-ready. Owner browser/manual QA remains pending for the non-email core journeys.
+
+**2026-11-05: ACCEPTED FOR PHASE B PROGRESSION.** Independent remote source review: **PASS — no blocking issue found**. [B9 implementation and verification evidence](../reports/2026-11-05-exam-b9-amendments-reconsideration.md). This is accepted functional work on the existing screens, not a new Approved Reference Implementation or production acceptance. B10 remains the required consolidated owner/browser acceptance gate.
+
+- Existing Applicant Examination shows **Appeal Missed Exam** only from the exact server-owned status flag for an earlier Manila calendar date. The reason dialog identifies the original appointment, explains same-day Start semantics and submits its exact application. No Applicant target selector. Pending/rejected states withhold duplicate/retry booking actions; active exam, saved drafts, timer and final receipt remain intact.
+- Existing individual Admin Exam Record owns **Approve Appeal / Reject Appeal**, **Reschedule / Cancel Appointment**, future-slot selection and required reason/confirmation. Started/finalized records withhold amendment actions. Read-only history shows request, release and decision evidence and links old/replacement Exam Records. Missed, Rescheduled and Cancelled use truthful presentation states; original schedule identity is retained.
+- Eligible valid B8 FAILED exposes **Reconsider Result** on that same record. Confirmation explains preservation of scores/computed failure. Committed decision is read-only **Computed Result: FAILED** plus **PASSED — RECONSIDERED**, justification, deciding Admin and timestamp; no score editor or revoke. Generic original-result email action is unavailable afterward.
+- Applicant Results shows separate **PASSED — RECONSIDERED**, original FAILED breakdown unchanged and effective COR next steps. Internal Admin justification is absent. Admin Applicant list/filter/count/detail and Applicant profile progression use the same validated effective pass while retaining raw FAILED.
+- Existing Dialog/Button/Card/Label/Textarea primitives and wall-clock helpers are reused. Pending and synchronous duplicate-click guards, retained reason after errors, exact-record/list refresh and target loading/error/empty feedback are covered by controlled executable React/handler tests. No new sidebar, configuration destination or Score Management workspace.
+- Verification: related automated contracts 76 files / 1,413 tests PASS, disposable B9 MariaDB 51 checks PASS, affected B3/B8/B6 and nested regressions documented separately; frontend TypeScript, scoped ESLint and production build PASS. **Project-owner manual/browser QA: DEFERRED / NOT EXECUTED — B10 consolidated Phase B lifecycle/manual acceptance gate.** That gate retains desktop/mobile/keyboard/dialog review, same-day Start, prior-date appeal/approve/reject, capacity/history, direct amendments, started-attempt protection, FAILED/MISSED booking blocks, reconsidered display, unchanged scores, COR/stage and email behavior. Hosted CI: NOT EXECUTED / no hosted PASS claimed. B9 independent review is complete and accepted; the project owner reports the B9 dev migration is now applied, so the B10 owner/browser runtime walkthrough is unblocked.
+
 ### Accepted UIUX-2G checkpoint — Admin Student Profile
 
 - Manually accepted final commit: `d80b95cef0f9124b3b4141c4fe5af58887e32316`; initial detail/read model `ecb35b3`, accepted dead-space balance fix `d80b95c`.
@@ -913,6 +1010,7 @@ The accepted entrance-exam detail establishes a second concrete detail-page patt
 - The **Defense Records** button still opens the general `/admin/thesis/defense-records` page. Student-prefiltered navigation is a **deferred future enhancement**.
 
 **Not yet implemented / not certified by visual acceptance:** Comprehensive Exam writes overwrite the latest record (attempt/strike history is not reliable); already-PASSED enrolled students may still see recording actions; UI-only ENROLLED gating does not substitute for missing backend admission-status checks on the recording PUT. Reset Student Password is disabled; `AUTH-RECOVERY-1` (secure random temporary secret, forced change, audit/session safeguards, optional future email integration) is separate future work.
+
 
 ---
 
@@ -1135,6 +1233,35 @@ Prefer:
 - what the user can do next.
 
 Avoid exposing implementation uncertainty, database terminology, raw API state, or developer-only concepts unless the page is explicitly administrative/diagnostic.
+
+---
+
+## UX-CONT-03 — Status and empty-state copy must not over-explain
+
+**Priority:** P1  
+**Area:** Content design
+
+Correct workflow behavior can still produce poor UX when visible messages narrate inverse conditions, obvious consequences, or responsibilities already established by the current screen.
+
+### Recommendation
+
+Use **one state, one message**:
+
+- positive eligibility should state the positive state only;
+- blocked states should name the blocker directly;
+- empty states should name what is unavailable without unnecessary policy narration;
+- add recovery/next action only when it is not already obvious from the current controls;
+- wording must remain aware of the current role.
+
+Examples from the Entrance Exam **Assign Applicant** manual QA:
+
+- prefer **Eligible for assignment.** over **Eligible for assignment · No examination record prevents assignment.**;
+- prefer **This Applicant already has an examination record.** over **This Applicant already has an examination record that prevents another assignment.**;
+- prefer **No schedules are available for this Applicant’s Program.** over **No eligible same-day schedules have seats available. Contact the schedule administrator.**
+
+These are presentation/content rules only. They do not weaken eligibility, schedule, capacity, program-alignment, or record-authority rules.
+
+Every UI/UX package that changes visible copy should include a microcopy review before acceptance. Canonical wording rules and accepted examples live in [USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md); this audit records findings rather than duplicating that source.
 
 ---
 
@@ -1620,3 +1747,53 @@ Use docs/superpowers/ui-ux/SYSTEM_UI_UX_PLAYBOOK.md as the canonical implementat
 Then select one bounded UI/UX iteration at a time from this audit.
 
 Do not implement the entire audit as one package.
+
+
+---
+
+## UX-MQA-EXAM-01 — Entrance Examination surfaces expose correct state with poor content hierarchy
+
+**Status:** RESOLVED / ACCEPTED — INDEPENDENT REMOTE REVIEW PASS; OWNER FUNCTIONAL/MANUAL + VISUAL ACCEPTANCE PASS, 2026-11-06
+**Priority:** P1  
+**Area:** Entrance Examination / content design / information architecture
+
+Manual/browser QA of the Phase B Entrance Examination flow confirmed that several authoritative behaviors work while the visible Applicant/Admin presentation remains too verbose, repetitive, or implementation-oriented for final acceptance.
+
+Observed surfaces include:
+
+- Admin **Assign Applicant** status and empty-state wording;
+- Applicant pre-start examination state;
+- Applicant incomplete-configuration error;
+- Admin **Exam Configuration** helper/timezone wording;
+- Applicant **Examination Submitted** terminal state;
+- Admin **Exam Record** timing;
+- Admin result/assessment/reconsideration presentation.
+
+Primary problems:
+
+- inverse-condition explanation;
+- internal authorization/configuration mechanics exposed to Applicants;
+- raw lifecycle/audit terminology used as ordinary labels;
+- repeated Program/date/time/result in multiple cards;
+- equal visual weight for primary academic decision and secondary evidence;
+- technical verification copy such as display-rounding/exact-comparison explanation;
+- effective **PASSED — RECONSIDERED** and original computed **FAILED** presented without a sufficiently clear hierarchy;
+- flat technical success/receipt presentation after Applicant submission.
+
+The underlying Phase B exam authority is not rejected by this finding. The required correction is presentation-only unless a separate functional defect is discovered.
+
+Canonical correction target:
+[EXAM-B10-MQA-UI — Entrance Examination UI & Content Refinement](../specs/2026-11-05-exam-ui-content-refinement.md)
+
+Canonical wording:
+[USER_FACING_COPY_SOURCE_OF_TRUTH.md](../USER_FACING_COPY_SOURCE_OF_TRUTH.md)
+
+This presentation/content finding was resolved by EXAM-B10-MQA-UI + FIX-1 and accepted after independent remote review and project-owner functional/manual and visual recheck on 2026-11-06.
+
+Owner-authorized [EXAM-B10-MQA-UI implementation and focused verification](../reports/2026-11-06-exam-b10-mqa-ui.md)
+applies the canonical copy and page-specific hierarchy without backend/domain or
+email changes. Six UI contract files / 136 tests, TypeScript, scoped lint, build
+and diff check PASS. FIX-1 adds a focused 13/13 PASS assignment-copy regression.
+Coding-agent browser/manual QA was not executed. Independent remote review: **PASS**;
+project-owner functional/manual and visual acceptance: **PASS — 2026-11-06**.
+No new Approved Reference is claimed.

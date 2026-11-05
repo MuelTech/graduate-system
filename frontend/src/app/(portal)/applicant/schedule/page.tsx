@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { apiClientRequest } from "@/lib/api.client";
 import { ApplicantStatus, ExamSlot } from "@/types";
+import { formatScheduleDate as formatDate, formatScheduleTime as formatTime, isPastExamSchedule as isPast } from "@/lib/admin-exam-schedules";
 
 export default function ApplicantSchedulePage() {
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
@@ -52,7 +53,7 @@ export default function ApplicantSchedulePage() {
     enabled:
       !!applicant &&
       (applicant.alignmentStatus === "ALIGNED" || applicant.alignmentStatus === "CLEARED") &&
-      !applicant.confirmedSlot,
+      !applicant.confirmedSlot && applicant.canBookExam !== false,
   });
 
   const scheduleMutation = useMutation({
@@ -84,28 +85,6 @@ export default function ApplicantSchedulePage() {
   const isLoading =
     isApplicantLoading || isSlotsLoading || scheduleMutation.isPending;
   const error = applicantError?.message || slotsError?.message;
-
-  const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString([], {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const isPast = (dateStr: string, timeStr: string) => {
-    const d = new Date(dateStr);
-    const t = new Date(timeStr);
-    d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
-    return d < new Date();
-  };
 
   if (isLoading)
     return <div className="p-4 text-center">Loading your schedule...</div>;
@@ -170,7 +149,7 @@ export default function ApplicantSchedulePage() {
               </CardTitle>
               <Badge className="bg-green-100 text-green-700">
                 <CheckCircle2 className="mr-1 h-3 w-3" />
-                Scheduled
+                {applicant?.examStatus === "pending" || applicant?.examStatus === "approved" || !applicant?.examStatus ? "Scheduled" : applicant.examStatus === "appealed" ? "Missed Exam Appeal Pending" : applicant.examStatus.toUpperCase()}
               </Badge>
             </div>
           </CardHeader>
@@ -207,7 +186,7 @@ export default function ApplicantSchedulePage() {
       )}
 
       {/* Available Slots — Active State */}
-      {!isLocked && !isScheduled && (
+      {!isLocked && !isScheduled && applicant?.canBookExam !== false && (
         <>
           {/* View Toggle & Info */}
           <div className="flex items-center justify-between">

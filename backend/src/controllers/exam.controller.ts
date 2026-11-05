@@ -2,9 +2,32 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamService } from "../services/exam.service";
 import { AppError } from "../utils/AppError";
+import { validateAssignmentBody, validateBookingBody, validateBookingStatusBody } from "../services/exam-schedule.rules";
+import { essayEvaluationBody } from "../services/exam-essay-evaluation.rules";
+
+function schedulingError(res: Response, error: unknown): void {
+  res.status(error instanceof AppError ? error.statusCode : 500).json({
+    error: error instanceof AppError ? error.message : "Could not complete the scheduling request.",
+  });
+}
 
 export class ExamController {
   private examService = new ExamService();
+
+  getAssignmentOptions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      res.status(200).json(await this.examService.getAssignmentOptions(req.params.studentId));
+    } catch (error: unknown) { schedulingError(res, error); }
+  };
+
+  assignApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { studentId, slotId } = validateAssignmentBody(req.body);
+      const application = await this.examService.assignApplicant(studentId, slotId);
+      // Do not expose Student/account data from an expanded Prisma relation.
+      res.status(201).json({ application: { id: application.id }, message: "Applicant assigned successfully." });
+    } catch (error: unknown) { schedulingError(res, error); }
+  };
 
   createSlot = async (
     req: AuthenticatedRequest,
@@ -14,13 +37,7 @@ export class ExamController {
       const slot = await this.examService.createSlot(req.body);
       res.status(201).json(slot);
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -62,23 +79,17 @@ export class ExamController {
     res: Response,
   ): Promise<void> => {
     try {
-      const { programId } = req.query;
-      if (!programId) {
-        res.status(400).json({ error: "programId is required" });
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
         return;
       }
       const slots = await this.examService.getAvailableSlots(
-        programId as string,
+        userId, req.query.programId,
       );
       res.status(200).json(slots);
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -88,25 +99,18 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const userId = req.user?.userId;
-      const { slotId } = req.body;
 
       if (!userId) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      const application = await this.examService.scheduleExam(userId, slotId);
+      const application = await this.examService.scheduleExam(userId, validateBookingBody(req.body));
       res
         .status(201)
         .json({ message: "Exam scheduled successfully", application });
     } catch (error: unknown) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
-      }
+      schedulingError(res, error);
     }
   };
 
@@ -118,10 +122,8 @@ export class ExamController {
       const id = req.params.id as string;
       const slot = await this.examService.updateSlot(id, req.body);
       res.status(200).json(slot);
-    } catch (error: any) {
-      res
-        .status(500)
-        .json({ error: error.message || "An unexpected error occurred." });
+    } catch (error: unknown) {
+      schedulingError(res, error);
     }
   };
 
@@ -131,13 +133,10 @@ export class ExamController {
   ): Promise<void> => {
     try {
       const id = req.params.id as string;
-      const { isActive } = req.body;
-      const slot = await this.examService.toggleSlotStatus(id, isActive);
+      const slot = await this.examService.toggleSlotStatus(id, validateBookingStatusBody(req.body));
       res.status(200).json(slot);
-    } catch (error: any) {
-      res
-        .status(500)
-        .json({ error: error.message || "An unexpected error occurred." });
+    } catch (error: unknown) {
+      schedulingError(res, error);
     }
   };
 
@@ -159,6 +158,7 @@ export class ExamController {
     req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const id = req.params.id as string;
       const detail = await this.examService.getApplicationDetail(id);
@@ -166,10 +166,8 @@ export class ExamController {
     } catch (error: unknown) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
       } else {
-        res.status(500).json({ error: "An unexpected error occurred." });
+        res.status(500).json({ error: "Could not load the examination record." });
       }
     }
   };
@@ -230,6 +228,7 @@ export class ExamController {
     req: AuthenticatedRequest,
     res: Response,
   ): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const userId = req.user?.userId;
 
@@ -243,45 +242,47 @@ export class ExamController {
     } catch (error: unknown) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ error: error.message });
-      } else if (error instanceof Error) {
-        res.status(400).json({ error: error.message });
       } else {
-        // Log internally for unexpected failures
-        console.error("Unexpected error in getExamResult:", error);
-        res.status(500).json({ error: "An unexpected error occurred." });
+        res.status(500).json({ error: "Could not load examination results." });
       }
     }
   };
 
     gradeEssay = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const applicationId = req.params.id as string;
-      const { essayScore } = req.body;
-      const adminId = req.user!.userId; // We capture who graded it for the audit log
-
-      const essayScoreNum = Number(essayScore);
-      if (typeof essayScoreNum !== 'number' || isNaN(essayScoreNum) || essayScoreNum < 0 || essayScoreNum > 30) {
-        res.status(400).json({ error: "Invalid essay score. Must be a number between 0 and 30." });
-        return;
-      }
-
-      const result = await this.examService.gradeEssay(applicationId, essayScoreNum, adminId);
+      const essayScore = essayEvaluationBody(req.body);
+      const result = await this.examService.gradeEssay(applicationId, essayScore, req.user!.userId);
       res.status(200).json(result);
     } catch (error: unknown) {
-      console.error("Unexpected error in gradeEssay:", error);
-      res.status(400).json({ error: "An unexpected error occurred." });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({
+        error: error instanceof AppError ? error.message : "Could not save the essay evaluation.",
+      });
     }
   }
 
+    finalizeResult = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
+    try {
+      if (req.body != null && (typeof req.body !== "object" || Array.isArray(req.body) || Object.keys(req.body).length !== 0)) throw new AppError("Finalize Result accepts no scoring values.", 400);
+      res.status(200).json(await this.examService.finalizeResult(req.params.id as string, req.user!.userId));
+    } catch (error: unknown) {
+      res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not finalize the result." });
+    }
+  };
+
     confirmResultAndEmail = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    res.setHeader("Cache-Control", "private, no-store");
     try {
       const applicationId = req.params.id as string;
       const result = await this.examService.confirmResultAndEmail(applicationId);
 
       res.status(200).json(result);
     } catch (error: unknown) {
-      console.error("Unexpected error in confirmResultAndEmail:", error);
-      res.status(400).json({ error: "An unexpected error occurred." });
+      res.status(error instanceof AppError ? error.statusCode : 500).json({
+        error: error instanceof AppError ? error.message : "Could not queue the result email.",
+      });
     }
   }
 }

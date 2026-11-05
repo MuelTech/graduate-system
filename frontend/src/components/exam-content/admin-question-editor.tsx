@@ -109,7 +109,7 @@ export function AdminQuestionEditor({
     } catch (error) {
       setError(
         error instanceof ApiError && error.statusCode === 409
-          ? "Saved Applicant answers use these options. Keep their existing identities; removing referenced options is not allowed."
+            ? "Saved answers or a published question set use these options. Keep their existing identities; removing referenced options is not allowed."
           : error instanceof ApiError && error.statusCode === 400
             ? "The question was rejected. Check its text, stimulus, labels, orders and correct answer."
             : "Could not save the question. Check your session and try again.",

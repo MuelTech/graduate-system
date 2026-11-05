@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { Queue } from "bullmq";
+import { Queue, type JobsOptions } from "bullmq";
 import IORedis from "ioredis";
 import Handlebars from "handlebars";
 import dotenv from "dotenv";
@@ -86,7 +86,8 @@ export class EmailService {
     static async sendTemplateEmail(
         to: string,
         templateKey: string,
-        variables: Record<string, string>
+        variables: Record<string, string>,
+        options?: Pick<JobsOptions, "jobId" | "removeOnComplete" | "removeOnFail">
     ) {
         const template = await emailRepository.getTemplateByKey(templateKey);
 
@@ -113,7 +114,7 @@ export class EmailService {
                 errorMessage: `Handlebars Compilation Error: ${error.message}`,
             });
             console.error(`[EmailService] Handlebars error on template '${templateKey}':`, error.message);
-            return;
+            throw error;
         }
 
         await emailQueue.add("send-single-email", {
@@ -121,7 +122,7 @@ export class EmailService {
             subject: template.subject,
             html: compileHtml,
             templateKey,
-        });
+        }, options);
     }
 
     // Bulk dispatch emails immediately to the queue

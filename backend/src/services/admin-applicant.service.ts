@@ -27,9 +27,11 @@ export class AdminApplicantService {
     const page = query.page || 1;
     const pageSize = query.pageSize || 10;
 
+    // One validated decision set drives filtering, counts and row derivation.
+    const passIds = await this.repository.effectivePassIds();
     const [applicants, total] = await Promise.all([
-      this.repository.findApplicants(query),
-      this.repository.countApplicants(query),
+      this.repository.findApplicants(query,passIds),
+      this.repository.countApplicants(query,passIds),
     ]);
 
     return { applicants, total, page, pageSize };

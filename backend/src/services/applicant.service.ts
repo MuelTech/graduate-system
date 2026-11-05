@@ -1,3 +1,4 @@
+import { hasAuthoritativePassedExam } from "./admin-applicant-list.rules";
 import { ApplicantRepository } from '../repositories/applicant.repository';
 
 export class ApplicantService {
@@ -13,7 +14,7 @@ export class ApplicantService {
         let calculatedStep = 0;
 
         if (student.alignmentStatus === 'ALIGNED' || student.alignmentStatus === 'CLEARED') calculatedStep = 1;
-        if (student.examApplications.length > 0 && student.examApplications[0].status === 'PASSED') calculatedStep = 2;
+        if (hasAuthoritativePassedExam(student.examApplications)) calculatedStep = 2;
 
         return {
             firstName: student.user.firstName,

@@ -1,6 +1,8 @@
 import { ExamEngineRepository } from "../repositories/exam-engine.repository";
-import prisma from "../config/database";
+import { ExamExecutionRepository } from "../repositories/exam-execution.repository";
 import { validateExamQuestion } from "./exam-content.rules";
+import { ExamFinalizationRepository } from "../repositories/exam-finalization.repository";
+import { AppError } from "../utils/AppError";
 
 export class ExamEngineService {
     private repo: ExamEngineRepository;
@@ -9,84 +11,34 @@ export class ExamEngineService {
         this.repo = new ExamEngineRepository();
     }
 
-    // Shared with confidential media retrieval; preserves the existing lookup.
-    async getApplicationIdForUser(userId: string) {
-        const student = await prisma.student.findUnique({ where: { userId } });
-        if (!student) throw new Error("Student profile not found.");
-        const application = await prisma.entranceExamApplication.findFirst({
-            where: { studentId: student.id },
-            orderBy: { createdAt: "desc" },
-        });
-        if (!application) throw new Error("Exam application not found.");
-        return application.id;
+    async assertApplicantQuestionAccess(userId: string, applicationId: string, mediaId: string) {
+        return new ExamExecutionRepository().media(userId, applicationId, mediaId);
     }
 
-    async assertApplicantQuestionAccess(userId: string) {
-        const applicationId = await this.getApplicationIdForUser(userId);
-        await this.validateExamTime(applicationId);
+    async getQuestionsForApplicant(applicationId: string, userId: string) {
+        return new ExamExecutionRepository().questions(userId, applicationId);
     }
 
-    // Validates if the current server time is within the applicant's scheduled 3-hour slot
-    private async validateExamTime(applicationId: string) {
-        const application = await prisma.entranceExamApplication.findUnique({
-            where: { id: applicationId },
-            include: { slot: true }
-        });
-
-        const dateToUse = application?.slot?.examDate || application?.examDate;
-        const timeToUse = application?.slot?.examTime || application?.examTime;
-
-        if (!application || !dateToUse || !timeToUse) {
-            throw new Error("No scheduled exam found.");
-        }
-
-        const now = new Date();
-        const scheduledDate = new Date(dateToUse);
-        const scheduledTime = new Date(timeToUse);
-
-        // Combine date and time for start boundary
-        const examStart = new Date(
-            scheduledDate.getFullYear(),
-            scheduledDate.getMonth(),
-            scheduledDate.getDate(),
-            scheduledTime.getHours(),
-            scheduledTime.getMinutes(), 0
-        );
-
-        const examEnd = new Date(examStart.getTime() + 3 * 60 * 60 * 1000);
-
-        // Add a 60-second grace period for minor clock drift between frontend and backend
-        const gracePeriodStart = new Date(examStart.getTime() - 60000);
-
-        if (now < gracePeriodStart) {
-            throw new Error(`Your exam window has not started yet. (Server Time: ${now.toLocaleString()}, Exam Start: ${examStart.toLocaleString()})`);
-        }
-
-        if (now > examEnd) {
-            throw new Error("Your exam window has expired.");
-        }
-
-        return true;
+    async saveDraft(applicationId: string, payload: unknown, userId: string) {
+        return this.repo.saveDraft(applicationId, payload, userId);
     }
 
-    async getQuestionsForApplicant(applicationId: string) {
-        await this.validateExamTime(applicationId);
-
-        return this.repo.getQuestionsForApplicant();
+    async readDrafts(applicationId: string, userId: string) {
+        return this.repo.readDrafts(applicationId, userId);
     }
 
-    async autoSaveAnswer(applicationId: string, questionId: string, essayAnswer: string) {
-        await this.validateExamTime(applicationId);
-
-        return this.repo.autoSaveAnswer(applicationId, questionId, essayAnswer);
+    async autoSaveAnswer(applicationId: string, questionId: unknown, essayAnswer: unknown, userId: string, expectedRevision: unknown) {
+        const execution = await new ExamExecutionRepository().read(userId, applicationId);
+        if (execution.state !== "ACTIVE") throw new AppError(execution.reason ?? "Examination is not active.", 409);
+        return this.repo.autoSaveAnswer(applicationId, questionId, essayAnswer, expectedRevision, userId);
     }
 
-    async submitAnswers(applicationId: string, answers: any[]) {
-        await this.validateExamTime(applicationId);
-
-        return this.repo.submitAnswers(applicationId, answers);
+    async submitAnswers(applicationId: string, confirmation: unknown, userId: string) {
+        return new ExamFinalizationRepository().submit(applicationId, confirmation, userId);
     }
-
+    async readFinalization(applicationId: string, userId: string) {
+        return new ExamFinalizationRepository().read(applicationId, userId);
+    }
     async getAllQuestionsForAdmin() {
         return this.repo.getAllQuestionsForAdmin();
     }

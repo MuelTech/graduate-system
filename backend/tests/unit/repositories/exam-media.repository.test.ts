@@ -12,7 +12,7 @@ describe("ExamMediaRepository private persistence and visibility", () => {
     await new ExamMediaRepository().deleteUnreferenced("media1", "exam-media/key", "local");
     expect(db.examMedia.deleteMany).toHaveBeenCalledWith({ where: {
       id: "media1", storageKey: "exam-media/key", storageProvider: "local",
-      stimulusQuestions: { none: {} }, options: { none: {} },
+      stimulusQuestions: { none: {} }, options: { none: {} }, revisionReferences: { none: {} },
     } });
   });
   it("returns only opaque identity on creation", async () => {
@@ -27,13 +27,10 @@ describe("ExamMediaRepository private persistence and visibility", () => {
     expect(db.examMedia.findUnique.mock.calls[0][0].where).toEqual({ id: "media1" });
   });
 
-  it("requires Applicant media to be an IMAGE stimulus or an option in the visible shared bank", async () => {
-    await new ExamMediaRepository().findForApplicant("media1");
+  it("requires Applicant media to belong to the exact execution revision", async () => {
+    await new ExamMediaRepository().findForApplicant("media1", "revision1");
     const query = db.examMedia.findFirst.mock.calls[0][0];
-    expect(query.where).toEqual({ id: "media1", OR: [
-      { stimulusQuestions: { some: { stimulusType: "IMAGE" } } },
-      { options: { some: {} } },
-    ] });
+    expect(query.where).toEqual({ id: "media1", revisionReferences: { some: { revisionId: "revision1" } } });
     expect(JSON.stringify(query)).not.toContain("isCorrect");
     expect(query.select).not.toHaveProperty("options");
     expect(query.select).not.toHaveProperty("stimulusQuestions");

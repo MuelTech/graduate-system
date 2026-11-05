@@ -86,8 +86,8 @@ describe("ExamService.getApplicationDetail", () => {
     expect(detail.program).toEqual({
       id: "prog-1",
       programName: "MSIT",
-      examMcqTotal: 20,
-      examEssayTotal: 30,
+      examMcqTotal: null,
+      examEssayTotal: null,
     });
     expect(detail.slot).toEqual({
       id: "slot-1",

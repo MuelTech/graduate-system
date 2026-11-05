@@ -24,20 +24,16 @@ export class ExamMediaRepository {
   /** Internal failed-import compensation only; concurrent authoritative links win. */
   deleteUnreferenced(id: string, storageKey: string, storageProvider: string) {
     return prisma.examMedia.deleteMany({
-      where: { id, storageKey, storageProvider, stimulusQuestions: { none: {} }, options: { none: {} } },
+      where: { id, storageKey, storageProvider, stimulusQuestions: { none: {} }, options: { none: {} }, revisionReferences: { none: {} } },
     });
   }
 
-  findForApplicant(id: string) {
-    // The current Applicant question endpoint exposes the shared question bank.
-    // Only attached media is visible; staged/unattached media is Admin-only.
+  findForApplicant(id: string, revisionId: string) {
+    if (!revisionId) return null;
     return prisma.examMedia.findFirst({
       where: {
         id,
-        OR: [
-          { stimulusQuestions: { some: { stimulusType: "IMAGE" } } },
-          { options: { some: {} } },
-        ],
+        revisionReferences: { some: { revisionId } },
       },
       select: mediaSelect,
     });

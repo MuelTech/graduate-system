@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminQuestion } from "@/types";
-import { apiClientRequest } from "@/lib/api.client";
+import { ApiError, apiClientRequest } from "@/lib/api.client";
 import { optionLabel } from "@/lib/exam-content";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,8 @@ import { SemanticText } from "@/components/exam-content/semantic-text";
 import { AdminQuestionEditor } from "@/components/exam-content/admin-question-editor";
 import { StimulusRenderer } from "@/components/exam-content/stimulus-renderer";
 import { OptionContentRenderer } from "@/components/exam-content/option-content-renderer";
+import { ExamConfigurationDialog } from "@/components/exam-content/exam-configuration-dialog";
+import { ExamQuestionSetDialog } from "@/components/exam-content/exam-question-set-dialog";
 
 const PAGE_SIZE = 8;
 
@@ -70,6 +72,8 @@ export default function AdminExamQuestionsPage() {
   } | null>(null);
   const [working, setWorking] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [configurationOpen, setConfigurationOpen] = useState(false);
+  const [questionSetOpen, setQuestionSetOpen] = useState(false);
   const listRequest = useRef<AbortController | null>(null);
   const fetchQuestions = useCallback(async () => {
     listRequest.current?.abort();
@@ -112,7 +116,7 @@ export default function AdminExamQuestionsPage() {
   async function remove(question: AdminQuestion) {
     if (
       !window.confirm(
-        "Delete this question? Its linked answers may also be removed.",
+        "Delete this question? Questions with answer history or published content must be kept; deselect them from future sets instead.",
       )
     )
       return;
@@ -123,9 +127,11 @@ export default function AdminExamQuestionsPage() {
         method: "DELETE",
       });
       await fetchQuestions();
-    } catch {
+    } catch (failure) {
       setError(
-        "Could not delete the question. Check your session and try again.",
+        failure instanceof ApiError && failure.statusCode === 409
+          ? failure.message
+          : "Could not delete the question. Check your session and try again.",
       );
     } finally {
       setDeleting(null);
@@ -144,14 +150,22 @@ export default function AdminExamQuestionsPage() {
             View and maintain entrance-exam questions and answer choices.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setWorking(false);
-            setEditor({ question: null });
-          }}
-        >
-          Add question
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setQuestionSetOpen(true)}>
+            Question Set
+          </Button>
+          <Button variant="outline" onClick={() => setConfigurationOpen(true)}>
+            Exam Configuration
+          </Button>
+          <Button
+            onClick={() => {
+              setWorking(false);
+              setEditor({ question: null });
+            }}
+          >
+            Add question
+          </Button>
+        </div>
       </div>
       {error && (
         <div
@@ -294,6 +308,10 @@ export default function AdminExamQuestionsPage() {
           />
         </>
       )}
+      {configurationOpen ? <ExamConfigurationDialog onClose={() => setConfigurationOpen(false)} /> : null}
+      {questionSetOpen ? (
+        <ExamQuestionSetDialog onClose={() => setQuestionSetOpen(false)} />
+      ) : null}
       <Dialog
         open={editor !== null}
         onOpenChange={(open) => {

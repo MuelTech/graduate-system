@@ -3,62 +3,146 @@ import { ExamAppStatus } from "@prisma/client";
 import { EmailService } from "./email.service";
 import { AppError } from "../utils/AppError";
 import { ExamRecordDetail } from "../interfaces/exam.interfaces";
+import { manilaCalendarDate, parseScheduleDate, requireFutureSchedule, requireSameDaySchedule, scheduleStartInstant } from "./exam-schedule-time";
+import { BLOCKING_EXAM_STATUSES, requireConsistentCapacity, requireConsistentCounter, requireEligibleAlignment, scheduleIdentifier, validateSlotBody } from "./exam-schedule.rules";
+import { essayScoreValue } from "./exam-essay-evaluation.rules";
+import { completedResultStatus, resultProjection, validatedResultBasis } from "./exam-result.rules";
+import { canAmendAppointment, requireMissedDate } from "./exam-amendment.rules";
+import { institutionalProjection } from "./exam-effective-result.rules";
+
+function assignmentBlockReason(student: {
+  admissionStatus: string; pinnacleApplicantId: string | null; alignmentStatus: string | null;
+  user: { role: string };
+}, applications: { status: string }[]): string | null {
+  if (student.admissionStatus !== "APPLICANT" || student.user.role !== "APPLICANT" || !student.pinnacleApplicantId?.trim()) {
+    return "Select an existing registered Applicant with a Pinnacle Applicant ID.";
+  }
+  if (student.alignmentStatus !== "ALIGNED" && student.alignmentStatus !== "CLEARED") {
+    return "Program alignment or bridging waiver clearance is required before assignment.";
+  }
+  if (applications.some(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status))) {
+    return "This Applicant already has an examination record that prevents another assignment.";
+  }
+  return null;
+}
 
 export class ExamService {
   private examRepo = new ExamRepository();
 
-  async createSlot(data: {
-    programId: string;
-    examDate: string;
-    examTime: string;
-    maxSlots: number;
-  }) {
-    return this.examRepo.createSlot({
-      programId: data.programId,
-      examDate: new Date(data.examDate),
-      examTime: new Date(data.examTime),
-      maxSlots: data.maxSlots,
-      isActive: true,
+  async createSlot(input: unknown) {
+    const data = validateSlotBody(input);
+    await this.examRepo.requireProgram(data.programId);
+    requireFutureSchedule(data.examDate, data.examTime);
+    return this.examRepo.createSlot({ ...data, isActive: true });
+  }
+
+  async getAvailableSlots(userId: string, requestedProgramId?: unknown) {
+    const student = await this.examRepo.getSchedulingStudent(userId);
+    if (!student) throw new AppError("Student not found.", 404);
+    requireEligibleAlignment(student.alignmentStatus);
+    if (requestedProgramId !== undefined && scheduleIdentifier(requestedProgramId, "programId") !== student.programId.toLowerCase()) {
+      throw new AppError("Requested Program does not match your Student Program.", 403);
+    }
+    const slots = await this.examRepo.getActiveProgramSlots(student.programId);
+    const now = Date.now();
+    return slots.filter(slot => {
+      try {
+        requireConsistentCapacity(slot, slot._count.examApplications);
+        return slot.programId === student.programId && slot.isActive === true &&
+          slot.slotsTaken < slot.maxSlots && scheduleStartInstant(slot.examDate, slot.examTime).getTime() > now;
+      } catch (error) {
+        // Invalid legacy records cannot authorize admission. Do not repair them.
+        if (error instanceof AppError) {
+          console.warn("Schedule excluded from booking; owner review required.", {
+            slotId: slot.id, slotsTaken: slot.slotsTaken, assignedApplications: slot._count.examApplications, reason: error.message,
+          });
+          return false;
+        }
+        throw error;
+      }
+    }).map(({ _count, ...slot }) => slot);
+  }
+
+  async scheduleExam(userId: string, requestedSlotId: unknown) {
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    return this.admitExam({ kind: "self", userId }, slotId);
+  }
+
+  async assignApplicant(requestedStudentId: unknown, requestedSlotId: unknown) {
+    const studentId = scheduleIdentifier(requestedStudentId, "studentId");
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    return this.admitExam({ kind: "admin", studentId }, slotId);
+  }
+
+  /** Selection is advisory; confirmation independently repeats every safeguard. */
+  async getAssignmentOptions(requestedStudentId: unknown) {
+    const studentId = scheduleIdentifier(requestedStudentId, "studentId");
+    return this.examRepo.runInTransaction(async tx => {
+      const student = await this.examRepo.lockAssignmentStudent(studentId, tx);
+      const applications = await this.examRepo.getStudentApplications(student.id, tx);
+      const reason = assignmentBlockReason(student, applications);
+      const now = new Date();
+      const candidates = reason ? [] : await this.examRepo.getActiveProgramSlots(student.programId, tx, parseScheduleDate(manilaCalendarDate(now)));
+      const slots = candidates.filter(slot => {
+        try {
+          requireSameDaySchedule(slot.examDate, slot.examTime, now);
+          requireConsistentCapacity(slot, slot._count.examApplications);
+          return slot.programId === student.programId && slot.isActive === true && slot.slotsTaken < slot.maxSlots;
+        } catch (error) {
+          if (error instanceof AppError) return false;
+          throw error;
+        }
+      }).map(slot => ({
+        id: slot.id, examDate: slot.examDate.toISOString(), examTime: slot.examTime.toISOString(),
+        maxSlots: slot.maxSlots, slotsTaken: slot.slotsTaken, remainingSeats: slot.maxSlots - slot.slotsTaken,
+      }));
+      return {
+        applicant: {
+          id: student.id, firstName: student.user.firstName, lastName: student.user.lastName,
+          email: student.user.email, pinnacleApplicantId: student.pinnacleApplicantId,
+          program: student.program, alignmentStatus: student.alignmentStatus,
+        },
+        eligible: reason === null, reason, date: manilaCalendarDate(now), timeZone: "Asia/Manila", slots,
+      };
     });
   }
 
-  async getAvailableSlots(programId: string) {
-    const slots = await this.examRepo.getFutureActiveSlots(programId);
-    return slots.filter((slot) => slot.slotsTaken < slot.maxSlots);
-  }
-
-  async scheduleExam(userId: string, slotId: string) {
+  /** Shared B3 admission; no caller-controlled time-bypass flag. */
+  private async admitExam(target: { kind: "self"; userId: string } | { kind: "admin"; studentId: string }, slotId: string) {
+    const requireSchedule = target.kind === "admin" ? requireSameDaySchedule : requireFutureSchedule;
     return this.examRepo.runInTransaction(async (tx) => {
-      const student = await this.examRepo.getStudentWithExamApps(userId, tx);
-
-      if (!student) throw new Error("Student not found");
-      if (student.alignmentStatus === "PENDING_WAIVER") {
-        throw new Error("Cannot schedule exam. Pending Bridging Waiver.");
+      const student = target.kind === "admin"
+        ? await this.examRepo.lockAssignmentStudent(target.studentId, tx).then(async selected => {
+            const reason = assignmentBlockReason(selected, await this.examRepo.getStudentApplications(selected.id, tx));
+            if (reason) throw new AppError(reason, 409);
+            return selected;
+          })
+        : await this.examRepo.lockSchedulingStudent(target.userId, tx);
+      requireEligibleAlignment(student.alignmentStatus);
+      const slot = await this.examRepo.lockSlot(slotId, tx);
+      if (slot.programId !== student.programId) throw new AppError(target.kind === "admin"
+        ? "Choose a schedule for this Applicant's Program." : "Exam slot does not belong to your Program.", target.kind === "admin" ? 409 : 403);
+      if (slot.isActive !== true) throw new AppError("This schedule is closed for booking.", 409);
+      requireSchedule(slot.examDate, slot.examTime);
+      const assignedCount = await this.examRepo.getAssignedCount(slotId, tx);
+      try {
+        requireConsistentCapacity(slot, assignedCount);
+      } catch (error) {
+        if (target.kind === "admin" && error instanceof AppError) {
+          throw new AppError("This schedule's booked-seat information needs review. Contact the schedule administrator.", 409);
+        }
+        throw error;
       }
+      if (slot.slotsTaken >= slot.maxSlots) throw new AppError("This slot is fully booked.", 409);
+      const applications = await this.examRepo.getStudentApplications(student.id, tx);
+      const blocking = applications.find(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status));
+      if (blocking) throw new AppError(target.kind === "admin"
+        ? "This Applicant already has an examination record that prevents another assignment."
+        : `You already have an application with status: ${blocking.status}`, 409);
 
-      const previousApps = student.examApplications;
-
-      const pendingApp = previousApps.find((app: any) =>
-        [
-          "PENDING",
-          "APPROVED",
-          "TAKEN",
-          "PASSED",
-          "APPEALED",
-          "DISQUALIFIED",
-        ].includes(app.status),
-      );
-      if (pendingApp)
-        throw new Error(
-          `You already have an application with status: ${pendingApp.status}`,
-        );
-
-      const slot = await this.examRepo.getSlotById(slotId, tx);
-      if (!slot) throw new Error("Exam slot not found.");
-      if (slot.slotsTaken >= slot.maxSlots)
-        throw new Error("This slot is fully booked.");
-
-      await this.examRepo.incrementSlotTaken(slotId, tx);
+      // Recheck actual time after all potentially waiting reads and before reserve.
+      requireSchedule(slot.examDate, slot.examTime);
+      await this.examRepo.incrementSlotTaken(slotId, slot.slotsTaken, slot.maxSlots, tx);
 
       const application = await this.examRepo.createApplication(
         {
@@ -84,68 +168,62 @@ export class ExamService {
     const student = await this.examRepo.getApplicantStatus(userId);
     if (!student) throw new Error("Student not found");
 
-    const applications = student.examApplications || [];
-
-    // Find the active confirmed slot if it exists
-    const activeApp = applications.find((app: any) =>
-      [
-        "PENDING",
-        "APPROVED",
-        "TAKEN",
-        "PASSED",
-        "APPEALED",
-        "DISQUALIFIED",
-      ].includes(app.status),
-    );
-
-    let confirmedSlot = null;
-    if (activeApp && activeApp.slot) {
-      confirmedSlot = {
-        id: activeApp.slot.id,
-        examDate: activeApp.slot.examDate,
-        examTime: activeApp.slot.examTime,
-        programName: activeApp.slot.program?.programName || "Unknown Program",
-      };
+    const applications = [...(student.examApplications || [])].sort((a,b) =>
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0) || b.id.localeCompare(a.id));
+    const activeApp = applications.find(app => BLOCKING_EXAM_STATUSES.some(status => status === app.status));
+    let canAppealMissedExam = false;
+    if (activeApp && canAmendAppointment(activeApp)) {
+      try { requireMissedDate(activeApp); canAppealMissedExam = student.user.role === "APPLICANT" && student.user.isActive; } catch { /* same-day and partial evidence stay closed */ }
     }
-
     return {
-      alignmentStatus: student.alignmentStatus,
-      programId: student.programId,
-      confirmedSlot,
+      alignmentStatus: student.alignmentStatus, programId: student.programId,
+      applicationId: activeApp?.id ?? null,
+      confirmedSlot: activeApp ? { id: activeApp.slot.id, examDate: activeApp.slot.examDate, examTime: activeApp.slot.examTime,
+        programName: activeApp.slot.program?.programName || "Unknown Program" } : null,
       examStatus: activeApp ? activeApp.status.toLowerCase() : "none",
+      canBookExam: !activeApp && ["ALIGNED","CLEARED"].includes(student.alignmentStatus ?? ""),
+      canAppealMissedExam,
+      amendment: activeApp?.scheduleAmendment ? {
+        type: activeApp.scheduleAmendment.type, status: activeApp.scheduleAmendment.status,
+        requestedAt: activeApp.scheduleAmendment.requestedAt.toISOString(),
+        reason: activeApp.scheduleAmendment.reason,
+      } : null,
     };
   }
 
-  async updateSlot(
-    slotId: string,
-    data: {
-      programId: string;
-      examDate: string;
-      examTime: string;
-      maxSlots: number;
-    },
-  ) {
-    const updatedSlot = await this.examRepo.updateSlot(slotId, {
-      programId: data.programId,
-      examDate: new Date(data.examDate),
-      examTime: new Date(data.examTime),
-      maxSlots: data.maxSlots,
+
+  async updateSlot(requestedSlotId: unknown, input: unknown) {
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    const data = validateSlotBody(input);
+    return this.examRepo.runInTransaction(async tx => {
+      const slot = await this.examRepo.lockSlot(slotId, tx);
+      const assignedCount = await this.examRepo.getAssignedCount(slotId, tx);
+      // The new validated capacity may correct an old invalid maximum, but the
+      // historical assignment counter must agree before any Admin edit.
+      requireConsistentCounter(slot, assignedCount);
+      // Also validate the stored wall-clock rather than silently correcting it.
+      scheduleStartInstant(slot.examDate, slot.examTime);
+      const historyCount = await tx.entranceExamApplication.count({ where: { slotId } });
+      if (historyCount > 0 && (slot.programId !== data.programId ||
+          slot.examDate.getTime() !== data.examDate.getTime() || slot.examTime.getTime() !== data.examTime.getTime())) {
+        throw new AppError("Program, Exam Date and Start Time cannot change after applicants are booked.", 409);
+      }
+      if (data.maxSlots < assignedCount) throw new AppError("Capacity cannot be less than the booked applicant count.", 409);
+      await this.examRepo.requireProgram(data.programId, tx);
+      requireFutureSchedule(data.examDate, data.examTime);
+      return this.examRepo.updateSlot(slotId, data, tx);
     });
-
-    // Email Notification Placeholder
-    const applications = await this.examRepo.getApplicantsForSlot(slotId);
-    if (applications.length > 0) {
-      console.log(
-        `[EMAIL QUEUE] Sending schedule change notification to ${applications.length} applicants for slot ${slotId}`,
-      );
-      // TODO: Implement actual Nodemailer logic here later
-    }
-
-    return updatedSlot;
   }
 
-  async toggleSlotStatus(slotId: string, isActive: boolean) {
-    return this.examRepo.updateSlot(slotId, { isActive });
+  async toggleSlotStatus(requestedSlotId: unknown, isActive: unknown) {
+    const slotId = scheduleIdentifier(requestedSlotId, "slotId");
+    if (typeof isActive !== "boolean") throw new AppError("isActive must be a boolean.", 400);
+    return this.examRepo.runInTransaction(async tx => {
+      const slot = await this.examRepo.lockSlot(slotId, tx);
+      requireConsistentCapacity(slot, await this.examRepo.getAssignedCount(slotId, tx));
+      requireFutureSchedule(slot.examDate, slot.examTime);
+      return this.examRepo.updateSlot(slotId, { isActive }, tx);
+    });
   }
 
   async getAllApplications() {
@@ -182,8 +260,10 @@ export class ExamService {
       program: {
         id: app.program.id,
         programName: app.program.programName,
-        examMcqTotal: app.program.examMcqTotal,
-        examEssayTotal: app.program.examEssayTotal,
+        // Compatibility fields are deliberately unknown; Program settings are
+        // not an examination's historical denominator. Use result below.
+        examMcqTotal: null,
+        examEssayTotal: null,
       },
       slot: {
         id: app.slot.id,
@@ -213,40 +293,27 @@ export class ExamService {
         order: answer.question.order,
         essayAnswer: answer.essayAnswer,
       })),
+      essayEvaluation: app.essayEvaluation,
+      result: completedResultStatus(app) ? resultProjection(app) : null,
+      resultEmailEligible: completedResultStatus(app) !== null && !app.resultDecision,
+      canAmendAppointment: canAmendAppointment(app),
+      canReconsiderResult: (() => { try { return !app.resultDecision && validatedResultBasis(app).result === "FAILED"; } catch { return false; } })(),
+      ...institutionalProjection(app),
+      seatReleasedAt: app.seatReleasedAt?.toISOString() ?? null,
+      replacementOfApplicationId: app.replacementFor?.applicationId ?? null,
+      scheduleAmendment: app.scheduleAmendment ? {
+        id: app.scheduleAmendment.id, type: app.scheduleAmendment.type, status: app.scheduleAmendment.status,
+        reason: app.scheduleAmendment.reason, requestedAt: app.scheduleAmendment.requestedAt.toISOString(), requestedBy: app.scheduleAmendment.requestedBy,
+        decisionReason: app.scheduleAmendment.decisionReason, decidedAt: app.scheduleAmendment.decidedAt?.toISOString() ?? null,
+        decidedBy: app.scheduleAmendment.decidedBy, replacementApplicationId: app.scheduleAmendment.replacementApplicationId,
+        targetSlot: app.scheduleAmendment.targetSlot ? { id: app.scheduleAmendment.targetSlot.id, examDate: app.scheduleAmendment.targetSlot.examDate.toISOString(), examTime: app.scheduleAmendment.targetSlot.examTime.toISOString() } : null,
+      } : null,
+      reconsideration: app.resultDecision ? { ...institutionalProjection(app).institutionalDecision!, reason: app.resultDecision.reason, decidedBy: app.resultDecision.decidedBy } : null,
     };
   }
 
-  async appealMissedExam(userId: string) {
-    return this.examRepo.runInTransaction(async (tx) => {
-      const student = await this.examRepo.getApplicantStatus(userId);
-      if (!student) throw new Error("Student not found");
-
-      const pendingApp = student.examApplications?.find(
-        (app: any) => app.status === "PENDING",
-      );
-      if (!pendingApp) {
-        throw new Error("No pending or missed exam found to appeal.");
-      }
-
-      if (pendingApp.slot) {
-        const d = new Date(pendingApp.slot.examDate);
-        const t = new Date(pendingApp.slot.examTime);
-        d.setHours(t.getHours(), t.getMinutes(), t.getSeconds());
-        if (d > new Date()) {
-          throw new Error("Cannot appeal an exam that has not happened yet.");
-        }
-      }
-
-      // Update status to APPEALED so the admin can review it
-      await tx.entranceExamApplication.update({
-        where: { id: pendingApp.id },
-        data: { status: "APPEALED" },
-      });
-
-      // TODO: In the future, you can integrate email notifications here to inform the admin
-
-      return { success: true, message: "Appeal processed successfully." };
-    });
+  async appealMissedExam(_userId: string) {
+    throw new AppError("Reload Examination and use Appeal Missed Exam for the exact appointment with a reason.",409);
   }
 
   async getAppealedExams() {
@@ -254,44 +321,28 @@ export class ExamService {
   }
 
   async approveAppeal(applicationId: string) {
-    return this.examRepo.approveAppeal(applicationId);
+    throw new AppError("Use the exact missed-appeal approval action with a future appointment and decision reason.",409);
   }
 
   async rejectAppeal(applicationId: string) {
-    return this.examRepo.rejectAppeal(applicationId);
+    throw new AppError("Use the exact missed-appeal rejection action with a decision reason.",409);
   }
 
   async getExamResult(userId: string) {
     const app = await this.examRepo.getLatestResult(userId);
 
     if (!app || !app.score) {
-      throw new Error(
-        "No exam found. Your exam is either pending grading or you have not taken it.",
-      );
+      throw new AppError("No examination result is available yet.", 404);
     }
 
-    const mcqTotal = app.program?.examMcqTotal ?? 0;
-    const essayTotal = app.program?.examEssayTotal ?? 0;
-    const passingScore = app.program?.examPassingScore ?? 0;
-
-    const totalPossible = mcqTotal + essayTotal;
-
-    if (totalPossible <= 0) {
-      throw new Error(
-        "Exam scoring configuration is incomplete. Total possible score must be greater than zero.",
-      );
-    }
+    const finalStatus = completedResultStatus(app);
+    if (!finalStatus) throw new AppError("Your examination result is not yet available. It may still be awaiting evaluation.", 409);
 
     return {
-      status: app.score.status.toLowerCase(),
-      mcqScore: Number(app.score.multipleChoiceScore || 0),
-      mcqTotal: mcqTotal,
-      essayScore: Number(app.score.essayScore || 0),
-      essayTotal: essayTotal,
-      totalScore: Number(app.score.totalScore || 0),
-      totalPossible: totalPossible,
-      passingScore: passingScore,
+      ...resultProjection(app),
+      ...institutionalProjection(app),
       examDate: app.slot?.examDate,
+      finalizedAt: app.finalizedAt?.toISOString() ?? null,
     };
   }
 
@@ -300,29 +351,15 @@ export class ExamService {
     essayScore: number,
     adminId: string
   ) {
-    if (typeof essayScore !== 'number' || isNaN(essayScore) || essayScore < 0 || essayScore > 30) {
-      throw new Error("Essay score must be a valid number between 0 and 30.");
-    }
-
-    return this.examRepo.gradeEssay(applicationId, essayScore, adminId);
+    return this.examRepo.gradeEssay(applicationId, essayScoreValue(essayScore), adminId);
   }
 
   async confirmResultAndEmail(applicationId: string) {
-    const application = await this.examRepo.getApplicationDetailsForEmail(applicationId);
-    if (!application) throw new Error("Application not found.");
-
-    const template = application.status === 'PASSED' ? 'ecat_result_pass' : 'ecat_result_fail';
-
-     // Dispatch actual email via BullMQ
-    await EmailService.sendTemplateEmail(application.student.user.email, template, {
-        student_name: application.student.user.firstName,
-        portal_link: process.env.FRONTEND_URL || "http://localhost:3000"
-    });
-
-    return {
-      success: true,
-      message: "Grade confirmed and email successfully dispatched to the queue."
-    };
-    
+    return this.examRepo.queueResultEmail(applicationId, (recipient, template, firstName, jobId) =>
+      EmailService.sendTemplateEmail(recipient, template, {
+        student_name: firstName, portal_link: process.env.FRONTEND_URL || "http://localhost:3000",
+      }, { jobId, removeOnComplete: false, removeOnFail: false }));
   }
+
+  finalizeResult(applicationId: string, adminId: string) { return this.examRepo.finalizeResult(applicationId, adminId); }
 }

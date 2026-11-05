@@ -1,9 +1,25 @@
 import prisma from "../config/database";
-import { Prisma } from "@prisma/client";
+import { Prisma, ExamAppStatus } from "@prisma/client";
 import type { ExamQuestionInput } from "../interfaces/exam-content.interfaces";
 import { mergeExamQuestionUpdate } from "../services/exam-content.rules";
 import { AppError } from "../utils/AppError";
-import { applicantQuestionSelect, adminQuestionSelect, toApplicantQuestion, toAdminQuestion } from "./exam-content.projection";
+import { adminQuestionSelect, toAdminQuestion } from "./exam-content.projection";
+import { validateDraft } from "../services/exam-answer.rules";
+import { activeBoundExecution } from "./exam-execution.repository";
+import { scheduleIdentifier } from "../services/exam-schedule.rules";
+
+async function lockAnswerApplication(tx: Prisma.TransactionClient, applicationId: string) {
+  // A locking/current read is essential under InnoDB REPEATABLE READ. Do not
+  // authorize from a snapshot or a service-level read made before this lock.
+  const rows = await tx.$queryRaw<{ status: ExamAppStatus }[]>`
+    SELECT status FROM entrance_exam_applications
+    WHERE application_id = ${applicationId} FOR UPDATE
+  `;
+  if (!rows.length) throw new AppError("Exam application not found.", 404);
+  if (rows[0].status !== ExamAppStatus.PENDING && rows[0].status !== ExamAppStatus.APPROVED) {
+    throw new AppError("This application cannot accept answer writes or final submission.", 409);
+  }
+}
 
 function emphasisJson(value: ExamQuestionInput["questionTextEmphasis"] | ExamQuestionInput["structuredStimulusEmphasis"]) {
   return value == null ? Prisma.DbNull : value as unknown as Prisma.InputJsonValue;
@@ -22,96 +38,78 @@ function questionData(data: ExamQuestionInput) {
 }
 
 export class ExamEngineRepository {
-  async getQuestionsForApplicant() {
-    const rows = await prisma.examQuestion.findMany({
-      orderBy: [{ order: "asc" }, { id: "asc" }],
-      select: applicantQuestionSelect,
-    });
-    return rows.map(toApplicantQuestion);
+  private async draftTransaction<T>(applicationId: string, userId: string, operation: (tx: Prisma.TransactionClient, bound: Awaited<ReturnType<typeof activeBoundExecution>>) => Promise<T>) {
+    const id = scheduleIdentifier(applicationId, "applicationId");
+    return prisma.$transaction(async tx => {
+      const target = await tx.entranceExamApplication.findUnique({ where: { id }, select: { student: { select: { userId: true } } } });
+      if (!target || target.student.userId !== userId) throw new AppError("Exam application not found.", 404);
+      await lockAnswerApplication(tx, id);
+      const bound = await activeBoundExecution(tx, id);
+      if (bound.app.student.userId !== userId) throw new AppError("Exam application not found.", 404);
+      const result = await operation(tx, bound);
+      bound.assertTime(); // Deadline crossed during persistence => roll back.
+      return result;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
 
+  async readDrafts(applicationId: string, userId: string) {
+    return this.draftTransaction(applicationId, userId, async (tx, bound) => {
+      const questions = bound.content.questions;
+      const rows = await tx.applicantAnswer.findMany({
+        where: { applicationId, questionId: { in: questions.map(q => q.id) } },
+        select: { questionId: true, selectedOptionId: true, essayAnswer: true, draftRevision: true },
+        orderBy: { questionId: "asc" },
+      });
+      return rows.map(row => {
+        const question = questions.find(q => q.id === row.questionId)!;
+        if (question.type === "MULTIPLE_CHOICE" && row.essayAnswer === null &&
+            (row.selectedOptionId === null || question.options.some(o => o.id === row.selectedOptionId))) {
+          return { questionId: row.questionId, selectedOptionId: row.selectedOptionId, revision: row.draftRevision };
+        }
+        if (question.type === "ESSAY" && row.selectedOptionId === null && typeof row.essayAnswer === "string") {
+          return { questionId: row.questionId, essayAnswer: row.essayAnswer, revision: row.draftRevision };
+        }
+        throw new AppError("Saved answers require staff review.", 409);
+      });
+    });
+  }
+
+  async saveDraft(applicationId: string, payload: unknown, userId: string) {
+    const answer = validateDraft(payload);
+    return this.draftTransaction(applicationId, userId, async (tx, bound) => {
+      const question = bound.content.questions.find(q => q.id === answer.questionId);
+      if (!question) throw new AppError("Draft question does not belong to this examination.", 400);
+      if (question.type === "MULTIPLE_CHOICE") {
+        if (answer.selectedOptionId === undefined || (answer.selectedOptionId !== null && !question.options.some(o => o.id.toLowerCase() === answer.selectedOptionId))) {
+          throw new AppError("Select an option belonging to this multiple-choice question, or clear it.", 400);
+        }
+      } else if (question.type !== "ESSAY" || answer.essayAnswer === undefined) {
+        throw new AppError("Draft representation does not match the question type.", 400);
+      }
+      const where = { applicationId_questionId: { applicationId, questionId: answer.questionId } };
+      const current = await tx.applicantAnswer.findUnique({ where, select: { draftRevision: true } });
+      if ((current?.draftRevision ?? 0) !== answer.expectedRevision) {
+        throw new AppError("This answer changed elsewhere. Refresh saved answers before continuing.", 409);
+      }
+      const revision = answer.expectedRevision + 1;
+      const data = { selectedOptionId: answer.selectedOptionId ?? null, essayAnswer: answer.essayAnswer ?? null, draftRevision: revision };
+      bound.assertTime();
+      await tx.applicantAnswer.upsert({ where, update: data, create: { applicationId, questionId: answer.questionId, ...data } });
+      return answer.essayAnswer !== undefined
+        ? { questionId: answer.questionId, essayAnswer: answer.essayAnswer, revision }
+        : { questionId: answer.questionId, selectedOptionId: answer.selectedOptionId!, revision };
+    });
+  }
+
+  // Compatibility for internal callers only; unversioned writes now fail validation.
   async autoSaveAnswer(
     applicationId: string,
-    questionId: string,
-    essayAnswer: string,
+    questionId: unknown,
+    essayAnswer: unknown,
+    expectedRevision: unknown,
+    userId: string,
   ) {
-    return prisma.applicantAnswer.upsert({
-      where: {
-        applicationId_questionId: {
-          applicationId,
-          questionId,
-        },
-      },
-      update: { essayAnswer },
-      create: { applicationId, questionId, essayAnswer },
-    });
-  }
-
-  async submitAnswers(applicationId: string, answers: any[]) {
-    return prisma.$transaction(async (tx) => {
-      const existingApp = await tx.entranceExamApplication.findUnique({ where: { id: applicationId } });
-      if (!existingApp || ['TAKEN', 'PASSED', 'FAILED'].includes(existingApp.status)) {
-         throw new Error("This exam has already been submitted and cannot be overwritten.");
-      }
-
-      let mcqCorrect = 0;
-
-      // 1. Upsert all answers and calculate MCQ Score
-      for (const answer of answers) {
-        // Check if it's correct
-        const question = await tx.examQuestion.findUnique({
-          where: { id: answer.questionId },
-          include: { options: true },
-        });
-
-        if (question?.type === "MULTIPLE_CHOICE") {
-          const selectedOpt = question.options.find(
-            (o) => o.id === answer.selectedOptionId,
-          );
-          if (selectedOpt && selectedOpt.isCorrect) {
-            mcqCorrect++;
-          }
-        }
-
-        await tx.applicantAnswer.upsert({
-          where: {
-            applicationId_questionId: {
-              applicationId,
-              questionId: answer.questionId,
-            },
-          },
-          update: {
-            selectedOptionId: answer.selectedOptionId || null,
-            essayAnswer: answer.essayAnswer || null,
-          },
-          create: {
-            applicationId,
-            questionId: answer.questionId,
-            selectedOptionId: answer.selectedOptionId || null,
-            essayAnswer: answer.essayAnswer || null,
-          },
-        });
-      }
-
-      // 2. Mark application as TAKEN
-      await tx.entranceExamApplication.update({
-        where: { id: applicationId },
-        data: { status: "TAKEN" },
-      });
-
-      // 3. Create the Score Record with the Auto-Graded MCQ
-      await tx.entranceExamScore.upsert({
-        where: { applicationId },
-        update: { multipleChoiceScore: mcqCorrect },
-        create: {
-          applicationId,
-          multipleChoiceScore: mcqCorrect,
-          status: "PENDING",
-        },
-      });
-
-      return { success: true, mcqScore: mcqCorrect };
-    });
+    return this.saveDraft(applicationId, { questionId, essayAnswer, expectedRevision }, userId);
   }
 
   async getAllQuestionsForAdmin() {
@@ -160,6 +158,9 @@ export class ExamEngineRepository {
         if (removedIds.length && await tx.applicantAnswer.count({ where: { selectedOptionId: { in: removedIds } } })) {
           throw new AppError("Cannot replace options referenced by Applicant answers; preserve their IDs.", 409);
         }
+        if (removedIds.length && await tx.examRevisionOption.count({ where: { optionId: { in: removedIds } } })) {
+          throw new AppError("Cannot remove options in a published question set; preserve their IDs.", 409);
+        }
         if (removedIds.length) await tx.examOption.deleteMany({ where: { questionId: id, id: { in: removedIds } } });
         for (const { id: optionId, ...opt } of data.options) {
           if (optionId) await tx.examOption.update({ where: { id: optionId }, data: optionData(opt) });
@@ -177,9 +178,21 @@ export class ExamEngineRepository {
   }
 
   async deleteQuestion(id: string) {
-    return prisma.examQuestion.delete({
-      where: { id },
-    });
+    try {
+      return await prisma.$transaction(async tx => {
+        if (await tx.applicantAnswer.count({ where: { questionId: id } })
+          || await tx.examRevisionQuestion.count({ where: { questionId: id } })) {
+          throw new AppError("This question has answer history or belongs to a published set. Deselect it from future sets instead.", 409);
+        }
+        return tx.examQuestion.delete({ where: { id } });
+      });
+    } catch (error) {
+      // The FK remains authoritative if a reference is committed after the guard.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new AppError("This question is in use. Deselect it from future sets instead.", 409);
+      }
+      throw error;
+    }
   }
 }
 

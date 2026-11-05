@@ -61,6 +61,11 @@ model User {
   studentRequirementsReviewed        StudentRequirement[]      @relation("RequirementReviewedBy")
   student                            Student?
   systemSettingsModified             SystemSetting[]           @relation("SettingModifiedBy")
+  examContentPublished               ExamContentRevision[]
+  examStartsAuthorized               EntranceExamApplication[] @relation("ExamStartAuthorizedBy")
+  examAmendmentsRequested            ExamScheduleAmendment[] @relation("ExamAmendmentRequestedBy")
+  examAmendmentsDecided              ExamScheduleAmendment[] @relation("ExamAmendmentDecidedBy")
+  examResultDecisions                ExamResultDecision[]
   customRole                         CustomRole?               @relation("UserCustomRole", fields: [customRoleId], references: [id])
 
   @@index([customRoleId], map: "users_custom_role_id_fkey")
@@ -232,6 +237,7 @@ model ExamSlot {
   isActive         Boolean                   @default(true) @map("is_active")
   createdAt        DateTime                  @default(now()) @map("created_at")
   examApplications EntranceExamApplication[]
+  amendmentTargets ExamScheduleAmendment[]
   program          Program                   @relation(fields: [programId], references: [id])
 
   @@index([programId], map: "exam_slots_program_id_fkey")
@@ -270,6 +276,26 @@ model EntranceExamApplication {
   examTime  DateTime?          @map("exam_time") @db.Time(0)
   status    ExamAppStatus      @default(PENDING)
   createdAt DateTime           @default(now()) @map("created_at")
+  // Null owns the seat; B9 release is explicit and write-once.
+  seatReleasedAt DateTime? @map("seat_released_at") @db.DateTime(3)
+  scheduleAmendment ExamScheduleAmendment? @relation("ExamAmendmentOriginal")
+  replacementFor ExamScheduleAmendment? @relation("ExamAmendmentReplacement")
+  resultDecision ExamResultDecision?
+  // B4: one execution per existing application; null means no recorded authority.
+  startAuthorizedById String? @map("start_authorized_by_id")
+  startAuthorizedAt DateTime? @map("start_authorized_at") @db.DateTime(3)
+  actualStartedAt DateTime? @map("actual_started_at") @db.DateTime(3)
+  deadlineAt DateTime? @map("deadline_at") @db.DateTime(3)
+  executionConfiguration Json? @map("execution_configuration")
+  contentRevisionId String? @map("content_revision_id") @db.VarChar(36)
+  // B6: null on truthful legacy records; written once under the application lock.
+  finalizedAt DateTime? @map("finalized_at") @db.DateTime(3)
+  finalizationReason ExamFinalizationReason? @map("finalization_reason")
+  finalizationReceiptId String? @unique @map("finalization_receipt_id") @db.VarChar(36)
+  finalizationAnsweredCount Int? @map("finalization_answered_count")
+  finalizationQuestionCount Int? @map("finalization_question_count")
+  startAuthorizedBy User? @relation("ExamStartAuthorizedBy", fields: [startAuthorizedById], references: [id], onDelete: Restrict)
+  contentRevision ExamContentRevision? @relation(fields: [contentRevisionId], references: [id], onDelete: Restrict)
   program   Program            @relation(fields: [programId], references: [id])
   slot      ExamSlot           @relation(fields: [slotId], references: [id])
   student   Student            @relation(fields: [studentId], references: [id])
@@ -278,7 +304,11 @@ model EntranceExamApplication {
 
   @@index([programId], map: "entrance_exam_applications_program_id_fkey")
   @@index([slotId], map: "entrance_exam_applications_slot_id_fkey")
+  @@index([slotId, seatReleasedAt], map: "exam_owned_seats")
   @@index([studentId], map: "entrance_exam_applications_student_id_fkey")
+  @@index([startAuthorizedById])
+  @@index([contentRevisionId])
+  @@index([status, finalizedAt, deadlineAt], map: "exam_expiry_candidates")
   @@map("entrance_exam_applications")
 }
 
@@ -288,14 +318,75 @@ model EntranceExamScore {
   gradedById          String?                 @map("graded_by")
   multipleChoiceScore Decimal?                @map("multiple_choice_score")
   essayScore          Decimal?                @map("essay_score")
+  essayEvaluatedAt    DateTime?               @map("essay_evaluated_at") @db.DateTime(3)
+  scoredAt            DateTime?               @map("scored_at") @db.DateTime(3)
+  scoringBasis        Json?                   @map("scoring_basis")
+  resultEmailQueuedAt DateTime?               @map("result_email_queued_at") @db.DateTime(3)
+  resultEmailTemplateKey String?               @map("result_email_template_key") @db.VarChar(64)
   totalScore          Decimal?                @map("total_score")
   status              ExamResult
   createdAt           DateTime                @default(now()) @map("created_at")
   application         EntranceExamApplication @relation(fields: [applicationId], references: [id])
   gradedBy            User?                   @relation("ExamScoreGradedBy", fields: [gradedById], references: [id])
+  resultDecision      ExamResultDecision?
 
   @@index([gradedById], map: "entrance_exam_scores_graded_by_fkey")
   @@map("entrance_exam_scores")
+}
+
+model ExamScheduleAmendment {
+  id String @id @default(uuid()) @map("amendment_id")
+  applicationId String @unique @map("application_id")
+  type ExamAmendmentType
+  status ExamAmendmentStatus
+  reason String @db.Text
+  requestedById String @map("requested_by_id")
+  requestedAt DateTime @default(now()) @map("requested_at") @db.DateTime(3)
+  decisionReason String? @map("decision_reason") @db.Text
+  decidedById String? @map("decided_by_id")
+  decidedAt DateTime? @map("decided_at") @db.DateTime(3)
+  targetSlotId String? @map("target_slot_id")
+  replacementApplicationId String? @unique @map("replacement_application_id")
+  application EntranceExamApplication @relation("ExamAmendmentOriginal", fields: [applicationId], references: [id], onDelete: Restrict)
+  replacementApplication EntranceExamApplication? @relation("ExamAmendmentReplacement", fields: [replacementApplicationId], references: [id], onDelete: Restrict)
+  targetSlot ExamSlot? @relation(fields: [targetSlotId], references: [id], onDelete: Restrict)
+  requestedBy User @relation("ExamAmendmentRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  decidedBy User? @relation("ExamAmendmentDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  @@index([targetSlotId])
+  @@index([requestedById])
+  @@index([decidedById])
+  @@map("exam_schedule_amendments")
+}
+
+model ExamResultDecision {
+  id String @id @default(uuid()) @map("decision_id")
+  applicationId String @unique @map("application_id")
+  scoreId String @unique @map("score_id")
+  decision ExamInstitutionalDecision
+  reason String @db.Text
+  decidedById String @map("decided_by_id")
+  decidedAt DateTime @default(now()) @map("decided_at") @db.DateTime(3)
+  application EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  score EntranceExamScore @relation(fields: [scoreId], references: [id], onDelete: Restrict)
+  decidedBy User @relation(fields: [decidedById], references: [id], onDelete: Restrict)
+  @@index([decidedById])
+  @@map("exam_result_decisions")
+}
+
+enum ExamAmendmentType {
+  MISSED_APPEAL
+  ADMIN_RESCHEDULE
+  ADMIN_CANCELLATION
+}
+
+enum ExamAmendmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExamInstitutionalDecision {
+  PASSED_RECONSIDERED
 }
 
 model CompExamRecord {
@@ -1392,6 +1483,11 @@ enum BridgingWaiverStatus {
   @@map("bridging_waiver_status")
 }
 
+enum ExamFinalizationReason {
+  APPLICANT_SUBMITTED
+  TIME_EXPIRED
+}
+
 enum ExamAppStatus {
   PENDING
   APPROVED
@@ -1400,6 +1496,9 @@ enum ExamAppStatus {
   FAILED
   DISQUALIFIED
   APPEALED
+  MISSED
+  RESCHEDULED
+  CANCELLED
 
   @@map("exam_app_status")
 }
@@ -1735,6 +1834,7 @@ model ExamMedia {
 
   stimulusQuestions ExamQuestion[] @relation("ExamStimulusMedia")
   options           ExamOption[]
+  revisionReferences ExamRevisionMedia[]
 
   @@map("exam_media")
 }
@@ -1767,6 +1867,8 @@ model ExamQuestion {
   answers       ApplicantAnswer[]
   stimulusMedia ExamMedia?         @relation("ExamStimulusMedia", fields: [stimulusMediaId], references: [id], onDelete: Restrict)
   sourceImport  ExamContentImport? @relation(fields: [sourceImportId], references: [id], onDelete: Restrict)
+  selection     ExamQuestionSelection?
+  revisionItems ExamRevisionQuestion[]
 
   @@unique([sourceImportId, sourceQuestionNumber])
   @@index([stimulusMediaId])
@@ -1787,6 +1889,7 @@ model ExamOption {
   question ExamQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   answers  ApplicantAnswer[]
   media    ExamMedia?        @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  revisionReferences ExamRevisionOption[]
 
   @@index([mediaId])
   @@index([questionId], map: "exam_options_question_id_fkey")
@@ -1799,13 +1902,68 @@ model ApplicantAnswer {
   questionId       String  @map("question_id")
   selectedOptionId String? @map("selected_option_id")
   essayAnswer      String? @map("essay_answer") @db.Text
+  // Technical concurrency baseline; zero does not describe historical edits.
+  draftRevision    Int     @default(0) @map("draft_revision")
 
   application    EntranceExamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  selectedOption ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  question       ExamQuestion            @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOption ExamOption?             @relation(fields: [selectedOptionId], references: [id], onDelete: Restrict)
 
   @@unique([applicationId, questionId], map: "unique_applicant_question_answer")
   @@index([questionId], map: "applicant_answers_question_id_fkey")
   @@index([selectedOptionId], map: "applicant_answers_option_id_fkey")
   @@map("applicant_answers")
+}
+
+// Empty until an Admin explicitly saves membership. Bank/import writes never select.
+model ExamQuestionSelection {
+  questionId String @id @map("question_id")
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@map("exam_question_selection")
+}
+
+// Write-once content authority. No application/attempt binding or mutable current pointer.
+model ExamContentRevision {
+  id String @id @default(uuid()) @db.VarChar(36)
+  publishedAt DateTime @default(now()) @map("published_at")
+  publishedById String @map("published_by_id")
+  publishedBy User @relation(fields: [publishedById], references: [id], onDelete: Restrict)
+  questions ExamRevisionQuestion[]
+  media ExamRevisionMedia[]
+  applications EntranceExamApplication[]
+  @@map("exam_content_revisions")
+}
+
+model ExamRevisionQuestion {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  questionId String @map("question_id")
+  position Int
+  // Allowlisted, validated Phase A content plus internal key, copied at publication.
+  content Json
+  revision ExamContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  options ExamRevisionOption[]
+  @@id([revisionId, questionId])
+  @@unique([revisionId, position])
+  @@map("exam_revision_questions")
+}
+
+model ExamRevisionOption {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  questionId String @map("question_id")
+  optionId String @map("option_id")
+  item ExamRevisionQuestion @relation(fields: [revisionId, questionId], references: [revisionId, questionId], onDelete: Restrict)
+  option ExamOption @relation(fields: [optionId], references: [id], onDelete: Restrict)
+  @@id([revisionId, optionId])
+  @@index([revisionId, questionId])
+  @@map("exam_revision_options")
+}
+
+model ExamRevisionMedia {
+  revisionId String @map("revision_id") @db.VarChar(36)
+  mediaId String @map("media_id") @db.VarChar(36)
+  revision ExamContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  media ExamMedia @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  @@id([revisionId, mediaId])
+  @@map("exam_revision_media")
 }

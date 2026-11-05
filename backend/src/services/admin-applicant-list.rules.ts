@@ -6,6 +6,7 @@
  * only — it is never persisted and never grants domain authority.
  */
 import { Prisma } from "@prisma/client";
+import { hasEffectiveExamPass } from "./exam-effective-result.rules";
 
 export type AdmissionStage = "ALIGNMENT" | "EXAM" | "COR";
 
@@ -39,12 +40,12 @@ function alignmentIncompleteClause(): Prisma.StudentWhereInput {
   };
 }
 
-function passedExamClause(): Prisma.StudentWhereInput {
-  return { examApplications: { some: { status: "PASSED" } } };
+function passedExamClause(decisionIds: string[]): Prisma.StudentWhereInput {
+  return { examApplications: { some: decisionIds.length ? { OR: [{ status: "PASSED" },{ id: { in: decisionIds } }] } : { status: "PASSED" } } };
 }
 
-function noPassedExamClause(): Prisma.StudentWhereInput {
-  return { examApplications: { none: { status: "PASSED" } } };
+function noPassedExamClause(decisionIds: string[]): Prisma.StudentWhereInput {
+  return { examApplications: { none: decisionIds.length ? { OR: [{ status: "PASSED" },{ id: { in: decisionIds } }] } : { status: "PASSED" } } };
 }
 
 export function alignmentIsComplete(status?: string | null): boolean {
@@ -56,9 +57,9 @@ export function alignmentIsComplete(status?: string | null): boolean {
  * Entrance Exam application. Mirrors the meaning used by COR authority.
  */
 export function hasAuthoritativePassedExam(
-  applications: Array<{ status: string }>,
+  applications: Array<{ status: string; resultDecision?: unknown }>,
 ): boolean {
-  return applications.some((application) => application.status === "PASSED");
+  return applications.some(hasEffectiveExamPass);
 }
 
 /**
@@ -86,7 +87,7 @@ export function buildApplicantListWhere(filters: {
   search?: string;
   programId?: string;
   stage?: string;
-}): Prisma.StudentWhereInput {
+}, decisionIds: string[] = []): Prisma.StudentWhereInput {
   const and: Prisma.StudentWhereInput[] = [{ ...ACTIVE_APPLICANT_SCOPE }];
 
   const search = filters.search?.trim();
@@ -110,10 +111,10 @@ export function buildApplicantListWhere(filters: {
     and.push(alignmentIncompleteClause());
   } else if (stage === "EXAM") {
     and.push(alignmentCompleteClause());
-    and.push(noPassedExamClause());
+    and.push(noPassedExamClause(decisionIds));
   } else if (stage === "COR") {
     and.push(alignmentCompleteClause());
-    and.push(passedExamClause());
+    and.push(passedExamClause(decisionIds));
   }
 
   return { AND: and };

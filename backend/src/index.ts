@@ -4,6 +4,7 @@ import prisma from "./config/database";
 import { initializeDefenseRealtime } from "./realtime/defense-realtime.server";
 import "./workers/email.worker";
 import { startCronJobs } from "./workers/cron.worker";
+import { startExamExpiryWorker } from "./workers/exam-expiry.worker";
 
 const app = createApp();
 const PORT = process.env.PORT || 5000;
@@ -19,5 +20,7 @@ httpServer.listen(PORT, () => {
 });
 
 startCronJobs();
+const examExpiryWorker = startExamExpiryWorker();
+httpServer.on("close", () => examExpiryWorker.stop());
 
 export { app, httpServer, prisma };

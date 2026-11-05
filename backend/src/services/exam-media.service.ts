@@ -104,11 +104,15 @@ export class ExamMediaService {
     }
   }
 
-  async getContent(id: string, actor: MediaActor | undefined): Promise<ExamImageContent> {
+  async getContent(id: string, actor: MediaActor | undefined, applicationId?: unknown): Promise<ExamImageContent> {
     if (!actor?.userId) throw new AppError("Unauthorized.", 401);
     if (actor.role !== "ADMIN" && actor.role !== "APPLICANT") throw new AppError("Forbidden.", 403);
+    let revisionId: string | undefined;
     if (actor.role === "APPLICANT") {
-      try { await this.examAccess.assertApplicantQuestionAccess(actor.userId); }
+      try {
+        if (typeof applicationId !== "string") throw unavailable();
+        revisionId = await this.examAccess.assertApplicantQuestionAccess(actor.userId, applicationId, id);
+      }
       catch { throw unavailable(); }
     }
     try { if (!examMediaId(id)) throw unavailable(); }
@@ -116,7 +120,7 @@ export class ExamMediaService {
 
     const media = actor.role === "ADMIN"
       ? await this.repo.findForAdmin(id)
-      : await this.repo.findForApplicant(id);
+      : await this.repo.findForApplicant(id, revisionId!);
     if (!media) throw unavailable();
 
     const policy = getUploadPolicy("exam-media");

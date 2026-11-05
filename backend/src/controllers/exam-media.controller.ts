@@ -26,7 +26,7 @@ export class ExamMediaController {
 
   getContent = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const content = await this.service.getContent(req.params.mediaId as string, req.user);
+      const content = await this.service.getContent(req.params.mediaId as string, req.user, req.query.applicationId);
       res.setHeader("Content-Type", content.mimeType);
       res.setHeader("Content-Length", content.bytes.length);
       const extension = content.mimeType === "image/png" ? "png" : "jpg";

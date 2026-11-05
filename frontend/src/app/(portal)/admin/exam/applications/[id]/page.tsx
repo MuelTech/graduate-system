@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
+import { ResultBreakdown } from "@/components/exam-content/result-breakdown";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,14 +12,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ExamStateBadge } from "@/components/admin/exam/exam-state-badge";
+import { ExamRecordActions } from "@/components/admin/exam/exam-record-actions";
+import { EssayEvaluationPanel } from "@/components/admin/exam/essay-evaluation-panel";
+import { StartAuthorization } from "@/components/admin/exam/start-authorization";
 import {
   deriveExamState,
   EXAM_STATE_LABEL,
   EXAM_STATE_DESCRIPTION,
-  formatExamDate,
-  formatExamTime,
+  EXAM_STATE_BADGE_CLASS,
 } from "@/lib/exam-record-state";
 import type { ExamRecordDetail } from "@/types";
 import { toast } from "sonner";
@@ -29,8 +30,6 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-
-const MISSING = "—";
 
 /* -------------------------------------------------------------- small parts */
 
@@ -62,46 +61,6 @@ function SectionCard({
         {children}
       </CardContent>
     </Card>
-  );
-}
-
-function DataRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0 space-y-0.5">
-      <dt className="text-sm text-(--earist-body-text)">{label}</dt>
-      <dd className="text-sm font-medium break-words text-foreground">
-        {children}
-      </dd>
-    </div>
-  );
-}
-
-function ScoreValue({
-  value,
-  max,
-}: {
-  value: number | null;
-  max: number | null;
-}) {
-  if (value === null) {
-    return <span className="text-sm text-(--earist-body-text)">{MISSING}</span>;
-  }
-  return (
-    <span className="text-lg font-semibold text-(--earist-primary)">
-      {value}
-      {max !== null ? (
-        <span className="text-sm font-normal text-(--earist-body-text)">
-          {" "}
-          / {max}
-        </span>
-      ) : null}
-    </span>
   );
 }
 
@@ -214,30 +173,6 @@ function ErrorState({
   );
 }
 
-/* --------------------------------------------------------------- assessment */
-
-function AssessmentUnavailable({ state }: { state: string }) {
-  const message =
-    state === "SCHEDULED"
-      ? "Scores will become available after the applicant completes the entrance examination."
-      : state === "APPEAL_PENDING"
-        ? "Assessment is not available while a missed-exam appeal is pending."
-        : state === "DISQUALIFIED"
-          ? "Assessment is not available for a disqualified record."
-          : "Assessment is not available for the current exam state.";
-
-  return (
-    <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-      <p className="text-sm font-medium text-(--earist-secondary)">
-        {state === "SCHEDULED"
-          ? "Assessment not available yet"
-          : "Assessment not available"}
-      </p>
-      <p className="mt-1 text-sm text-(--earist-body-text)">{message}</p>
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------------- page */
 
 export default function ExamRecordDetailPage() {
@@ -245,38 +180,45 @@ export default function ExamRecordDetailPage() {
   const applicationId = params.id as string;
   const queryClient = useQueryClient();
 
-  const [essayScore, setEssayScore] = useState("");
-
   const recordQuery = useQuery<ExamRecordDetail>({
     queryKey: ["examRecord", applicationId],
     queryFn: () => apiClientRequest(`/exam/applications/${applicationId}`),
     retry: false,
   });
 
-  const gradeMutation = useMutation({
+  const emailBusy = useRef(false);
+  const finalizeBusy = useRef(false);
+  const finalizeMutation = useMutation({
     mutationFn: () =>
-      apiClientRequest(`/exam/scores/${applicationId}/grade`, {
+      apiClientRequest(`/exam/scores/${applicationId}/finalize`, {
         method: "POST",
-        body: JSON.stringify({ essayScore: Number(essayScore) }),
+        body: "{}",
       }),
-    onSuccess: () => {
-      toast.success("Essay grade saved.");
-      setEssayScore("");
-      queryClient.invalidateQueries({
-        queryKey: ["examRecord", applicationId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["examRecords"] });
+    onSuccess: () => toast.success("Result finalized."),
+    onError: (error: Error) => toast.error(error.message),
+    onSettled: async () => {
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["examRecord", applicationId],
+          }),
+          queryClient.invalidateQueries({ queryKey: ["examRecords"] }),
+        ]);
+      } finally {
+        finalizeBusy.current = false;
+      }
     },
-    onError: (error: Error) =>
-      toast.error(error.message || "Failed to save essay grade."),
   });
-
   const emailMutation = useMutation({
     mutationFn: () =>
       apiClientRequest(`/exam/scores/${applicationId}/send-email`, {
         method: "POST",
       }),
-    onSuccess: () => toast.success("Result email queued."),
+    onSuccess: (response: { message: string }) =>
+      toast.success(response.message),
+    onSettled: () => {
+      emailBusy.current = false;
+    },
     onError: (error: Error) =>
       toast.error(error.message || "Failed to queue result email."),
   });
@@ -303,36 +245,17 @@ export default function ExamRecordDetailPage() {
   }
 
   const record = recordQuery.data;
-  const state = deriveExamState(record.status);
-  const fullName = `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
+  const state = deriveExamState(
+    record.status,
+    record.essayEvaluation?.status === "COMPLETED",
+    record.effectiveStatus === "passed_reconsidered",
+  );
+  const fullName =
+    `${record.student.user.firstName} ${record.student.user.lastName}`.trim();
   const pinnacleId = record.student.pinnacleApplicantId || "No Pinnacle ID";
   const programName = record.program.programName;
-  const essayMax = record.program.examEssayTotal;
-  const mcqMax = record.program.examMcqTotal;
-  const schedule = `${formatExamDate(record.slot.examDate)} · ${formatExamTime(
-    record.slot.examTime,
-  )}`;
-
-  const isCompleted = state === "PASSED" || state === "FAILED";
-  const isGrading = state === "NEEDS_GRADING";
-
-  // Essay-score validation (client-side; the backend remains authoritative).
-  const trimmedScore = essayScore.trim();
-  const numericScore = Number(trimmedScore);
-  const essayValidationError =
-    trimmedScore === ""
-      ? null
-      : !Number.isFinite(numericScore)
-        ? "Enter a valid number."
-        : numericScore < 0
-          ? "Score cannot be negative."
-          : essayMax !== null && numericScore > essayMax
-            ? `Score cannot exceed ${essayMax}.`
-            : null;
-  const canSave =
-    trimmedScore !== "" &&
-    essayValidationError === null &&
-    !gradeMutation.isPending;
+  const isCompleted = record.status === "PASSED" || record.status === "FAILED";
+  const isTaken = record.status === "TAKEN";
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -357,175 +280,86 @@ export default function ExamRecordDetailPage() {
         }
       />
 
-      {/* Current Exam State */}
-      <Card>
-        <CardContent className="space-y-3">
-          <p className="text-xs font-semibold text-(--earist-body-text)">
-            Current Exam State
+      <SectionCard title="Examination Result">
+        <div className="space-y-1">
+          {isCompleted && record.result && state !== "PASSED_RECONSIDERED" ? (
+            <p className="text-xs text-muted-foreground">Computed Result</p>
+          ) : null}
+          <p
+            className={cn(
+              "text-xl font-semibold",
+              EXAM_STATE_BADGE_CLASS[state],
+            )}
+          >
+            {state === "PASSED_RECONSIDERED"
+              ? "Final Decision: Passed — Reconsidered"
+              : EXAM_STATE_LABEL[state]}
           </p>
-          <p className="text-lg font-semibold text-(--earist-primary)">
-            {EXAM_STATE_LABEL[state]}
-          </p>
-          <p className="max-w-2xl text-sm text-(--earist-body-text)">
-            {EXAM_STATE_DESCRIPTION[state]}
-          </p>
-          <p className="text-sm text-(--earist-body-text)">{schedule}</p>
-        </CardContent>
-      </Card>
-
-      {/* Exam Information */}
-      <SectionCard title="Exam Information">
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <DataRow label="Program">{programName}</DataRow>
-          <DataRow label="Exam Date">
-            {formatExamDate(record.slot.examDate)}
-          </DataRow>
-          <DataRow label="Exam Time">
-            {formatExamTime(record.slot.examTime)}
-          </DataRow>
-          <DataRow label="Exam State">{EXAM_STATE_LABEL[state]}</DataRow>
-        </dl>
+          {!isCompleted && !isTaken ? (
+            <p className="text-sm text-muted-foreground">
+              {EXAM_STATE_DESCRIPTION[state]}
+            </p>
+          ) : null}
+        </div>
+        {isCompleted ? (
+          record.result ? (
+            <ResultBreakdown
+              result={record.result}
+              showComputedResult={state === "PASSED_RECONSIDERED"}
+            />
+          ) : (
+            <p role="alert" className="text-sm">
+              Result evidence requires staff review. Publication is unavailable.
+            </p>
+          )
+        ) : null}
       </SectionCard>
 
-      {/* Assessment */}
-      <SectionCard title="Assessment">
-        {isGrading ? (
-          <div className="space-y-5">
-            <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-4">
-              <p className="text-xs text-(--earist-body-text)">Multiple Choice</p>
-              <ScoreValue
-                value={record.score?.multipleChoiceScore ?? null}
-                max={mcqMax}
-              />
-              <p className="mt-1 text-xs text-(--earist-body-text)">
-                Auto-graded
-              </p>
-            </div>
+      <div className="space-y-4">
+        <StartAuthorization
+          applicationId={applicationId}
+          applicantName={fullName}
+        />
+        <ExamRecordActions record={record} section="appointment" />
+      </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-(--earist-secondary)">
-                Essay Response
-              </h3>
-              {record.essayAnswers.length === 0 ? (
-                <p className="text-sm text-(--earist-body-text)">
-                  No essay response recorded.
-                </p>
-              ) : (
-                <ol className="space-y-4">
-                  {record.essayAnswers.map((answer, index) => (
-                    <li key={answer.questionId} className="space-y-1.5">
-                      <p className="text-sm font-medium text-(--earist-secondary)">
-                        Question {index + 1}
-                      </p>
-                      <p className="text-sm break-words text-(--earist-body-text)">
-                        {answer.questionText}
-                      </p>
-                      <div className="rounded-lg border border-(--earist-border-gray) bg-(--earist-surface-gray) p-3">
-                        <p className="text-sm break-words whitespace-pre-wrap text-foreground">
-                          {answer.essayAnswer?.trim()
-                            ? answer.essayAnswer
-                            : "No response submitted."}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="essay-score"
-                className="block text-sm font-medium text-(--earist-secondary)"
-              >
-                Essay Score
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="essay-score"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={essayMax ?? undefined}
-                  step="1"
-                  value={essayScore}
-                  onChange={(event) => setEssayScore(event.target.value)}
-                  className="w-28 text-center"
-                  aria-invalid={essayValidationError !== null}
-                  aria-describedby={
-                    essayValidationError ? "essay-score-error" : undefined
-                  }
-                  placeholder="0"
-                />
-                {essayMax !== null ? (
-                  <span className="text-sm text-(--earist-body-text)">
-                    / {essayMax}
-                  </span>
-                ) : null}
-              </div>
-              {essayValidationError ? (
-                <p
-                  id="essay-score-error"
-                  className="text-xs text-destructive"
-                  role="alert"
-                >
-                  {essayValidationError}
-                </p>
-              ) : null}
-            </div>
-
+      {isTaken || isCompleted ? (
+        <SectionCard title="Essay Evaluation">
+          <EssayEvaluationPanel
+            key={applicationId}
+            applicationId={applicationId}
+            evaluation={record.essayEvaluation}
+          />
+          {isTaken && record.essayEvaluation?.status === "COMPLETED" ? (
             <Button
-              onClick={() => gradeMutation.mutate()}
-              disabled={!canSave}
+              disabled={finalizeMutation.isPending}
+              onClick={() => {
+                if (finalizeBusy.current) return;
+                finalizeBusy.current = true;
+                finalizeMutation.mutate();
+              }}
             >
-              {gradeMutation.isPending ? "Saving…" : "Save Essay Grade"}
+              {finalizeMutation.isPending ? "Finalizing…" : "Finalize Result"}
             </Button>
-          </div>
-        ) : isCompleted ? (
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DataRow label="Multiple Choice">
-              <ScoreValue
-                value={record.score?.multipleChoiceScore ?? null}
-                max={mcqMax}
-              />
-              <span className="ml-2 text-xs text-(--earist-body-text)">
-                Auto-graded
-              </span>
-            </DataRow>
-            <DataRow label="Essay">
-              <ScoreValue
-                value={record.score?.essayScore ?? null}
-                max={essayMax}
-              />
-            </DataRow>
-            <DataRow label="Total">
-              <span className="text-lg font-semibold text-(--earist-primary)">
-                {record.score?.totalScore ?? MISSING}
-              </span>
-            </DataRow>
-            <DataRow label="Result">
-              <ExamStateBadge state={state} />
-            </DataRow>
-            <DataRow label="Graded by">
-              {record.score?.gradedBy
-                ? `${record.score.gradedBy.firstName} ${record.score.gradedBy.lastName}`
-                : "Not recorded"}
-            </DataRow>
-          </dl>
-        ) : (
-          <AssessmentUnavailable state={state} />
-        )}
-      </SectionCard>
+          ) : null}
+        </SectionCard>
+      ) : null}
+
+      <ExamRecordActions record={record} section="reconsideration" />
 
       {/* Result Notification */}
-      {isCompleted ? (
+      {isCompleted && record.resultEmailEligible ? (
         <SectionCard
           title="Result Notification"
           description="Queue the official result email to the applicant."
           action={
             <Button
               variant="outline"
-              onClick={() => emailMutation.mutate()}
+              onClick={() => {
+                if (emailBusy.current) return;
+                emailBusy.current = true;
+                emailMutation.mutate();
+              }}
               disabled={emailMutation.isPending}
             >
               <Send className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -536,19 +370,6 @@ export default function ExamRecordDetailPage() {
           <p className="text-sm text-(--earist-body-text)">
             The result email is placed on the system email queue for delivery.
           </p>
-        </SectionCard>
-      ) : null}
-
-      {/* Missed Exam Appeal (read-only context) */}
-      {state === "APPEAL_PENDING" ? (
-        <SectionCard
-          title="Missed Exam Appeal"
-          description="Appeal actions are not available on this page yet."
-        >
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DataRow label="Status">Appeal Pending</DataRow>
-            <DataRow label="Original Exam Schedule">{schedule}</DataRow>
-          </dl>
         </SectionCard>
       ) : null}
     </div>

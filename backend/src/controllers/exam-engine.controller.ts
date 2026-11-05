@@ -1,8 +1,9 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
 import { ExamEngineService } from "../services/exam-engine.service";
-import prisma from "../config/database";
 import { AppError } from "../utils/AppError";
+import { submissionConfirmation, IncompleteExamSubmissionError } from "../services/exam-finalization.rules";
+import { validateDraft } from "../services/exam-answer.rules";
 
 export class ExamEngineController {
     private service: ExamEngineService;
@@ -11,46 +12,57 @@ export class ExamEngineController {
         this.service = new ExamEngineService();
     }
 
-    // Helper to get applicationId from userId
-    private async getAppId(userId: string) {
-        return this.service.getApplicationIdForUser(userId);
-    }
-
     getQuestionsForApplicant = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const appId = await this.getAppId(req.user!.userId);
-            const questions = await this.service.getQuestionsForApplicant(appId);
+            const questions = await this.service.getQuestionsForApplicant(req.params.applicationId as string, req.user!.userId);
 
             res.status(200).json(questions);
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not load examination content." });
         }
     }
 
     autoSaveAnswer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const appId = await this.getAppId(req.user!.userId);
-            const { questionId, essayAnswer } = req.body;
+            const answer = validateDraft(req.body);
+            const appId = req.params.applicationId as string;
+            const saved = await this.service.saveDraft(appId, answer, req.user!.userId);
+            res.status(200).json(saved);
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not save answer." });
+        }
+    }
 
-            await this.service.autoSaveAnswer(appId, questionId, essayAnswer);
-
-            res.status(200).json({ success: true });
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
+    readDrafts = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            res.status(200).json(await this.service.readDrafts(req.params.applicationId as string, req.user!.userId));
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not load saved answers." });
         }
     }
 
     submitAnswers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const appId = await this.getAppId(req.user!.userId);
-            const { answers } = req.body;
-            const result = await this.service.submitAnswers(appId, answers);
+            const confirmation = submissionConfirmation(req.body);
+            const appId = req.params.applicationId as string;
+            const result = await this.service.submitAnswers(appId, confirmation, req.user!.userId);
 
             res.status(200).json(result);
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({
+                error: error instanceof AppError ? error.message : "Could not submit answers.",
+                ...(error instanceof IncompleteExamSubmissionError ? { code: error.code, answeredCount: error.answeredCount, unansweredCount: error.unansweredCount } : {}),
+            });
         }
     }
+
+    readFinalization = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        try {
+            res.status(200).json(await this.service.readFinalization(req.params.applicationId as string, req.user!.userId));
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not retrieve examination receipt." });
+        }
+    };
 
     getAllQuestionsForAdmin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
@@ -87,31 +99,9 @@ export class ExamEngineController {
             await this.service.deleteQuestion(req.params.id as string);
 
             res.status(200).json({ success: true });
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
+        } catch (error: unknown) {
+            res.status(error instanceof AppError ? error.statusCode : 500).json({ error: error instanceof AppError ? error.message : "Could not delete question." });
         }
     }
 
-    getSchedule = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        try {
-            const appId = await this.getAppId(req.user!.userId);
-            const app = await prisma.entranceExamApplication.findUnique({
-                where: { id: appId },
-                select: {
-                    examDate: true,
-                    examTime: true,
-                    status: true
-                }
-            });
-
-            if (!app) {
-                res.status(404).json({ error: "Exam application record not found." });
-                return;
-            }
-
-            res.status(200).json(app);
-        } catch (error: any) {
-            res.status(400).json({ error: error.message });
-        }
-    }
 }

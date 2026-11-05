@@ -1,9 +1,18 @@
 import { Router } from "express";
 import { ExamController } from "../controllers/exam.controller";
+import { ExamAmendmentController } from "../controllers/exam-amendment.controller";
 import { authenticateJWT, requireRole } from "../middlewares/auth.middleware";
 
 const router = Router();
 const examController = new ExamController();
+const amendments = new ExamAmendmentController();
+router.post('/applications/:id/missed-appeal', authenticateJWT, requireRole(['APPLICANT']), amendments.action('MISSED_APPEAL'));
+router.post('/applications/:id/missed-appeal/approve', authenticateJWT, requireRole(['ADMIN']), amendments.action('APPROVE_APPEAL'));
+router.post('/applications/:id/missed-appeal/reject', authenticateJWT, requireRole(['ADMIN']), amendments.action('REJECT_APPEAL'));
+router.post('/applications/:id/reschedule', authenticateJWT, requireRole(['ADMIN']), amendments.action('ADMIN_RESCHEDULE'));
+router.post('/applications/:id/cancel-appointment', authenticateJWT, requireRole(['ADMIN']), amendments.action('ADMIN_CANCELLATION'));
+router.get('/applications/:id/amendment-options', authenticateJWT, requireRole(['ADMIN']), amendments.options);
+router.post('/applications/:id/reconsider-result', authenticateJWT, requireRole(['ADMIN']), amendments.reconsider);
 
 // ADMIN ONLY: Create slots
 router.post('/slots', authenticateJWT, requireRole(['ADMIN']), examController.createSlot);
@@ -16,6 +25,8 @@ router.post('/schedule', authenticateJWT, requireRole(['APPLICANT']), examContro
 router.get('/slots', authenticateJWT, requireRole(['ADMIN']), examController.getAllSlots);
 
 // Routes for Admin Exam Applications
+router.get('/assignment-options/:studentId', authenticateJWT, requireRole(['ADMIN']), examController.getAssignmentOptions);
+router.post('/assignments', authenticateJWT, requireRole(['ADMIN']), examController.assignApplicant);
 router.get('/applications', authenticateJWT, requireRole(['ADMIN']), examController.getAllApplications);
 router.get('/applications/:id', authenticateJWT, requireRole(['ADMIN']), examController.getApplicationDetail);
 
@@ -44,6 +55,7 @@ router.get('/result', authenticateJWT, requireRole(['APPLICANT']), examControlle
 // together with the Score Management workspace. The mutations below are
 // intentionally retained (and keep the /exam/scores namespace).
 router.post('/scores/:id/grade', authenticateJWT, requireRole(['ADMIN']), examController.gradeEssay);
+router.post('/scores/:id/finalize', authenticateJWT, requireRole(['ADMIN']), examController.finalizeResult);
 router.post('/scores/:id/send-email', authenticateJWT, requireRole(['ADMIN']), examController.confirmResultAndEmail);
 
 export default router;
