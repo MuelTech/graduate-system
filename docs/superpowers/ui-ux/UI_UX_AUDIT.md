@@ -1236,6 +1236,35 @@ Avoid exposing implementation uncertainty, database terminology, raw API state, 
 
 ---
 
+## UX-CONT-03 — Status and empty-state copy must not over-explain
+
+**Priority:** P1  
+**Area:** Content design
+
+Correct workflow behavior can still produce poor UX when visible messages narrate inverse conditions, obvious consequences, or responsibilities already established by the current screen.
+
+### Recommendation
+
+Use **one state, one message**:
+
+- positive eligibility should state the positive state only;
+- blocked states should name the blocker directly;
+- empty states should name what is unavailable without unnecessary policy narration;
+- add recovery/next action only when it is not already obvious from the current controls;
+- wording must remain aware of the current role.
+
+Examples from the Entrance Exam **Assign Applicant** manual QA:
+
+- prefer **Eligible for assignment.** over **Eligible for assignment · No examination record prevents assignment.**;
+- prefer **This Applicant already has an examination record.** over **This Applicant already has an examination record that prevents another assignment.**;
+- prefer **No schedules are available for this Applicant’s Program.** over **No eligible same-day schedules have seats available. Contact the schedule administrator.**
+
+These are presentation/content rules only. They do not weaken eligibility, schedule, capacity, program-alignment, or record-authority rules.
+
+Every UI/UX package that changes visible copy should include a microcopy review for redundancy, inverse-condition wording, role context, internal terminology, and unnecessary consequence narration before acceptance.
+
+---
+
 ## UX-DESIGN-01 — External visual references must not become agent dependencies
 
 **Priority:** P1  

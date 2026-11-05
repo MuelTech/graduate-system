@@ -1141,8 +1141,9 @@ Canonical wording guidance already exists in the UI/UX playbook. This checklist 
 | ⏳ | User-facing vs implementation language | Keep API/model/internal lifecycle terms out of ordinary UI unless they serve a real administrative/audit need. |
 | ⏳ | Consistent action verbs | Use one accepted phrase for the same action across pages, dialogs, notifications, and emails. |
 | ⏳ | Consistent status labels | Map raw enums/internal states to clear user-facing wording without changing domain meaning. |
-| ⏳ | Role-aware wording | Copy must reflect the actor's actual responsibility and avoid describing permissions/actions that the actor does not own. |
-| ⏳ | Blocked-state explanations | When an action is unavailable, explain the authoritative reason and next responsible actor/action when useful. |
+| ⏳ | Role-aware wording | Copy must reflect the actor's actual responsibility and avoid describing permissions/actions that the actor does not own. Never tell an Admin to “contact the schedule administrator” when the Admin already owns schedule management. |
+| ⏳ | Microcopy compression | Status/helper/empty-state copy should use the shortest truthful wording: one state, one message; do not restate inverse conditions, obvious consequences, or surrounding dialog/page context. |
+| ⏳ | Blocked-state explanations | When an action is unavailable, state the authoritative blocker directly. Add the next responsible actor/action only when genuinely useful and not already obvious from nearby controls. |
 | ⏳ | Irreversible-action copy | Confirmations for finalize/sign/conclude/reject/reactivate/permission-change actions must state the real consequence clearly. |
 | ⏳ | Error and recovery copy | Replace generic or technical errors with concise, actionable messages while preserving safe server-side detail handling. |
 | ⏳ | Email/notification wording consistency | Email subjects/bodies and in-app notifications should use the same approved terminology as the portal. |
@@ -1169,11 +1170,17 @@ database/model terminology
 route/API language
 engineering implementation details
 duplicated explanatory paragraphs
+inverse-condition restatements (for example, “Eligible … no blocker prevents …”)
+obvious consequences already communicated by disabled/unavailable actions
+role-confusing instructions that tell the current actor to contact itself
 different names for the same system concept
 ```
 
 Examples of already accepted direction include:
 
+- **Eligible for assignment.** instead of **Eligible for assignment · No examination record prevents assignment.**;
+- **This Applicant already has an examination record.** instead of appending the obvious consequence that another assignment is prevented;
+- **No schedules are available for this Applicant’s Program.** instead of verbose/role-confusing Admin empty-state guidance;
 - **Committee Report** instead of exposing internal `RapReport` terminology to ordinary Faculty users;
 - **Finalize Committee Report** instead of engineering wording such as “freeze”;
 - **Ready for Signatures / Awaiting Signatures** instead of exposing raw report-state enums;
